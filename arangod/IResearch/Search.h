@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@
 
 #include "VocBase/LogicalView.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/ViewSnapshot.h"
@@ -94,7 +93,7 @@ class Search final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   static ViewFactory const& factory();
 
-  Search(TRI_vocbase_t& vocbase, velocypack::Slice info);
+  Search(TRI_vocbase_t& vocbase, velocypack::Slice info, bool isUserRequest);
   ~Search() final;
 
   /// Get from indexes
@@ -132,7 +131,7 @@ class Search final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief opens an existing view when the server is restarted
   //////////////////////////////////////////////////////////////////////////////
-  void open() final;
+  void open() final {}
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief invoke visitor on all collections that a view will return
@@ -177,7 +176,6 @@ class Search final : public LogicalView {
   AsyncSearchPtr _asyncSelf;
   std::function<void(transaction::Methods& trx, transaction::Status status)>
       _trxCallback;  // for snapshot(...)
-  // std::atomic_bool _inRecovery{false};
 
   std::shared_ptr<SearchMeta const> _meta;
 

@@ -1,0 +1,76 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, fail */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+/// @author Jan Steemann
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
+
+let internal = require("internal");
+let jsunity = require("jsunity");
+const db = require('internal').db;
+
+function aqlRegistersLimitTestSuite () {
+  const errors = internal.errors;
+  // the value of 1000 needs to match the maximum allowed register number in
+  // arangod (currently in RegisterPlan::MaxRegisterId)
+  const maxRegisters = 1000;
+
+  let buildQuery = function(numRegisters) {
+    let subs = [], returns = [];
+    // we need to subtract a register here because we have one extra results
+    // register
+    for (let i = 0; i < numRegisters - 1; ++i) {
+      subs.push(`LET test${i} = NOOPT(${i})`);
+      returns.push(`test${i}`);
+    }
+    return subs.join('\n') + 'RETURN [\n' + returns.join(',\n') + ']\n';
+  };
+
+  return {
+    testBelowLimit : function () {
+      let query = buildQuery(maxRegisters - 1);
+      let plan = db._createStatement(query).explain().plan;
+      assertEqual(maxRegisters - 1, plan.variables.length);
+    },
+    
+    testAtLimit : function () {
+      let query = buildQuery(maxRegisters);
+      let plan = db._createStatement(query).explain().plan;
+      assertEqual(maxRegisters, plan.variables.length);
+    },
+    
+    testBeyondLimit : function () {
+      let query = buildQuery(maxRegisters + 1);
+      try {
+        db._createStatement(query).explain();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+  };
+}
+
+jsunity.run(aqlRegistersLimitTestSuite);
+
+return jsunity.done();

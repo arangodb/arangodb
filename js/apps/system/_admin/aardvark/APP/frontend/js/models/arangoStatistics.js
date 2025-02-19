@@ -1,5 +1,3 @@
-/* global window, Backbone */
-
 window.Statistics = Backbone.Model.extend({
   defaults: {
   },

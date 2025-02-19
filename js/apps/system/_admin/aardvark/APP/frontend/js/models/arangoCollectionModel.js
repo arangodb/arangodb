@@ -1,4 +1,4 @@
-/* global window, Backbone, $, arangoHelper, frontendConfig */
+/* global frontendConfig */
 (function () {
   'use strict';
   window.arangoCollectionModel = Backbone.Model.extend({
@@ -50,7 +50,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/figures'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/figures?details=false'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {

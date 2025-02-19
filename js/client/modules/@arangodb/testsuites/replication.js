@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,18 +44,20 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
+const ct = require('@arangodb/testutils/client-tools');
 
 const testPaths = {
   'shell_replication': [tu.pathForTesting('common/replication')],
-  'replication_aql': [tu.pathForTesting('server/replication/aql')],
-  'replication_fuzz': [tu.pathForTesting('server/replication/fuzz')],
-  'replication_random': [tu.pathForTesting('server/replication/random')],
-  'replication_ongoing': [tu.pathForTesting('server/replication/ongoing')],
-  'replication_ongoing_global': [tu.pathForTesting('server/replication/ongoing/global')],
-  'replication_ongoing_global_spec': [tu.pathForTesting('server/replication/ongoing/global/spec')],
-  'replication_ongoing_frompresent': [tu.pathForTesting('server/replication/ongoing/frompresent')],
-  'replication_static': [tu.pathForTesting('server/replication/static')],
-  'replication_sync': [tu.pathForTesting('server/replication/sync')],
+  'replication_aql': [tu.pathForTesting('client/replication/aql')],
+  'replication_fuzz': [tu.pathForTesting('client/replication/fuzz')],
+  'replication_random': [tu.pathForTesting('client/replication/random')],
+  'replication_ongoing': [tu.pathForTesting('client/replication/ongoing')],
+  'replication_ongoing_global': [tu.pathForTesting('client/replication/ongoing/global')],
+  'replication_ongoing_global_spec': [tu.pathForTesting('client/replication/ongoing/global/spec')],
+  'replication_ongoing_frompresent': [tu.pathForTesting('client/replication/ongoing/frompresent')],
+  'replication_static': [tu.pathForTesting('client/replication/static')],
+  'replication_sync': [tu.pathForTesting('client/replication/sync')],
   'http_replication': [tu.pathForTesting('common/replication_api')]
 };
 
@@ -71,7 +73,7 @@ function shellReplication (options) {
   };
   _.defaults(opts, options);
 
-  return new tu.runOnArangodRunner(opts, 'shell_replication').run(testCases);
+  return new trs.runOnArangodRunner(opts, 'shell_replication').run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -89,7 +91,7 @@ function shellClientReplicationApi (options) {
   _.defaults(opts, options);
   opts.forceJson = true;
 
-  let ret = new tu.runLocalInArangoshRunner(opts, 'shell_replication_api').run(testCases);
+  let ret = new trs.runLocalInArangoshRunner(opts, 'shell_replication_api').run(testCases);
   if (!options.forceJson) {
     arango.forceJson(false);
   }
@@ -97,7 +99,7 @@ function shellClientReplicationApi (options) {
 }
 
 
-class replicationRunner extends tu.runInArangoshRunner {
+class replicationRunner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, serverOptions, startReplication=false) {
     super(options, testname, serverOptions);
     this.options.singles = 2;
@@ -120,19 +122,23 @@ class replicationRunner extends tu.runInArangoshRunner {
     let state = true;
     this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
     if (this.startReplication) {
-      let res = pu.run.arangoshCmd(this.options, this.instanceManager,
-                                   {}, [
-        '--javascript.execute-string',
-        `
+      [0, 1].forEach(which => {
+        this.instanceManager.endpoint = this.instanceManager.arangods[which].endpoint;
+        this.instanceManager.arangods[which].connect();
+        let res = ct.run.arangoshCmd(this.options, this.instanceManager,
+                                     {}, [
+                                       '--javascript.execute-string',
+                                       `
           var users = require("@arangodb/users");
           users.save("replicator-user", "replicator-password", true);
           users.grantDatabase("replicator-user", "_system");
           users.grantCollection("replicator-user", "_system", "*", "rw");
           users.reload();
           `
-      ],
-                                   this.options.coreCheck);
-      state = res.status;
+                                     ],
+                                     this.options.coreCheck);
+        state = res.status;
+      });
     }
     return {
       message: message,
@@ -191,6 +197,7 @@ const replicationOngoingFrompresent = (new _replicationOngoing('replication_ongo
 
 function replicationStatic (options) {
   let testCases = tu.scanTestPaths(testPaths.replication_static, options);
+  testCases = tu.splitBuckets(options, testCases);
 
   return new replicationRunner(
     options,
@@ -224,6 +231,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
   testFns['http_replication'] = shellClientReplicationApi;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

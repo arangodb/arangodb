@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/TypeList.h"
+#include "Basics/operating-system.h"
 
 namespace arangodb {
 namespace application_features {
@@ -51,17 +52,20 @@ class MetricsFeature;
 class ClusterMetricsFeature;
 
 }  // namespace metrics
-namespace cluster {
 
-class FailureOracleFeature;
-
-}  // namespace cluster
 class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
 class AuthenticationFeature;
+namespace async_registry {
+
+class Feature;
+
+}
 class BootstrapFeature;
+class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
+class CacheOptionsFeature;
 class CheckVersionFeature;
 class ClusterFeature;
 class ClusterUpgradeFeature;
@@ -70,6 +74,7 @@ class ConsoleFeature;
 class CpuUsageFeature;
 class DatabaseFeature;
 class DatabasePathFeature;
+class DumpLimitsFeature;
 class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
@@ -126,9 +131,7 @@ class ViewTypesFeature;
 class ClusterEngine;
 class DaemonFeature;
 class SupervisorFeature;
-class WindowsServiceFeature;
 class AuditFeature;
-class LdapFeature;
 class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
@@ -138,6 +141,7 @@ class RocksDBEngine;
 class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
+class VectorIndexFeature;
 
 namespace transaction {
 
@@ -148,13 +152,9 @@ namespace aql {
 
 class AqlFunctionFeature;
 class OptimizerRulesFeature;
+class QueryInfoLoggerFeature;
 
 }  // namespace aql
-namespace pregel {
-
-class PregelFeature;
-
-}  // namespace pregel
 namespace iresearch {
 
 class IResearchAnalyzerFeature;
@@ -170,10 +170,6 @@ namespace black_hole {
 struct BlackHoleStateMachineFeature;
 
 }  // namespace black_hole
-
-namespace prototype {
-struct PrototypeStateMachineFeature;
-}
 
 namespace document {
 struct DocumentStateMachineFeature;
@@ -192,10 +188,14 @@ using ArangodFeaturesList = TypeList<
     ClusterFeaturePhase,
     DatabaseFeaturePhase,
     FinalFeaturePhase,
+#ifdef USE_V8
     FoxxFeaturePhase,
+#endif
     GreetingsFeaturePhase,
     ServerFeaturePhase,
+#ifdef USE_V8
     V8FeaturePhase,
+#endif
     // Adding the features
     metrics::MetricsFeature, // metrics::MetricsFeature must go first
     metrics::ClusterMetricsFeature,
@@ -203,25 +203,35 @@ using ArangodFeaturesList = TypeList<
     ActionFeature,
     AgencyFeature,
     AqlFeature,
+    async_registry::Feature,
     AuthenticationFeature,
     BootstrapFeature,
+#ifdef TRI_HAVE_GETRLIMIT
+    BumpFileDescriptorsFeature,
+#endif
+    CacheOptionsFeature,
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,
+    DatabaseFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
+#ifdef USE_V8
     ConsoleFeature,
+#endif
     CpuUsageFeature,
-    DatabaseFeature,
     DatabasePathFeature,
+    DumpLimitsFeature,
     HttpEndpointProvider,
     EngineSelectorFeature,
     EnvironmentFeature,
     FileSystemFeature,
     FlushFeature,
     FortuneFeature,
+#ifdef USE_V8
     FoxxFeature,
     FrontendFeature,
+#endif
     GeneralServerFeature,
     GreetingsFeature,
     InitDatabaseFeature,
@@ -244,7 +254,10 @@ using ArangodFeaturesList = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
+    VectorIndexFeature,
+#ifdef USE_V8
     ScriptFeature,
+#endif
     ServerFeature,
     ServerIdFeature,
     ServerSecurityFeature,
@@ -261,20 +274,19 @@ using ArangodFeaturesList = TypeList<
     TemporaryStorageFeature,
     TtlFeature,
     UpgradeFeature,
+#ifdef USE_V8
     V8DealerFeature,
     V8PlatformFeature,
     V8SecurityFeature,
+#endif
     transaction::ManagerFeature,
     ViewTypesFeature,
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
-    pregel::PregelFeature,
+    aql::QueryInfoLoggerFeature,
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
-#ifdef _WIN32
-    WindowsServiceFeature,
-#endif
 #ifdef TRI_HAVE_GETRLIMIT
     FileDescriptorsFeature,
 #endif
@@ -284,7 +296,6 @@ using ArangodFeaturesList = TypeList<
 #endif
 #ifdef USE_ENTERPRISE
     AuditFeature,
-    LdapFeature,
     LicenseFeature,
     RCloneFeature,
     HotBackupFeature,
@@ -295,10 +306,8 @@ using ArangodFeaturesList = TypeList<
     iresearch::IResearchFeature,
     ClusterEngine,
     RocksDBEngine,
-    cluster::FailureOracleFeature,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    replication2::replicated_state::prototype::PrototypeStateMachineFeature,
     replication2::replicated_state::document::DocumentStateMachineFeature
 >;  // clang-format on
 struct ArangodFeatures : ArangodFeaturesList {};

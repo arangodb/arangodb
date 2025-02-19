@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -42,8 +43,6 @@ namespace {
 class ViewSnapshotCookie final : public ViewSnapshot,
                                  public TransactionState::Cookie {
  public:
-  ViewSnapshotCookie() noexcept = default;
-
   explicit ViewSnapshotCookie(Links&& links) noexcept;
 
   void clear() noexcept;
@@ -54,22 +53,23 @@ class ViewSnapshotCookie final : public ViewSnapshot,
   [[nodiscard]] irs::SubReader const& operator[](
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return *(std::get<1>(_segments[i]));
+    return *_segments[i].segment;
   }
 
   [[nodiscard]] std::size_t size() const noexcept final {
     return _segments.size();
   }
 
-  [[nodiscard]] DataSourceId cid(std::size_t i) const noexcept final {
+  [[nodiscard]] LogicalCollection const& collection(
+      std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return std::get<0>(_segments[i]);
+    return *_segments[i].collection;
   }
 
   [[nodiscard]] StorageSnapshot const& snapshot(
       std::size_t i) const noexcept final {
     TRI_ASSERT(i < _segments.size());
-    return std::get<2>(_segments[i]);
+    return *_segments[i].snapshot;
   }
 
   [[nodiscard]] ViewSegment const& segment(std::size_t i) const noexcept final {
@@ -77,15 +77,10 @@ class ViewSnapshotCookie final : public ViewSnapshot,
     return _segments[i];
   }
 
-  [[nodiscard]] ImmutablePartCache& immutablePartCache() noexcept final {
-    return _immutablePartCache;
-  }
-
   // prevent data-store deallocation (lock @ AsyncSelf)
   Links _links;  // should be first
   std::vector<IResearchDataStore::DataSnapshotPtr> _readers;
   Segments _segments;
-  ImmutablePartCache _immutablePartCache;
 };
 
 ViewSnapshotCookie::ViewSnapshotCookie(Links&& links) noexcept
@@ -119,11 +114,11 @@ void ViewSnapshotCookie::compute(bool sync, std::string_view name) {
   }
   _segments.reserve(segments);
   for (size_t i = 0; i != _links.size(); ++i) {
-    auto const cid = _links[i]->index().collection().id();
+    auto const& collection = _links[i]->index().collection();
     auto const& reader = _readers[i];
-    auto const& snapshot = reader->_snapshot;
+    auto const& snapshot = *reader->_snapshot;
     for (auto const& segment : reader->_reader) {
-      _segments.emplace_back(cid, &segment, *snapshot.get());
+      _segments.emplace_back(collection, snapshot, segment);
     }
     _live_docs_count += reader->_reader.live_docs_count();
     _docs_count += reader->_reader.docs_count();

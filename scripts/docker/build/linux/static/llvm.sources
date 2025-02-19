@@ -1,0 +1,7 @@
+
+# llvm-19 (https://apt.llvm.org/)
+Types: deb deb-src
+URIs: http://apt.llvm.org/noble/
+Suites: llvm-toolchain-noble-19
+Components: main
+Signed-By: /etc/apt/trusted.gpg.d/apt.llvm.org.asc 

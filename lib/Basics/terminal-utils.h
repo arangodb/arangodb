@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,25 +29,17 @@
 #include <termios.h>
 #endif
 
-struct TRI_TerminalSize {
-  int rows;
-  int columns;
+namespace arangodb::terminal_utils {
+
+struct TerminalSize {
+  int rows = 80;
+  int columns = 80;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief default value for number of rows/columns of a terminal
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_DEFAULT_TERMINAL_SIZE (TRI_TerminalSize{80, 80})
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the terminal size
-////////////////////////////////////////////////////////////////////////////////
+TerminalSize defaultTerminalSize();
 
-TRI_TerminalSize TRI_DefaultTerminalSize();
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief set the visibility of stdin inputs (turn off for password entry etc.)
-////////////////////////////////////////////////////////////////////////////////
+void setStdinVisibility(bool) noexcept;
 
-void TRI_SetStdinVisibility(bool) noexcept;
+}  // namespace arangodb::terminal_utils

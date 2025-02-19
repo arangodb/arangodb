@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,13 +50,23 @@ namespace aql {
  */
 class AqlCallStack {
  public:
+  struct Empty {};
+
   // Initial
+  explicit AqlCallStack(Empty);
+
   explicit AqlCallStack(AqlCallList call);
-  // Used in subquery
-  AqlCallStack(AqlCallStack const& other, AqlCallList call);
+
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other) = default;
   AqlCallStack(AqlCallStack&& other) noexcept = default;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // For tests
+  explicit AqlCallStack(std::initializer_list<AqlCallList> calls);
+  // Used in subquery
+  AqlCallStack(AqlCallStack const& other, AqlCallList call);
+#endif
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
   AqlCallStack& operator=(AqlCallStack&& other) noexcept = default;
@@ -69,9 +79,11 @@ class AqlCallStack {
   // This is popped of the stack and caller can take responsibility for it
   AqlCallList popCall();
 
+  void popDepthsLowerThan(size_t depth);
+
   // Peek at the topmost Call element (this must be relevant).
   // The responsibility for the peek-ed call will stay with the stack
-  AqlCall const& peek() const;
+  AqlCall const& peek() const noexcept;
 
   // Put another call on top of the stack.
   void pushCall(AqlCallList&& call);

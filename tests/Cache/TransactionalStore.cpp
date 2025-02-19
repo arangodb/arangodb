@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -61,7 +61,7 @@ void TransactionalStore::Document::clear() {
 
 bool TransactionalStore::Document::empty() const { return (key == 0); }
 
-TransactionalStore::Transaction::Transaction(arangodb::cache::Transaction* c,
+TransactionalStore::Transaction::Transaction(arangodb::cache::Transaction c,
                                              rocksdb::Transaction* r)
     : cache(c), rocks(r) {}
 
@@ -98,14 +98,15 @@ TransactionalStore::~TransactionalStore() {
   delete _db;
   TRI_ASSERT(_directory.length() > 20);
   TRI_RemoveDirectory(_directory.c_str());
-  _manager->destroyCache(_cache);
+  _manager->destroyCache(std::move(_cache));
 }
 
 Cache* TransactionalStore::cache() { return _cache.get(); }
 
 TransactionalStore::Transaction* TransactionalStore::beginTransaction(
     bool readOnly) {
-  auto cache = _manager->beginTransaction(readOnly);
+  arangodb::cache::Transaction cache;
+  _manager->beginTransaction(cache, readOnly);
   auto rocks = _db->BeginTransaction(_writeOptions, _txOptions);
   rocks->SetSnapshot();
   return new Transaction(cache, rocks);
@@ -258,7 +259,7 @@ TransactionalStore::Document TransactionalStore::lookup(
                                                   &result, sizeof(Document));
       if (value) {
         auto status = _cache->insert(value);
-        if (status.fail()) {
+        if (status != TRI_ERROR_NO_ERROR) {
           delete value;
         }
       }

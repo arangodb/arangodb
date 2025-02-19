@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,6 +46,8 @@ class ApplicationServer;
 }  // namespace application_features
 class IOHeartbeatThread;
 class LogicalCollection;
+class StorageEngine;
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -59,7 +61,8 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   /// @brief database manager thread main loop
   /// the purpose of this thread is to physically remove directories of
   /// databases that have been dropped
-  explicit DatabaseManagerThread(Server& server);
+  DatabaseManagerThread(Server&, DatabaseFeature& databaseFeature,
+                        StorageEngine& engine);
   ~DatabaseManagerThread() final;
 
   void run() final;
@@ -69,6 +72,11 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   static constexpr unsigned long waitTime() {
     return static_cast<unsigned long>(500U * 1000U);
   }
+  DatabaseFeature& _databaseFeature;
+  StorageEngine& _engine;
+#ifdef USE_V8
+  V8DealerFeature& _dealer;
+#endif
 };
 
 class DatabaseFeature final : public ArangodFeature {
@@ -111,15 +119,15 @@ class DatabaseFeature final : public ArangodFeature {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief register a callback
-  ///        if StorageEngine.inRecovery() -> call at start of recoveryDone()
-  ///                                         and fail recovery if callback
-  ///                                         !ok()
-  ///        if !StorageEngine.inRecovery() -> call immediately and return
-  ///                                          result
+  ///   if StorageEngine.inRecovery() ->
+  ///     call at start of recoveryDone() in parallel with other callbacks
+  ///     and fail recovery if callback !ok()
+  ///   else ->
+  ///     call immediately and return result
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
-  VersionTracker* versionTracker() { return &_versionTracker; }
+  VersionTracker& versionTracker() { return _versionTracker; }
 
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
@@ -157,7 +165,7 @@ class DatabaseFeature final : public ArangodFeature {
   bool upgrade() const noexcept { return _upgrade; }
   bool waitForSync() const noexcept { return _defaultWaitForSync; }
   replication::Version defaultReplicationVersion() const noexcept {
-    return _defaultReplicationVersion;
+    return replication::parseVersion(_defaultReplicationVersion).get();
   }
 
   /// @brief whether or not extended names for databases, collections, views
@@ -171,6 +179,8 @@ class DatabaseFeature final : public ArangodFeature {
   void enableUpgrade() noexcept { _upgrade = true; }
   void disableUpgrade() noexcept { _upgrade = false; }
   void isInitiallyEmpty(bool value) noexcept { _isInitiallyEmpty = value; }
+
+  size_t maxDatabases() const noexcept { return _maxDatabases; }
 
   static TRI_vocbase_t& getCalculationVocbase();
 
@@ -188,23 +198,23 @@ class DatabaseFeature final : public ArangodFeature {
   /// @brief close all dropped databases
   void closeDroppedDatabases();
 
-  /// @brief activates deadlock detection in all existing databases
-  void enableDeadlockDetection();
-
   bool _defaultWaitForSync{false};
   bool _ignoreDatafileErrors{false};
   bool _isInitiallyEmpty{false};
   bool _checkVersion{false};
   bool _upgrade{false};
   // allow extended names for databases, collections, views and indexes
-  bool _extendedNames{false};
+  bool _extendedNames{true};
   bool _performIOHeartbeat{true};
   std::atomic_bool _started{false};
 
-  replication::Version _defaultReplicationVersion{replication::Version::ONE};
+  std::string _defaultReplicationVersion{
+      replication::versionToString(replication::Version::ONE)};
 
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
   std::unique_ptr<IOHeartbeatThread> _ioHeartbeatThread;
+
+  size_t _maxDatabases{SIZE_MAX};
 
   using DatabasesList = containers::FlatHashMap<std::string, TRI_vocbase_t*>;
   class DatabasesListGuard {
@@ -246,6 +256,9 @@ class DatabaseFeature final : public ArangodFeature {
   /// maintains a global counter that is increased on every modification
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
+
+  StorageEngine* _engine = nullptr;
+  ReplicationFeature* _replicationFeature = nullptr;
 };
 
 }  // namespace arangodb

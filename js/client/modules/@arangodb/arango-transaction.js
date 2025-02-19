@@ -1,18 +1,16 @@
 /* jshint strict: true */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoTransaction shell support for transactions
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
@@ -198,18 +196,24 @@ ArangoTransaction.prototype.query = function(query, bindVars, cursorOptions, opt
   if (!this.running()) {
     throwNotRunning();
   }
-  if (typeof query !== 'string' || query === undefined || query === '') {
-    throw 'need a valid query string';
-  }
-  if (options === undefined && cursorOptions !== undefined) {
-    options = cursorOptions;
-  }
-
   let body = {
     query: query,
     count: (cursorOptions && cursorOptions.count) || false,
     bindVars: bindVars || undefined,
   };
+  if (query && typeof query === 'object' && typeof query.toAQL !== 'function') {
+    body.query = query.query;
+    body.options = query.cursorOptions || undefined;
+    body.bindVars = query.bindVars || undefined;
+  }
+  else {
+    if (typeof query !== 'string' || query === undefined || query === '') {
+    throw 'need a valid query string';
+    }
+    if (options === undefined && cursorOptions !== undefined) {
+      options = cursorOptions;
+    }
+  }
 
   if (cursorOptions && cursorOptions.batchSize) {
     body.batchSize = cursorOptions.batchSize;

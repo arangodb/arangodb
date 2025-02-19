@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,11 +28,12 @@
 
 #include <regex>
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerRule.h"
+#include "Aql/Query.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
@@ -98,7 +99,9 @@ class QueryScorer : public QueryTest {
       arangodb::OperationOptions opt;
 
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase), kEmpty,
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty,
           {logicalCollection1->name(), logicalCollection2->name(),
            logicalCollection3->name()},
           kEmpty, arangodb::transaction::Options());
@@ -535,10 +538,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -641,10 +645,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -752,10 +757,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -862,10 +868,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -973,10 +980,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1084,10 +1092,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1205,10 +1214,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1316,10 +1326,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1403,10 +1414,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1492,10 +1504,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1612,10 +1625,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1701,10 +1715,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1785,10 +1800,11 @@ class QueryScorer : public QueryTest {
           }));
 
       auto query = arangodb::aql::Query::create(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(queryString), nullptr);
 
-      query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+      query->prepareQuery();
       auto* plan = query->plan();
       ASSERT_TRUE(plan);
 
@@ -1917,8 +1933,9 @@ class QueryScorerView : public QueryScorer {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -1950,7 +1967,7 @@ class QueryScorerSearch : public QueryScorer {
       auto collection =
           _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };
     createIndex(1);

@@ -6,15 +6,11 @@ set(CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO "${CMAKE_INSTALL_FULL_SYSCONFDIR}/${CMA
 set(CMAKE_INSTALL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 set(CMAKE_INSTALL_FULL_DATAROOTDIR_ARANGO "${CMAKE_INSTALL_FULL_DATAROOTDIR}/${CMAKE_PROJECT_NAME}")
 
-if (MSVC OR DARWIN)
+if (DARWIN)
   set(ENABLE_UID_CFG false)
 else ()
   set(ENABLE_UID_CFG true)
 endif ()
-if (MSVC)
-  # if we wouldn't do this, we would have to deploy the DLLs twice.
-  set(CMAKE_INSTALL_SBINDIR ${CMAKE_INSTALL_BINDIR})
-endif()
 
 # debug info directory:
 if (${CMAKE_INSTALL_LIBDIR} STREQUAL "usr/lib64")
@@ -55,6 +51,8 @@ endif()
 install_readme(README README.txt)
 install_readme(README.md README.md)
 install_readme(LICENSES-OTHER-COMPONENTS.md LICENSES-OTHER-COMPONENTS.md)
+install_readme(Documentation/GPL-3 GPL-3)
+install_readme(Documentation/LGPL-3 LGPL-3)
 
 if (USE_ENTERPRISE)
   install_readme(enterprise/LICENSE LICENSE.txt)
@@ -187,7 +185,7 @@ if (UNIX)
     pkg_check_modules(SYSTEMD systemd)
 
     if (SYSTEMD_FOUND)
-      message(STATUS "-- systemd found")
+      message(STATUS "systemd found")
 
       # get systemd_unit_dir -- e.g /lib/systemd/system/
       # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
@@ -231,6 +229,7 @@ to_native_path("CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO")
 to_native_path("PKGDATADIR")
 to_native_path("CMAKE_INSTALL_DATAROOTDIR_ARANGO")
 to_native_path("ICU_DT_DEST")
+to_native_path("ICU_DT_LEGACY_DEST")
 to_native_path("CMAKE_INSTALL_SBINDIR")
 to_native_path("CMAKE_INSTALL_BINDIR")
 to_native_path("INSTALL_ICU_DT_DEST")
@@ -247,6 +246,10 @@ install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
 
+install(FILES ${ICU_DT_LEGACY}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_LEGACY_DEST})
+
 install(FILES "${CMAKE_SOURCE_DIR}/lib/Basics/exitcodes.dat"
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME exitcodes.dat)
@@ -261,19 +264,6 @@ install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
   
 install(FILES ${TZ_DATA_FILES}
   DESTINATION "${INSTALL_TZDATA_DEST}")
-
-if (MSVC AND NOT(SKIP_PACKAGING))
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/InstallMacros.cmake)
-  # Make it the same directory so we don't ship DLLs twice (in bin/ on top of usr/bin/):
-  set(CMAKE_INSTALL_FULL_SBINDIR     "${CMAKE_INSTALL_FULL_BINDIR}")
-
-  # install the visual studio runtime:
-  set(CMAKE_INSTALL_UCRT_LIBRARIES 1)
-  set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${CMAKE_INSTALL_BINDIR})
-  include(InstallRequiredSystemLibraries)
-  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Libraries)
-  INSTALL(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_COMPONENT} DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT Libraries)
-endif()
 
 if (THIRDPARTY_SBIN)
   install(FILES ${THIRDPARTY_SBIN}

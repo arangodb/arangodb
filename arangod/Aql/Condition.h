@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,7 +29,10 @@
 #include "Containers/HashSet.h"
 #include "Transaction/Methods.h"
 
+#include <span>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 namespace arangodb {
@@ -41,7 +44,6 @@ class Ast;
 class EnumerateCollectionNode;
 class ExecutionPlan;
 class SortCondition;
-struct AstNode;
 struct Variable;
 
 // note to maintainers:
@@ -137,6 +139,13 @@ class Condition {
   /// @brief clone the condition
   std::unique_ptr<Condition> clone() const;
 
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const& replacements);
+
+  void replaceAttributeAccess(Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
+
   /// @brief add a sub-condition to the condition
   /// the sub-condition will be AND-combined with the existing condition(s)
   void andCombine(AstNode const*);
@@ -166,7 +175,7 @@ class Condition {
                                     AstNode*, bool isPathCondition);
 
   /// @brief remove (now) invalid variables from the condition
-  bool removeInvalidVariables(VarSet const&);
+  bool removeInvalidVariables(VarSet const&, bool& noRemoves);
 
   /// @brief locate indexes which can be used for conditions
   /// return value is a pair indicating whether the index can be used for

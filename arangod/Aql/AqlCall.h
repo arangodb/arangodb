@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,14 +24,12 @@
 #pragma once
 
 #include "Aql/ExecutionBlock.h"
-#include "Basics/Common.h"
 #include "Basics/ResultT.h"
 #include "Basics/overload.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <iosfwd>
-#include <tuple>
 #include <variant>
 
 namespace arangodb::velocypack {
@@ -109,23 +107,6 @@ struct AqlCall {
 
   auto toString() const -> std::string;
 
-  // TODO Remove me, this will not be necessary later
-  static AqlCall SimulateSkipSome(std::size_t toSkip) {
-    return AqlCall{/*offset*/ toSkip, /*softLimit*/ 0u,
-                   /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
-  }
-
-  // TODO Remove me, this will not be necessary later
-  static AqlCall SimulateGetSome(std::size_t atMost) {
-    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost,
-                   /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
-  }
-
-  static bool IsFastForwardCall(AqlCall const& call) noexcept {
-    return call.hasHardLimit() && call.getLimit() == 0 &&
-           call.getOffset() == 0 && !call.needsFullCount();
-  }
-
   std::size_t offset{0};
   // TODO: The defaultBatchSize function could move into this file instead
   // TODO We must guarantee that at most one of those is not Infinity.
@@ -146,6 +127,18 @@ struct AqlCall {
   //      applied when allocating blocks only!
   std::size_t getLimit() const noexcept {
     return clampToLimit(ExecutionBlock::DefaultBatchSize);
+  }
+
+  Limit getUnclampedLimit() const noexcept {
+    // We are not allowed to go above softLimit
+    if (std::holds_alternative<std::size_t>(softLimit)) {
+      return std::get<std::size_t>(softLimit);
+    }
+    // We are not allowed to go above hardLimit
+    if (std::holds_alternative<std::size_t>(hardLimit)) {
+      return std::get<std::size_t>(hardLimit);
+    }
+    return AqlCall::Infinity{};
   }
 
   std::size_t clampToLimit(
@@ -177,12 +170,11 @@ struct AqlCall {
     return skippedRows;
   }
 
-  // TODO this is the same as shouldSkip(), remove one of them.
   [[nodiscard]] bool needSkipMore() const noexcept {
     return (0 < getOffset()) || (getLimit() == 0 && needsFullCount());
   }
 
-  void didProduce(std::size_t n) {
+  void didProduce(std::size_t n) noexcept {
     auto minus = overload{
         [n](size_t& i) {
           TRI_ASSERT(n <= i);
@@ -207,11 +199,6 @@ struct AqlCall {
   }
 
   bool needsFullCount() const noexcept { return fullCount; }
-
-  // TODO this is the same as needSkipMore(), remove one of them.
-  bool shouldSkip() const noexcept {
-    return getOffset() > 0 || (getLimit() == 0 && needsFullCount());
-  }
 
   auto requestLessDataThan(AqlCall const& other) const noexcept -> bool;
 };
@@ -301,11 +288,11 @@ constexpr bool operator==(AqlCall const& left, AqlCall const& right) {
          left.skippedRows == right.skippedRows;
 }
 
-auto operator<<(std::ostream& out,
-                const arangodb::aql::AqlCall::LimitPrinter& limit)
+auto operator<<(std::ostream& out, AqlCall::LimitPrinter const& limit)
     -> std::ostream&;
 
-auto operator<<(std::ostream& out, const arangodb::aql::AqlCall& call)
-    -> std::ostream&;
+auto operator<<(std::ostream& out, AqlCall const& call) -> std::ostream&;
+
+auto to_string(AqlCall const& call) -> std::string;
 
 }  // namespace arangodb::aql

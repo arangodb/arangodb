@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,18 +38,23 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Cluster/ClusterFeature.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/VectorIndexFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -103,7 +108,7 @@ struct dummy_scorer final : public irs::ScorerBase<void> {
       const irs::byte_type* /*stats*/,
       const irs::attribute_provider& /*doc_attrs*/,
       irs::score_t /*boost*/) const noexcept final {
-    return irs::ScoreFunction::Empty();
+    return irs::ScoreFunction::Default(0);
   }
 
   dummy_scorer() = default;
@@ -123,7 +128,8 @@ void assertOrder(
   TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), bindVars);
 
   auto const parseResult = query->parse();
@@ -182,8 +188,9 @@ void assertOrder(
     irs::Scorer::ptr actualScorer;
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-        arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        {}, {}, {}, arangodb::transaction::Options());
 
     auto* mockCtx = dynamic_cast<ExpressionContextMock*>(exprCtx);
     if (mockCtx) {  // simon: hack to make expression context work again
@@ -241,7 +248,8 @@ void assertOrderParseFail(arangodb::ArangodServer& server,
   TRI_vocbase_t vocbase(testDBInfo(server));
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), nullptr);
 
   auto const parseResult = query->parse();
@@ -278,14 +286,28 @@ class IResearchOrderTest
     selector.setEngineTesting(&engine);
     features.emplace_back(selector, false);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>(nullptr),
+            selector,
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
+        false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for IResearchFeature
     features.emplace_back(
         server.addFeature<arangodb::aql::AqlFunctionFeature>(), true);
+    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
+                          false);
     {
       auto& feature =
           features
@@ -721,6 +743,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   }
 }
 
+#ifdef USE_V8
 TEST_F(IResearchOrderTest, test_FCallUser) {
   // function
   {
@@ -930,6 +953,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     assertOrderFail(server, query);
   }
 }
+#endif
 
 TEST_F(IResearchOrderTest, test_StringValue) {
   // simple field
@@ -971,6 +995,7 @@ TEST_F(IResearchOrderTest, test_StringValue) {
   }
 }
 
+#ifdef USE_V8
 TEST_F(IResearchOrderTest, test_order) {
   // test mutiple sort
   {
@@ -996,3 +1021,4 @@ TEST_F(IResearchOrderTest, test_order) {
     assertOrderFail(server, query, &ctx);
   }
 }
+#endif

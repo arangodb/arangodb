@@ -9,6 +9,19 @@ BEGIN {
 	if (!zone_table) zone_table = "zone1970.tab"
 	if (!want_warnings) want_warnings = -1
 
+	monthabbr["Jan"] = 1
+	monthabbr["Feb"] = 1
+	monthabbr["Mar"] = 1
+	monthabbr["Apr"] = 1
+	monthabbr["May"] = 1
+	monthabbr["Jun"] = 1
+	monthabbr["Jul"] = 1
+	monthabbr["Aug"] = 1
+	monthabbr["Sep"] = 1
+	monthabbr["Oct"] = 1
+	monthabbr["Nov"] = 1
+	monthabbr["Dec"] = 1
+
 	while (getline <iso_table) {
 		iso_NR++
 		if ($0 ~ /^#/) continue
@@ -65,6 +78,12 @@ BEGIN {
 		split(ccs, cca, /,/)
 		cc = cca[1]
 
+		if (tztab[tz]) {
+		  printf "%s:%d: %s: duplicate Zone from line %d\n", \
+		    zone_table, zone_NR, tz, tz2NR[tz]
+		  status = 1
+		}
+
 		# Don't complain about a special case for Crimea in zone.tab.
 		# FIXME: zone.tab should be removed, since it is obsolete.
 		# Or at least put just "XX" in its country-code column.
@@ -83,7 +102,7 @@ BEGIN {
 		    cc = cca[i]
 		    if (cc2name[cc]) {
 			cc_used[cc]++
-		    } else {
+		    } else if (! (cc == "XX" && zone_table == "zonenow.tab")) {
 			printf "%s:%d: %s: unknown country code\n", \
 				zone_table, zone_NR, cc >>"/dev/stderr"
 			status = 1
@@ -110,7 +129,7 @@ BEGIN {
 	      used_max_cc = cc
 	    }
 	  }
-	  if (used_max <= 1 && comments) {
+	  if (used_max <= 1 && comments && zone_table != "zonenow.tab") {
 	    printf "%s:%d: unnecessary comment '%s'\n", \
 	      zone_table, i, comments \
 	      >>"/dev/stderr"
@@ -128,12 +147,14 @@ BEGIN {
 $1 ~ /^#/ { next }
 
 {
-	tz = rules = ""
+	tz = rules = stdoff = ""
 	if ($1 == "Zone") {
 		tz = $2
+		stdoff = $3
 		ruleUsed[$4] = 1
 		if ($5 ~ /%/) rulePercentUsed[$4] = 1
-	} else if ($1 == "Link" && zone_table == "zone.tab") {
+	} else if ($1 == "Link") {
+	    if (zone_table == "zone.tab") {
 		# Ignore Link commands if source and destination basenames
 		# are identical, e.g. Europe/Istanbul versus Asia/Istanbul.
 		src = $2
@@ -141,15 +162,30 @@ $1 ~ /^#/ { next }
 		while ((i = index(src, "/"))) src = substr(src, i+1)
 		while ((i = index(dst, "/"))) dst = substr(dst, i+1)
 		if (src != dst) tz = $3
+	    }
 	} else if ($1 == "Rule") {
 		ruleDefined[$2] = 1
 		if ($10 != "-") ruleLetters[$2] = 1
+		if (!monthabbr[$6]) {
+		  printf "%s:%d: tricky month: %s\n", FILENAME, FNR, $6 \
+			  >>"/dev/stderr"
+		  status = 1
+		}
 	} else {
+		stdoff = $1
 		ruleUsed[$2] = 1
 		if ($3 ~ /%/) rulePercentUsed[$2] = 1
 	}
+
+	if (stdoff && stdoff !~ /^\-?1?[0-9](:[0-5][0-9](:[0-5][0-9])?)?$/) {
+		printf "%s:%d: unlikely STDOFF: %s\n", FILENAME, FNR, stdoff \
+			>>"/dev/stderr"
+		status = 1
+	}
+
 	if (tz && tz ~ /\// && tz !~ /^Etc\//) {
-		if (!tztab[tz] && FILENAME != "backward") {
+		if (!tztab[tz] && FILENAME != "backward" \
+		    && zone_table != "zonenow.tab") {
 			printf "%s: no data for '%s'\n", zone_table, tz \
 				>>"/dev/stderr"
 			status = 1

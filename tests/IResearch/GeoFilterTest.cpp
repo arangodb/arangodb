@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -149,7 +150,8 @@ struct custom_sort final : public irs::ScorerBase<void> {
             ctxImpl.sort_.scorerScore(doc_id, res);
           }
         },
-        *this, segment, features, stats, doc_attrs);
+        irs::ScoreFunction::DefaultMin, *this, segment, features, stats,
+        doc_attrs);
   }
 
   irs::TermCollector::ptr prepare_term_collector() const final {
@@ -225,7 +227,6 @@ TEST(GeoFilterTest, equal) {
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
-    ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {
@@ -237,7 +238,6 @@ TEST(GeoFilterTest, equal) {
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
-    ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {
@@ -280,7 +280,7 @@ TEST(GeoFilterTest, boost) {
         geo::ShapeContainer::Type::S2_POINT);
     *q.mutable_field() = "field";
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(irs::kNoBoost, prepared->boost());
   }
 
@@ -295,7 +295,7 @@ TEST(GeoFilterTest, boost) {
     *q.mutable_field() = "field";
     q.boost(boost);
 
-    auto prepared = q.prepare(irs::SubReader::empty());
+    auto prepared = q.prepare({.index = irs::SubReader::empty()});
     ASSERT_EQ(boost, prepared->boost());
   }
 }
@@ -376,7 +376,28 @@ TEST(GeoFilterTest, query) {
                                 std::vector<irs::cost::cost_t> const& costs) {
     std::set<std::string> actualResults;
 
-    auto prepared = q.prepare(*reader);
+    struct MaxMemoryCounter final : irs::IResourceManager {
+      void Reset() noexcept {
+        current = 0;
+        max = 0;
+      }
+
+      void Increase(size_t value) final {
+        current += value;
+        max = std::max(max, current);
+      }
+
+      void Decrease(size_t value) noexcept final { current -= value; }
+
+      size_t current{0};
+      size_t max{0};
+    };
+
+    MaxMemoryCounter counter;
+    auto prepared = q.prepare({
+        .index = *reader,
+        .memory = counter,
+    });
     EXPECT_NE(nullptr, prepared);
     auto expectedCost = costs.begin();
     for (auto& segment : *reader) {
@@ -386,9 +407,9 @@ TEST(GeoFilterTest, query) {
       EXPECT_NE(nullptr, values);
       auto* value = irs::get<irs::payload>(*values);
       EXPECT_NE(nullptr, value);
-      auto it = prepared->execute(segment);
+      auto it = prepared->execute({.segment = segment});
       EXPECT_NE(nullptr, it);
-      auto seek_it = prepared->execute(segment);
+      auto seek_it = prepared->execute({.segment = segment});
       EXPECT_NE(nullptr, seek_it);
       auto* cost = irs::get<irs::cost>(*it);
       EXPECT_NE(nullptr, cost);
@@ -403,7 +424,7 @@ TEST(GeoFilterTest, query) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
+      EXPECT_TRUE(score->IsDefault());
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -423,12 +444,12 @@ TEST(GeoFilterTest, query) {
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
 
       {
-        auto it = prepared->execute(segment);
+        auto it = prepared->execute({.segment = segment});
         EXPECT_NE(nullptr, it);
 
         while (it->next()) {
           auto const docId = it->value();
-          auto seek_it = prepared->execute(segment);
+          auto seek_it = prepared->execute({.segment = segment});
           EXPECT_NE(nullptr, seek_it);
           auto column_it = column->iterator(irs::ColumnHint::kNormal);
           EXPECT_NE(nullptr, column_it);
@@ -449,6 +470,10 @@ TEST(GeoFilterTest, query) {
       }
     }
     EXPECT_EQ(expectedCost, costs.end());
+
+    prepared.reset();
+    EXPECT_EQ(counter.current, 0);
+    EXPECT_GT(counter.max, 0);
 
     return actualResults;
   };
@@ -757,7 +782,7 @@ TEST(GeoFilterTest, checkScorer) {
   auto executeQuery = [&reader](irs::filter const& q, irs::Scorers const& ord) {
     std::map<std::string, irs::bstring> actualResults;
 
-    auto prepared = q.prepare(*reader, ord);
+    auto prepared = q.prepare({.index = *reader, .scorers = ord});
     EXPECT_NE(nullptr, prepared);
     for (auto& segment : *reader) {
       auto column = segment.column("name");
@@ -766,9 +791,9 @@ TEST(GeoFilterTest, checkScorer) {
       EXPECT_NE(nullptr, column_it);
       auto* payload = irs::get<irs::payload>(*column_it);
       EXPECT_NE(nullptr, payload);
-      auto it = prepared->execute(segment, ord);
+      auto it = prepared->execute({.segment = segment, .scorers = ord});
       EXPECT_NE(nullptr, it);
-      auto seek_it = prepared->execute(segment);
+      auto seek_it = prepared->execute({.segment = segment});
       EXPECT_NE(nullptr, seek_it);
       auto* cost = irs::get<irs::cost>(*it);
       EXPECT_NE(nullptr, cost);
@@ -779,7 +804,7 @@ TEST(GeoFilterTest, checkScorer) {
 
       auto* score = irs::get<irs::score>(*it);
       EXPECT_NE(nullptr, score);
-      EXPECT_FALSE(*score == irs::ScoreFunction::DefaultScore);
+      EXPECT_FALSE(score->IsDefault());
 
       auto* doc = irs::get<irs::document>(*it);
       EXPECT_NE(nullptr, doc);
@@ -804,12 +829,12 @@ TEST(GeoFilterTest, checkScorer) {
       EXPECT_TRUE(irs::doc_limits::eof(seek_it->seek(it->value())));
 
       {
-        auto it = prepared->execute(segment, ord);
+        auto it = prepared->execute({.segment = segment, .scorers = ord});
         EXPECT_NE(nullptr, it);
 
         while (it->next()) {
           auto const docId = it->value();
-          auto seek_it = prepared->execute(segment);
+          auto seek_it = prepared->execute({.segment = segment});
           EXPECT_NE(nullptr, seek_it);
           auto column_it = column->iterator(irs::ColumnHint::kNormal);
           EXPECT_NE(nullptr, column_it);

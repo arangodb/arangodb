@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,14 +28,20 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
+#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 
-auto opts = std::make_shared<arangodb::options::ProgramOptions>(
-    "metrics_feature_test", std::string(), std::string(), "path");
-
-ArangodServer server(opts, nullptr);
-metrics::MetricsFeature feature(server);
+std::shared_ptr<arangodb::options::ProgramOptions> opts =
+    std::make_shared<arangodb::options::ProgramOptions>(
+        "metrics_feature_test", std::string(), std::string(), "path");
+ArangodServer server = ArangodServer(opts, nullptr);
+metrics::MetricsFeature feature = metrics::MetricsFeature(
+    server, LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+    LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+    LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+    LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+    LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 
 class MetricsFeatureTest : public ::testing::Test {
  protected:

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -59,12 +59,12 @@ class BenchFeature final : public ArangoBenchFeature {
   BenchFeature(Server& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override final;
   void start() override final;
 
   bool async() const { return _async; }
   uint64_t threadCount() const { return _threadCount; }
   uint64_t operations() const { return _operations; }
-  uint64_t batchSize() const { return _batchSize; }
   bool createCollection() const { return _createCollection; }
   bool keepAlive() const { return _keepAlive; }
   std::string const& collection() const { return _collection; }
@@ -105,7 +105,6 @@ class BenchFeature final : public ArangoBenchFeature {
   uint64_t _threadCount;
   uint64_t _operations;
   uint64_t _realOperations;
-  uint64_t _batchSize;
   uint64_t _duration;
   std::string _collection;
   std::string _testCase;

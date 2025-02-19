@@ -2,19 +2,16 @@
 /* global describe, before, after, it */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for user access rights
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License");
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,6 +42,7 @@ const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
+let connectionHandle = arango.getConnectionHandle();
 const db = require('internal').db;
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
@@ -102,12 +100,12 @@ describe('User Rights Management', () => {
                 expect(rootTestCollection()).to.equal(true, 'Precondition failed, the collection does not exist');
                 if (dbLevel['rw'].has(name) && colLevel['rw'].has(name)) {
                   let col = db._collection(colName);
-                  let origIdxCount = col.getIndexes().length;
+                  let origIdxCount = col.indexes().length;
                   expect(origIdxCount).to.equal(1); // Only primary index
                   let idx = col.ensureIndex({ type: "hash", fields: ["foo"] });
-                  expect(col.getIndexes().length).to.equal(origIdxCount + 1, 'Ensure Index reported success, but collection does not show it.');
+                  expect(col.indexes().length).to.equal(origIdxCount + 1, 'Ensure Index reported success, but collection does not show it.');
                   col.dropIndex(idx);
-                  expect(col.getIndexes().length).to.equal(origIdxCount, 'Drop Index reported success, but collection does still show it.');
+                  expect(col.indexes().length).to.equal(origIdxCount, 'Drop Index reported success, but collection does still show it.');
                 } else {
                   let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
                     (colLevel['rw'].has(name) || colLevel['ro'].has(name)));
@@ -119,8 +117,8 @@ describe('User Rights Management', () => {
                   }
                   if (hasReadAccess) {
                     let col = db._collection(colName);
-                    let origIdxCount = col.getIndexes().length;
-                    expect(col.getIndexes().length).to.equal(origIdxCount, `${name} was able to create a new index on the collection, with insufficent rights.`);
+                    let origIdxCount = col.indexes().length;
+                    expect(col.indexes().length).to.equal(origIdxCount, `${name} was able to create a new index on the collection, with insufficent rights.`);
                   }
                 }
               });
@@ -155,4 +153,9 @@ describe('User Rights Management', () => {
       }
     }
   });
+});
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._drop(colName);
+  db._useDatabase('_system');
 });

@@ -5,6 +5,7 @@ import { useCollectionIndicesContext } from "./CollectionIndicesContext";
 
 export const useSyncIndexCreationJob = () => {
   const { collectionId, collectionName } = useCollectionIndicesContext();
+  const { encoded: encodedCollectionName } = encodeHelper(collectionName);
   const { mutate } = useSWRConfig();
   useJobSync({
     onQueue: () => {
@@ -14,11 +15,11 @@ export const useSyncIndexCreationJob = () => {
       );
     },
     onSuccess: () => {
-      const { encoded: encodedCollectionName } = encodeHelper(collectionName);
-      mutate(`/index/?collection=${encodedCollectionName}`);
+      mutate(`/collection/${encodedCollectionName}/indices`);
+      mutate(`/collection/${encodedCollectionName}/figures`);
     },
     onError: (error: any) => {
-      const errorMessage = error?.response?.body?.errorMessage;
+      const errorMessage = error?.response?.parsedBody?.errorMessage;
       window.arangoHelper.arangoError("Index creation failed", errorMessage);
     },
     jobCollectionName: collectionId

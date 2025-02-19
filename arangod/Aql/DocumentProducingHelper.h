@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,6 +49,7 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 class PhysicalCollection;
+struct ResourceMonitor;
 enum class ReadOwnWrites : bool;
 namespace aql {
 struct AqlValue;
@@ -64,6 +65,11 @@ struct Variable;
 
 struct DocumentProducingFunctionContext {
  public:
+  DocumentProducingFunctionContext(DocumentProducingFunctionContext const&) =
+      delete;
+  DocumentProducingFunctionContext& operator=(
+      DocumentProducingFunctionContext const&) = delete;
+
   // constructor called from EnumerateCollectionExecutor
   DocumentProducingFunctionContext(transaction::Methods& trx,
                                    InputAqlItemRow const& inputRow,
@@ -78,11 +84,11 @@ struct DocumentProducingFunctionContext {
 
   void setOutputRow(OutputAqlItemRow* outputRow);
 
-  bool getProduceResult() const noexcept;
-
   aql::Projections const& getProjections() const noexcept;
 
   aql::Projections const& getFilterProjections() const noexcept;
+
+  aql::Projections const& getProjectionsForRegisters() const noexcept;
 
   transaction::Methods* getTrxPtr() const noexcept;
 
@@ -97,9 +103,13 @@ struct DocumentProducingFunctionContext {
 
   void incrFiltered() noexcept;
 
+  void incrLookups() noexcept;
+
   [[nodiscard]] uint64_t getAndResetNumScanned() noexcept;
 
   [[nodiscard]] uint64_t getAndResetNumFiltered() noexcept;
+
+  [[nodiscard]] uint64_t getAndResetNumLookups() noexcept;
 
   InputAqlItemRow const& getInputRow() const noexcept;
 
@@ -109,7 +119,7 @@ struct DocumentProducingFunctionContext {
 
   ReadOwnWrites getReadOwnWrites() const noexcept;
 
-  bool checkUniqueness(LocalDocumentId const& token);
+  bool checkUniqueness(LocalDocumentId token);
 
   // called for documents and indexes
   bool checkFilter(velocypack::Slice slice);
@@ -129,6 +139,8 @@ struct DocumentProducingFunctionContext {
 
   velocypack::Builder& getBuilder() noexcept;
 
+  RegisterId registerForVariable(VariableId id) const noexcept;
+
  private:
   bool checkFilter(DocumentProducingExpressionContext& ctx);
 
@@ -141,8 +153,12 @@ struct DocumentProducingFunctionContext {
   Expression* _filter;
   aql::Projections const& _projections;
   aql::Projections const& _filterProjections;
+  aql::Projections _projectionsForRegisters;
+  ResourceMonitor& _resourceMonitor;
+
   uint64_t _numScanned;
   uint64_t _numFiltered;
+  uint64_t _numLookups;
 
   std::unique_ptr<DocumentProducingExpressionContext> _expressionContext;
 
@@ -163,7 +179,6 @@ struct DocumentProducingFunctionContext {
   /// @brief Flag if we need to check for uniqueness
   bool const _checkUniqueness;
 
-  bool const _produceResult;
   bool _allowCoveringIndexOptimization;
   /// @brief Flag if the current index pointer is the last of the list.
   ///        Used in uniqueness checks.
@@ -175,6 +190,7 @@ struct WithProjectionsCoveredByIndex {};
 struct WithFilterCoveredByIndex {};
 struct WithProjectionsNotCoveredByIndex {};
 struct DocumentCopy {};
+struct WithLateMaterialization {};
 }  // namespace DocumentProducingCallbackVariant
 
 template<bool checkUniqueness, bool skip>
@@ -182,7 +198,7 @@ IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithProjectionsCoveredByIndex,
     DocumentProducingFunctionContext& context);
 
-template<bool checkUniqueness, bool skip>
+template<bool checkUniqueness, bool skip, bool produceResult>
 IndexIterator::CoveringCallback getCallback(
     DocumentProducingCallbackVariant::WithFilterCoveredByIndex,
     DocumentProducingFunctionContext& context);
@@ -197,7 +213,7 @@ IndexIterator::DocumentCallback getCallback(
     DocumentProducingCallbackVariant::DocumentCopy,
     DocumentProducingFunctionContext& context);
 
-template<bool checkUniqueness>
+template<bool checkUniqueness, bool produceResult>
 IndexIterator::LocalDocumentIdCallback getNullCallback(
     DocumentProducingFunctionContext& context);
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,8 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -35,13 +37,7 @@ using namespace arangodb::aql;
 
 size_t QueryOptions::defaultMemoryLimit = 0U;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128U;
-#ifdef __APPLE__
-// On OSX the default stack size for worker threads (non-main thread) is 512kb
-// which is rather low, so we have to use a lower default
-size_t QueryOptions::defaultMaxNodesPerCallstack = 150U;
-#else
 size_t QueryOptions::defaultMaxNodesPerCallstack = 250U;
-#endif
 size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000ULL;
 size_t QueryOptions::defaultSpillOverThresholdMemoryUsage =
     134217728ULL;                                                // 128 MB
@@ -61,8 +57,11 @@ QueryOptions::QueryOptions()
           QueryOptions::defaultSpillOverThresholdMemoryUsage),
       maxDNFConditionMembers(QueryOptions::defaultMaxDNFConditionMembers),
       maxRuntime(0.0),
+#ifdef USE_ENTERPRISE
       satelliteSyncWait(std::chrono::seconds(60)),
-      ttl(QueryOptions::defaultTtl),  // get global default ttl
+#endif
+      // get global default ttl
+      ttl(QueryOptions::defaultTtl),
       profile(ProfileLevel::None),
       traversalProfile(TraversalProfileLevel::None),
       allPlans(false),
@@ -71,34 +70,30 @@ QueryOptions::QueryOptions()
       stream(false),
       retriable(false),
       silent(false),
-      failOnWarning(
-          QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
-                                                // value
+      // use global "failOnWarning" value
+      failOnWarning(QueryOptions::defaultFailOnWarning),
       cache(false),
       fullCount(false),
       count(false),
       skipAudit(false),
-      explainRegisters(ExplainRegisterPlan::No) {
+      optimizePlanForCaching(false),
+      usePlanCache(false),
+      explainRegisters(ExplainRegisterPlan::No),
+      desiredJoinStrategy(JoinStrategyType::kDefault) {
   // now set some default values from server configuration options
-  {
-    // use global memory limit value
-    uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
-    if (globalLimit > 0) {
-      memoryLimit = globalLimit;
-    }
+  // use global memory limit value
+  if (uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
+      globalLimit > 0) {
+    memoryLimit = globalLimit;
   }
 
-  {
-    // use global max runtime value
-    double globalLimit = QueryOptions::defaultMaxRuntime;
-    if (globalLimit > 0.0) {
-      maxRuntime = globalLimit;
-    }
+  // use global max runtime value
+  if (double globalLimit = QueryOptions::defaultMaxRuntime; globalLimit > 0.0) {
+    maxRuntime = globalLimit;
   }
 
   // "cache" only defaults to true if query cache is turned on
-  auto queryCacheMode = QueryCache::instance()->mode();
-  cache = (queryCacheMode == CACHE_ALWAYS_ON);
+  cache = (QueryCache::instance()->mode() == CACHE_ALWAYS_ON);
 
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
@@ -112,16 +107,13 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     return;
   }
 
-  VPackSlice value;
-
   // use global memory limit value first
   if (QueryOptions::defaultMemoryLimit > 0) {
     memoryLimit = QueryOptions::defaultMemoryLimit;
   }
 
   // numeric options
-  value = slice.get("memoryLimit");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("memoryLimit"); value.isNumber()) {
     size_t v = value.getNumber<size_t>();
     if (allowMemoryLimitOverride) {
       memoryLimit = v;
@@ -132,65 +124,60 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     }
   }
 
-  value = slice.get("maxNumberOfPlans");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxNumberOfPlans"); value.isNumber()) {
     maxNumberOfPlans = value.getNumber<size_t>();
     if (maxNumberOfPlans == 0) {
       maxNumberOfPlans = 1;
     }
   }
 
-  value = slice.get("maxWarningCount");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxWarningCount"); value.isNumber()) {
     maxWarningCount = value.getNumber<size_t>();
   }
 
-  value = slice.get("maxNodesPerCallstack");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxNodesPerCallstack"); value.isNumber()) {
     maxNodesPerCallstack = value.getNumber<size_t>();
   }
 
-  value = slice.get("spillOverThresholdNumRows");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("spillOverThresholdNumRows");
+      value.isNumber()) {
     spillOverThresholdNumRows = value.getNumber<size_t>();
   }
 
-  value = slice.get("spillOverThresholdMemoryUsage");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("spillOverThresholdMemoryUsage");
+      value.isNumber()) {
     spillOverThresholdMemoryUsage = value.getNumber<size_t>();
   }
 
-  value = slice.get("maxDNFConditionMembers");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxDNFConditionMembers");
+      value.isNumber()) {
     maxDNFConditionMembers = value.getNumber<size_t>();
   }
 
-  value = slice.get("maxRuntime");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("maxRuntime"); value.isNumber()) {
     maxRuntime = value.getNumber<double>();
   }
 
-  value = slice.get("satelliteSyncWait");
-  if (value.isNumber()) {
+#ifdef USE_ENTERPRISE
+  if (VPackSlice value = slice.get("satelliteSyncWait"); value.isNumber()) {
     satelliteSyncWait =
         std::chrono::duration<double>(value.getNumber<double>());
   }
+#endif
 
-  value = slice.get("ttl");
-  if (value.isNumber()) {
+  if (VPackSlice value = slice.get("ttl"); value.isNumber()) {
     ttl = value.getNumber<double>();
   }
 
   // boolean options
-  value = slice.get("profile");
-  if (value.isBool()) {
+  if (VPackSlice value = slice.get("profile"); value.isBool()) {
     profile = value.getBool() ? ProfileLevel::Basic : ProfileLevel::None;
   } else if (value.isNumber()) {
     profile = static_cast<ProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  value = slice.get(StaticStrings::GraphTraversalProfileLevel);
-  if (value.isBool()) {
+  if (VPackSlice value = slice.get(StaticStrings::GraphTraversalProfileLevel);
+      value.isBool()) {
     traversalProfile = value.getBool() ? TraversalProfileLevel::Basic
                                        : TraversalProfileLevel::None;
   } else if (value.isNumber()) {
@@ -198,82 +185,92 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
         static_cast<TraversalProfileLevel>(value.getNumber<uint16_t>());
   }
 
-  if (value = slice.get("allPlans"); value.isBool()) {
-    allPlans = value.getBool();
+  if (VPackSlice value = slice.get("allPlans"); value.isBool()) {
+    allPlans = value.isTrue();
   }
-  if (value = slice.get("verbosePlans"); value.isBool()) {
-    verbosePlans = value.getBool();
+  if (VPackSlice value = slice.get("verbosePlans"); value.isBool()) {
+    verbosePlans = value.isTrue();
   }
-  if (value = slice.get("explainInternals"); value.isBool()) {
-    explainInternals = value.getBool();
+  if (VPackSlice value = slice.get("explainInternals"); value.isBool()) {
+    explainInternals = value.isTrue();
   }
-  if (value = slice.get("stream"); value.isBool()) {
-    stream = value.getBool();
+  if (VPackSlice value = slice.get("stream"); value.isBool()) {
+    stream = value.isTrue();
   }
-  if (value = slice.get("allowRetry"); value.isBool()) {
+  if (VPackSlice value = slice.get("allowRetry"); value.isBool()) {
     retriable = value.isTrue();
   }
-  if (value = slice.get("silent"); value.isBool()) {
-    silent = value.getBool();
+  if (VPackSlice value = slice.get("silent"); value.isBool()) {
+    silent = value.isTrue();
   }
-  if (value = slice.get("failOnWarning"); value.isBool()) {
-    failOnWarning = value.getBool();
+  if (VPackSlice value = slice.get("failOnWarning"); value.isBool()) {
+    failOnWarning = value.isTrue();
   }
-  if (value = slice.get("cache"); value.isBool()) {
-    cache = value.getBool();
+  if (VPackSlice value = slice.get("cache"); value.isBool()) {
+    cache = value.isTrue();
   }
-  if (value = slice.get("fullCount"); value.isBool()) {
-    fullCount = value.getBool();
+  if (VPackSlice value = slice.get("optimizePlanForCaching"); value.isBool()) {
+    optimizePlanForCaching = value.isTrue();
   }
-  if (value = slice.get("count"); value.isBool()) {
-    count = value.getBool();
+  if (VPackSlice value = slice.get("usePlanCache"); value.isBool()) {
+    usePlanCache = value.isTrue();
+    if (usePlanCache) {
+      optimizePlanForCaching = true;
+    }
   }
-  if (value = slice.get("explainRegisters"); value.isBool()) {
+  if (VPackSlice value = slice.get("fullCount"); value.isBool()) {
+    fullCount = value.isTrue();
+  }
+  if (VPackSlice value = slice.get("count"); value.isBool()) {
+    count = value.isTrue();
+  }
+  if (VPackSlice value = slice.get("explainRegisters"); value.isBool()) {
     explainRegisters =
-        value.getBool() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
+        value.isTrue() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
   }
 
   // note: skipAudit is intentionally not read here.
   // the end user cannot override this setting
 
-  if (value = slice.get(StaticStrings::ForceOneShardAttributeValue);
+  if (VPackSlice value = slice.get(StaticStrings::ForceOneShardAttributeValue);
       value.isString()) {
     forceOneShardAttributeValue = value.copyString();
   }
 
-  VPackSlice optimizer = slice.get("optimizer");
-  if (optimizer.isObject()) {
-    value = optimizer.get("rules");
-    if (value.isArray()) {
-      for (auto const& rule : VPackArrayIterator(value)) {
+  if (VPackSlice value = slice.get(StaticStrings::JoinStrategyType);
+      value.isString()) {
+    if (value.stringView() == "generic") {
+      desiredJoinStrategy = JoinStrategyType::kGeneric;
+    }
+  }
+
+  if (VPackSlice optimizer = slice.get("optimizer"); optimizer.isObject()) {
+    if (VPackSlice value = optimizer.get("rules"); value.isArray()) {
+      for (auto rule : VPackArrayIterator(value)) {
         if (rule.isString()) {
           optimizerRules.emplace_back(rule.copyString());
         }
       }
     }
   }
-  value = slice.get("shardIds");
-  if (value.isArray()) {
-    VPackArrayIterator it(value);
-    while (it.valid()) {
-      value = it.value();
-      if (value.isString()) {
-        restrictToShards.emplace(value.copyString());
+  // On single server we cannot restrict to shards.
+  if (!ServerState::instance()->isSingleServer()) {
+    if (VPackSlice value = slice.get("shardIds"); value.isArray()) {
+      for (auto id : VPackArrayIterator(value)) {
+        if (id.isString()) {
+          restrictToShards.emplace(id.copyString());
+        }
       }
-      it.next();
     }
   }
 
 #ifdef USE_ENTERPRISE
-  value = slice.get("inaccessibleCollections");
-  if (value.isArray()) {
-    VPackArrayIterator it(value);
-    while (it.valid()) {
-      value = it.value();
-      if (value.isString()) {
-        inaccessibleCollections.emplace(value.copyString());
+  if (VPackSlice value = slice.get("inaccessibleCollections");
+      value.isArray()) {
+    for (auto c : VPackArrayIterator(value)) {
+      if (c.isString()) {
+        inaccessibleCollections.emplace(c.copyString());
       }
-      it.next();
     }
   }
 #endif
@@ -296,7 +293,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
               VPackValue(spillOverThresholdMemoryUsage));
   builder.add("maxDNFConditionMembers", VPackValue(maxDNFConditionMembers));
   builder.add("maxRuntime", VPackValue(maxRuntime));
+#ifdef USE_ENTERPRISE
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait.count()));
+#endif
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
   builder.add(StaticStrings::GraphTraversalProfileLevel,
@@ -309,8 +308,18 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("silent", VPackValue(silent));
   builder.add("failOnWarning", VPackValue(failOnWarning));
   builder.add("cache", VPackValue(cache));
+  builder.add("optimizePlanForCaching", VPackValue(optimizePlanForCaching));
+  builder.add("usePlanCache", VPackValue(usePlanCache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
+
+  if (desiredJoinStrategy == JoinStrategyType::kGeneric) {
+    builder.add(StaticStrings::JoinStrategyType, VPackValue("generic"));
+  } else {
+    TRI_ASSERT(desiredJoinStrategy == JoinStrategyType::kDefault);
+    builder.add(StaticStrings::JoinStrategyType, VPackValue("default"));
+  }
+
   if (!forceOneShardAttributeValue.empty()) {
     builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));
@@ -320,8 +329,6 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   // the end user cannot override this setting anyway.
 
   builder.add("optimizer", VPackValue(VPackValueType::Object));
-  // hard-coded since 3.8, option will be removed in the future
-  builder.add("inspectSimplePlans", VPackValue(true));
   if (!optimizerRules.empty() || disableOptimizerRules) {
     builder.add("rules", VPackValue(VPackValueType::Array));
     if (disableOptimizerRules) {

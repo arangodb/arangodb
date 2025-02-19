@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,14 +30,17 @@
 
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
-#include "Basics/debugging.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/Identifiers/RevisionId.h"
 
 namespace arangodb {
+
+namespace replication2 {
+struct LogTerm;
+struct LogPayload;
+class LogEntry;
+}  // namespace replication2
 
 class RocksDBValue {
  public:
@@ -50,21 +53,24 @@ class RocksDBValue {
   static RocksDBValue Database(VPackSlice data);
   static RocksDBValue Collection(VPackSlice data);
   static RocksDBValue ReplicatedState(VPackSlice data);
-  static RocksDBValue PrimaryIndexValue(LocalDocumentId const& docId,
+  static RocksDBValue PrimaryIndexValue(LocalDocumentId docId,
                                         RevisionId revision);
   static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue VPackIndexValue(VPackSlice data);
-  static RocksDBValue ZkdIndexValue();
-  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId);
-  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId const& docId,
+  static RocksDBValue MdiIndexValue(VPackSlice data);
+  static RocksDBValue UniqueMdiIndexValue(LocalDocumentId docId,
+                                          VPackSlice data);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId);
+  static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,
                                             VPackSlice data);
+  static RocksDBValue VectorIndexValue(char const* codeData,
+                                       std::size_t codeSize);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
   static RocksDBValue S2Value(S2Point const& c);
-  static RocksDBValue LogEntry(replication2::PersistingLogEntry const& entry);
+  static RocksDBValue LogEntry(replication2::LogEntry const& entry);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -157,14 +163,14 @@ class RocksDBValue {
 
  private:
   explicit RocksDBValue(RocksDBEntryType type);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                RevisionId revision);
-  RocksDBValue(RocksDBEntryType type, LocalDocumentId const& docId,
-               VPackSlice data);
+  RocksDBValue(RocksDBEntryType type, LocalDocumentId docId, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, VPackSlice data);
   RocksDBValue(RocksDBEntryType type, std::string_view data);
-  RocksDBValue(RocksDBEntryType type, replication2::PersistingLogEntry const&);
+  RocksDBValue(RocksDBEntryType type, replication2::LogEntry const&);
   explicit RocksDBValue(S2Point const&);
+  explicit RocksDBValue(char const* codeData, std::size_t codeSize);
 
   static RocksDBEntryType type(char const* data, size_t size);
   static LocalDocumentId documentId(char const* data, uint64_t size);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,25 +23,26 @@
 
 #include "RestAgencyHandler.h"
 
-#include <thread>
-
-#include <velocypack/Builder.h>
-
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
-#include "Metrics/Histogram.h"
-#include "Metrics/LogScale.h"
+
+#include <velocypack/Builder.h>
+
+#include <thread>
 
 using namespace arangodb;
 
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Rest agency handler
@@ -52,29 +53,29 @@ RestAgencyHandler::RestAgencyHandler(ArangodServer& server,
                                      GeneralResponse* response, Agent* agent)
     : RestVocbaseBaseHandler(server, request, response), _agent(agent) {}
 
-inline RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
+RestStatus RestAgencyHandler::reportErrorEmptyRequest() {
   LOG_TOPIC("46536", WARN, Logger::AGENCY)
       << "Empty request to public agency interface.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportTooManySuffices() {
+RestStatus RestAgencyHandler::reportTooManySuffices() {
   LOG_TOPIC("ef6ae", WARN, Logger::AGENCY)
       << "Too many suffixes. Agency public interface takes one path.";
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportUnknownMethod() {
+RestStatus RestAgencyHandler::reportUnknownMethod() {
   LOG_TOPIC("9b810", WARN, Logger::AGENCY)
       << "Public REST interface has no method " << _request->suffixes()[0];
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
-                                                   std::string const& message) {
+RestStatus RestAgencyHandler::reportMessage(rest::ResponseCode code,
+                                            std::string const& message) {
   LOG_TOPIC("8a454", DEBUG, Logger::AGENCY) << message;
   Builder body;
   {
@@ -170,7 +171,7 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
               VPackSlice res = rb->slice();
 
               if (res.isObject() && res.hasKey("result")) {
-                if (res.hasKey("error")) {  // leadership loss
+                if (res.hasKey(StaticStrings::Error)) {  // leadership loss
                   generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                                 TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
                                 "No leader");
@@ -220,11 +221,9 @@ RestStatus RestAgencyHandler::pollIndex(index_t const& start,
                   }
                   generateResult(rest::ResponseCode::OK,
                                  std::move(*builder.steal()));
-                  return;
                 } else {
                   generateResult(rest::ResponseCode::OK,
                                  std::move(*rb->steal()));
-                  return;
                 }
               } else {
                 generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
@@ -257,13 +256,12 @@ static bool readValue(GeneralRequest const& req, char const* name, T& val) {
     LOG_TOPIC("f4732", DEBUG, Logger::AGENCY)
         << "Query string " << name << " missing.";
     return false;
-  } else {
-    if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
-      LOG_TOPIC("f4237", WARN, Logger::AGENCY)
-          << "Conversion of query string " << name << " with " << val_str
-          << " to " << typeid(T).name() << " failed";
-      return false;
-    }
+  }
+  if (!arangodb::basics::StringUtils::toNumber(val_str, val)) {
+    LOG_TOPIC("f4237", WARN, Logger::AGENCY)
+        << "Conversion of query string " << name << " with " << val_str
+        << " to " << typeid(T).name() << " failed";
+    return false;
   }
   return true;
 }
@@ -768,7 +766,8 @@ RestStatus RestAgencyHandler::handleState() {
     _agent->readDB(body);
   }
 
-  transaction::StandaloneContext ctx(_vocbase);
+  auto origin = transaction::OperationOriginInternal{"returning agency state"};
+  transaction::StandaloneContext ctx(_vocbase, origin);
   generateResult(rest::ResponseCode::OK, body.slice(), ctx.getVPackOptions());
   return RestStatus::DONE;
 }
@@ -780,7 +779,8 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
-  response()->setAllowCompression(true);
+  response()->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request

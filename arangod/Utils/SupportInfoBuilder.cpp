@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,15 +40,18 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/CpuUsageFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EnvironmentFeature.h"
+#include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -66,19 +69,6 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace std::literals;
-
-namespace {
-network::Headers buildHeaders() {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  return headers;
-}
-}  // namespace
 
 void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                                          VPackSlice infoSlice,
@@ -98,7 +88,6 @@ void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                            [&dbViews, &database = std::as_const(database)](
                                LogicalView::ptr const& view) -> bool {
                              dbViews[database]++;
-
                              return true;
                            });
   }
@@ -240,15 +229,11 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                             LogTimeFormats::TimeFormat::UTCDateString,
                             std::chrono::system_clock::now());
 
-  bool const isActiveFailover =
-      server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-  bool fanout =
-      (ServerState::instance()->isCoordinator() || isActiveFailover) &&
-      !isLocal;
+  bool fanout = ServerState::instance()->isCoordinator() && !isLocal;
 
   result.openObject();
 
-  if (isSingleServer && !isActiveFailover) {
+  if (isSingleServer) {
     result.add("deployment", VPackValue(VPackValueType::Object));
     if (isTelemetricsReq) {
       // it's single server, but we maintain the format the same as cluster
@@ -284,7 +269,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       result.add("date", VPackValue(timeString));
     }
   } else {
-    // cluster or active failover
+    // cluster
     if (fanout) {
       result.add("deployment", VPackValue(VPackValueType::Object));
       if (isTelemetricsReq) {
@@ -298,20 +283,16 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                      VPackValue(arangodb::basics::StringUtils::tolower(
                          ServerState::instance()->getPersistedId())));
         } else {
-          result.add("persisted_id", VPackValue(serverId));
+          result.add("persisted_id",
+                     VPackValue("id" + std::to_string(serverId)));
         }
 
         std::string envValue;
         TRI_GETENV("ARANGODB_STARTUP_MODE", envValue);
         result.add("startup_mode", VPackValue(envValue));
       }
-      if (isActiveFailover) {
-        TRI_ASSERT(!ServerState::instance()->isCoordinator());
-        result.add("type", VPackValue("active_failover"));
-      } else {
-        TRI_ASSERT(ServerState::instance()->isCoordinator());
-        result.add("type", VPackValue("cluster"));
-      }
+      TRI_ASSERT(ServerState::instance()->isCoordinator());
+      result.add("type", VPackValue("cluster"));
 
       // build results for all servers
       // we come first!
@@ -354,7 +335,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
           ++dbServers;
         } else if (server.first.starts_with("SNGL")) {
           // SNGL counts as DB server here
-          TRI_ASSERT(isActiveFailover);
           ++dbServers;
         }
         if (server.first == ServerState::instance()->getId()) {
@@ -364,16 +344,16 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
         std::string reqUrl =
             isTelemetricsReq ? "/_admin/telemetrics" : "/_admin/support-info";
-        auto f = network::sendRequestRetry(
-            pool, "server:" + server.first, fuerte::RestVerb::Get, reqUrl,
-            VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+        auto f = network::sendRequestRetry(pool, "server:" + server.first,
+                                           fuerte::RestVerb::Get, reqUrl,
+                                           VPackBuffer<uint8_t>{}, options);
         futures.emplace_back(std::move(f));
       }
 
       VPackBuilder dbInfoBuilder;
       if (!futures.empty()) {
         dbInfoBuilder.openObject();
-        auto responses = futures::collectAll(futures).get();
+        auto responses = futures::collectAll(futures).waitAndGet();
         for (auto const& it : responses) {
           auto& resp = it.get();
           auto res = resp.combinedResult();
@@ -455,13 +435,9 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
                                        ArangodServer& server,
                                        bool isTelemetricsReq) {
-  bool const isActiveFailover =
-      server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-
   result.openObject();
 
-  if (isTelemetricsReq || ServerState::instance()->isRunningInCluster() ||
-      isActiveFailover) {
+  if (isTelemetricsReq || ServerState::instance()->isRunningInCluster()) {
     auto serverId = ServerState::instance()->getId();
     if (isTelemetricsReq) {
       bool isSingleServer = ServerState::instance()->isSingleServer();
@@ -537,10 +513,13 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
       server.getFeature<metrics::MetricsFeature>().serverStatistics();
   result.add(keys["processUptime"], VPackValue(serverInfo.uptime()));
 
+  FileDescriptorsFeature& fd = server.getFeature<FileDescriptorsFeature>();
   ProcessInfo info = TRI_ProcessInfoSelf();
   result.add(keys["nThreads"], VPackValue(info._numberThreads));
   result.add(keys["virtualSize"], VPackValue(info._virtualSize));
   result.add(keys["residentSetSize"], VPackValue(info._residentSize));
+  result.add("fileDescrtors", VPackValue(fd.current()));
+  result.add("fileDescrtorsLimit", VPackValue(fd.limit()));
   result.close();  // processStats
 
   CpuUsageFeature& cpuUsage = server.getFeature<CpuUsageFeature>();
@@ -559,7 +538,6 @@ void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
     VPackBuilder stats;
     StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
     engine.getStatistics(stats);
-
     auto names = {
         // edge cache
         "cache.limit",
@@ -628,14 +606,16 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
           result.add("n_shards", VPackValue(numShards));
           result.add("rep_factor", VPackValue(coll->replicationFactor()));
 
-          auto ctx = transaction::StandaloneContext::Create(*vocbase);
-
           auto& collName = coll->name();
           result.add("name", VPackValue(collName));
           size_t planId = coll->planId().id();
           result.add("plan_id", VPackValue(planId));
 
-          SingleCollectionTransaction trx(ctx, collName,
+          auto origin =
+              transaction::OperationOriginInternal{"counting document(s)"};
+          auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
+
+          SingleCollectionTransaction trx(std::move(ctx), collName,
                                           AccessMode::Type::READ);
 
           Result res = trx.begin();
@@ -644,7 +624,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             OperationOptions options(ExecContext::current());
 
             OperationResult opResult =
-                trx.count(collName, transaction::CountType::Normal, options);
+                trx.count(collName, transaction::CountType::kNormal, options);
             std::ignore = trx.finish(opResult.result);
             if (opResult.fail()) {
               LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)
@@ -688,20 +668,21 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
-            constexpr std::array<std::string_view, 12> idxTypes = {
-                "edge",     "geo",        "hash",      "fulltext",
-                "inverted", "persistent", "iresearch", "skiplist",
-                "ttl",      "zkd",        "primary",   "unknown"};
+            constexpr std::array<std::string_view, 13> idxTypes = {
+                "edge",       "geo",      "hash",   "fulltext", "inverted",
+                "persistent", "skiplist", "ttl",    "mdi",      "mdi-prefixed",
+                "iresearch",  "primary",  "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }
 
             VPackBuilder output;
-            std::ignore = methods::Indexes::getAll(*coll, flags, false, output);
+            std::ignore = methods::Indexes::getAll(*coll, flags, true, output);
             velocypack::Slice outSlice = output.slice();
 
             result.add("idxs", VPackValue(VPackValueType::Array));
             for (auto const it : velocypack::ArrayIterator(outSlice)) {
+              auto idxType = it.get("type").stringView();
               result.openObject();
 
               if (auto figures = it.get("figures"); !figures.isNone()) {
@@ -728,7 +709,14 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 result.add("cache_usage", VPackValue(cacheUsage));
               }
 
-              auto idxType = it.get("type").stringView();
+              if (idxType == "arangosearch") {
+                // this is because the telemetrics parser for the object in the
+                // endpoint should contain the arangosearch index with the name
+                // "iresearch" hardcoded, so, until it's changed, we write the
+                // amounts of indexes of this type as "iresearch" in the object
+                idxType = "iresearch";
+              }
+
               if (idxType == "geo1" || idxType == "geo2") {
                 // older deployments can have indexes of type "geo1"
                 // and "geo2". these are old names for "geo" indexes with
@@ -736,8 +724,16 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
                 idxType = "geo";
               }
               result.add("type", VPackValue(idxType));
-              bool isSparse = it.get("sparse").getBoolean();
-              bool isUnique = it.get("unique").getBoolean();
+              bool isSparse = false;
+              auto idxSlice = it.get("sparse");
+              if (!idxSlice.isNone()) {
+                isSparse = idxSlice.getBoolean();
+              }
+              bool isUnique = false;
+              idxSlice = it.get("unique");
+              if (!idxSlice.isNone()) {
+                isUnique = idxSlice.getBoolean();
+              }
               result.add("sparse", VPackValue(isSparse));
               result.add("unique", VPackValue(isUnique));
               idxTypesToAmounts[idxType]++;

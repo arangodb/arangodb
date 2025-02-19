@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,14 +35,7 @@
 #include <unicode/umachine.h>
 #include <unicode/regex.h>
 
-#include "Basics/Common.h"
-
-namespace icu_58 {
-class RegexMatcher;
-}
-
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 enum class LanguageType { INVALID, DEFAULT, ICU };
 
@@ -51,22 +44,25 @@ class Utf8Helper {
   Utf8Helper& operator=(Utf8Helper const&) = delete;
 
  public:
+  // The following singleton is used in various places, in particular
+  // in the LanguageFeature. When it is constructed before main(), we
+  // do not yet have the ICU data available, so we cannot really initialize
+  // it and set a collator language. This is then done in the `LanguageFeature`
+  // in its `prepare` method. Therefore we do not initialize the collator
+  // in the constructor! Do not use this singleton before the LanguageFeature
+  // has initialized it.
   static Utf8Helper DefaultUtf8Helper;
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
-  /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
-  ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   //////////////////////////////////////////////////////////////////////////////
 
-  Utf8Helper(std::string const& lang, void* icuDataPtr);
-
-  explicit Utf8Helper(void* icuDataPtr);
+  Utf8Helper() = delete;     // avoid accidental use
+  explicit Utf8Helper(int);  // the int is just to distinguish this constructor
+                             // and to use it for DefaultUtf8Helper above.
 
   ~Utf8Helper();
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   ///  public functions
   //////////////////////////////////////////////////////////////////////////////
@@ -100,21 +96,21 @@ class Utf8Helper {
   /// collation
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string_view lang, LanguageType langType,
-                           void* icuDataPointer);
+  bool setCollatorLanguage(std::string_view lang, LanguageType langType /*,
+                           void* icuDataPointer*/);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current collator
   //////////////////////////////////////////////////////////////////////////////
 
-  icu::Collator* getCollator() const;
+  icu_64_64::Collator* getCollator() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief set collator
   //////////////////////////////////////////////////////////////////////////////
 
-  void setCollator(icu::Collator* coll);
+  void setCollator(std::unique_ptr<icu_64_64::Collator> coll);
 #endif
 
   //////////////////////////////////////////////////////////////////////////////
@@ -165,16 +161,16 @@ class Utf8Helper {
   /// @brief builds a regex matcher for the specified pattern
   //////////////////////////////////////////////////////////////////////////////
 
-  std::unique_ptr<icu::RegexMatcher> buildMatcher(std::string const&);
+  std::unique_ptr<icu_64_64::RegexMatcher> buildMatcher(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief whether or not value matches a regex
   //////////////////////////////////////////////////////////////////////////////
 
-  bool matches(icu::RegexMatcher*, char const* pattern, size_t patternLength,
-               bool partial, bool& error);
+  bool matches(icu_64_64::RegexMatcher*, char const* pattern,
+               size_t patternLength, bool partial, bool& error);
 
-  std::string replace(icu::RegexMatcher*, char const* pattern,
+  std::string replace(icu_64_64::RegexMatcher*, char const* pattern,
                       size_t patternLength, char const* replacement,
                       size_t replacementLength, bool partial, bool& error);
 
@@ -199,10 +195,10 @@ class Utf8Helper {
   }
 
  private:
-  icu::Collator* _coll;
+  std::unique_ptr<icu_64_64::Collator> _coll;
 };
-}  // namespace basics
-}  // namespace arangodb
+
+}  // namespace arangodb::basics
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,6 +40,7 @@
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -65,19 +66,17 @@ DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
 
 /// Constructor:
-State::State(ArangodServer& server)
-    : _server(server),
-      _agent(nullptr),
+State::State(metrics::MetricsFeature& metrics)
+    : _agent(nullptr),
       _vocbase(nullptr),
       _ready(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
       _lastCompactionAt(0),
       _cur(0),
-      _log_size(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_log_size_bytes{})),
-      _clientIdLookupCount(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_client_lookup_table_size{})) {}
+      _log_size(metrics.add(arangodb_agency_log_size_bytes{})),
+      _clientIdLookupCount(
+          metrics.add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;
@@ -126,7 +125,9 @@ bool State::persist(index_t index, term_t term, uint64_t millis,
   }
 
   TRI_ASSERT(_vocbase != nullptr);
-  transaction::StandaloneContext ctx(*_vocbase);
+  auto origin =
+      transaction::OperationOriginInternal{"persisting agency log entry"};
+  transaction::StandaloneContext ctx(*_vocbase, origin);
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
           std::shared_ptr<transaction::Context>(), &ctx),
@@ -214,7 +215,9 @@ bool State::persistConf(index_t index, term_t term, uint64_t millis,
   // Multi docment transaction for log entry and configuration replacement -----
   TRI_ASSERT(_vocbase != nullptr);
 
-  transaction::StandaloneContext ctx(*_vocbase);
+  auto origin =
+      transaction::OperationOriginInternal{"persisting agency configuration"};
+  transaction::StandaloneContext ctx(*_vocbase, origin);
   transaction::Methods trx(std::shared_ptr<transaction::Context>(
                                std::shared_ptr<transaction::Context>(), &ctx),
                            {}, {"log", "configuration"}, {},
@@ -430,8 +433,8 @@ index_t State::logFollower(VPackSlice transactions) {
     if (useSnapshot) {
       // Now we must completely erase our log and compaction snapshots and
       // start from the snapshot
-      Store snapshot(_agent->server(), _agent, "snapshot");
-      snapshot = transactions[0];
+      Store snapshot("snapshot");
+      snapshot.setNodeValue(transactions[0]);
       if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
         LOG_TOPIC("f7250", FATAL, Logger::AGENCY)
             << "Could not restore received log snapshot.";
@@ -548,8 +551,10 @@ size_t State::removeConflicts(VPackSlice transactions, bool gotSnapshot) {
         TRI_ASSERT(
             nullptr !=
             _vocbase);  // this check was previously in the Query constructor
+        auto origin = transaction::OperationOriginInternal{
+            "removing agency log conflicts"};
         auto query = arangodb::aql::Query::create(
-            transaction::StandaloneContext::Create(*_vocbase),
+            transaction::StandaloneContext::create(*_vocbase, origin),
             aql::QueryString(aql), std::move(bindVars));
 
         aql::QueryResult queryResult = query->executeSync();
@@ -613,7 +618,7 @@ std::pair<index_t, index_t> State::determineLogBounds(
 
   // start must be greater than or equal to the lowest index
   // and smaller than or equal to the largest index
-  if (start < _log[0].index) {
+  if (start < _log.front().index) {
     start = _log.front().index;
   } else if (start > _log.back().index) {
     start = _log.back().index;
@@ -646,7 +651,23 @@ std::vector<log_t> State::get(index_t start, index_t end) const {
   }
 
   auto [s, e] = determineLogBounds(start, end);
+
   for (size_t i = s; i < e; ++i) {
+    // only for debugging purposes
+    TRI_ASSERT(i < _log.size()) << [this, sNow = s, eNow = e, start, end]() {
+      std::stringstream s;
+      s << "log size: " << _log.size() << ", start: " << sNow
+        << ", end: " << eNow << ", cur: " << _cur << ", orig start: " << start
+        << ", orig end: " << end << ", log entry indexes:";
+      for (auto const& it : _log) {
+        s << " " << it.index;
+      }
+      return s.str();
+    }();
+    ADB_PROD_ASSERT(i < _log.size())
+        << "log size: " << _log.size() << ", start: " << s << ", end: " << e
+        << ", cur: " << _cur << ", orig start: " << start
+        << ", orig end: " << end;
     entries.push_back(_log[i]);
   }
 
@@ -691,7 +712,7 @@ log_t State::atNoLock(index_t index) const {
   }
 
   auto pos = index - _cur;
-  if (pos > _log.size()) {
+  if (pos >= _log.size()) {
     std::string excMessage =
         std::string(
             "Access beyond the end of the log deque: (last, requested): (") +
@@ -918,8 +939,11 @@ bool State::loadPersisted() {
       LOG_TOPIC("1a476", INFO, Logger::AGENCY)
           << "Non matching compaction and log indexes. Dropping both "
              "collections";
-      _log.clear();
-      _cur = 0;
+      {
+        std::lock_guard logLock{_logLock};
+        _log.clear();
+        _cur = 0;
+      }
       dropCollection("log");
       dropCollection("compact");
     }
@@ -932,6 +956,8 @@ bool State::loadPersisted() {
   // in log and compact cannot be mitigated after this point. We are here
   // because of the above missing / incomplete log / compaction. Including the
   // case of only one of the two collections being present.
+  dropCollection("log");
+  dropCollection("compact");
   ensureCollection("log", true);
   ensureCollection("compact", true);
 
@@ -947,9 +973,11 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
   std::string const aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
 
   TRI_ASSERT(nullptr != _vocbase);
+  auto origin = transaction::OperationOriginInternal{
+      "loading last compacted agency snapshot"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -971,7 +999,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
 
     VPackSlice ii = result[0];
     try {
-      store = ii;
+      store.setNodeValue(ii);
       index = extractIndexFromKey(ii);
       term = ii.get("term").getNumber<uint64_t>();
     } catch (std::exception const& e) {
@@ -989,9 +1017,11 @@ index_t State::loadCompacted() {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin =
+      transaction::OperationOriginInternal{"loading compacted agency snapshot"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1029,16 +1059,22 @@ index_t State::loadCompacted() {
 
 /// Load persisted configuration
 bool State::loadOrPersistConfiguration() {
-  std::string const aql(
-      "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
+  auto loadConfiguration = [&]() -> aql::QueryResult {
+    std::string const aql(
+        "FOR c in configuration FILTER c._key==\"0\" RETURN c.cfg");
 
-  TRI_ASSERT(nullptr !=
-             _vocbase);  // this check was previously in the Query constructor
-  auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+    TRI_ASSERT(nullptr !=
+               _vocbase);  // this check was previously in the Query constructor
+    auto origin =
+        transaction::OperationOriginInternal{"loading agency configuration"};
+    auto query = arangodb::aql::Query::create(
+        transaction::StandaloneContext::create(*_vocbase, origin),
+        aql::QueryString(aql), nullptr);
 
-  aql::QueryResult queryResult = query->executeSync();
+    return query->executeSync();
+  };
+
+  aql::QueryResult queryResult = loadConfiguration();
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1108,7 +1144,9 @@ bool State::loadOrPersistConfiguration() {
     _agent->id(uuid);
     ServerState::instance()->setId(uuid);
 
-    transaction::StandaloneContext ctx(*_vocbase);
+    auto origin =
+        transaction::OperationOriginInternal{"storing agency configuration"};
+    transaction::StandaloneContext ctx(*_vocbase, origin);
     SingleCollectionTransaction trx(
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
@@ -1176,9 +1214,11 @@ bool State::loadRemaining(index_t cind) {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin = transaction::OperationOriginInternal{
+      "loading remaining agency log entries"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      std::move(bindVars));
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), std::move(bindVars));
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1298,7 +1338,7 @@ bool State::compact(index_t cind, index_t keep) {
       (std::max)(_nextCompactionAfter.load(),
                  cind + _agent->config().compactionStepSize());
 
-  Store snapshot(_agent->server(), _agent, "snapshot");
+  Store snapshot("snapshot");
   index_t index;
   term_t term;
   if (!loadLastCompactedSnapshot(snapshot, index, term)) {
@@ -1315,8 +1355,7 @@ bool State::compact(index_t cind, index_t keep) {
     // Apply log entries to snapshot up to and including index cind:
     auto logs = slices(index + 1, cind);
     log_t last = at(cind);
-    snapshot.applyLogEntries(logs, cind, last.term,
-                             false /* do not perform callbacks */);
+    snapshot.applyLogEntries(logs, cind, last.term);
 
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
       LOG_TOPIC("3b34a", ERR, Logger::AGENCY)
@@ -1393,9 +1432,11 @@ bool State::compactPersisted(index_t cind, index_t keep) {
   LOG_TOPIC("a8123", DEBUG, Logger::AGENCY)
       << "Removing log entries with keys lower than " << cutStr;
 
+  auto origin =
+      transaction::OperationOriginInternal{"compacting agency log entries"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      std::move(bindVars));
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), std::move(bindVars));
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1436,8 +1477,10 @@ bool State::removeObsolete(index_t cind) {
 
     TRI_ASSERT(nullptr !=
                _vocbase);  // this check was previously in the Query constructor
+    auto origin = transaction::OperationOriginInternal{
+        "removing obsolete agency snapshots"};
     auto query = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*_vocbase),
+        transaction::StandaloneContext::create(*_vocbase, origin),
         aql::QueryString(aql), std::move(bindVars));
 
     aql::QueryResult queryResult = query->executeSync();
@@ -1471,7 +1514,9 @@ bool State::persistCompactionSnapshot(index_t cind,
     }
 
     TRI_ASSERT(_vocbase != nullptr);
-    transaction::StandaloneContext ctx(*_vocbase);
+    auto origin = transaction::OperationOriginInternal{
+        "persisting agency compacted snapshot"};
+    transaction::StandaloneContext ctx(*_vocbase, origin);
     SingleCollectionTransaction trx(
         std::shared_ptr<transaction::Context>(
             std::shared_ptr<transaction::Context>(), &ctx),
@@ -1538,9 +1583,11 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin =
+      transaction::OperationOriginInternal{"removing all agency log entries"};
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1573,7 +1620,9 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
     }
   }
 
-  transaction::StandaloneContext ctx(*_vocbase);
+  auto origin =
+      transaction::OperationOriginInternal{"updating agency configuration"};
+  transaction::StandaloneContext ctx(*_vocbase, origin);
 
   std::lock_guard guard{_configurationWriteLock};
   SingleCollectionTransaction trx(
@@ -1610,12 +1659,14 @@ query_t State::allLogs() const {
 
   std::lock_guard mutexLocker{_logLock};
 
+  auto origin =
+      transaction::OperationOriginInternal{"retrieving all agency logs"};
   auto compq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(comp),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(comp), nullptr);
   auto logsq = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase), aql::QueryString(logs),
-      nullptr);
+      transaction::StandaloneContext::create(*_vocbase, origin),
+      aql::QueryString(logs), nullptr);
 
   aql::QueryResult compqResult = compq->executeSync();
 
@@ -1705,11 +1756,13 @@ index_t State::firstIndex() const {
 std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
                                                        index_t& index,
                                                        term_t& term) {
+  auto origin = transaction::OperationOriginInternal{
+      "querying latest agency snapshot state"};
   // First get the latest snapshot, if there is any:
   std::string aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1720,13 +1773,13 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   VPackSlice result = queryResult.data->slice();
   TRI_ASSERT(result.isArray());
 
-  Store store(vocbase.server(), nullptr);
+  Store store;
   index = 0;
   term = 0;
   if (result.length() == 1) {
     // Result can only have length 0 or 1.
     VPackSlice s = result[0];
-    store = s;
+    store.setNodeValue(s);
     index = extractIndexFromKey(s);
     term = s.get("term").getNumber<uint64_t>();
     LOG_TOPIC("d838b", INFO, Logger::AGENCY)
@@ -1736,8 +1789,8 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   // Now get the rest of the log entries, if there are any:
   aql = "FOR l IN log SORT l._key RETURN l";
   auto query2 = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(vocbase), aql::QueryString(aql),
-      nullptr);
+      transaction::StandaloneContext::create(vocbase, origin),
+      aql::QueryString(aql), nullptr);
 
   aql::QueryResult queryResult2 = query2->executeSync();
 
@@ -1788,7 +1841,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
         }
       }
     }
-    store.applyLogEntries(b, index, term, false);
+    store.applyLogEntries(b, index, term);
   }
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -1810,8 +1863,10 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
   TRI_ASSERT(nullptr !=
              _vocbase);  // this check was previously in the Query constructor
+  auto origin = transaction::OperationOriginInternal{
+      "serializing agency log to velocypack"};
   auto logQuery = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(*_vocbase),
+      transaction::StandaloneContext::create(*_vocbase, origin),
       aql::QueryString(logQueryStr), std::move(bindVars));
 
   aql::QueryResult logQueryResult = logQuery->executeSync();
@@ -1863,8 +1918,11 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
     std::string const compQueryStr(
         "FOR c in compact FILTER c._key >= @key SORT c._key LIMIT 1 RETURN c");
 
+    auto origin = transaction::OperationOriginInternal{
+        "serializing agency snapshot to velocypack"};
+
     auto compQuery = arangodb::aql::Query::create(
-        transaction::StandaloneContext::Create(*_vocbase),
+        transaction::StandaloneContext::create(*_vocbase, origin),
         aql::QueryString(compQueryStr), std::move(bindVars));
 
     aql::QueryResult compQueryResult = compQuery->executeSync();

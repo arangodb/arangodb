@@ -2,27 +2,28 @@
 /*global assertTrue, assertEqual*/
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
 const _ = require('lodash');
@@ -48,7 +49,7 @@ const replicatedLogEntrySuite = function () {
       setUpAll: function () {
         previousDatabase = db._name();
         if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database);
+          db._createDatabase(database, {replicationVersion: "2"});
           databaseExisted = false;
         }
         db._useDatabase(database);
@@ -86,10 +87,11 @@ const replicatedLogEntrySuite = function () {
       lh.replicatedLogDeleteTarget(database, logId);
     },
 
-    testCheckUpdateParticipantsConfig: function () {
+    testCheckUpdateInnerTermConfig: function () {
       const {logId, servers, followers} = lh.createReplicatedLog(database, targetConfig);
       waitForReplicatedLogAvailable(logId);
       const follower = _.sample(followers);
+      const rebootIds = Object.fromEntries(servers.map(server => [server, lh.getServerRebootId(server)]));
 
       lh.replicatedLogUpdateTargetParticipants(database, logId, {
         [follower]: {forced: true},
@@ -110,10 +112,12 @@ const replicatedLogEntrySuite = function () {
       assertEqual(entry.logPayload, undefined);
       assertTrue(entry.meta !== undefined);
       const meta = entry.meta;
-      assertEqual(meta.type, "UpdateParticipantsConfig");
+      assertEqual(meta.type, "UpdateInnerTermConfig");
       assertEqual(meta.leader, undefined);
       assertEqual(meta.participants.generation, 2);
       assertEqual(Object.keys(meta.participants.participants).sort(), servers.sort());
+      assertEqual(Object.keys(meta.safeRebootIds).sort(), servers.sort());
+      assertEqual(meta.safeRebootIds, rebootIds);
       lh.replicatedLogDeleteTarget(database, logId);
     },
 

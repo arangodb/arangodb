@@ -2,19 +2,16 @@
 /* global CREATE_CURSOR */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief simple queries
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -67,10 +64,6 @@ function createCursorResponse (req, res, cursor) {
   actions.resultCursor(req, res, cursor, undefined, { countRequested: true });
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_any
-// //////////////////////////////////////////////////////////////////////////////
-
 actions.defineHttp({
   url: API + 'any',
   isSystem: false,
@@ -102,10 +95,6 @@ actions.defineHttp({
     }
   }
 });
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_near
-// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: API + 'near',
@@ -168,10 +157,6 @@ actions.defineHttp({
   }
 });
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_within
-// //////////////////////////////////////////////////////////////////////////////
-
 actions.defineHttp({
   url: API + 'within',
   isSystem: false,
@@ -232,10 +217,6 @@ actions.defineHttp({
     }
   }
 });
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_within_rectangle
-// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: API + 'within-rectangle',
@@ -298,10 +279,6 @@ actions.defineHttp({
   }
 });
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_fulltext
-// //////////////////////////////////////////////////////////////////////////////
-
 actions.defineHttp({
   url: API + 'fulltext',
   isSystem: false,
@@ -351,10 +328,6 @@ actions.defineHttp({
   }
 });
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_first_example
-// //////////////////////////////////////////////////////////////////////////////
-
 actions.defineHttp({
   url: API + 'first-example',
   isSystem: false,
@@ -393,10 +366,6 @@ actions.defineHttp({
     }
   }
 });
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_range
-// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: API + 'range',
@@ -450,10 +419,6 @@ actions.defineHttp({
   }
 });
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_remove_by_example
-// //////////////////////////////////////////////////////////////////////////////
-
 actions.defineHttp({
   url: API + 'remove-by-example',
   isSystem: false,
@@ -498,10 +463,6 @@ actions.defineHttp({
     }
   }
 });
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_replace_by_example
-// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: API + 'replace-by-example',
@@ -550,10 +511,6 @@ actions.defineHttp({
     }
   }
 });
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSA_put_api_simple_update_by_example
-// //////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
   url: API + 'update-by-example',

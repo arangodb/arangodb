@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global frontendConfig, arangoHelper, Joi, Backbone, window, $, _ */
+/* global frontendConfig */
 
 (function () {
   'use strict';
@@ -54,7 +52,10 @@
               arangoHelper.arangoError('Could not drop collection: ' + data.responseJSON.errorMessage);
             },
             success: function () {
-              window.App.navigate('#collections', {trigger: true});
+              window.App.navigate('#collections', { trigger: true });
+              window.arangoHelper.arangoNotification(
+                "Collection successfully dropped"
+              );
             }
           }
         );
@@ -146,7 +147,8 @@
 
           var buttons = [];
           var tableContent = [];
-
+          var collectionNameValidations = 
+            window.arangoValidationHelper.getCollectionNameValidations();
           if (!isCoordinator) {
             if (this.model.get('name').substr(0, 1) === '_') {
               tableContent.push(
@@ -157,12 +159,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             } else {
@@ -174,12 +171,7 @@
                   false,
                   '',
                   true,
-                  [
-                    {
-                      rule: Joi.string().required(),
-                      msg: 'No collection name given.'
-                    }
-                  ]
+                  collectionNameValidations
                 )
               );
             }
@@ -225,6 +217,13 @@
             );
             var templates = ['modalTable.ejs'];
             var tabBar = ['General', 'Indexes'];
+            var isCurrentView =
+              window.location.hash.indexOf(
+                "cSettings/" + encodeURIComponent(this.collectionName)
+              ) > -1;
+            if (!isCurrentView) {
+              return;
+            }
             window.modalView.show(
               templates,
               'Modify Collection',
@@ -299,7 +298,7 @@
                       true,
                       [
                         {
-                          rule: Joi.string().allow('').optional().regex(/^[1-9]*$/),
+                          rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                           msg: 'Must be a number. Must be at least 1 and has to be smaller or equal compared to the replicationFactor.'
                         }
                       ]

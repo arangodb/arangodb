@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -109,31 +109,29 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
     IndexIterator* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
-  collection->getPhysical()->read(
-      _trx, etkn.localDocumentId(),
-      [&](LocalDocumentId const&, VPackSlice edgeDoc) {
+  auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
-        if (_trx->skipInaccessible()) {
-          // TODO: we only need to check one of these
-          VPackSlice from =
-              transaction::helpers::extractFromFromDocument(edgeDoc);
-          VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
-          if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-            return false;
-          }
-        }
+    if (_trx->skipInaccessible()) {
+      // TODO: we only need to check one of these
+      VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
+      VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+      if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+        return false;
+      }
+    }
 #endif
-        _opts->cache()->incrDocuments();
-        if (_internalCursorMapping != nullptr) {
-          TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-          callback(std::move(etkn), edgeDoc,
-                   _internalCursorMapping->at(_currentCursor));
-        } else {
-          callback(std::move(etkn), edgeDoc, _currentCursor);
-        }
-        return true;
-      },
-      ReadOwnWrites::no);
+    _opts->cache()->incrDocuments();
+    if (_internalCursorMapping != nullptr) {
+      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
+      callback(std::move(etkn), edgeDoc,
+               _internalCursorMapping->at(_currentCursor));
+    } else {
+      callback(std::move(etkn), edgeDoc, _currentCursor);
+    }
+    return true;
+  };
+  collection->getPhysical()->lookup(_trx, etkn.localDocumentId(), cb,
+                                    {.countBytes = true});
 }
 
 bool SingleServerEdgeCursor::advanceCursor(
@@ -198,8 +196,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
       if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
         bool operationSuccessful = false;
         cursor->nextCovering(
-            [&](LocalDocumentId const& token,
-                IndexIteratorCoveringData& covering) {
+            [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
               TRI_ASSERT(covering.isArray());
               VPackSlice edge = covering.at(coveringPosition);
               TRI_ASSERT(edge.isString());
@@ -233,7 +230,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
       } else {
         _cache.clear();
         bool tmp = cursor->next(
-            [&](LocalDocumentId const& token) {
+            [&](LocalDocumentId token) {
               if (token.isSet()) {
                 // Document found
                 _cache.emplace_back(token);
@@ -271,46 +268,43 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
         // thanks AppleClang for having to declare this extra variable!
         uint16_t cv = coveringPosition;
 
-        cursor->allCovering([&](LocalDocumentId const& token,
-                                IndexIteratorCoveringData& covering) {
-          TRI_ASSERT(covering.isArray());
-          VPackSlice edge = covering.at(cv);
-          TRI_ASSERT(edge.isString());
+        cursor->allCovering(
+            [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
+              TRI_ASSERT(covering.isArray());
+              VPackSlice edge = covering.at(cv);
+              TRI_ASSERT(edge.isString());
 
 #ifdef USE_ENTERPRISE
-          if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-            return false;
+              if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+                return false;
+              }
+#endif
+              _opts->cache()->incrDocuments();
+              callback(EdgeDocumentToken(cid, token), edge, cursorId);
+              return true;
+            });
+      } else {
+        auto cb = [&](LocalDocumentId token, aql::DocumentData&&,
+                      VPackSlice edgeDoc) {
+#ifdef USE_ENTERPRISE
+          if (_trx->skipInaccessible()) {
+            // TODO: we only need to check one of these
+            VPackSlice from =
+                transaction::helpers::extractFromFromDocument(edgeDoc);
+            VPackSlice to =
+                transaction::helpers::extractToFromDocument(edgeDoc);
+            if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+              return false;
+            }
           }
 #endif
           _opts->cache()->incrDocuments();
-          callback(EdgeDocumentToken(cid, token), edge, cursorId);
+          callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
           return true;
-        });
-      } else {
-        cursor->all([&](LocalDocumentId const& token) {
+        };
+        cursor->all([&](LocalDocumentId token) {
           return collection->getPhysical()
-              ->read(
-                  _trx, token,
-                  [&](LocalDocumentId const&, VPackSlice edgeDoc) {
-#ifdef USE_ENTERPRISE
-                    if (_trx->skipInaccessible()) {
-                      // TODO: we only need to check one of these
-                      VPackSlice from =
-                          transaction::helpers::extractFromFromDocument(
-                              edgeDoc);
-                      VPackSlice to =
-                          transaction::helpers::extractToFromDocument(edgeDoc);
-                      if (CheckInaccessible(_trx, from) ||
-                          CheckInaccessible(_trx, to)) {
-                        return false;
-                      }
-                    }
-#endif
-                    _opts->cache()->incrDocuments();
-                    callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
-                    return true;
-                  },
-                  ReadOwnWrites::no)
+              ->lookup(_trx, token, cb, {.countBytes = true})
               .ok();
         });
       }
@@ -407,8 +401,12 @@ void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
     uint16_t coveringPosition = aql::Projections::kNoCoveringIndexPosition;
 
     // projections we want to cover
-    aql::Projections edgeProjections(std::vector<aql::AttributeNamePath>(
-        {StaticStrings::FromString, StaticStrings::ToString}));
+    std::vector<aql::AttributeNamePath> paths = {};
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::FromString}, _monitor));
+    paths.emplace_back(
+        aql::AttributeNamePath({StaticStrings::ToString}, _monitor));
+    aql::Projections edgeProjections(std::move(paths));
 
     if (index->covers(edgeProjections)) {
       // find opposite attribute

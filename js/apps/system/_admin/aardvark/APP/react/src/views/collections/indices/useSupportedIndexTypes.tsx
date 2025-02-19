@@ -1,10 +1,10 @@
 import { ArangojsResponse } from "arangojs/lib/request";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
-import { IndexType } from "./useFetchIndices";
+import { CollectionIndex } from "./CollectionIndex.types";
 
 interface EngineResponse extends ArangojsResponse {
-  body: {
+  parsedBody: {
     supports: {
       indexes: string[];
       aliases?: {
@@ -16,13 +16,13 @@ interface EngineResponse extends ArangojsResponse {
 
 export const useSupportedIndexTypes = () => {
   const { data, ...rest } = useSWR<EngineResponse>(`/engine`, path => {
-    return (getApiRouteForCurrentDB().get(path) as any) as Promise<
-      EngineResponse
-    >;
+    return getApiRouteForCurrentDB().get(
+      path
+    ) as any as Promise<EngineResponse>;
   });
 
-  const indexes = data?.body.supports.indexes;
-  const aliases = data?.body.supports.aliases?.indexes || {};
+  const indexes = data?.parsedBody.supports.indexes;
+  const aliases = data?.parsedBody.supports.aliases?.indexes || {};
   const supported = indexes?.filter(indexType => {
     return !aliases.hasOwnProperty(indexType);
   });
@@ -34,7 +34,7 @@ export const useSupportedIndexTypes = () => {
 
 const indexTypeOptions: {
   label: string;
-  value: IndexType;
+  value: CollectionIndex["type"] | "fulltext";
 }[] = [
   {
     label: "Persistent Index",
@@ -53,8 +53,12 @@ const indexTypeOptions: {
     value: "ttl"
   },
   {
-    label: "ZKD Index (EXPERIMENTAL)",
-    value: "zkd"
+    label: "MDI Index",
+    value: "mdi"
+  },
+  {
+    label: "MDI Index (Prefixed)",
+    value: "mdi-prefixed"
   },
   {
     label: "Inverted Index",

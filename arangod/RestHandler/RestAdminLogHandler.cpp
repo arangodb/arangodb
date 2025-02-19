@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,20 +23,18 @@
 
 #include "RestAdminLogHandler.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogLevel.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -44,26 +42,14 @@
 #include "RestServer/LogBufferFeature.h"
 #include "Utils/ExecContext.h"
 
-using namespace arangodb;
-using namespace arangodb::basics;
-using namespace arangodb::rest;
+#include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
-namespace {
-network::Headers buildHeaders(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
+namespace arangodb {
 
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
-}  // namespace
+using namespace basics;
 
 RestAdminLogHandler::RestAdminLogHandler(arangodb::ArangodServer& server,
                                          GeneralRequest* request,
@@ -105,7 +91,18 @@ RestStatus RestAdminLogHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::DELETE_REQ) {
-    clearLogs();
+    if (suffixes.empty() ||
+        (suffixes.size() == 1 && suffixes[0] == "entries")) {
+      clearLogs();
+    } else if (suffixes.size() == 1 && suffixes[0] == "level") {
+      // reset log levels to defaults
+      handleLogLevel();
+    } else {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                    "superfluous suffix, expecting /_admin/log/<suffix>, "
+                    "where suffix can be either omitted or 'level'");
+    }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
       return reportLogs(/*newFormat*/ false);
@@ -180,7 +177,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       if (!found) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown serverId supplied."));
+                      "unknown serverId supplied.");
         return RestStatus::DONE;
       }
 
@@ -197,8 +194,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
 
       auto f = network::sendRequestRetry(
           pool, "server:" + serverId, fuerte::RestVerb::Get,
-          _request->requestPath(), VPackBuffer<uint8_t>{}, options,
-          buildHeaders(_request->headers()));
+          _request->requestPath(), VPackBuffer<uint8_t>{}, options);
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -247,8 +243,8 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       bool isValid = Logger::translateLogLevel(logLevel, true, ul);
       if (!isValid) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown '") + (found2 ? "level" : "upto") +
-                          "' log level: '" + logLevel + "'");
+                      absl::StrCat("unknown '", (found2 ? "level" : "upto"),
+                                   "' log level: '", logLevel, "'"));
         return RestStatus::DONE;
       }
     }
@@ -461,7 +457,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
       if (!found) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown serverId supplied."));
+                      "unknown serverId supplied.");
         return RestStatus::DONE;
       }
 
@@ -480,7 +476,8 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
           GeneralRequest::translateMethod(_request->requestType()));
 
       auto body = std::invoke([&]() -> std::optional<VPackBuffer<uint8_t>> {
-        if (_request->requestType() == rest::RequestType::GET) {
+        if (_request->requestType() == rest::RequestType::GET ||
+            _request->requestType() == rest::RequestType::DELETE_REQ) {
           return VPackBuffer<uint8_t>{};
         }
 
@@ -498,9 +495,9 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
         return RestStatus::DONE;  // error message from vpack parser
       }
 
-      auto f = network::sendRequestRetry(
-          pool, "server:" + serverId, requestType, _request->requestPath(),
-          std::move(*body), options, buildHeaders(_request->headers()));
+      auto f = network::sendRequestRetry(pool, "server:" + serverId,
+                                         requestType, _request->requestPath(),
+                                         std::move(*body), options);
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -513,19 +510,26 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     }
   }
 
-  auto const type = _request->requestType();
+  auto withAppenders =
+      basics::StringUtils::tolower(_request->value("withAppenders")) == "true";
 
+  auto getLogLevels = [withAppenders]() {
+    auto buildResult = [](auto const& config) {
+      VPackBuilder builder;
+      velocypack::serialize(builder, config);
+      return builder;
+    };
+    if (withAppenders) {
+      return buildResult(Logger::getAppendersConfig());
+    } else {
+      return buildResult(Logger::getLogLevels());
+    }
+  };
+
+  auto const type = _request->requestType();
   if (type == rest::RequestType::GET) {
     // report log level
-    VPackBuilder builder;
-    builder.openObject();
-    auto const& levels = Logger::logLevelTopics();
-    for (auto const& level : levels) {
-      builder.add(level.first,
-                  VPackValue(Logger::translateLogLevel(level.second)));
-    }
-    builder.close();
-
+    VPackBuilder builder = getLogLevels();
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else if (type == rest::RequestType::PUT) {
     // set log level
@@ -538,32 +542,50 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     if (slice.isString()) {
       Logger::setLogLevel(slice.copyString());
     } else if (slice.isObject()) {
-      if (VPackSlice all = slice.get("all"); all.isString()) {
-        // handle "all" first, so we can do
-        // {"all":"info","requests":"debug"} or such
-        std::string const l = "all=" + all.copyString();
-        Logger::setLogLevel(l);
-      }
-      // now process all log topics except "all"
-      for (auto it : VPackObjectIterator(slice)) {
-        if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
-          std::string const l =
-              it.key.copyString() + "=" + it.value.copyString();
-          Logger::setLogLevel(l);
+      auto parseConfig = [&](auto& config) {
+        if (auto res = velocypack::deserializeWithStatus(slice, config);
+            !res.ok()) {
+          auto msg = absl::StrCat("Failed to update log levels: ", res.error());
+          if (!res.path().empty()) {
+            msg = absl::StrCat(msg, " at path ", res.path());
+          }
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        msg);
+          return false;
         }
+        return true;
+      };
+
+      if (withAppenders) {
+        AppendersLogLevelConfig config;
+        if (!parseConfig(config)) {
+          return RestStatus::DONE;
+        }
+
+        auto res = Logger::setLogLevel(config);
+        if (res.fail()) {
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        absl::StrCat("Failed to update log levels: ",
+                                     res.errorMessage()));
+          return RestStatus::DONE;
+        }
+      } else {
+        LogLevels config;
+        if (!parseConfig(config)) {
+          return RestStatus::DONE;
+        }
+        Logger::setLogLevel(config);
       }
     }
 
-    // now report current log level
-    VPackBuilder builder;
-    builder.openObject();
-    auto const& levels = Logger::logLevelTopics();
-    for (auto const& level : levels) {
-      builder.add(level.first,
-                  VPackValue(Logger::translateLogLevel(level.second)));
-    }
-    builder.close();
+    // now report current log levels
+    VPackBuilder builder = getLogLevels();
+    generateResult(rest::ResponseCode::OK, builder.slice());
+  } else if (type == rest::RequestType::DELETE_REQ) {
+    Logger::resetLevelsToDefault();
 
+    // now report resetted log levels
+    VPackBuilder builder = getLogLevels();
     generateResult(rest::ResponseCode::OK, builder.slice());
   } else {
     // invalid method
@@ -621,3 +643,5 @@ void RestAdminLogHandler::handleLogStructuredParams() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 }
+
+}  // namespace arangodb

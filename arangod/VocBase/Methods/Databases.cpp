@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
+#include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/ScopeGuard.h"
@@ -41,22 +41,30 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
+#ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
 #include "V8/v8-utils.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/V8Executor.h"
 #include "VocBase/Methods/Tasks.h"
+#endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
 #include <chrono>
 #include <thread>
 
+#include <absl/strings/str_cat.h>
+
+#ifdef USE_V8
 #include <v8.h>
+#endif
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -180,13 +188,39 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
-  bool extendedNames =
-      info.server().getFeature<DatabaseFeature>().extendedNames();
+  DatabaseFeature& databaseFeature =
+      info.server().getFeature<DatabaseFeature>();
+
+  bool extendedNames = databaseFeature.extendedNames();
 
   if (auto res = DatabaseNameValidator::validateName(
           /*allowSystem*/ false, extendedNames, info.getName());
       res.fail()) {
     return res;
+  }
+
+  auto& agencyCache = info.server().getFeature<ClusterFeature>().agencyCache();
+  auto [acb, index] = agencyCache.read(
+      std::vector<std::string>{AgencyCommHelper::path("Plan/Databases")});
+
+  velocypack::Slice databaseSlice =
+      acb->slice()[0].get(std::initializer_list<std::string_view>{
+          AgencyCommHelper::path(), "Plan", "Databases"});
+
+  // databases are stored in an object with database names as keys.
+  if (databaseSlice.isObject() &&
+      databaseSlice.length() >= databaseFeature.maxDatabases()) {
+    // we already have reached the maximum number of databases and we
+    // cannot create an additional one.
+    // note: when more than one coordinator is used, it is possible to
+    // exceed the maximum number of databases during the time window in
+    // which the number of databases stored in the agency is below the
+    // limit, but multiple coordinators are creating new databases.
+    return {
+        TRI_ERROR_RESOURCE_LIMIT,
+        absl::StrCat("unable to create additional database because it would "
+                     "exceed the configured maximum number of databases (",
+                     databaseFeature.maxDatabases(), ")")};
   }
 
   LOG_TOPIC("56372", DEBUG, Logger::CLUSTER)
@@ -242,7 +276,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
-  TRI_vocbase_t vocbase(std::move(tempInfo));
+  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.versionTracker(),
+                        databaseFeature.extendedNames());
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
@@ -370,15 +405,26 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
       return res;
     }
 
-    if (createInfo.replicationVersion() == replication::Version::TWO &&
-        !replication2::EnableReplication2) {
-      using namespace std::string_view_literals;
-      auto const message =
-          R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
-      LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
-      // Should not happen during testing
-      TRI_ASSERT(false);
-      return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
+    if (ServerState::instance()->isDBServer() &&
+        createInfo.replicationVersion() == replication::Version::TWO) {
+      if (!replication2::EnableReplication2) {
+        using namespace std::string_view_literals;
+        auto const message =
+            R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
+        LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
+        // Should not happen during testing
+        TRI_ASSERT(false);
+        return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
+      }
+
+      auto& selector = server.getFeature<EngineSelectorFeature>();
+      auto& engine = selector.engine<RocksDBEngine>();
+      if (engine.syncThread() == nullptr) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                      "Automatic syncing must be enabled for replication "
+                      "version 2. Please make sure the --rocksdb.sync-interval "
+                      "option is set to a value greater than 0.");
+      }
     }
 
     if (ServerState::instance()
@@ -456,7 +502,6 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
   return TRI_ERROR_NO_ERROR;
 }
 
-const std::string dropError = "Error when dropping database";
 }  // namespace
 
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
@@ -467,69 +512,69 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     return TRI_ERROR_FORBIDDEN;
   }
 
-  bool extendedNames =
-      systemVocbase->server().getFeature<DatabaseFeature>().extendedNames();
-
-  if (auto res = DatabaseNameValidator::validateName(
-          /*allowSystem*/ false, extendedNames, dbName);
-      res.fail()) {
-    return res;
-  }
-
   Result res;
   auto& server = systemVocbase->server();
+#ifdef USE_V8
   if (server.hasFeature<V8DealerFeature>() &&
       server.isEnabled<V8DealerFeature>()) {
+    constexpr std::string_view dropError = "Error when dropping database: ";
     V8DealerFeature& dealer = server.getFeature<V8DealerFeature>();
     try {
       JavaScriptSecurityContext securityContext =
           JavaScriptSecurityContext::createInternalContext();
 
-      v8::Isolate* isolate = v8::Isolate::GetCurrent();
-      V8ConditionalContextGuard guard(res, isolate, systemVocbase,
-                                      securityContext);
+      V8ConditionalExecutorGuard guard(systemVocbase, securityContext);
 
-      if (res.fail()) {
+      if (guard.isolate() == nullptr) {
         events::DropDatabase(dbName, res, exec);
         return res;
       }
 
-      v8::HandleScope scope(isolate);
+      Task::removeTasksForDatabase(dbName);
 
-      // clear collections in cache object
-      TRI_ClearObjectCacheV8(isolate);
+      res = guard.runInContext([&](v8::Isolate* isolate) -> Result {
+        v8::HandleScope scope(isolate);
 
-      if (ServerState::instance()->isCoordinator()) {
-        // If we are a coordinator in a cluster, we have to behave
-        // differently:
-        auto& df = server.getFeature<DatabaseFeature>();
-        res = ::dropDBCoordinator(df, dbName);
-      } else {
-        res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
+        // clear collections in cache object
+        TRI_ClearObjectCacheV8(isolate);
 
-        if (res.fail()) {
-          events::DropDatabase(dbName, res, exec);
-          return res;
+        Result res;
+
+        if (ServerState::instance()->isCoordinator()) {
+          // If we are a coordinator in a cluster, we have to behave
+          // differently:
+          auto& df = server.getFeature<DatabaseFeature>();
+          res = ::dropDBCoordinator(df, dbName);
+        } else {
+          res = server.getFeature<DatabaseFeature>().dropDatabase(dbName);
+
+          if (res.fail()) {
+            events::DropDatabase(dbName, res, exec);
+            return res;
+          }
+
+          // run the garbage collection in case the database held some objects
+          // which can now be freed
+          TRI_RunGarbageCollectionV8(isolate, 0.1);
         }
+        return res;
+      });
 
-        Task::removeTasksForDatabase(dbName);
-        // run the garbage collection in case the database held some objects
-        // which can now be freed
-        TRI_RunGarbageCollectionV8(isolate, 0.25);
-        dealer.addGlobalContextMethod(
-            GlobalContextMethods::MethodType::kReloadRouting);
-      }
+      dealer.addGlobalExecutorMethod(
+          GlobalExecutorMethods::MethodType::kReloadRouting);
     } catch (basics::Exception const& ex) {
       events::DropDatabase(dbName, TRI_ERROR_INTERNAL, exec);
-      return Result(ex.code(), dropError + ex.message());
+      return Result(ex.code(), absl::StrCat(dropError, ex.message()));
     } catch (std::exception const& ex) {
       events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
-      return Result(TRI_ERROR_INTERNAL, dropError + ex.what());
+      return Result(TRI_ERROR_INTERNAL, absl::StrCat(dropError, ex.what()));
     } catch (...) {
       events::DropDatabase(dbName, Result(TRI_ERROR_INTERNAL), exec);
       return Result(TRI_ERROR_INTERNAL, dropError);
     }
-  } else {
+  } else
+#endif
+  {
     if (ServerState::instance()->isCoordinator()) {
       // If we are a coordinator in a cluster, we have to behave differently:
       auto& df = server.getFeature<DatabaseFeature>();
@@ -544,7 +589,14 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     auto cb = [&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     };
-    res = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+    if (auto cleanupUsersRes = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+        cleanupUsersRes.fail()) {
+      LOG_TOPIC("9f8b7", WARN, Logger::AUTHORIZATION)
+          << "Failed to cleanup "
+             "users permissions after dropping "
+             "database "
+          << dbName << ": " << cleanupUsersRes;
+    }
   }
 
   events::DropDatabase(dbName, res, exec);

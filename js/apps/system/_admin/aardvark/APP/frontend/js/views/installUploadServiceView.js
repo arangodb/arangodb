@@ -1,5 +1,4 @@
-/* jshint browser: true */
-/* global Backbone, $, window, arangoHelper, templateEngine */
+/* global templateEngine */
 (function () {
   'use strict';
 
@@ -84,6 +83,9 @@
         info = {
           zipFile: window.foxxData.data.filename
         };
+        if (window.foxxData.data.hasOwnProperty('coordinatorId')) {
+          info.coordinatorId = window.foxxData.data.coordinatorId;
+        }
 
         options = arangoHelper.getFoxxFlags();
         options.legacy = Boolean($('#zip-app-islegacy')[0].checked);

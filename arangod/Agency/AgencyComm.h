@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -212,6 +212,8 @@ class AgencyPrecondition {
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
   AgencyPrecondition(std::string const& key, Type, velocypack::Slice const&);
+  AgencyPrecondition(std::string const& key, Type,
+                     std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::string const& key, Type t, T const& v)
       : key(AgencyCommHelper::path(key)),
@@ -226,6 +228,8 @@ class AgencyPrecondition {
                      Type, bool e);
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type, velocypack::Slice const&);
+  AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
+                     Type, std::shared_ptr<velocypack::Builder>);
   template<typename T>
   AgencyPrecondition(std::shared_ptr<cluster::paths::Path const> const& path,
                      Type t, T const& v)
@@ -243,8 +247,8 @@ class AgencyPrecondition {
   std::string key;
   Type type;
   bool empty;
-  velocypack::Slice value;
   std::shared_ptr<VPackBuilder> builder;
+  velocypack::Slice value;
 };
 
 // -----------------------------------------------------------------------------
@@ -319,6 +323,11 @@ class AgencyOperation {
   void toGeneralBuilder(arangodb::velocypack::Builder& builder) const;
   AgencyOperationType type() const;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  std::string const& key() const { return _key; }
+#endif
+
+ public:
   uint64_t _ttl = 0;
 
  private:
@@ -575,7 +584,11 @@ class AgencyComm {
   static uint64_t const MAX_SLEEP_TIME = 50000;     // microseconds
 
  public:
-  explicit AgencyComm(ArangodServer&);
+  [[deprecated(
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] explicit AgencyComm(ArangodServer&);
+  AgencyComm(ApplicationServer&, ClusterFeature&, EngineSelectorFeature&,
+             DatabaseFeature&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -631,8 +644,9 @@ class AgencyComm {
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
-  ArangodServer& server();
-
+  // TODO I think this should be moved into ClusterFeature, which would allow us
+  //      here to get rid of both the ClusterFeature and the DatabaseFeature
+  //      dependencies.
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
@@ -650,7 +664,10 @@ class AgencyComm {
 
   bool shouldInitializeStructure();
 
-  ArangodServer& _server;
+  ApplicationServer& _server;
+  ClusterFeature& _clusterFeature;
+  EngineSelectorFeature& _engineSelectorFeature;
+  DatabaseFeature& _databaseFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
 

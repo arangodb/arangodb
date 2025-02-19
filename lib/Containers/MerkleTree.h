@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -302,7 +302,11 @@ class MerkleTree : public MerkleTreeBase {
   MerkleTree& operator=(
       std::unique_ptr<MerkleTree<Hasher, BranchingBits>>&& other);
 
+  /// @brief base memory usage for struct + dynamic memory usage
   std::uint64_t memoryUsage() const;
+
+  /// @brief only dynamic memory usage (excluding base memory usage)
+  std::uint64_t dynamicMemoryUsage() const;
 
   /**
    * @brief Returns the number of hashed keys contained in the tree
@@ -371,6 +375,20 @@ class MerkleTree : public MerkleTreeBase {
    * @throws std::invalid_argument  If remove hits a node with 0 count
    */
   void remove(std::vector<std::uint64_t> const& keys);
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /**
+   * @brief Remove a batch of keys (as values) from the tree.
+   *        This is a special version of remove that processes the keys in
+   *        the specified order, without sorting them first.
+   *
+   * @param keys  The keys to be removed. Each key will be hashed to generate
+   *              a value, then removed as if by the basic single removal
+   *              method. This batch method is considerably more efficient.
+   * @throws std::invalid_argument  If remove hits a node with 0 count
+   */
+  void removeUnsorted(std::vector<std::uint64_t> const& keys);
+#endif
 
   /**
    * @brief Remove all values from the tree.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@
 
 #include <stddef.h>
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 #include "ErrorCode.h"
 
@@ -47,16 +46,9 @@ typedef long suseconds_t;
 /// @brief socket types
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-struct TRI_socket_t {
-  int fileDescriptor;
-  SOCKET fileHandle;
-};
-#else
 struct TRI_socket_t {
   int fileDescriptor;
 };
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief socket abstraction for different OSes
@@ -64,12 +56,7 @@ struct TRI_socket_t {
 
 static inline TRI_socket_t TRI_socket(int domain, int type, int protocol) {
   TRI_socket_t res;
-#ifdef _WIN32
-  res.fileHandle = socket(domain, type, protocol);
-  res.fileDescriptor = -1;
-#else
   res.fileDescriptor = socket(domain, type, protocol);
-#endif
   return res;
 }
 
@@ -78,11 +65,7 @@ static inline TRI_socket_t TRI_socket(int domain, int type, int protocol) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline int TRI_listen(TRI_socket_t s, int backlog) {
-#ifdef _WIN32
-  return listen(s.fileHandle, backlog);
-#else
   return listen(s.fileDescriptor, backlog);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -91,11 +74,7 @@ static inline int TRI_listen(TRI_socket_t s, int backlog) {
 
 static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
                            size_t addr_len) {
-#ifdef _WIN32
-  return bind(s.fileHandle, address, static_cast<int>(addr_len));
-#else
   return bind(s.fileDescriptor, address, (socklen_t)addr_len);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,11 +83,7 @@ static inline int TRI_bind(TRI_socket_t s, const struct sockaddr* address,
 
 static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
                               size_t addr_len) {
-#ifdef _WIN32
-  return connect(s.fileHandle, address, (int)addr_len);
-#else
   return connect(s.fileDescriptor, address, (socklen_t)addr_len);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,44 +92,26 @@ static inline int TRI_connect(TRI_socket_t s, const struct sockaddr* address,
 
 static inline long TRI_send(TRI_socket_t s, const void* buffer, size_t length,
                             int flags) {
-#ifdef _WIN32
-  return send(s.fileHandle, (char*)buffer, (int)length, flags);
-#else
   return send(s.fileDescriptor, buffer, length, flags);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getsockopt abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-static inline int TRI_getsockopt(TRI_socket_t s, int level, int optname,
-                                 void* optval, socklen_t* optlen) {
-  return getsockopt(s.fileHandle, level, optname, (char*)optval, optlen);
-}
-#else
 static inline int TRI_getsockopt(TRI_socket_t s, int level, int optname,
                                  void* optval, socklen_t* optlen) {
   return getsockopt(s.fileDescriptor, level, optname, optval, optlen);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setsockopt abstraction for different OSes
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
-                                 const void* optval, int optlen) {
-  return setsockopt(s.fileHandle, level, optname, (char const*)optval, optlen);
-}
-#else
 static inline int TRI_setsockopt(TRI_socket_t s, int level, int optname,
                                  const void* optval, socklen_t optlen) {
   return setsockopt(s.fileDescriptor, level, optname, optval, optlen);
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setsockopt abstraction for different OSes
@@ -167,11 +124,7 @@ bool TRI_setsockopttimeout(TRI_socket_t s, double timeout);
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline bool TRI_isvalidsocket(TRI_socket_t s) {
-#ifdef _WIN32
-  return s.fileHandle != TRI_INVALID_SOCKET;
-#else
   return s.fileDescriptor != TRI_INVALID_SOCKET;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -179,12 +132,7 @@ static inline bool TRI_isvalidsocket(TRI_socket_t s) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline void TRI_invalidatesocket(TRI_socket_t* s) {
-#ifdef _WIN32
-  s->fileHandle = TRI_INVALID_SOCKET;
-  s->fileDescriptor = -1;
-#else
   s->fileDescriptor = TRI_INVALID_SOCKET;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -194,15 +142,9 @@ static inline void TRI_invalidatesocket(TRI_socket_t* s) {
 /// the right thing we need in all but one places.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-static inline SOCKET TRI_get_fd_or_handle_of_socket(TRI_socket_t s) {
-  return s.fileHandle;
-}
-#else
 static inline int TRI_get_fd_or_handle_of_socket(TRI_socket_t s) {
   return s.fileDescriptor;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open socket
@@ -240,3 +182,44 @@ ErrorCode TRI_InetPton4(char const* src, unsigned char* dst);
 ////////////////////////////////////////////////////////////////////////////////
 
 ErrorCode TRI_InetPton6(char const* src, unsigned char* dst);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks whether or not an idle TCP/IP connection is still alive
+/// This method is intended to be used for TCP/IP connections only and only
+/// on known idle connections (see below)!
+/// If the kernel is aware of the fact that the connection is broken,
+/// this is not immediately visible to the application with any read or
+/// write operation. Therefore, if a connection has been idle for some time,
+/// it might have been broken without the application noticing it. This
+/// can for example happen if the connection is taken from a connection
+/// cache. This method does a non-invasive non-blocking `recv` call to see
+/// if the connection is still alive. Interpretation of results:
+///   If the recv call returns 0, the connection is broken. In this case we
+///   return `false`.
+///   If the recv call returns -1, the connection is still alive and errno
+///   is set to EAGAIN == EWOULDBLOCK. In this case we return `true`.
+///   If something has been received on the socket, the recv call will return
+///   a positive number. In this case we return `false` as well, since we
+///   are assuming the the connection is idle and bad things would happen
+///   if we continue to use it anyway. This includes the following important
+///   case: If the connection is actually a TLS connection, the other side
+///   might have sent a "Notify: Close" TLS message to close the connection.
+///   If the connection was in a connection cache and thus has not read
+///   data recently, the TLS layer might not have noticed the close message.
+///   As a consequence the actual TCP/IP connection is not yet closed, but
+///   it is dead in the water, since the very next time we try to read or
+///   write data, the TLS layer will notice the close message and close the
+///   connection right away.
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool TRI_socket_test_idle_connection(TRI_socket_t s) {
+#ifdef __linux__
+  char buf[16];
+  ssize_t ret =
+      recv(s.fileDescriptor, buf, sizeof(buf), MSG_PEEK | MSG_DONTWAIT);
+  if (ret >= 0) {
+    return false;
+  }
+#endif
+  return true;
+}

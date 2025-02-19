@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,8 @@ LateMaterializedExpressionContext::LateMaterializedExpressionContext(
     aql::AqlFunctionsInternalCache& cache,
     std::vector<std::pair<VariableId, RegisterId>> const& filterVarsToRegister,
     InputAqlItemRow const& inputRow,
-    IndexNode::IndexValuesVars const& outNonMaterializedIndVars) noexcept
+    IndexNode::IndexFilterCoveringVars const&
+        outNonMaterializedIndVars) noexcept
     : DocumentProducingExpressionContext(trx, query, cache,
                                          filterVarsToRegister, inputRow),
       _outNonMaterializedIndVars(outNonMaterializedIndVars),
@@ -47,8 +48,8 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
       variable, doCopy, mustDestroy,
       [this](Variable const* variable, bool doCopy, bool& mustDestroy) {
         mustDestroy = doCopy;
-        auto const it = _outNonMaterializedIndVars.second.find(variable);
-        if (it != _outNonMaterializedIndVars.second.end()) {
+        auto const it = _outNonMaterializedIndVars.find(variable);
+        if (it != _outNonMaterializedIndVars.end()) {
           // return data from current index entry
           velocypack::Slice s;
           // hash/skiplist/persistent
@@ -67,15 +68,15 @@ AqlValue LateMaterializedExpressionContext::getVariableValue(
           return AqlValue(AqlValueHintSliceNoCopy(s));
         }
 
-        for (auto const& [id, regId] : _filterVarsToRegister) {
+        auto regId = registerForVariable(variable->id);
+        TRI_ASSERT(regId != RegisterId::maxRegisterId);
+        if (regId != RegisterId::maxRegisterId) {
           // we can only get here in a post-filter expression
-          if (variable->id == id) {
-            TRI_ASSERT(regId < _inputRow.getNumRegisters());
-            if (doCopy) {
-              return _inputRow.getValue(regId).clone();
-            }
-            return _inputRow.getValue(regId);
+          TRI_ASSERT(regId < _inputRow.getNumRegisters());
+          if (doCopy) {
+            return _inputRow.getValue(regId).clone();
           }
+          return _inputRow.getValue(regId);
         }
 
         // should never happen

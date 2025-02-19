@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,15 +23,20 @@
 
 #pragma once
 
+#include "Aql/types.h"
+#include "Basics/ResourceUsage.h"
+
 #include <cstdint>
+#include <memory>
+#include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
+#ifdef USE_V8
 #include <v8.h>
+#endif
 #include <velocypack/Slice.h>
-
-#include "Aql/types.h"
-#include "Containers/HashSet.h"
 
 namespace arangodb {
 namespace transaction {
@@ -56,22 +61,15 @@ struct Variable;
 /// @brief AqlExpression, used in execution plans and execution blocks
 class Expression {
  public:
-  enum ExpressionType : uint32_t {
-    UNPROCESSED,
-    JSON,
-    SIMPLE,
-    ATTRIBUTE_ACCESS
-  };
-
   Expression(Expression const&) = delete;
   Expression& operator=(Expression const&) = delete;
   Expression() = delete;
 
   /// @brief constructor, using an AST start node
-  Expression(Ast*, AstNode*);
+  Expression(Ast* ast, AstNode* node);
 
   /// @brief constructor, using VPack
-  Expression(Ast*, arangodb::velocypack::Slice const&);
+  Expression(Ast* ast, velocypack::Slice slice);
 
   ~Expression();
 
@@ -106,21 +104,24 @@ class Expression {
   void variables(VarSet&) const;
 
   /// @brief return a VelocyPack representation of the expression
-  void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose) const;
+  void toVelocyPack(velocypack::Builder& builder, bool verbose) const;
 
   /// @brief execute the expression
   AqlValue execute(ExpressionContext* ctx, bool& mustDestroy);
 
   /// @brief get expression type as string
-  std::string typeString();
+  std::string_view typeString();
 
   // @brief invoke JavaScript aql functions with args as param.
+#ifdef USE_V8
   static AqlValue invokeV8Function(ExpressionContext& expressionContext,
                                    std::string const& jsName,
+                                   v8::Isolate* isolate,
                                    std::string const& ucInvokeFN,
                                    char const* AFN, bool rethrowV8Exception,
                                    size_t callArgs, v8::Handle<v8::Value>* args,
                                    bool& mustDestroy);
+#endif
 
   /// @brief check whether this is an attribute access of any degree (e.g. a.b,
   /// a.b.c, ...)
@@ -144,15 +145,17 @@ class Expression {
   void stringifyIfNotTooLong(std::string& buffer) const;
 
   /// @brief replace variables in the expression with other variables
-  void replaceVariables(std::unordered_map<VariableId, Variable const*> const&);
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const& replacements);
 
   /// @brief replace a variable reference in the expression with another
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
   /// latter becomes `a + b + 1`
   void replaceVariableReference(Variable const*, AstNode const*);
 
-  void replaceAttributeAccess(Variable const*,
-                              std::vector<std::string> const& attribute);
+  void replaceAttributeAccess(Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
 
   /// @brief reset internal attributes after variables in the expression were
   /// changed
@@ -166,8 +169,9 @@ class Expression {
   void freeInternals() noexcept;
 
   // find a value in an array
-  static bool findInArray(AqlValue const&, AqlValue const&,
-                          velocypack::Options const* vopts, AstNode const*);
+  static bool findInArray(AqlValue const& left, AqlValue const& right,
+                          velocypack::Options const* vopts,
+                          AstNode const* node);
 
   // analyze the expression (determine its type)
   void determineType();
@@ -302,8 +306,20 @@ class Expression {
     AttributeAccessor* _accessor;
   };
 
+  // we keep the amount of used bytes by the buffer stored in "_data" here.
+  size_t _usedBytesByData = 0;
+
   // type of expression
+  enum class ExpressionType : uint32_t {
+    kUnprocessed,
+    kJson,
+    kSimple,
+    kAttributeAccess,
+  };
+
   ExpressionType _type;
+
+  ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace aql

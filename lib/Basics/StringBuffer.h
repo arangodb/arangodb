@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,6 @@
 #include <sstream>
 #include <string_view>
 
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/memory.h"
@@ -284,14 +283,45 @@ class StringBuffer {
     return TRI_ReserveStringBuffer(&_buffer, length);
   }
 
-  /// @brief compress the buffer in place, using zlib-deflate
-  ErrorCode deflate();
+  /// @brief compress the buffer in place, using zlib-deflate.
+  /// if onlyIfSmaller is true, then the buffer will only contain the
+  /// compressed version if the compressed buffer size is smaller than
+  /// the original size. if onlyIfSmaller is false, then the buffer
+  /// will be compressed unconditionally.
+  /// if compression works, then TRI_ERROR_NO_ERROR is returned.
+  /// in case onlyIfSmaller=true and the buffer is not smaller after
+  /// compression, the special error code TRI_ERROR_DISABLED is returned.
+  ErrorCode zlibDeflate(bool onlyIfSmaller);
 
   /// @brief compress the buffer in place, using gzip compression
-  ErrorCode gzip();
+  /// if onlyIfSmaller is true, then the buffer will only contain the
+  /// compressed version if the compressed buffer size is smaller than
+  /// the original size. if onlyIfSmaller is false, then the buffer
+  /// will be compressed unconditionally.
+  /// if compression works, then TRI_ERROR_NO_ERROR is returned.
+  /// in case onlyIfSmaller=true and the buffer is not smaller after
+  /// compression, the special error code TRI_ERROR_DISABLED is returned.
+  ErrorCode gzipCompress(bool onlyIfSmaller);
+
+  /// @brief compress the buffer in place, using lz4 compression
+  /// if onlyIfSmaller is true, then the buffer will only contain the
+  /// compressed version if the compressed buffer size is smaller than
+  /// the original size. if onlyIfSmaller is false, then the buffer
+  /// will be compressed unconditionally.
+  /// if compression works, then TRI_ERROR_NO_ERROR is returned.
+  /// in case onlyIfSmaller=true and the buffer is not smaller after
+  /// compression, the special error code TRI_ERROR_DISABLED is returned.
+  ErrorCode lz4Compress(bool onlyIfSmaller);
 
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
-  ErrorCode inflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
+  ErrorCode zlibInflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
+
+  /// @brief uncompress the buffer into StringBuffer out, using gzip uncompress
+  ErrorCode gzipUncompress(arangodb::basics::StringBuffer& out,
+                           size_t skip = 0);
+
+  /// @brief uncompress the buffer into StringBuffer out, using lz4 uncompress
+  ErrorCode lz4Uncompress(arangodb::basics::StringBuffer& out, size_t skip = 0);
 
   /// @brief returns the low level buffer
   TRI_string_buffer_t* stringBuffer() { return &_buffer; }

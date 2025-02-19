@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,19 +25,29 @@
 
 #include "Replication2/StateMachines/Document/ActiveTransactionsQueue.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
-#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
+
+#include "VocBase/Methods/Indexes.h"
 
 #include "Basics/UnshackledMutex.h"
 
 #include <atomic>
 #include <memory>
 
-namespace arangodb::transaction {
+namespace arangodb {
+class LogicalCollection;
+namespace transaction {
 struct IManager;
 }
+}  // namespace arangodb
 
 namespace arangodb::replication2::replicated_state::document {
+
+struct IDocumentStateTransactionHandler;
+struct IDocumentStateSnapshotHandler;
+
 struct DocumentLeaderState
     : replicated_state::IReplicatedLeaderState<DocumentState>,
       std::enable_shared_from_this<DocumentLeaderState> {
@@ -52,33 +62,62 @@ struct DocumentLeaderState
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
       -> futures::Future<Result> override;
 
-  auto replicateOperation(velocypack::SharedSlice payload,
-                          OperationType operation, TransactionId transactionId,
-                          ReplicationOptions opts) -> futures::Future<LogIndex>;
+  auto needsReplication(ReplicatedOperation const& op) -> bool;
 
-  std::size_t getActiveTransactionsCount() const noexcept {
-    return _activeTransactions.getLockedGuard()->size();
+  auto replicateOperation(ReplicatedOperation op, ReplicationOptions opts)
+      -> futures::Future<ResultT<LogIndex>>;
+
+  auto release(LogIndex index) -> Result;
+
+  auto release(TransactionId tid, LogIndex index) -> Result;
+
+  auto createShard(ShardID shard, TRI_col_type_e collectionType,
+                   velocypack::SharedSlice properties)
+      -> futures::Future<Result>;
+
+  auto modifyShard(ShardID shard, CollectionID collectionId,
+                   velocypack::SharedSlice properties)
+      -> futures::Future<Result>;
+
+  auto dropShard(ShardID shard) -> futures::Future<Result>;
+
+  auto createIndex(ShardID shard, VPackSlice indexInfo,
+                   std::shared_ptr<methods::Indexes::ProgressTracker> progress)
+      -> futures::Future<Result>;
+
+  auto dropIndex(ShardID shard, IndexId indexId) -> futures::Future<Result>;
+
+  auto getActiveTransactionsCount() const noexcept -> std::size_t {
+    return _activeTransactions.getLockedGuard()->getTransactions().size();
   }
+
+  auto getAssociatedShardList() const -> std::vector<ShardID>;
+
+  auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
 
   auto snapshotStart(SnapshotParams::Start const& params)
       -> ResultT<SnapshotBatch>;
+
   auto snapshotNext(SnapshotParams::Next const& params)
       -> ResultT<SnapshotBatch>;
+
   auto snapshotFinish(SnapshotParams::Finish const& params) -> Result;
-  auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
+
   auto allSnapshotsStatus() -> ResultT<AllSnapshotsStatus>;
 
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
-  ShardID const shardId;
 
  private:
   struct GuardedData {
-    explicit GuardedData(std::unique_ptr<DocumentCore> core)
-        : core(std::move(core)){};
+    explicit GuardedData(
+        std::unique_ptr<DocumentCore> core,
+        std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory);
+
     [[nodiscard]] bool didResign() const noexcept { return core == nullptr; }
 
     std::unique_ptr<DocumentCore> core;
+    std::shared_ptr<IDocumentStateTransactionHandler> transactionHandler;
   };
 
   template<class ResultType, class GetFunc, class ProcessFunc>
@@ -86,12 +125,16 @@ struct DocumentLeaderState
                                 ProcessFunc processSnapshot) -> ResultType;
 
   std::shared_ptr<IDocumentStateHandlersFactory> _handlersFactory;
+  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
+  Guarded<std::shared_ptr<IDocumentStateSnapshotHandler>,
+          basics::UnshackledMutex>
+      _snapshotHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
   Guarded<ActiveTransactionsQueue, std::mutex> _activeTransactions;
   transaction::IManager& _transactionManager;
-  Guarded<std::unique_ptr<IDocumentStateSnapshotHandler>,
-          basics::UnshackledMutex>
-      _snapshotHandler;
-  std::atomic_bool _isResigning;
+
+  std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of the
+                                        // state machine upon resigning
 };
 }  // namespace arangodb::replication2::replicated_state::document

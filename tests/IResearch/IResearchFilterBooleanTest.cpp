@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,7 +49,8 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AqlHelper.h"
@@ -57,6 +58,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewMeta.h"
@@ -70,12 +72,10 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
-#include "VocBase/Methods/Collections.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #endif
+#include "VocBase/Methods/Collections.h"
 
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
@@ -90,6 +90,8 @@ class IResearchFilterBooleanTest
                                             arangodb::LogLevel::ERR> {
  protected:
   arangodb::tests::mocks::MockAqlServer server;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
  private:
   TRI_vocbase_t* _vocbase;
@@ -109,7 +111,7 @@ class IResearchFilterBooleanTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -125,7 +127,7 @@ class IResearchFilterBooleanTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -147,7 +149,8 @@ class IResearchFilterBooleanTest
     analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         arangodb::velocypack::Parser::fromJson("{ \"args\": \"abc\" }")
-            ->slice());  // cache analyzer
+            ->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
   }
 
   TRI_vocbase_t& vocbase() { return *_vocbase; }
@@ -192,7 +195,7 @@ TEST_F(IResearchFilterBooleanTest, Ternary) {
                               arangodb::aql::AqlValueHintInt{1})));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -402,7 +405,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // string expression
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -452,7 +456,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // string expression, analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -506,7 +511,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   }
   // filter with constexpr analyzer
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -738,7 +744,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // boolean expression
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -961,7 +968,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // null expression
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1229,7 +1237,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
 
   // numeric expression
   {
-    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false);
+    arangodb::aql::Variable var("c", 0, /*isFullDocumentFromCollection*/ false,
+                                resourceMonitor);
     arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
     arangodb::aql::AqlValueGuard guard(value, true);
 
@@ -1394,7 +1403,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // array in expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER not [] == '1' RETURN d",
@@ -1412,7 +1421,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1465,8 +1475,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1510,7 +1521,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1563,8 +1575,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1605,7 +1618,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1658,8 +1672,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1699,7 +1714,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1752,8 +1768,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>();
@@ -1796,7 +1813,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1849,8 +1867,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1890,7 +1909,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -1943,8 +1963,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -1987,7 +2008,8 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -2040,8 +2062,9 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>().add<irs::Not>().filter<irs::And>();
@@ -3027,7 +3050,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         "'40' RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -3080,8 +3104,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::Or>();
@@ -3130,7 +3155,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
         "d.a.b.c < '40', 2.5) RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -3183,8 +3209,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryOr) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::Or>();
@@ -3505,7 +3532,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -3558,8 +3586,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -3940,7 +3969,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b < 40 RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -3993,8 +4023,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -4039,7 +4070,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "40 RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4092,8 +4124,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -4411,7 +4444,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER d.a[*].b >= 15 and d.a[*].b <= 40 RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4464,8 +4498,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -4600,7 +4635,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "FOR d IN collection FILTER d.a[*].b > 15 and d.a[*].b <= 40 RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -4653,8 +4689,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();
@@ -6699,7 +6736,8 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
         "'40' RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
 
     auto const parseResult = query->parse();
@@ -6752,8 +6790,9 @@ TEST_F(IResearchFilterBooleanTest, BinaryAnd) {
     // iteratorForCondition
     {
       arangodb::transaction ::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), {}, {}, {},
-          arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          {}, {}, {}, arangodb::transaction::Options());
 
       irs::Or expected;
       auto& root = expected.add<irs::And>();

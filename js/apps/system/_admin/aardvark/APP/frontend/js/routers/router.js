@@ -1,7 +1,4 @@
-/* jshint unused: false */
-// eslint-disable-next-line no-unused-vars
-/* global window, $, Backbone, document, d3, ReactDOM, React */
-/* global arangoHelper, _, frontendConfig */
+/* global frontendConfig */
 
 (function () {
   'use strict';
@@ -14,7 +11,6 @@
     foxxApiEnabled: undefined,
     statisticsInAllDatabases: undefined,
     lastRoute: undefined,
-    maxNumberOfMoveShards: undefined,
 
     routes: {
       '': 'cluster',
@@ -23,10 +19,12 @@
       'replication/applier/:endpoint/:database': 'applier',
       'collections': 'collections',
       'analyzers': 'analyzers',
+      'analyzers/:name': 'analyzers',
       'new': 'newCollection',
       'login': 'login',
       'collection/:colid/documents/:pageid': 'documents',
       'cIndices/:colname': 'cIndices',
+      'cIndices/:colname/:indexName': 'cIndices',
       'cSettings/:colname': 'cSettings',
       'cSchema/:colname': 'cSchema',
       'cComputedValues/:colname': 'cComputedValues',
@@ -34,8 +32,9 @@
       'collection/:colid/:docid': 'document',
       'queries': 'query',
       'databases': 'databases',
+      'databases/:name': 'databases',
       'settings': 'databases',
-      'services': 'applications',
+      'services': 'services',
       'services/install': 'installService',
       'services/install/new': 'installNewService',
       'services/install/github': 'installGitHubService',
@@ -50,11 +49,9 @@
       'users': 'userManagement',
       'user/:name': 'userView',
       'user/:name/permission': 'userPermission',
-      'userProfile': 'userProfile',
       'cluster': 'cluster',
       'nodes': 'nodes',
       'shards': 'shards',
-      'rebalanceShards': 'rebalanceShards',
       'maintenance': 'maintenance',
       'distribution': 'distribution',
       'node/:name': 'node',
@@ -62,8 +59,7 @@
       'logs': 'logger',
       'helpus': 'helpUs',
       'views': 'views',
-      'view/:name': 'viewSettings',
-      'view/:name/*link': 'viewSettings',
+      'view/:name': 'views',
       'graph/:name': 'graph',
       'graph/:name/settings': 'graphSettings',
       'support': 'support'
@@ -71,15 +67,6 @@
 
     execute: function (callback, args, handler, skipDirtyViewCheck = false) {
       const self = this;
-
-      if (this.lastRoute === '#queries') {
-        // cleanup input editors
-        this.queryView.removeInputEditors();
-        // cleanup old canvas elements
-        this.queryView.cleanupGraphs();
-        // cleanup old ace instances
-        this.queryView.removeResults();
-      }
 
       let skipExecute = false, goBack = true;
       if (this.lastRoute) {
@@ -159,9 +146,7 @@
           }
 
           // react unmounting
-          const reactRoot = document.getElementById('content-react');
-          if (reactRoot) ReactDOM.unmountComponentAtNode(reactRoot);
-          ReactDOM.unmountComponentAtNode(document.getElementById('content'));
+          window.unmountReactComponents();
         }
       }
 
@@ -183,13 +168,6 @@
         if (this.graphViewer) {
           if (this.graphViewer.graphSettingsView) {
             this.graphViewer.graphSettingsView.hide();
-          }
-        }
-        if (this.queryView) {
-          if (this.queryView.graphViewer) {
-            if (this.queryView.graphViewer.graphSettingsView) {
-              this.queryView.graphViewer.graphSettingsView.hide();
-            }
           }
         }
       }
@@ -263,8 +241,6 @@
         this.statisticsInAllDatabases = frontendConfig.statisticsInAllDatabases;
       }
 
-      this.maxNumberOfMoveShards = frontendConfig.maxNumberOfMoveShards;
-
       document.addEventListener('keyup', this.listener, false);
 
       // This should be the only global object
@@ -279,7 +255,8 @@
       window.progressView = new window.ProgressView();
 
       this.userCollection = new window.ArangoUsers();
-
+       
+      window.SkeletonLoader = new window.SkeletonLoader();
       this.initOnce = _.once(function () {
         const callback = function (error, isCoordinator) {
           if (isCoordinator === true) {
@@ -310,10 +287,6 @@
         // Cluster
         this.coordinatorCollection = new window.ClusterCoordinators();
 
-        window.spotlightView = new window.SpotlightView({
-          collection: this.arangoCollectionsStore
-        });
-
         arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
         this.arangoCollectionsStore.fetch({
@@ -337,14 +310,9 @@
             self.naviView.render();
           }
         });
-
-        this.queryCollection = new window.ArangoQueries();
-
         window.checkVersion();
 
-        this.userConfig = new window.UserConfig({
-          ldapEnabled: frontendConfig.ldapEnabled
-        });
+        this.userConfig = new window.UserConfig({});
         this.userConfig.fetch();
 
         this.documentsView = new window.DocumentsView({
@@ -374,16 +342,20 @@
 
     analyzers: function () {
       this.checkUser();
-
-      this.init.then(() => ReactDOM.render(React.createElement(window.AnalyzersReactView),
-        document.getElementById('content')));
+      this.init.then(() =>
+        window.renderReactComponent(
+          React.createElement(window.AnalyzersReactView)
+        )
+      );
     },
 
     showV2Graph: function (name) {
       this.checkUser();
 
-      this.init.then(() => ReactDOM.render(React.createElement(window.GraphV2ReactView),
-        document.getElementById('content'))
+      this.init.then(() =>
+        window.renderReactComponent(
+          React.createElement(window.GraphV2ReactView),
+        )
       );
     },
 
@@ -462,10 +434,6 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
-        // TODO re-enable React View, for now use old view:
-        // ReactDOM.render(React.createElement(window.ShardsReactView),
-        //   document.getElementById('content'));
-        // Below code needs to be removed then again.
         if (this.shardsView) {
           this.shardsView.remove();
         }
@@ -473,32 +441,6 @@
           dbServers: this.dbServers
         });
         this.shardsView.render();
-      });
-    },
-
-    rebalanceShards: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.isCluster === false || isCurrentCoordinator === false || this.maxNumberOfMoveShards === 0) {
-          this.routes[''] = 'dashboard';
-          this.navigate('#dashboard', { trigger: true });
-          return;
-        }
-        // this below is for when Rebalance Shards tab is not clickable, but user enters it through its URL
-        else if (this.userCollection.authOptions.ro) { // if user can't edit the database,
-          // it goes back to the Overview page
-          this.routes[''] = 'nodes';
-          this.navigate('#nodes', { trigger: true });
-          return;
-        }
-        if (this.rebalanceShardsView) {
-          this.rebalanceShardsView.remove();
-        }
-        this.rebalanceShardsView = new window.RebalanceShardsView({
-          maxNumberOfMoveShards: this.maxNumberOfMoveShards
-        });
-        this.rebalanceShardsView.render();
       });
     },
 
@@ -517,11 +459,13 @@
           return;
         }
 
-        if (this.shardDistributionView) {
-          this.shardDistributionView.remove();
-        }
-        this.shardDistributionView = new window.ShardDistributionView({});
-        this.shardDistributionView.render();
+        window.renderReactComponent(
+          React.createElement(window.ShardDistributionReactView, {
+            readOnly: this.userCollection.authOptions.ro
+          }),
+        );
+
+        arangoHelper.buildClusterSubNav('Distribution');
       });
     },
 
@@ -763,39 +707,30 @@
       this.checkUser();
 
       this.init.then(() => {
-        const self = this;
-        if (this.collectionsView) {
-          this.collectionsView.remove();
-        }
-        this.collectionsView = new window.CollectionsView({
-          collection: this.arangoCollectionsStore
-        });
-        this.arangoCollectionsStore.fetch({
-          cache: false,
-          success: function () {
-            self.collectionsView.render();
-          }
-        });
+     
+        window.renderReactComponent(
+          React.createElement(window.CollectionsReactView)
+        );
       });
     },
 
     cIndices: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
           success: function () {
-            ReactDOM.render(
+            window.renderReactComponent(
               React.createElement(window.CollectionIndicesReactView, {
                 collectionName: colname,
                 collection: self.arangoCollectionsStore.findWhere({
                   name: colname,
                 }),
-              }),
-              document.getElementById("content-react")
+              })
             );
           },
         });
@@ -806,6 +741,7 @@
     cSettings: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -827,6 +763,7 @@
     cComputedValues: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -847,6 +784,7 @@
 
     cSchema: function (colname) {
       const self = this;
+      window.SkeletonLoader.render();
 
       this.checkUser();
 
@@ -869,8 +807,8 @@
     cInfo: function (colname) {
       const self = this;
 
+      window.SkeletonLoader.render();
       this.checkUser();
-
       this.init.then(() => {
         this.arangoCollectionsStore.fetch({
           cache: false,
@@ -888,6 +826,7 @@
     },
 
     documents: function (colid, pageid) {
+      window.SkeletonLoader.render();
       this.checkUser();
 
       this.init.then(() => {
@@ -946,12 +885,9 @@
       this.checkUser();
 
       this.init.then(() => {
-        if (!this.queryView) {
-          this.queryView = new window.QueryView({
-            collection: this.queryCollection
-          });
-        }
-        this.queryView.render();
+        window.renderReactComponent(
+          React.createElement(window.QueryReactView)
+        );
       });
     },
 
@@ -1016,45 +952,14 @@
       });
     },
 
-    queryManagement: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (this.queryManagementView) {
-          this.queryManagementView.remove();
-        }
-        this.queryManagementView = new window.QueryManagementView({
-          collection: undefined
-        });
-        this.queryManagementView.render();
-      });
-    },
-
     databases: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        const callback = function (error) {
-          if (error) {
-            arangoHelper.arangoError('DB', 'Could not get list of allowed databases');
-            this.navigate('#', { trigger: true });
-            $('#databaseNavi').css('display', 'none');
-            $('#databaseNaviSelect').css('display', 'none');
-          } else {
-            if (this.databaseView) {
-              // cleanup events and view
-              this.databaseView.remove();
-            }
-            this.databaseView = new window.DatabaseView({
-              users: this.userCollection,
-              collection: this.arangoDatabase
-            });
-            this.databaseView.render();
-          }
-        }.bind(this);
-
-        arangoHelper.databaseAllowed(callback);
-      });
+      this.init.then(() => 
+        window.renderReactComponent(
+          React.createElement(window.DatabasesReactView)
+        )
+      );
     },
 
     dashboard: function () {
@@ -1099,19 +1004,11 @@
     graphManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.graphManagementView) {
-          this.graphManagementView.undelegateEvents();
-        }
-        this.graphManagementView =
-          new window.GraphManagementView(
-            {
-              collection: new window.GraphCollection(),
-              collectionCollection: this.arangoCollectionsStore
-            }
-          );
-        this.graphManagementView.render();
-      });
+      this.init.then(() => 
+        window.renderReactComponent(
+          React.createElement(window.GraphsListReactView)
+        )
+      );
     },
 
     showGraph: function (name) {
@@ -1133,7 +1030,7 @@
       });
     },
 
-    applications: function () {
+    services: function () {
       this.checkUser();
 
       this.init.then(() => {
@@ -1141,6 +1038,11 @@
           this.navigate('#dashboard', { trigger: true });
           return;
         }
+        
+        window.renderReactComponent(
+          React.createElement(window.ServicesReactView)
+        );
+
         if (this.applicationsView === undefined) {
           this.applicationsView = new window.ApplicationsView({
             collection: this.foxxList
@@ -1264,12 +1166,6 @@
       if (this.dashboardView) {
         this.dashboardView.resize();
       }
-      if (this.graphManagementView && Backbone.history.getFragment() === 'graphs') {
-        this.graphManagementView.handleResize($('#content').width());
-      }
-      if (this.queryView && Backbone.history.getFragment() === 'queries') {
-        this.queryView.resize();
-      }
       if (this.naviView) {
         this.naviView.resize();
       }
@@ -1292,20 +1188,11 @@
 
     userPermission: function (name) {
       this.checkUser();
-
-      this.init.then(() => {
-        if (this.userPermissionView) {
-          this.userPermissionView.remove();
-        }
-
-        this.userPermissionView = new window.UserPermissionView({
-          collection: this.userCollection,
-          databases: this.arangoDatabase,
-          username: name
-        });
-
-        this.userPermissionView.render();
-      });
+      this.init.then(() =>
+        window.renderReactComponent(
+          React.createElement(window.UserPermissionsReactView)
+        )
+      );
     },
 
     userView: function (name) {
@@ -1323,43 +1210,16 @@
     userManagement: function () {
       this.checkUser();
 
-      this.init.then(() => {
-        if (this.userManagementView) {
-          this.userManagementView.remove();
-        }
-
-        this.userManagementView = new window.UserManagementView({
-          collection: this.userCollection
-        });
-        this.userManagementView.render();
-      });
+      this.init.then(() =>  window.renderReactComponent(React.createElement(window.UsersReactView))
+      );
     },
 
-    userProfile: function () {
-      this.checkUser();
-
-      this.init.then(() => {
-        if (!this.userManagementView) {
-          this.userManagementView = new window.UserManagementView({
-            collection: this.userCollection
-          });
-        }
-        this.userManagementView.render(true);
-      });
-    },
-    viewSettings: function (name) {
-      this.checkUser();
-
-      this.init.then(
-        () => ReactDOM.render(React.createElement(window.ViewSettingsReactView, { name }),
-          document.getElementById('content-react')));
-    },
     views: function () {
       this.checkUser();
       
-      this.init.then(
-       () => ReactDOM.render(React.createElement(window.ViewsListReactView),
-         document.getElementById('content-react')));
+      this.init.then(() => 
+        window.renderReactComponent(React.createElement(window.ViewsReactView))
+      );
     },
 
     fetchDBS: function (callback) {

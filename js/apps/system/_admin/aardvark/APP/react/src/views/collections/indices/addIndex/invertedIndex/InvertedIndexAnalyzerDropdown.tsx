@@ -1,11 +1,10 @@
+import { SingleSelectControl, OptionType } from "@arangodb/ui";
 import { FormLabel, Spacer } from "@chakra-ui/react";
 import { useField, useFormikContext } from "formik";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
-import { SelectControl } from "../../../../../components/form/SelectControl";
-import { OptionType } from "../../../../../components/select/SelectBase";
-import { getApiRouteForCurrentDB } from "../../../../../utils/arangoClient";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
+import { getCurrentDB } from "../../../../../utils/arangoClient";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexAnalyzerDropdown = ({
@@ -13,32 +12,40 @@ export const InvertedIndexAnalyzerDropdown = ({
   autoFocus,
   dependentFieldName = "features"
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
   autoFocus: boolean;
   dependentFieldName?: string;
 }) => {
   const [options, setOptions] = useState<OptionType[]>([]);
-  const { data: analyzersResponse } = useSWR("/analyzer", path =>
-    getApiRouteForCurrentDB().get(path)
+  const { data: analyzersList } = useSWR("/analyzer", () =>
+    getCurrentDB().listAnalyzers()
   );
-  const analyzersList = analyzersResponse?.body.result as {
-    name: string;
-    features: string[];
-  }[];
   const { setFieldValue } = useFormikContext<InvertedIndexValuesType>();
   const [formikField] = useField(field.name);
-  const fieldValue = formikField.value;
+  const analyzerName = formikField.value;
   React.useEffect(() => {
-    if (fieldValue) {
+    if (field.isDisabled) {
+      return;
+    }
+    if (analyzerName) {
       const features = analyzersList?.find(
-        analyzer => analyzer.name === fieldValue
+        analyzer => analyzer.name === analyzerName
       )?.features;
       setFieldValue(dependentFieldName, features);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analyzersList, fieldValue, dependentFieldName]);
+  }, [analyzersList, analyzerName, dependentFieldName]);
 
   useEffect(() => {
+    if (field.isDisabled) {
+      setOptions([
+        {
+          value: analyzerName,
+          label: analyzerName
+        }
+      ]);
+      return;
+    }
     if (analyzersList) {
       const tempOptions = analyzersList.map(option => {
         return {
@@ -48,11 +55,11 @@ export const InvertedIndexAnalyzerDropdown = ({
       });
       setOptions(tempOptions);
     }
-  }, [analyzersList]);
+  }, [analyzerName, analyzersList, field.isDisabled]);
   return (
     <>
       <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
-      <SelectControl
+      <SingleSelectControl
         isDisabled={field.isDisabled}
         selectProps={{
           autoFocus,

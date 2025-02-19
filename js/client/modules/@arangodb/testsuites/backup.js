@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,12 +31,13 @@ const functionsDocumentation = {
   'BackupAuthSysTests':     'complete backup tests with    authentication, with    system collections',
   'BackupAuthNoSysTests':   'complete backup tests with    authentication, without system collections'
 };
-const optionsDocumentation = [
-];
 const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -45,7 +46,7 @@ const log = (text) => {
   print(`${CYAN}${Date()}: Backup - ${text}${RESET}`);
 };
 const makePath = (name) => {
-  return tu.makePathUnix(tu.pathForTesting(`server/backup/${name}`));
+  return tu.makePathUnix(tu.pathForTesting(`client/backup/${name}`));
 };
 
 const asRoot = {
@@ -57,10 +58,10 @@ const syssys = 'systemsystem';
 const sysNoSys = 'systemnosystem';
 
 const testPaths = {
-  'BackupNoAuthSysTests': [tu.pathForTesting('server/backup/backup-system-incl-system.js')],
-  'BackupNoAuthNoSysTests': [tu.pathForTesting('server/backup/backup-system-excl-system.js')],
-  'BackupAuthSysTests': [tu.pathForTesting('server/backup/backup-system-incl-system.js')],
-  'BackupAuthNoSysTests': [tu.pathForTesting('server/backup/backup-system-excl-system.js')]
+  'BackupNoAuthSysTests': [tu.pathForTesting('client/backup/backup-system-incl-system.js')],
+  'BackupNoAuthNoSysTests': [tu.pathForTesting('client/backup/backup-system-excl-system.js')],
+  'BackupAuthSysTests': [tu.pathForTesting('client/backup/backup-system-incl-system.js')],
+  'BackupAuthNoSysTests': [tu.pathForTesting('client/backup/backup-system-excl-system.js')]
 };
 
 const failPreStartMessage = (msg) => {
@@ -75,9 +76,9 @@ var dumpPath;
 
 
 
-class backupTestRunner extends tu.runInArangoshRunner {
-  constructor(options, testname, useAuth, user, restoreDir, checkUsers=true) {
-    super(options, testname, {}, checkUsers, false);
+class backupTestRunner extends trs.runInArangoshRunner {
+  constructor(options, testname, useAuth, user, restoreDir, checkUsers=[]) {
+    super(options, testname, {}, tr.sutFilters.checkCollections.concat(checkUsers));
     this.user = user;
     this.useAuth = useAuth;
     this.dumpPath = undefined;
@@ -123,7 +124,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
       path = this.instanceManager.rootDir;
 
       _.defaults(asRoot, options);
-      let dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager,
+      let dump = ct.run.arangoDumpRestore(asRoot, this.instanceManager,
                                           'dump', '_system', path, syssys,
                                           true, options.coreCheck);
       if (dump.status === false || !this.healthCheck()) {
@@ -135,7 +136,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
 
       log('Create dump _system excl system collections');
 
-      dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager, 'dump', '_system',
+      dump = ct.run.arangoDumpRestore(asRoot, this.instanceManager, 'dump', '_system',
                                       path, sysNoSys, false, options.coreCheck);
       if (dump.status === false || !this.healthCheck()) {
         log('Dump failed: ' + JSON.stringify(dump));
@@ -197,7 +198,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
   // / set up the test according to the testcase.
   // //////////////////////////////////////////////////////////////////////////////
   postStart(){
-    let restore = pu.run.arangoDumpRestore(this.user,
+    let restore = ct.run.arangoDumpRestore(this.user,
                                            this.instanceManager,
                                            'restore',
                                            '_system',
@@ -236,7 +237,7 @@ const BackupNoAuthSysTests = (options) => {
 
   return new backupTestRunner(options,
                               'BackupNoAuthSysTests',
-                              false,
+                              tr.sutFilters.checkUsers,
                               {},
                               syssys).run(
                                 testPaths.BackupNoAuthSysTests);
@@ -250,7 +251,7 @@ const BackupNoAuthNoSysTests = (options) => {
   log('Test dump without authentication, restore _system excl system collections');
   return new backupTestRunner(options,
                               'BackupNoAuthSysTests',
-                              false,
+                              tr.sutFilters.checkUsers,
                               {},
                               sysNoSys).run(
                                 testPaths.BackupNoAuthNoSysTests);
@@ -264,7 +265,7 @@ const BackupAuthSysTests = (options) => {
   log('Test dump with authentication, restore _system incl system collections');
   return new backupTestRunner(options,
                               'BackupAuthSysTests',
-                              true,
+                              [],
                               asRoot,
                               syssys).run(
                                 testPaths.BackupAuthSysTests);
@@ -278,7 +279,7 @@ const BackupAuthNoSysTests = (options) => {
   log('Test dump with authentication, restore _system excl system collections');
   return new backupTestRunner(options,
                               'BackupAuthNoSysTests',
-                              true,
+                              [],
                               asRoot,
                               sysNoSys).run(
                                 testPaths.BackupAuthNoSysTests);
@@ -291,6 +292,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['BackupAuthSysTests'] = BackupAuthSysTests;
   testFns['BackupAuthNoSysTests'] = BackupAuthNoSysTests;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

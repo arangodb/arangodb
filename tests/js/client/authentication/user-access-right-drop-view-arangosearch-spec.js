@@ -2,19 +2,16 @@
 /* global describe, before, after, it */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for user access rights
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License");
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,6 +46,7 @@ const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
 
 const arango = require('internal').arango;
+let connectionHandle = arango.getConnectionHandle();
 for (let l of rightLevels) {
   systemLevel[l] = new Set();
   dbLevel[l] = new Set();
@@ -101,23 +99,11 @@ describe('User Rights Management', () => {
                     c.ensureIndex({ type: "inverted", name: indexName, fields: [ { name: "value" } ] });
                   }
                   if (colLevel['none'].has(name)) {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + name, dbName, colName, 'none');
-                    } else {
-                      users.grantCollection(name, dbName, colName, 'none');
-                    }
+                    users.grantCollection(name, dbName, colName, 'none');
                   } else if (colLevel['ro'].has(name)) {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + name, dbName, colName, 'ro');
-                    } else {
-                      users.grantCollection(name, dbName, colName, 'ro');
-                    }
+                    users.grantCollection(name, dbName, colName, 'ro');
                   } else if (colLevel['rw'].has(name)) {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + name, dbName, colName, 'rw');
-                    } else {
-                      users.grantCollection(name, dbName, colName, 'rw');
-                    }
+                    users.grantCollection(name, dbName, colName, 'rw');
                   }
                 }
                 helper.switchUser(name, dbName);
@@ -134,11 +120,7 @@ describe('User Rights Management', () => {
               const rootGrantCollection = (colName, user, explicitRight = '') => {
                 if (rootTestCollection(colName, false)) {
                   if (explicitRight !== '' && rightLevels.includes(explicitRight)) {
-                    if (helper.isLdapEnabledExternal()) {
-                      users.grantCollection(':role:' + user, dbName, colName, explicitRight);
-                    } else {
-                      users.grantCollection(user, dbName, colName, explicitRight);
-                    }
+                    users.grantCollection(user, dbName, colName, explicitRight);
                   }
                 }
                 helper.switchUser(user, dbName);
@@ -286,4 +268,9 @@ describe('User Rights Management', () => {
 
     }
   });
+});
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._drop(testViewName);
+  db._useDatabase('_system');
 });

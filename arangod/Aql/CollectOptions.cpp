@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,72 +23,105 @@
 
 #include "CollectOptions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb::aql;
 
+CollectOptions::CollectOptions() noexcept
+    : method(CollectMethod::kUndefined), fixed(false) {}
+
 /// @brief constructor
-CollectOptions::CollectOptions(VPackSlice slice)
-    : method(CollectMethod::UNDEFINED) {
-  VPackSlice v = slice.get("collectOptions");
-  if (v.isObject()) {
-    v = v.get("method");
-    if (v.isString()) {
+CollectOptions::CollectOptions(velocypack::Slice slice)
+    : method(CollectMethod::kUndefined), fixed(true) {
+  if (slice.isObject()) {
+    if (auto v = slice.get("method"); v.isString()) {
       method = methodFromString(v.stringView());
     }
+    if (VPackSlice v = slice.get("fixed"); v.isBoolean()) {
+      fixed = v.isTrue();
+    }
+    if (VPackSlice v = slice.get("aggregateIntoExpressionOnDBServers");
+        v.isBoolean()) {
+      aggregateIntoExpressionOnDBServers = v.isTrue();
+    }
+    if (VPackSlice v = slice.get(StaticStrings::IndexHintDisableIndex);
+        v.isBoolean()) {
+      disableIndex = v.isTrue();
+    }
   }
+  TRI_ASSERT(method != CollectMethod::kUndefined || !fixed);
+}
+
+/// @brief whether or not the method has been fixed
+bool CollectOptions::isFixed() const noexcept {
+  TRI_ASSERT(!fixed || method != CollectMethod::kUndefined);
+  return fixed;
+}
+
+/// @brief set method and fix it. note: some cluster optimizer rule
+/// adjusts the methods after it has been initially fixed.
+void CollectOptions::fixMethod(CollectMethod m) noexcept {
+  TRI_ASSERT(m != CollectMethod::kUndefined);
+  method = m;
+  fixed = true;
 }
 
 /// @brief whether or not the method can be used
-bool CollectOptions::canUseMethod(CollectMethod m) const {
-  return (this->method == m || this->method == CollectMethod::UNDEFINED);
+bool CollectOptions::canUseMethod(CollectMethod m) const noexcept {
+  return (method == m || method == CollectMethod::kUndefined);
 }
 
 /// @brief whether or not the method should be used (i.e. is preferred)
-bool CollectOptions::shouldUseMethod(CollectMethod m) const {
-  return (this->method == m);
+bool CollectOptions::shouldUseMethod(CollectMethod m) const noexcept {
+  TRI_ASSERT(m != CollectMethod::kUndefined);
+  return method == m;
 }
 
 /// @brief convert the options to VelocyPack
-void CollectOptions::toVelocyPack(VPackBuilder& builder) const {
+void CollectOptions::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("method", VPackValue(methodToString(method)));
+  builder.add("fixed", VPackValue(fixed));
+  builder.add(StaticStrings::IndexHintDisableIndex, VPackValue(disableIndex));
+  builder.add("aggregateIntoExpressionOnDBServers",
+              VPackValue(aggregateIntoExpressionOnDBServers));
 }
 
 /// @brief get the aggregation method from a string
 CollectOptions::CollectMethod CollectOptions::methodFromString(
-    std::string_view method) {
+    std::string_view method) noexcept {
   if (method == "hash") {
-    return CollectMethod::HASH;
+    return CollectMethod::kHash;
   }
   if (method == "sorted") {
-    return CollectMethod::SORTED;
+    return CollectMethod::kSorted;
   }
   if (method == "distinct") {
-    return CollectMethod::DISTINCT;
+    return CollectMethod::kDistinct;
   }
   if (method == "count") {
-    return CollectMethod::COUNT;
+    return CollectMethod::kCount;
   }
 
-  return CollectMethod::UNDEFINED;
+  return CollectMethod::kUndefined;
 }
 
 /// @brief stringify the aggregation method
 std::string_view CollectOptions::methodToString(
     CollectOptions::CollectMethod method) {
-  if (method == CollectMethod::HASH) {
+  if (method == CollectMethod::kHash) {
     return "hash";
   }
-  if (method == CollectMethod::SORTED) {
+  if (method == CollectMethod::kSorted) {
     return "sorted";
   }
-  if (method == CollectMethod::DISTINCT) {
+  if (method == CollectMethod::kDistinct) {
     return "distinct";
   }
-  if (method == CollectMethod::COUNT) {
+  if (method == CollectMethod::kCount) {
     return "count";
   }
 
@@ -96,4 +129,6 @@ std::string_view CollectOptions::methodToString(
                                  "cannot stringify unknown aggregation method");
 }
 
-CollectOptions::CollectOptions() : method(CollectMethod::UNDEFINED) {}
+bool CollectOptions::requiresSortedInput() const noexcept {
+  return method != arangodb::aql::CollectOptions::CollectMethod::kHash;
+}

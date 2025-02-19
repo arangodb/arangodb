@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +26,7 @@
 #include "Graph/Enumerators/OneSidedEnumerator.cpp"
 #include "Graph/Enumerators/TwoSidedEnumerator.cpp"
 #include "Graph/Enumerators/WeightedTwoSidedEnumerator.cpp"
+#include "Graph/Enumerators/WeightedShortestPathEnumerator.cpp"
 #include "Graph/PathManagement/PathResult.cpp"
 #include "Graph/PathManagement/PathStore.cpp"
 #include "Graph/PathManagement/SingleProviderPathResult.cpp"
@@ -84,6 +86,12 @@ template class ::arangodb::graph::WeightedTwoSidedEnumerator<
     MockGraphProvider,
     PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
                   VertexUniquenessLevel::PATH, EdgeUniquenessLevel::PATH>>;
+
+template class ::arangodb::graph::WeightedShortestPathEnumerator<
+    WeightedQueue<MockGraphProvider::Step>, PathStore<MockGraphProvider::Step>,
+    MockGraphProvider,
+    PathValidator<MockGraphProvider, PathStore<MockGraphProvider::Step>,
+                  VertexUniquenessLevel::NONE, EdgeUniquenessLevel::NONE>>;
 
 template class arangodb::graph::PathValidatorTracer<
     arangodb::graph::PathValidator<

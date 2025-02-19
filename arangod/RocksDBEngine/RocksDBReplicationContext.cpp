@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -229,14 +229,14 @@ void RocksDBReplicationContext::releaseIterators(TRI_vocbase_t& vocbase,
 }
 
 /// Bind collection for incremental sync
-std::tuple<Result, DataSourceId, uint64_t>
+futures::Future<std::tuple<Result, DataSourceId, uint64_t>>
 RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
                                                      std::string const& cname) {
   std::shared_ptr<LogicalCollection> logical{vocbase.lookupCollection(cname)};
 
   if (!logical) {
-    return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                           DataSourceId::none(), 0);
+    co_return std::make_tuple(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                              DataSourceId::none(), 0);
   }
   DataSourceId cid = logical->id();
 
@@ -244,23 +244,29 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
       << "binding replication context " << id() << " to collection '" << cname
       << "'";
 
-  std::lock_guard writeLocker{_contextLock};
+  std::unique_lock<std::mutex> writeLocker{_contextLock};
 
   auto it = _iterators.find(cid);
   if (it != _iterators.end()) {  // nothing to do here
-    return std::make_tuple(Result{}, it->second->logical->id(),
-                           it->second->numberDocuments);
+    co_return std::make_tuple(Result{}, it->second->logical->id(),
+                              it->second->numberDocuments);
   }
 
   uint64_t numberDocuments;
   uint64_t documentCountAdjustmentTicket = 0;
   auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
+    // we have to release the lock before we execute the co_await. the
+    // problem is that if we keep holding the lock, this coroutine may be
+    // resumed in a different thread, and it is UB to unlock a mutex in a
+    // different thread than the one it was acquired in
+    writeLocker.unlock();
+
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll]() noexcept { rcoll->unlockWrite(); });
     if (!_patchCount.empty() && _patchCount == cname &&
-        rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
+        co_await rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
       // fetch number docs and snapshot under exclusive lock
       // this should enable us to correct the count later
       documentCountAdjustmentTicket =
@@ -268,11 +274,24 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     } else {
       lockGuard.cancel();
     }
+
+    // re-acquire the mutex. we need it for checking and modifying _iterators.
+    writeLocker.lock();
+
+    it = _iterators.find(cid);
+    if (it !=
+        _iterators.end()) {  // someone else inserted the iterator in-between
+      co_return std::make_tuple(Result{}, it->second->logical->id(),
+                                it->second->numberDocuments);
+    }
+
     numberDocuments = rcoll->meta().numberDocuments();
     lazyCreateSnapshot();
   } else {  // fetch non-exclusive
     numberDocuments = rcoll->meta().numberDocuments();
   }
+
+  TRI_ASSERT(writeLocker.owns_lock());
   TRI_ASSERT(_snapshot != nullptr);
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
   TRI_ASSERT(documentCountAdjustmentTicket == 0 ||
@@ -286,7 +305,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   CollectionIterator* cIter = result.first->second.get();
   if (nullptr == cIter->iter) {
     _iterators.erase(cid);
-    return std::make_tuple(
+    co_return std::make_tuple(
         Result(TRI_ERROR_INTERNAL, "could not create db iterators"),
         DataSourceId::none(), 0);
   }
@@ -309,9 +328,16 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
         << logical->guid();
   }
 
-  // we should have a valid iterator if there are documents in here
-  TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
-  return std::make_tuple(Result{}, cid, numberDocuments);
+  // we should have a valid iterator if there are documents in here.
+  // note that we can only assume this if we took the number of documents and
+  // the snapshot under the exclusive lock. otherwise the number of documents
+  // and the actual number of documents in the snapshot may differ.
+  TRI_ASSERT(documentCountAdjustmentTicket == 0 || numberDocuments == 0 ||
+             cIter->hasMore())
+      << "numDocs: " << numberDocuments << ", hasMore: " << cIter->hasMore()
+      << ", ticket: " << documentCountAdjustmentTicket
+      << ", shard: " << logical->name();
+  co_return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
 void RocksDBReplicationContext::removeBlocker(
@@ -493,7 +519,8 @@ std::string const& RocksDBReplicationContext::patchCount() const {
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    basics::StringBuffer& buff, uint64_t chunkSize, bool useEnvelope) {
+    basics::StringBuffer& buff, size_t docsPerBatch, uint64_t chunkSize,
+    bool useEnvelope) {
   CollectionIterator* cIter{nullptr};
   auto guard = scopeGuard([&]() noexcept {
     try {
@@ -528,7 +555,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
   basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
   velocypack::Dumper dumper(&adapter, &cIter->vpackOptions);
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buff.length() < chunkSize) {
+  size_t i = 0;
+  while (cIter->hasMore() && buff.length() < chunkSize && ++i <= docsPerBatch) {
     if (useEnvelope) {
       buff.appendText("{\"type\":");
       buff.appendInteger(REPLICATION_MARKER_DOCUMENT);  // set type
@@ -563,8 +591,8 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpJson(
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     TRI_vocbase_t& vocbase, std::string const& cname,
-    VPackBuffer<uint8_t>& buffer, uint64_t chunkSize, bool useEnvelope,
-    bool singleArray) {
+    VPackBuffer<uint8_t>& buffer, size_t docsPerBatch, uint64_t chunkSize,
+    bool useEnvelope, bool singleArray) {
   TRI_ASSERT(!useEnvelope || !singleArray);
 
   CollectionIterator* cIter{nullptr};
@@ -605,7 +633,9 @@ RocksDBReplicationContext::DumpResult RocksDBReplicationContext::dumpVPack(
     builder.openArray(true);
   }
   TRI_ASSERT(cIter->iter && !cIter->sorted());
-  while (cIter->hasMore() && buffer.length() < chunkSize) {
+  size_t i = 0;
+  while (cIter->hasMore() && buffer.length() < chunkSize &&
+         ++i <= docsPerBatch) {
     if (useEnvelope) {
       builder.openObject();
       builder.add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
@@ -1201,11 +1231,8 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
 
     TRI_ASSERT(_upperLimit.size() > 0);
     _readOptions.iterate_upper_bound = &_upperLimit;
-    iter.reset(vocbase.server()
-                   .getFeature<EngineSelectorFeature>()
-                   .engine<RocksDBEngine>()
-                   .db()
-                   ->NewIterator(_readOptions, cf));
+    iter.reset(
+        vocbase.engine<RocksDBEngine>().db()->NewIterator(_readOptions, cf));
     TRI_ASSERT(iter);
     iter->Seek(_bounds.start());
     currentTick = 1;

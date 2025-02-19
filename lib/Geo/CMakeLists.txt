@@ -9,14 +9,10 @@ if (NOT USE_ENTERPRISE)
 endif ()
 
 target_link_libraries(arango_geo
-  arango
+  arango_basic_utils
   boost_system
   boost_boost
   s2)
-
-if (MSVC)
-  target_compile_options(arango_geo PUBLIC "-J")
-endif ()
 
 add_subdirectory(karney)
 add_subdirectory(S2)

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -113,9 +113,11 @@ bool IndexIterator::nextImpl(LocalDocumentIdCallback const&,
 bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
                                      uint64_t limit) {
   return nextImpl(
-      [this, &cb](LocalDocumentId const& token) {
+      [this, &cb](LocalDocumentId token) {
         return _collection->getPhysical()
-            ->read(_trx, token, cb, _readOwnWrites)
+            ->lookup(_trx, token, cb,
+                     {.readOwnWrites = static_cast<bool>(_readOwnWrites),
+                      .countBytes = true})
             .ok();
       },
       limit);
@@ -134,11 +136,39 @@ bool IndexIterator::nextCoveringImpl(CoveringCallback const&,
 
 /// @brief default implementation for skip
 void IndexIterator::skipImpl(uint64_t count, uint64_t& skipped) {
-  // Skip the first count-many entries
-  nextImpl(
-      [&skipped](LocalDocumentId const&) {
-        ++skipped;
-        return true;
-      },
-      count);
+  // Skip the first count-many entries.
+  // It is possible that `nextImpl` does not actually move `count` steps
+  // forward, however, it will then say so by returning `true` for "there
+  // is more to get"! In this case, we need to check, if we have already
+  // skipped the requested count, and if not, try again (with a potentially
+  // reduced count):
+  uint64_t skippedInitial = skipped;
+  do {
+    TRI_ASSERT(skipped >= skippedInitial && skipped - skippedInitial <= count);
+    if (!nextImpl(
+            [&skipped](LocalDocumentId) {
+              ++skipped;
+              return true;
+            },
+            count - (skipped - skippedInitial))) {
+      return;
+    }
+  } while (skipped - skippedInitial < count);
+}
+
+std::ostream& arangodb::operator<<(std::ostream& os,
+                                   IndexIteratorCoveringData const& covering) {
+  if (covering.isArray()) {
+    os << "[";
+    for (std::size_t k = 0; k < covering.length(); k++) {
+      if (k != 0) {
+        os << ", ";
+      }
+      os << covering.at(k).toJson();
+    }
+    os << "]";
+  } else {
+    os << covering.value().toJson();
+  }
+  return os;
 }

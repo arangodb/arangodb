@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertEqual, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for security-related server options
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -46,14 +43,18 @@ const vn2 = "UnitTestsVertex2";
 const en = "UnitTestsEdge";
 
 let createData = function() {
-  let v1 = db._create(vn1, { numberOfShards: 3 });
-  let v2 = db._create(vn2, { numberOfShards: 3 });
-  let e = db._createEdgeCollection(en, { numberOfShards: 3 });
+  let numberOfShards = 3;
+  if (db._properties().sharding === "single") {
+    numberOfShards = 1;
+  }
+  let v1 = db._create(vn1, {numberOfShards});
+  let v2 = db._create(vn2, {numberOfShards});
+  let e = db._createEdgeCollection(en, {numberOfShards});
 
   const n = 10;
   let docs = [];
   for (let i = 0; i < n; ++i) {
-    docs.push({ _key: "test" + i });
+    docs.push({_key: "test" + i});
   }
   v1.insert(docs);
   v2.insert(docs);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,10 +51,12 @@
 #include "Aql/Function.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/error.h"
 #include "Basics/files.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Cluster/ClusterFeature.h"
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
@@ -80,19 +82,18 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 namespace {
 
@@ -133,7 +134,7 @@ struct DocIdScorer final : public irs::ScorerBase<void> {
           auto* state = static_cast<ScoreCtx*>(ctx);
           *res = static_cast<irs::score_t>(state->_doc->value);
         },
-        doc);
+        irs::ScoreFunction::DefaultMin, doc);
   }
 
   struct ScoreCtx : public irs::score_ctx {
@@ -158,6 +159,8 @@ class IResearchViewTest
   arangodb::tests::mocks::MockAqlServer server;
   std::unique_ptr<TRI_vocbase_t> system;
   std::string testFilesystemPath;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   IResearchViewTest() : server(false) {
     arangodb::tests::init();
@@ -218,8 +221,8 @@ TEST_F(IResearchViewTest, test_defaults) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Persistence);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Persistence);
     builder.close();
 
     auto slice = builder.slice();
@@ -255,8 +258,9 @@ TEST_F(IResearchViewTest, test_defaults) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Properties);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -305,7 +309,8 @@ TEST_F(IResearchViewTest, test_defaults) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     arangodb::LogicalView::ptr view;
     auto res = arangodb::iresearch::IResearchView::factory().create(
         view, vocbase, viewCreateJson->slice(), true);
@@ -327,11 +332,13 @@ TEST_F(IResearchViewTest, test_defaults) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
@@ -361,7 +368,8 @@ TEST_F(IResearchViewTest, test_defaults) {
     auto logicalCollection = vocbase.createCollection(collectionJson->slice());
     EXPECT_TRUE((nullptr != logicalCollection));
     EXPECT_TRUE((true == !vocbase.lookupView("testView")));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     arangodb::LogicalView::ptr logicalView;
     EXPECT_TRUE(
         (arangodb::iresearch::IResearchView::factory()
@@ -375,14 +383,15 @@ TEST_F(IResearchViewTest, test_defaults) {
           return true;
         });
     EXPECT_EQ(1, cids.size());
-    EXPECT_FALSE(logicalCollection->getIndexes().empty());
+    EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -425,7 +434,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
-  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  EXPECT_TRUE(logicalCollection->getPhysical()->getAllIndexes().empty());
   arangodb::LogicalView::ptr logicalView;
   EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
                   .create(logicalView, vocbase, viewCreateJson->slice(), true)
@@ -438,14 +447,15 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
         return true;
       });
   EXPECT_EQ(1, cids.size());
-  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+  EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
   // check serialization for listing
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -455,8 +465,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -467,8 +476,9 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -478,8 +488,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -553,8 +562,9 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -564,10 +574,8 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -634,8 +642,9 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -645,8 +654,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -762,7 +770,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
-  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  EXPECT_TRUE(logicalCollection->getPhysical()->getAllIndexes().empty());
   arangodb::LogicalView::ptr logicalView;
   EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
                   .create(logicalView, vocbase, viewCreateJson->slice(), true)
@@ -775,14 +783,15 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
         return true;
       });
   EXPECT_EQ(1, cids.size());
-  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+  EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
   // check serialization for listing
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -792,8 +801,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -804,8 +812,9 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -815,8 +824,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -890,8 +898,9 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -901,10 +910,8 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -970,8 +977,9 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -981,8 +989,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1097,7 +1104,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
-  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  EXPECT_TRUE(logicalCollection->getPhysical()->getAllIndexes().empty());
   arangodb::LogicalView::ptr logicalView;
   EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
                   .create(logicalView, vocbase, viewCreateJson->slice(), false)
@@ -1110,14 +1117,15 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
         return true;
       });
   EXPECT_EQ(1, cids.size());
-  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+  EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
   // check serialization for listing
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1127,8 +1135,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -1139,8 +1146,9 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1150,8 +1158,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1225,8 +1232,9 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1236,10 +1244,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1305,8 +1311,9 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1316,8 +1323,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1433,7 +1439,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
-  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  EXPECT_TRUE(logicalCollection->getPhysical()->getAllIndexes().empty());
   arangodb::LogicalView::ptr logicalView;
   EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
                   .create(logicalView, vocbase, viewCreateJson->slice(), false)
@@ -1446,14 +1452,15 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
         return true;
       });
   EXPECT_EQ(1, cids.size());
-  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+  EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
   // check serialization for listing
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1463,8 +1470,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -1475,8 +1481,9 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1486,8 +1493,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1561,8 +1567,9 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1572,10 +1579,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1641,8 +1646,9 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1652,8 +1658,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1768,7 +1773,7 @@ TEST_F(IResearchViewTest, test_vocbase_inventory) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_NE(nullptr, logicalCollection);
   EXPECT_EQ(nullptr, vocbase.lookupView("testView"));
-  EXPECT_TRUE(logicalCollection->getIndexes().empty());
+  EXPECT_TRUE(logicalCollection->getPhysical()->getAllIndexes().empty());
   arangodb::LogicalView::ptr logicalView;
   EXPECT_TRUE(arangodb::iresearch::IResearchView::factory()
                   .create(logicalView, vocbase, viewCreateJson->slice(), true)
@@ -1781,7 +1786,7 @@ TEST_F(IResearchViewTest, test_vocbase_inventory) {
         return true;
       });
   EXPECT_EQ(1, cids.size());
-  EXPECT_FALSE(logicalCollection->getIndexes().empty());
+  EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
   // check vocbase inventory
   {
@@ -1859,8 +1864,9 @@ TEST_F(IResearchViewTest, test_cleanup) {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -1874,11 +1880,11 @@ TEST_F(IResearchViewTest, test_cleanup) {
   {
     arangodb::iresearch::IResearchLinkMeta meta;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
-    EXPECT_TRUE(
-        (link->remove(trx, arangodb::LocalDocumentId(0), false, nullptr).ok()));
+    EXPECT_TRUE((link->remove(trx, arangodb::LocalDocumentId(0)).ok()));
     EXPECT_TRUE((trx.commit().ok()));
     EXPECT_TRUE(link->commit().ok());
   }
@@ -1934,18 +1940,21 @@ TEST_F(IResearchViewTest, test_drop) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_TRUE((nullptr != logicalCollection));
   EXPECT_TRUE((true == !vocbase.lookupView("testView")));
-  EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+  EXPECT_TRUE(
+      (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
   EXPECT_TRUE(
       (false ==
        TRI_IsDirectory(dataPath.c_str())));  // createView(...) will call open()
   auto view = vocbase.createView(json->slice(), false);
   ASSERT_TRUE((false == !view));
 
-  EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+  EXPECT_TRUE(
+      (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
   EXPECT_TRUE((false == !vocbase.lookupView("testView")));
   EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
   EXPECT_TRUE((true == view->drop().ok()));
-  EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+  EXPECT_TRUE(
+      (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
   EXPECT_TRUE((true == !vocbase.lookupView("testView")));
   EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
 }
@@ -1972,14 +1981,16 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   auto logicalCollection = vocbase.createCollection(collectionJson->slice());
   EXPECT_TRUE((nullptr != logicalCollection));
   EXPECT_TRUE((true == !vocbase.lookupView("testView")));
-  EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+  EXPECT_TRUE(
+      (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
   EXPECT_TRUE(
       (false ==
        TRI_IsDirectory(dataPath.c_str())));  // createView(...) will call open()
   auto view = vocbase.createView(json->slice(), false);
   ASSERT_TRUE((false == !view));
 
-  EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+  EXPECT_TRUE(
+      (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
   EXPECT_TRUE((false == !vocbase.lookupView("testView")));
   EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
 
@@ -1990,7 +2001,8 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
 
   arangodb::Result res = view->properties(links->slice(), true, true);
   EXPECT_TRUE(true == res.ok());
-  EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+  EXPECT_TRUE(
+      (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
   dataPath = ((((std::filesystem::path() /= testFilesystemPath) /=
                 std::string("databases")) /=
                (std::string("database-") + std::to_string(vocbase.id()))) /=
@@ -2007,11 +2019,13 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
   {
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -2024,9 +2038,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -2037,7 +2049,8 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
                                           // configuration from system database
 
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN == view->drop().errorNumber()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false == !vocbase.lookupView("testView")));
       EXPECT_TRUE((true == TRI_IsDirectory(dataPath.c_str())));
     }
@@ -2045,9 +2058,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
     // authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -2058,7 +2069,8 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
                                           // configuration from system database
 
       EXPECT_TRUE((true == view->drop().ok()));
-      EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((true == !vocbase.lookupView("testView")));
       EXPECT_TRUE((false == TRI_IsDirectory(dataPath.c_str())));
     }
@@ -2134,8 +2146,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -2146,8 +2159,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2172,8 +2186,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2213,8 +2228,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -2225,8 +2241,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2251,8 +2268,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2293,8 +2311,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -2305,8 +2324,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2338,8 +2358,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2398,8 +2419,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -2410,8 +2432,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2433,8 +2456,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2495,8 +2519,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -2507,8 +2532,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2540,8 +2566,9 @@ TEST_F(IResearchViewTest, test_drop_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2688,8 +2715,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -2700,8 +2728,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2726,8 +2755,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2768,8 +2798,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -2780,8 +2811,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -2806,8 +2838,9 @@ TEST_F(IResearchViewTest, test_truncate_cid) {
     // query
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -3274,43 +3307,36 @@ TEST_F(IResearchViewTest, test_insert) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(1), docJson->slice());
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(2), docJson->slice());
+      }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-
-      EXPECT_TRUE(trx.commit().ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(1), docJson->slice());
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(2), docJson->slice());
+      }
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -3357,9 +3383,6 @@ TEST_F(IResearchViewTest, test_insert) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
@@ -3369,31 +3392,37 @@ TEST_F(IResearchViewTest, test_insert) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
       StorageEngineMock::recoveryTickResult = 42;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
-      EXPECT_TRUE((trx.commit().ok()));
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -3425,8 +3454,9 @@ TEST_F(IResearchViewTest, test_insert) {
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
@@ -3447,8 +3477,9 @@ TEST_F(IResearchViewTest, test_insert) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -3483,8 +3514,9 @@ TEST_F(IResearchViewTest, test_insert) {
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, options);
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
@@ -3504,8 +3536,9 @@ TEST_F(IResearchViewTest, test_insert) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -3540,8 +3573,9 @@ TEST_F(IResearchViewTest, test_insert) {
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, options);
       trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
 
       linkMeta._includeAllFields = true;
@@ -3553,8 +3587,9 @@ TEST_F(IResearchViewTest, test_insert) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -3586,8 +3621,9 @@ TEST_F(IResearchViewTest, test_insert) {
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
           batch = {
@@ -3608,8 +3644,9 @@ TEST_F(IResearchViewTest, test_insert) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -3642,8 +3679,9 @@ TEST_F(IResearchViewTest, test_insert) {
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, options);
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
           batch = {
@@ -3663,8 +3701,9 @@ TEST_F(IResearchViewTest, test_insert) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -3708,13 +3747,15 @@ TEST_F(IResearchViewTest, test_remove_within_trx) {
     auto doc1 = velocypack::Parser::fromJson(R"({ "name": "b" })");
     auto doc2 = velocypack::Parser::fromJson(R"({ "name": "c" })");
 
-    transaction::Methods trx(transaction::StandaloneContext::Create(vocbase),
-                             empty, empty, empty, transaction::Options());
+    transaction::Methods trx(
+        transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        empty, empty, empty, transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(0), doc0->slice()).ok());
-    EXPECT_TRUE(link->remove(trx, LocalDocumentId(0), false, nullptr).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(0)).ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(1), doc1->slice()).ok());
-    EXPECT_TRUE(link->remove(trx, LocalDocumentId(1), false, nullptr).ok());
+    EXPECT_TRUE(link->remove(trx, LocalDocumentId(1)).ok());
     EXPECT_TRUE(link->insert(trx, LocalDocumentId(2), doc2->slice()).ok());
     EXPECT_TRUE(trx.commit().ok());
     EXPECT_TRUE(link->commit().ok());
@@ -3797,52 +3838,44 @@ TEST_F(IResearchViewTest, test_remove) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
 
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(1),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(3),
-                                         docJson->slice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
+      link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                           arangodb::LocalDocumentId(1), docJson->slice());
+      link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                           arangodb::LocalDocumentId(2), docJson->slice());
+      link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                           arangodb::LocalDocumentId(3), docJson->slice());
 
       // skip tick operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(1), false,
-                               &StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryRemove(arangodb::LocalDocumentId(1));
+      }
       StorageEngineMock::recoveryTickResult = 42;
-      EXPECT_TRUE(link->insertInRecovery(trx, arangodb::LocalDocumentId(2),
-                                         VPackSlice::noneSlice(),
-                                         StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                             arangodb::LocalDocumentId(2),
+                             VPackSlice::noneSlice());
+      }
 
       // apply remove after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      EXPECT_TRUE(link->remove(trx, arangodb::LocalDocumentId(3), false,
-                               &StorageEngineMock::recoveryTickResult)
-                      .ok());
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        link->recoveryRemove(arangodb::LocalDocumentId(3));
+      }
 
-      EXPECT_TRUE(trx.commit().ok());
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -3888,9 +3921,6 @@ TEST_F(IResearchViewTest, test_remove) {
       auto docJson =
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
-      arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
 
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
@@ -3900,31 +3930,37 @@ TEST_F(IResearchViewTest, test_remove) {
           };
 
       linkMeta._includeAllFields = true;
-      EXPECT_TRUE((trx.begin().ok()));
       // insert operations before recovery tick
       StorageEngineMock::recoveryTickResult = 41;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
-      StorageEngineMock::recoveryTickResult = 42;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        StorageEngineMock::recoveryTickResult = 42;
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
       // insert operations after recovery tick
       StorageEngineMock::recoveryTickResult = 43;
-      for (auto const& pair : batch) {
-        link->insertInRecovery(trx, pair.first, pair.second,
-                               StorageEngineMock::recoveryTickResult);
+      if (StorageEngineMock::recoveryTickResult > link->recoveryTickLow()) {
+        for (auto const& pair : batch) {
+          link->recoveryInsert(StorageEngineMock::recoveryTickResult,
+                               pair.first, pair.second);
+        }
       }
-      EXPECT_TRUE((trx.commit().ok()));
+      link->recoveryCommit(StorageEngineMock::recoveryTickResult);
       EXPECT_TRUE(link->commit().ok());
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -3956,8 +3992,9 @@ TEST_F(IResearchViewTest, test_remove) {
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
@@ -3978,8 +4015,9 @@ TEST_F(IResearchViewTest, test_remove) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4014,8 +4052,9 @@ TEST_F(IResearchViewTest, test_remove) {
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, options);
 
       linkMeta._includeAllFields = true;
       EXPECT_TRUE((trx.begin().ok()));
@@ -4035,8 +4074,9 @@ TEST_F(IResearchViewTest, test_remove) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -4071,8 +4111,9 @@ TEST_F(IResearchViewTest, test_remove) {
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, options);
       trx.addHint(arangodb::transaction::Hints::Hint::SINGLE_OPERATION);
 
       linkMeta._includeAllFields = true;
@@ -4084,8 +4125,9 @@ TEST_F(IResearchViewTest, test_remove) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -4117,8 +4159,9 @@ TEST_F(IResearchViewTest, test_remove) {
           arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
           batch = {
@@ -4139,8 +4182,9 @@ TEST_F(IResearchViewTest, test_remove) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4173,8 +4217,9 @@ TEST_F(IResearchViewTest, test_remove) {
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::Options options;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, options);
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, options);
       std::vector<
           std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
           batch = {
@@ -4194,8 +4239,9 @@ TEST_F(IResearchViewTest, test_remove) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -4251,8 +4297,9 @@ TEST_F(IResearchViewTest, test_query) {
     ASSERT_TRUE((false == !view));
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4288,8 +4335,9 @@ TEST_F(IResearchViewTest, test_query) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
@@ -4303,8 +4351,9 @@ TEST_F(IResearchViewTest, test_query) {
     }
 
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4331,8 +4380,9 @@ TEST_F(IResearchViewTest, test_query) {
     EXPECT_TRUE((false == !view));
     arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
-    EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
-    auto index = logicalCollection->getIndexes()[0];
+    EXPECT_TRUE(
+        (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
+    auto index = logicalCollection->getPhysical()->getAllIndexes()[0];
     ASSERT_TRUE((false == !index));
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -4342,8 +4392,9 @@ TEST_F(IResearchViewTest, test_query) {
     // fill with test data
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
 
       arangodb::OperationOptions options;
@@ -4359,8 +4410,9 @@ TEST_F(IResearchViewTest, test_query) {
     }
 
     arangodb::transaction::Methods trx0(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx0.state());
     auto* snapshot0 = makeViewSnapshot(
         trx0, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4370,8 +4422,9 @@ TEST_F(IResearchViewTest, test_query) {
     // add more data
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          collections, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, collections, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
 
       arangodb::OperationOptions options;
@@ -4390,8 +4443,9 @@ TEST_F(IResearchViewTest, test_query) {
     EXPECT_TRUE(12 == snapshot0->docs_count());
     // new reader sees new data
     arangodb::transaction::Methods trx1(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx1.state());
     auto* snapshot1 = makeViewSnapshot(
         trx1, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4423,7 +4477,7 @@ TEST_F(IResearchViewTest, test_query) {
     static std::vector<std::string> const EMPTY;
     arangodb::transaction::Options options;
 
-    arangodb::aql::Variable variable("testVariable", 0, false);
+    arangodb::aql::Variable variable("testVariable", 0, false, resourceMonitor);
 
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {
@@ -4432,8 +4486,9 @@ TEST_F(IResearchViewTest, test_query) {
         auto doc = arangodb::velocypack::Parser::fromJson(
             std::string("{ \"seq\": ") + std::to_string(i) + " }");
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-            std::vector<std::string>{logicalCollection->name()}, EMPTY,
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
             options);
 
         EXPECT_TRUE((trx.begin().ok()));
@@ -4446,8 +4501,9 @@ TEST_F(IResearchViewTest, test_query) {
       // query
       {
         arangodb::transaction::Methods trx(
-            arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-            EMPTY, EMPTY, options);
+            arangodb::transaction::StandaloneContext::create(
+                vocbase, arangodb::transaction::OperationOriginTestCase{}),
+            EMPTY, EMPTY, EMPTY, options);
         ASSERT_TRUE(trx.state());
         auto* snapshot = makeViewSnapshot(
             trx, arangodb::iresearch::ViewSnapshotMode::SyncAndReplace,
@@ -4493,8 +4549,9 @@ TEST_F(IResearchViewTest, test_register_link) {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -4504,7 +4561,7 @@ TEST_F(IResearchViewTest, test_register_link) {
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
            false == slice.get("globallyUniqueId").copyString().empty()));
-      EXPECT_TRUE(slice.get("id").copyString() == "101");
+      EXPECT_TRUE(slice.get("id").isString());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -4574,8 +4631,9 @@ TEST_F(IResearchViewTest, test_register_link) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -4585,7 +4643,7 @@ TEST_F(IResearchViewTest, test_register_link) {
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
            false == slice.get("globallyUniqueId").copyString().empty()));
-      EXPECT_TRUE(slice.get("id").copyString() == "101");
+      EXPECT_TRUE(slice.get("id").isString());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -4595,8 +4653,9 @@ TEST_F(IResearchViewTest, test_register_link) {
     {
       std::unordered_set<arangodb::DataSourceId> cids;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4622,8 +4681,9 @@ TEST_F(IResearchViewTest, test_register_link) {
         persisted);  // link instantiation does modify and persist view meta
     std::unordered_set<arangodb::DataSourceId> cids;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4667,8 +4727,9 @@ TEST_F(IResearchViewTest, test_register_link) {
 
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4702,8 +4763,9 @@ TEST_F(IResearchViewTest, test_register_link) {
     {
       std::unordered_set<arangodb::DataSourceId> cids;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4745,8 +4807,9 @@ TEST_F(IResearchViewTest, test_register_link) {
     EXPECT_FALSE(persisted);
     EXPECT_NE(nullptr, link1);  // duplicate link creation is allowed
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4818,8 +4881,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -4835,12 +4899,14 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     link->unload();  // unload link before creating a new link instance
     arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
-    EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
 
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4883,8 +4949,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4937,8 +5004,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
       arangodb::iresearch::IResearchLinkMeta meta;
       meta._includeAllFields = true;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       EXPECT_TRUE((trx.begin().ok()));
       EXPECT_TRUE(
           (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -4954,12 +5022,14 @@ TEST_F(IResearchViewTest, test_unregister_link) {
     link->unload();  // unload link before creating a new link instance
     arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
-    EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
 
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -4994,8 +5064,9 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     {
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          EMPTY, EMPTY, arangodb::transaction::Options());
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
       ASSERT_TRUE(trx.state());
       auto* snapshot = makeViewSnapshot(
           trx, arangodb::iresearch::ViewSnapshotMode::FindOrCreate,
@@ -5040,7 +5111,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
 
     arangodb::Result res = logicalView->properties(links->slice(), true, true);
     EXPECT_TRUE(true == res.ok());
-    EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
 
     std::set<arangodb::DataSourceId> cids;
     view->visitCollections(
@@ -5076,7 +5148,8 @@ TEST_F(IResearchViewTest, test_unregister_link) {
           dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView.get());
       ASSERT_TRUE((nullptr != viewImpl));
       EXPECT_TRUE((viewImpl->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       std::set<arangodb::DataSourceId> cids;
       viewImpl->visitCollections(
           [&cids](arangodb::DataSourceId cid, arangodb::LogicalView::Indexes*) {
@@ -5084,14 +5157,16 @@ TEST_F(IResearchViewTest, test_unregister_link) {
             return true;
           });
       EXPECT_TRUE((1 == cids.size()));
-      logicalCollection->getIndexes()[0]
+      logicalCollection->getPhysical()
+          ->getAllIndexes()[0]
           ->unload();  // release view reference to prevent deadlock due to
                        // ~IResearchView() waiting for IResearchLink::unload()
       EXPECT_TRUE((true == vocbase.dropView(logicalView->id(), false).ok()));
       EXPECT_TRUE(
           (1 == logicalView.use_count()));  // ensure destructor for
                                             // ViewImplementation is called
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
     }
 
     // create a new view with same ID to validate links
@@ -5113,7 +5188,7 @@ TEST_F(IResearchViewTest, test_unregister_link) {
           });
       EXPECT_TRUE((0 == cids.size()));
 
-      for (auto& index : logicalCollection->getIndexes()) {
+      for (auto& index : logicalCollection->getPhysical()->getAllIndexes()) {
         auto* link =
             dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
         ASSERT_NE(nullptr, link);
@@ -5194,7 +5269,8 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     }
 
     EXPECT_TRUE((expected.empty()));
-    logicalCollection->getIndexes()[0]
+    logicalCollection->getPhysical()
+        ->getAllIndexes()[0]
         ->unload();  // release view reference to prevent deadlock due to
                      // ~IResearchView() waiting for IResearchLink::unload()
   }
@@ -5297,8 +5373,9 @@ TEST_F(IResearchViewTest, test_tracked_cids) {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -5570,8 +5647,9 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // read transaction (by id)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *logicalView,
-        arangodb::AccessMode::Type::READ);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *logicalView, arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
@@ -5598,7 +5676,8 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // read transaction (by name)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
@@ -5626,8 +5705,9 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // write transaction (by id)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *logicalView,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *logicalView, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
@@ -5654,7 +5734,8 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // write transaction (by name)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
@@ -5682,8 +5763,9 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // exclusive transaction (by id)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *logicalView,
-        arangodb::AccessMode::Type::READ);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *logicalView, arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
     EXPECT_TRUE(
@@ -5710,7 +5792,8 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // exclusive transaction (by name)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((2 == trx.state()->numCollections()));
@@ -5742,8 +5825,9 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // read transaction (by id) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *logicalView,
-        arangodb::AccessMode::Type::READ);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *logicalView, arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
@@ -5767,7 +5851,8 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // read transaction (by name) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
@@ -5792,8 +5877,9 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // write transaction (by id) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *logicalView,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *logicalView, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
@@ -5817,7 +5903,8 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // write transaction (by name) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
@@ -5842,8 +5929,9 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // exclusive transaction (by id) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *logicalView,
-        arangodb::AccessMode::Type::READ);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *logicalView, arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
     EXPECT_TRUE(
@@ -5867,7 +5955,8 @@ TEST_F(IResearchViewTest, test_transaction_registration) {
   // exclusive transaction (by name) (one collection dropped)
   {
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         logicalView->name(), arangodb::AccessMode::Type::READ);
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE((1 == trx.state()->numCollections()));
@@ -5920,8 +6009,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(0), doc->slice()).ok()));
@@ -5931,8 +6021,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   // no snapshot in TransactionState (force == false, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::Find,
@@ -5943,8 +6034,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   // no snapshot in TransactionState (force == true, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     ASSERT_TRUE(trx.state());
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::Find,
@@ -5970,8 +6062,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     arangodb::transaction::Options opts;
     opts.waitForSync = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, opts);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, opts);
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::Find,
         viewImpl->getLinks(nullptr), viewImpl, viewImpl->name());
@@ -5982,8 +6075,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   {
     arangodb::transaction::Options opts;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, opts);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, opts);
     auto* snapshot = makeViewSnapshot(
         trx, arangodb::iresearch::ViewSnapshotMode::Find,
         viewImpl->getLinks(nullptr), viewImpl, viewImpl->name());
@@ -6010,8 +6104,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
     arangodb::iresearch::IResearchLinkMeta meta;
     meta._includeAllFields = true;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((trx.begin().ok()));
     EXPECT_TRUE(
         (link->insert(trx, arangodb::LocalDocumentId(1), doc->slice()).ok()));
@@ -6021,8 +6116,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   // old snapshot in TransactionState (force == false, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((true == viewImpl->apply(trx)));
     EXPECT_TRUE((true == trx.begin().ok()));
     auto* snapshot = makeViewSnapshot(
@@ -6036,8 +6132,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   // old snapshot in TransactionState (force == true, waitForSync = false)
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE((true == viewImpl->apply(trx)));
     EXPECT_TRUE((true == trx.begin().ok()));
     auto* snapshot = makeViewSnapshot(
@@ -6060,8 +6157,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   // updateStatus(), true during snapshot())
   {
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     auto state = trx.state();
     ASSERT_TRUE(state);
     EXPECT_TRUE((true == viewImpl->apply(trx)));
@@ -6084,8 +6182,9 @@ TEST_F(IResearchViewTest, test_transaction_snapshot) {
   {
     arangodb::transaction::Options opts;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, opts);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, opts);
     auto state = trx.state();
     ASSERT_TRUE(state);
     EXPECT_TRUE((true == viewImpl->apply(trx)));
@@ -6166,8 +6265,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6208,8 +6308,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6237,8 +6338,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6320,8 +6422,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -6406,8 +6509,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -6442,7 +6546,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
                  arangodb::LogicalDataSource::Category::kView));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -6464,8 +6569,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -6533,7 +6639,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
                  arangodb::LogicalDataSource::Category::kView));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
 
     // initial link creation
     {
@@ -6555,8 +6662,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6600,8 +6708,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6625,7 +6734,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       }
 
       EXPECT_TRUE((true == expectedLinkMeta.empty()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
     }
 
     // subsequent update (overwrite)
@@ -6646,8 +6756,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6675,8 +6786,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6718,8 +6830,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     ASSERT_TRUE((false == !view));
     ASSERT_TRUE(view->category() ==
                 arangodb::LogicalDataSource::Category::kView);
-    EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
 
     // initial creation
     {
@@ -6740,8 +6854,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6785,8 +6900,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6810,8 +6926,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       }
 
       EXPECT_TRUE((true == expectedLinkMeta.empty()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
     }
 
     // update overwrite links
@@ -6832,8 +6950,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6877,8 +6996,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6902,8 +7022,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       }
 
       EXPECT_TRUE((true == expectedLinkMeta.empty()));
-      EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
     }
   }
 
@@ -6931,8 +7053,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6960,8 +7083,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -6991,8 +7115,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -7019,8 +7144,9 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -7055,7 +7181,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7067,7 +7194,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           "{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7076,11 +7204,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7092,9 +7222,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7112,9 +7240,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::
                        Persistence);  // 'forPersistence' to avoid auth check
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -7126,9 +7255,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7146,9 +7273,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::
                        Persistence);  // 'forPersistence' to avoid auth check
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -7173,7 +7301,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7181,11 +7310,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
@@ -7198,7 +7329,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                  logicalView->properties(viewUpdateJson->slice(), true, false)
                      .errorNumber()));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7220,7 +7352,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7232,7 +7365,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           "{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7241,11 +7375,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7257,9 +7393,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7272,7 +7406,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, false)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7282,9 +7417,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7296,7 +7429,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
-      EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE(
           (true == logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7325,8 +7459,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7338,8 +7474,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           "{ \"links\": { \"testCollection0\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7348,11 +7486,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7363,9 +7503,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7383,8 +7521,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, false)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7394,9 +7534,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7413,8 +7551,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7443,8 +7583,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7457,8 +7599,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           "}");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7467,11 +7611,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7483,9 +7629,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7503,8 +7647,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, false)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7514,9 +7660,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7533,8 +7677,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7557,7 +7703,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7569,7 +7716,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           "{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7578,11 +7726,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scopedExecContext(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7594,9 +7744,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7609,7 +7757,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, false)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7619,9 +7768,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7633,7 +7780,8 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
-      EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE(
           (true == logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7662,8 +7810,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7675,8 +7825,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           "{ \"links\": { \"testCollection0\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7685,11 +7837,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scopedExecContext(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7701,9 +7855,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7721,8 +7873,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, false)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7732,9 +7886,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7751,8 +7903,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7781,8 +7935,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -7795,8 +7951,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
           "}");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7805,11 +7963,13 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scopedExecContext(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7821,9 +7981,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7841,8 +7999,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, false)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7852,9 +8012,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7871,8 +8029,10 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, false).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -7918,8 +8078,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -7947,8 +8108,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Persistence);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -7996,8 +8158,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8025,8 +8188,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8078,8 +8242,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8107,8 +8272,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8143,7 +8309,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
                  arangodb::LogicalDataSource::Category::kView));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
 
     arangodb::iresearch::IResearchViewMeta expectedMeta;
     arangodb::iresearch::IResearchViewMetaState expectedMetaState;
@@ -8165,8 +8332,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8194,8 +8362,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8230,7 +8399,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     ASSERT_TRUE((false == !logicalView));
     ASSERT_TRUE((logicalView->category() ==
                  arangodb::LogicalDataSource::Category::kView));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
 
     // initial link creation
     {
@@ -8252,8 +8422,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -8297,8 +8468,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -8322,7 +8494,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
       }
 
       EXPECT_TRUE((true == expectedLinkMeta.empty()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
     }
 
     // subsequent update (partial update)
@@ -8347,8 +8520,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -8392,8 +8566,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        logicalView->properties(
+        auto res = logicalView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -8417,7 +8592,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
       }
 
       EXPECT_TRUE((true == expectedLinkMeta.empty()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
     }
   }
 
@@ -8451,8 +8627,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8477,8 +8654,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Persistence);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8530,8 +8708,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8574,8 +8753,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Persistence);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8617,8 +8797,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       static std::vector<std::string> const EMPTY;
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": \"def\" }");
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-          std::vector<std::string>{logicalCollection->name()}, EMPTY,
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, std::vector<std::string>{logicalCollection->name()}, EMPTY,
           arangodb::transaction::Options());
 
       EXPECT_TRUE((trx.begin().ok()));
@@ -8651,8 +8832,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8695,8 +8877,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Persistence);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8748,8 +8931,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8777,8 +8961,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Persistence);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8831,8 +9016,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8868,8 +9054,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -8919,8 +9106,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -8948,8 +9136,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -8989,8 +9178,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9018,8 +9208,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9068,8 +9259,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -9097,8 +9289,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Persistence);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -9148,8 +9341,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -9177,8 +9371,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Persistence);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Persistence);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -9223,8 +9418,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9247,8 +9443,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9274,7 +9471,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
           "}");
       std::unordered_set<arangodb::IndexId> initial;
 
-      for (auto& idx : logicalCollection->getIndexes()) {
+      for (auto& idx : logicalCollection->getPhysical()->getAllIndexes()) {
         initial.emplace(idx->id());
       }
 
@@ -9286,8 +9483,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9310,8 +9508,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9331,7 +9530,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       std::unordered_set<arangodb::IndexId> actual;
 
-      for (auto& index : logicalCollection->getIndexes()) {
+      for (auto& index : logicalCollection->getPhysical()->getAllIndexes()) {
         actual.emplace(index->id());
       }
 
@@ -9362,8 +9561,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9391,8 +9591,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9415,8 +9616,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(builder,
-                         arangodb::LogicalDataSource::Serialization::Inventory);
+        auto res = view->properties(
+            builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9447,8 +9649,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9476,8 +9679,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9500,8 +9704,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(builder,
-                         arangodb::LogicalDataSource::Serialization::Inventory);
+        auto res = view->properties(
+            builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9532,8 +9737,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9561,8 +9767,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9585,8 +9792,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(builder,
-                         arangodb::LogicalDataSource::Serialization::Inventory);
+        auto res = view->properties(
+            builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9617,8 +9825,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9646,8 +9855,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9670,8 +9880,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(builder,
-                         arangodb::LogicalDataSource::Serialization::Inventory);
+        auto res = view->properties(
+            builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9702,8 +9913,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9731,8 +9943,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9755,8 +9968,9 @@ TEST_F(IResearchViewTest, test_update_partial) {
         arangodb::velocypack::Builder builder;
 
         builder.openObject();
-        view->properties(builder,
-                         arangodb::LogicalDataSource::Serialization::Inventory);
+        auto res = view->properties(
+            builder, arangodb::LogicalDataSource::Serialization::Inventory);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         auto slice = builder.slice();
@@ -9792,7 +10006,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -9804,7 +10019,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
           "{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -9813,11 +10029,13 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -9829,9 +10047,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -9849,9 +10065,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::
                        Persistence);  // 'forPersistence' to avoid auth check
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -9863,9 +10080,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -9883,9 +10098,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      logicalView->properties(
+      auto res = logicalView->properties(
           builder, arangodb::LogicalDataSource::Serialization::
                        Persistence);  // 'forPersistence' to avoid auth check
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
@@ -9910,7 +10126,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -9918,11 +10135,13 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
@@ -9935,7 +10154,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                  logicalView->properties(viewUpdateJson->slice(), true, false)
                      .errorNumber()));
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -9957,7 +10177,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -9969,7 +10190,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
           "{ \"links\": { \"testCollection\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -9978,11 +10200,13 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -9994,9 +10218,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -10009,7 +10231,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, true)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (false == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10019,9 +10242,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -10033,7 +10254,8 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((true == logicalCollection->getIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE(
           (true == logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10062,8 +10284,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -10075,8 +10299,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
           "{ \"links\": { \"testCollection0\": {} } }");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10085,11 +10311,13 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -10101,9 +10329,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -10121,8 +10347,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, true)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10132,9 +10360,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -10151,8 +10377,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10181,8 +10409,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
     auto logicalView = vocbase.createView(viewCreateJson->slice(), false);
     ASSERT_TRUE((false == !logicalView));
 
-    EXPECT_TRUE((true == logicalCollection0->getIndexes().empty()));
-    EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection0->getPhysical()->getAllIndexes().empty()));
+    EXPECT_TRUE(
+        (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
     EXPECT_TRUE(
         (true == logicalView->visitCollections(
                      [](arangodb::DataSourceId,
@@ -10195,8 +10425,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
           "}");
       EXPECT_TRUE(
           (logicalView->properties(updateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10205,11 +10437,13 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -10221,9 +10455,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -10241,8 +10473,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
       EXPECT_TRUE((TRI_ERROR_FORBIDDEN ==
                    logicalView->properties(viewUpdateJson->slice(), true, true)
                        .errorNumber()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((false == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10252,9 +10486,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -10271,8 +10503,10 @@ TEST_F(IResearchViewTest, test_update_partial) {
 
       EXPECT_TRUE(
           (logicalView->properties(viewUpdateJson->slice(), true, true).ok()));
-      EXPECT_TRUE((false == logicalCollection0->getIndexes().empty()));
-      EXPECT_TRUE((true == logicalCollection1->getIndexes().empty()));
+      EXPECT_TRUE((false ==
+                   logicalCollection0->getPhysical()->getAllIndexes().empty()));
+      EXPECT_TRUE(
+          (true == logicalCollection1->getPhysical()->getAllIndexes().empty()));
       EXPECT_TRUE((false ==
                    logicalView->visitCollections(
                        [](arangodb::DataSourceId,
@@ -10316,11 +10550,13 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       ASSERT_TRUE(analyzers
                       .emplace(result, vocbase->name() + "::test_analyzer3",
                                "TestAnalyzer",
-                               VPackParser::fromJson("\"abc\"")->slice())
+                               VPackParser::fromJson("\"abc\"")->slice(),
+                               arangodb::transaction::OperationOriginTestCase{})
                       .ok());
-      ASSERT_NE(nullptr,
-                analyzers.get(vocbase->name() + "::test_analyzer3",
-                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+      ASSERT_NE(nullptr, analyzers.get(
+                             vocbase->name() + "::test_analyzer3",
+                             arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                             arangodb::transaction::OperationOriginTestCase{}));
     }
 
     // create collection
@@ -10344,16 +10580,24 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
-    EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false)
+    EXPECT_FALSE(analyzers
+                     .remove(vocbase->name() + "::test_analyzer3",
+                             arangodb::transaction::OperationOriginTestCase{},
+                             false)
                      .ok());  // used by link
     EXPECT_NE(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
-    EXPECT_TRUE(
-        analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::OperationOriginTestCase{}));
+    EXPECT_TRUE(analyzers
+                    .remove(vocbase->name() + "::test_analyzer3",
+                            arangodb::transaction::OperationOriginTestCase{},
+                            true)
+                    .ok());
     EXPECT_EQ(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::OperationOriginTestCase{}));
 
     auto cleanup =
         arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
@@ -10377,11 +10621,13 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       ASSERT_TRUE(analyzers
                       .emplace(result, vocbase->name() + "::test_analyzer3",
                                "TestAnalyzer",
-                               VPackParser::fromJson("\"abc\"")->slice())
+                               VPackParser::fromJson("\"abc\"")->slice(),
+                               arangodb::transaction::OperationOriginTestCase{})
                       .ok());
-      ASSERT_NE(nullptr,
-                analyzers.get(vocbase->name() + "::test_analyzer3",
-                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+      ASSERT_NE(nullptr, analyzers.get(
+                             vocbase->name() + "::test_analyzer3",
+                             arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                             arangodb::transaction::OperationOriginTestCase{}));
     }
 
     // create collection
@@ -10409,16 +10655,24 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
-    EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false)
+    EXPECT_FALSE(analyzers
+                     .remove(vocbase->name() + "::test_analyzer3",
+                             arangodb::transaction::OperationOriginTestCase{},
+                             false)
                      .ok());  // used by link
     EXPECT_NE(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
-    EXPECT_TRUE(
-        analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::OperationOriginTestCase{}));
+    EXPECT_TRUE(analyzers
+                    .remove(vocbase->name() + "::test_analyzer3",
+                            arangodb::transaction::OperationOriginTestCase{},
+                            true)
+                    .ok());
     EXPECT_EQ(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::OperationOriginTestCase{}));
 
     auto cleanup =
         arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
@@ -10442,11 +10696,13 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       ASSERT_TRUE(analyzers
                       .emplace(result, vocbase->name() + "::test_analyzer3",
                                "TestAnalyzer",
-                               VPackParser::fromJson("\"abcd\"")->slice())
+                               VPackParser::fromJson("\"abcd\"")->slice(),
+                               arangodb::transaction::OperationOriginTestCase{})
                       .ok());
-      ASSERT_NE(nullptr,
-                analyzers.get(vocbase->name() + "::test_analyzer3",
-                              arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+      ASSERT_NE(nullptr, analyzers.get(
+                             vocbase->name() + "::test_analyzer3",
+                             arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                             arangodb::transaction::OperationOriginTestCase{}));
     }
 
     // create collection
@@ -10474,17 +10730,25 @@ TEST_F(IResearchViewTest, test_remove_referenced_analyzer) {
       EXPECT_TRUE(view->properties(updateJson->slice(), true, true).ok());
     }
 
-    EXPECT_FALSE(analyzers.remove(vocbase->name() + "::test_analyzer3", false)
+    EXPECT_FALSE(analyzers
+                     .remove(vocbase->name() + "::test_analyzer3",
+                             arangodb::transaction::OperationOriginTestCase{},
+                             false)
                      .ok());  // used by link (we ignore analyzerDefinitions on
                               // single-server)
     EXPECT_NE(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
-    EXPECT_TRUE(
-        analyzers.remove(vocbase->name() + "::test_analyzer3", true).ok());
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::OperationOriginTestCase{}));
+    EXPECT_TRUE(analyzers
+                    .remove(vocbase->name() + "::test_analyzer3",
+                            arangodb::transaction::OperationOriginTestCase{},
+                            true)
+                    .ok());
     EXPECT_EQ(nullptr,
               analyzers.get(vocbase->name() + "::test_analyzer3",
-                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                            arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                            arangodb::transaction::OperationOriginTestCase{}));
 
     auto cleanup =
         arangodb::scopeGuard([vocbase, &view, &collection]() noexcept {
@@ -10522,8 +10786,9 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Persistence);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
@@ -10586,8 +10851,9 @@ TEST_F(IResearchViewTest, create_view_with_stored_value) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Persistence);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
     auto slice = builder.slice();
     arangodb::iresearch::IResearchViewMeta meta;
@@ -10650,8 +10916,9 @@ TEST_F(IResearchViewTest, create_view_with_stored_value_with_compression) {
 
   arangodb::velocypack::Builder builder;
   builder.openObject();
-  view->properties(builder,
-                   arangodb::LogicalDataSource::Serialization::Persistence);
+  auto res = view->properties(
+      builder, arangodb::LogicalDataSource::Serialization::Persistence);
+  ASSERT_TRUE(res.ok());
   builder.close();
   auto slice = builder.slice();
   arangodb::iresearch::IResearchViewMeta meta;

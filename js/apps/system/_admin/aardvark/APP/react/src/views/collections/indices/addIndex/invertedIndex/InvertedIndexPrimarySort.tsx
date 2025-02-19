@@ -1,16 +1,15 @@
+import { InputControl, SingleSelectControl, SwitchControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
 import React from "react";
-import { InputControl } from "../../../../../components/form/InputControl";
-import { SelectControl } from "../../../../../components/form/SelectControl";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexPrimarySort = ({
   field
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   return (
     <Box
@@ -37,7 +36,7 @@ const directionOptions = [
   }
 ];
 
-const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
+const PrimarySortFields = ({ field }: { field: FormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
   return (
     <>
@@ -50,18 +49,31 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
         marginTop="2"
       >
         <FormLabel htmlFor="primarySort.compression">Compression</FormLabel>
-        <SelectControl
+        <SingleSelectControl
           isDisabled={field.isDisabled}
           name="primarySort.compression"
           selectProps={{
             options: [
               {
-                label: "lz4",
+                label: "LZ4",
                 value: "lz4"
               },
               { label: "None", value: "none" }
             ]
           }}
+        />
+        <Spacer />
+        <FormLabel htmlFor="primarySort.cache">Cache</FormLabel>
+        <SwitchControl
+          switchProps={{
+            isDisabled: field.isDisabled || !window.frontendConfig.isEnterprise
+          }}
+          name="primarySort.cache"
+          tooltip={
+            window.frontendConfig.isEnterprise
+              ? undefined
+              : "Primary sort column caching is available in the Enterprise Edition."
+          }
         />
         <Spacer />
       </Box>
@@ -95,7 +107,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
                       >
                         Direction
                       </FormLabel>
-                      <SelectControl
+                      <SingleSelectControl
                         isDisabled={field.isDisabled}
                         name={`primarySort.fields.${index}.direction`}
                         selectProps={{
@@ -122,7 +134,7 @@ const PrimarySortFields = ({ field }: { field: IndexFormFieldProps }) => {
               <Button
                 isDisabled={field.isDisabled}
                 marginTop="4"
-                colorScheme="blue"
+                colorScheme="green"
                 onClick={() => {
                   push({ field: "", direction: "asc" });
                 }}

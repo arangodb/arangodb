@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -119,7 +119,7 @@ class MultiDependencySingleRowFetcher {
   // May only be called once, after the dependencies are injected.
   void initDependencies();
 
-  size_t numberDependencies();
+  size_t numberDependencies() const noexcept;
 
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
       -> std::tuple<ExecutionState, SkipResult,
@@ -157,7 +157,7 @@ class MultiDependencySingleRowFetcher {
 
  private:
   [[nodiscard]] auto executeForDependency(size_t dependency,
-                                          AqlCallStack& stack)
+                                          AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   /**
@@ -170,11 +170,10 @@ class MultiDependencySingleRowFetcher {
   bool isDone(DependencyInfo const& info) const;
 
   AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack,
-                                         const size_t dependency);
+                                         size_t dependency);
 
   void reportSkipForDependency(AqlCallStack const& originalStack,
-                               SkipResult const& skipped,
-                               const size_t dependency);
+                               SkipResult const& skipped, size_t dependency);
 
   void initializeReports(size_t subqueryDepth);
 };

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,16 +28,19 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/Timing.h"
 #include "Aql/Query.h"
+#include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
+
+#include <string_view>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -48,22 +51,17 @@ using namespace arangodb::aql;
 
 namespace {
 
-std::string const doneString = "DONE";
-std::string const hasMoreString = "HASMORE";
-std::string const waitingString = "WAITING";
-std::string const unknownString = "UNKNOWN";
-
-std::string const& stateToString(aql::ExecutionState state) {
+std::string_view stateToString(aql::ExecutionState state) {
   switch (state) {
     case aql::ExecutionState::DONE:
-      return doneString;
+      return "DONE";
     case aql::ExecutionState::HASMORE:
-      return hasMoreString;
+      return "HASMORE";
     case aql::ExecutionState::WAITING:
-      return waitingString;
+      return "WAITING";
     default:
       // just to suppress a warning ..
-      return unknownString;
+      return "UNKNOWN";
   }
 }
 
@@ -77,10 +75,10 @@ size_t ExecutionBlock::DefaultBatchSize =
 ExecutionBlock::ExecutionBlock(ExecutionEngine* engine, ExecutionNode const* ep)
     : _engine(engine),
       _upstreamState(ExecutionState::HASMORE),
-      _exeNode(ep),
-      _dependencies(),
-      _dependencyPos(_dependencies.end()),
       _profileLevel(engine->getQuery().queryOptions().getProfileLevel()),
+      _exeNode(ep),
+      _dependencyPos(_dependencies.end()),
+      _startOfExecution(-1.0),
       _done(false) {}
 
 ExecutionBlock::~ExecutionBlock() = default;
@@ -104,18 +102,14 @@ std::pair<ExecutionState, Result> ExecutionBlock::initializeCursor(
 
   TRI_ASSERT(getHasMoreState() == ExecutionState::HASMORE);
   TRI_ASSERT(_dependencyPos == _dependencies.end());
-  return {ExecutionState::DONE, TRI_ERROR_NO_ERROR};
+  return {ExecutionState::DONE, {}};
 }
 
-ExecutionState ExecutionBlock::getHasMoreState() {
-  if (_done) {
-    return ExecutionState::DONE;
-  }
-  if (_upstreamState == ExecutionState::DONE) {
+ExecutionState ExecutionBlock::getHasMoreState() noexcept {
+  if (!_done && _upstreamState == ExecutionState::DONE) {
     _done = true;
-    return ExecutionState::DONE;
   }
-  return ExecutionState::HASMORE;
+  return _done ? ExecutionState::DONE : ExecutionState::HASMORE;
 }
 
 ExecutionNode const* ExecutionBlock::getPlanNode() const { return _exeNode; }
@@ -136,40 +130,37 @@ void ExecutionBlock::collectExecStats(ExecutionStats& stats) {
 }
 
 void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack,
-                                       std::string const& clientId) {
+                                       std::string_view clientId) {
+  // add timing for block in case profiling is turned on.
   if (_profileLevel >= ProfileLevel::Blocks) {
-    if (_execNodeStats.runtime >= 0.0) {
-      _execNodeStats.runtime -= currentSteadyClockValue();
-      TRI_ASSERT(_execNodeStats.runtime < 0.0);
-    }
+    // only if profiling is turned on, get current time
+    _startOfExecution = currentSteadyClockValue();
+    TRI_ASSERT(_startOfExecution > 0.0);
 
     if (_profileLevel >= ProfileLevel::TraceOne) {
-      auto const node = getPlanNode();
-      auto const queryId = this->_engine->getQuery().id();
       LOG_TOPIC("1e717", INFO, Logger::QUERIES)
-          << "[query#" << queryId << "] "
-          << "execute type=" << node->getTypeString()
+          << "[query#" << this->_engine->getQuery().id()
+          << "] execute type=" << getPlanNode()->getTypeString()
           << " callStack= " << stack.toString() << " this=" << (uintptr_t)this
-          << " id=" << node->id()
-          << (clientId.empty() ? "" : " clientId=" + clientId);
+          << " id=" << getPlanNode()->id()
+          << (clientId.empty() ? "" : " clientId=") << clientId;
     }
   }
 }
 
 void ExecutionBlock::traceExecuteEnd(
     std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> const& result,
-    std::string const& clientId) {
+    std::string_view clientId) {
   if (_profileLevel >= ProfileLevel::Blocks) {
-    auto const& [state, skipped, block] = result;
-    auto const items = block != nullptr ? block->numRows() : 0;
+    TRI_ASSERT(_startOfExecution > 0.0);
+    _execNodeStats.runtime += currentSteadyClockValue() - _startOfExecution;
+    _startOfExecution = -1.0;
+
+    auto [state, skipped, block] = result;
+    auto items = block != nullptr ? block->numRows() : 0;
 
     _execNodeStats.calls += 1;
     _execNodeStats.items += skipped.getSkipCount() + items;
-    if (state != ExecutionState::WAITING) {
-      TRI_ASSERT(_execNodeStats.runtime < 0.0);
-      _execNodeStats.runtime += currentSteadyClockValue();
-      TRI_ASSERT(_execNodeStats.runtime >= 0.0);
-    }
 
     if (_profileLevel >= ProfileLevel::TraceOne) {
       size_t rows = 0;
@@ -178,46 +169,40 @@ void ExecutionBlock::traceExecuteEnd(
         shadowRows = block->numShadowRows();
         rows = block->numRows() - shadowRows;
       }
-      ExecutionNode const* node = getPlanNode();
       LOG_QUERY("60bbc", INFO)
           << "execute done " << printBlockInfo()
           << " state=" << stateToString(state)
           << " skipped=" << skipped.getSkipCount() << " produced=" << rows
           << " shadowRows=" << shadowRows
-          << (clientId.empty() ? "" : " clientId=" + clientId);
+          << (clientId.empty() ? "" : " clientId=") << clientId;
 
       if (_profileLevel >= ProfileLevel::TraceTwo) {
-        auto const resultString =
-            std::invoke([&, &block = block]() -> std::string {
-              if (block == nullptr) {
-                return "nullptr";
-              } else {
-                auto const* opts = &_engine->getQuery().vpackOptions();
-                VPackBuilder builder;
-                block->toSimpleVPack(opts, builder);
-                return VPackDumper::toString(builder.slice(), opts);
-              }
-            });
+        ExecutionNode const* node = getPlanNode();
         LOG_QUERY("f12f9", INFO)
             << "execute type=" << node->getTypeString() << " id=" << node->id()
-            << (clientId.empty() ? "" : " clientId=" + clientId)
-            << " result: " << resultString;
+            << (clientId.empty() ? "" : " clientId=") << clientId
+            << " result: " << std::invoke([&, &block = block]() -> std::string {
+                 if (block == nullptr) {
+                   return "nullptr";
+                 } else {
+                   auto const* opts = &_engine->getQuery().vpackOptions();
+                   VPackBuilder builder;
+                   block->toSimpleVPack(opts, builder);
+                   return VPackDumper::toString(builder.slice(), opts);
+                 }
+               });
       }
     }
   }
 }
 
+ExecutionNodeStats& ExecutionBlock::stats() noexcept { return _execNodeStats; }
+
 auto ExecutionBlock::printTypeInfo() const -> std::string const {
-  std::stringstream stream;
-  ExecutionNode const* node = getPlanNode();
-  stream << "type=" << node->getTypeString();
-  return stream.str();
+  return absl::StrCat("type=", getPlanNode()->getTypeString());
 }
 
 auto ExecutionBlock::printBlockInfo() const -> std::string const {
-  std::stringstream stream;
-  ExecutionNode const* node = getPlanNode();
-  stream << printTypeInfo() << " this=" << (uintptr_t)this
-         << " id=" << node->id().id();
-  return stream.str();
+  return absl::StrCat(printTypeInfo(), " this=", (uintptr_t)this,
+                      " id=", getPlanNode()->id().id());
 }

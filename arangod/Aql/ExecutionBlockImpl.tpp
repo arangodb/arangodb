@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,68 +26,108 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/CalculationExecutor.h"
-#include "Aql/ConstFetcher.h"
-#include "Aql/ConstrainedSortExecutor.h"
-#include "Aql/CountCollectExecutor.h"
-#include "Aql/DistinctCollectExecutor.h"
-#include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/EnumerateListExecutor.h"
+#include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/FilterExecutor.h"
-#include "Aql/HashedCollectExecutor.h"
-#include "Aql/IdExecutor.h"
-#include "Aql/IndexExecutor.h"
+#include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/EnumeratePathsExecutor.h"
-#include "Aql/LimitExecutor.h"
-#include "Aql/MaterializeExecutor.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/MultiDependencySingleRowFetcher.h"
-#include "Aql/NoResultsExecutor.h"
-#include "Aql/ParallelUnsortedGatherExecutor.h"
-#include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/ReturnExecutor.h"
-#include "Aql/ShadowAqlItemRow.h"
-#include "Aql/ShortestPathExecutor.h"
 #include "Aql/SimpleModifier.h"
-#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SkipResult.h"
-#include "Aql/SortExecutor.h"
-#include "Aql/SortRegister.h"
-#include "Aql/SortedCollectExecutor.h"
-#include "Aql/SortingGatherExecutor.h"
-#include "Aql/SubqueryEndExecutor.h"
-#include "Aql/SubqueryStartExecutor.h"
-#include "Aql/TraversalExecutor.h"
-#include "Aql/UnsortedGatherExecutor.h"
+#include "Aql/Timing.h"
 #include "Aql/UpsertModifier.h"
-#include "Aql/WindowExecutor.h"
-#include "Basics/system-functions.h"
-#include "Graph/Steps/ClusterProviderStep.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
-#ifdef USE_ENTERPRISE
-#include "Enterprise/IResearch/OffsetInfoMaterializeExecutor.h"
-#endif
-#include "Graph/Enumerators/TwoSidedEnumerator.h"
-#include "Graph/PathManagement/PathStore.h"
-#include "Graph/PathManagement/PathStoreTracer.h"
+#include "Aql/types.h"
+#include "Basics/ScopeGuard.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/FifoQueue.h"
-#include "Graph/Queues/QueueTracer.h"
+#include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
+#include "Scheduler/SchedulerFeature.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <type_traits>
+
+namespace arangodb {
+namespace aql {
+class MultiDependencySingleRowFetcher;
+class MultiAqlItemBlockInputRange;
+
+// These tags are used to instantiate SingleRemoteModificationExecutor
+// for the different use cases
+struct IndexTag;
+struct Insert;
+struct Remove;
+struct Replace;
+struct Update;
+struct Upsert;
+
+template<typename Modifier>
+struct SingleRemoteModificationExecutor;
+
+class SortedCollectExecutor;
+class SubqueryEndExecutor;
+class SubqueryStartExecutor;
+
+class FilterExecutor;
+class HashedCollectExecutor;
+class NoResultsExecutor;
+
+class ConstFetcher;
+template<class UsedFetcher>
+class IdExecutor;
+class IndexExecutor;
+class JoinExecutor;
+class MaterializeRocksDBExecutor;
+class MaterializeSearchExecutor;
+template<typename FetcherType, typename ModifierType>
+class ModificationExecutor;
+struct IndexDistinctScanExecutor;
+
+class LimitExecutor;
+class ReturnExecutor;
+class SortExecutor;
+class AccuWindowExecutor;
+class WindowExecutor;
+
+class TraversalExecutor;
+template<class FinderType>
+class EnumeratePathsExecutor;
+template<class FinderType>
+class ShortestPathExecutor;
+
+class SortingGatherExecutor;
+class UnsortedGatherExecutor;
+class ParallelUnsortedGatherExecutor;
+
+enum class CalculationType;
+template<CalculationType calculationType>
+class CalculationExecutor;
+
+class ConstrainedSortExecutor;
+class CountCollectExecutor;
+class DistinctCollectExecutor;
+class EnumerateCollectionExecutor;
+class EnumerateListExecutor;
+class EnumerateListObjectExecutor;
+class GroupedSortExecutor;
+class EnumerateNearVectorsExecutor;
+}  // namespace aql
+
+namespace graph {
+class KShortestPathsFinderInterface;
+}
+
+namespace iresearch {
+// only available in Enterprise
+class OffsetMaterializeExecutor;
+}  // namespace iresearch
+}  // namespace arangodb
 
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
@@ -112,6 +152,37 @@ using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
 using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
+using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsCluster =
+    arangodb::graph::WeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPathsClusterTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
@@ -127,11 +198,12 @@ using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedShortestPath = arangodb::graph::WeightedShortestPathEnumerator<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
+using WeightedShortestPath =
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
 using WeightedShortestPathTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
 
@@ -169,10 +241,10 @@ using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedShortestPathCluster =
-    arangodb::graph::WeightedShortestPathEnumerator<
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using WeightedShortestPathClusterTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 namespace arangodb::aql {
@@ -212,7 +284,6 @@ using namespace arangodb::aql;
 CREATE_HAS_MEMBER_CHECK(initializeCursor, hasInitializeCursor);
 CREATE_HAS_MEMBER_CHECK(expectedNumberOfRows, hasExpectedNumberOfRows);
 CREATE_HAS_MEMBER_CHECK(skipRowsRange, hasSkipRowsRange);
-CREATE_HAS_MEMBER_CHECK(expectedNumberOfRowsNew, hasExpectedNumberOfRowsNew);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // Forward declaration of Test Executors.
@@ -262,19 +333,14 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
       _rowFetcher(std::in_place, _dependencyProxy),
       _executorInfos(std::move(executorInfos)),
       _executor(std::in_place, *_rowFetcher, _executorInfos),
-      _outputItemRow(),
       _query(engine->getQuery()),
       _state(InternalState::FETCH_DATA),
       _execState{ExecState::CHECKCALL},
       _lastRange{MainQueryState::HASMORE},
       _upstreamRequest{},
       _clientRequest{},
-      _stackBeforeWaiting{AqlCallList{AqlCall{}}},
+      _stackBeforeWaiting{AqlCallStack::Empty{}},
       _hasUsedDataRangeBlock{false} {
-  // Break the stack before waiting.
-  // We should not use this here.
-  _stackBeforeWaiting.popCall();
-
   if (_exeNode->isCallstackSplitEnabled()) {
     _callstackSplit = std::make_unique<CallstackSplit>(*this);
   }
@@ -298,7 +364,10 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     // Assert that the block has enough registers. This must be guaranteed by
     // the register planning.
     TRI_ASSERT(newBlock->numRegisters() ==
-               _registerInfos.numberOfOutputRegisters());
+               _registerInfos.numberOfOutputRegisters())
+        << "newBlock->numRegisters() = " << newBlock->numRegisters()
+        << " _registerInfos.numberOfOutputRegisters() = "
+        << _registerInfos.numberOfOutputRegisters();
     // Check that all output registers are empty.
     size_t const n = newBlock->numRows();
     auto const& regs = _registerInfos.getOutputRegisters();
@@ -308,7 +377,11 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
         if (!hasShadowRows || !newBlock->isShadowRow(row)) {
           for (auto const& reg : regs) {
             AqlValue const& val = newBlock->getValueReference(row, reg);
-            TRI_ASSERT(val.isEmpty() && reg.isRegularRegister());
+            TRI_ASSERT(val.isEmpty() && reg.isRegularRegister())
+                << std::boolalpha << "val.isEmpty() = " << val.isEmpty()
+                << " reg.isRegularRegister() = " << reg.isRegularRegister()
+                << " reg = " << reg.value()
+                << " value = " << val.slice().toJson();
           }
         }
       }
@@ -332,8 +405,12 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
 }
 
 template<class Executor>
-auto ExecutionBlockImpl<Executor>::executor() noexcept -> Executor& {
+auto ExecutionBlockImpl<Executor>::executor() -> Executor& {
   TRI_ASSERT(_executor.has_value());
+  if (!_executor.has_value()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no executor available in query");
+  }
   return *_executor;
 }
 
@@ -429,6 +506,16 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   if (getQuery().killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
+
+  // check if this block failed already.
+  if (ADB_UNLIKELY(_firstFailure.fail())) {
+    // if so, just return the stored error.
+    // we need to do this because if a block fails with
+    // an exception, it is in an invalid state, and all
+    // subsequent calls into it may behave badly.
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
+
   traceExecuteBegin(stack);
   // silence tests -- we need to introduce new failure tests for fetchers
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
@@ -439,15 +526,6 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   }
   TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  // check if this block failed already.
-  if (_firstFailure.fail()) {
-    // if so, just return the stored error.
-    // we need to do this because if a block fails with
-    // an exception, it is in an invalid state, and all
-    // subsequent calls into it may behave badly.
-    THROW_ARANGO_EXCEPTION(_firstFailure);
   }
 
   try {
@@ -477,30 +555,36 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   } catch (basics::Exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    std::string msg(ex.what());
-    msg.append(" [node #")
-        .append(std::to_string(getPlanNode()->id().id()))
-        .append(": ")
-        .append(getPlanNode()->getTypeString())
-        .append("]");
-    _firstFailure.reset(ex.code(), std::move(msg));
+    setFailure({ex.code(),
+                absl::StrCat(ex.what(), " [node #", getPlanNode()->id().id(),
+                             ": ", getPlanNode()->getTypeString(), "]")});
     LOG_QUERY("7289a", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
-    throw;
+    if (_prefetchTask && !_prefetchTask->isConsumed()) {
+      if (!_prefetchTask->tryClaim()) {
+        _prefetchTask->waitFor();
+      } else {
+        _prefetchTask->discard(/*isFinished*/ false);
+      }
+    }
+    THROW_ARANGO_EXCEPTION(_firstFailure);
   } catch (std::exception const& ex) {
     TRI_ASSERT(_firstFailure.ok());
     // store only the first failure we got
-    std::string msg(ex.what());
-    msg.append(" [node #")
-        .append(std::to_string(getPlanNode()->id().id()))
-        .append(": ")
-        .append(getPlanNode()->getTypeString())
-        .append("]");
-    _firstFailure.reset(TRI_ERROR_INTERNAL, std::move(msg));
+    setFailure({TRI_ERROR_INTERNAL,
+                absl::StrCat(ex.what(), " [node #", getPlanNode()->id().id(),
+                             ": ", getPlanNode()->getTypeString(), "]")});
     LOG_QUERY("2bbd5", DEBUG)
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
+    if (_prefetchTask && !_prefetchTask->isConsumed()) {
+      if (!_prefetchTask->tryClaim()) {
+        _prefetchTask->waitFor();
+      } else {
+        _prefetchTask->discard(/*isFinished*/ false);
+      }
+    }
     // Rewire the error, to be consistent with potentially next caller.
     THROW_ARANGO_EXCEPTION(_firstFailure);
   }
@@ -544,7 +628,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
 
     // Non-Passthrough variant, we need to allocate the block ourselfs
     size_t blockSize = ExecutionBlock::DefaultBatchSize;
-    if constexpr (hasExpectedNumberOfRowsNew<Executor>::value) {
+    if constexpr (hasExpectedNumberOfRows<Executor>::value) {
       // Only limit the output size if there will be no more
       // data from upstream. Or if we have ordered a SOFT LIMIT.
       // Otherwise we will overallocate here.
@@ -553,7 +637,7 @@ auto ExecutionBlockImpl<Executor>::allocateOutputBlock(AqlCall&& call)
       // returns HASMORE.
       if (_lastRange.finalState() == MainQueryState::DONE ||
           call.hasSoftLimit()) {
-        blockSize = executor().expectedNumberOfRowsNew(_lastRange, call);
+        blockSize = executor().expectedNumberOfRows(_lastRange, call);
         if (_lastRange.finalState() == MainQueryState::HASMORE) {
           // There might be more from above!
           blockSize = std::max(call.getLimit(), blockSize);
@@ -594,6 +678,12 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::ensureOutputBlock(AqlCall&& call) {
   if (_outputItemRow == nullptr || !_outputItemRow->isInitialized()) {
     _outputItemRow = allocateOutputBlock(std::move(call));
+    TRI_ASSERT(_outputItemRow->numRowsLeft() ==
+               std::min(_outputItemRow->blockNumRows(),
+                        _outputItemRow->getClientCall().getLimit()))
+        << "output numRowsLeft: " << _outputItemRow->numRowsLeft()
+        << ", blockNumRows: " << _outputItemRow->blockNumRows()
+        << ", call: " << _outputItemRow->getClientCall();
   } else {
     _outputItemRow->setCall(std::move(call));
   }
@@ -720,12 +810,21 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
                   EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
-                  ParallelUnsortedGatherExecutor,
+                  EnumeratePathsExecutor<YenPaths>,
+                  EnumeratePathsExecutor<YenPathsTracer>,
+                  EnumeratePathsExecutor<YenPathsCluster>,
+                  EnumeratePathsExecutor<YenPathsClusterTracer>,
+                  EnumeratePathsExecutor<WeightedYenPaths>,
+                  EnumeratePathsExecutor<WeightedYenPathsTracer>,
+                  EnumeratePathsExecutor<WeightedYenPathsCluster>,
+                  EnumeratePathsExecutor<WeightedYenPathsClusterTracer>,
+                  ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
                   AccuWindowExecutor, WindowExecutor, IndexExecutor,
                   EnumerateCollectionExecutor, DistinctCollectExecutor,
                   ConstrainedSortExecutor, CountCollectExecutor,
+                  GroupedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                   TestLambdaSkipExecutor,
 #endif
@@ -741,7 +840,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   ModificationExecutor<
                       SingleRowFetcher<BlockPassthrough::Disable>,
                       UpsertModifier>,
-                  TraversalExecutor, EnumerateListExecutor,
+                  TraversalExecutor, EnumerateListObjectExecutor,
                   SubqueryStartExecutor, SubqueryEndExecutor,
                   SortedCollectExecutor, LimitExecutor, UnsortedGatherExecutor,
                   SortingGatherExecutor, SortExecutor, TraversalExecutor,
@@ -754,12 +853,10 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   SingleRemoteModificationExecutor<Replace>,
                   SingleRemoteModificationExecutor<Upsert>,
                   MultipleRemoteModificationExecutor, SortExecutor,
-#ifdef USE_ENTERPRISE
+                  EnumerateNearVectorsExecutor, IndexDistinctScanExecutor,
+                  // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
-#endif
-                  MaterializeExecutor<void, false>,
-                  MaterializeExecutor<std::string const&, true>,
-                  MaterializeExecutor<std::string const&, false>>) ||
+                  MaterializeSearchExecutor>) ||
           IsSearchExecutor<Executor>::value,
       "Unexpected executor for SkipVariants::EXECUTOR");
 
@@ -815,6 +912,24 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                                   AqlCallType const& aqlCall)
     -> std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange> {
+  if (getQuery().killed()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
+  double start = -1.0;
+  auto profilingGuard = scopeGuard([&]() noexcept {
+    _execNodeStats.fetching += currentSteadyClockValue() - start;
+  });
+  if (_profileLevel >= ProfileLevel::Blocks) {
+    // only if profiling is turned on, get current time
+    start = currentSteadyClockValue();
+  } else {
+    // if profiling is turned off, don't get current time, but instead
+    // cancel the scopeGuard so we don't unnecessarily call timing
+    // functions on exit
+    profilingGuard.cancel();
+  }
+
   // TODO The logic in the MultiDependencySingleRowFetcher branch should be
   //      moved into the MultiDependencySingleRowFetcher.
   static_assert(isMultiDepExecutor<Executor> ==
@@ -860,46 +975,105 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
     }
 
     auto const result = std::invoke([&]() {
-      if (_prefetchTask && !_prefetchTask->isConsumed() &&
-          !_prefetchTask->tryClaim()) {
-        // some other thread is currently executing our prefetch task
-        // -> wait till it has finished.
-        _prefetchTask->waitFor();
-        return _prefetchTask->stealResult();
-      } else {
-        return fetcher().execute(ctx.stack);
+      if (_prefetchTask && !_prefetchTask->isConsumed()) {
+        if (!_prefetchTask->tryClaim()) {
+          TRI_ASSERT(!_dependencies.empty());
+          if (_profileLevel >= ProfileLevel::Blocks) {
+            // count the parallel invocation
+            _dependencies[0]->stats().parallel += 1;
+          }
+          // some other thread is currently executing our prefetch task
+          // -> wait till it has finished.
+          _prefetchTask->waitFor();
+          auto result = _prefetchTask->stealResult();
+          if (std::get<ExecutionState>(result) == ExecutionState::WAITING) {
+            // if we got WAITING, we have to immediately call the fetcher again,
+            // because it is possible that we already got a wakeup that got
+            // swallowed. If the wakeup has already occurred, this call will
+            // return actual data, otherwise we will get another WAITING, but we
+            // won't have wasted a lot of CPU cycles.
+            return fetcher().execute(ctx.stack);
+          }
+
+          if (_profileLevel >= ProfileLevel::TraceOne) {
+            auto const queryId = this->_engine->getQuery().id();
+            LOG_TOPIC("14d20", INFO, Logger::QUERIES)
+                << "[query#" << queryId << "] "
+                << "returning prefetched result type="
+                << getPlanNode()->getTypeString() << " this=" << (uintptr_t)this
+                << " id=" << getPlanNode()->id();
+          }
+          return result;
+        }
+
+        // we have claimed the task and are executing the fetcher ourselves, so
+        // let's reset the task's internals properly.
+        _prefetchTask->discard(/*isFinished*/ false);
       }
+      return fetcher().execute(ctx.stack);
     });
 
-    // TODO - we should also consider the limit here, but unfortunately the
-    // softLimit is currently also used for the batchSize
-    if (std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
-        _exeNode->isAsyncPrefetchEnabled()) {
+    // note: SCHEDULER is a nullptr in unit tests
+    if (SchedulerFeature::SCHEDULER != nullptr &&
+        std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
+        _exeNode->isAsyncPrefetchEnabled() && !ctx.clientCall.hasLimit()) {
+      // Async prefetching.
+      // we can only use async prefetching if the call does not use a limit.
+      // this is because otherwise the prefetching could lead to an overfetching
+      // of data.
+      bool shouldSchedule = false;
       if (_prefetchTask == nullptr) {
-        _prefetchTask = std::make_shared<PrefetchTask>();
+        _prefetchTask = std::make_shared<PrefetchTask>(*this, ctx.stack);
+        shouldSchedule = true;
+      } else {
+        shouldSchedule = _prefetchTask->rearmForNextCall(ctx.stack);
       }
-      _prefetchTask->reset();
 
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
+      // At the moment we may spawn one task per execution node
 
-      // we can safely ignore the result here, because we will try to
-      // claim the task ourselves anyway.
+      if (shouldSchedule) {
+        bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+            RequestLane::INTERNAL_LOW,
+            [block = this, task = _prefetchTask]() mutable {
+              if (!task->tryClaimOrAbandon()) {
+                return;
+              }
+              // task is a copy of the PrefetchTask shared_ptr, and we will only
+              // attempt to execute the task if we successfully claimed the
+              // task. i.e., it does not matter if this task lingers around in
+              // the scheduler queue even after the execution block has been
+              // destroyed, because in this case we will not be able to claim
+              // the task and simply return early without accessing the block.
+              try {
+                task->execute();
+              } catch (basics::Exception const& ex) {
+                task->setFailure(
+                    {ex.code(),
+                     absl::StrCat(ex.what(), " [node #",
+                                  block->getPlanNode()->id().id(), ": ",
+                                  block->getPlanNode()->getTypeString(), "]")});
+              } catch (std::exception const& ex) {
+                task->setFailure(
+                    {TRI_ERROR_INTERNAL,
+                     absl::StrCat(ex.what(), " [node #",
+                                  block->getPlanNode()->id().id(), ": ",
+                                  block->getPlanNode()->getTypeString(), "]")});
+              }
+            });
 
-      SchedulerFeature::SCHEDULER->queue(
-          RequestLane::INTERNAL_LOW,
-          [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
-            if (!task->tryClaim()) {
-              return;
-            }
-            // task is a copy of the PrefetchTask shared_ptr, and we will only
-            // attempt to execute the task if we successfully claimed the task.
-            // i.e., it does not matter if this task lingers around in the
-            // scheduler queue even after the execution block has been
-            // destroyed, because in this case we will not be able to claim the
-            // task and simply return early without accessing the block.
-            task->execute(*block, stack);
-          });
+        if (!queued) {
+          // clear prefetch task
+          _prefetchTask.reset();
+        } else if (_profileLevel >= ProfileLevel::TraceOne) {
+          auto const queryId = this->_engine->getQuery().id();
+          LOG_TOPIC("cbf44", INFO, Logger::QUERIES)
+              << "[query#" << queryId << "] "
+              << "queued prefetch task type=" << getPlanNode()->getTypeString()
+              << " this=" << (uintptr_t)this << " id=" << getPlanNode()->id();
+        }
+      }
     }
 
     if constexpr (!std::is_same_v<Executor, SubqueryStartExecutor>) {
@@ -978,9 +1152,11 @@ auto ExecutionBlockImpl<Executor>::executeSkipRowsRange(
 }
 
 template<class Executor>
+template<class E>
 auto ExecutionBlockImpl<Executor>::sideEffectShadowRowForwarding(
     AqlCallStack& stack, SkipResult& skipResult) -> ExecState {
-  static_assert(executorHasSideEffects<Executor>);
+  static_assert(std::is_same_v<Executor, E> &&
+                executorHasSideEffects<Executor>);
   if (!stack.needToCountSubquery()) {
     // We need to really produce things here
     // fall back to original version as any other executor.
@@ -1101,6 +1277,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
   } else {
     // Need to forward the ShadowRows
     auto&& [state, shadowRow] = _lastRange.nextShadowRow();
+
+    bool const hasDoneNothing =
+        _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+
     TRI_ASSERT(shadowRow.isInitialized());
     _outputItemRow->increaseShadowRowDepth(shadowRow);
     TRI_ASSERT(_outputItemRow->produced());
@@ -1130,6 +1310,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryStart(
 
     _executorReturnedDone = false;
 
+    if (hasDoneNothing) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
     return ExecState::NEXTSUBQUERY;
   }
 }
@@ -1146,6 +1330,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Let client call again
     return ExecState::NEXTSUBQUERY;
   }
+  bool const hasDoneNothing =
+      _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
+
   auto&& [state, shadowRow] = _lastRange.nextShadowRow();
   TRI_ASSERT(shadowRow.isInitialized());
   if (shadowRow.isRelevant()) {
@@ -1161,7 +1348,7 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
 
   TRI_ASSERT(_outputItemRow->produced());
   _outputItemRow->advanceRow();
-  // The stack in used here contains all calls for within the subquery.
+  // The stack in use here contains all calls for within the subquery.
   // Hence any inbound subquery needs to be counted on its level
 
   countShadowRowProduced(stack, shadowRow.getDepth());
@@ -1171,6 +1358,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Done with this query
     return ExecState::DONE;
   } else if (_lastRange.hasDataRow()) {
+    /// NOTE: We do not need popDepthsLowerThan here, as we already
+    /// have a new DataRow from upstream, so the upstream
+    /// block has decided it is correct to continue.
     // Multiple concatenated Subqueries
     return ExecState::NEXTSUBQUERY;
   } else if (_lastRange.hasShadowRow()) {
@@ -1182,6 +1372,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwardingSubqueryEnd(
     // Need to return!
     return ExecState::DONE;
   } else {
+    if (hasDoneNothing && !shadowRow.isRelevant()) {
+      stack.popDepthsLowerThan(shadowRow.getDepth());
+    }
+
     // End of input, we are done for now
     // Need to call again
     return ExecState::NEXTSUBQUERY;
@@ -1205,6 +1399,8 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       return ExecState::NEXTSUBQUERY;
     }
 
+    bool const hasDoneNothing =
+        _outputItemRow->numRowsWritten() == 0 and _skipped.nothingSkipped();
     auto&& [state, shadowRow] = _lastRange.nextShadowRow();
     TRI_ASSERT(shadowRow.isInitialized());
 
@@ -1237,6 +1433,9 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       // Done with this query
       return ExecState::DONE;
     } else if (_lastRange.hasDataRow()) {
+      /// NOTE: We do not need popDepthsLowerThan here, as we already
+      /// have a new DataRow from upstream, so the upstream
+      /// block has decided it is correct to continue.
       // Multiple concatenated Subqueries
       return ExecState::NEXTSUBQUERY;
     } else if (_lastRange.hasShadowRow()) {
@@ -1254,6 +1453,10 @@ auto ExecutionBlockImpl<Executor>::shadowRowForwarding(AqlCallStack& stack)
       // we need to forward them
       return ExecState::SHADOWROWS;
     } else {
+      if (hasDoneNothing && !shadowRow.isRelevant()) {
+        stack.popDepthsLowerThan(shadowRow.getDepth());
+      }
+
       // End of input, need to fetch new!
       // Just start with the next subquery.
       // If in doubt the next row will be a shadowRow again,
@@ -1312,12 +1515,8 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
         if constexpr (std::is_same_v<AqlCallType, AqlCall>) {
           return fastForwardCall;
         } else {
-#ifndef _WIN32
-          // For some reason our Windows compiler complains about this static
-          // assert in the cases that should be in the above constexpr path.
-          // So simply not compile it in.
           static_assert(std::is_same_v<AqlCallType, AqlCallSet>);
-#endif
+
           auto call = AqlCallSet{};
           call.calls.emplace_back(typename AqlCallSet::DepCallPair{
               dependency, AqlCallList{fastForwardCall}});
@@ -1439,7 +1638,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // calling _lastRange.skipAllShadowRowsOfDepth() in the following, it is
         // applied to our input.
         // For SQS nodes, this needs to be adjusted; in principle we'd just need
-        //   depthToSkip += offset;
+        //   depthToSkip += inputDepthOffset;
         // , except depthToSkip is unsigned, and we would get integer
         // underflows. So it's passed to skipAllShadowRowsOfDepth() instead.
         // Note that SubqueryEnd nodes do *not* need this adjustment, as an
@@ -1447,8 +1646,20 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // ExecutionContext is constructed at the beginning of
         // executeWithoutTrace, so input and call-stack already align at this
         // point.
-        constexpr static int depthOffset = ([]() consteval->int {
+        // However, inversely, because SubqueryEnd nodes push another call for
+        // the stack to match their input depth, the stack size is off-by-one
+        // compared to their output depth, which is i.a. the size of _skipped.
+        // Therefore, outputDepthOffset needs to be passed to didSkipSubquery(),
+        // as inputDepthOffset is passed to skipAllShadowRowsOfDepth().
+        constexpr static int inputDepthOffset = ([]() consteval->int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            return -1;
+          } else {
+            return 0;
+          }
+        })();
+        constexpr static int outputDepthOffset = ([]() consteval->int {
+          if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
             return -1;
           } else {
             return 0;
@@ -1456,7 +1667,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         })();
 
         auto skipped =
-            _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(
+            _lastRange.template skipAllShadowRowsOfDepth<inputDepthOffset>(
                 depthToSkip);
         if (shadowCall.needsFullCount()) {
           if constexpr (std::is_same_v<DataRange,
@@ -1467,9 +1678,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
             // `execute` API.
             auto reportedSkip =
                 std::min_element(std::begin(skipped), std::end(skipped));
-            _skipped.didSkipSubquery(*reportedSkip, depthToSkip);
+            _skipped.didSkipSubquery<outputDepthOffset>(*reportedSkip,
+                                                        depthToSkip);
           } else {
-            _skipped.didSkipSubquery(skipped, depthToSkip);
+            _skipped.didSkipSubquery<outputDepthOffset>(skipped, depthToSkip);
           }
         }
         if (_lastRange.hasShadowRow()) {
@@ -1539,24 +1751,21 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
 
   if constexpr (executorCanReturnWaiting<Executor>) {
     // If state is SKIP, PRODUCE or FASTFORWARD, we were WAITING.
-    // The call stack must be restored in all cases, but only SKIP needs to
-    // restore the clientCall.
+    // The clientCall and call stack must be restored.
     switch (_execState) {
       default:
         break;
       case ExecState::SKIP:
-        TRI_ASSERT(_clientRequest.requestLessDataThan(ctx.clientCall));
-        ctx.clientCall = _clientRequest;
-        [[fallthrough]];
       case ExecState::PRODUCE:
       case ExecState::FASTFORWARD:
+        TRI_ASSERT(_clientRequest.requestLessDataThan(ctx.clientCall));
+        ctx.clientCall = _clientRequest;
         TRI_ASSERT(_stackBeforeWaiting.requestLessDataThan(ctx.stack));
         ctx.stack = _stackBeforeWaiting;
     }
   }
 
   auto returnToState = ExecState::CHECKCALL;
-
   LOG_QUERY("007ac", DEBUG)
       << "starting statemachine of executor " << printBlockInfo();
   while (_execState != ExecState::DONE) {
@@ -1694,7 +1903,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
               executor().produceRows(_lastRange, *_outputItemRow);
 
           if (executorState == ExecutionState::WAITING) {
-            // We need to persist the old stack before we return.
+            // We need to persist the old call before we return.
+            // We might have some local accounting to this call.
+            _clientRequest = ctx.clientCall;
             // We might have some local accounting in this stack.
             _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
@@ -1725,7 +1936,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
                     ctx.clientCall.getLimit() > 0) &&
                    outputIsFull()) {
           // In pass through variant we need to stop whenever the block is full.
-          // In all other branches only if the client Still needs more data.
+          // In all other branches only if the client still needs more data.
           _execState = ExecState::DONE;
           break;
         } else if (ctx.clientCall.getLimit() > 0 && executorNeedsCall(call)) {
@@ -1768,7 +1979,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
           std::tie(executorState, stats, skippedLocal, call) =
               executor().skipRowsRange(_lastRange, dummy);
           if (executorState == ExecutionState::WAITING) {
-            // We need to persist the old stack before we return.
+            // We need to persist the old call before we return.
+            // We might have some local accounting to this call.
+            _clientRequest = ctx.clientCall;
             // We might have some local accounting in this stack.
             _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
@@ -2056,8 +2269,14 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
 
   if constexpr (Executor::Properties::allowsBlockPassthrough ==
                 BlockPassthrough::Enable) {
-    // We can never return less rows then what we got!
-    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0);
+    // We can never return less rows than what we got!
+    TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0)
+        << printBlockInfo() << " Passthrough block didn't process all rows. "
+        << (_outputItemRow == nullptr
+                ? fmt::format("output == nullptr")
+                : fmt::format("rows left = {}, rows written = {}",
+                              _outputItemRow->numRowsLeft(),
+                              _outputItemRow->numRowsWritten()));
   }
 
   auto outputBlock = _outputItemRow != nullptr ? _outputItemRow->stealBlock()
@@ -2077,7 +2296,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
                ctx.stack.subqueryLevel() /*we injected a call*/);
   } else {
     TRI_ASSERT(skipped.subqueryDepth() ==
-               ctx.stack.subqueryLevel() + 1 /*we took our call*/);
+               ctx.stack.subqueryLevel() + 1 /*we took our call*/)
+        << printBlockInfo()
+        << " skipped.subqueryDepth() = " << skipped.subqueryDepth()
+        << ", ctx.stack.subqueryLevel() + 1 = "
+        << ctx.stack.subqueryLevel() + 1;
   }
 #endif
   _skipped.reset();
@@ -2124,6 +2347,11 @@ void ExecutionBlockImpl<Executor>::resetExecutor() {
   }
 
   _executorReturnedDone = false;
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::setFailure(Result&& res) {
+  _firstFailure = std::move(res);
 }
 
 template<class Executor>
@@ -2234,7 +2462,7 @@ auto ExecutionBlockImpl<Executor>::testInjectInputRange(DataRange range,
   _lastRange = std::move(range);
   _skipped = skipped;
   if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher>) {
-    // Make sure we have initialized the Fetcher / Dependencides properly
+    // Make sure we have initialized the Fetcher / Dependencies properly
     initOnce();
     // Now we need to initialize the SkipCounts, to simulate that something
     // was skipped.
@@ -2276,74 +2504,159 @@ ExecutionBlockImpl<Executor>::ExecutionContext::ExecutionContext(
 
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
-  return _state.load(std::memory_order_relaxed) == State::Consumed;
+  return _state.load(std::memory_order_relaxed).status == Status::Consumed;
 }
 
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
-  auto expected = State::Pending;
-  return _state.load(std::memory_order_relaxed) == expected &&
-         _state.compare_exchange_strong(expected, State::InProgress,
-                                        std::memory_order_relaxed);
+  auto state = _state.load(std::memory_order_relaxed);
+  while (true) {
+    if (state.status != Status::Pending) {
+      return false;
+    }
+    if (_state.compare_exchange_strong(state,
+                                       {Status::InProgress, state.abandoned},
+                                       std::memory_order_relaxed)) {
+      return true;
+    }
+  }
 }
 
 template<class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::reset() noexcept {
+bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaimOrAbandon() noexcept {
+  auto state = _state.load(std::memory_order_relaxed);
+  while (true) {
+    // this function is only called from the scheduled task, and we must only
+    // schedule one task at a time, so this task must not be abandoned yet!
+    TRI_ASSERT(state.abandoned == false);
+    if (state.status != Status::Pending) {
+      // task is not longer pending, so let's try to abandon it
+      // Note: if we fail here it is possible that the task is already rearmed
+      // and reset to pending, so we can retry to claim it in the next
+      // iteration.
+      if (_state.compare_exchange_weak(
+              state, {.status = state.status, .abandoned = true},
+              std::memory_order_relaxed)) {
+        // we successfully abandoned the task, so we can return false to
+        // indicate that we must not work on this task
+        return false;
+      }
+    } else {
+      TRI_ASSERT(state.status == Status::Pending);
+      if (_state.compare_exchange_weak(
+              state, {.status = Status::InProgress, .abandoned = false},
+              std::memory_order_acquire)) {
+        // successfully claimed the task!
+        return true;
+      }
+    }
+  }
+}
+
+template<class Executor>
+bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
+    AqlCallStack const& stack) {
   TRI_ASSERT(!_result);
-  _state.store(State::Pending);
+  _stack = stack;
+  // intentionally do not reset _firstFailure
+  auto old =
+      _state.exchange({Status::Pending, false}, std::memory_order_release);
+  TRI_ASSERT(old.status == Status::Consumed);
+  // if the task was abandoned, we want to reschedule it!
+  return old.abandoned;
 }
 
 template<class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() noexcept {
+void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
+  std::unique_lock<std::mutex> guard(_lock);
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (_state.load(std::memory_order_acquire) == State::Finished) {
+  if (_state.load(std::memory_order_acquire).status == Status::Finished) {
     return;
   }
-  std::unique_lock<std::mutex> guard(_lock);
+
   _bell.wait(guard, [this]() {
     // (2) - this acquire-load synchronizes with the release-store (3)
-    return _state.load(std::memory_order_acquire) == State::Finished;
+    return _state.load(std::memory_order_acquire).status == Status::Finished;
   });
 }
 
 template<class Executor>
-auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult() noexcept
+void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
+    Status status, std::memory_order memoryOrder) noexcept {
+  auto state = _state.load(std::memory_order_relaxed);
+  while (not _state.compare_exchange_weak(
+      state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
+    ;
+}
+
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::PrefetchTask::discard(
+    bool isFinished) noexcept -> void {
+  _result.reset();
+  updateStatus(isFinished ? Status::Finished : Status::Consumed,
+               std::memory_order_release);
+}
+
+template<class Executor>
+auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult()
     -> PrefetchResult {
-  TRI_ASSERT(_result);
-  _state.store(State::Consumed, std::memory_order_relaxed);
+  TRI_ASSERT(_result || _firstFailure.fail())
+      << "prefetch task state: "
+      << (int)_state.load(std::memory_order_relaxed).status;
+  updateStatus(Status::Consumed, std::memory_order_relaxed);
+  if (_firstFailure.fail()) {
+    _result.reset();
+    THROW_ARANGO_EXCEPTION(_firstFailure);
+  }
   auto r = std::move(_result.value());
   _result.reset();
   return r;
 }
 
 template<class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
-    ExecutionBlockImpl& block, AqlCallStack& stack) {
+void ExecutionBlockImpl<Executor>::PrefetchTask::execute() {
   if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher> ||
                 executorHasSideEffects<Executor>) {
     TRI_ASSERT(false);
   } else {
-    TRI_ASSERT(_state.load() == State::InProgress);
+    TRI_ASSERT(_state.load().status == Status::InProgress);
     TRI_ASSERT(!_result);
-    _result = block.fetcher().execute(stack);
 
-    // (3) - this release-store synchronizes with the acquire-load (1, 2)
-    _state.store(State::Finished, std::memory_order_release);
+    _result = _block.fetcher().execute(_stack);
 
-    // need to temporarily lock the mutex to enforce serialization with the
-    // waiting thread
-    _lock.lock();
-    _lock.unlock();
+    TRI_ASSERT(_result.has_value());
 
-    _bell.notify_one();
+    wakeupWaiter();
   }
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::PrefetchTask::setFailure(Result&& res) {
+  TRI_ASSERT(res.fail());
+  if (_firstFailure.ok()) {
+    _firstFailure = std::move(res);
+  }
+  _result.reset();
+  wakeupWaiter();
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
+  // need to temporarily lock the mutex to enforce serialization with the
+  // waiting thread
+  _lock.lock();
+  // (3) - this release-store synchronizes with the acquire-load (1, 2)
+  _state.store({Status::Finished, true}, std::memory_order_release);
+  _lock.unlock();
+
+  _bell.notify_one();
 }
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(
     ExecutionBlockImpl& block)
     : _block(block),
-      _thread(&CallstackSplit::run, this, std::cref(ExecContext::current())) {}
+      _thread(&CallstackSplit::run, this, ExecContext::currentAsShared()) {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() {
@@ -2385,8 +2698,8 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::CallstackSplit::run(
-    ExecContext const& execContext) {
-  ExecContextScope scope(&execContext);
+    std::shared_ptr<ExecContext const> execContext) {
+  ExecContextScope scope(execContext);
   std::unique_lock<std::mutex> guard(_lock);
   while (true) {
     _bell.wait(guard, [this]() {

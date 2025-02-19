@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,26 +34,37 @@
 
 #include <utility>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
-    : _resourceMonitor(resourceMonitor), _processed(false) {}
+    : _resourceMonitor(resourceMonitor),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _memoryUsage(0),
+#endif
+      _processed(false) {
+}
 
-BindParameters::BindParameters(
-    ResourceMonitor& resourceMonitor,
-    std::shared_ptr<arangodb::velocypack::Builder> builder)
+BindParameters::BindParameters(ResourceMonitor& resourceMonitor,
+                               std::shared_ptr<velocypack::Builder> builder)
     : _resourceMonitor(resourceMonitor),
       _builder(std::move(builder)),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+      _memoryUsage(0),
+#endif
       _processed(false) {
   process();
 }
 
 BindParameters::~BindParameters() {
-  std::size_t memoryUsed = 0;
+  std::size_t totalUsed = 0;
   for (auto const& it : _parameters) {
-    memoryUsed += memoryUsage(it.first, it.second.first);
+    totalUsed += memoryUsage(it.first, it.second.first);
   }
-  _resourceMonitor.decreaseMemoryUsage(memoryUsed);
+  _resourceMonitor.decreaseMemoryUsage(totalUsed);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(totalUsed == _memoryUsage);
+#endif
 }
 
 /// @brief create a hash value for the bind parameters
@@ -66,12 +77,26 @@ uint64_t BindParameters::hash() const {
   return _builder->slice().hash();
 }
 
+/// @brief validates that all bind parameters that were declared have
+/// actually been used in the query.
+/// will throw if there is at least one declared, but unused bind parameter.
+void BindParameters::validateAllUsed() const {
+  // visit all bind parameters to ensure that they have all been accessed via
+  // registerNode
+  visit([](std::string const& key, velocypack::Slice /*value*/, AstNode* node) {
+    if (node == nullptr) {
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
+                                    key.c_str());
+    }
+  });
+}
+
 /// @brief return a bind parameter value and its corresponding AstNode by
 /// parameter name. will return VPackSlice::noneSlice() if the bind parameter
 /// does not exist. the returned AstNode is a nullptr in case no AstNode was yet
 /// registered for this bind parameter. This is not an error.
 std::pair<VPackSlice, AstNode*> BindParameters::get(
-    std::string const& name) const noexcept {
+    std::string_view name) const noexcept {
   TRI_ASSERT(_processed);
 
   auto it = _parameters.find(name);
@@ -84,8 +109,9 @@ std::pair<VPackSlice, AstNode*> BindParameters::get(
   return (*it).second;
 }
 
-/// @brief register an AstNode for the bind parameter
-void BindParameters::registerNode(std::string const& name, AstNode* node) {
+/// @brief register an AstNode for the bind parameter.
+/// note: the AstNode is not owned by the bind parameters class.
+void BindParameters::registerNode(std::string_view name, AstNode* node) {
   TRI_ASSERT(_processed);
 
   auto it = _parameters.find(name);
@@ -94,17 +120,13 @@ void BindParameters::registerNode(std::string const& name, AstNode* node) {
                                    "invalid bind parameter access");
   }
 
-  TRI_ASSERT(!(*it).second.first.isNone());
-  // no node must have been registered before
-  TRI_ASSERT((*it).second.second == nullptr);
   (*it).second.second = node;
 }
 
 /// @brief run a visitor function on all bind parameters
 void BindParameters::visit(
-    std::function<void(std::string const& key,
-                       arangodb::velocypack::Slice value, AstNode* node)> const&
-        visitor) const {
+    std::function<void(std::string const& key, velocypack::Slice value,
+                       AstNode* node)> const& visitor) const {
   for (auto const& it : _parameters) {
     visitor(it.first, it.second.first, it.second.second);
   }
@@ -138,7 +160,7 @@ void BindParameters::stripCollectionNames(VPackSlice keys,
   result.close();
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> BindParameters::builder() const {
+std::shared_ptr<velocypack::Builder> BindParameters::builder() const {
   return _builder;
 }
 
@@ -171,7 +193,7 @@ void BindParameters::process() {
                                     key.c_str());
     }
 
-    if (!key.empty() && key[0] == '@' && !value.isString()) {
+    if (key.starts_with('@') && !value.isString()) {
       // collection bind parameter
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
                                     key.c_str());
@@ -179,8 +201,13 @@ void BindParameters::process() {
 
     ResourceUsageScope guard(_resourceMonitor, memoryUsage(key, value));
 
-    _parameters.try_emplace(std::move(key), value, nullptr);
+    bool inserted =
+        _parameters.try_emplace(std::move(key), value, nullptr).second;
+    TRI_ASSERT(inserted);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _memoryUsage += guard.tracked();
+#endif
     // now we are responsible for tracking the memory usage
     guard.steal();
   }

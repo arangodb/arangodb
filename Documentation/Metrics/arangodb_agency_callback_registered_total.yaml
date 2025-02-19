@@ -10,9 +10,6 @@ complexity: advanced
 exposedBy:
   - coordinator
   - dbserver
-  - single
 description: |
   This metric was named `arangodb_agency_callback_registered` in previous versions
   of ArangoDB.
-  Note that on single servers this metric only has a non-zero value
-  in the Active Failover deployment mode.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cmath>
-
-#include "Basics/Common.h"
 
 #include "gtest/gtest.h"
 
@@ -46,15 +44,14 @@ TEST(CFpconvTest, tst_nan) {
   EXPECT_TRUE(std::isnan(value));
   length = fpconv_dtoa(value, out);
 
-#ifdef _WIN32
-  EXPECT_EQ(std::string("-NaN"), std::string(out, length));
-#else
-  EXPECT_EQ(std::string("NaN"), std::string(out, length));
-#endif
+  auto sv = std::string_view(out, length);
+  // MSVC returns -NaN at least in some versions
+  EXPECT_TRUE(sv == "NaN" || sv == "-NaN") << sv;
 
   StringBuffer buf(true);
   buf.appendDecimal(value);
-  EXPECT_EQ(std::string("NaN"), std::string(buf.c_str(), buf.length()));
+  sv = std::string_view(buf.c_str(), buf.length());
+  EXPECT_TRUE(sv == "NaN" || sv == "-NaN") << sv;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

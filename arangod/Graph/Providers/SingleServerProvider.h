@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -59,16 +59,45 @@ namespace graph {
 // template<ProduceVertexData>
 template<class StepType>
 class SingleServerProvider {
+  //
+  // Caching functionality
+  //
+
+  // The information which we need for an expansion are these:
+  struct ExpansionInfo {
+    EdgeDocumentToken eid;
+    std::vector<uint8_t> edgeData;  // keeps allocation
+    size_t cursorId;
+    ExpansionInfo(EdgeDocumentToken eid, VPackSlice edge, size_t cursorId)
+        : eid(eid), cursorId(cursorId) {
+      edgeData.resize(edge.byteSize());
+      memcpy(edgeData.data(), edge.start(), edge.byteSize());
+    }
+    ExpansionInfo(ExpansionInfo const& other) = delete;
+    ExpansionInfo(ExpansionInfo&& other) = default;
+    VPackSlice edge() const noexcept { return VPackSlice(edgeData.data()); }
+    size_t size() const noexcept {
+      return sizeof(ExpansionInfo) + edgeData.size();
+    }
+  };
+
+  // Contains the data we found previously on expansion:
+  using FoundVertexCache =
+      containers::FlatHashMap<VertexType,
+                              std::shared_ptr<std::vector<ExpansionInfo>>>;
+
  public:
   using Options = SingleServerBaseProviderOptions;
   using Step = StepType;
 
- public:
   SingleServerProvider(arangodb::aql::QueryContext& queryContext, Options opts,
                        arangodb::ResourceMonitor& resourceMonitor);
   SingleServerProvider(SingleServerProvider const&) = delete;
   SingleServerProvider(SingleServerProvider&&) = default;
-  ~SingleServerProvider() = default;
+  ~SingleServerProvider() {
+    _monitor.decreaseMemoryUsage(_memoryUsageVertexCache);
+    _memoryUsageVertexCache = 0;
+  }
 
   SingleServerProvider& operator=(SingleServerProvider const&) = delete;
 
@@ -97,10 +126,6 @@ class SingleServerProvider {
                           bool writeIdIfNotFound = false);
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
-
-  // [GraphRefactor] TODO: Temporary method - will be needed until we've
-  // finished the full graph refactor.
-  EdgeDocumentToken getEdgeDocumentToken(typename Step::Edge const& edge);
 
   void addEdgeIDToBuilder(typename Step::Edge const& edge,
                           arangodb::velocypack::Builder& builder);
@@ -137,12 +162,11 @@ class SingleServerProvider {
   [[nodiscard]] bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
  private:
-  void activateCache(bool enableDocumentCache);
-
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> buildCursor(
       arangodb::aql::FixedVarExpressionContext& expressionContext);
+  // Fetches a list of neighbours potentially using the cache:
+  std::shared_ptr<std::vector<ExpansionInfo>> getNeighbours(Step const& step);
 
- private:
   ResourceMonitor& _monitor;
   // Unique_ptr to have this class movable, and to keep reference of trx()
   // alive - Note: _trx must be first here because it is used in _cursor
@@ -153,8 +177,13 @@ class SingleServerProvider {
   SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
+  std::optional<FoundVertexCache> _vertexCache;
+  size_t _memoryUsageVertexCache = 0;
 
   arangodb::aql::TraversalStats _stats;
+
+  size_t _rearmed = 0;
+  size_t _readSomething = 0;
 };
 }  // namespace graph
 }  // namespace arangodb

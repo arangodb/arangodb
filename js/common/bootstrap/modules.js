@@ -5,52 +5,29 @@
   'use strict'
   /*eslint-enable */
 
-  // //////////////////////////////////////////////////////////////////////////////
-  // / DISCLAIMER
-  // /
-  // / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-  // /
-  // / Licensed under the Apache License, Version 2.0 (the "License")
-  // / you may not use this file except in compliance with the License.
-  // / You may obtain a copy of the License at
-  // /
-  // /     http://www.apache.org/licenses/LICENSE-2.0
-  // /
-  // / Unless required by applicable law or agreed to in writing, software
-  // / distributed under the License is distributed on an "AS IS" BASIS,
-  // / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  // / See the License for the specific language governing permissions and
-  // / limitations under the License.
-  // /
-  // / Copyright holder is triAGENS GmbH, Cologne, Germany
-  // /
-  // / @author Alan Plum
-  // / @author Copyright 2015-2016, ArangoDB GmbH, Cologne, Germany
-  // /
-  // / Based on Node.js 4.1.0 /lib/module.js:
-  // /
-  // / Copyright Joyent, Inc. and other Node contributors.
-  // /
-  // / Permission is hereby granted, free of charge, to any person obtaining a
-  // / copy of this software and associated documentation files (the
-  // / "Software"), to deal in the Software without restriction, including
-  // / without limitation the rights to use, copy, modify, merge, publish,
-  // / distribute, sublicense, and/or sell copies of the Software, and to permit
-  // / persons to whom the Software is furnished to do so, subject to the
-  // / following conditions:
-  // /
-  // / The above copyright notice and this permission notice shall be included
-  // / in all copies or substantial portions of the Software.
-  // /
-  // / THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-  // / OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-  // / MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN
-  // / NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-  // / DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-  // / OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-  // / USE OR OTHER DEALINGS IN THE SOFTWARE.
-  // /
-  // //////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// / @author Copyright 2015-2016, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
   const NATIVE_MODULES = global.SCAFFOLDING_MODULES;
   const fs = NATIVE_MODULES.fs;
@@ -76,9 +53,14 @@
   delete global.MODULES_PATH;
 
   function internalModuleStat (path) {
-    if (fs.isDirectory(path)) return 1;
-    else if (fs.isFile(path)) return 0;
-    else return -1;
+    try {
+      if (fs.isDirectory(path)) {
+        return 1;
+      } else if (fs.isFile(path)) {
+        return 0;
+      }
+    } catch (err) {}
+    return -1;
   }
 
   // If obj.hasOwnProperty has been overridden, then calling
@@ -255,7 +237,9 @@
     // For each path
     for (var i = 0, PL = paths.length; i < PL; i++) {
       // Don't search further if path doesn't exist
-      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) continue;
+      if (paths[i] && internalModuleStat(path._makeLong(paths[i])) < 1) {
+        continue;
+      }
       var basePath = path.resolve(paths[i], request);
       var filename;
 
@@ -317,12 +301,24 @@
       inRoot = from.indexOf(root) === 0;
     }
 
-    for (var tip = parts.length - 1; tip >= 0; tip--) {
+    for (let tip = parts.length - 1; tip >= 0; tip--) {
       // don't search in .../node_modules/node_modules
-      if (parts[tip] === 'node_modules') continue;
-      var dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
-      if (inRoot && dir.indexOf(root) !== 0) break;
-      paths.push(dir);
+      if (parts[tip] === 'node_modules') {
+        continue;
+      }
+      try {
+        // note: the try...catch is here to debug the following error case:
+        //   JavaScript exception in file 'common/bootstrap/modules.js' at 323,41: TypeError: parts.slice(...).concat is not a function
+        // once we have an understanding of it, the try...catch can be removed again.
+        let dir = parts.slice(0, tip + 1).concat('node_modules').join(path.sep);
+        if (inRoot && dir.indexOf(root) !== 0) {
+          break;
+        }
+        paths.push(dir);
+      } catch (err) {
+        console.error("unable to slice parts", { parts, paths, sep: path.sep, tip, inRoot, root });
+        throw err;
+      }
     }
 
     return paths;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
+
+#include <cstdint>
 #include <cstddef>
 #include <iosfwd>
 #include <limits>
@@ -74,7 +76,10 @@ auto to_byte_string_fixed_length(T) -> zkd::byte_string;
 template<typename T>
 auto from_byte_string_fixed_length(byte_string_view) -> T;
 template<>
-byte_string to_byte_string_fixed_length<double>(double x);
+auto to_byte_string_fixed_length<double>(double x) -> zkd::byte_string;
+
+auto double_to_byte_string_fixed_length_fast(double x) -> zkd::byte_string;
+auto double_to_byte_string_fixed_length_slow(double x) -> zkd::byte_string;
 
 enum class Bit { ZERO = 0, ONE = 1 };
 
@@ -155,6 +160,10 @@ template<typename T>
 void into_bit_writer_fixed_length(BitWriter&, T);
 template<typename T>
 auto from_bit_reader_fixed_length(BitReader&) -> T;
+
+auto into_zero_leading_fixed_length_byte_string(double x) -> byte_string;
+auto into_zero_leading_fixed_length_byte_string_fast(double x) -> byte_string;
+auto into_zero_leading_fixed_length_byte_string_slow(double x) -> byte_string;
 
 struct floating_point {
   bool positive : 1;

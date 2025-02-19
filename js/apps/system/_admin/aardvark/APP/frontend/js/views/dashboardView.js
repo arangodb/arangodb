@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, window, arangoHelper, moment, nv, d3, prettyBytes */
-/* global document, frontendConfig, Dygraph, _,templateEngine */
+/* global nv, frontendConfig, templateEngine */
 
 (function () {
   'use strict';
@@ -250,7 +247,7 @@
         if (v < 0) {
           tempColor = '#d05448';
         } else {
-          tempColor = '#77DB99';
+          tempColor = 'var(--green-600)';
           p = '+';
         }
         if (self.history.hasOwnProperty(self.server) &&

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 
 #include "Basics/ScopeGuard.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -41,6 +42,9 @@ namespace basics {
 struct AttributeName;
 }  // namespace basics
 
+template<typename T>
+class FixedSizeAllocator;
+
 namespace aql {
 class Ast;
 struct Variable;
@@ -52,45 +56,70 @@ using AstNodeFlagsType = uint32_t;
 /// the flags are used to prevent repeated calculations of node properties
 /// (e.g. is the node value constant, sorted etc.)
 enum AstNodeFlagType : AstNodeFlagsType {
-  DETERMINED_SORTED =
-      0x0000001,  // node is a list and its members are sorted asc.
-  DETERMINED_CONSTANT = 0x0000002,  // node value is constant (i.e. not dynamic)
-  DETERMINED_SIMPLE =
-      0x0000004,  // node value is simple (i.e. for use in a simple expression)
-  DETERMINED_NONDETERMINISTIC = 0x0000010,  // node produces non-deterministic
-                                            // result (e.g. function call nodes)
-  DETERMINED_RUNONDBSERVER =
-      0x0000020,  // node can run on the DB server in a cluster setup
-  DETERMINED_CHECKUNIQUENESS =
-      0x0000040,              // object's keys must be checked for uniqueness
-  DETERMINED_V8 = 0x0000080,  // node will use V8 internally
+  // node is an array and its members are sorted asc.
+  DETERMINED_SORTED = 0x0000001,
 
-  VALUE_SORTED = 0x0000100,    // node is a list and its members are sorted asc.
-  VALUE_CONSTANT = 0x0000200,  // node value is constant (i.e. not dynamic)
-  VALUE_SIMPLE =
-      0x0000400,  // node value is simple (i.e. for use in a simple expression)
-  VALUE_NONDETERMINISTIC = 0x0001000,  // node produces non-deterministic result
-                                       // (e.g. function call nodes)
-  VALUE_RUNONDBSERVER =
-      0x0002000,  // node can run on the DB server in a cluster setup
-  VALUE_CHECKUNIQUENESS =
-      0x0004000,         // object's keys must be checked for uniqueness
-  VALUE_V8 = 0x0008000,  // node will use V8 internally
-  FLAG_KEEP_VARIABLENAME =
-      0x0010000,  // node is a reference to a variable name, not the variable
-                  // value (used in KEEP nodes)
-  FLAG_BIND_PARAMETER = 0x0020000,  // node was created from a bind parameter
-  FLAG_FINALIZED =
-      0x0040000,  // node has been finalized and should not be modified; only
-                  // set and checked in maintainer mode
-  FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
+  // node value is constant (i.e. not dynamic)
+  DETERMINED_CONSTANT = 0x0000002,
 
-  FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
+  // node value is simple (i.e. for use in a simple expression)
+  DETERMINED_SIMPLE = 0x0000004,
 
-  FLAG_BOOLEAN_EXPANSION = 0x0200000,  // make expansion result boolean
+  // node produces non-deterministic result (e.g. function call nodes)
+  DETERMINED_NONDETERMINISTIC = 0x0000010,
 
-  FLAG_READ_OWN_WRITES =
-      0x0400000,  // reads own writes (only needed for UPSERT FOR nodes)
+  // node can run on the DB server in a cluster setup
+  DETERMINED_RUNONDBSERVER = 0x0000020,
+
+  // object's keys must be checked for uniqueness
+  DETERMINED_CHECKUNIQUENESS = 0x0000040,
+
+  // node will use V8 internally
+  DETERMINED_V8 = 0x0000080,
+
+  // node is a list and its members are sorted asc.
+  VALUE_SORTED = 0x0000100,
+
+  // node value is constant (i.e. not dynamic)
+  VALUE_CONSTANT = 0x0000200,
+
+  // node value is simple (i.e. for use in a simple expression)
+  VALUE_SIMPLE = 0x0000400,
+
+  // node produces non-deterministic result (e.g. function call nodes)
+  VALUE_NONDETERMINISTIC = 0x0001000,
+
+  // node can run on the DB server in a cluster setup
+  VALUE_RUNONDBSERVER = 0x0002000,
+
+  // object's keys must be checked for uniqueness
+  VALUE_CHECKUNIQUENESS = 0x0004000,
+
+  // node will use V8 internally
+  VALUE_V8 = 0x0008000,
+
+  // node is a reference to a variable name, not the variable value (used in
+  // KEEP nodes)
+  FLAG_KEEP_VARIABLENAME = 0x0010000,
+
+  // node was created from a bind parameter
+  FLAG_BIND_PARAMETER = 0x0020000,
+
+  // node has been finalized and should not be modified; only set and checked in
+  // maintainer mode
+  FLAG_FINALIZED = 0x0040000,
+
+  // node references a subquery
+  FLAG_SUBQUERY_REFERENCE = 0x0080000,
+
+  // internal, constant node
+  FLAG_INTERNAL_CONST = 0x0100000,
+
+  // make expansion result boolean
+  FLAG_BOOLEAN_EXPANSION = 0x0200000,
+
+  // reads own writes (only needed for UPSERT FOR nodes)
+  FLAG_READ_OWN_WRITES = 0x0400000,
 };
 
 /// @brief enumeration of AST node value types
@@ -221,6 +250,7 @@ enum AstNodeType : uint32_t {
   NODE_TYPE_FOR_VIEW = 79,
   NODE_TYPE_WINDOW = 80,
   NODE_TYPE_ARRAY_FILTER = 81,
+  NODE_TYPE_DESTRUCTURING = 82,
 };
 
 static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types order");
@@ -229,6 +259,11 @@ static_assert(NODE_TYPE_ARRAY < NODE_TYPE_OBJECT, "incorrect node types order");
 /// @brief the node
 struct AstNode {
   friend class Ast;
+  friend class FixedSizeAllocator<AstNode>;
+
+  /// @brief a simple tag that marks the AstNode as a constant node
+  /// that will never change after being created
+  struct InternalNode {};
 
   /// @brief array values with at least this number of members that
   /// are in IN or NOT IN lookups will be sorted, so that we can use
@@ -236,10 +271,15 @@ struct AstNode {
   static constexpr size_t kSortNumberThreshold = 8;
 
   /// @brief create the node
-  explicit AstNode(AstNodeType);
+  explicit AstNode(AstNodeType type) noexcept(
+      noexcept(decltype(members)::allocator_type()));
+
+  explicit AstNode(AstNodeType, InternalNode);
 
   /// @brief create a node, with defining a value
   explicit AstNode(AstNodeValue const& value);
+
+  explicit AstNode(AstNodeValue const& value, InternalNode);
 
   /// @brief create the node from VPack
   explicit AstNode(Ast*, arangodb::velocypack::Slice slice);
@@ -279,6 +319,8 @@ struct AstNode {
 
   /// @brief return the type name of a node
   std::string_view getTypeString() const;
+
+  static std::string_view getTypeString(AstNodeType);
 
   /// @brief return the value type name of a node
   std::string_view getValueTypeString() const;
@@ -469,9 +511,15 @@ struct AstNode {
   /// @brief return a member of the node
   AstNode* getMemberUnchecked(size_t i) const noexcept;
 
-  /// @brief sort members with a custom comparison function
-  void sortMembers(
-      std::function<bool(AstNode const*, AstNode const*)> const& func);
+  template<typename Func>
+  void sortMembers(Func&& func) {
+    std::sort(members.begin(), members.end(), std::forward<Func>(func));
+  }
+
+  template<typename Func>
+  void partitionMembers(Func&& func) {
+    std::partition(members.begin(), members.end(), std::forward<Func>(func));
+  }
 
   /// @brief reduces the number of members of the node
   void reduceMembers(size_t i);
@@ -532,7 +580,7 @@ struct AstNode {
   bool stringEquals(std::string const& other) const;
 
   /// @brief return the data value of a node
-  void* getData() const;
+  void* getData() const noexcept;
 
   /// @brief set the data value of a node
   void setData(void* v);
@@ -574,6 +622,16 @@ struct AstNode {
   AstNodeValue value;
 
  private:
+  // private ctor, only called during by FixedSizeAllocator in case of emergency
+  // to properly initialize the node
+  // Note that since C++17 the default constructor of `std::vector` is
+  // `noexcept` iff and only if the  default constructor of its `allocator_type`
+  // is. Therefore, we can say that `AstNode::AstNode()` is noexcept, if and
+  // only if the default constructor of the allocator type of
+  // `std::vector<AstNode*>` is noexcept, which is exactly what this fancy
+  // `noexcept` expression does.
+  AstNode() noexcept(noexcept(decltype(members)::allocator_type()));
+
   /// @brief helper for building flags
   template<typename... Args>
   static std::underlying_type<AstNodeFlagType>::type makeFlags(

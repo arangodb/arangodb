@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,8 +22,6 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -31,6 +29,8 @@
 #include "Aql/Projections.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/Identifiers/DataSourceId.h"
+#include "VocBase/LogicalCollection.h"
+#include "Basics/GlobalResourceMonitor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -39,6 +39,13 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
+
+namespace {
+auto createAttributeNamePath = [](std::vector<std::string>&& vec,
+                                  arangodb::ResourceMonitor& resMonitor) {
+  return AttributeNamePath(std::move(vec), resMonitor);
+};
+}
 
 TEST(ProjectionsTest, buildEmpty) {
   Projections p;
@@ -50,90 +57,102 @@ TEST(ProjectionsTest, buildEmpty) {
 }
 
 TEST(ProjectionsTest, buildSingleKey) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("_key"),
+      AttributeNamePath("_key", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("_key"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("_key", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[0].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_TRUE(p.isSingle("_key"));
 }
 
 TEST(ProjectionsTest, buildSingleId) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("_id"),
+      AttributeNamePath("_id", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("_id"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("_id", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::IdAttribute, p[0].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_TRUE(p.isSingle("_id"));
 }
 
 TEST(ProjectionsTest, buildSingleFrom) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("_from"),
+      AttributeNamePath("_from", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("_from"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("_from", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::FromAttribute, p[0].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_TRUE(p.isSingle("_from"));
 }
 
 TEST(ProjectionsTest, buildSingleTo) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("_to"),
+      AttributeNamePath("_to", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("_to"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("_to", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::ToAttribute, p[0].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_TRUE(p.isSingle("_to"));
 }
 
 TEST(ProjectionsTest, buildSingleOther) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("piff"),
+      AttributeNamePath("piff", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("piff"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("piff", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_TRUE(p.isSingle("piff"));
 }
 
 TEST(ProjectionsTest, buildMulti) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("a"),
-      AttributeNamePath("b"),
-      AttributeNamePath("c"),
+      AttributeNamePath("a", resMonitor),
+      AttributeNamePath("b", resMonitor),
+      AttributeNamePath("c", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(3, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("a"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("a", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
-  EXPECT_EQ(AttributeNamePath("b"), p[1].path);
+  EXPECT_EQ(AttributeNamePath("b", resMonitor), p[1].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[1].type);
-  EXPECT_EQ(AttributeNamePath("c"), p[2].path);
+  EXPECT_EQ(AttributeNamePath("c", resMonitor), p[2].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[2].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_FALSE(p.isSingle("b"));
@@ -142,20 +161,22 @@ TEST(ProjectionsTest, buildMulti) {
 }
 
 TEST(ProjectionsTest, buildReverse) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("c"),
-      AttributeNamePath("b"),
-      AttributeNamePath("a"),
+      AttributeNamePath("c", resMonitor),
+      AttributeNamePath("b", resMonitor),
+      AttributeNamePath("a", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(3, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("a"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("a", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
-  EXPECT_EQ(AttributeNamePath("b"), p[1].path);
+  EXPECT_EQ(AttributeNamePath("b", resMonitor), p[1].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[1].type);
-  EXPECT_EQ(AttributeNamePath("c"), p[2].path);
+  EXPECT_EQ(AttributeNamePath("c", resMonitor), p[2].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[2].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_FALSE(p.isSingle("b"));
@@ -164,20 +185,22 @@ TEST(ProjectionsTest, buildReverse) {
 }
 
 TEST(ProjectionsTest, buildWithSystem) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("a"),
-      AttributeNamePath("_key"),
-      AttributeNamePath("_id"),
+      AttributeNamePath("a", resMonitor),
+      AttributeNamePath("_key", resMonitor),
+      AttributeNamePath("_id", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(3, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("_id"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("_id", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::IdAttribute, p[0].type);
-  EXPECT_EQ(AttributeNamePath("_key"), p[1].path);
+  EXPECT_EQ(AttributeNamePath("_key", resMonitor), p[1].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[1].type);
-  EXPECT_EQ(AttributeNamePath("a"), p[2].path);
+  EXPECT_EQ(AttributeNamePath("a", resMonitor), p[2].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[2].type);
   EXPECT_FALSE(p.isSingle("a"));
   EXPECT_FALSE(p.isSingle("_key"));
@@ -185,20 +208,21 @@ TEST(ProjectionsTest, buildWithSystem) {
 }
 
 TEST(ProjectionsTest, buildNested1) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"a", "b"})),
-      AttributeNamePath("_key"),
-      AttributeNamePath(std::vector<std::string>({"a", "z", "A"})),
+      createAttributeNamePath({"a", "b"}, resMonitor),
+      AttributeNamePath("_key", resMonitor),
+      createAttributeNamePath({"a", "z", "A"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(3, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("_key"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("_key", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[0].type);
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}})),
-            p[1].path);
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"z"}, {"A"}})),
+  EXPECT_EQ(createAttributeNamePath({{"a"}, {"b"}}, resMonitor), p[1].path);
+  EXPECT_EQ(createAttributeNamePath({{"a"}, {"z"}, {"A"}}, resMonitor),
             p[2].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[1].type);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[2].type);
@@ -209,115 +233,176 @@ TEST(ProjectionsTest, buildNested1) {
 }
 
 TEST(ProjectionsTest, buildNested2) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"b", "b"})),
-      AttributeNamePath("_key"),
-      AttributeNamePath(std::vector<std::string>({"a", "z", "A"})),
-      AttributeNamePath("A"),
+      createAttributeNamePath({"b", "b"}, resMonitor),
+      AttributeNamePath("_key", resMonitor),
+      createAttributeNamePath({"a", "z", "A"}, resMonitor),
+      AttributeNamePath("A", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(4, p.size());
   EXPECT_FALSE(p.empty());
-  EXPECT_EQ(AttributeNamePath("A"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("A", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
-  EXPECT_EQ(AttributeNamePath("_key"), p[1].path);
+  EXPECT_EQ(AttributeNamePath("_key", resMonitor), p[1].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::KeyAttribute, p[1].type);
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"z"}, {"A"}})),
+  EXPECT_EQ(createAttributeNamePath({{"a"}, {"z"}, {"A"}}, resMonitor),
             p[2].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[2].type);
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"b"}, {"b"}})),
-            p[3].path);
+  EXPECT_EQ(createAttributeNamePath({{"b"}, {"b"}}, resMonitor), p[3].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[3].type);
 }
 
 TEST(ProjectionsTest, buildOverlapping1) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("a"),
-      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
+      AttributeNamePath("a", resMonitor),
+      createAttributeNamePath({"a", "b", "c"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
-  EXPECT_EQ(AttributeNamePath("a"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("a", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
 }
 
 TEST(ProjectionsTest, buildOverlapping2) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-      AttributeNamePath("a"),
+      createAttributeNamePath({"a", "b", "c"}, resMonitor),
+      AttributeNamePath("a", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
-  EXPECT_EQ(AttributeNamePath("a"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("a", resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[0].type);
 }
 
 TEST(ProjectionsTest, buildOverlapping3) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-      AttributeNamePath(std::vector<std::string>({"a", "b"})),
+      createAttributeNamePath({"a", "b", "c"}, resMonitor),
+      createAttributeNamePath({"a", "b"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}})),
-            p[0].path);
+  EXPECT_EQ(createAttributeNamePath({{"a"}, {"b"}}, resMonitor), p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[0].type);
 }
 
 TEST(ProjectionsTest, buildOverlapping4) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("m"),
-      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-      AttributeNamePath("b"),
+      AttributeNamePath("m", resMonitor),
+      createAttributeNamePath({"a", "b", "c"}, resMonitor),
+      createAttributeNamePath({"a", "b", "c"}, resMonitor),
+      AttributeNamePath("b", resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(3, p.size());
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}, {"c"}})),
+  EXPECT_EQ(createAttributeNamePath({{"a"}, {"b"}, {"c"}}, resMonitor),
             p[0].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::MultiAttribute, p[0].type);
-  EXPECT_EQ(AttributeNamePath("b"), p[1].path);
+  EXPECT_EQ(AttributeNamePath("b", resMonitor), p[1].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[1].type);
-  EXPECT_EQ(AttributeNamePath("m"), p[2].path);
+  EXPECT_EQ(AttributeNamePath("m", resMonitor), p[2].path);
   EXPECT_EQ(arangodb::aql::AttributeNamePath::Type::SingleAttribute, p[2].type);
 }
 
 TEST(ProjectionsTest, buildOverlapping5) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath("a"),
-      AttributeNamePath(std::vector<std::string>({"a", "b"})),
-      AttributeNamePath(std::vector<std::string>({"a", "c"})),
+      AttributeNamePath("a", resMonitor),
+      createAttributeNamePath({"a", "b"}, resMonitor),
+      createAttributeNamePath({"a", "c"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(1, p.size());
-  EXPECT_EQ(AttributeNamePath("a"), p[0].path);
+  EXPECT_EQ(AttributeNamePath("a", resMonitor), p[0].path);
 }
 
 TEST(ProjectionsTest, buildOverlapping6) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"a", "c"})),
-      AttributeNamePath(std::vector<std::string>({"a", "b"})),
+      createAttributeNamePath({"a", "c"}, resMonitor),
+      createAttributeNamePath({"a", "b"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
   EXPECT_EQ(2, p.size());
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"b"}})),
-            p[0].path);
-  EXPECT_EQ(AttributeNamePath(std::vector<std::string>({{"a"}, {"c"}})),
-            p[1].path);
+  EXPECT_EQ(createAttributeNamePath({{"a"}, {"b"}}, resMonitor), p[0].path);
+  EXPECT_EQ(createAttributeNamePath({{"a"}, {"c"}}, resMonitor), p[1].path);
+}
+
+TEST(ProjectionsTest, erase) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
+  std::vector<arangodb::aql::AttributeNamePath> attributes = {
+      createAttributeNamePath({"a"}, resMonitor),
+      createAttributeNamePath({"b"}, resMonitor),
+      createAttributeNamePath({"c"}, resMonitor),
+      createAttributeNamePath({"d"}, resMonitor),
+  };
+  Projections p(std::move(attributes));
+
+  EXPECT_EQ(4, p.size());
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "b");
+  });
+
+  EXPECT_EQ(3, p.size());
+  EXPECT_EQ(createAttributeNamePath({{"a"}}, resMonitor), p[0].path);
+  EXPECT_EQ(createAttributeNamePath({{"c"}}, resMonitor), p[1].path);
+  EXPECT_EQ(createAttributeNamePath({{"d"}}, resMonitor), p[2].path);
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "d");
+  });
+
+  EXPECT_EQ(2, p.size());
+  EXPECT_EQ(createAttributeNamePath({{"a"}}, resMonitor), p[0].path);
+  EXPECT_EQ(createAttributeNamePath({{"c"}}, resMonitor), p[1].path);
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "a");
+  });
+
+  EXPECT_EQ(1, p.size());
+  EXPECT_EQ(createAttributeNamePath({{"c"}}, resMonitor), p[0].path);
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "c");
+  });
+
+  EXPECT_EQ(0, p.size());
+
+  p.erase([](Projections::Projection& p) {
+    return (p.path.get().size() == 1 && p.path.get()[0] == "c");
+  });
+
+  EXPECT_EQ(0, p.size());
 }
 
 TEST(ProjectionsTest, toVelocyPackFromDocumentSimple1) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"a"})),
-      AttributeNamePath(std::vector<std::string>({"b"})),
-      AttributeNamePath(std::vector<std::string>({"c"})),
+      createAttributeNamePath({"a"}, resMonitor),
+      createAttributeNamePath({"b"}, resMonitor),
+      createAttributeNamePath({"c"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
@@ -385,12 +470,14 @@ TEST(ProjectionsTest, toVelocyPackFromDocumentSimple1) {
 }
 
 TEST(ProjectionsTest, toVelocyPackFromDocumentComplex) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"a", "b", "c"})),
-      AttributeNamePath(std::vector<std::string>({"a", "b", "d"})),
-      AttributeNamePath(std::vector<std::string>({"a", "c"})),
-      AttributeNamePath(std::vector<std::string>({"a", "d", "e", "f"})),
-      AttributeNamePath(std::vector<std::string>({"a", "z"})),
+      createAttributeNamePath({"a", "b", "c"}, resMonitor),
+      createAttributeNamePath({"a", "b", "d"}, resMonitor),
+      createAttributeNamePath({"a", "c"}, resMonitor),
+      createAttributeNamePath({"a", "d", "e", "f"}, resMonitor),
+      createAttributeNamePath({"a", "z"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
@@ -476,6 +563,8 @@ TEST(ProjectionsTest, toVelocyPackFromDocumentComplex) {
 }
 
 TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
@@ -484,11 +573,12 @@ TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"a\", \"b\"]}");
-  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(indexJson->slice(), created).waitAndGet();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"a"})),
-      AttributeNamePath(std::vector<std::string>({"b"})),
+      createAttributeNamePath({"a"}, resMonitor),
+      createAttributeNamePath({"b"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
@@ -524,6 +614,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
 }
 
 TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
@@ -532,12 +624,13 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"sub.a\", \"sub.b\", \"c\"]}");
-  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(indexJson->slice(), created).waitAndGet();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"sub", "a"})),
-      AttributeNamePath(std::vector<std::string>({"sub", "b"})),
-      AttributeNamePath(std::vector<std::string>({"c"})),
+      createAttributeNamePath({"sub", "a"}, resMonitor),
+      createAttributeNamePath({"sub", "b"}, resMonitor),
+      createAttributeNamePath({"c"}, resMonitor),
   };
   Projections p(std::move(attributes));
 
@@ -567,6 +660,8 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
 }
 
 TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
+  arangodb::GlobalResourceMonitor globalResourceMonitor{};
+  arangodb::ResourceMonitor resMonitor{globalResourceMonitor};
   mocks::MockAqlServer server;
   auto& vocbase = server.getSystemDatabase();
   auto collectionJson = velocypack::Parser::fromJson("{\"name\":\"test\"}");
@@ -575,12 +670,13 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
   bool created;
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"sub\", \"c\"]}");
-  auto index = logicalCollection->createIndex(indexJson->slice(), created);
+  auto index =
+      logicalCollection->createIndex(indexJson->slice(), created).waitAndGet();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
-      AttributeNamePath(std::vector<std::string>({"sub", "a"})),
-      AttributeNamePath(std::vector<std::string>({"sub", "b"})),
-      AttributeNamePath(std::vector<std::string>({"c"})),
+      createAttributeNamePath({"sub", "a"}, resMonitor),
+      createAttributeNamePath({"sub", "b"}, resMonitor),
+      createAttributeNamePath({"c"}, resMonitor),
   };
   Projections p(std::move(attributes));
 

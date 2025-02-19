@@ -1,37 +1,38 @@
 /*jshint strict: true */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, assertUndefined} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertUndefined, fail} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
-const sh = require("@arangodb/testutils/replicated-state-helper");
+const dh = require("@arangodb/testutils/document-state-helper");
+const ch = require("@arangodb/testutils/collection-groups-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
-const spreds = require("@arangodb/testutils/replicated-state-predicates");
 const request = require('@arangodb/request');
 const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
 
@@ -41,6 +42,13 @@ const {setLeader, unsetLeader} = lh;
 const dropState = (database, logId) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
   const res = request.delete(`${url}/_db/${database}/_api/log/${logId}`);
+  lh.checkRequestResult(res);
+  return res.json;
+};
+
+const collectionStatus = (database, collectionName) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.get(`${url}/_db/${database}/_api/log/collection-status/${collectionName}`);
   lh.checkRequestResult(res);
   return res.json;
 };
@@ -58,7 +66,7 @@ const replicatedStateSuite = function (stateType) {
       setUpAll: function () {
         previousDatabase = db._name();
         if (!_.includes(db._databases(), database)) {
-          db._createDatabase(database);
+          db._createDatabase(database, {replicationVersion: "2"});
           databaseExisted = false;
         }
         db._useDatabase(database);
@@ -89,7 +97,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+      const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = lh.readReplicatedLogAgency(database, logId);
@@ -124,7 +132,7 @@ const replicatedStateSuite = function (stateType) {
       const newParticipant = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldParticipant), [newParticipant]).sort();
 
-      const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+      const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
       assertEqual({}, result);
       {
         const stateAgencyContent = lh.readReplicatedLogAgency(database, logId);
@@ -170,7 +178,7 @@ const replicatedStateSuite = function (stateType) {
       const newLeader = _.sample(nonParticipants);
       const newParticipants = _.union(_.without(participants, oldLeader), [newLeader]).sort();
 
-      const result = sh.replaceParticipant(database, logId, oldLeader, newLeader);
+      const result = lh.replaceParticipant(database, logId, oldLeader, newLeader);
       assertEqual({}, result);
       {
         const stateAgencyContent = lh.readReplicatedLogAgency(database, logId);
@@ -206,7 +214,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(nonParticipants, 2);
 
       try {
-        const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+        const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {
@@ -227,7 +235,7 @@ const replicatedStateSuite = function (stateType) {
       const [oldParticipant, newParticipant] = _.sampleSize(participants, 2);
 
       try {
-        const result = sh.replaceParticipant(database, logId, oldParticipant, newParticipant);
+        const result = lh.replaceParticipant(database, logId, oldParticipant, newParticipant);
         // noinspection ExceptionCaughtLocallyJS
         throw new Error(`replaceParticipant unexpectedly succeeded with ${JSON.stringify(result)}`);
       } catch (e) {
@@ -319,11 +327,64 @@ const replicatedStateSuite = function (stateType) {
       const res = dropState(database, logId);
       assertEqual(200, res.code);
 
-      lh.waitFor(spreds.replicatedStateIsGone(database, logId));
       lh.waitFor(lpreds.replicatedLogIsGone(database, logId));
     },
   };
 };
+
+const replicatedStateCollectionStatusSuite = function () {
+  const collectionName = "replicated-state-collection-status";
+  let collection = null;
+  let shards = null;
+  let shardsToLogs = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      ({shards, shardsToLogs} = dh.getCollectionShardsAndLogs(db, collection));
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        db._drop(collection.name());
+      }
+      collection = null;
+    }),
+
+    testStatusNonExistingCollection: function () {
+      try {
+        collectionStatus(database, `${collectionName}foobar`);
+        fail("Expected collectionStatus to fail");
+      } catch (e) {
+        assertEqual(404, e.code);
+      }
+    },
+
+    testStatusExistingCollection: function () {
+      let status = collectionStatus(database, collectionName);
+      assertEqual(200, status.code);
+      assertEqual(status.result.allCollectionsInGroup, [collectionName]);
+      assertTrue(_.isEqual(_.sortBy(status.result.collectionShards.map((shard) => `s${shard}`)), _.sortBy(shards)));
+      let colAgency = ch.readCollection(database, collection._id);
+      assertEqual(status.result.groupId, colAgency.plan.groupId);
+      let logsToShards = {};
+      for (let shard in shardsToLogs) {
+        logsToShards[shardsToLogs[shard]] = shard;
+        assertEqual(status.result.logs[shardsToLogs[shard]]["shards"], [shard]);
+      }
+      assertEqual(Object.keys(status.result.logs).length, Object.keys(logsToShards).length);
+      for (let log in logsToShards) {
+        assertTrue("snapshots" in status.result.logs[log]);
+        assertTrue("globalStatus" in status.result.logs[log]);
+      }
+    }
+  };
+};
+
 
 const suiteWithState = function (stateType) {
   return function () {
@@ -332,4 +393,5 @@ const suiteWithState = function (stateType) {
 };
 
 jsunity.run(suiteWithState("black-hole"));
+jsunity.run(replicatedStateCollectionStatusSuite);
 return jsunity.done();

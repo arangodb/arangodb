@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ the testing runner actually manages launching the processes, creating reports, etc. """
 from datetime import datetime
+import json
 import os
 from pathlib import Path
 import pprint
@@ -11,6 +12,7 @@ import signal
 import sys
 import time
 from threading import Thread, Lock
+import traceback
 from multiprocessing import Process
 import zipfile
 
@@ -21,8 +23,8 @@ from socket_counter import get_socket_count
 # pylint: disable=line-too-long disable=broad-except
 from arangosh import ArangoshExecutor
 from test_config import get_priority, TestConfig
-from site_config import TEMP, IS_WINDOWS, IS_MAC, IS_LINUX, get_workspace
-from tools.killall import list_all_processes, kill_all_arango_processes
+from site_config import TEMP, get_workspace
+from tools.killall import list_all_processes
 
 MAX_COREFILES_SINGLE = 4
 MAX_COREFILES_CLUSTER = 15
@@ -37,6 +39,7 @@ if "MAX_CORESIZE" in os.environ:
 pp = pprint.PrettyPrinter(indent=4)
 
 ZIPFORMAT = "gztar"
+ZIPEXT = "tar.gz"
 try:
     import py7zr
 
@@ -44,6 +47,7 @@ try:
         "7zip", py7zr.pack_7zarchive, description="7zip archive"
     )
     ZIPFORMAT = "7zip"
+    ZIPEXT = "7z"
 except ModuleNotFoundError:
     pass
 
@@ -65,12 +69,14 @@ def zipp_this(filenames, target_dir):
 
 def testing_runner(testing_instance, this, arangosh):
     """operate one makedata instance"""
+    # pylint: disable=too-many-statements
     try:
         this.start = datetime.now(tz=None)
         ret = arangosh.run_testing(
             this.suite,
+            this.arangosh_args,
             this.args,
-            999999999,
+            15 * 60,  # 15 Minutes screen idle before timeout
             this.base_logdir,
             this.log_file,
             this.name_enum,
@@ -85,7 +91,7 @@ def testing_runner(testing_instance, this, arangosh):
         this.finish = datetime.now(tz=None)
         this.delta = this.finish - this.start
         this.delta_seconds = this.delta.total_seconds()
-        logging.info("done with %s", {this.name_enum})
+        logging.info("done with %s - %s", {this.name_enum} , str(ret["rc_exit"]))
         this.crashed = (
             not this.crashed_file.exists() or this.crashed_file.read_text() == "true"
         )
@@ -123,15 +129,18 @@ def testing_runner(testing_instance, this, arangosh):
         except FileExistsError as ex:
             logging.error("can't expand the temp directory %s to %s", ex, final_name)
     except Exception as ex:
-        logging.exception("Python exception caught during test execution")
+        stack = "".join(traceback.TracebackException.from_exception(ex).format())
+        logging.exception("Python exception caught during test execution: ")
         this.crashed = True
         this.success = False
-        this.summary = f"Python exception caught during test execution: {ex}"
+        this.summary = f"Python exception caught during test execution: {ex}\n{stack}"
         this.finish = datetime.now(tz=None)
         this.delta = this.finish - this.start
         this.delta_seconds = this.delta.total_seconds()
     finally:
         with arangosh.slot_lock:
+            with open((testing_instance.cfg.run_root / "job_to_pids.jsonl"), "a+", encoding="utf-8")  as jsonl_file:
+                jsonl_file.write(f'{json.dumps({"pid": ret["pid"], "logfile": str(this.log_file)})}\n')
             testing_instance.running_suites.remove(this.name_enum)
         testing_instance.done_job(this.parallelity)
 
@@ -277,8 +286,6 @@ class TestingRunner:
                         one_child.kill()
                     except psutil.NoSuchProcess:  # pragma: no cover
                         pass
-            if IS_WINDOWS:
-                kill_all_arango_processes()
             logging.info("Main: waiting for the children to terminate")
             psutil.wait_procs(children, timeout=20)
             logging.info("Main: giving workers 20 more seconds to exit.")
@@ -295,13 +302,8 @@ class TestingRunner:
             list_all_processes()
             sys.stdout.flush()
             self.success = False
-            if IS_WINDOWS:
-                # pylint: disable=protected-access
-                # we want to exit without waiting for threads:
-                os._exit(4)
-            else:
-                os.kill(mica, signal.SIGKILL)
-                sys.exit(4)
+            os.kill(mica, signal.SIGKILL)
+            sys.exit(4)
 
     def testing_runner(self):
         """run testing suites"""
@@ -315,7 +317,7 @@ class TestingRunner:
         used_slots = 0
         counter = 0
         if len(self.scenarios) == 0:
-            raise Exception("no valid scenarios loaded")
+            raise ValueError("no valid scenarios loaded")
         some_scenario = self.scenarios[0]
         if not some_scenario.base_logdir.exists():
             some_scenario.base_logdir.mkdir()
@@ -455,12 +457,10 @@ class TestingRunner:
             core_max_count = MAX_COREFILES_CLUSTER
         core_dir = Path.cwd()
         core_pattern = "core*"
-        if IS_WINDOWS:
-            core_pattern = "*.dmp"
         system_corefiles = []
         if "COREDIR" in os.environ:
             core_dir = Path(os.environ["COREDIR"])
-        elif IS_LINUX:
+        else:
             core_pattern = (
                 Path("/proc/sys/kernel/core_pattern")
                 .read_text(encoding="utf-8")
@@ -470,12 +470,6 @@ class TestingRunner:
                 core_dir = Path(core_pattern).parent
                 core_pattern = Path(core_pattern).name
             core_pattern = re.sub(r"%.", "*", core_pattern)
-        else:
-            core_dir = Path("/var/tmp/")  # default to coreDirectory in testing.js
-        if IS_MAC:
-            system_corefiles = list(Path("/cores").glob(core_pattern))
-            if system_corefiles is None:
-                system_corefiles = []
         core_files_list = list(core_dir.glob(core_pattern))
         if core_files_list is None:
             core_files_list = []
@@ -487,7 +481,8 @@ class TestingRunner:
                 core_max_count,
             )
             return
-
+        self.crashed = True
+        self.success = False
         core_zip_dir = get_workspace() / "coredumps"
         core_zip_dir.mkdir(parents=True, exist_ok=True)
         zip_slots = psutil.cpu_count(logical=False)
@@ -593,7 +588,13 @@ class TestingRunner:
 
         try:
             shutil.rmtree(TEMP, ignore_errors=False)
-            shutil.make_archive(tarfile, ZIPFORMAT, self.cfg.run_root, ".", True)
+            zipformat = ZIPFORMAT
+            if (
+                self.cfg.run_root / f"innerlogs.{ZIPEXT}"
+            ).stat().st_size > 1024 * 1024 * 200:
+                logging.info("Falling back to tar since innerlogs is huge!")
+                zipformat = "tar"
+            shutil.make_archive(tarfile, zipformat, self.cfg.run_root, ".", True)
         except Exception as ex:
             logging.error("Failed to create testreport zip: %s", str(ex))
             self.append_report_txt("Failed to create testreport zip: " + str(ex))
@@ -660,8 +661,6 @@ class TestingRunner:
             if parallelity == 1:
                 parallelity = 4
             args += ["--cluster", "true", "--dumpAgencyOnError", "true"]
-        if "ldap" in test["flags"] and not "LDAPHOST" in os.environ:
-            return
 
         if "buckets" in params and not self.cfg.small_machine:
             num_buckets = int(params["buckets"])
@@ -678,6 +677,7 @@ class TestingRunner:
                             "--testBuckets",
                             f"{num_buckets}/{i}",
                         ],
+                        test["arangosh_args"],
                         test["priority"],
                         parallelity,
                         test["flags"],
@@ -690,6 +690,7 @@ class TestingRunner:
                     name,
                     test["suite"],
                     [*args],
+                    test["arangosh_args"],
                     test["priority"],
                     parallelity,
                     test["flags"],

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,6 @@
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 
-#include "Basics/Common.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
@@ -132,6 +131,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   uint64_t _pendingCompactionBytesSlowdownTrigger;
   uint64_t _pendingCompactionBytesStopTrigger;
   uint64_t _periodicCompactionTtl;
+  size_t _recycleLogFileNum;
   std::string _compressionType;
   std::string _blobCompressionType;
   std::string _blockCacheType;
@@ -147,7 +147,6 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _reserveTableBuilderMemory;
   bool _reserveTableReaderMemory;
   bool _reserveFileMetadataMemory;
-  bool _recycleLogFileNum;
   bool _enforceBlockCacheSizeLimit;
   bool _cacheIndexAndFilterBlocks;
   bool _cacheIndexAndFilterBlocksWithHighPriority;
@@ -168,6 +167,12 @@ class RocksDBOptionFeature final : public ArangodFeature,
   bool _enableBlobGarbageCollection;
   bool _exclusiveWrites;
   bool _minWriteBufferNumberToMergeTouched;
+  bool _partitionFilesForDocumentsCf;
+  bool _partitionFilesForPrimaryIndexCf;
+  bool _partitionFilesForEdgeIndexCf;
+  bool _partitionFilesForVPackIndexCf;
+  bool _partitionFilesForMdiIndexCf;
+  bool _partitionFilesForVectorIndexCf;
 
   /// per column family write buffer limits
   std::array<uint64_t, RocksDBColumnFamilyManager::numberOfColumnFamilies>

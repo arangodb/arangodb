@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,10 @@
 ///
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
+
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
 
 #include "FoxxFeature.h"
 
@@ -92,8 +96,6 @@ queues thread wake up less.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30610)
-      .setIntroducedIn(30706)
       .setLongDescription(R"(If set to `true`, all Foxx services in all
 databases are synchronized between multiple Coordinators during the startup
 sequence. This ensures that all Foxx services are up-to-date when a Coordinator
@@ -112,8 +114,8 @@ faster Coordinator startup. Deployments relying on Foxx apps being available as
 soon as a Coordinator is integrated or responding should set this option to
 `true`.
 
-The option only has an effect for cluster setups. On single servers and in
-Active Failover mode, all Foxx apps are available from the very beginning.
+The option only has an effect for cluster setups. On single servers all
+Foxx apps are available from the very beginning.
 
 **Note**: ArangoDB 3.8 changes the default value to `false` for this option.
 In previous versions, this option had a default value of `true`.)");

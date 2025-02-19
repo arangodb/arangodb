@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,13 +47,12 @@ class DependencyProxyMock
   explicit DependencyProxyMock(arangodb::ResourceMonitor& monitor,
                                ::arangodb::aql::RegisterCount nrRegisters);
 
- public:
   // mock methods
-  inline size_t numberDependencies() const override { return 1; }
+  size_t numberDependencies() const noexcept override { return 1; }
 
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult,
              arangodb::aql::SharedAqlItemBlockPtr>
-  execute(arangodb::aql::AqlCallStack& stack) override;
+  execute(arangodb::aql::AqlCallStack const& stack) override;
 
  private:
   using FetchBlockReturnItem = std::pair<arangodb::aql::ExecutionState,
@@ -94,14 +93,12 @@ class MultiDependencyProxyMock
                            ::arangodb::aql::RegisterCount nrRegisters,
                            size_t nrDeps);
 
- public:
   // mock methods
 
-  inline size_t numberDependencies() const override {
+  size_t numberDependencies() const noexcept override {
     return _dependencyMocks.size();
   }
 
- public:
   // additional test methods
   DependencyProxyMock<passBlocksThrough>& getDependencyMock(size_t dependency) {
     TRI_ASSERT(dependency < _dependencyMocks.size());

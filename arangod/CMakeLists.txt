@@ -1,8 +1,21 @@
 ################################################################################
-## define variables
+## global definitions
 ################################################################################
 
 add_compile_warnings_flags()
+
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 
 ################################################################################
 ## arangod executable
@@ -13,6 +26,7 @@ if (MSVC AND NOT(SKIP_PACKAGING))
     NAME ${BIN_ARANGOD}
     FILE_DESCRIPTION ${ARANGODB_FRIENDLY_STRING}
     ICON ${ARANGO_ICON}
+    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
     VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
     VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
     VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
@@ -22,21 +36,26 @@ endif ()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
-  ../cmake/activeCodePage.manifest
   ${ProductVersionFiles}
 )
   
 target_link_libraries(${BIN_ARANGOD}
   arangoserver
   arango_iresearch)
-if (NOT USE_PRECOMPILED_V8)
-  add_dependencies(${BIN_ARANGOD} zlibstatic v8_build)
-else ()
-  add_dependencies(${BIN_ARANGOD} zlibstatic)
+
+if (USE_JEMALLOC)
+  target_link_libraries(${BIN_ARANGOD} ${JEMALLOC_LIB})
 endif ()
+
+add_dependencies(${BIN_ARANGOD} zlibstatic)
+if (NOT USE_PRECOMPILED_V8)
+  add_dependencies(${BIN_ARANGOD} v8_build)
+endif ()
+add_dependencies(${BIN_ARANGOD} iculegacy_build)
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOD} jemalloc_build)
 endif ()
+add_dependencies(${BIN_ARANGOD} man)
 
 target_include_directories(${BIN_ARANGOD} PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
@@ -78,6 +97,7 @@ get_target_property(IRESEARCH_INCLUDE
 include(arangoserver.cmake)
 add_subdirectory(Agency)
 add_subdirectory(Aql)
+add_subdirectory(AsyncRegistryServer)
 add_subdirectory(Cache)
 add_subdirectory(Cluster)
 add_subdirectory(ClusterEngine)
@@ -86,7 +106,6 @@ add_subdirectory(Indexes)
 add_subdirectory(IResearch)
 add_subdirectory(Metrics)
 add_subdirectory(Network)
-add_subdirectory(Pregel)
 add_subdirectory(Replication)
 add_subdirectory(Replication2)
 add_subdirectory(RestHandler)
@@ -94,6 +113,9 @@ add_subdirectory(RestServer)
 add_subdirectory(RocksDBEngine)
 add_subdirectory(StorageEngine)
 add_subdirectory(Utils)
-add_subdirectory(V8Server)
+if (USE_V8)
+  add_subdirectory(V8Server)
+endif()
 add_subdirectory(VocBase)
 add_subdirectory(Zkd)
+add_subdirectory(Scheduler)

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,19 +25,26 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterQuery.h"
+#include "Aql/Collection.h"
+#include "Aql/Collections.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
+#include "Aql/Timing.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Futures/Future.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Scheduler/Scheduler.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Status.h"
+#include "VocBase/vocbase.h"
 
 #include <utility>
 
@@ -51,6 +58,7 @@ QueryRegistry::~QueryRegistry() {
 
 /// @brief insert
 void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
+                                std::string_view qs,
                                 cluster::CallbackGuard guard) {
   TRI_ASSERT(!ServerState::instance()->isSingleServer());
 
@@ -73,7 +81,7 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
   }
 
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(query, ttl, std::move(guard));
+  auto p = std::make_unique<QueryInfo>(query, ttl, qs, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
   TRI_IF_FAILURE("QueryRegistryInsertException2") {
@@ -132,10 +140,13 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
     // no need to revert last insert
     throw;
   }
+  // we want to release the ptr before releasing the lock!
+  query.reset();
 }
 
 /// @brief open
-void* QueryRegistry::openEngine(EngineId id, EngineType type) {
+ResultT<void*> QueryRegistry::openEngine(EngineId id, EngineType type,
+                                         EngineCallback callback) {
   LOG_TOPIC("8c204", DEBUG, arangodb::Logger::AQL)
       << "trying to open engine with id " << id;
   // std::cout << "Taking out query with ID " << id << std::endl;
@@ -145,7 +156,7 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   if (it == _engines.end()) {
     LOG_TOPIC("c3ae4", DEBUG, arangodb::Logger::AQL)
         << "Found no engine with id " << id;
-    return nullptr;
+    return {TRI_ERROR_QUERY_NOT_FOUND};
   }
 
   EngineInfo& ei = it->second;
@@ -153,21 +164,23 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
   if (ei._type != type) {
     LOG_TOPIC("c3af5", DEBUG, arangodb::Logger::AQL)
         << "Engine with id " << id << " has other type";
-    return nullptr;
+    return {TRI_ERROR_QUERY_NOT_FOUND};
   }
 
   if (ei._isOpen) {
     LOG_TOPIC("7c2a3", DEBUG, arangodb::Logger::AQL)
         << "Engine with id " << id << " is already open";
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
+    if (callback) {
+      ei._waitingCallbacks.emplace_back(std::move(callback));
+    }
+    return {TRI_ERROR_LOCKED};
   }
 
   ei._isOpen = true;
   if (ei._queryInfo) {
     if (ei._queryInfo->_expires == 0 || ei._queryInfo->_finished) {
       ei._isOpen = false;
-      return nullptr;
+      return {TRI_ERROR_QUERY_NOT_FOUND};
     }
     TRI_ASSERT(ei._queryInfo->_expires != 0);
     ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
@@ -182,7 +195,20 @@ void* QueryRegistry::openEngine(EngineId id, EngineType type) {
         << "opening engine " << id << ", no query";
   }
 
-  return ei._engine;
+  return {ei._engine};
+}
+
+traverser::BaseEngine* QueryRegistry::openGraphEngine(EngineId eid) {
+  auto res = openEngine(eid, EngineType::Graph, {});
+  if (res.fail()) {
+    if (res.is(TRI_ERROR_LOCKED)) {
+      // To be consistent with the old interface we have to throw in this case
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_LOCKED, "query with given vocbase and id is already open");
+    }
+    return nullptr;
+  }
+  return static_cast<traverser::BaseEngine*>(res.get());
 }
 
 /// @brief close
@@ -214,6 +240,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
     }
 
     ei._isOpen = false;
+    ei.scheduleCallback();
 
     if (ei._queryInfo) {
       TRI_ASSERT(ei._queryInfo->_numOpen > 0);
@@ -249,10 +276,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
           << "closing engine " << engineId << ", no query";
     }
   }
-
-  if (queryToFinish) {
-    finishPromise.setValue(std::move(queryToFinish));
-  }
+  finishPromise.setValue(std::move(queryToFinish));
 }
 
 /// @brief destroy
@@ -333,7 +357,7 @@ auto QueryRegistry::lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
   if (queryInfo._numOpen > 0) {
     TRI_ASSERT(!queryInfo._isTombstone);
     // query in use by another thread/request
-    if (errorCode == TRI_ERROR_QUERY_KILLED) {
+    if (errorCode != TRI_ERROR_NO_ERROR) {
       queryInfo._query->kill();
     }
     queryInfo._expires = 0.0;
@@ -485,6 +509,82 @@ size_t QueryRegistry::numberRegisteredQueries() {
                        [](auto& v) { return !v.second->_isTombstone; });
 }
 
+/// @brief export query registry contents to velocypack
+void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
+  double const now = TRI_microtime();
+
+  READ_LOCKER(readLocker, _lock);
+
+  for (auto const& it : _queries) {
+    builder.openObject();
+    builder.add("id", VPackValue(it.first));
+
+    if (it.second != nullptr) {
+      builder.add("timeToLive", VPackValue(it.second->_timeToLive));
+      // note: expires timestamp is a system clock value that indicates
+      // number of seconds since the OS was started.
+      builder.add("expires",
+                  VPackValue(TRI_StringTimeStamp(it.second->_expires,
+                                                 Logger::getUseLocalTime())));
+      builder.add("numEngines", VPackValue(it.second->_numEngines));
+      builder.add("numOpen", VPackValue(it.second->_numOpen));
+      builder.add("errorCode",
+                  VPackValue(static_cast<int>(it.second->_errorCode)));
+      builder.add("isTombstone", VPackValue(it.second->_isTombstone));
+      builder.add("finished", VPackValue(it.second->_finished));
+      builder.add("queryString", VPackValue(it.second->_queryString));
+
+      auto const* query = it.second->_query.get();
+      if (query != nullptr) {
+        builder.add("id", VPackValue(query->id()));
+        builder.add("transactionId", VPackValue(query->transactionId().id()));
+        builder.add("database", VPackValue(query->vocbase().name()));
+        builder.add("collections", VPackValue(VPackValueType::Array));
+        query->collections().visit(
+            [&builder](std::string const& name, aql::Collection const& c) {
+              builder.openObject();
+              builder.add("id", VPackValue(c.id().id()));
+              builder.add("name", VPackValue(c.name()));
+              builder.add("access",
+                          VPackValue(AccessMode::typeString(c.accessType())));
+              builder.close();
+              return true;
+            });
+        builder.close();  // collections
+        builder.add("killed", VPackValue(query->killed()));
+
+        double const elapsed = elapsedSince(query->startTime());
+        auto timeString =
+            TRI_StringTimeStamp(now - elapsed, Logger::getUseLocalTime());
+        builder.add("startTime", VPackValue(timeString));
+        builder.add("isModificationQuery",
+                    VPackValue(query->isModificationQuery()));
+      }
+
+      if (it.second->_numEngines > 0) {
+        builder.add("engines", VPackValue(VPackValueType::Array));
+        for (auto const& e : _engines) {
+          if (e.second._queryInfo != it.second.get()) {
+            continue;
+          }
+          builder.openObject();
+          builder.add("engineId", VPackValue(e.first));
+          builder.add("isOpen", VPackValue(e.second._isOpen));
+          builder.add("type", VPackValue(e.second._type == EngineType::Graph
+                                             ? "graph"
+                                             : "execution"));
+          builder.add("waitingCallbacks",
+                      VPackValue(e.second._waitingCallbacks.size()));
+          builder.close();
+        }
+        builder.close();
+      }
+    }
+    builder.add("serverId", VPackValue(ServerState::instance()->getId()));
+    builder.close();
+  }
+}
+
 /// @brief for shutdown, we need to shut down all queries:
 void QueryRegistry::destroyAll() try {
   std::vector<QueryId> allQueries;
@@ -583,12 +683,14 @@ bool QueryRegistry::queryIsRegistered(QueryId id) {
 
 /// @brief constructor for a regular query
 QueryRegistry::QueryInfo::QueryInfo(std::shared_ptr<ClusterQuery> query,
-                                    double ttl, cluster::CallbackGuard guard)
+                                    double ttl, std::string_view qs,
+                                    cluster::CallbackGuard guard)
     : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
       _numOpen(0),
+      _queryString(qs),
       _errorCode(TRI_ERROR_NO_ERROR),
       _isTombstone(false),
       _rebootTrackerCallbackGuard(std::move(guard)) {}
@@ -603,4 +705,30 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
       _errorCode(errorCode),
       _isTombstone(true) {}
 
-QueryRegistry::QueryInfo::~QueryInfo() = default;
+QueryRegistry::QueryInfo::~QueryInfo() {
+  if (!_promise.isFulfilled()) {
+    // we just set a dummy value to avoid abandoning the promise, because this
+    // makes it much more difficult to debug cases where we _must not_ abandon a
+    // promise
+    _promise.setValue(std::shared_ptr<ClusterQuery>{nullptr});
+  }
+}
+
+QueryRegistry::EngineInfo::~EngineInfo() {
+  // If we still have requests waiting for this engine, we need to wake schedule
+  // them so they can abort properly.
+  while (!_waitingCallbacks.empty()) {
+    scheduleCallback();
+  }
+}
+
+void QueryRegistry::EngineInfo::scheduleCallback() {
+  if (!_waitingCallbacks.empty()) {
+    // we have at least one request handler waiting for this engine.
+    // schedule the callback to be executed so request handler can continue
+    auto callback = std::move(_waitingCallbacks.front());
+    _waitingCallbacks.pop_front();
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR, std::move(callback));
+  }
+}

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,10 +23,14 @@
 #pragma once
 
 #include "Agency/AgencyCommon.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/ReplicatedLog/LogEntries.h"
+#include "Replication2/ReplicatedLog/LogEntry.h"
+#include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
-#include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
+#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "VocBase/vocbase.h"
 
 #include <string>
 #include <variant>
@@ -39,6 +43,8 @@ template<typename T>
 class Future;
 }
 }  // namespace arangodb
+
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2 {
 
@@ -83,6 +89,23 @@ struct ReplicatedLogMethods {
     std::vector<ParticipantId> servers;
   };
 
+  struct AllLogsStatus {
+    replication2::replicated_log::GlobalStatus globalStatus;
+    ResultT<velocypack::SharedSlice> snapshots;
+    ResultT<velocypack::SharedSlice> shards;
+
+    void toVelocyPack(velocypack::Builder& b) const;
+  };
+
+  struct CollectionStatus {
+    replication2::agency::CollectionGroupId groupId;
+    std::vector<std::string> allCollectionsInGroup;
+    std::vector<ShardID> collectionShards;
+    std::unordered_map<LogId, AllLogsStatus> logs;
+
+    void toVelocyPack(velocypack::Builder& b) const;
+  };
+
   virtual auto createReplicatedLog(CreateOptions spec) const
       -> futures::Future<ResultT<CreateResult>> = 0;
 
@@ -96,19 +119,18 @@ struct ReplicatedLogMethods {
   virtual auto getGlobalStatus(
       LogId, replicated_log::GlobalStatus::SpecificationSource) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
+  virtual auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> = 0;
   virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
 
-  virtual auto getLogEntryByIndex(LogId, LogIndex) const
-      -> futures::Future<std::optional<PersistingLogEntry>> = 0;
-
   virtual auto slice(LogId, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto poll(LogId, LogIndex, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto head(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
   virtual auto tail(LogId, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> = 0;
+      -> futures::Future<std::unique_ptr<LogIterator>> = 0;
 
   virtual auto ping(LogId, std::optional<std::string> message) const
       -> futures::Future<
@@ -172,8 +194,11 @@ auto inspect(Inspector& f, ReplicatedLogMethods::CreateOptions& x) {
       f.field("waitForReady", x.waitForReady).fallback(true),
       f.field("id", x.id), f.field("config", x.config),
       f.field("spec", x.spec)
-          .fallback(agency::ImplementationSpec{.type = "black-hole",
-                                               .parameters = {}}),
+          .fallback(agency::ImplementationSpec{
+              .type =
+                  std::string{
+                      replicated_state::black_hole::BlackHoleState::NAME},
+              .parameters = {}}),
       f.field("leader", x.leader),
       f.field("numberOfServers", x.numberOfServers),
       f.field("servers", x.servers).fallback(std::vector<ParticipantId>{}));

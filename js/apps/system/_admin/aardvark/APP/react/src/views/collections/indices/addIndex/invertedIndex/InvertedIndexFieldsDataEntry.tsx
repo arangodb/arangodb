@@ -1,7 +1,7 @@
 import { Box } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import React from "react";
-import { IndexFormField, IndexFormFieldProps } from "../IndexFormField";
+import { FormField, FormFieldProps } from "../../../../../components/form/FormField";
 import { FieldBreadcrumbs } from "./FieldBreadcrumbs";
 import { FieldsDropdown } from "./FieldsDropdown";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
@@ -44,32 +44,39 @@ const SelectedFieldDetails = ({
           }}
           dependentFieldName={`${fullPath}.features`}
         />
-        <IndexFormField
+        <FormField
           field={{
             ...invertedIndexFieldsMap.features,
             name: `${fullPath}.features`
           }}
         />
-        <IndexFormField
+        <FormField
+          field={{
+            ...invertedIndexFieldsMap.cache,
+            name: `${fullPath}.cache`,
+            tooltip: "Always cache field normalization values in memory for this field."
+          }}
+        />
+        <FormField
           field={{
             ...invertedIndexFieldsMap.includeAllFields,
             name: `${fullPath}.includeAllFields`
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             ...invertedIndexFieldsMap.trackListPositions,
             name: `${fullPath}.trackListPositions`
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             ...invertedIndexFieldsMap.searchField,
             name: `${fullPath}.searchField`
           }}
         />
         <Box gridColumn="1 / span 3">
-          <IndexFormField
+          <FormField
             render={({ field }) => {
               return <FieldsDropdown field={field} />;
             }}
@@ -77,7 +84,9 @@ const SelectedFieldDetails = ({
               ...invertedIndexFieldsMap.fields,
               isRequired: false,
               isDisabled: !window.frontendConfig.isEnterprise,
-              tooltip: "Nested fields are avaiable on Enterprise plans",
+              tooltip: window.frontendConfig.isEnterprise
+                ? undefined
+                : "Nested fields are available in the Enterprise Edition.",
               label: "Nested fields",
               name: `${fullPath}.nested`
             }}
@@ -92,7 +101,7 @@ export const InvertedIndexFieldsDataEntry = ({
   field
 }: {
   autoFocus: boolean;
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   const { currentFieldData } = useInvertedIndexContext();
   return (

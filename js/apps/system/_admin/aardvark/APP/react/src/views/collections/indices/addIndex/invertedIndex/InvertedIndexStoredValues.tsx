@@ -1,16 +1,19 @@
+import {
+  CreatableMultiSelectControl,
+  SingleSelectControl,
+  SwitchControl
+} from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import { Box, Button, FormLabel, IconButton } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../../components/form/CreatableMultiSelectControl";
-import { SelectControl } from "../../../../../components/form/SelectControl";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexStoredValues = ({
   field
 }: {
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   return (
     <Box
@@ -28,13 +31,13 @@ export const InvertedIndexStoredValues = ({
 
 const compressionOptions = [
   {
-    label: "lz4",
+    label: "LZ4",
     value: "lz4"
   },
   { label: "None", value: "none" }
 ];
 
-const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
+const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
   const { values } = useFormikContext<InvertedIndexValuesType>();
   return (
     <>
@@ -46,7 +49,7 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
                 <Box
                   display={"grid"}
                   gridColumnGap="4"
-                  gridTemplateColumns={"1fr 1fr 40px"}
+                  gridTemplateColumns={"1fr 1fr 70px 30px"}
                   rowGap="5"
                   alignItems={"end"}
                   key={index}
@@ -68,12 +71,28 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
                     <FormLabel htmlFor={`storedValues.${index}.compression`}>
                       Compression
                     </FormLabel>
-                    <SelectControl
+                    <SingleSelectControl
                       isDisabled={field.isDisabled}
                       name={`storedValues.${index}.compression`}
                       selectProps={{
                         options: compressionOptions
                       }}
+                    />
+                  </Box>
+                  <Box minWidth={"0"}>
+                    <FormLabel htmlFor={`storedValues.${index}.cache`}>
+                      Cache
+                    </FormLabel>
+                    <SwitchControl
+                      switchProps={{
+                        isDisabled: !window.frontendConfig.isEnterprise
+                      }}
+                      name={`storedValues.${index}.cache`}
+                      tooltip={
+                        window.frontendConfig.isEnterprise
+                          ? undefined
+                          : "Field normalization value caching is available in the Enterprise Edition."
+                      }
                     />
                   </Box>
                   <IconButton
@@ -90,7 +109,7 @@ const StoredValuesField = ({ field }: { field: IndexFormFieldProps }) => {
             })}
             <Button
               isDisabled={field.isDisabled}
-              colorScheme="blue"
+              colorScheme="green"
               onClick={() => {
                 push({ fields: [], compression: "lz4" });
               }}

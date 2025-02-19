@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /*global fail, assertTrue, assertFalse, assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the authentication
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
@@ -36,10 +33,8 @@ const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
 const ERRORS = require('internal').errors;
-const {
-  debugCanUseFailAt,
-  debugSetFailAt,
-} = require('@arangodb/test-helper');
+
+let IM = require('@arangodb/test-helper').getInstanceInfo();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -82,17 +77,7 @@ function AuthSuite() {
         "server_id": "arangosh",
         "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
       }, 'HS256');
-      const res = request.delete({
-        url: baseUrl() + "/_admin/debug/failat",
-        auth: {bearer: jwt}
-      });
 
-      // in case of 404 we are running a release build
-      if (res.statusCode !== 200 && res.statusCode !== 404) {
-        throw "Error removing failure points";
-      }
-
-      arango.reconnect(arango.getEndpoint(), '_system', "root", "");
       try {
         users.remove(user);
       } catch (err) {
@@ -212,17 +197,21 @@ function AuthSuite() {
     },
 
     testAuthenticationErrorDuringStartup: function () {
-      if (!debugCanUseFailAt(arango.getEndpoint())) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      debugSetFailAt(arango.getEndpoint(), "QueryAllUsers");
-      debugSetFailAt(arango.getEndpoint(), "BootstrapFeature_not_ready");
+      try {
+        IM.debugSetFailAt("QueryAllUsers");
+        IM.debugSetFailAt("BootstrapFeature_not_ready");
 
-      users.reload();
+        users.reload();
 
-      const result = arango.GET('/_api/version');
-      require('internal').print(result);
-      assertEqual(503, result.code);
+        const result = arango.GET('/_api/version');
+        require('internal').print(result);
+        assertEqual(503, result.code);
+      } finally {
+        IM.debugClearFailAt();
+      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////

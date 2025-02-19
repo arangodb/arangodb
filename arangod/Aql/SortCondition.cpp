@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "SortCondition.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Basics/Exceptions.h"
@@ -206,6 +207,62 @@ size_t SortCondition::coveredAttributes(
   return numCovered;
 }
 
+size_t SortCondition::coveredUnidirectionalAttributes(
+    Variable const* reference,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const&
+        indexFieldAttributes) const {
+  auto [numCovered, isAscending] = coveredUnidirectionalAttributesWithDirection(
+      reference, indexFieldAttributes);
+  return numCovered;
+}
+
+std::tuple<size_t, bool>
+SortCondition::coveredUnidirectionalAttributesWithDirection(
+    Variable const* reference,
+    std::vector<std::vector<arangodb::basics::AttributeName>> const&
+        indexFieldAttributes) const {
+  size_t numCovered = 0;
+  size_t indexPosition = 0;
+  size_t fieldsPosition = 0;
+  bool isAscending;
+
+  while (fieldsPosition < _fields.size() &&
+         indexPosition < indexFieldAttributes.size()) {
+    auto const& sortField = _fields[fieldsPosition];
+    auto const& indexAttributes = indexFieldAttributes[indexPosition];
+    if (fieldsPosition == 0) {
+      isAscending = sortField.asc;
+    } else if (sortField.asc != isAscending) {
+      break;
+    }
+
+    if (reference != sortField.variable) {
+      break;
+    }
+
+    // check if the field is present in the index definition too
+    if (arangodb::basics::AttributeName::isIdentical(sortField.attributes,
+                                                     indexAttributes, false)) {
+      ++indexPosition;
+      ++fieldsPosition;
+      // check order
+      ++numCovered;
+    } else if (isContained(indexFieldAttributes, sortField.attributes) &&
+               isContained(_constAttributes, sortField.attributes)) {
+      ++fieldsPosition;
+      // check order
+      ++numCovered;
+    } else if (isContained(_constAttributes, indexAttributes)) {
+      ++indexPosition;
+    } else {
+      break;
+    }
+  }
+
+  TRI_ASSERT(numCovered <= _fields.size());
+  return std::make_tuple(numCovered, isAscending);
+}
+
 std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
     size_t position) const {
   if (isEmpty() || position > numAttributes()) {
@@ -216,5 +273,5 @@ std::tuple<Variable const*, AstNode const*, bool> SortCondition::field(
   TRI_ASSERT(position < _fields.size());
 
   SortField const& field = _fields[position];
-  return std::make_tuple(field.variable, field.node, field.order);
+  return std::make_tuple(field.variable, field.node, field.asc);
 }

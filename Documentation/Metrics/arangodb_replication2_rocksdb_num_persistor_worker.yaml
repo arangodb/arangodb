@@ -1,0 +1,12 @@
+name: arangodb_replication2_rocksdb_num_persistor_worker
+introducedIn: "3.10.0"
+help: |
+  Number of worker threads persisting replicated logs.
+unit: number
+type: gauge
+category: Replication
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of worker threads persisting replicated logs.

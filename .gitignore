@@ -97,17 +97,13 @@ test.cpp.txt
 .sass-cache/
 
 js/apps/*
-!js/apps/system
-!js/apps/system/*
+!js/apps/system/
 js/apps/system/_admin/aardvark/APP/react/node_modules/
-js/apps/system/_admin/aardvark/APP/react/node_modules/*
-!js/apps/system/_admin/aardvark/APP/react/build
-!js/apps/system/_admin/aardvark/APP/react/build/**
-!js/apps/system/_admin/aardvark/APP/react/build/static
-!js/apps/system/_admin/aardvark/APP/react/build/static/**
+js/apps/system/_admin/aardvark/APP/react/build/
 js/node/**/node_modules/.bin/
 js/node/node_modules/**/*.md
 !js/node/node_modules/**/LICENSE.md
+js/node/node_modules/**/test/
 js/node/node_modules/**/*.ts
 js/node/node_modules/**/*.yml
 js/node/node_modules/**/.babelrc
@@ -128,7 +124,7 @@ npm-debug.log
 /log-*
 data-*
 databases
-!/Documentation/DocuBlocks/Rest/Databases
+!js/apps/system/_admin/aardvark/APP/react/src/views/databases
 cluster-init
 
 datafile-*.db
@@ -147,3 +143,7 @@ js/node/**/*.map
 js/node/**/*.map.gz
 js/apps/**/*.map
 js/apps/**/*.map.gz
+
+swagger-ui-es-bundle*
+swagger-ui.js
+swagger-ui.js.map

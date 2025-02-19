@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -61,7 +62,7 @@ struct ConnectionLease {
 
   ConnectionCache* _cache;
   std::unique_ptr<GeneralClientConnection> _connection;
-  bool _preventRecycling;
+  std::atomic<bool> _preventRecycling;
 };
 
 class ConnectionCache {
@@ -70,15 +71,17 @@ class ConnectionCache {
 
  public:
   struct Options {
-    explicit Options(size_t maxConnectionsPerEndpoint)
-        : maxConnectionsPerEndpoint(maxConnectionsPerEndpoint) {}
+    explicit Options(size_t maxConnectionsPerEndpoint,
+                     uint32_t idleConnectionTimeout)
+        : maxConnectionsPerEndpoint(maxConnectionsPerEndpoint),
+          idleConnectionTimeout(idleConnectionTimeout) {}
 
     size_t maxConnectionsPerEndpoint;
+    uint32_t idleConnectionTimeout = 120;  // seconds
   };
 
-  ConnectionCache(
-      arangodb::application_features::CommunicationFeaturePhase& comm,
-      Options const& options);
+  ConnectionCache(application_features::CommunicationFeaturePhase& comm,
+                  Options const& options);
 
   ConnectionLease acquire(std::string endpoint, double connectTimeout,
                           double requestTimeout, size_t connectRetries,
@@ -89,24 +92,26 @@ class ConnectionCache {
   void release(std::unique_ptr<GeneralClientConnection> connection,
                bool force = false);
 
+  struct ConnInfo {
+    std::unique_ptr<GeneralClientConnection> connection;
+    std::chrono::steady_clock::time_point lastUsed;
+  };
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::unordered_map<
-      std::string, std::vector<std::unique_ptr<GeneralClientConnection>>> const&
-  connections() const {
+  std::unordered_map<std::string, std::vector<ConnInfo>> const& connections()
+      const {
     return _connections;
   }
 #endif
 
  private:
-  arangodb::application_features::CommunicationFeaturePhase& _comm;
+  application_features::CommunicationFeaturePhase& _comm;
 
   Options const _options;
 
   mutable std::mutex _lock;
 
-  std::unordered_map<std::string,
-                     std::vector<std::unique_ptr<GeneralClientConnection>>>
-      _connections;
+  std::unordered_map<std::string, std::vector<ConnInfo>> _connections;
 
   uint64_t _connectionsCreated;
   uint64_t _connectionsRecycled;

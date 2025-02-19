@@ -1,39 +1,37 @@
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertTrue, assertEqual, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for security-related server options
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require('jsunity');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
-const time = require("internal").time;
+const { time, sleep } = require("internal");
+let IM = global.instanceManager;
 
 const {
   getCtrlCoordinators,
@@ -225,7 +223,10 @@ function testSuite() {
           "preferred_username": "root",
           "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
         }, 'HS256');
-    
+
+        if (IM.options.isInstrumented) {
+          sleep(5);
+        }
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
         // note: this should actually work, but currently doesn't TODO
         assertTrue([500, 503].indexOf(aliveStatus.status) !== -1, JSON.stringify(aliveStatus));

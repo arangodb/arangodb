@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,26 +26,36 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerRule.h"
+#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearchQueryCommon.h"
+#include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+
 #include "search/boolean_filter.hpp"
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+
+namespace arangodb::aql {
+class ExecutionNode;
+}
 
 namespace arangodb::tests {
 namespace {
@@ -87,6 +97,7 @@ class QueryTestMulti
     auto res = analyzers.emplace(
         result, "testVocbase::test_analyzer", "TestAnalyzer",
         VPackParser::fromJson("\"abc\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features(
             {}, irs::IndexFeatures::FREQ |
                     irs::IndexFeatures::POS));  // required for PHRASE
@@ -94,7 +105,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "testVocbase::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     res = analyzers.emplace(
@@ -102,6 +114,7 @@ class QueryTestMulti
         VPackParser::fromJson(
             "{ \"locale\": \"en.UTF-8\", \"stopwords\": [ ] }")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             arangodb::iresearch::FieldFeatures::NORM,
             irs::IndexFeatures::FREQ |
@@ -118,6 +131,7 @@ class QueryTestMulti
     res =
         analyzers.emplace(result, "_system::test_analyzer", "TestAnalyzer",
                           VPackParser::fromJson("\"abc\"")->slice(),
+                          arangodb::transaction::OperationOriginTestCase{},
                           arangodb::iresearch::Features{
                               irs::IndexFeatures::FREQ |
                               irs::IndexFeatures::POS});  // required for PHRASE
@@ -127,6 +141,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":1, \"max\":3, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -136,6 +151,7 @@ class QueryTestMulti
         VPackParser::fromJson("{\"min\":2, \"max\":2, \"streamType\":\"utf8\", "
                               "\"preserveOriginal\":false}")
             ->slice(),
+        arangodb::transaction::OperationOriginTestCase{},
         arangodb::iresearch::Features{
             irs::IndexFeatures::FREQ |
             irs::IndexFeatures::POS});  // required for PHRASE
@@ -144,7 +160,8 @@ class QueryTestMulti
 
     res = analyzers.emplace(
         result, "_system::test_csv_analyzer", "TestDelimAnalyzer",
-        VPackParser::fromJson("\",\"")->slice());  // cache analyzer
+        VPackParser::fromJson("\",\"")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});  // cache analyzer
     EXPECT_TRUE(res.ok());
 
     auto& functions = server.getFeature<arangodb::aql::AqlFunctionFeature>();
@@ -157,7 +174,7 @@ class QueryTestMulti
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -173,7 +190,7 @@ class QueryTestMulti
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -222,11 +239,12 @@ bool findEmptyNodes(
       "{ }");
 
   auto query = arangodb::aql::Query::create(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery(arangodb::aql::SerializationFormat::SHADOWROWS);
+  query->prepareQuery();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 
@@ -257,8 +275,9 @@ class QueryOptimization : public QueryTestMulti {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Properties);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -304,7 +323,8 @@ class QueryOptimization : public QueryTestMulti {
                "version": $0,
                "includeAllFields": true })",
           version()));
-      logicalCollection1->createIndex(createJson->slice(), created);
+      logicalCollection1->createIndex(createJson->slice(), created)
+          .waitAndGet();
       ASSERT_TRUE(created);
       auto const viewDefinition = absl::Substitute(R"({ "indexes": [
         { "collection": "collection_1", "index": "index_1"}
@@ -319,8 +339,9 @@ class QueryOptimization : public QueryTestMulti {
       arangodb::OperationOptions opt;
       static std::vector<std::string> const EMPTY;
       arangodb::transaction::Methods trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-          {logicalCollection1->name()}, EMPTY,
+          arangodb::transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          EMPTY, {logicalCollection1->name()}, EMPTY,
           arangodb::transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
@@ -13594,7 +13615,7 @@ TEST_P(QueryOptimization, mergeLevenshteinStartsWith) {
   // make it empty with prefix
   {
     irs::Or expected;
-    expected.add<irs::And>().add<irs::empty>();
+    expected.add<irs::And>().add<irs::Empty>();
     assertFilterOptimized(
         vocbase(),
         "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
@@ -13605,7 +13626,7 @@ TEST_P(QueryOptimization, mergeLevenshteinStartsWith) {
   // make it empty
   {
     irs::Or expected;
-    expected.add<irs::And>().add<irs::empty>();
+    expected.add<irs::And>().add<irs::Empty>();
     assertFilterOptimized(
         vocbase(),
         "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"

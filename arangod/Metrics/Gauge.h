@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 #include "Basics/debugging.h"
 #include "Metrics/Metric.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Value.h>
 #include <velocypack/Builder.h>
 
@@ -33,8 +34,10 @@
 namespace arangodb::metrics {
 
 template<typename T>
-class Gauge final : public Metric {
+class Gauge : public Metric {
  public:
+  using Value = T;
+
   Gauge(T t, std::string_view name, std::string_view help,
         std::string_view labels)
       : Metric{name, help, labels}, _g{t} {}
@@ -44,13 +47,19 @@ class Gauge final : public Metric {
   void toPrometheus(std::string& result, std::string_view globals,
                     bool ensureWhitespace) const final {
     Metric::addMark(result, name(), globals, labels());
-    if (ensureWhitespace) {
-      result.push_back(' ');
+    if constexpr (std::is_integral_v<T>) {
+      absl::StrAppend(&result, ensureWhitespace ? " " : "", load(), "\n");
+    } else {
+      // must use std::to_string() here because it produces a different
+      // string representation of large floating-point numbers than absl
+      // does. absl uses scientific notation for numbers that exceed 6
+      // digits, and std::to_string() doesn't.
+      absl::StrAppend(&result, ensureWhitespace ? " " : "",
+                      std::to_string(load()), "\n");
     }
-    result.append(std::to_string(load())) += '\n';
   }
 
-  void toVPack(velocypack::Builder& builder, ArangodServer&) const final {
+  void toVPack(velocypack::Builder& builder) const final {
     builder.add(velocypack::Value{name()});
     builder.add(velocypack::Value{labels()});
     builder.add(velocypack::Value{load(std::memory_order_relaxed)});

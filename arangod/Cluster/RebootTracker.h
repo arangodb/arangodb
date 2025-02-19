@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,7 @@
 
 namespace arangodb {
 
-class SupervisedScheduler;
+class Scheduler;
 
 namespace velocypack {
 
@@ -51,7 +51,7 @@ namespace cluster {
 // scheduler is destroyed.
 class RebootTracker {
  public:
-  using SchedulerPointer = SupervisedScheduler*;
+  using SchedulerPointer = Scheduler*;
   using Callback = fu2::unique_function<void()>;
   struct DescriptedCallback {
     Callback callback;
@@ -62,19 +62,18 @@ class RebootTracker {
       std::map<RebootId,
                containers::FlatHashMap<CallbackId, DescriptedCallback>>;
   using Callbacks = containers::FlatHashMap<ServerID, RebootIds>;
-  struct PeerState {
-    std::string serverId;
-    RebootId rebootId{0};
-  };
 
   explicit RebootTracker(SchedulerPointer scheduler);
 
+  // Register `callback`, which is executed once if the state of `peer` changes.
+  // Destroying or overwriting the returned CallbackGuard will unregister the
+  // callback. The description is used for logging related to the callback.
   CallbackGuard callMeOnChange(PeerState peer, Callback callback,
                                std::string description);
 
   void updateServerState(ServersKnown state);
 
-  bool isServerAlive(ServerID id) const;
+  bool isServerAlive(ServerID const& id) const;
 
  private:
   void unregisterCallback(PeerState const& peer,

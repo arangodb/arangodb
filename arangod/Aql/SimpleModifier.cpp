@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,11 +26,10 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/Executor/ModificationExecutor.h"
+#include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SharedQueryState.h"
-#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -187,15 +186,8 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
 
   auto result = _completion.transact(trx, _accumulator.closeAndGetContents());
 
-  // we are currently waiting here for the `result` future to get
-  // ready before we continue. this makes the AQL modification
-  // operations blocking as in previous versions of ArangoDB.
-  // TODO: fix this and make it truly non-blocking (requires to
-  // fix some lifecycle issues for AQL queries first).
-  result.wait();
-
   if (result.isReady()) {
-    _results = std::move(result.get());
+    _results = std::move(result.waitAndGet());
     return ExecutionState::DONE;
   }
 
@@ -210,8 +202,8 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   // available.
   guard.unlock();
 
-  auto self = this->shared_from_this();
-  std::move(result).thenFinal([self, sqs = _infos.engine()->sharedState()](
+  std::move(result).thenFinal([self = this->shared_from_this(),
+                               sqs = _infos.engine()->sharedState()](
                                   futures::Try<OperationResult>&& opRes) {
     sqs->executeAndWakeup([&]() noexcept {
       std::unique_lock<std::mutex> guard(self->_resultMutex);
@@ -339,6 +331,9 @@ SimpleModifier<ModifierCompletion, Enable>::getResultsIterator() const {
 template<typename ModifierCompletion, typename Enable>
 bool SimpleModifier<ModifierCompletion, Enable>::hasResultOrException()
     const noexcept {
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
   return std::visit(overload{
                         [](NoResult) { return false; },
                         [](Waiting) { return false; },
@@ -352,6 +347,9 @@ template<typename ModifierCompletion, typename Enable>
 bool SimpleModifier<ModifierCompletion,
                     Enable>::hasNeitherResultNorOperationPending()
     const noexcept {
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
   return std::visit(overload{
                         [](NoResult) { return true; },
                         [](Waiting) { return false; },
@@ -359,6 +357,11 @@ bool SimpleModifier<ModifierCompletion,
                         [](std::exception_ptr const&) { return false; },
                     },
                     _results);
+}
+
+template<typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::stopAndClear() noexcept {
+  _operations.clear();
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;

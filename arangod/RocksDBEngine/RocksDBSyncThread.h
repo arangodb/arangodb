@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Basics/Thread.h"
@@ -31,6 +30,7 @@
 #include <rocksdb/types.h>
 
 #include <chrono>
+#include <shared_mutex>
 
 namespace rocksdb {
 class DB;
@@ -57,6 +57,16 @@ class RocksDBSyncThread final : public Thread {
   /// @brief unconditionally syncs the RocksDB WAL, static variant
   static Result sync(rocksdb::DB* db);
 
+  struct ISyncListener {
+    virtual ~ISyncListener() = default;
+
+    /// @brief called when the RocksDB WAL has been synced and the last sequence
+    /// number has been updated. It should schedule a separate thread to do the
+    /// actual work.
+    virtual void onSync(rocksdb::SequenceNumber seq) noexcept = 0;
+  };
+  void registerSyncListener(std::shared_ptr<ISyncListener> listener);
+
  protected:
   void run() override;
 
@@ -80,5 +90,13 @@ class RocksDBSyncThread final : public Thread {
 
   /// @brief protects _lastSyncTime and _lastSequenceNumber
   arangodb::basics::ConditionVariable _condition;
+
+  /// @brief listeners to be notified when _lastSequenceNumber is updated after
+  /// a sync.
+  std::shared_mutex _syncListenersMutex;
+  std::vector<std::shared_ptr<ISyncListener>> _syncListeners;
+
+  /// @brief notify listeners about the sequence number update
+  void notifySyncListeners(rocksdb::SequenceNumber seq) noexcept;
 };
 }  // namespace arangodb

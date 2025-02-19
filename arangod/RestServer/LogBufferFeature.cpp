@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,17 +29,13 @@
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMessage.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
-#include "ProgramOptions/Parameters.h"
-#include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
+#include "ProgramOptions/Parameters.h"
+#include "ProgramOptions/ProgramOptions.h"
 
 #include <cstring>
 #include <utility>
@@ -49,6 +45,8 @@ using namespace arangodb::options;
 
 DECLARE_COUNTER(arangodb_logger_warnings_total, "Number of warnings logged.");
 DECLARE_COUNTER(arangodb_logger_errors_total, "Number of errors logged.");
+DECLARE_COUNTER(arangodb_logger_messages_dropped_total,
+                "Number of log messages dropped.");
 
 namespace arangodb {
 
@@ -159,58 +157,16 @@ class LogAppenderRingBuffer final : public LogAppender {
   std::vector<LogBuffer> _buffer;
 };
 
-#ifdef _WIN32
-/// logs to the debug output windows in MSVC
-class LogAppenderDebugOutput final : public LogAppender {
- public:
-  LogAppenderDebugOutput() : LogAppender() {}
-
- public:
-  void logMessage(LogMessage const& message) override {
-    // only handle FATAl and ERR log messages
-    if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
-      return;
-    }
-
-    // log these errors to the debug output window in MSVC so
-    // we can see them during development
-    OutputDebugString(message._message.data() + message._offset);
-    OutputDebugString("\r\n");
-  }
-
-  std::string details() const override { return std::string(); }
-};
-
-/// logs to the Windows event log
-class LogAppenderEventLog final : public LogAppender {
- public:
-  LogAppenderEventLog() : LogAppender() {}
-
- public:
-  void logMessage(LogMessage const& message) override {
-    // only handle FATAl and ERR log messages
-    if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
-      return;
-    }
-
-    TRI_LogWindowsEventlog(message._function, message._file, message._line,
-                           message._message);
-  }
-
-  std::string details() const override { return std::string(); }
-};
-#endif
-
 /// @brief log appender that increases counters for warnings/errors
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
  public:
-  LogAppenderMetricsCounter(ArangodServer& server)
+  LogAppenderMetricsCounter(metrics::MetricsFeature& metrics)
       : LogAppender(),
-        _warningsCounter(server.getFeature<metrics::MetricsFeature>().add(
-            arangodb_logger_warnings_total{})),
-        _errorsCounter(server.getFeature<metrics::MetricsFeature>().add(
-            arangodb_logger_errors_total{})) {}
+        _warningsCounter(metrics.add(arangodb_logger_warnings_total{})),
+        _errorsCounter(metrics.add(arangodb_logger_errors_total{})),
+        _droppedMessagesCounter(
+            metrics.add(arangodb_logger_messages_dropped_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -221,11 +177,14 @@ class LogAppenderMetricsCounter final : public LogAppender {
     }
   }
 
+  void trackDroppedMessage() noexcept { ++_droppedMessagesCounter; }
+
   std::string details() const override { return std::string(); }
 
  private:
   metrics::Counter& _warningsCounter;
   metrics::Counter& _errorsCounter;
+  metrics::Counter& _droppedMessagesCounter;
 };
 
 LogBufferFeature::LogBufferFeature(Server& server)
@@ -235,15 +194,15 @@ LogBufferFeature::LogBufferFeature(Server& server)
   setOptional(true);
   startsAfter<LoggerFeature>();
 
-#ifdef _WIN32
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
-                                 std::make_shared<LogAppenderDebugOutput>());
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
-                                 std::make_shared<LogAppenderEventLog>());
-#endif
-  LogAppender::addGlobalAppender(
-      Logger::defaultLogGroup(),
-      std::make_shared<LogAppenderMetricsCounter>(server));
+  _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(
+      server.getFeature<metrics::MetricsFeature>());
+
+  Logger::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
+
+  Logger::setOnDroppedMessage([mc = _metricsCounter]() noexcept {
+    std::static_pointer_cast<LogAppenderMetricsCounter>(mc)
+        ->trackDroppedMessage();
+  });
 }
 
 void LogBufferFeature::collectOptions(
@@ -275,7 +234,6 @@ information leakage via these means.)");
                                                        logLevels),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30709)
       .setLongDescription(R"(You can use this option to control which log
 messages are preserved in memory (in case `--log.in-memory` is enabled).
 
@@ -305,8 +263,7 @@ void LogBufferFeature::prepare() {
     }
 
     _inMemoryAppender = std::make_shared<LogAppenderRingBuffer>(level);
-    LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
-                                   _inMemoryAppender);
+    Logger::addGlobalAppender(Logger::defaultLogGroup(), _inMemoryAppender);
   }
 }
 

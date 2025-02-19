@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global CryptoJS, _, arangoHelper, Backbone, window, $ */
+/* global frontendConfig */
 
 (function () {
   'use strict';
@@ -170,6 +168,20 @@
           id: 'editStatus'
         }
       ];
+
+      if (frontendConfig.db === '_system') {
+        tableContent.push(
+          window.modalView.createTextEntry(
+            'editCurrentUserProfileImg',
+            'Gravatar account (Mail)',
+            this.currentUser.get('extra').img,
+            'Mailaddress or its md5 representation of your gravatar account.' +
+            'The address will be converted into a md5 string. ' +
+            'Only the md5 string will be stored, not the mailaddress.',
+            'myAccount(at)gravatar.com'
+          )
+        );
+      }
       buttons = [];
       buttons.push(
         {
@@ -225,6 +237,9 @@
       toDelete.destroy({wait: true});
 
       window.App.navigate('#users', {trigger: true});
+      window.arangoHelper.arangoNotification(
+        'User "' + username + '" deleted.'
+      );
     },
 
     submitEditCurrentUserProfile: function () {
@@ -298,13 +313,31 @@
     submitEditUser: function (username) {
       var name = $('#editName').val();
       var status = $('#editStatus').is(':checked');
+      var img = $('#editCurrentUserProfileImg').val();
+      img = this.parseImgString(img);
+
 
       if (!this.validateStatus(status)) {
         $('#editStatus').closest('th').css('backgroundColor', 'red');
         return;
       }
       var user = this.collection.findWhere({'user': username});
-      user.save({'extra': {'name': name}, 'active': status}, {
+
+      var generateUserObj = function (user, name, img, status) {
+        var currentExtraData = user.get('extra');
+
+        var userObj = {};
+        currentExtraData.name = name;
+        currentExtraData.img = img;
+        userObj.extra = currentExtraData;
+        userObj.active = status;
+
+        return userObj;
+      };
+
+      var userObj = generateUserObj(user, name, img, status);
+
+      user.save(userObj, {
         type: 'PATCH',
         success: function () {
           arangoHelper.arangoNotification('User', user.get('user') + ' updated.');
@@ -322,7 +355,7 @@
         $('#subNavigationBar .breadcrumb').html(
           'User: ' + _.escape(this.username)
         );
-        arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'General');
+        arangoHelper.buildUserSubNav(encodeURIComponent(self.currentUser.get('user')), 'General');
       } else {
         window.setTimeout(function () {
           self.breadcrumb();

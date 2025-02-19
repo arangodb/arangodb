@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,6 +54,7 @@ struct config_t {
   uint64_t _compactionKeepSize;
   double _supervisionGracePeriod;
   double _supervisionOkThreshold;
+  double _supervisionExpiredServersGracePeriod;
   uint64_t _supervisionDelayAddFollower;
   uint64_t _supervisionDelayFailedFollower;
   bool _supervisionFailedLeaderAddsFollower;
@@ -80,6 +81,7 @@ struct config_t {
   static std::string const supervisionFrequencyStr;
   static std::string const supervisionGracePeriodStr;
   static std::string const supervisionOkThresholdStr;
+  static std::string const supervisionExpiredServersGracePeriodStr;
   static std::string const supervisionDelayAddFollowerStr;
   static std::string const supervisionDelayFailedFollowerStr;
   static std::string const supervisionFailedLeaderAddsFollowerStr;
@@ -98,7 +100,7 @@ struct config_t {
   config_t(std::string const& rid, size_t as, double minp, double maxp,
            std::string const& e, std::vector<std::string> const& g, bool s,
            bool st, bool w, double f, uint64_t c, uint64_t k, double p,
-           double o, uint64_t q, uint64_t r, bool t, size_t a);
+           double o, uint64_t q, uint64_t r, bool t, size_t a, double u);
 
   /// @brief copy constructor
   config_t(config_t const&);
@@ -233,6 +235,9 @@ struct config_t {
   /// @brief Supervision ok threshold
   double supervisionOkThreshold() const;
 
+  /// @brief Supervision ok expired servers grace period
+  double supervisionExpiredServersGracePeriod() const;
+
   /// @brief Supervision delay add follower
   uint64_t supervisionDelayAddFollower() const;
 
@@ -252,6 +257,12 @@ struct config_t {
   void setSupervisionOkThreshold(double d) {
     WRITE_LOCKER(writeLocker, _lock);
     _supervisionOkThreshold = d;
+  }
+
+  /// @brief set Supervision expired servers grace period
+  void setSupervisionExpiredServersGracePeriod(double d) {
+    WRITE_LOCKER(writeLocker, _lock);
+    _supervisionExpiredServersGracePeriod = d;
   }
 
   /// @brief set Supervision delay add follower

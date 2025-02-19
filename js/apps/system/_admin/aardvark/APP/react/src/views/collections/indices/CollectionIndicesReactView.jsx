@@ -1,15 +1,12 @@
 import React from "react";
-import { ChakraCustomProvider } from "../../../theme/ChakraCustomProvider";
-import { CollectionIndicesTabWrap } from "./CollectionIndicesTabWrap";
+import { CollectionIndicesViewWrap } from "./CollectionIndicesViewWrap";
 
 const CollectionIndicesReactView = ({ collectionName, collection }) => {
   return (
-    <ChakraCustomProvider overrideNonReact>
-      <CollectionIndicesTabWrap
-        collection={collection}
-        collectionName={collectionName}
-      />
-    </ChakraCustomProvider>
+    <CollectionIndicesViewWrap
+      collectionName={collectionName}
+      collectionId={collection.id}
+    />
   );
 };
 window.CollectionIndicesReactView = CollectionIndicesReactView;

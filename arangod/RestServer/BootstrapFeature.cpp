@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
+#include "Auth/UserManager.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -43,7 +44,9 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -69,8 +72,12 @@ BootstrapFeature::BootstrapFeature(Server& server)
 
   startsAfter<SystemDatabaseFeature>();
 
+#ifdef USE_V8
   // TODO: It is only in FoxxPhase because of:
   startsAfter<FoxxFeature>();
+#else
+  startsAfter<application_features::ServerFeaturePhase>();
+#endif
 
   // If this is Sorted out we can go down to ServerPhase
   // And activate the following dependencies:
@@ -212,6 +219,7 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
   }
 }
 
+#ifdef USE_V8
 /// Run the coordinator initialization script, will run on each
 /// coordinator, not just one.
 void runCoordinatorJS(TRI_vocbase_t* vocbase) {
@@ -223,7 +231,7 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
     VPackBuilder builder;
     vocbase->server()
         .getFeature<V8DealerFeature>()
-        .loadJavaScriptFileInAllContexts(
+        .loadJavaScriptFileInAllExecutors(
             vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
@@ -254,50 +262,8 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
     }
   }
 }
+#endif
 
-// Try to become leader in active-failover setup
-void runActiveFailoverStart(BootstrapFeature& feature,
-                            std::string const& myId) {
-  std::string const leaderPath = "Plan/AsyncReplication/Leader";
-  try {
-    VPackBuilder myIdBuilder;
-    myIdBuilder.add(VPackValue(myId));
-    AgencyComm agency(feature.server());
-    AgencyCommResult res = agency.getValues(leaderPath);
-    if (res.successful()) {
-      VPackSlice leader =
-          res.slice()[0].get(AgencyCommHelper::slicePath(leaderPath));
-      if (!leader.isString() ||
-          leader.getStringLength() == 0) {  // no leader in agency
-        if (leader.isNone()) {
-          res = agency.casValue(leaderPath, myIdBuilder.slice(),
-                                /*prevExist*/ false,
-                                /*ttl*/ 0, /*timeout*/ 5.0);
-        } else {
-          res = agency.casValue(leaderPath, /*old*/ leader,
-                                /*new*/ myIdBuilder.slice(),
-                                /*ttl*/ 0, /*timeout*/ 5.0);
-        }
-        if (res.successful()) {  // successful leadership takeover
-          leader = myIdBuilder.slice();
-        }  // ignore for now, heartbeat thread will handle it
-      }
-
-      if (leader.isString() && leader.getStringLength() > 0) {
-        ServerState::instance()->setFoxxmaster(leader.copyString());
-        if (basics::VelocyPackHelper::equal(leader, myIdBuilder.slice(),
-                                            false)) {
-          LOG_TOPIC("95023", INFO, Logger::STARTUP)
-              << "Became leader in active-failover setup";
-        } else {
-          LOG_TOPIC("f0bdc", INFO, Logger::STARTUP)
-              << "Following: " << ServerState::instance()->getFoxxmaster();
-        }
-      }
-    }
-  } catch (...) {
-  }  // weglaecheln
-}
 }  // namespace
 
 void BootstrapFeature::start() {
@@ -307,9 +273,11 @@ void BootstrapFeature::start() {
       server().hasFeature<arangodb::SystemDatabaseFeature>()
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
+#ifdef USE_V8
   bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
                    server().isEnabled<V8DealerFeature>() &&
                    server().getFeature<V8DealerFeature>().isEnabled();
+#endif
   TRI_ASSERT(vocbase.get() != nullptr);
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
@@ -328,9 +296,11 @@ void BootstrapFeature::start() {
       // both Plan and Current have been populated successfully
       waitForDatabases();
 
+#ifdef USE_V8
       if (v8Enabled && !databaseFeature.upgrade()) {
         ::runCoordinatorJS(vocbase.get());
       }
+#endif
     } else if (ServerState::isDBServer(role)) {
       // don't wait for databases in Current here, as we are a DB server and may
       // be the one responsible to create it. blocking here is thus no option!
@@ -352,21 +322,18 @@ void BootstrapFeature::start() {
 
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
-    if (ServerState::isSingleServer(role) &&
-        AsyncAgencyCommManager::isEnabled()) {
-      ::runActiveFailoverStart(*this, myId);
-    } else {
-      ServerState::instance()->setFoxxmaster(
-          myId);  // could be empty, but set anyway
-    }
+    ServerState::instance()->setFoxxmaster(
+        myId);  // could be empty, but set anyway
 
+#ifdef USE_V8
     if (v8Enabled) {  // runs the single server bootstrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
+      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllExecutors(
           vocbase.get(), "server/server.js", nullptr);
     }
+#endif
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
     if (um != nullptr) {
       // only creates root user if it does not exist, will be overwritten on
@@ -379,14 +346,8 @@ void BootstrapFeature::start() {
     waitForHealthEntry();
   }
 
-  if (ServerState::isSingleServer(role) &&
-      AsyncAgencyCommManager::isEnabled()) {
-    // simon: this is set to correct value in the heartbeat thread
-    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
-  } else {
-    // Start service properly:
-    ServerState::setServerMode(ServerState::Mode::DEFAULT);
-  }
+  // Start service properly:
+  ServerState::setServerMode(ServerState::Mode::DEFAULT);
 
   if (!databaseFeature.upgrade()) {
     LOG_TOPIC("cf3f4", INFO, arangodb::Logger::FIXME)
@@ -402,8 +363,17 @@ void BootstrapFeature::start() {
   _isReady = true;
 }
 
+void BootstrapFeature::stop() {
+  // notify all currently running queries about the shutdown
+  killRunningQueries();
+}
+
 void BootstrapFeature::unprepare() {
   // notify all currently running queries about the shutdown
+  killRunningQueries();
+}
+
+void BootstrapFeature::killRunningQueries() {
   auto& databaseFeature = server().getFeature<DatabaseFeature>();
 
   for (auto& name : databaseFeature.getDatabaseNames()) {

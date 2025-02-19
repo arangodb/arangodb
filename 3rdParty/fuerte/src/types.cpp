@@ -144,8 +144,6 @@ MessageType intToMessageType(int integral) {
       return MessageType::Request;
     case 2:
       return MessageType::Response;
-    case 3:
-      return MessageType::ResponseUnfinished;
     case 1000:
       return MessageType::Authentication;
     default:
@@ -164,9 +162,6 @@ std::string to_string(MessageType type) {
 
     case MessageType::Response:
       return "response";
-
-    case MessageType::ResponseUnfinished:  // needed for vst
-      return "unfinised response";
 
     case MessageType::Authentication:
       return "authentication";
@@ -201,9 +196,6 @@ std::string to_string(ProtocolType type) {
     case ProtocolType::Http:
     case ProtocolType::Http2:
       return "http";
-
-    case ProtocolType::Vst:
-      return "vst";
   }
 
   return "undefined";
@@ -288,17 +280,55 @@ std::string to_string(ContentType type) {
 const std::string fu_content_encoding_identity("identity");
 const std::string fu_content_encoding_deflate("deflate");
 const std::string fu_content_encoding_gzip("gzip");
+const std::string fu_content_encoding_lz4("x-arango-lz4");
 
 ContentEncoding to_ContentEncoding(std::string_view val) {
   if (val.empty()) {
     return ContentEncoding::Identity;
-  } else if (val.starts_with(fu_content_encoding_gzip)) {
-    return ContentEncoding::Gzip;
-  } else if (val.starts_with(fu_content_encoding_deflate)) {
-    return ContentEncoding::Deflate;
-  } else if (val.starts_with(fu_content_encoding_identity)) {
-    return ContentEncoding::Identity;
   }
+
+  size_t pos = 0;
+  while (pos < val.size()) {
+    std::string_view current;
+    // split multiple specified encodings at ','
+    size_t next = val.find(',', pos);
+    if (next == std::string::npos) {
+      current = {val.data() + pos, val.size() - pos};
+      pos = val.size();
+    } else {
+      current = {val.data() + pos, next - pos};
+      pos = next + 1;
+    }
+
+    // each encoding can have a "quality"/weight value attached.
+    // strip it.
+    next = current.find(';');
+    if (next != std::string_view::npos) {
+      current = current.substr(0, next);
+    }
+    // ltrim the result value
+    while (!current.empty() && current.front() == ' ') {
+      current = current.substr(1);
+    }
+    // rtrim the result value
+    while (!current.empty() && current.back() == ' ') {
+      current = current.substr(0, current.size() - 1);
+    }
+
+    if (current == fu_content_encoding_lz4) {
+      return ContentEncoding::Lz4;
+    }
+    if (current == fu_content_encoding_gzip) {
+      return ContentEncoding::Gzip;
+    } 
+    if (current == fu_content_encoding_deflate) {
+      return ContentEncoding::Deflate;
+    }
+    if (current == fu_content_encoding_identity) {
+      return ContentEncoding::Identity;
+    }
+  }
+
   return ContentEncoding::Custom;
 }
 
@@ -308,6 +338,8 @@ std::string to_string(ContentEncoding type) {
       return fu_content_encoding_deflate;
     case ContentEncoding::Gzip:
       return fu_content_encoding_gzip;
+    case ContentEncoding::Lz4:
+      return fu_content_encoding_lz4;
     case ContentEncoding::Custom:
       throw std::logic_error(
           "custom content encoding could take different "
@@ -350,9 +382,6 @@ std::string to_string(Error error) {
       return "Error while writing";
     case Error::ConnectionCanceled:
       return "Connection was locally canceled";
-
-    case Error::VstUnauthorized:
-      return "Cannot authorize on VST connection";
 
     case Error::ProtocolError:
       return "Error: invalid server response";

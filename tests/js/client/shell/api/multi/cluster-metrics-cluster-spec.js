@@ -5,13 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2020 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -285,23 +286,10 @@ class SupervisionWatcher extends Watcher {
 
 
 describe('_admin/metrics', () => {
-
-  const getServers = () => {
-    const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-    const list = new Map();
-    list.set("coordinator", []);
-    list.set("dbserver", []);
-    list.set("agent", []);
-    for (const d of instanceInfo.arangods) {
-      list.get(d.instanceRole).push(d.url);
-    }
-    return list;
-  };
-
   let servers;
 
   before(() => {
-    servers = getServers();
+    servers = global.instanceManager.getTypeToUrlsMap();
   });
 
   const extractKeyAndLabel = (key) => {

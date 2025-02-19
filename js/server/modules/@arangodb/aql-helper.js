@@ -1,21 +1,18 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail,
-  AQL_EXECUTE, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTEJSON */
+/* global assertTrue, assertFalse, assertEqual, fail, arango
+  AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief aql test helper functions
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2011-2012 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +20,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
@@ -33,7 +30,8 @@
 // / @brief normalize a single row result
 // //////////////////////////////////////////////////////////////////////////////
 
-let isEqual = require("@arangodb/test-helper").isEqual;
+let isEqual = require("@arangodb/test-helper-common").isEqual;
+var db = require("@arangodb").db;
 
 exports.isEqual = isEqual;
 
@@ -69,7 +67,7 @@ function normalizeRow (row, recursive) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getParseResults (query) {
-  return AQL_PARSE(query);
+  return db._parse(query);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -91,7 +89,7 @@ function assertParseError (errorCode, query) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getQueryExplanation (query, bindVars) {
-  return AQL_EXPLAIN(query, bindVars);
+  return db._createStatement({query, bindVars}).explain();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -99,7 +97,7 @@ function getQueryExplanation (query, bindVars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars, options = {}) {
-  return  AQL_EXECUTE(query, bindVars, options).stats;
+  return  db._createStatement({query, bindVars, options}).execute().getExtra().stats;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -107,7 +105,7 @@ function getModifyQueryResults (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResultsRaw (query, bindVars, options = {}) {
-  return AQL_EXECUTE(query, bindVars, options);
+  return db._query(query, bindVars, options);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -116,8 +114,8 @@ function getModifyQueryResultsRaw (query, bindVars, options = {}) {
 
 function getRawQueryResults (query, bindVars, options = {}) {
   var finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
-  var queryResult = AQL_EXECUTE(query, bindVars, finalOptions);
-  return queryResult.json;
+  var queryResult = db._query(query, bindVars, finalOptions);
+  return queryResult.toArray();
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -157,14 +155,14 @@ function assertQueryError (errorCode, query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function assertQueryWarningAndNull (errorCode, query, bindVars) {
-  var result = AQL_EXECUTE(query, bindVars), i, found = { };
+  var result = db._query(query, bindVars).data, i, found = { };
 
-  for (i = 0; i < result.warnings.length; ++i) {
-    found[result.warnings[i].code] = true;
+  for (i = 0; i < result.extra.warnings.length; ++i) {
+    found[result.extra.warnings[i].code] = true;
   }
 
   assertTrue(found[errorCode]);
-  assertEqual([ null ], result.json);
+  assertEqual([ null ], result.result);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -274,10 +272,20 @@ function findReferencedNodes (plan, testNode) {
   return matches;
 }
 
+const executeJson = function (plan, param) {
+  let command = `
+      let plan = ${JSON.stringify(plan)};
+      let opts = ${JSON.stringify(param)};
+      return AQL_EXECUTEJSON(plan, opts);
+    `;
+  return arango.POST("/_admin/execute", command);
+};
+
 function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
   var printYaml = function (plan) {
     require('internal').print(require('js-yaml').safeDump(plan));
   };
+
   var i;
   var plans = [];
   var allPlans = [];
@@ -298,13 +306,13 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   if (debug) {
     require('internal').print('Analyzing Query unoptimized: ' + query);
   }
-  plans[0] = AQL_EXPLAIN(query, bindVars, paramNone);
+  plans[0] = db._createStatement({query: query, bindVars: bindVars, options: paramNone}).explain();
   // then all of the ones permuted by by the optimizer.
   if (debug) {
     require('internal').print('Unoptimized Plan (0):');
     printYaml(plans[0]);
   }
-  allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
+  allPlans = db._createStatement({query: query, bindVars: bindVars, options: paramAllPlans}).explain();
 
   for (i = 0; i < allPlans.plans.length; i++) {
     if (debug) {
@@ -329,21 +337,9 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
       }
     }
 
-    results[i] = AQL_EXECUTEJSON(plans[i].plan, paramNone);
+    results[i] = executeJson(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
-    delete results[i].stats.scannedFull;
-    delete results[i].stats.scannedIndex;
-    delete results[i].stats.cursorsCreated;
-    delete results[i].stats.cursorsRearmed;
-    delete results[i].stats.cacheHits;
-    delete results[i].stats.cacheMisses;
-    delete results[i].stats.filtered;
-    delete results[i].stats.executionTime;
-    delete results[i].stats.httpRequests;
-    delete results[i].stats.peakMemoryUsage;
-    delete results[i].stats.intermediateCommits;
-    delete results[i].stats.fullCount;
-
+    sanitizeStats(results[i]);
     if (debug) {
       require('internal').print('\n' + i + ' DONE\n');
     }
@@ -426,19 +422,35 @@ function unpackRawExpression (node, transform = false) {
 function sanitizeStats (stats) {
   // remove these members from the stats because they don't matter
   // for the comparisons
-  delete stats.scannedFull;
-  delete stats.scannedIndex;
-  delete stats.cursorsCreated;
-  delete stats.cursorsRearmed;
-  delete stats.cacheHits;
-  delete stats.cacheMisses;
-  delete stats.filtered;
-  delete stats.executionTime;
-  delete stats.httpRequests;
-  delete stats.fullCount;
-  delete stats.peakMemoryUsage;
-  delete stats.intermediateCommits;
+  [
+    'scannedFull',
+    'scannedIndex',
+    'cursorsCreated',
+    'cursorsRearmed',
+    'cacheHits',
+    'cacheMisses',
+    'filtered',
+    'executionTime',
+    'httpRequests',
+    'fullCount',
+    'peakMemoryUsage',
+    'intermediateCommits'].forEach(item => { delete stats[item]; });
   return stats;
+}
+
+function normalizeProjections (p) {
+  return (p || []).map((p) => {
+    if (Array.isArray(p)) {
+      return p;
+    }
+    if (typeof p === 'string') {
+      return [p];
+    }
+    if (p.hasOwnProperty("path")) {
+      return p.path;
+    }
+    return [];
+  }).sort();
 }
 
 exports.getParseResults = getParseResults;
@@ -461,3 +473,4 @@ exports.removeClusterNodesFromPlan = removeClusterNodesFromPlan;
 exports.removeCost = removeCost;
 exports.unpackRawExpression = unpackRawExpression;
 exports.sanitizeStats = sanitizeStats;
+exports.normalizeProjections = normalizeProjections;

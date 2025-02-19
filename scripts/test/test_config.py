@@ -1,10 +1,11 @@
 #!/bin/env python3
 """ keep the config for one testsuite to execute """
 import copy
+import json
 import logging
 import os
 
-from site_config import IS_WINDOWS, IS_MAC, TEMP
+from site_config import TEMP
 
 TEST_LOG_FILES = []
 
@@ -15,7 +16,7 @@ class TestConfig:
     # pylint: disable=too-many-instance-attributes disable=too-many-arguments
     # pylint: disable=too-many-branches disable=too-many-statements
     # pylint: disable=too-few-public-methods disable=line-too-long
-    def __init__(self, cfg, name, suite, args, priority, parallelity, flags):
+    def __init__(self, cfg, name, suite, args, arangosh_args, priority, parallelity, flags):
         """defaults for test config"""
         self.parallelity = parallelity
         self.launch_delay = 1.3
@@ -56,6 +57,11 @@ class TestConfig:
         self.report_file = self.base_logdir / "UNITTEST_RESULT.json"
         self.base_testdir = cfg.test_data_dir_x / self.name
 
+        self.arangosh_args = [];
+        # the yaml work around is to have an A prepended. detect and strip out:
+        if arangosh_args is not None and len(arangosh_args) > 0 and arangosh_args != 'A ""':
+            print(arangosh_args)
+            self.arangosh_args = json.loads(arangosh_args[1:])
         self.args = copy.deepcopy(cfg.extra_args)
         for param in args:
             if param.startswith("$"):
@@ -77,26 +83,14 @@ class TestConfig:
             "true",
             "--writeXmlReport",
             "true",
-            '--testXmlOutputDirectory',
+            "--testXmlOutputDirectory",
             str(self.xml_report_dir),
         ]
 
         if "filter" in os.environ:
             self.args += ["--test", os.environ["filter"]]
         if "sniff" in flags:
-            if IS_WINDOWS and "TSHARK" in os.environ:
-                self.args += [
-                    "--sniff",
-                    "true",
-                    "--sniffProgram",
-                    os.environ["TSHARK"],
-                    "--sniffDevice",
-                    os.environ["DUMPDEVICE"],
-                ]
-            elif IS_MAC:
-                self.args += ["--sniff", "sudo"]
-            else:
-                self.args += ["--sniff", "true"]
+            self.args += ["--sniff", "true"]
 
         if "SKIPNONDETERMINISTIC" in os.environ:
             self.args += ["--skipNondeterministic", os.environ["SKIPNONDETERMINISTIC"]]
@@ -122,8 +116,6 @@ class TestConfig:
         if "ONLYGREY" in os.environ:
             self.args += ["--onlyGrey", os.environ["ONLYGREY"]]
 
-        if "vst" in flags:
-            self.args += ["--vst", "true"]
         if "ssl" in flags:
             self.args += ["--protocol", "ssl"]
         if "http2" in flags:

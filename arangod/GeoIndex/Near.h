@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -90,15 +90,12 @@ class NearUtils {
   explicit NearUtils(geo::QueryParams&& params) noexcept;
   ~NearUtils();
 
- public:
   /// @brief get cell covering target coordinate (at max level)
-  inline S2Point origin() const { return _origin; }
+  S2Point origin() const { return _origin; }
 
-  inline geo::FilterType filterType() const { return _params.filterType; }
+  geo::FilterType filterType() const { return _params.filterType; }
 
-  inline geo::ShapeContainer const& filterShape() const {
-    return _params.filterShape;
-  }
+  geo::ShapeContainer const& filterShape() const { return _params.filterShape; }
 
   /// @brief all intervals are covered, no more buffered results
   bool isDone() const {
@@ -111,7 +108,7 @@ class NearUtils {
   }
 
   /// @brief has buffered results
-  inline bool hasNearest() const {
+  bool hasNearest() const {
     if (_allIntervalsCovered) {  // special case when almost done
       return !_buffer.empty();
     }
@@ -174,15 +171,15 @@ class NearUtils {
     _outerAngle = _maxAngle;
   }
 
-  inline bool isFilterNone() const noexcept {
+  bool isFilterNone() const noexcept {
     return _params.filterType == geo::FilterType::NONE;
   }
 
-  inline bool isFilterContains() const noexcept {
+  bool isFilterContains() const noexcept {
     return _params.filterType == geo::FilterType::CONTAINS;
   }
 
-  inline bool isFilterIntersects() const noexcept {
+  bool isFilterIntersects() const noexcept {
     return _params.filterType == geo::FilterType::INTERSECTS;
   }
 

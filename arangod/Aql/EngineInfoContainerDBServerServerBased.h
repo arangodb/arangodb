@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include "Basics/Common.h"
 
 #include "Aql/QuerySnippet.h"
 #include "Aql/ShardLocking.h"
@@ -125,8 +123,8 @@ class EngineInfoContainerDBServerServerBased {
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
       std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
       aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
-      network::ConnectionPool* pool,
-      network::RequestOptions const& options) const;
+      network::ConnectionPool* pool, network::RequestOptions const& options,
+      bool fastPath) const;
 
   [[nodiscard]] bool isNotSatelliteLeader(VPackSlice infoSlice) const;
 
@@ -177,7 +175,8 @@ class EngineInfoContainerDBServerServerBased {
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
                        ServerID const& server,
                        std::vector<bool> const& didCreateEngine,
-                       QueryId& globalQueryId, RebootId& rebootId) const;
+                       QueryId& globalQueryId, RebootId& rebootId,
+                       bool fastPath) const;
 
  private:
   std::stack<std::shared_ptr<QuerySnippet>,

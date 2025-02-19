@@ -1,40 +1,38 @@
 /*jshint globalstrict:false, strict:false */
 /*global arango, VPACK_TO_V8, V8_TO_VPACK, assertEqual, assertTrue, assertFalse, assertNull */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test request module
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2015 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Christoph Uhde
 /// @author Copyright 2016, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
-var jsunity = require('jsunity');
-var expect = require('chai').expect;
+const jsunity = require('jsunity');
+const expect = require('chai').expect;
 
 function RequestSuite() {
   return {
+    testCursorAPI: cursorAPI,
     testVersionJsonJson: versionJsonJson,
     testVersionVpackJson: versionVpackJson,
     testVersionJsonVpack: versionJsonVpack,
@@ -46,12 +44,49 @@ function RequestSuite() {
   };
 };
 
+function cursorAPI() {
+  const cn = "UnitTestsCollection";
+
+  const path = '/_api/cursor';
+  const headers = {
+    'content-type': 'application/x-velocypack',
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
+  };
+
+  let db = require("@arangodb").db;
+
+  let c = db._create(cn);
+  c.insert({ _key: "test", value: 1 });
+
+  try {
+    [
+      "doc", "ATTRIBUTES(doc)", 
+      "UNSET(doc, ['_key'])", 
+      "UNSET(doc, ['_id'])", 
+      "UNSET(doc, ['_key', '_rev'])", 
+      "UNSET (doc, ['_key', '_id'])"
+    ].forEach((what) => {
+      const body = V8_TO_VPACK({
+        query: "FOR doc IN " + cn + " RETURN " + what
+      });
+      const res = arango.POST_RAW(path, body, headers);
+
+      expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
+      const obj = VPACK_TO_V8(res.body);
+      expect(obj.result).to.be.instanceOf(Array);
+    });
+  } finally {
+    db._drop(cn);
+  }
+};
 
 function versionJsonJson() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/json',
-    'accept': 'application/json'
+    'accept': 'application/json',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -74,7 +109,8 @@ function versionVpackJson() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept': 'application/json'
+    'accept': 'application/json',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -97,7 +133,8 @@ function versionJsonVpack() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/json',
-    'accept': 'application/x-velocypack'
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -119,7 +156,8 @@ function versionVpackVpack() {
   const path = '/_api/version';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept': 'application/x-velocypack'
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const res = arango.POST_RAW(path, "", headers);
@@ -141,7 +179,8 @@ function echoVpackVpack() {
   const path = '/_admin/echo';
   const headers = {
     'content-type': 'application/x-velocypack',
-    'accept': 'application/x-velocypack'
+    'accept': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const obj = {"server": "arango", "version": "3.0.devel"};
@@ -149,7 +188,6 @@ function echoVpackVpack() {
 
   const res = arango.POST_RAW(path, body, headers);
 
-  expect(res.body).to.be.a('SlowBuffer');
   expect(String(res.headers['content-type'])).to.have.string("application/x-velocypack");
   const replyBody = VPACK_TO_V8(res.body);
   expect(replyBody.requestBody).to.be.a('string');
@@ -166,6 +204,7 @@ function adminExecuteWithHeaderVpack() {
   const path = '/_admin/execute';
   const headers = {
     'content-type': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const obj = "require(\"console\").log(\"abc\");";
@@ -182,6 +221,7 @@ function adminExecuteWithHeaderVpack2() {
   const path = '/_admin/execute';
   const headers = {
     'content-type': 'application/x-velocypack',
+    'accept-encoding': 'identity',
   };
 
   const obj = "return \"abc\"";

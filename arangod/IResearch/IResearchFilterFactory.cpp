@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,12 +25,6 @@
 #include "Basics/DownCast.h"
 
 #include <frozen/map.h>
-
-// otherwise define conflict between 3rdParty\date\include\date\date.h and
-// 3rdParty\iresearch\core\shared.hpp
-#if defined(_MSC_VER)
-#include "date/date.h"
-#endif
 
 #include "Aql/Functions.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -65,6 +59,8 @@
 #include "IResearch/AqlHelper.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearch/GeoFilter.h"
+#include "IResearch/Wildcard/Analyzer.h"
+#include "IResearch/Wildcard/Filter.h"
 #include "IResearch/ExpressionFilter.h"
 #include "IResearch/IResearchFilterFactoryCommon.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -103,7 +99,7 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
 irs::ColumnAcceptor makeColumnAcceptor(bool) noexcept;
 
 #ifndef USE_ENTERPRISE
-irs::filter::ptr makeAll(std::string_view) {
+irs::AllDocsProvider::Ptr makeAll(std::string_view) {
   return std::make_unique<irs::all>();
 }
 std::string_view makeAllColumn(QueryContext const&) noexcept { return {}; }
@@ -131,9 +127,9 @@ namespace {
 using namespace arangodb;
 using namespace arangodb::iresearch;
 
-constexpr char const* GEO_INTERSECT_FUNC = "GEO_INTERSECTS";
-constexpr char const* GEO_DISTANCE_FUNC = "GEO_DISTANCE";
-constexpr char const* TERMS_FUNC = "TERMS";
+constexpr char const* kGeoIntersectsFunc = "GEO_INTERSECTS";
+constexpr char const* kGeoDistanceFunc = "GEO_DISTANCE";
+constexpr char const* kTermsFunc = "TERMS";
 
 void setupAllTypedFilter(irs::Or& disjunction, FilterContext const& ctx,
                          std::string&& mangledName) {
@@ -899,7 +895,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat(
                   "Failed to evaluate an argument denoting a distance near '",
-                  GEO_DISTANCE_FUNC, "' function")};
+                  kGeoDistanceFunc, "' function")};
     }
 
     if (SCOPED_VALUE_TYPE_DOUBLE != tmpValue.type() ||
@@ -907,19 +903,19 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("Failed to parse an argument denoting a distance as "
                            "a number near '",
-                           GEO_DISTANCE_FUNC, "' function")};
+                           kGeoDistanceFunc, "' function")};
     }
   }
 
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *fieldNode, ctx, filter != nullptr)) {
-    return error::failedToGenerateName(GEO_DISTANCE_FUNC, fieldNodeIdx);
+    return error::failedToGenerateName(kGeoDistanceFunc, fieldNodeIdx);
   }
 
   if (filter) {
     tmpValue.reset(*centroidNode);
     if (!tmpValue.execute(ctx)) {
-      return error::failedToEvaluate(GEO_DISTANCE_FUNC, centroidNodeIdx);
+      return error::failedToEvaluate(kGeoDistanceFunc, centroidNodeIdx);
     }
     auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
     if (!analyzer) {
@@ -930,7 +926,7 @@ Result fromGeoDistanceInterval(irs::boolean_filter* filter,
     if (!r.ok()) {
       return r;
     }
-    r = getLatLng(tmpValue, options.origin, GEO_DISTANCE_FUNC, centroidNodeIdx,
+    r = getLatLng(tmpValue, options.origin, kGeoDistanceFunc, centroidNodeIdx,
                   options);
     if (!r.ok()) {
       return r;
@@ -1060,10 +1056,12 @@ Result fromRange(irs::boolean_filter* filter, FilterContext const& filterCtx,
   return {};
 }
 
-std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
-    irs::boolean_filter*& filter, aql::AstNodeType arrayComparison,
-    const aql::AstNode* quantifierNode, size_t arraySize,
-    FilterContext const& filterCtx) {
+std::tuple<Result, aql::AstNodeType, size_t>
+buildBinaryArrayComparisonPreFilter(irs::boolean_filter*& filter,
+                                    aql::AstNodeType arrayComparison,
+                                    const aql::AstNode* quantifierNode,
+                                    size_t arraySize,
+                                    FilterContext const& filterCtx) {
   TRI_ASSERT(quantifierNode);
   auto quantifierType =
       static_cast<aql::Quantifier::Type>(quantifierNode->getIntValue(true));
@@ -1073,14 +1071,14 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
     constexpr std::string_view kFuncName = "AT LEAST";
     if (quantifierNode->numMembers() != 1) {
       return {Result{TRI_ERROR_INTERNAL, "Malformed AT LEAST node"},
-              aql::AstNodeType::NODE_TYPE_ROOT};
+              aql::AstNodeType::NODE_TYPE_ROOT, 0};
     }
     auto const& ctx = filterCtx.query;
     auto number = quantifierNode->getMemberUnchecked(0);
     if (!ctx.isSearchQuery && !number->isConstant()) {
       return {Result{TRI_ERROR_NOT_IMPLEMENTED,
                      "Non const AT LEAST is not supported for FILTER"},
-              aql::AstNodeType::NODE_TYPE_ROOT};
+              aql::AstNodeType::NODE_TYPE_ROOT, 0};
     }
     ScopedAqlValue atLeastCountValue;
     auto rv = evaluateArg<decltype(atLeastCount), true>(
@@ -1088,19 +1086,19 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
         filter != nullptr, ctx);
 
     if (rv.fail()) {
-      return {rv, aql::AstNodeType::NODE_TYPE_ROOT};
+      return {rv, aql::AstNodeType::NODE_TYPE_ROOT, 0};
     }
 
     if (atLeastCount < 0) {
       return {error::negativeNumber(kFuncName.data(), 0),
-              aql::AstNodeType::NODE_TYPE_ROOT};
+              aql::AstNodeType::NODE_TYPE_ROOT, 0};
     }
 
     if (arraySize < static_cast<size_t>(atLeastCount)) {
       if (filter) {
-        append<irs::empty>(*filter, filterCtx);
+        append<irs::Empty>(*filter, filterCtx);
       }
-      return {Result{}, aql::NODE_TYPE_ROOT};
+      return {Result{}, aql::NODE_TYPE_ROOT, 1};
     } else if (static_cast<size_t>(atLeastCount) == arraySize) {
       quantifierType = aql::Quantifier::Type::kAll;
     } else if (arrayComparison != aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN &&
@@ -1116,7 +1114,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
     switch (quantifierType) {
       case aql::Quantifier::Type::kAny:
         if (filter) {
-          append<irs::empty>(*filter, filterCtx);
+          append<irs::Empty>(*filter, filterCtx);
         }
         break;
       case aql::Quantifier::Type::kAll:
@@ -1128,7 +1126,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
       case aql::Quantifier::Type::kAtLeast:
         if (filter) {
           if (atLeastCount > 0) {
-            append<irs::empty>(*filter, filterCtx);
+            append<irs::Empty>(*filter, filterCtx);
           } else {
             append<irs::all>(*filter, filterCtx);
           }
@@ -1138,7 +1136,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
         TRI_ASSERT(false);  // new qualifier added ?
         return {Result{TRI_ERROR_NOT_IMPLEMENTED,
                        "Unknown qualifier in Array comparison operator"},
-                aql::AstNodeType::NODE_TYPE_ROOT};
+                aql::AstNodeType::NODE_TYPE_ROOT, 0};
     }
   } else {
     // NONE is inverted ALL so do conversion
@@ -1169,7 +1167,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           TRI_ASSERT(false);  // new array comparison operator?
           return {Result{TRI_ERROR_NOT_IMPLEMENTED,
                          "Unknown Array NONE comparison operator"},
-                  aql::AstNodeType::NODE_TYPE_ROOT};
+                  aql::AstNodeType::NODE_TYPE_ROOT, 0};
       }
     }
     switch (quantifierType) {
@@ -1182,6 +1180,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
@@ -1195,24 +1194,28 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_GE;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LT;
             break;
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
             if (filter) {
               filter = &append<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_LE;
             break;
@@ -1220,7 +1223,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
             TRI_ASSERT(false);  // new array comparison operator?
             return {Result{TRI_ERROR_NOT_IMPLEMENTED,
                            "Unknown Array ALL/NONE comparison operator"},
-                    aql::AstNodeType::NODE_TYPE_ROOT};
+                    aql::AstNodeType::NODE_TYPE_ROOT, 0};
         }
         break;
       case aql::Quantifier::Type::kAny: {
@@ -1237,6 +1240,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
           case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
             if (filter) {
               filter = &appendNot<irs::And>(*filter, filterCtx);
+              atLeastCount = arraySize;
             }
             expansionNodeType = aql::NODE_TYPE_OPERATOR_BINARY_EQ;
             break;
@@ -1272,7 +1276,7 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
             TRI_ASSERT(false);  // new array comparison operator?
             return {Result{TRI_ERROR_NOT_IMPLEMENTED,
                            "Unknown Array ANY/AT LEAST comparison operator"},
-                    aql::AstNodeType::NODE_TYPE_ROOT};
+                    aql::AstNodeType::NODE_TYPE_ROOT, 0};
         }
         break;
       }
@@ -1290,24 +1294,115 @@ std::pair<Result, aql::AstNodeType> buildBinaryArrayComparisonPreFilter(
             TRI_ASSERT(false);  // new array comparison operator?
             return {Result{TRI_ERROR_NOT_IMPLEMENTED,
                            "Unknown Array AT LEAST comparison operator"},
-                    aql::AstNodeType::NODE_TYPE_ROOT};
+                    aql::AstNodeType::NODE_TYPE_ROOT, 0};
         }
         break;
       default:
         TRI_ASSERT(false);  // new qualifier added ?
         return {Result{TRI_ERROR_NOT_IMPLEMENTED,
                        "Unknown qualifier in Array comparison operator"},
-                aql::AstNodeType::NODE_TYPE_ROOT};
+                aql::AstNodeType::NODE_TYPE_ROOT, 0};
     }
   }
-  return std::make_pair(TRI_ERROR_NO_ERROR, expansionNodeType);
+  return {TRI_ERROR_NO_ERROR, expansionNodeType, atLeastCount};
+}
+
+struct ByTermsOptimizationContext {
+  void Finalize() noexcept {
+    if (allMatch) {
+      for (auto& f : filters) {
+        TRI_ASSERT(f.second);
+        auto* opt = f.second->mutable_options();
+        opt->min_match = opt->terms.size();
+      }
+    }
+  }
+
+  containers::FlatHashMap<std::string, irs::by_terms*> filters;
+  bool useByTerms{false};
+  bool allMatch{false};
+};
+
+Result appendByTermsFilter(irs::boolean_filter* filter,
+                           ScopedAqlValue const& value, std::string& name,
+                           FilterContext const& filterCtx,
+                           ByTermsOptimizationContext& termsOpt) {
+  auto makeFilter = [&]() -> irs::by_terms& {
+    auto existing = termsOpt.filters.find(name);
+    if (existing != termsOpt.filters.end()) {
+      return *existing->second;
+    }
+    auto& terms_filter = filter->add<irs::by_terms>();
+    *terms_filter.mutable_field() = name;
+    terms_filter.boost(filterCtx.boost);
+    termsOpt.filters.emplace(name, &terms_filter);
+    return terms_filter;
+  };
+  switch (value.type()) {
+    case SCOPED_VALUE_TYPE_NULL: {
+      kludge::mangleNull(name);
+      auto& terms_filter = makeFilter();
+      terms_filter.mutable_options()->terms.emplace(
+          irs::ViewCast<irs::byte_type>(irs::null_token_stream::value_null()));
+      return {};
+    }
+    case SCOPED_VALUE_TYPE_BOOL: {
+      kludge::mangleBool(name);
+      auto& terms_filter = makeFilter();
+      terms_filter.mutable_options()->terms.emplace(
+          irs::ViewCast<irs::byte_type>(
+              irs::boolean_token_stream::value(value.getBoolean())));
+      return {};
+    }
+    case SCOPED_VALUE_TYPE_DOUBLE: {
+      double dblValue;
+      if (!value.getDouble(dblValue)) {
+        // something went wrong
+        return {TRI_ERROR_BAD_PARAMETER, "could not get double value"};
+      }
+      kludge::mangleNumeric(name);
+      auto& terms_filter = makeFilter();
+      irs::numeric_token_stream stream;
+      irs::term_attribute const* token = irs::get<irs::term_attribute>(stream);
+      TRI_ASSERT(token);
+      stream.reset(dblValue);
+      stream.next();
+      terms_filter.mutable_options()->terms.emplace(token->value);
+      return {};
+    }
+    case SCOPED_VALUE_TYPE_STRING:
+      if (filter) {
+        std::string_view strValue;
+        if (!value.getString(strValue)) {
+          // something went wrong
+          return {TRI_ERROR_BAD_PARAMETER, "could not get string value"};
+        }
+
+        auto const& ctx = filterCtx.query;
+
+        auto& analyzer = filterCtx.fieldAnalyzer(name, ctx.ctx);
+        if (!analyzer) {
+          return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
+        }
+
+        kludge::mangleField(name, ctx.isOldMangling, analyzer);
+        auto& terms_filter = makeFilter();
+        terms_filter.mutable_options()->terms.emplace(
+            irs::ViewCast<irs::byte_type>(strValue));
+      }
+      return {};
+    default:
+      // unsupported value type
+      return {TRI_ERROR_BAD_PARAMETER, "unsupported type"};
+  }
 }
 
 class ByTermSubFilterFactory {
  public:
   static Result byNodeSubFilter(irs::boolean_filter* filter,
                                 NormalizedCmpNode const& node,
-                                FilterContext const& filterCtx) {
+                                FilterContext const& filterCtx,
+                                ByTermsOptimizationContext& termsOpt) {
     TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.cmp ||
                aql::NODE_TYPE_OPERATOR_BINARY_NE == node.cmp);
     irs::by_term* termFilter = nullptr;
@@ -1316,6 +1411,23 @@ class ByTermSubFilterFactory {
         termFilter = &appendNot<irs::by_term>(
             append<irs::And>(*filter, filterCtx), filterCtx);
       } else {
+        if (termsOpt.useByTerms) {
+          std::string name{filterCtx.query.namePrefix};
+          if (!nameFromAttributeAccess(name, *node.attribute, filterCtx.query,
+                                       filter != nullptr)) {
+            return {TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("Failed to generate field name from node ",
+                                 aql::AstNode::toString(node.attribute))};
+          }
+          ScopedAqlValue value(*node.value);
+          if (!value.isConstant()) {
+            if (!value.execute(filterCtx.query)) {
+              // failed to execute expression
+              return {TRI_ERROR_BAD_PARAMETER, "could not execute expression"};
+            }
+          }
+          return appendByTermsFilter(filter, value, name, filterCtx, termsOpt);
+        }
         termFilter = &append<irs::by_term>(*filter, filterCtx);
       }
     }
@@ -1326,7 +1438,8 @@ class ByTermSubFilterFactory {
                                  std::string fieldName,
                                  const ScopedAqlValue& value,
                                  aql::AstNodeType arrayExpansionNodeType,
-                                 FilterContext const& filterCtx) {
+                                 FilterContext const& filterCtx,
+                                 ByTermsOptimizationContext& termsOpt) {
     TRI_ASSERT(aql::NODE_TYPE_OPERATOR_BINARY_EQ == arrayExpansionNodeType ||
                aql::NODE_TYPE_OPERATOR_BINARY_NE == arrayExpansionNodeType);
     irs::by_term* termFilter = nullptr;
@@ -1335,6 +1448,10 @@ class ByTermSubFilterFactory {
         termFilter = &appendNot<irs::by_term>(
             append<irs::And>(*filter, filterCtx), filterCtx);
       } else {
+        if (termsOpt.useByTerms) {
+          return appendByTermsFilter(filter, value, fieldName, filterCtx,
+                                     termsOpt);
+        }
         termFilter = &append<irs::by_term>(*filter, filterCtx);
       }
     }
@@ -1346,7 +1463,9 @@ class ByRangeSubFilterFactory {
  public:
   static Result byNodeSubFilter(irs::boolean_filter* filter,
                                 NormalizedCmpNode const& node,
-                                FilterContext const& filterCtx) {
+                                FilterContext const& filterCtx,
+                                ByTermsOptimizationContext& termsOpt) {
+    TRI_ASSERT(!termsOpt.useByTerms);
     bool incl, min;
     std::tie(min, incl) = calcMinInclude(node.cmp);
     return min ? byRange<true>(filter, node, incl, filterCtx)
@@ -1357,7 +1476,9 @@ class ByRangeSubFilterFactory {
                                  std::string fieldName,
                                  const ScopedAqlValue& value,
                                  aql::AstNodeType arrayExpansionNodeType,
-                                 FilterContext const& filterCtx) {
+                                 FilterContext const& filterCtx,
+                                 ByTermsOptimizationContext& termsOpt) {
+    TRI_ASSERT(!termsOpt.useByTerms);
     bool incl, min;
     std::tie(min, incl) = calcMinInclude(arrayExpansionNodeType);
     return min ? byRange<true>(filter, fieldName, value, incl, filterCtx)
@@ -1415,6 +1536,10 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
   }
 
   auto const& ctx = filterCtx.query;
+  ByTermsOptimizationContext byTermFilters;
+  byTermFilters.useByTerms =
+      filter && (aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ == node.type ||
+                 aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN == node.type);
 
   if (aql::NODE_TYPE_ARRAY == valueNode->type) {
     if (!attributeNode->isDeterministic()) {
@@ -1435,9 +1560,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         return fromExpression(filter, filterCtx, node);
       }
     }
-    Result buildRes;
-    aql::AstNodeType arrayExpansionNodeType;
-    std::tie(buildRes, arrayExpansionNodeType) =
+    auto [buildRes, arrayExpansionNodeType, matchCount] =
         buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
                                             n, filterCtx);
     if (!buildRes.ok()) {
@@ -1462,6 +1585,14 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
     NormalizedCmpNode normalized;
     aql::AstNode toNormalize(arrayExpansionNodeType);
     toNormalize.reserve(2);
+    TRI_ASSERT(!filter || filter->type() == irs::type<irs::And>::id() ||
+               filter->type() == irs::type<irs::Or>::id());
+    // We can handle only 1 or all cases as due to mangling
+    // filters are distributed over several index fields. And
+    // for n-matches case we will need to support premutations, but in that case
+    // it is cheaper to run min-match disjunction
+    byTermFilters.useByTerms &= (matchCount == 1 || matchCount == n);
+    byTermFilters.allMatch = n == matchCount;
     for (size_t i = 0; i < n; ++i) {
       auto const* member = valueNode->getMemberUnchecked(i);
       TRI_ASSERT(member);
@@ -1497,8 +1628,8 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
               absl::StrCat("while getting array: ", rv.errorMessage()));
         }
       } else {
-        auto rv =
-            SubFilterFactory::byNodeSubFilter(filter, normalized, subFilterCtx);
+        auto rv = SubFilterFactory::byNodeSubFilter(
+            filter, normalized, subFilterCtx, byTermFilters);
         if (rv.fail()) {
           return rv.reset(
               rv.errorNumber(),
@@ -1506,6 +1637,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         }
       }
     }
+    byTermFilters.Finalize();
     return {};
   }
 
@@ -1536,9 +1668,7 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
   switch (value.type()) {
     case SCOPED_VALUE_TYPE_ARRAY: {
       size_t const n = value.size();
-      Result buildRes;
-      aql::AstNodeType arrayExpansionNodeType;
-      std::tie(buildRes, arrayExpansionNodeType) =
+      auto [buildRes, arrayExpansionNodeType, matchCount] =
           buildBinaryArrayComparisonPreFilter(filter, node.type, quantifierNode,
                                               n, filterCtx);
       if (!buildRes.ok()) {
@@ -1549,7 +1679,10 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
         // nothing to do more
         return {};
       }
-
+      TRI_ASSERT(!filter || filter->type() == irs::type<irs::And>::id() ||
+                 filter->type() == irs::type<irs::Or>::id());
+      byTermFilters.useByTerms &= (matchCount == 1 || matchCount == n);
+      byTermFilters.allMatch = n == matchCount;
       FilterContext const subFilterCtx{
           .query = filterCtx.query,
           .contextAnalyzer = filterCtx.contextAnalyzer,
@@ -1559,13 +1692,14 @@ Result fromArrayComparison(irs::boolean_filter*& filter,
       for (size_t i = 0; i < n; ++i) {
         auto rv = SubFilterFactory::byValueSubFilter(
             filter, fieldName, value.at(i), arrayExpansionNodeType,
-            subFilterCtx);
+            subFilterCtx, byTermFilters);
         if (rv.fail()) {
           return rv.reset(rv.errorNumber(),
                           absl::StrCat("failed to create filter because: ",
                                        rv.errorMessage()));
         }
       }
+      byTermFilters.Finalize();
       return {};
     }
     default:
@@ -1626,7 +1760,7 @@ Result fromInArray(irs::boolean_filter* filter, FilterContext const& filterCtx,
         // not in [] means 'all'
         append<irs::all>(*filter, filterCtx).boost(filterCtx.boost);
       } else {
-        append<irs::empty>(*filter, filterCtx);
+        append<irs::Empty>(*filter, filterCtx);
       }
     }
 
@@ -1789,7 +1923,7 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
           // not in [] means 'all'
           append<irs::all>(*filter, filterCtx).boost(filterCtx.boost);
         } else {
-          append<irs::empty>(*filter, filterCtx);
+          append<irs::Empty>(*filter, filterCtx);
         }
 
         // nothing to do more
@@ -2029,13 +2163,14 @@ Result fromFuncAnalyzer(char const* funcName, irs::boolean_filter* filter,
                            funcName, "' function")};
     }
     auto& analyzerFeature = server.getFeature<IResearchAnalyzerFeature>();
-    analyzer._pool = analyzerFeature.get(analyzerId, ctx.trx->vocbase(),
-                                         ctx.trx->state()->analyzersRevision());
+    analyzer._pool = analyzerFeature.get(
+        analyzerId, ctx.trx->vocbase(), ctx.trx->state()->analyzersRevision(),
+        transaction::OperationOriginInternal{"fetching analyzer"});
     if (!analyzer) {
       return {TRI_ERROR_BAD_PARAMETER,
-              absl::StrCat(
-                  "'", funcName, "' AQL function: Unable to lookup analyzer '",
-                  std::string_view{analyzerId.data(), analyzerId.size()}, "'")};
+              absl::StrCat("'", funcName,
+                           "' AQL function: Unable to look up analyzer '",
+                           analyzerId, "'")};
     }
     analyzer._shortName =
         IResearchAnalyzerFeature::normalize(analyzerId, vocbase.name(), false);
@@ -2786,40 +2921,8 @@ Result fromFuncPhraseLevenshteinMatch(
 
   if (filter) {
     auto* phrase = filter->mutable_options();
-
-    auto const& ctx = filterCtx.query;
-
-    if (0 != opts.max_terms) {
-      TRI_ASSERT(ctx.index);
-
-      struct top_term_visitor final : irs::filter_visitor {
-        explicit top_term_visitor(size_t size) : collector(size) {}
-
-        virtual void prepare(const irs::SubReader& segment,
-                             const irs::term_reader& field,
-                             const irs::seek_term_iterator& terms) override {
-          collector.prepare(segment, field, terms);
-        }
-
-        virtual void visit(irs::score_t boost) override {
-          collector.visit(boost);
-        }
-
-        irs::top_terms_collector<irs::top_term<irs::score_t>> collector;
-      } collector(opts.max_terms);
-
-      irs::visit(*ctx.index, filter->field(),
-                 irs::by_edit_distance::visitor(opts), collector);
-
-      auto& terms = phrase->push_back<irs::by_terms_options>(firstOffset).terms;
-      collector.collector.visit(
-          [&terms](const irs::top_term<irs::score_t>& term) {
-            terms.emplace(term.term, term.key);
-          });
-    } else {
-      phrase->push_back<irs::by_edit_distance_filter_options>(std::move(opts),
-                                                              firstOffset);
-    }
+    phrase->push_back<irs::by_edit_distance_options>(std::move(opts),
+                                                     firstOffset);
   }
   return {};
 }
@@ -2888,6 +2991,7 @@ Result fromFuncPhraseTerms(char const* funcName, size_t funcArgumentPosition,
     auto& opts = filter->mutable_options()->push_back<irs::by_terms_options>(
         firstOffset);
     opts.terms = std::move(terms);
+    TRI_ASSERT(opts.min_match != 0);  // AllDocsProvider needed in such case
   }
   return {};
 }
@@ -3050,7 +3154,7 @@ frozen::map<std::string_view, ConversionPhraseHandler,
     {"STARTS_WITH", fromFuncPhraseStartsWith},
     {"WILDCARD", fromFuncPhraseLike},  // 'LIKE' is a key word
     {"LEVENSHTEIN_MATCH", fromFuncPhraseLevenshteinMatch},
-    {TERMS_FUNC, fromFuncPhraseTerms<VPackSlice>},
+    {kTermsFunc, fromFuncPhraseTerms<VPackSlice>},
     {"IN_RANGE", fromFuncPhraseInRange}};
 
 Result processPhraseArgObjectType(char const* funcName,
@@ -3138,7 +3242,7 @@ Result processPhraseArgs(char const* funcName, irs::by_phrase* phrase,
           continue;
         } else {
           auto res = fromFuncPhraseTerms(
-              funcName, idx, TERMS_FUNC, phrase, filterCtx,
+              funcName, idx, kTermsFunc, phrase, filterCtx,
               ElementTraits::valueSlice(valueArg), offset, analyzer);
           if (res.fail()) {
             return res;
@@ -3704,8 +3808,6 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
     return res;
   }
 
-  const auto scoringLimit = FilterConstants::DefaultScoringTermsLimit;
-
   std::string name{ctx.namePrefix};
   if (!nameFromAttributeAccess(name, *field, ctx, filter != nullptr)) {
     return error::failedToGenerateName(funcName, 1);
@@ -3716,14 +3818,20 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
     if (!analyzer) {
       return {TRI_ERROR_INTERNAL, "Malformed search/filter context"};
     }
-
-    auto& wildcardFilter = append<irs::by_wildcard>(*filter, filterCtx);
     kludge::mangleField(name, ctx.isOldMangling, analyzer);
-    *wildcardFilter.mutable_field() = std::move(name);
-    wildcardFilter.boost(filterCtx.boost);
-    auto* opts = wildcardFilter.mutable_options();
-    opts->scored_terms_limit = scoringLimit;
-    opts->term.assign(irs::ViewCast<irs::byte_type>(pattern));
+    if (analyzer->type() == wildcard::Analyzer::type_name()) {
+      auto& wildcardFilter = append<wildcard::Filter>(*filter, filterCtx);
+      wildcardFilter.boost(filterCtx.boost);
+      *wildcardFilter.mutable_field() = std::move(name);
+      *wildcardFilter.mutable_options() = {pattern, *analyzer._pool, ctx.ctx};
+    } else {
+      auto& wildcardFilter = append<irs::by_wildcard>(*filter, filterCtx);
+      wildcardFilter.boost(filterCtx.boost);
+      *wildcardFilter.mutable_field() = std::move(name);
+      auto* opts = wildcardFilter.mutable_options();
+      opts->scored_terms_limit = FilterConstants::DefaultScoringTermsLimit;
+      opts->term = irs::ViewCast<irs::byte_type>(pattern);
+    }
   }
 
   return {};
@@ -3854,7 +3962,7 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
     }
 
     options->shape = std::move(shape);
-    options->type = GEO_INTERSECT_FUNC == funcName
+    options->type = kGeoIntersectsFunc == funcName
                         ? GeoFilterType::INTERSECTS
                         : (1 == shapeNodeIdx ? GeoFilterType::CONTAINS
                                              : GeoFilterType::IS_CONTAINED);
@@ -3865,9 +3973,6 @@ Result fromFuncGeoContainsIntersect(char const* funcName,
 
   return {};
 }
-
-frozen::map<std::string_view, ConversionHandler,
-            0> constexpr kFCallUserConversionHandlers{};
 
 Result fromFCallUser(irs::boolean_filter* filter,
                      FilterContext const& filterCtx, aql::AstNode const& node) {
@@ -3890,19 +3995,7 @@ Result fromFCallUser(irs::boolean_filter* filter,
     return {TRI_ERROR_BAD_PARAMETER, "Unable to parse user function name"};
   }
 
-  auto const entry = kFCallUserConversionHandlers.find(name);
-
-  if (entry == kFCallUserConversionHandlers.end()) {
-    return fromExpression(filter, filterCtx, node);
-  }
-
-  if (!args->isDeterministic()) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            absl::StrCat("Unable to handle non-deterministic function '", name,
-                         "' arguments")};
-  }
-
-  return entry->second(entry->first.data(), filter, filterCtx, *args);
+  return fromExpression(filter, filterCtx, node);
 }
 
 frozen::map<std::string_view, ConversionHandler,
@@ -3918,7 +4011,7 @@ frozen::map<std::string_view, ConversionHandler,
     {"NGRAM_MATCH", fromFuncNgramMatch},
     {"MINHASH_MATCH", fromFuncMinHashMatch},
     // geo function
-    {GEO_INTERSECT_FUNC, fromFuncGeoContainsIntersect},
+    {kGeoIntersectsFunc, fromFuncGeoContainsIntersect},
     {"GEO_IN_RANGE", fromFuncGeoInRange},
     {"GEO_CONTAINS", fromFuncGeoContainsIntersect},
     // GEO_DISTANCE missing because it doesn't return boolean
@@ -4051,7 +4144,7 @@ Result fromExpression(irs::boolean_filter* filter,
   if (result) {
     append<irs::all>(*filter, filterCtx).boost(filterCtx.boost);
   } else {
-    append<irs::empty>(*filter, filterCtx);
+    append<irs::Empty>(*filter, filterCtx);
   }
 
   return {};
@@ -4062,13 +4155,13 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
   switch (node.type) {
     case aql::NODE_TYPE_FILTER:  // FILTER
       return fromFilter(filter, filterCtx, node);
-    case aql::NODE_TYPE_VARIABLE:  // variable
-      return fromExpression(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_UNARY_NOT:  // unary minus
       return fromNegation(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_AND:  // logical and
+    case aql::NODE_TYPE_OPERATOR_NARY_AND:    // n-ary and
       return fromGroup<irs::And>(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_OR:  // logical or
+    case aql::NODE_TYPE_OPERATOR_NARY_OR:    // n-ary or
       return fromGroup<irs::Or>(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_EQ:  // compare ==
     case aql::NODE_TYPE_OPERATOR_BINARY_NE:  // compare !=
@@ -4081,24 +4174,12 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
     case aql::NODE_TYPE_OPERATOR_BINARY_IN:   // compare in
     case aql::NODE_TYPE_OPERATOR_BINARY_NIN:  // compare not in
       return fromIn(filter, filterCtx, node);
-    case aql::NODE_TYPE_OPERATOR_TERNARY:  // ternary
-    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:  // attribute access
-    case aql::NODE_TYPE_VALUE:             // value
-    case aql::NODE_TYPE_ARRAY:             // array
-    case aql::NODE_TYPE_OBJECT:            // object
-    case aql::NODE_TYPE_REFERENCE:         // reference
-    case aql::NODE_TYPE_PARAMETER:         // bind parameter
-      return fromExpression(filter, filterCtx, node);
     case aql::NODE_TYPE_FCALL:  // function call
       return fromFCall(filter, filterCtx, node);
     case aql::NODE_TYPE_FCALL_USER:  // user function call
       return fromFCallUser(filter, filterCtx, node);
     case aql::NODE_TYPE_RANGE:  // range
       return fromRange(filter, filterCtx, node);
-    case aql::NODE_TYPE_OPERATOR_NARY_AND:  // n-ary and
-      return fromGroup<irs::And>(filter, filterCtx, node);
-    case aql::NODE_TYPE_OPERATOR_NARY_OR:  // n-ary or
-      return fromGroup<irs::Or>(filter, filterCtx, node);
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_IN:   // compare ARRAY in
     case aql::NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:  // compare ARRAY not in
     // for iresearch filters IN and EQ queries will be actually the same
@@ -4114,6 +4195,14 @@ Result makeFilter(irs::boolean_filter* filter, FilterContext const& filterCtx,
                                                           node);
     case aql::NODE_TYPE_EXPANSION:  // [?|* ...]
       return fromExpansion(filter, filterCtx, node);
+    case aql::NODE_TYPE_VARIABLE:          // variable
+    case aql::NODE_TYPE_OPERATOR_TERNARY:  // ternary
+    case aql::NODE_TYPE_ATTRIBUTE_ACCESS:  // attribute access
+    case aql::NODE_TYPE_VALUE:             // value
+    case aql::NODE_TYPE_ARRAY:             // array
+    case aql::NODE_TYPE_OBJECT:            // object
+    case aql::NODE_TYPE_REFERENCE:         // reference
+    case aql::NODE_TYPE_PARAMETER:         // bind parameter
     default:
       return fromExpression(filter, filterCtx, node);
   }
@@ -4130,7 +4219,11 @@ Result FilterFactory::filter(irs::boolean_filter* filter,
   const auto res = makeFilter(filter, filterCtx, node);
 
   if (res.fail()) {
-    LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();
+    if (filter) {
+      LOG_TOPIC("dfa15", WARN, TOPIC) << res.errorMessage();
+    } else {
+      LOG_TOPIC("dfa16", TRACE, TOPIC) << res.errorMessage();
+    }
   }
 
   return res;

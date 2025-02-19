@@ -1,0 +1,13 @@
+name: arangodb_replication2_replicated_state_follower_apply_debt
+introducedIn: "3.10.0"
+help: |
+  Number of log entries not yet applied by the follower.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of log entries not yet applied by the follower. If this number grows, the follower can't keep up with the
+  leader. This can explain slowdowns during writes.

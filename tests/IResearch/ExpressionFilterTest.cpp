@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,6 +55,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchFilterContext.h"
 #include "IResearch/IResearchFilterFactory.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -63,6 +64,7 @@
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -74,10 +76,10 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 
 extern const char* ARGV0;  // defined in main.cpp
 
@@ -186,7 +188,8 @@ struct custom_sort final : public irs::ScorerBase<void> {
             ctxImpl.sort_.scorerScore(doc_id, res);
           }
         },
-        *this, segment, features, stats, doc_attrs);
+        irs::ScoreFunction::DefaultMin, *this, segment, features, stats,
+        doc_attrs);
   }
 
   irs::TermCollector::ptr prepare_term_collector() const final {
@@ -248,14 +251,29 @@ struct IResearchExpressionFilterTest
                           false);
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::EngineSelectorFeature>(),
+    features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                           false);
+
+    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(selector, false);
     server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
         &engine);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // must be first
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>(nullptr),
+            selector,
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
+        false);
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // must be first
     system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
     features.emplace_back(
         server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
@@ -281,12 +299,6 @@ struct IResearchExpressionFilterTest
     feature.collectOptions(server.options());
     feature.validateOptions(server.options());
 
-#if USE_ENTERPRISE
-    features.emplace_back(
-        server.addFeature<arangodb::LdapFeature>(),
-        false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
-
     for (auto& f : features) {
       f.first.prepare();
     }
@@ -307,7 +319,7 @@ struct IResearchExpressionFilterTest
                 arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
                 arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
             [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-               arangodb::aql::VPackFunctionParametersView params) {
+               arangodb::aql::functions::VPackFunctionParametersView params) {
               TRI_ASSERT(!params.empty());
               return params[0];
             }});
@@ -430,8 +442,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
 
-    auto prepared = filter.prepare(*reader);
-    auto docs = prepared->execute(segment);
+    auto prepared = filter.prepare({.index = *reader});
+    auto docs = prepared->execute({.segment = segment});
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
@@ -443,7 +455,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -488,10 +501,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
-
-    ;
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -503,13 +515,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared = filter.prepare({.index = *reader, .ctx = &queryCtx});
     auto docs = prepared->execute({
         .segment = segment,
-        .scorers = irs::Scorers::kUnordered,
         .ctx = &queryCtx,
-        .wand = {},
     });
     EXPECT_EQ(irs::doc_limits::eof(), docs->value());
     EXPECT_FALSE(docs->next());
@@ -522,7 +531,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c==b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -567,8 +577,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -580,7 +591,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered);
+    auto prepared = filter.prepare({.index = *reader});
     auto docs = prepared->execute({
         .segment = segment,
         .scorers = irs::Scorers::kUnordered,
@@ -598,7 +609,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -643,8 +655,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -656,12 +669,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared = filter.prepare({.index = *reader, .ctx = &queryCtx});
     EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
-    EXPECT_EQ(
-        typeid(prepared.get()),
-        typeid(irs::all().prepare(*reader).get()));  // should be same type
+    EXPECT_EQ(typeid(prepared.get()),
+              typeid(irs::all().prepare({.index = *reader}).get()));
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);
@@ -696,7 +707,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -741,8 +753,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -754,12 +767,10 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(
-        *reader, irs::Scorers::kUnordered);       // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
-    EXPECT_EQ(
-        typeid(prepared.get()),
-        typeid(irs::all().prepare(*reader).get()));  // should be same type
+    auto prepared = filter.prepare({.index = *reader});  // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());         // no boost set
+    EXPECT_EQ(typeid(prepared.get()),
+              typeid(irs::all().prepare({.index = *reader}).get()));
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);
@@ -794,7 +805,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -839,8 +851,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -852,8 +865,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(*reader, irs::Scorers::kUnordered,
-                                   &queryCtx);    // invalid context provided
+    auto prepared = filter.prepare(
+        {.index = *reader, .ctx = &queryCtx});    // invalid context provided
     EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
     auto column = segment.column("name");
     ASSERT_TRUE(column);
@@ -891,7 +904,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -936,8 +950,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -949,9 +964,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(
-        *reader, irs::Scorers::kUnordered);       // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
+    auto prepared = filter.prepare({.index = *reader});  // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());         // no boost set
     auto docs = prepared->execute({
         .segment = segment,
         .scorers = irs::Scorers::kUnordered,
@@ -969,7 +983,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "LET c=1 LET b=2 FOR d IN testView FILTER c<b RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -1014,8 +1029,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1027,9 +1043,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = nullptr;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared = filter.prepare(
-        *reader, irs::Scorers::kUnordered);       // no context provided
-    EXPECT_EQ(irs::kNoBoost, prepared->boost());  // no boost set
+    auto prepared = filter.prepare({.index = *reader});  // no context provided
+    EXPECT_EQ(irs::kNoBoost, prepared->boost());         // no boost set
     auto docs = prepared->execute({
         .segment = segment,
         .scorers = irs::Scorers::kUnordered,
@@ -1047,7 +1062,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -1087,8 +1103,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1100,8 +1117,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared = filter.prepare({.index = *reader, .ctx = &queryCtx});
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);
@@ -1117,7 +1133,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
+    EXPECT_TRUE(score->IsDefault());
 
     // set reachable filter condition
     {
@@ -1190,7 +1206,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), nullptr);
     query->initTrxForTests();
 
@@ -1230,8 +1247,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1246,7 +1264,11 @@ TEST_F(IResearchExpressionFilterTest, test) {
     filter.boost(1.5f);
     EXPECT_EQ(1.5f, filter.boost());
 
-    auto prepared = filter.prepare(*reader, preparedOrder, &queryCtx);
+    auto prepared = filter.prepare({
+        .index = *reader,
+        .scorers = preparedOrder,
+        .ctx = &queryCtx,
+    });
     EXPECT_EQ(1.5f, prepared->boost());
 
     auto column = segment.column("name");
@@ -1264,7 +1286,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_FALSE(*score == irs::ScoreFunction::DefaultScore);
+    EXPECT_FALSE(score->IsDefault());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),
@@ -1318,7 +1340,8 @@ TEST_F(IResearchExpressionFilterTest, test) {
         "_REFERENCE_(c)==_REFERENCE_(b) RETURN d";
 
     auto query = arangodb::aql::Query::create(
-        arangodb::transaction::StandaloneContext::Create(vocbase),
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(queryString), bindVars);
     query->initTrxForTests();
 
@@ -1358,8 +1381,9 @@ TEST_F(IResearchExpressionFilterTest, test) {
     // setup filter
     std::vector<std::string> EMPTY;
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY,
-        EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     arangodb::iresearch::ByExpression filter;
     EXPECT_FALSE(filter);
@@ -1371,8 +1395,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     execCtx.ctx = &ctx;
     FilterCtx queryCtx(execCtx);
 
-    auto prepared =
-        filter.prepare(*reader, irs::Scorers::kUnordered, &queryCtx);
+    auto prepared = filter.prepare({.index = *reader, .ctx = &queryCtx});
     auto column = segment.column("name");
     ASSERT_TRUE(column);
     auto columnValues = column->iterator(irs::ColumnHint::kNormal);
@@ -1388,7 +1411,7 @@ TEST_F(IResearchExpressionFilterTest, test) {
     EXPECT_EQ(irs::doc_limits::invalid(), docs->value());
     auto* score = irs::get<irs::score>(*docs);
     EXPECT_TRUE(score);
-    EXPECT_TRUE(*score == irs::ScoreFunction::DefaultScore);
+    EXPECT_TRUE(score->IsDefault());
     auto* cost = irs::get<irs::cost>(*docs);
     ASSERT_TRUE(cost);
     EXPECT_EQ(arangodb::velocypack::ArrayIterator(testDataRoot).size(),

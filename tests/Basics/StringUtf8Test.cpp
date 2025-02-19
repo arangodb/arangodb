@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/Utf8Helper.h"
 
 #include "gtest/gtest.h"
@@ -32,18 +31,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 
-#include "icu-helper.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-class CStringUtf8Test : public ::testing::Test {
- protected:
-  CStringUtf8Test() {
-    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
-  }
-};
+class CStringUtf8Test : public ::testing::Test {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -427,4 +415,18 @@ TEST_F(CStringUtf8Test, tst_char_length) {
   const char* test = "დახმარებისთვის";
 
   EXPECT_EQ(14U, TRI_CharLengthUtf8String(test, strlen(test)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test funny international strings and collation behaviour
+////////////////////////////////////////////////////////////////////////////////
+// Note that this establishes that we have the 3.11 behaviour and the
+// corresponding legacy collation tables.
+
+TEST_F(CStringUtf8Test, tst_funny_international_strings) {
+  const char* left = "三脈山麻桿";
+  const char* right = "三脉山麻杆";
+  EXPECT_LT(arangodb::basics::Utf8Helper::DefaultUtf8Helper.compareUtf8(
+                left, strlen(left), right, strlen(right)),
+            0);
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/CollectionInfoCurrent.h"
+#include "Containers/NodeHashMap.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
@@ -98,7 +99,7 @@ static inline bool TestIsShardInSync(std::vector<ServerID> plannedServers,
 //////////////////////////////////////////////////////////////////////////////
 
 static void ReportShardNoProgress(
-    std::string_view shardId, std::vector<ServerID> const& respServers,
+    ShardID shardId, std::vector<ServerID> const& respServers,
     containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
@@ -200,14 +201,11 @@ static void ReportPartialNoProgress(
     VPackBuilder& result) {
   // create a sorted list of shards, so that the callers will get the
   // shard list in a deterministic order (this is very useful for the UI).
-  containers::SmallVector<std::string_view, 8> sortedShards;
-  sortedShards.reserve(shardIds.size());
+  std::set<ShardID> sortedShards;
 
   for (auto const& s : shardIds) {
-    sortedShards.emplace_back(s.first);
+    sortedShards.emplace(s.first);
   }
-  // sorts sortedShards in place in a deterministic order
-  ShardingInfo::sortShardNamesNumerically(sortedShards);
 
   TRI_ASSERT(result.isOpenObject());
 
@@ -255,7 +253,7 @@ static void ReportInSync(
 
 static void ReportOffSync(
     LogicalCollection const* col, ShardMap const* shardIds,
-    containers::FlatHashMap<ShardID, SyncCountInfo>& counters,
+    containers::NodeHashMap<ShardID, SyncCountInfo>& counters,
     containers::FlatHashMap<ServerID, std::string> const& aliases,
     VPackBuilder& result, bool progress) {
   TRI_ASSERT(result.isOpenObject());
@@ -332,7 +330,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
     double endtime, containers::FlatHashMap<std::string, std::string>& aliases,
     bool progress) {
   if (!todoSyncStateCheck.empty()) {
-    containers::FlatHashMap<ShardID, SyncCountInfo> counters;
+    // TODO FlatHashMap<K, unique_ptr<V>>
+    containers::NodeHashMap<ShardID, SyncCountInfo> counters;
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
       counters.clear();
@@ -357,9 +356,8 @@ void ShardDistributionReporter::helperDistributionForDatabase(
         } else {
           entry.followers = curServers;
           if (timeleft > 0.0) {
-            std::string path = "/_api/collection/" +
-                               basics::StringUtils::urlEncode(s.first) +
-                               "/count";
+            std::string path = absl::StrCat("/_api/collection/",
+                                            std::string{s.first}, "/count");
             VPackBuffer<uint8_t> body;
             network::RequestOptions reqOpts;
             reqOpts.database = dbName;
@@ -405,7 +403,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
             // Wait for responses
             // First wait for Leader
             {
-              auto const& res = leaderF.get();
+              auto const& res = leaderF.waitAndGet();
               if (res.fail()) {
                 // We did not even get count for leader, use defaults
                 continue;
@@ -444,10 +442,10 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               uint64_t followerResponses = followersInSync;
               uint64_t followerTotal = followersInSync * entry.total;
 
-              auto responses = futures::collectAll(futures).get();
+              auto responses = futures::collectAll(futures).waitAndGet();
               for (futures::Try<network::Response> const& response :
                    responses) {
-                if (!response.hasValue() || response.get().fail()) {
+                if (!response.hasValue()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be
                   // handled by the accumulated timeout
@@ -458,16 +456,27 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 VPackSlice slice = res.slice();
                 if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)
-                      << "Received invalid response for count. Shard "
-                      << "distribution inaccurate";
+                      << "Received invalid response for shard count. Shard "
+                      << "distribution inaccurate: " << slice.toJson();
                   continue;
                 }
 
                 VPackSlice answer = slice.get("count");
                 if (!answer.isNumber()) {
-                  LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
-                      << "Received invalid response for count. Shard "
-                      << "distribution inaccurate";
+                  if (Result r = res.combinedResult(); r.fail()) {
+                    if (r.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                        r.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                        r.isNot(TRI_ERROR_SHUTTING_DOWN) &&
+                        r.isNot(TRI_ERROR_INTERNAL)) {
+                      // we got an error that we didnt expect.
+                      // note: the collection/shard may not be present initially
+                      // when the follower shard is being created.
+                      // an internal error is returned during tests
+                      LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
+                          << "Received invalid response for shard count. Shard "
+                          << "distribution inaccurate: " << slice.toJson();
+                    }
+                  }
                   continue;
                 }
 
@@ -493,7 +502,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 // shard. note: 3.7 will not provide the "syncing" attribute. it
                 // must therefore be treated as optional in 3.8.
                 if (VPackSlice syncing = slice.get("syncing");
-                    syncing.isBoolean() && syncing.getBoolean()) {
+                    syncing.isTrue()) {
                   ++entry.followersSyncing;
                 }
               }

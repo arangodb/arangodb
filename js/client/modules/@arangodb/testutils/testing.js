@@ -2,29 +2,29 @@
 /* global print, arango */
 'use strict';
 
-// /////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-// 
-// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
-// Copyright 2014 triagens GmbH, Cologne, Germany
-// 
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// 
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
-// @author Max Neunhoeffer
-// @author Wilfried Goesgnes
-// /////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Wilfried Goesgnes
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -55,207 +55,50 @@ let optionsDocumentation = [
   '',
 
   ' The following properties of `options` are defined:',
-  '',
-  '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
-  '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
   '   - `force`: if set to true the tests are continued even if one fails',
-  '',
-  '   - `maxLogFileSize`: how big logs should be at max - 500k by default',
-  "   - `skipLogAnalysis`: don't try to crawl the server logs",
-  '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
-  '   - `skipNightly`: omit the nightly tests',
-  '   - `skipRanges`: if set to true the ranges tests are skipped',
-  '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
-  '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
-  '   - `skipGrey`: if set, grey tests are skipped.',
-  '   - `skipN`: skip the first N tests of the suite',
-  '   - `onlyGrey`: if set, only grey tests are executed.',
-  '   - `testBuckets`: split tests in to buckets and execute on, for example',
-  '       10/2 will split into 10 buckets and execute the third bucket.',
-  '',
-  '   - `onlyNightly`: execute only the nightly tests',
-  '   - `loopEternal`: to loop one test over and over.',
-  '   - `loopSleepWhen`: sleep every nth iteration',
-  '   - `loopSleepSec`: sleep seconds between iterations',
   '   - `setInterruptable`: register special break handler',
-  '   - `sleepBeforeStart` : sleep at tcpdump info - use this dump traffic or attach debugger',
-  '   - `sleepBeforeShutdown`: let the system rest before terminating it',
   '',
-  '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
-  '   - `serverRoot`: directory where data/ points into the db server. Use in',
-  '                   conjunction with `server`.',
-  '   - `cluster`: if set to true the tests are run with the coordinator',
-  '     of a small local cluster',
-  '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
-  '   - `minPort`: minimum port number to use',
-  '   - `maxPort`: maximum port number to use',
   '   - `forceJson`: don\'t use vpack - for better debugability',
+  '   - `forceNoCompress`: don\'t zip encoding - for better debugability',
+  '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
   '   - `vst`: attempt to connect to the SUT via vst',
   '   - `http2`: attempt to connect to the SUT via http2',
-  '   - `dbServers`: number of DB-Servers to use',
-  '   - `coordinators`: number coordinators to use',
-  '   - `agency`: if set to true agency tests are done',
-  '   - `agencySize`: number of agents in agency',
-  '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single js testsuite  should run',
-  '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
-  '   - `memprof`: take snapshots (requries memprof enabled build)',
-  '   - `test`: path to single test to execute for "single" test target, ',
-  '             or pattern to filter for other suites',
   '   - `cleanup`: if set to false the data files',
   '                and logs are not removed after termination of the test.',
   '',
-  '   - `protocol`: the protocol to talk to the server - [tcp (default), ssl, unix]',
-  '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
-  '              false / true / sudo',
-  '   - `sniffDevice`: the device tcpdump / tshark should use',
-  '   - `sniffProgram`: specify your own programm',
-  '   - `sniffAgency`: when sniffing cluster, sniff agency traffic too? (true)',
-  '   - `sniffDBServers`: when sniffing cluster, sniff dbserver traffic too? (true)',
-  '   - `sniffFilter`: only launch tcpdump for tests matching this string',
-  '',
-  '   - `build`: the directory containing the binaries',
-  '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
-  '   - `configDir`: the directory containing the config files, defaults to',
-  '                  etc/testing',
-  '   - `writeXmlReport`:  Write junit xml report files',
-  '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
-  '   - `prefix`:    prefix for the tests in the xml reports',
-  '',
-  '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
-  '                              keepalive requests to all cluster instances, and report on error',
-  '   - `disableMonitor`: if set to true on windows, procdump will not be attached.',
-  '   - `enableAliveMonitor`: checks whether spawned arangods disapears or aborts during the tests.',
-  '   - `rr`: if set to true arangod instances are run with rr',
-  '   - `exceptionFilter`: on windows you can use this to abort tests on specific exceptions',
-  '                        i.e. `bad_cast` to abort on throwing of std::bad_cast',
-  '                        or a coma separated list for multiple exceptions; ',
-  '                        filtering by asterisk is possible',
-  '   - `exceptionCount`: how many exceptions should procdump be able to capture?',
-  '   - `coreGen`: whether debuggers should generate a coredump after getting stacktraces',
-  '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
-  '                  produce a backtrace in the event of a crash',
-  '',
-  '   - `sanitizer`: if set the programs are run with enabled sanitizer',
-  '     and need longer timeouts',
-  '',
-  '   - `activefailover` starts active failover single server setup (active/passive)',
-  '   -  `singles` the number of servers in an active failover test, defaults to 2',
-  '',
-  '   - `valgrind`: if set the programs are run with the valgrind',
-  '     memory checker; should point to the valgrind executable',
-  '   - `valgrindFileBase`: string to prepend to the report filename',
-  '   - `valgrindArgs`: commandline parameters to add to valgrind',
-  '   - valgrindHosts  - configure which clustercomponents to run using valgrind',
-  '        Coordinator - flag to run Coordinator with valgrind',
-  '        DBServer    - flag to run DBServers with valgrind',
-  '',
-  '   - `extraArgs`: list of extra commandline arguments to add to arangod',
-  '',
-  '   - `testFailureText`: filename of the testsummary file',
-  '   - `crashAnalysisText`: output of debugger in case of crash',
-  '   - `getSockStat`: on linux collect socket stats before shutdown',
   '   - `verbose`: if set to true, be more verbose',
   '   - `noStartStopLogs`: if set to true, suppress startup and shutdown messages printed by process manager. Overridden by `extremeVerbosity`',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
-  '     output, especially for cluster tests.',
-  '   - `testCase`: filter a jsunity testsuite for one special test case',
+  '     output, especially SUT process management etc.',
   '   - `failed`: if set to true, re-runs only those tests that failed in the',
   '     previous test run. The information which tests previously failed is taken',
   '     from the "UNITTEST_RESULT.json" (if available).',
-  '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
+  '   - `suffix` append to the representation name',
   '   - `optionsJson`: all of the above, as json list for mutliple suite launches',
   ''
 ];
 
-const isCoverage = versionHas('coverage');
-const isSan = versionHas('asan') || versionHas('tsan');
-const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
-  'dumpAgencyOnError': true,
-  'agencySize': 3,
-  'agencyWaitForSync': false,
-  'agencySupervision': true,
-  'build': '',
-  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
-  'cluster': false,
   'concurrency': 3,
-  'configDir': 'etc/testing',
-  'coordinators': 1,
-  'coreCheck': false,
-  'coreDirectory': '/var/tmp',
-  'coreGen': !isSan,
-  'dbServers': 2,
   'duration': 10,
-  'encryptionAtRest': false,
-  'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
   'forceJson': false,
-  'getSockStat': false,
-  'arangosearch':true,
-  'loopEternal': false,
-  'loopSleepSec': 1,
-  'loopSleepWhen': 1,
-  'minPort': 1024,
-  'maxPort': 32768,
-  'memprof': false,
-  'onlyNightly': false,
+  'forceNoCompress': false,
   'password': '',
   'protocol': 'tcp',
   'replication': false,
-  'rr': false,
-  'exceptionFilter': null,
-  'exceptionCount': 1,
-  'sanitizer': isSan,
-  'activefailover': false,
-  'singles': 1,
   'setInterruptable': ! internal.isATTy(),
-  'sniff': false,
-  'sniffAgency': true,
-  'sniffDBServers': true,
-  'sniffDevice': undefined,
-  'sniffProgram': undefined,
-  'sniffFilter': undefined,
-  'skipLogAnalysis': true,
-  'maxLogFileSize': 500 * 1024,
-  'skipMemoryIntense': false,
-  'skipNightly': true,
-  'skipNondeterministic': false,
-  'skipGrey': false,
-  'skipN': false,
-  'onlyGrey': false,
-  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
-  'isSan': isSan,
-  'isCov': isCoverage,
-  'isInstrumented': isInstrumented,
-  'skipTimeCritical': false,
-  'test': undefined,
-  'testBuckets': undefined,
-  'testOutputDirectory': 'out',
-  'testXmlOutputDirectory': 'outXml',
   'useReconnect': true,
   'username': 'root',
-  'valgrind': false,
-  'valgrindFileBase': '',
-  'valgrindArgs': {},
-  'valgrindHosts': false,
   'verbose': false,
   'noStartStopLogs': internal.isATTy(),
   'vst': false,
   'http2': false,
-  'walFlushTimeout': 30000,
-  'writeXmlReport': false,
-  'testFailureText': 'testfailures.txt',
-  'crashAnalysisText': 'testfailures.txt',
-  'testCase': undefined,
-  'disableMonitor': false,
-  'enableAliveMonitor': true,
-  'disableClusterMonitor': true,
-  'sleepBeforeStart' : 0,
-  'sleepBeforeShutdown' : 0,
   'failed': false,
+  'suffix': '',
   'optionsJson': null,
 };
 
@@ -263,6 +106,7 @@ let globalStatus = true;
 
 let allTests = [];
 let testFuncs = {};
+let optionHandlers = [];
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief print usage information
@@ -451,7 +295,44 @@ function loadTestSuites () {
   testFuncs['auto'] = autoTest;
 }
 
-function translateTestList(cases) {
+let MODULES_LOADED=false;
+function loadModuleOptions () {
+  if (MODULES_LOADED) {
+    return false;
+  }
+  MODULES_LOADED = true;
+  const nonModules = ['clusterstats.js',
+                      'joinHelper.js',
+                      'testing.js',
+                      'block-cache-test-helper.js',
+                      'cluster-test-helper.js',
+                      'user-helper.js',
+                      'unittest.js'
+                     ];
+  let testModules = _.filter(fs.list(__dirname),
+                             function (p) {
+                               return (
+                                 p.endsWith('.js') && !(
+                                   (p.indexOf('aql-') !== -1) ||
+                                     (nonModules.find(m => { return m === p;}) === p)
+                                 )
+                               );
+                             }).sort();
+  for (let j = 0; j < testModules.length; j++) {
+    try {
+      let m = require('@arangodb/testutils/' + testModules[j]);
+      if (m.hasOwnProperty('registerOptions')){
+        m.registerOptions(optionsDefaults, optionsDocumentation, optionHandlers);
+      }
+    } catch (x) {
+      print(`${RED}failed to load module${testModules[j]}:  ${x.message} \n${x.stack}` + RESET);
+      process.exit(1);
+    }
+  }
+  optionsDocumentation.push(' testsuite specific options:');
+}
+
+function translateTestList(cases, options) {
   let caselist = [];
   const expandWildcard = ( name ) => {
     if (!name.endsWith('*')) {
@@ -469,12 +350,27 @@ function translateTestList(cases) {
       if (testFuncs.hasOwnProperty(which)) {
         caselist.push(which);
       } else {
+        if (which.startsWith('./')) {
+          // strip relative ./
+          which = which.slice(2);
+        } else if (which.startsWith('/')) {
+          // Strip absolute path
+          let p = fs.makeAbsolute('.');
+          p = p.substring(0, p.length - 1);
+          if (which.startsWith(p)) {
+            which = which.slice(p.length);
+          }
+        }
+        if (fs.exists(which)) {
+          options.test = which;
+          return translateTestList(['auto'], options);
+        }
         print('Unknown test "' + which + '"\nKnown tests are: ' + Object.keys(testFuncs).sort().join(', '));
         throw new Error("USAGE ERROR");
       }
     }
   }
-  // Expand meta tests like ldap, all
+  // Expand meta tests like "all"
   caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
@@ -510,7 +406,7 @@ function iterateTests(cases, options) {
     // we are applying the failed filter -> only consider cases with failed tests
     cases = _.filter(cases, c => options.failed.hasOwnProperty(c));
   }
-  caselist = translateTestList(cases);
+  caselist = translateTestList(cases, options);
   let optionsList = [];
   if (options.optionsJson != null) {
     optionsList = JSON.parse(options.optionsJson);
@@ -532,6 +428,10 @@ function iterateTests(cases, options) {
       localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
+    let resultTestName = currentTest;
+    if (localOptions.suffix && localOptions.suffix !== "") {
+      resultTestName += "-" + localOptions.suffix;
+    }
     if (options.testBuckets) {
       printTestName += " - " + options.testBuckets;
     }
@@ -547,24 +447,41 @@ function iterateTests(cases, options) {
     let status = true;
     let shutdownSuccess = true;
 
-    result = testFuncs[currentTest](localOptions);
-    // grrr...normalize structure
-    delete result.status;
-    delete result.failed;
-    delete result.crashed;
-    if (result.hasOwnProperty('shutdown')) {
-      shutdownSuccess = result['shutdown'];
-      delete result.shutdown;
+    try {
+      result = testFuncs[currentTest](localOptions);
+      // grrr...normalize structure
+      delete result.status;
+      delete result.failed;
+      delete result.crashed;
+      if (result.hasOwnProperty('shutdown')) {
+        shutdownSuccess = result['shutdown'];
+        delete result.shutdown;
+      }
+    } catch (err) {
+      result = {
+        [currentTest]: {
+          status: false,
+          failed: true,
+          message: `caught exception in testsuite: ${err.message}\n${err.stack}`
+        }};
+      pu.serverCrashed = true;
     }
 
-    status = rp.gatherStatus(result);
+    if (currentTest === "auto") {
+      Object.keys(result).forEach(key => {
+        results[key] = result[key];
+      });
+    }
+    status = rp.gatherStatus(result) && shutdownSuccess;
     let failed = rp.gatherFailed(result);
     if (!status) {
       globalStatus = false;
     }
     result.failed = failed;
     result.status = status;
-    results[currentTest] = result;
+    if (currentTest !== "auto") {
+      results[resultTestName] = result;
+    }
   }
 
   results.status = globalStatus;
@@ -589,14 +506,11 @@ function unitTest (cases, options) {
   if (typeof options !== 'object') {
     options = {};
   }
-  loadTestSuites(options);
+  loadModuleOptions();
+  loadTestSuites();
 
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
-  if (options.memprof) {
-    process.env['MALLOC_CONF'] = 'prof:true';
-  }
-  options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
 
   if (options.extremeVerbosity) {
     print(JSON.stringify(options));
@@ -608,12 +522,9 @@ function unitTest (cases, options) {
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
   }
-  if (options.activefailover && (options.singles === 1)) {
-    options.singles =  2;
-  }
-  
+  optionHandlers.forEach(h => h(options));
   try {
-    pu.setupBinaries(options.build, options.buildType, options.configDir);
+    pu.setupBinaries(options);
   }
   catch (err) {
     print(err);
@@ -623,17 +534,15 @@ function unitTest (cases, options) {
       ALL: [{
         status: false,
         failed: 1,
-        message: err.message
+        message: `${err.message} ; ${err.stack}`
       }]
     };
   }
 
-  if (options.encryptionAtRest && !pu.isEnterpriseClient) {
-    options.encryptionAtRest = false;
-  }
-
   arango.forceJson(options.forceJson);
-
+  if (options.forceNoCompress) {
+    arango.compressTransfer(false);
+  }
   if ((cases.length === 1) && cases[0] === 'auto') {
     return autoTest(options);
   } else {
@@ -641,10 +550,25 @@ function unitTest (cases, options) {
   }
 }
 
+function dumpCompletions() {
+  loadTestSuites();
+  const result = {};
+  result.options = Object.keys(optionsDefaults).map(o => '--' + o).sort();
+  result.suites = allTests.concat('auto', 'find').sort();
+  print(JSON.stringify(result));
+  return 0;
+}
+
 // /////////////////////////////////////////////////////////////////////////////
 // exports
 // /////////////////////////////////////////////////////////////////////////////
-exports.optionsDefaults = optionsDefaults;
+Object.defineProperty(exports, 'optionsDefaults', {
+  get: () => {
+    loadModuleOptions();
+    return optionsDefaults;
+  }
+});
 exports.unitTest = unitTest;
 
 exports.testFuncs = testFuncs;
+exports.dumpCompletions = dumpCompletions;

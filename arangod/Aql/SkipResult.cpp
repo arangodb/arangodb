@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,13 +40,18 @@ auto SkipResult::didSkip(size_t skipped) -> void {
   _skipped.back() += skipped;
 }
 
-auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
+template<int depthOffset>
+requires(depthOffset == 0 || depthOffset == -1)  //
+    auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
   TRI_ASSERT(!_skipped.empty());
-  TRI_ASSERT(_skipped.size() > depth + 1);
-  size_t index = _skipped.size() - depth - 2;
+  TRI_ASSERT(_skipped.size() > depth + 1 + depthOffset);
+  size_t index = _skipped.size() - depth - 2 - depthOffset;
   size_t& localSkip = _skipped.at(index);
   localSkip += skipped;
 }
+
+template auto SkipResult::didSkipSubquery<-1>(size_t, size_t) -> void;
+template auto SkipResult::didSkipSubquery<0>(size_t, size_t) -> void;
 
 auto SkipResult::getSkipOnSubqueryLevel(size_t depth) const -> size_t {
   TRI_ASSERT(!_skipped.empty());
@@ -95,7 +100,7 @@ auto SkipResult::fromVelocyPack(VPackSlice slice)
         message += slice.typeName();
         return Result(TRI_ERROR_TYPE_ERROR, std::move(message));
       }
-      if (!it.isFirst()) {
+      if (it.index() != 0) {
         res.incrementSubquery();
       }
       res.didSkip(val.getNumber<std::size_t>());

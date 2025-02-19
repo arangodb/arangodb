@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
-#include "Basics/Common.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 
@@ -86,13 +85,15 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
+  Order mode;
+
   bool useNeighbors;
+
+  bool _isDisjoint = false;
 
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
-
-  Order mode;
 
   std::string weightAttribute;
 
@@ -101,8 +102,6 @@ struct TraverserOptions : public graph::BaseOptions {
   std::vector<std::string> vertexCollections;
 
   std::vector<std::string> edgeCollections;
-
-  bool _isDisjoint = false;
 
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 
@@ -142,7 +141,7 @@ struct TraverserOptions : public graph::BaseOptions {
                           std::string const& collectionName,
                           std::string const& attributeName,
                           aql::AstNode* condition, uint64_t depth,
-                          bool onlyEdgeIndexes, TRI_edge_direction_e direction);
+                          TRI_edge_direction_e direction);
 
   bool hasDepthLookupInfo() const { return !_depthLookupInfo.empty(); }
 

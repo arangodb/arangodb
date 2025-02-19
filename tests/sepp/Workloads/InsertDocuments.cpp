@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "velocypack/Builder.h"
@@ -80,25 +81,28 @@ auto InsertDocuments::createThreads(Execution& exec, Server& server)
 
   WorkerThreadList result;
   for (std::uint32_t i = 0; i < _options.threads; ++i) {
-    result.emplace_back(std::make_unique<Thread>(defaultThread, exec, server));
+    result.emplace_back(
+        std::make_unique<Thread>(defaultThread, i, exec, server));
   }
   return result;
 }
 
-InsertDocuments::Thread::Thread(ThreadOptions options, Execution& exec,
-                                Server& server)
-    : ExecutionThread(exec, server),
+InsertDocuments::Thread::Thread(ThreadOptions options, std::uint32_t id,
+                                Execution& exec, Server& server)
+    : ExecutionThread(id, exec, server),
       _options(std::move(options)),
       _modifier(_options.documentModifier) {}
 
 InsertDocuments::Thread::~Thread() = default;
 
 void InsertDocuments::Thread::run() {
-  auto trx = std::make_unique<SingleCollectionTransaction>(
-      transaction::StandaloneContext::Create(*_server.vocbase()),
+  SingleCollectionTransaction trx(
+      transaction::StandaloneContext::create(
+          *_server.vocbase(),
+          transaction::OperationOriginREST{"inserting document(s)"}),
       _options.collection, AccessMode::Type::WRITE);
 
-  auto res = trx->begin();
+  auto res = trx.begin();
   if (!res.ok()) {
     throw std::runtime_error("Failed to begin trx: " +
                              std::string(res.errorMessage()));
@@ -107,14 +111,14 @@ void InsertDocuments::Thread::run() {
   velocypack::Builder builder;
   for (std::uint32_t j = 0; j < _options.documentsPerTrx; ++j) {
     buildDocument(builder);
-    auto res = trx->insert(_options.collection, builder.slice(), {});
+    auto res = trx.insert(_options.collection, builder.slice(), {});
     if (!res.ok()) {
       throw std::runtime_error("Failed to insert document in trx: " +
                                std::string(res.errorMessage()));
     }
   }
 
-  res = trx->commit();
+  res = trx.commit();
   if (!res.ok()) {
     throw std::runtime_error("Failed to commit trx: " +
                              std::string(res.errorMessage()));

@@ -1,14 +1,16 @@
+#include <optional>
+#include <optional>
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,6 +23,8 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 
@@ -29,6 +33,9 @@
 #include <condition_variable>
 #include <exception>
 #include <mutex>
+#include <optional>
+#include <stdexcept>
+#include <variant>
 
 using namespace arangodb::futures;
 
@@ -90,14 +97,14 @@ TEST(FutureTest, requires_only_move_ctor) {
     auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
     ASSERT_TRUE(f.valid());
     ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get();
+    auto v = std::move(f).waitAndGet();
     ASSERT_TRUE(v.id_ == 42);
   }
   {
     auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
     ASSERT_TRUE(f.valid());
     ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get();
+    auto v = std::move(f).waitAndGet();
     ASSERT_TRUE(v.id_ == 42);
   }
 }
@@ -154,12 +161,12 @@ TEST(FutureTest, lacksPreconditionValid) {
   // Ops that don't throw FutureInvalid if !valid() --
   // without precondition: valid()
 
-#define DOIT(STMT)        \
-  do {                    \
-    auto f = makeValid(); \
-    { STMT; }             \
-    ::copy(std::move(f)); \
-    STMT;                 \
+#define DOIT(STMT)                      \
+  do {                                  \
+    auto f = makeValid();               \
+    { STMT; }                           \
+    std::ignore = ::copy(std::move(f)); \
+    STMT;                               \
   } while (false)
 
   // .valid() itself
@@ -167,7 +174,7 @@ TEST(FutureTest, lacksPreconditionValid) {
 
   // move-ctor - move-copy to local, copy(), pass-by-move-value
   DOIT(auto other = std::move(f));
-  DOIT(copy(std::move(f)));
+  DOIT(std::ignore = copy(std::move(f)));
   DOIT(([](auto) {})(std::move(f)));
 
   // move-assignment into either {valid | invalid}
@@ -187,24 +194,24 @@ TEST(FutureTest, hasPreconditionValid) {
   // Ops that require validity; precondition: valid();
   // throw FutureInvalid if !valid()
 
-#define DOIT(STMT)          \
-  do {                      \
-    auto f = makeValid();   \
-    STMT;                   \
-    ::copy(std::move(f));   \
-    EXPECT_ANY_THROW(STMT); \
+#define DOIT(STMT)                      \
+  do {                                  \
+    auto f = makeValid();               \
+    STMT;                               \
+    std::ignore = ::copy(std::move(f)); \
+    EXPECT_ANY_THROW(STMT);             \
   } while (false)
 
   DOIT(f.isReady());
   DOIT(f.result());
-  DOIT(std::move(f).get());
+  DOIT(std::move(f).waitAndGet());
   DOIT(f.result());
   DOIT(f.hasValue());
   DOIT(f.hasException());
-  DOIT(f.get());
+  DOIT(f.waitAndGet());
   // DOIT(std::move(f).then());
-  DOIT(std::move(f).thenValue([](int&&) noexcept -> void {}));
-  DOIT(std::move(f).thenValue([](auto&&) noexcept -> void {}));
+  DOIT(std::ignore = std::move(f).thenValue([](int&&) noexcept -> void {}));
+  DOIT(std::ignore = std::move(f).thenValue([](auto&&) noexcept -> void {}));
 
 #undef DOIT
 }
@@ -225,12 +232,12 @@ TEST(FutureTest, hasPostconditionValid) {
   DOIT(swallow(f.isReady()));
   DOIT(swallow(f.hasValue()));
   DOIT(swallow(f.hasException()));
-  DOIT(swallow(f.get()));
-  DOIT(swallow(f.getTry()));
+  DOIT(swallow(f.waitAndGet()));
+  DOIT(swallow(f.waitAndGetTry()));
   // DOIT(swallow(f.poll()));
   // DOIT(f.raise(std::logic_error("foo")));
   // DOIT(f.cancel());
-  DOIT(swallow(f.getTry()));
+  DOIT(swallow(f.waitAndGetTry()));
   DOIT(f.wait());
   // DOIT(std::move(f.wait()));
 
@@ -283,7 +290,7 @@ TEST(FutureTest, lacksPostconditionValid) {
   auto const swallow = [](auto) {};
   // DOIT(makeValid(), swallow(std::move(f).wait()));
   // DOIT(makeValid(), swallow(std::move(f.wait())));
-  DOIT(makeValid(), swallow(std::move(f).get()));
+  DOIT(makeValid(), swallow(std::move(f).waitAndGet()));
   // DOIT(makeValid(), swallow(std::move(f).semi()));
 
 #undef DOIT
@@ -312,7 +319,7 @@ TEST(FutureTest, thenError) {
                  .thenError<std::logic_error>(
                      [&](const std::logic_error& /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // By auto reference
@@ -322,7 +329,7 @@ TEST(FutureTest, thenError) {
             .thenValue([](Unit) { throw eggs; })
             .thenError<eggs_t>([&](auto const& /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -333,7 +340,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // By value
@@ -342,7 +349,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) { throw eggs; })
                  .thenError<eggs_t>([&](eggs_t /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -353,7 +360,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   //    // Polymorphic
@@ -382,7 +389,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) { throw -1; })
                  .thenError<int>([&](int /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -393,7 +400,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // Mutable lambda
@@ -403,7 +410,7 @@ TEST(FutureTest, thenError) {
                  .thenError<eggs_t&>(
                      [&](eggs_t& /* e */) mutable noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -414,7 +421,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // Function pointer
@@ -423,7 +430,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) -> int { throw eggs; })
                  .thenError<const eggs_t&>(onErrorHelperEggs)
                  .thenError<std::exception const&>(onErrorHelperGeneric);
-    ASSERT_TRUE(10 == f.get());
+    ASSERT_TRUE(10 == f.waitAndGet());
   }
   {
     auto f =
@@ -431,14 +438,14 @@ TEST(FutureTest, thenError) {
             .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
             .thenError<const eggs_t&>(onErrorHelperEggs)
             .thenError<std::exception>(onErrorHelperGeneric);
-    ASSERT_TRUE(20 == f.get());
+    ASSERT_TRUE(20 == f.waitAndGet());
   }
   {
     auto f =
         makeFuture()
             .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
             .thenError<const eggs_t&>(onErrorHelperEggs);
-    EXPECT_THROW(f.get(), std::runtime_error);
+    EXPECT_THROW(f.waitAndGet(), std::runtime_error);
   }
 
   // No throw
@@ -450,7 +457,7 @@ TEST(FutureTest, thenError) {
                    return -1;
                  });
     EXPECT_NO_FLAG();
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   {
@@ -461,7 +468,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture<int>(-1);
                  });
     EXPECT_NO_FLAG();
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   // Catch different exception
@@ -471,7 +478,7 @@ TEST(FutureTest, thenError) {
                  .thenError<std::runtime_error&>(
                      [&](std::runtime_error& /* e */) noexcept { flag(); });
     EXPECT_NO_FLAG();
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
   {
@@ -483,7 +490,7 @@ TEST(FutureTest, thenError) {
               return makeFuture();
             });
     EXPECT_NO_FLAG();
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
   // Returned value propagates
@@ -492,7 +499,7 @@ TEST(FutureTest, thenError) {
         makeFuture()
             .thenValue([](Unit) -> int { throw eggs; })
             .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept { return 42; });
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   // Returned future propagates
@@ -501,7 +508,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) -> int { throw eggs; })
                  .thenError<eggs_t&>(
                      [&](eggs_t& /* e */) { return makeFuture<int>(42); });
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   // Throw in callback
@@ -509,7 +516,7 @@ TEST(FutureTest, thenError) {
     auto f = makeFuture()
                  .thenValue([](Unit) -> int { throw eggs; })
                  .thenError<eggs_t&>([&](eggs_t& e) -> int { throw e; });
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
   {
@@ -517,7 +524,7 @@ TEST(FutureTest, thenError) {
         makeFuture()
             .thenValue([](Unit) -> int { throw eggs; })
             .thenError<eggs_t&>([&](eggs_t& e) -> Future<int> { throw e; });
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
 //    // exception_wrapper, return Future<T>
@@ -610,24 +617,24 @@ TEST(FutureTest, then) {
           .thenValue([](const std::string& s) { return makeFuture(s + ";9"); })
           .thenValue([](std::string s) { return makeFuture(s + ";10"); })
           .thenValue([](const std::string s) { return makeFuture(s + ";11"); });
-  std::string value = f.get();
+  std::string value = f.waitAndGet();
   ASSERT_TRUE(value == "1;2;3;4;5;6;7;8;9;10;11");
 }
 
 TEST(FutureTest, then_static_functions) {
   auto f = makeFuture<int>(10).thenValue(onThenHelperAddFive);
-  ASSERT_TRUE(f.get() == 15);
+  ASSERT_TRUE(f.waitAndGet() == 15);
 
   auto f2 = makeFuture<int>(15).thenValue(onThenHelperAddFutureFive);
-  ASSERT_TRUE(f2.get() == 20);
+  ASSERT_TRUE(f2.waitAndGet() == 20);
 }
 
 TEST(FutureTest, get) {
   auto f = makeFuture(std::make_unique<int>(42));
-  auto up = std::move(f).get();
+  auto up = std::move(f).waitAndGet();
   ASSERT_TRUE(42 == *up);
 
-  EXPECT_THROW(makeFuture<int>(eggs).get(), eggs_t);
+  EXPECT_THROW(makeFuture<int>(eggs).waitAndGet(), eggs_t);
 }
 
 TEST(FutureTest, isReady) {
@@ -645,39 +652,39 @@ TEST(FutureTest, futureNotReady) {
 }
 
 TEST(FutureTest, makeFuture) {
-  ASSERT_TRUE(makeFuture<int>(eggs).getTry().hasException());
-  ASSERT_FALSE(makeFuture(42).getTry().hasException());
+  ASSERT_TRUE(makeFuture<int>(eggs).waitAndGetTry().hasException());
+  ASSERT_FALSE(makeFuture(42).waitAndGetTry().hasException());
 }
 
 TEST(FutureTest, hasValue) {
-  ASSERT_TRUE(makeFuture(42).getTry().hasValue());
-  ASSERT_FALSE(makeFuture<int>(eggs).getTry().hasValue());
+  ASSERT_TRUE(makeFuture(42).waitAndGetTry().hasValue());
+  ASSERT_FALSE(makeFuture<int>(eggs).waitAndGetTry().hasValue());
 }
 
 TEST(FutureTest, makeFuture2) {
   // EXPECT_TYPE(makeFuture(42), Future<int>);
-  ASSERT_TRUE(42 == makeFuture(42).get());
+  ASSERT_TRUE(42 == makeFuture(42).waitAndGet());
 
   // EXPECT_TYPE(makeFuture<float>(42), Future<float>);
-  ASSERT_TRUE(42 == makeFuture<float>(42).get());
+  ASSERT_TRUE(42 == makeFuture<float>(42).waitAndGet());
 
   auto fun = [] { return 42; };
   // EXPECT_TYPE(makeFutureWith(fun), Future<int>);
-  ASSERT_TRUE(42 == makeFutureWith(fun).get());
+  ASSERT_TRUE(42 == makeFutureWith(fun).waitAndGet());
 
   auto funf = [] { return makeFuture<int>(43); };
   // EXPECT_TYPE(makeFutureWith(funf), Future<int>);
-  ASSERT_TRUE(43 == makeFutureWith(funf).get());
+  ASSERT_TRUE(43 == makeFutureWith(funf).waitAndGet());
 
   auto failfun = []() -> int { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
-  EXPECT_NO_THROW(makeFutureWith(failfun));
-  EXPECT_THROW(makeFutureWith(failfun).get(), eggs_t);
+  EXPECT_NO_THROW(std::ignore = makeFutureWith(failfun));
+  EXPECT_THROW(makeFutureWith(failfun).waitAndGet(), eggs_t);
 
   auto failfunf = []() -> Future<int> { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfunf), Future<int>);
-  EXPECT_NO_THROW(makeFutureWith(failfunf));
-  EXPECT_THROW(makeFutureWith(failfunf).get(), eggs_t);
+  EXPECT_NO_THROW(std::ignore = makeFutureWith(failfunf));
+  EXPECT_THROW(makeFutureWith(failfunf).waitAndGet(), eggs_t);
 
   // EXPECT_TYPE(makeFuture(), Future<Unit>);
 }
@@ -742,7 +749,7 @@ TEST(FutureTest, CircularDependencySharedPtrSelfReset) {
   Promise<int64_t> promise;
   auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
 
-  std::move(*ptr).then([ptr](Try<int64_t>&& /* uid */) mutable {
+  std::ignore = std::move(*ptr).then([ptr](Try<int64_t>&& /* uid */) mutable {
     ASSERT_TRUE(1 == ptr.use_count());
 
     // Leaving no references to ourselves.
@@ -759,14 +766,14 @@ TEST(FutureTest, CircularDependencySharedPtrSelfReset) {
 
 TEST(FutureTest, Constructor) {
   auto f1 = []() -> Future<int> { return Future<int>(3); }();
-  ASSERT_TRUE(f1.get() == 3);
+  ASSERT_TRUE(f1.waitAndGet() == 3);
   auto f2 = []() -> Future<Unit> { return Future<Unit>(); }();
-  EXPECT_NO_THROW(f2.getTry());
+  EXPECT_NO_THROW(f2.waitAndGetTry());
 }
 
 TEST(FutureTest, ImplicitConstructor) {
   auto f1 = []() -> Future<int> { return 3; }();
-  ASSERT_TRUE(f1.get() == 3);
+  ASSERT_TRUE(f1.waitAndGet() == 3);
   // Unfortunately, the C++ standard does not allow the
   // following implicit conversion to work:
   // auto f2 = []() -> Future<Unit> { }();
@@ -774,10 +781,10 @@ TEST(FutureTest, ImplicitConstructor) {
 
 TEST(FutureTest, InPlaceConstructor) {
   auto f = Future<std::pair<int, double>>(std::in_place, 5, 3.2);
-  ASSERT_TRUE(5 == f.get().first);
+  ASSERT_TRUE(5 == f.waitAndGet().first);
 }
 
-TEST(FutureTest, makeFutureNoThrow) { makeFuture().get(); }
+TEST(FutureTest, makeFutureNoThrow) { makeFuture().waitAndGet(); }
 
 TEST(FutureTest, invokeCallbackReturningValueAsRvalue) {
   struct Foo {
@@ -792,9 +799,9 @@ TEST(FutureTest, invokeCallbackReturningValueAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).get());
-  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).get());
-  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).waitAndGet());
+  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).waitAndGet());
+  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).waitAndGet());
 }
 
 TEST(FutureTest, invokeCallbackReturningFutureAsRvalue) {
@@ -810,9 +817,9 @@ TEST(FutureTest, invokeCallbackReturningFutureAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).get());
-  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).get());
-  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).waitAndGet());
+  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).waitAndGet());
+  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).waitAndGet());
 }
 
 TEST(FutureTest, basic_example) {
@@ -820,7 +827,7 @@ TEST(FutureTest, basic_example) {
   Future<int> f = p.getFuture();
   auto f2 = std::move(f).thenValue(onThenHelperAddOne);
   p.setValue(42);
-  ASSERT_TRUE(f2.get() == 43);
+  ASSERT_TRUE(f2.waitAndGet() == 43);
 }
 
 TEST(FutureTest, basic_example_fpointer) {
@@ -828,5 +835,230 @@ TEST(FutureTest, basic_example_fpointer) {
   Future<int> f = p.getFuture();
   auto f2 = std::move(f).thenValue(&onThenHelperAddOne);
   p.setValue(42);
-  ASSERT_TRUE(f2.get() == 43);
+  ASSERT_TRUE(f2.waitAndGet() == 43);
+}
+
+namespace {
+auto foo() -> Future<int> {
+  Promise<int> p;
+  return p.getFuture();
+}
+auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
+  uint promise_count = 0;
+  registry.for_promise([&](arangodb::async_registry::PromiseSnapshot promise) {
+    promise_count++;
+  });
+  return promise_count;
+}
+}  // namespace
+TEST(FutureTest, futures_are_registered_in_global_async_registry) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  {
+    auto x = foo();
+    std::vector<std::string_view> names;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          names.push_back(promise.source_location.function_name);
+        });
+    EXPECT_EQ(names.size(), 1);
+    EXPECT_TRUE(names[0].find("foo") != std::string::npos);
+  }
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 0);
+}
+
+namespace {
+auto awaited_fn() -> Future<int> {
+  Promise<int> p;
+  return p.getFuture();
+}
+}  // namespace
+TEST(FutureTest,
+     continued_future_promises_in_async_registry_know_their_waiter) {
+  std::vector<std::function<void()>> waiter{
+      []() { auto future = awaited_fn().thenValue([](int a) { return 1; }); },
+      []() {
+        auto future =
+            awaited_fn().thenValue([](int a) { return makeFuture(a); });
+      },
+      []() {
+        auto future =
+            makeFuture(1).thenValue([&](int a) { return awaited_fn(); });
+      },
+      []() { auto future = awaited_fn().then([](Try<int>&& a) { return 1; }); },
+      []() {
+        auto future =
+            awaited_fn().then([](Try<int>&& a) { return makeFuture(a); });
+      },
+      []() {
+        auto future =
+            makeFuture(1).then([](Try<int>&& a) { return awaited_fn(); });
+      },
+      []() {
+        auto future = awaited_fn().thenError<std::logic_error&>(
+            [](std::logic_error& t) { return 1; });
+      },
+      []() {
+        auto future = awaited_fn().thenError<std::logic_error&>(
+            [](std::logic_error& t) { return makeFuture(1); });
+      },
+      []() {
+        auto future =
+            makeFuture<int>(std::make_exception_ptr(std::logic_error("foo")))
+                .thenError<std::logic_error&>(
+                    [](std::logic_error& t) { return awaited_fn(); });
+      },
+  };
+
+  for (const auto& fn : waiter) {
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    fn();
+    std::optional<arangodb::async_registry::PromiseSnapshot> awaited_promise;
+    std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
+    uint count = 0;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          count++;
+          if (std::string(promise.source_location.function_name)
+                  .find("awaited_fn") != std::string::npos) {
+            awaited_promise = promise;
+          }
+          if (std::string(promise.source_location.function_name)
+                  .find("TestBody") != std::string::npos) {
+            waiter_promise = promise;
+          }
+        });
+    EXPECT_EQ(count, 2);
+    EXPECT_TRUE(awaited_promise.has_value());
+    EXPECT_TRUE(waiter_promise.has_value());
+    EXPECT_EQ(awaited_promise->requester,
+              arangodb::async_registry::Requester{waiter_promise->id});
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+        waiter_promise->requester));
+  }
+}
+
+TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
+  std::vector<std::tuple<std::string, std::function<void()>>> waiter{
+      std::make_tuple("collectAll",
+                      []() {
+                        std::vector<Future<int>> vec;
+                        vec.push_back(awaited_fn());
+                        vec.push_back(awaited_fn());
+                        auto future = arangodb::futures::collectAll(vec);
+                      }),
+      std::make_tuple("gather",
+                      []() {
+                        auto future = arangodb::futures::gather(awaited_fn(),
+                                                                awaited_fn());
+                      }),
+      std::make_tuple("collect", []() {
+        auto future = arangodb::futures::collect(awaited_fn(), awaited_fn());
+      })};
+
+  for (const auto& [name, fn] : waiter) {
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    fn();
+    std::vector<arangodb::async_registry::PromiseSnapshot> awaited_promises;
+    std::optional<arangodb::async_registry::PromiseSnapshot> waiter_promise;
+    uint count = 0;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          count++;
+          if (std::string(promise.source_location.function_name)
+                  .find("awaited_fn") != std::string::npos) {
+            awaited_promises.push_back(promise);
+          }
+          if (std::string(promise.source_location.function_name).find(name) !=
+              std::string::npos) {
+            waiter_promise = promise;
+          }
+        });
+    EXPECT_EQ(count, 3);
+    EXPECT_EQ(awaited_promises.size(), 2);
+    EXPECT_TRUE(waiter_promise.has_value());
+    EXPECT_EQ(awaited_promises[0].requester,
+              arangodb::async_registry::Requester{waiter_promise->id});
+    EXPECT_EQ(awaited_promises[1].requester,
+              arangodb::async_registry::Requester{waiter_promise->id});
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+        waiter_promise->requester));
+  }
+}
+
+namespace {
+auto expect_all_promises_in_state(arangodb::async_registry::State state,
+                                  uint number_of_promises) {
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
+        count++;
+        EXPECT_EQ(promise.state, state);
+      });
+  EXPECT_EQ(count, number_of_promises);
+}
+}  // namespace
+TEST(FutureTest, promises_in_async_registry_know_their_state) {
+  {  // resolved future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      auto future = makeFuture(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   0);
+    }
+  }
+  {  // future without callback
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      p.setValue(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+    }
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 1);
+  }
+  {  // adding callback before resolving future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      auto a = std::move(future).thenValue([](int a) { return 1; });
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   2);
+
+      p.setValue(1);
+      future.waitAndGet();
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   2);
+    }
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 2);
+  }
+  {  // adding callback after resolving future
+    arangodb::async_registry::get_thread_registry().garbage_collect();
+    {
+      Promise<int> p;
+      auto future = p.getFuture();
+
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+
+      p.setValue(1);
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   1);
+
+      auto a = std::move(future).thenValue([](int a) { return 1; });
+      future.waitAndGet();
+      expect_all_promises_in_state(arangodb::async_registry::State::Resolved,
+                                   2);
+    }
+
+    expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 2);
+  }
 }

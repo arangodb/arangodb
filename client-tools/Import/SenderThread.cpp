@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #include "SenderThread.h"
 
-#include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -93,25 +92,28 @@ bool SenderThread::hasError() {
   return retFlag;
 }
 
-bool SenderThread::isReady() {
+bool SenderThread::isReady() const {
   std::lock_guard guard{_condition.mutex};
   return _ready;
 }
 
-bool SenderThread::isIdle() {
+bool SenderThread::isIdle() const {
   std::lock_guard guard{_condition.mutex};
   return _idle;
 }
 
-bool SenderThread::isDone() {
+bool SenderThread::isDone() const {
   std::lock_guard guard{_condition.mutex};
   return _idle || _hasError;
 }
 
 void SenderThread::run() {
-  while (!isStopping() && !_hasError) {
+  while (!isStopping()) {
     {
       std::unique_lock guard{_condition.mutex};
+      if (_hasError) {
+        break;
+      }
       _ready = true;
       if (_idle) {
         _condition.cv.wait(guard);
@@ -164,6 +166,7 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     parsedBody = result->getBodyVelocyPack();
     haveBody = true;
   } catch (...) {
+    std::unique_lock guardError{_condition.mutex};
     // no body, likely error situation
     _errorMessage = result->getHttpReturnMessage();
     // will trigger the waiting ImportHelper thread to cancel the import
@@ -171,16 +174,16 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
   }
 
   if (haveBody) {
-    VPackSlice const body = parsedBody->slice();
+    VPackSlice body = parsedBody->slice();
 
     // error details
-    VPackSlice const details = body.get("details");
-
-    if (details.isArray()) {
+    if (VPackSlice details = body.get("details"); details.isArray()) {
       for (VPackSlice detail : VPackArrayIterator(details)) {
-        if (detail.isString()) {
-          LOG_TOPIC("e5a29", WARN, arangodb::Logger::FIXME)
-              << "" << detail.copyString();
+        if (!detail.isString()) {
+          continue;
+        }
+        if (!_stats->logError(detail.stringView())) {
+          break;
         }
       }
     }
@@ -212,25 +215,30 @@ void SenderThread::handleResult(httpclient::SimpleHttpResult* result) {
     // get the "error" flag. This returns a pointer, not a copy
     if (arangodb::basics::VelocyPackHelper::getBooleanValue(body, "error",
                                                             false)) {
+      std::unique_lock guardError{_condition.mutex};
       // get the error message
-      VPackSlice const errorMessage = body.get("errorMessage");
+      VPackSlice errorMessage = body.get("errorMessage");
       if (errorMessage.isString()) {
         _errorMessage = errorMessage.copyString();
       }
 
       // will trigger the waiting ImportHelper thread to cancel the import
       _hasError = true;
+      return;
     }
   }  // if
 
-  if (!_hasError && !result->getHttpReturnMessage().empty() &&
-      !result->isComplete()) {
-    _errorMessage = result->getHttpReturnMessage();
-    if (0 != _lowLineNumber || 0 != _highLineNumber) {
-      LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME)
-          << "Error left import lines " << _lowLineNumber << " through "
-          << _highLineNumber << " in unknown state";
+  {
+    std::unique_lock guardError{_condition.mutex};
+    if (!_hasError && !result->getHttpReturnMessage().empty() &&
+        !result->isComplete()) {
+      _errorMessage = result->getHttpReturnMessage();
+      if (0 != _lowLineNumber || 0 != _highLineNumber) {
+        LOG_TOPIC("8add8", WARN, arangodb::Logger::FIXME)
+            << "Error left import lines " << _lowLineNumber << " through "
+            << _highLineNumber << " in unknown state";
+      }  // if
+      _hasError = true;
     }  // if
-    _hasError = true;
-  }  // if
+  }
 }

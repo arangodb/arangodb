@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -278,13 +278,6 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex) {
-  // mmfiles failure point compat
-  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
   arangodb::containers::FlatHashMap<size_t,
                                     std::vector<arangodb::aql::AstNode const*>>
       found;
@@ -453,10 +446,9 @@ Index::SortCosts SortedIndexAttributeMatcher::supportsSortCondition(
     // non-sparse indexes can be used for sorting, but sparse indexes can only
     // be used if we can prove that we only need to return non-null index
     // attribute values
-    if (!idx->hasExpansion() && sortCondition->isUnidirectional() &&
-        sortCondition->isOnlyAttributeAccess()) {
-      costs.coveredAttributes =
-          sortCondition->coveredAttributes(reference, idx->fields());
+    if (!idx->hasExpansion() && sortCondition->isOnlyAttributeAccess()) {
+      costs.coveredAttributes = sortCondition->coveredUnidirectionalAttributes(
+          reference, idx->fields());
 
       if (costs.coveredAttributes >= sortCondition->numAttributes()) {
         // sort is fully covered by index. no additional sort costs!
@@ -539,9 +531,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
       }
 
       arangodb::aql::AstNodeType type = it->type;
-      if (arangodb::aql::Ast::IsReversibleOperator(type) &&
+      if (arangodb::aql::Ast::isReversibleOperator(type) &&
           it->getMember(1)->isAttributeAccessForVariable(reference, false)) {
-        type = arangodb::aql::Ast::ReverseOperator(type);
+        type = arangodb::aql::Ast::reverseOperator(type);
       }
 
       // do not let duplicate or related operators pass

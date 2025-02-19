@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,10 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Context.h"
 
 #include <memory>
@@ -40,7 +43,8 @@ namespace transaction {
 class V8Context final : public Context {
  public:
   /// @brief create the context
-  V8Context(TRI_vocbase_t& vocbase, bool embeddable);
+  V8Context(TRI_vocbase_t& vocbase, OperationOrigin operationOrigin,
+            bool embeddable);
 
   /// @brief destroy the context
   ~V8Context() noexcept;
@@ -72,13 +76,13 @@ class V8Context final : public Context {
   static bool isEmbedded();
 
   /// @brief create a context
-  static std::shared_ptr<transaction::V8Context> Create(TRI_vocbase_t& vocbase,
-                                                        bool embeddable);
+  static std::shared_ptr<transaction::V8Context> create(
+      TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable);
 
   /// @brief create a V8 transaction context if we are in a V8 isolate, and a
   /// standlone transaction context otherwise
-  static std::shared_ptr<transaction::Context> CreateWhenRequired(
-      TRI_vocbase_t& vocbase, bool embeddable);
+  static std::shared_ptr<transaction::Context> createWhenRequired(
+      TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable);
 
  private:
   static TRI_v8_global_t* getV8State() noexcept;

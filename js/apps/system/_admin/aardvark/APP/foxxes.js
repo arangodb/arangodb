@@ -3,14 +3,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License");
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,17 +25,20 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const arangodb = require('@arangodb');
 const fs = require('fs');
 const joi = require('joi');
 const dd = require('dedent');
-const crypto = require('@arangodb/crypto');
 const errors = require('@arangodb').errors;
 const FoxxManager = require('@arangodb/foxx/manager');
 const store = require('@arangodb/foxx/store');
+const cluster = require('@arangodb/cluster');
+const request = require('@arangodb/request');
 const FoxxGenerator = require('./generator');
 const fmu = require('@arangodb/foxx/manager-utils');
 const createRouter = require('@arangodb/foxx/router');
 const joinPath = require('path').join;
+const ArangoError = arangodb.ArangoError;
 
 const DEFAULT_THUMBNAIL = module.context.fileName('default-thumbnail.png');
 
@@ -80,6 +83,48 @@ foxxRouter.use(installer)
 `);
 
 installer.use(function (req, res, next) {
+  let coordinatorId = null;
+  try {
+    coordinatorId = JSON.parse(req.body).coordinatorId;
+  } catch (e) {
+    // noop
+  }
+  const thisCoordinatorId = FoxxManager._getMyCoordinatorId();
+  if (thisCoordinatorId && coordinatorId && thisCoordinatorId !== coordinatorId) {
+    // In case our original received request does not match the provided
+    // coordinatorId (if available), we don't want to upgrade/replace or install
+    // the foxx application on this coordinator, as another coordinator will
+    // perform the actual operation.
+
+    let coordinatorToEndpointMap = {};
+    const coordinators = global.ArangoClusterInfo.getCoordinators();
+    coordinators.forEach((coordinatorId) => {
+      const endpoint = global.ArangoClusterInfo.getServerEndpoint(coordinatorId);
+      coordinatorToEndpointMap[coordinatorId] = cluster.endpointToURL(endpoint);
+    });
+
+    const endpointToUse = coordinatorToEndpointMap[coordinatorId];
+    if (!endpointToUse) {
+      // if we could not map the supplied coordinatorId to a real coordinatorId, it must be invalid.
+      throw new ArangoError({
+        errorNum: errors.ERROR_ARANGO_ILLEGAL_NAME.code,
+        errorMessage: 'Supplied wrong coordinatorId'
+      });
+    }
+
+    const response = request[req.method.toLowerCase()]({
+      url: `${endpointToUse}${req.originalUrl}`,
+      headers: req.headers,
+      body: req.body,
+      json: false,
+    });
+
+    res.status(response.statusCode);
+    res.set(response.headers);
+    res.body = response.body;
+    return;
+  }
+  
   const mount = decodeURIComponent(req.queryParams.mount);
   const upgrade = req.queryParams.upgrade;
   const replace = req.queryParams.replace;
@@ -90,6 +135,7 @@ installer.use(function (req, res, next) {
   options.setup = req.queryParams.setup;
   options.teardown = req.queryParams.teardown;
   let service;
+
   try {
     if (upgrade) {
       service = FoxxManager.upgrade(appInfo, mount, options);
@@ -108,6 +154,23 @@ installer.use(function (req, res, next) {
     }
     if (
       e.isArangoError &&
+      e.errorNum === errors.ERROR_SERVICE_SOURCE_ERROR.code
+    ) {
+      let errorType = 'internal server error';
+      if ([
+        '/foxxes/store',
+        '/foxxes/git',
+        '/foxxes/url'
+      ].indexOf(req.path) !== -1) {
+        errorType = (
+          e.message.includes('(timeout after') ?
+          'gateway timeout' : 'bad gateway'
+        );
+      }
+      res.throw(errorType, e);
+    }
+    if (
+      e.isArangoError &&
       e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code
     ) {
       res.throw('not found', e);
@@ -120,6 +183,7 @@ installer.use(function (req, res, next) {
     }
     throw e;
   }
+
   const configuration = service.getConfiguration();
   res.json(Object.assign({
     error: false,
@@ -197,7 +261,8 @@ installer.put('/zip', function (req) {
   }
 })
 .body(joi.object({
-  zipFile: joi.string().required()
+  zipFile: joi.string().required(),
+  coordinatorId: joi.string().optional()
 }).required(), 'A zip file path.')
 .summary('Install a Foxx from temporary zip file')
 .description(dd`
@@ -381,35 +446,6 @@ router.get('/fishbowl', function (req, res) {
   This function contacts the fishbowl and reports which services are available for install.
 `);
 
-router.post('/download/nonce', function (req, res) {
-  const nonce = crypto.createNonce();
-  res.status('created');
-  res.json({nonce});
-})
-.response('created', joi.object({nonce: joi.string().required()}).required(), 'The created nonce.')
-.summary('Creates a nonce for downloading the service')
-.description(dd`
-  Creates a cryptographic nonce that can be used to download the service without authentication.
-`);
-
-anonymousRouter.get('/download/zip', function (req, res) {
-  const nonce = decodeURIComponent(req.queryParams.nonce);
-  const checked = nonce && crypto.checkAndMarkNonce(nonce);
-  if (!checked) {
-    res.throw(403, 'Nonce missing or invalid');
-  }
-  const mount = decodeURIComponent(req.queryParams.mount);
-  const service = FoxxManager.lookupService(mount);
-  const dir = fs.join(fs.makeAbsolute(service.root), service.path);
-  const zipPath = fmu.zipDirectory(dir);
-  const name = mount.replace(/^\/|\/$/g, '').replace(/\//g, '_');
-  res.download(zipPath, `${name}_${service.manifest.version}.zip`);
-})
-.queryParam('nonce', joi.string().required(), 'Cryptographic nonce that authorizes the download.')
-.summary('Download a service as zip archive')
-.description(dd`
-  Download a Foxx service packed in a zip archive.
-`);
 
 anonymousRouter.use('/docs/standalone', module.context.createDocumentationRouter((req, res) => {
   if (req.suffix === 'swagger.json' && !req.authorized && internal.authenticationEnabled()) {

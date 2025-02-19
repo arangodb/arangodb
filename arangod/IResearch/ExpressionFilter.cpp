@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -121,16 +121,16 @@ class ExpressionQuery : public irs::filter::prepared {
     return _allQuery->visit(segment, visitor, boost);
   }
 
+  irs::score_t boost() const noexcept final { return _allQuery->boost(); }
+
  protected:
   explicit ExpressionQuery(ExpressionCompilationContext const& ctx,
-                           irs::filter::prepared::ptr&& allQuery) noexcept
-      : irs::filter::prepared{allQuery->boost()},
-        _allQuery{std::move(allQuery)},
-        _ctx{ctx} {
+                           prepared::ptr&& allQuery) noexcept
+      : _allQuery{std::move(allQuery)}, _ctx{ctx} {
     TRI_ASSERT(_allQuery);
   }
 
-  irs::filter::prepared::ptr _allQuery;
+  prepared::ptr _allQuery;
   ExpressionCompilationContext _ctx;
 };
 
@@ -200,11 +200,6 @@ class DeterministicExpressionQuery : public ExpressionQuery {
 
 }  // namespace
 
-size_t ExpressionCompilationContext::hash() const noexcept {
-  return irs::hash_combine(
-      irs::hash_combine(1610612741, aql::AstNodeValueHash()(node.get())), ast);
-}
-
 void ByExpression::init(QueryContext const& ctx, aql::AstNode& node) noexcept {
   return init(ctx, std::shared_ptr<aql::AstNode>{&node, [](aql::AstNode*) {}});
 }
@@ -224,19 +219,14 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   return _ctx == impl._ctx && _allColumn == impl._allColumn;
 }
 
-size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
-
 irs::filter::prepared::ptr ByExpression::prepare(
-    irs::IndexReader const& index, irs::Scorers const& order,
-    irs::score_t filter_boost, irs::attribute_provider const* ctx) const {
+    irs::PrepareContext const& ctx) const {
   if (!bool(*this)) {
     // uninitialized filter
     return irs::filter::prepared::empty();
   }
 
-  auto allQuery =
-      makeAll(_allColumn)
-          ->prepare(index, order, this->boost() * filter_boost, ctx);
+  auto allQuery = makeAll(_allColumn)->prepare(ctx.Boost(boost()));
 
   if (ADB_UNLIKELY(!allQuery)) {
     return irs::filter::prepared::empty();
@@ -248,7 +238,8 @@ irs::filter::prepared::ptr ByExpression::prepare(
         _ctx, std::move(allQuery));
   }
 
-  auto* execCtx = ctx ? irs::get<ExpressionExecutionContext>(*ctx) : nullptr;
+  auto* execCtx =
+      ctx.ctx ? irs::get<ExpressionExecutionContext>(*ctx.ctx) : nullptr;
 
   if (!execCtx || !static_cast<bool>(*execCtx)) {
     // no execution context provided, make deterministic query

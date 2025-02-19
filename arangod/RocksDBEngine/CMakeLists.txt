@@ -1,5 +1,6 @@
 add_library(arango_rocksdb STATIC
   RocksDBBackgroundThread.cpp
+  ReplicatedRocksDBTransactionCollection.cpp
   RocksDBBuilderIndex.cpp
   RocksDBChecksumEnv.cpp
   RocksDBCollection.cpp
@@ -7,6 +8,8 @@ add_library(arango_rocksdb STATIC
   RocksDBCommon.cpp
   RocksDBComparator.cpp
   RocksDBCuckooIndexEstimator.cpp
+  RocksDBDumpContext.cpp
+  RocksDBDumpManager.cpp
   RocksDBEdgeIndex.cpp
   RocksDBEngine.cpp
   RocksDBFormat.cpp
@@ -17,16 +20,19 @@ add_library(arango_rocksdb STATIC
   RocksDBIndexCacheRefillFeature.cpp
   RocksDBIndexCacheRefillThread.cpp
   RocksDBIndexFactory.cpp
+  RocksDBIndexingDisabler.cpp
   RocksDBIterators.cpp
   RocksDBKey.cpp
   RocksDBKeyBounds.cpp
   RocksDBLogValue.cpp
   RocksDBMetaCollection.cpp
   RocksDBMetadata.cpp
+  RocksDBMethods.cpp
+  RocksDBMethodsMemoryTracker.cpp
+  RocksDBMultiDimIndex.cpp
   RocksDBOptimizerRules.cpp
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
-  RocksDBPersistedLog.cpp
   RocksDBPrimaryIndex.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
@@ -41,8 +47,8 @@ add_library(arango_rocksdb STATIC
   RocksDBRestWalHandler.cpp
   RocksDBSavePoint.cpp
   RocksDBSettingsManager.cpp
-  RocksDBSyncThread.cpp
   RocksDBSortedRowsStorageContext.cpp
+  RocksDBSyncThread.cpp
   RocksDBTempStorage.cpp
   RocksDBTransactionCollection.cpp
   RocksDBTransactionMethods.cpp
@@ -50,15 +56,18 @@ add_library(arango_rocksdb STATIC
   RocksDBTtlIndex.cpp
   RocksDBTypes.cpp
   RocksDBUpgrade.cpp
-  RocksDBV8Functions.cpp
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
+  RocksDBVectorIndex.cpp
   RocksDBWalAccess.cpp
-  RocksDBZkdIndex.cpp
-  ReplicatedRocksDBTransactionCollection.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp
   SortedRowsStorageBackendRocksDB.cpp)
+
+if (USE_V8) 
+  target_sources(arango_rocksdb PRIVATE
+    RocksDBV8Functions.cpp)
+endif()
 
 target_link_libraries(arango_rocksdb
   arango_cache
@@ -73,7 +82,8 @@ target_link_libraries(arango_rocksdb
   boost_boost
   rocksdb
   rocksdb_interface
-  snappy)
+  snappy
+  faiss)
 
 set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
 target_include_directories(arango_rocksdb PUBLIC ${SNAPPY_INCLUDE_DIR})
@@ -83,7 +93,8 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
   target_link_libraries(arango_rocksdb
-    arango_rclone)
+    arango_rclone 
+  )
 endif()
 
 if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND ARCH_AMD64)

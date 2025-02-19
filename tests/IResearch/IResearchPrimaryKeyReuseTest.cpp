@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -109,8 +109,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -128,7 +129,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
     {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -153,7 +155,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_sequential) {
       options.returnNew = true;
       options.isRestore = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -236,8 +239,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     arangodb::OperationOptions options;
     options.returnNew = true;
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {
@@ -255,7 +259,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -279,7 +284,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -296,7 +302,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
     {
       arangodb::OperationOptions options;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -315,7 +322,8 @@ TEST_F(IResearchPrimaryKeyReuse, test_multiple_transactions_interleaved) {
       options.returnNew = true;
       options.isRestore = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -395,8 +403,9 @@ TEST_F(IResearchPrimaryKeyReuse, test_single_transaction) {
         VPackParser::fromJson("{ \"value\": true }")};
 
     arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), *collection,
-        arangodb::AccessMode::Type::WRITE);
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        *collection, arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE(trx.begin().ok());
 
     for (auto& entry : docs) {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterInfo.h"
 #include "Logger/LogMacros.h"
@@ -32,6 +33,7 @@
 #include "Logger/LogMacros.h"
 
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 RemoveFollower::RemoveFollower(Node const& snapshot, AgentInterface* agent,
                                std::string const& jobId,
@@ -138,9 +140,7 @@ bool RemoveFollower::start(bool&) {
     return false;
   }
   Node const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection)
-          .value()
-          .get();
+      *_snapshot.get(planColPrefix + _database + "/" + _collection);
   if (collection.has("distributeShardsLike")) {
     finish("", "", false,
            "collection must not have 'distributeShardsLike' attribute");
@@ -151,7 +151,8 @@ bool RemoveFollower::start(bool&) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.get(planPath)->toBuilder();
+  Slice planned = plannedBuilder.slice();
 
   TRI_ASSERT(planned.isArray());
 
@@ -422,6 +423,7 @@ bool RemoveFollower::start(bool&) {
       // --- Check that Planned servers are still as we expect
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
+      addPreconditionClonesStillExist(trx, _database, shardsLikeMe);
       for (auto const& srv : kept) {
         addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }

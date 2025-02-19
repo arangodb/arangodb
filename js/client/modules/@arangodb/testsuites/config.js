@@ -2,38 +2,36 @@
 /* global print */
 'use strict';
 
-// /////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-// 
-// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
-// Copyright 2014 triagens GmbH, Cologne, Germany
-// 
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//      http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// 
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
-// @author Max Neunhoeffer
-// /////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'config': 'checks the config file parsing'
 };
-const optionsDocumentation = [
-  '   - `skipConfig`: omit the noisy configuration tests'
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -55,16 +53,6 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function config (options) {
-  if (options.skipConfig) {
-    return {
-      config: {
-        failed: 0,
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   let results = {
     failed: 0,
     absolute: {
@@ -174,6 +162,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['config'] = config;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

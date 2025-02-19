@@ -7,17 +7,6 @@
   },
   "configurePresets": [
     {
-      "name": "community",
-      "displayName": "Build ArangoDB Community Edition",
-      "binaryDir": "${sourceDir}/build-presets/${presetName}",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "USE_ENTERPRISE": "Off",
-        "USE_JEMALLOC": "On",
-        "USE_IPO": "On"
-      }
-    },
-    {
       "hidden": true,
       "name": "pr-base",
       "binaryDir": "${sourceDir}/build",
@@ -25,10 +14,23 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_FLAGS": "-fno-stack-protector",
         "CMAKE_CXX_FLAGS": "-fno-stack-protector",
-        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1",
         "USE_IPO": "Off",
         "USE_STRICT_OPENSSL_VERSION": "On",
-        "USE_MINIMAL_DEBUGINFO": "On",
+        "STATIC_EXECUTABLES": "On"
+      }
+    },
+    {
+      "hidden": true,
+      "name": "release-base",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_ENTERPRISE": "Off",
+        "USE_JEMALLOC": "On",
+        "USE_IPO": "On",
+        "USE_GOOGLE_TESTS": "Off",
+        "USE_FAILURE_TESTS": "Off",
         "STATIC_EXECUTABLES": "On"
       }
     },
@@ -50,12 +52,18 @@
     {
       "hidden": true,
       "name": "pr",
-      "inherits": [ "pr-base", "x86_64" ]
+      "inherits": [
+        "pr-base",
+        "x86_64"
+      ]
     },
     {
       "hidden": true,
       "name": "pr-arm",
-      "inherits": [ "pr-base", "arm" ]
+      "inherits": [
+        "pr-base",
+        "arm"
+      ]
     },
     {
       "hidden": true,
@@ -70,17 +78,22 @@
       "hidden": true,
       "name": "tsan",
       "cacheVariables": {
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
-        "CMAKE_C_FLAGS": "-fsanitize=thread"
+        "USE_JEMALLOC": "Off",
+        "STATIC_EXECUTABLES": "Off",
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread -fsanitize-blacklist=${sourceDir}/tsan_blacklist.txt",
+        "CMAKE_C_FLAGS": "-fsanitize=thread",
+        "USE_MINIMAL_DEBUGINFO": "On"
       }
     },
     {
       "hidden": true,
-      "name": "asan-ubsan",
+      "name": "alubsan",
       "cacheVariables": {
+        "USE_JEMALLOC": "Off",
+        "STATIC_EXECUTABLES": "Off",
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
         "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
-        "USE_JEMALLOC": "Off"
+        "USE_MINIMAL_DEBUGINFO": "On"
       }
     },
     {
@@ -92,19 +105,33 @@
       }
     },
     {
-      "name": "enterprise",
-      "inherits": "community",
-      "displayName": "Build ArangoDB Enterprise Edition",
+      "hidden": true,
+      "name": "no-v8",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "USE_ENTERPRISE": "On",
-        "USE_JEMALLOC": "On",
-        "USE_IPO": "On"
+        "USE_V8": "Off"
+      }
+    },
+    {
+      "name": "community",
+      "inherits": "release-base",
+      "displayName": "Build ArangoDB Community Edition (Release Build)",
+      "binaryDir": "${sourceDir}/build-presets/${presetName}",
+      "cacheVariables": {}
+    },
+    {
+      "name": "enterprise",
+      "inherits": "release-base",
+      "displayName": "Build ArangoDB Enterprise Edition (Release Build)",
+      "cacheVariables": {
+        "USE_ENTERPRISE": "On"
       }
     },
     {
       "name": "community-developer",
-      "inherits": [ "maintainer", "community" ],
+      "inherits": [
+        "maintainer",
+        "community"
+      ],
       "displayName": "Build ArangoDB Community Edition (Developer Build)",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -115,22 +142,54 @@
       }
     },
     {
-      "name": "community-pr",
+      "name": "community-pr-non-maintainer",
       "inherits": [
         "pr",
-        "maintainer",
         "community"
       ],
       "displayName": "PR Build ArangoDB Community Edition"
     },
     {
-      "name": "enterprise-pr",
+      "name": "community-pr-no-v8",
       "inherits": [
         "pr",
+        "community",
+        "no-v8"
+      ],
+      "displayName": "PR Build ArangoDB Community Edition (without V8)"
+    },
+    {
+      "name": "community-pr",
+      "inherits": [
         "maintainer",
+        "community-pr-non-maintainer"
+      ],
+      "displayName": "PR Build ArangoDB Community Edition Maintainer Mode"
+    },
+    {
+      "name": "enterprise-pr-no-v8",
+      "inherits": [
+        "pr",
+        "enterprise",
+        "no-v8"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition (without V8)"
+    },
+    {
+      "name": "enterprise-pr-non-maintainer",
+      "inherits": [
+        "pr",
         "enterprise"
       ],
       "displayName": "PR Build ArangoDB Enterprise Edition"
+    },
+    {
+      "name": "enterprise-pr",
+      "inherits": [
+        "maintainer",
+        "enterprise-pr-non-maintainer"
+      ],
+      "displayName": "PR Build ArangoDB Enterprise Edition Maintainer Mode"
     },
     {
       "name": "community-pr-arm",
@@ -143,7 +202,10 @@
     },
     {
       "name": "enterprise-developer",
-      "inherits": [ "maintainer", "enterprise"],
+      "inherits": [
+        "maintainer",
+        "enterprise"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (Developer Build)",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
@@ -154,32 +216,82 @@
     },
     {
       "name": "community-developer-tsan",
-      "inherits": [ "tsan", "community-developer" ],
+      "inherits": [
+        "tsan",
+        "community-developer"
+      ],
+      "displayName": "Build ArangoDB Community Edition (TSAN Build)"
+    },
+    {
+      "name": "community-pr-tsan",
+      "inherits": [
+        "tsan",
+        "community-pr"
+      ],
       "displayName": "Build ArangoDB Community Edition (TSAN Build)"
     },
     {
       "name": "enterprise-developer-tsan",
-      "inherits": [ "tsan", "enterprise-developer" ],
+      "inherits": [
+        "tsan",
+        "enterprise-developer"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
     },
     {
-      "name": "community-developer-asan-ubsan",
-      "inherits": [ "asan-ubsan", "community-developer" ],
+      "name": "enterprise-pr-tsan",
+      "inherits": [
+        "tsan",
+        "enterprise-pr"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
+    },
+    {
+      "name": "community-developer-alubsan",
+      "inherits": [
+        "alubsan",
+        "community-developer"
+      ],
       "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
     },
     {
-      "name": "enterprise-developer-asan-ubsan",
-      "inherits": [ "asan-ubsan", "enterprise-developer" ],
+      "name": "community-pr-alubsan",
+      "inherits": [
+        "alubsan",
+        "community-pr"
+      ],
+      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
+    },
+    {
+      "name": "enterprise-developer-alubsan",
+      "inherits": [
+        "alubsan",
+        "enterprise-developer"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
+    },
+    {
+      "name": "enterprise-pr-alubsan",
+      "inherits": [
+        "alubsan",
+        "enterprise-pr"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
     },
     {
       "name": "community-developer-coverage",
-      "inherits": [ "gcov", "community-developer" ],
+      "inherits": [
+        "gcov",
+        "community-developer"
+      ],
       "displayName": "Build ArangoDB Community Edition (Coverage Build)"
     },
     {
       "name": "enterprise-developer-coverage",
-      "inherits": [ "gcov", "enterprise-developer" ],
+      "inherits": [
+        "gcov",
+        "enterprise-developer"
+      ],
       "displayName": "Build ArangoDB Enterprise Edition (Coverage Build)"
     }
   ],
@@ -205,8 +317,24 @@
       "configurePreset": "community-pr"
     },
     {
+      "name": "community-pr-no-v8",
+      "configurePreset": "community-pr-no-v8"
+    },
+    {
+      "name": "community-pr-non-maintainer",
+      "configurePreset": "community-pr-non-maintainer"
+    },
+    {
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
+    },
+    {
+      "name": "enterprise-pr-no-v8",
+      "configurePreset": "enterprise-pr-no-v8"
+    },
+    {
+      "name": "enterprise-pr-non-maintainer",
+      "configurePreset": "enterprise-pr-non-maintainer"
     },
     {
       "name": "community-pr-arm",
@@ -217,16 +345,32 @@
       "configurePreset": "community-developer-tsan"
     },
     {
+      "name": "community-pr-tsan",
+      "configurePreset": "community-pr-tsan"
+    },
+    {
       "name": "enterprise-developer-tsan",
       "configurePreset": "enterprise-developer-tsan"
     },
     {
-      "name": "community-developer-asan-ubsan",
-      "configurePreset": "community-developer-asan-ubsan"
+      "name": "enterprise-pr-tsan",
+      "configurePreset": "enterprise-pr-tsan"
     },
     {
-      "name": "enterprise-developer-asan-ubsan",
-      "configurePreset": "enterprise-developer-asan-ubsan"
+      "name": "community-developer-alubsan",
+      "configurePreset": "community-developer-alubsan"
+    },
+    {
+      "name": "community-pr-alubsan",
+      "configurePreset": "community-pr-alubsan"
+    },
+    {
+      "name": "enterprise-developer-alubsan",
+      "configurePreset": "enterprise-developer-alubsan"
+    },
+    {
+      "name": "enterprise-pr-alubsan",
+      "configurePreset": "enterprise-pr-alubsan"
     },
     {
       "name": "community-developer-coverage",
@@ -254,6 +398,5 @@
       "name": "enterprise-pr",
       "configurePreset": "enterprise-pr"
     }
-
   ]
 }

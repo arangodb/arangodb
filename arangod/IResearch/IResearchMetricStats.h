@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/Guard.h"
 #include "Metrics/MetricsFeature.h"
+#include "IResearch/ResourceManager.hpp"
 
 namespace arangodb::iresearch {
 
@@ -50,19 +51,23 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
   };
 
   // toVPack
-  static bool skip(ArangodServer& server, std::string_view labels) {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  static bool skip(ClusterInfo& ci, std::string_view labels) {
     auto start = labels.find(kShard);
     TRI_ASSERT(start != std::string_view::npos);
     start += kShard.size();
     TRI_ASSERT(start < labels.size());
-    std::string /*TODO(MBkkt) Fix cluster info interface*/ shardId{
+    std::string /*TODO(MBkkt) Fix cluster info interface*/ shardName{
         labels.substr(start, labels.size() - start - 1)};
-    auto r = ci.getResponsibleServer(shardId);
+    auto maybeShardID = ShardID::shardIdFromString(shardName);
+    if (maybeShardID.fail()) {
+      return true;  // This is equivalent to the code below, if we could not
+                    // parse shard id, we should skip this shard
+    }
+    auto r = ci.getResponsibleServerNoDelay(maybeShardID.get());
     if (r->empty()) {
       return true;  // TODO(MBkkt) We should fix cluster info :(
     }
-    if ((*r)[0] != ServerState::instance()->getId()) {
+    if (std::string_view{(*r)[0]} != ServerState::instance()->getId()) {
       // We want collect only leader shards stats
       return true;
     }
@@ -134,6 +139,16 @@ DECLARE_GAUGE(arangodb_search_num_segments, uint64_t, "Number of segments");
 DECLARE_GAUGE(arangodb_search_num_files, uint64_t, "Number of files");
 DECLARE_GAUGE(arangodb_search_index_size, uint64_t,
               "Size of the index in bytes");
+DECLARE_GAUGE(arangodb_search_writers_memory_usage, ResourceManager,
+              "Memory usage of writers");
+DECLARE_GAUGE(arangodb_search_readers_memory_usage, ResourceManager,
+              "Memory usage of readers");
+DECLARE_GAUGE(arangodb_search_consolidations_memory_usage, ResourceManager,
+              "Memory usage of consolidations");
+DECLARE_GAUGE(arangodb_search_file_descriptors, ResourceManager,
+              "Count of open file descriptors");
+DECLARE_GAUGE(arangodb_search_mapped_memory, uint64_t,
+              "Amount of mapped memory");
 DECLARE_GAUGE(arangodb_search_num_failed_commits, uint64_t,
               "Number of failed commits");
 DECLARE_GAUGE(arangodb_search_num_failed_cleanups, uint64_t,

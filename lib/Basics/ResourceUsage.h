@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,15 +23,17 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
 
 #include <atomic>
 #include <cstdint>
+#include <memory>
 
 namespace arangodb {
 class GlobalResourceMonitor;
 
+/// @brief a ResourceMonitor to track and limit memory usage for allocations
+/// in a certain area.
 struct alignas(64) ResourceMonitor final {
   /// @brief: granularity of allocations that we track. this should be a
   /// power of 2, so dividing by it is efficient!
@@ -131,4 +133,152 @@ class ResourceUsageScope {
   std::uint64_t _value;
 };
 
+/// @brief an std::allocator-like specialization that uses a ResourceMonitor
+/// underneath.
+template<typename Allocator, typename ResourceMonitor>
+class ResourceUsageAllocatorBase : public Allocator {
+ public:
+  using difference_type =
+      typename std::allocator_traits<Allocator>::difference_type;
+  using propagate_on_container_move_assignment = typename std::allocator_traits<
+      Allocator>::propagate_on_container_move_assignment;
+  using size_type = typename std::allocator_traits<Allocator>::size_type;
+  using value_type = typename std::allocator_traits<Allocator>::value_type;
+
+  ResourceUsageAllocatorBase() = delete;
+
+  template<typename... Args>
+  ResourceUsageAllocatorBase(ResourceMonitor& resourceMonitor, Args&&... args)
+      : Allocator(std::forward<Args>(args)...),
+        _resourceMonitor(&resourceMonitor) {}
+
+  ResourceUsageAllocatorBase(ResourceUsageAllocatorBase&& other) noexcept
+      : Allocator(other.rawAllocator()),
+        _resourceMonitor(other._resourceMonitor) {}
+
+  ResourceUsageAllocatorBase(ResourceUsageAllocatorBase const& other) noexcept
+      : Allocator(other.rawAllocator()),
+        _resourceMonitor(other._resourceMonitor) {}
+
+  ResourceUsageAllocatorBase& operator=(
+      ResourceUsageAllocatorBase&& other) noexcept {
+    static_cast<Allocator&>(*this) = std::move(static_cast<Allocator&>(other));
+    _resourceMonitor = other._resourceMonitor;
+    return *this;
+  }
+
+  template<typename A>
+  ResourceUsageAllocatorBase(
+      ResourceUsageAllocatorBase<A, ResourceMonitor> const& other) noexcept
+      : Allocator(other.rawAllocator()),
+        _resourceMonitor(other.resourceMonitor()) {}
+
+  value_type* allocate(std::size_t n) {
+    _resourceMonitor->increaseMemoryUsage(sizeof(value_type) * n);
+    try {
+      return Allocator::allocate(n);
+    } catch (...) {
+      _resourceMonitor->decreaseMemoryUsage(sizeof(value_type) * n);
+      throw;
+    }
+  }
+
+  void deallocate(value_type* p, std::size_t n) {
+    Allocator::deallocate(p, n);
+    _resourceMonitor->decreaseMemoryUsage(sizeof(value_type) * n);
+  }
+
+  Allocator const& rawAllocator() const noexcept {
+    return static_cast<Allocator const&>(*this);
+  }
+
+  ResourceMonitor* resourceMonitor() const noexcept { return _resourceMonitor; }
+
+  template<typename A>
+  bool operator==(ResourceUsageAllocatorBase<A, ResourceMonitor> const& other)
+      const noexcept {
+    return rawAllocator() == other.rawAllocator() &&
+           _resourceMonitor == other.resourceMonitor();
+  }
+
+ private:
+  ResourceMonitor* _resourceMonitor;
+};
+
+template<typename T, typename ResourceMonitor>
+struct ResourceUsageAllocator
+    : ResourceUsageAllocatorBase<std::allocator<T>, ResourceMonitor> {
+  using ResourceUsageAllocatorBase<std::allocator<T>,
+                                   ResourceMonitor>::ResourceUsageAllocatorBase;
+
+  template<typename U>
+  struct rebind {
+    using other = ResourceUsageAllocator<U, ResourceMonitor>;
+  };
+
+  template<typename X, typename... Args>
+  void construct(X* ptr, Args&&... args) {
+    std::uninitialized_construct_using_allocator(ptr, *this,
+                                                 std::forward<Args>(args)...);
+  }
+};
+
 }  // namespace arangodb
+
+template<typename T, typename R>
+struct std::allocator_traits<arangodb::ResourceUsageAllocator<T, R>> {
+  using allocator_type = arangodb::ResourceUsageAllocator<T, R>;
+  using value_type = T;
+  using pointer = T*;
+  using const_pointer = const T*;
+  using void_pointer = void*;
+  using const_void_pointer = const void*;
+  using difference_type = std::ptrdiff_t;
+  using size_type = std::size_t;
+
+  using propagate_on_container_copy_assignment = false_type;
+  using propagate_on_container_move_assignment = false_type;
+  using propagate_on_container_swap = false_type;
+
+  static allocator_type select_on_container_copy_construction(
+      const allocator_type& other) noexcept {
+    return other;
+  }
+
+  using is_always_equal = false_type;
+
+  template<typename U>
+  using rebind_alloc = arangodb::ResourceUsageAllocator<U, R>;
+
+  template<typename U>
+  using rebind_traits =
+      allocator_traits<arangodb::ResourceUsageAllocator<U, R>>;
+
+  [[nodiscard]] static pointer allocate(allocator_type& a, size_type n) {
+    return a.allocate(n);
+  }
+
+  [[nodiscard]] static pointer allocate(allocator_type& a, size_type n,
+                                        const_void_pointer) {
+    return a.allocate(n);
+  }
+
+  static void deallocate(allocator_type& a, pointer p, size_type n) {
+    a.deallocate(p, n);
+  }
+
+  template<typename U, typename... Args>
+  static void construct(allocator_type& a, U* p, Args&&... args) {
+    a.construct(p, std::forward<Args>(args)...);
+  }
+
+  template<typename U>
+  static constexpr void destroy(allocator_type&, U* p) noexcept(
+      is_nothrow_destructible<U>::value) {
+    p->~U();
+  }
+
+  static constexpr size_type max_size(const allocator_type&) noexcept {
+    return std::numeric_limits<size_type>::max() / sizeof(value_type);
+  }
+};

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -675,8 +675,10 @@ bool InvertedIndexField::init(
           // for cluster only check cache to avoid ClusterInfo locking
           // issues analyzer should have been populated via
           // 'analyzerDefinitions' above
-          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
-                                   ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(
+              name, QueryAnalyzerRevisions::QUERY_LATEST,
+              transaction::OperationOriginInternal{"fetching analyzer"},
+              ServerState::instance()->isClusterRole());
           if (analyzer) {
             // Remap analyzer features to match version.
             AnalyzerPool::ptr remappedAnalyzer;
@@ -990,7 +992,7 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
     }
     // intentional string copy here as createCanonical expects null-terminated
     // string and string_view has no such guarantees
-    _locale = icu::Locale::createCanonical(
+    _locale = icu_64_64::Locale::createCanonical(
         std::string{localeSlice.stringView()}.c_str());
     if (_locale.isBogus()) {
       error = kLocaleFieldName;

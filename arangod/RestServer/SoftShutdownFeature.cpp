@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,10 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
-#include "Pregel/PregelFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
+#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Utils/CursorRepository.h"
@@ -58,8 +57,12 @@ SoftShutdownFeature::SoftShutdownFeature(Server& server)
   setOptional(true);
   startsAfter<application_features::AgencyFeaturePhase>();
   startsAfter<ShutdownFeature>();
+#ifdef USE_V8
   startsAfter<ConsoleFeature>();
   startsAfter<ScriptFeature>();
+#else
+  startsAfter<AgencyFeaturePhase>();
+#endif
 
   // We do not yet know if we are a coordinator, so just in case,
   // create a SoftShutdownTracker, it will not hurt if it is not used:
@@ -111,7 +114,6 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   _server.initiateSoftShutdown();
   // Currently, these are:
   //   - the GeneralServerFeature for its JobManager
-  //   - the PregelFeature
 
   // And initiate our checker to watch numbers:
   queueShutdownChecker(_workItemMutex, _workItem, _checkFunc);
@@ -153,7 +155,6 @@ void SoftShutdownTracker::toVelocyPack(
   builder.add("transactions", VPackValue(status.transactions));
   builder.add("pendingJobs", VPackValue(status.pendingJobs));
   builder.add("doneJobs", VPackValue(status.doneJobs));
-  builder.add("pregelConductors", VPackValue(status.pregelConductors));
   builder.add("lowPrioOngoingRequests",
               VPackValue(status.lowPrioOngoingRequests));
   builder.add("lowPrioQueuedRequests",
@@ -183,10 +184,6 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   auto& jobManager = generalServerFeature.jobManager();
   std::tie(status.pendingJobs, status.doneJobs) =
       jobManager.getNrPendingAndDone();
-
-  // Get number of active Pregel conductors on this coordinator:
-  auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
-  status.pregelConductors = pregelFeature.numberOfActiveConductors();
 
   // Get number of ongoing and queued requests from scheduler:
   std::tie(status.lowPrioOngoingRequests, status.lowPrioQueuedRequests) =

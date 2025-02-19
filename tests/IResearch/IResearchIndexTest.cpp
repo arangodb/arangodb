@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,7 +38,6 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"
@@ -60,14 +59,12 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/Methods/Collections.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 namespace {
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
@@ -215,10 +212,12 @@ class IResearchIndexTest
         unused);
     analyzers.emplace(
         result, "testVocbase::test_A", "TestInsertAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice());
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"X\" }")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});
     analyzers.emplace(
         result, "testVocbase::test_B", "TestInsertAnalyzer",
-        arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice());
+        arangodb::velocypack::Parser::fromJson("{ \"args\": \"Y\" }")->slice(),
+        arangodb::transaction::OperationOriginTestCase{});
 
 #ifdef USE_ENTERPRISE
     analyzers.emplace(
@@ -226,7 +225,8 @@ class IResearchIndexTest
         arangodb::velocypack::Parser::fromJson(
             " { \"type\": \"shape\", \"options\":{\"maxCells\":20,\
                               \"minLevel\":4, \"maxLevel\":23}}")
-            ->slice());
+            ->slice(),
+        arangodb::transaction::OperationOriginTestCase{});
 #endif
 
     auto& dbPathFeature = server.getFeature<arangodb::DatabasePathFeature>();
@@ -265,8 +265,9 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     std::vector<std::string> collections{collection0->name(),
                                          collection1->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase()), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -299,7 +300,8 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     bool createdIndex;
 
 #ifdef USE_ENTERPRISE
-    auto index = collection0->createIndex(nestedIndex->slice(), createdIndex);
+    auto index = collection0->createIndex(nestedIndex->slice(), createdIndex)
+                     .waitAndGet();
     //    collection->createIndex(nestedIndex->slice(), result);
     //    ASSERT_TRUE(createdIndex);
 
@@ -307,7 +309,8 @@ TEST_F(IResearchIndexTest, test_analyzer) {
     //    ASSERT_TRUE(arangodb::methods::Indexes::ensureIndex(collection,
     //    nestedIndex->slice(), createdIndex, outputDefinition).ok());
 #else
-    ASSERT_THROW(collection0->createIndex(nestedIndex->slice(), createdIndex),
+    ASSERT_THROW(collection0->createIndex(nestedIndex->slice(), createdIndex)
+                     .waitAndGet(),
                  arangodb::basics::Exception);
 #endif
   }
@@ -577,8 +580,9 @@ TEST_F(IResearchIndexTest, test_async_index) {
       if (!resThread0) return;
 
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(
-              collection0->vocbase()),
+          arangodb::transaction::StandaloneContext::create(
+              collection0->vocbase(),
+              arangodb::transaction::OperationOriginTestCase{}),
           *collection0, arangodb::AccessMode::Type::WRITE);
       resThread0 = trx.begin().ok();
       if (!resThread0) return;
@@ -619,8 +623,9 @@ TEST_F(IResearchIndexTest, test_async_index) {
       if (!resThread1) return;
 
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(
-              collection1->vocbase()),
+          arangodb::transaction::StandaloneContext::create(
+              collection1->vocbase(),
+              arangodb::transaction::OperationOriginTestCase{}),
           *collection1, arangodb::AccessMode::Type::WRITE);
       resThread1 = trx.begin().ok();
       if (!resThread1) return;
@@ -896,8 +901,9 @@ TEST_F(IResearchIndexTest, test_fields) {
     std::vector<std::string> collections{collection0->name(),
                                          collection1->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -997,8 +1003,9 @@ TEST_F(IResearchIndexTest, test_pkCached) {
     std::vector<std::string> collections{collection0->name(),
                                          collection1->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1053,8 +1060,9 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1074,7 +1082,8 @@ TEST_F(IResearchIndexTest, test_pkCachedInverted) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(
+        collection0->createIndex(updateJson->slice(), created).waitAndGet());
     ASSERT_TRUE(created);
   }
   // running query to force sync
@@ -1118,8 +1127,9 @@ TEST_F(IResearchIndexTest, test_pkCachedRestricted) {
     std::vector<std::string> collections{collection0->name(),
                                          collection1->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1187,8 +1197,9 @@ TEST_F(IResearchIndexTest, test_sortCached) {
     std::vector<std::string> collections{collection0->name(),
                                          collection1->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1243,8 +1254,9 @@ TEST_F(IResearchIndexTest, test_sortCachedInverted) {
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1265,7 +1277,8 @@ TEST_F(IResearchIndexTest, test_sortCachedInverted) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(
+        collection0->createIndex(updateJson->slice(), created).waitAndGet());
     ASSERT_TRUE(created);
   }
   // running query to force sync
@@ -1310,8 +1323,9 @@ TEST_F(IResearchIndexTest, test_sortCachedRestricted) {
     std::vector<std::string> collections{collection0->name(),
                                          collection1->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1380,8 +1394,9 @@ TEST_F(IResearchIndexTest, test_geoCached) {
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1443,8 +1458,9 @@ TEST_F(IResearchIndexTest, test_geoCachedInverted) {
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1460,7 +1476,8 @@ TEST_F(IResearchIndexTest, test_geoCachedInverted) {
       "fields": ["X", {"name":"geofield", "cache":true, "analyzer":"geojson"}]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(
+        collection0->createIndex(updateJson->slice(), created).waitAndGet());
     ASSERT_TRUE(created);
   }
   // running query to force sync
@@ -1489,7 +1506,7 @@ class IResearchCacheOnlyFollowersTest : public ::testing::Test {
 
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{\"id\":1, \"name\": \"testCollection0\" }");
+      "{\"id\":1, \"name\": \"s1337\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1508,8 +1525,9 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1529,18 +1547,19 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(
+        collection0->createIndex(updateJson->slice(), created).waitAndGet());
     ASSERT_TRUE(created);
   }
   // running query to force sync
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);
-    ASSERT_TRUE(result.result.ok());
+    ASSERT_TRUE(result.result.ok()) << result.result.errorMessage();
   }
   ASSERT_EQ(feature.columnsCacheUsage(), 0);
   // now make it leader (just recreate collection in plan with new shards
@@ -1553,7 +1572,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);
@@ -1564,7 +1583,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted) {
 
 TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
   auto createCollection0 = arangodb::velocypack::Parser::fromJson(
-      "{\"id\":1, \"name\": \"testCollection0\" }");
+      "{\"id\":1, \"name\": \"s1337\" }");
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   auto& feature = server.getFeature<arangodb::iresearch::IResearchFeature>();
   auto collection0 = vocbase.createCollection(createCollection0->slice());
@@ -1583,8 +1602,9 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
     static std::vector<std::string> const EMPTY;
     std::vector<std::string> collections{collection0->name()};
     arangodb::transaction::Methods trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY,
-        collections, EMPTY, arangodb::transaction::Options());
+        arangodb::transaction::StandaloneContext::create(
+            vocbase, arangodb::transaction::OperationOriginTestCase{}),
+        EMPTY, collections, EMPTY, arangodb::transaction::Options());
     EXPECT_TRUE(trx.begin().ok());
     EXPECT_TRUE(trx.insert(collection0->name(), doc0->slice(),
                            arangodb::OperationOptions())
@@ -1604,14 +1624,15 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
       "fields":  ["X", "Y"]})");
 
     bool created{false};
-    ASSERT_TRUE(collection0->createIndex(updateJson->slice(), created));
+    ASSERT_TRUE(
+        collection0->createIndex(updateJson->slice(), created).waitAndGet());
     ASSERT_TRUE(created);
   }
   // running query to force sync
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);
@@ -1628,7 +1649,7 @@ TEST_F(IResearchCacheOnlyFollowersTest, test_PkInverted_InitialLeader) {
   {
     auto result = arangodb::tests::executeQuery(
         vocbase,
-        "FOR d IN testCollection0 OPTIONS { waitForSync: true, indexHint: "
+        "FOR d IN s1337 OPTIONS { waitForSync: true, indexHint: "
         "'inverted', forceIndexHint: true} FILTER d.X == 'abc' "
         "SORT d.seq RETURN d",
         nullptr);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Async/Registry/promise.h"
 #include "Futures/Exceptions.h"
 #include "Futures/SharedState.h"
 #include "Futures/Unit.h"
@@ -46,7 +47,9 @@ class Promise {
 
   /// @brief Constructs a Promise with no shared state.
   /// After construction, valid() == true.
-  Promise() : _state(detail::SharedState<T>::make()), _retrieved(false) {}
+  Promise(std::source_location loc = std::source_location::current())
+      : _state(detail::SharedState<T>::make(std::move(loc))),
+        _retrieved(false) {}
 
   Promise(Promise const& o) = delete;
   Promise(Promise<T>&& o) noexcept
@@ -117,6 +120,18 @@ class Promise {
   }
 
   arangodb::futures::Future<T> getFuture();
+
+  auto id() -> void* { return _state->id(); }
+  auto update_source_location(std::source_location loc) -> void {
+    _state->update_source_location(std::move(loc));
+  }
+  auto update_state(async_registry::State state)
+      -> std::optional<async_registry::State> {
+    return _state->update_state(std::move(state));
+  }
+  auto update_requester(async_registry::Requester waiter) -> void {
+    return _state->update_requester(waiter);
+  }
 
  private:
   explicit Promise(detail::SharedState<T>* state)

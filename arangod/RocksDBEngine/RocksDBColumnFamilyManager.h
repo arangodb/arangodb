@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,10 @@
 
 #include "RocksDBEngine/RocksDBCommon.h"
 #include <rocksdb/db.h>
+
+#include <array>
+#include <cstdint>
+#include <span>
 
 namespace arangodb {
 
@@ -46,7 +50,9 @@ struct RocksDBColumnFamilyManager {
     GeoIndex = 5,
     FulltextIndex = 6,
     ReplicatedLogs = 7,
-    ZkdIndex = 8,
+    MdiIndex = 8,
+    MdiVPackIndex = 9,
+    VectorIndex = 10,
 
     Invalid = 1024  // special placeholder
   };
@@ -57,7 +63,7 @@ struct RocksDBColumnFamilyManager {
   };
 
   static constexpr size_t minNumberOfColumnFamilies = 7;
-  static constexpr size_t numberOfColumnFamilies = 9;
+  static constexpr size_t numberOfColumnFamilies = 11;
 
   static void initialize();
 
@@ -68,8 +74,11 @@ struct RocksDBColumnFamilyManager {
   static char const* name(rocksdb::ColumnFamilyHandle* handle,
                           NameMode mode = NameMode::External);
 
-  static std::array<rocksdb::ColumnFamilyHandle*, numberOfColumnFamilies> const&
-  allHandles();
+  /// We purposefully cut off the handles still set to nullptr, since they were
+  /// not initialized
+  /// TODO find better solution that propagates changes to how many column
+  /// families there are on start time
+  static std::span<rocksdb::ColumnFamilyHandle*> allHandles();
 
  private:
   static std::array<char const*, numberOfColumnFamilies> _internalNames;

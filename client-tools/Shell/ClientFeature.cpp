@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,6 +46,7 @@
 #include "Utils/ClientManager.h"
 #include "Utilities/NameValidator.h"
 
+#include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 
 using namespace arangodb::application_features;
@@ -62,26 +63,24 @@ ClientFeature::ClientFeature(ApplicationServer& server,
     : HttpEndpointProvider(server, registration, name()),
       _comm{comm},
       _console{},
-      _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
+      _endpoints{Endpoint::defaultEndpoint()},
       _maxNumEndpoints(maxNumEndpoints),
       _databaseName(StaticStrings::SystemDatabase),
       _username("root"),
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
       _maxPacketSize(1024 * 1024 * 1024),
+      _compressRequestThreshold(0),
       _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
-#if _WIN32
-      _codePage(65001),  // default to UTF8
-      _originalCodePage(UINT16_MAX),
-#endif
       _allowJwtSecret(allowJwtSecret),
       _authentication(true),
       _askJwtSecret(false),
       _warn(false),
       _warnConnect(true),
       _haveServerPassword(false),
-      _forceJson(false) {
+      _forceJson(false),
+      _compressTransfer(false) {
   setOptional(true);
 }
 
@@ -101,18 +100,15 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "The username to use when connecting.",
                      new StringParameter(&_username));
 
-  bool isArangosh = false;
-  {
-    std::string basename = TRI_Basename(options->progname());
-    isArangosh = basename == "arangosh" || basename == "arangosh.exe";
-  }
+  std::string basename = TRI_Basename(options->progname());
+  bool isArangosh = basename == "arangosh";
 
   char const* endpointHelp;
   if (isArangosh) {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
-        "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://.";
+        "Use http+ssl:// as schema to connect to an SSL-secured "
+        "server endpoint, otherwise http+tcp:// or unix://.";
   } else {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
@@ -129,21 +125,23 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 arangosh without connecting to a server.)");
   }
 
-  options->addOption("--server.password",
-                     "The password to use when connecting. If not specified "
-                     "and authentication is required, the user is prompted for "
-                     "a password",
-                     new StringParameter(&_password));
+  options->addOption(
+      "--server.password",
+      "The password to use when connecting. If not specified and "
+      "authentication is required, you are prompted for a password.\n"
+      "In startup options, you can wrap the names of environment variables "
+      "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
+      "expose the password less, like to the process list. "
+      "Literal @ need to be escaped as @@.",
+      new StringParameter(&_password));
 
   if (isArangosh) {
     // this option is only available in arangosh
-    options
-        ->addOption("--server.force-json",
-                    "Force to not use VelocyPack for easier debugging.",
-                    new BooleanParameter(&_forceJson),
-                    arangodb::options::makeDefaultFlags(
-                        arangodb::options::Flags::Uncommon))
-        .setIntroducedIn(30600);
+    options->addOption("--server.force-json",
+                       "Force to not use VelocyPack for easier debugging.",
+                       new BooleanParameter(&_forceJson),
+                       arangodb::options::makeDefaultFlags(
+                           arangodb::options::Flags::Uncommon));
   }
 
   if (_allowJwtSecret) {
@@ -192,14 +190,29 @@ arangosh without connecting to a server.)");
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
-#if _WIN32
-  options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
-      new UInt16Parameter(&_codePage),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Uncommon));
-#endif
+  options
+      ->addOption(
+          "--compress-transfer",
+          "Compress data for transport between " + basename + " and server.",
+          new BooleanParameter(&_compressTransfer))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(This option enables transport compression for data
+received by an ArangoDB server.)");
+
+  options
+      ->addOption("--compress-request-threshold",
+                  "The HTTP request body size from which on requests are "
+                  "transparently compressed when sending them to the server.",
+                  new UInt64Parameter(&_compressRequestThreshold))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(Automatically compress outgoing HTTP requests 
+with the deflate compression format. Compression will only happen for
+HTTP/1.1 and HTTP/2 connections, if the size of the uncompressed request
+body exceeds the threshold value controlled by this startup option,
+and if the request body size after compression is less than the original
+request body size.
+Using the value 0 disables the automatic request compression.")");
 }
 
 void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -289,8 +302,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::for_each(
         _endpoints.begin(), _endpoints.end(), [](auto const& endpoint) {
           if (!endpoint.empty() && (endpoint != "none") &&
-              (endpoint !=
-               Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+              (endpoint != Endpoint::defaultEndpoint())) {
             std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
             if (ep != nullptr && ep->isBroadcastBind()) {
               LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
@@ -378,17 +390,17 @@ void ClientFeature::prepare() {
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    size_t threadNumber) const {
+    size_t threadNumber, bool suppressError) const {
   std::string endpoint;
   {
     READ_LOCKER(locker, _settingsLock);
     endpoint = _endpoints[threadNumber % _endpoints.size()];
   }
-  return createHttpClient(endpoint);
+  return createHttpClient(endpoint, suppressError);
 }
 
 std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition) const {
+    std::string const& definition, bool suppressError) const {
   double requestTimeout;
   bool warn;
   {
@@ -396,16 +408,19 @@ std::unique_ptr<SimpleHttpClient> ClientFeature::createHttpClient(
     requestTimeout = _requestTimeout;
     warn = _warn;
   }
-  return createHttpClient(definition,
-                          SimpleHttpClientParams(requestTimeout, warn));
+  SimpleHttpClientParams params(requestTimeout, warn);
+  params.setCompressRequestThreshold(
+      compressTransfer() ? compressRequestThreshold() : 0);
+  return createHttpClient(definition, std::move(params), suppressError);
 }
 
 std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
-    std::string const& definition, SimpleHttpClientParams const& params) const {
+    std::string const& definition, SimpleHttpClientParams const& params,
+    bool suppressError) const {
   std::unique_ptr<Endpoint> endpoint(Endpoint::clientFactory(definition));
 
   if (endpoint == nullptr) {
-    if (definition != "none") {
+    if (definition != "none" && !suppressError) {
       LOG_TOPIC("2fac8", ERR, arangodb::Logger::FIXME)
           << "invalid value for --server.endpoint ('" << definition << "')";
     }
@@ -446,23 +461,6 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
                   }
                 });
   return httpEndpoints;
-}
-
-void ClientFeature::start() {
-#if _WIN32
-  _originalCodePage = GetConsoleOutputCP();
-  if (IsValidCodePage(_codePage)) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
-}
-
-void ClientFeature::stop() {
-#if _WIN32
-  if (IsValidCodePage(_originalCodePage)) {
-    SetConsoleOutputCP(_originalCodePage);
-  }
-#endif
 }
 
 std::string ClientFeature::databaseName() const {
@@ -592,19 +590,35 @@ bool ClientFeature::getWarnConnect() const noexcept {
   return _warnConnect;
 }
 
+bool ClientFeature::compressTransfer() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _compressTransfer;
+}
+
+void ClientFeature::setCompressTransfer(bool value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _compressTransfer = value;
+}
+
+uint64_t ClientFeature::compressRequestThreshold() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _compressRequestThreshold;
+}
+
 ApplicationServer& ClientFeature::server() const noexcept {
   return _comm.server();
 }
 
 std::string ClientFeature::buildConnectedMessage(
-    std::string const& endpointSpecification, std::string const& version,
-    std::string const& role, std::string const& mode,
-    std::string const& databaseName, std::string const& user) {
-  return std::string("Connected to ArangoDB '") + endpointSpecification +
-         ((version.empty() || version == "arango") ? ""
-                                                   : ", version: " + version) +
-         (role.empty() ? "" : " [" + role + ", " + mode + "]") +
-         ", database: '" + databaseName + "', username: '" + user + "'";
+    std::string_view endpointSpecification, std::string_view version,
+    std::string_view role, std::string_view mode, std::string_view databaseName,
+    std::string_view user) {
+  bool versionEmpty = (version.empty() || version == "arango");
+  return absl::StrCat(
+      "Connected to ArangoDB '", endpointSpecification,
+      (versionEmpty ? "" : ", version: "), (versionEmpty ? "" : version), " [",
+      (role.empty() ? "unknown" : role), ", ", mode, "], database: '",
+      databaseName, "', username: '", user, "'");
 }
 
 int ClientFeature::runMain(

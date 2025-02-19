@@ -1,0 +1,15 @@
+name: rocksdb_total_sst_files
+introducedIn: "3.11.1"
+help: |
+  Total number of RocksDB sst files, aggregated over all levels.
+unit: number
+type: gauge
+category: RocksDB
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  This metric reports the number of sst files of the log structured
+  merge tree of RocksDB, aggregated over all levels.

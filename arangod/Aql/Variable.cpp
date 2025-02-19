@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "Variable.h"
 #include "Aql/Ast.h"
 #include "Aql/VariableGenerator.h"
+#include "Aql/QueryContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
 
@@ -35,24 +36,36 @@ using namespace arangodb::aql;
 
 /// @brief create the variable
 Variable::Variable(std::string name, VariableId id,
-                   bool isFullDocumentFromCollection)
+                   bool isFullDocumentFromCollection,
+                   arangodb::ResourceMonitor& resourceMonitor)
     : id(id),
       name(std::move(name)),
-      isFullDocumentFromCollection(isFullDocumentFromCollection) {}
+      isFullDocumentFromCollection(isFullDocumentFromCollection),
+      _resourceMonitor(resourceMonitor) {}
 
-Variable::Variable(velocypack::Slice slice)
+Variable::Variable(velocypack::Slice slice,
+                   arangodb::ResourceMonitor& resourceMonitor)
     : id(basics::VelocyPackHelper::checkAndGetNumericValue<VariableId>(slice,
                                                                        "id")),
       name(basics::VelocyPackHelper::checkAndGetStringValue(slice, "name")),
       isFullDocumentFromCollection(basics::VelocyPackHelper::getBooleanValue(
           slice, "isFullDocumentFromCollection", false)),
-      _constantValue(slice.get("constantValue")) {}
+      _resourceMonitor(resourceMonitor) {
+  setConstantValue(AqlValue{slice.get("constantValue")});
+  if (auto s = slice.get("bindParameter"); s.isString()) {
+    setBindParameterReplacement(s.copyString());
+  }
+}
 
 /// @brief destroy the variable
-Variable::~Variable() { _constantValue.destroy(); }
+Variable::~Variable() {
+  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
+  _constantValue.destroy();
+}
 
 Variable* Variable::clone() const {
-  return new Variable(name, id, isFullDocumentFromCollection);
+  TRI_ASSERT(type() == Type::Regular);
+  return new Variable(name, id, isFullDocumentFromCollection, _resourceMonitor);
 }
 
 bool Variable::isUserDefined() const noexcept {
@@ -82,8 +95,7 @@ void Variable::toVelocyPack(velocypack::Builder& builder,
 
   if (type() == Variable::Type::Const) {
     builder.add(VPackValue("constantValue"));
-    _constantValue.toVelocyPack(nullptr, builder, /*resolveExternals*/ false,
-                                /*allowUnindexed*/ true);
+    _constantValue.toVelocyPack(nullptr, builder, /*allowUnindexed*/ true);
   }
 }
 
@@ -92,6 +104,9 @@ void Variable::toVelocyPackCommon(velocypack::Builder& builder) const {
   builder.add("name", VPackValue(name));
   builder.add("isFullDocumentFromCollection",
               VPackValue(isFullDocumentFromCollection));
+  if (type() == Variable::Type::BindParameter) {
+    builder.add("bindParameter", VPackValue(_bindParameterName));
+  }
 }
 
 /// @brief replace a variable by another
@@ -132,13 +147,33 @@ bool Variable::isEqualTo(Variable const& other) const noexcept {
 }
 
 Variable::Type Variable::type() const noexcept {
+  if (!_bindParameterName.empty()) {
+    return Variable::Type::BindParameter;
+  }
   if (_constantValue.isNone()) {
     return Variable::Type::Regular;
   }
   return Variable::Type::Const;
 }
 
-void Variable::setConstantValue(AqlValue value) noexcept {
+void Variable::setConstantValue(AqlValue value) {
+  _resourceMonitor.decreaseMemoryUsage(_constantValue.memoryUsage());
   _constantValue.destroy();
-  _constantValue = value;
+
+  try {
+    _resourceMonitor.increaseMemoryUsage(value.memoryUsage());
+    _constantValue = value;
+  } catch (...) {
+    throw;
+  }
+}
+
+std::string_view Variable::bindParameterName() const noexcept {
+  TRI_ASSERT(type() == Type::BindParameter);
+  return _bindParameterName;
+}
+
+void Variable::setBindParameterReplacement(std::string bindName) {
+  TRI_ASSERT(type() == Type::Regular);
+  _bindParameterName = std::move(bindName);
 }

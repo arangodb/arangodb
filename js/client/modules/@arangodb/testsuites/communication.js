@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,10 +29,12 @@ const functionsDocumentation = {
   'communication': 'communication tests',
   'communication_ssl': 'communication tests with SSL'
 };
-const optionsDocumentation = [];
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
+const { versionHas } = require("@arangodb/test-helper");
+const isCov = versionHas('coverage');
 
 const testPaths = {
   'communication': [ tu.pathForTesting('client/communication') ],
@@ -41,8 +43,11 @@ const testPaths = {
 function communication (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
+  if (isCov) {
+    options.oneTestTimeout *= 2;
+  }
 
-  return new tu.runLocalInArangoshRunner(options, 'communication', {}).run(testCases);
+  return new trs.runLocalInArangoshRunner(options, 'communication', {}).run(testCases);
 }
 
 function communicationSsl (options) {
@@ -51,17 +56,21 @@ function communicationSsl (options) {
     'protocol': 'ssl'
   };
   _.defaults(opts, options);
+  if (isCov) {
+    opts.oneTestTimeout *= 2;
+  }
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  return new tu.runLocalInArangoshRunner(opts, 'communication-ssl', {}).run(testCases);
+  return new trs.runLocalInArangoshRunner(opts, 'communication-ssl', {}).run(testCases);
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['communication'] = communication;
-  testFns['communication_ssl'] = communicationSsl;
+  if (versionHas('maintainer-mode')) {
+    Object.assign(allTestPaths, testPaths);
+    testFns['communication'] = communication;
+    testFns['communication_ssl'] = communicationSsl;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+    tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  }
 };

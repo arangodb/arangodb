@@ -2,17 +2,16 @@
 /* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief tests for index estimator recovery
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
@@ -58,11 +57,11 @@ function recoverySuite () {
     testIndexEstimators: function () {
       let c = db._collection('UnitTestsRecovery');
 
-      assertEqual(3, c.getIndexes().length);
-      let idx = c.getIndexes()[0];
+      assertEqual(3, c.indexes().length);
+      let idx = c.indexes()[0];
       assertEqual('primary', idx.type);
 
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value1' ], idx.fields);
@@ -71,7 +70,7 @@ function recoverySuite () {
       // so leave some leeway.
       assertTrue(idx.selectivityEstimate >= 0.90, idx); 
       
-      idx = c.getIndexes()[2];
+      idx = c.indexes()[2];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value2' ], idx.fields);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -93,8 +93,8 @@ irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     BoolStreamPool(DEFAULT_POOL_SIZE);
 irs::unbounded_object_pool<arangodb::iresearch::AnalyzerPool::Builder>
     NumericStreamPool(DEFAULT_POOL_SIZE);
-std::initializer_list<irs::type_info::type_id> NumericStreamFeatures{
-    irs::type<irs::granularity_prefix>::id()};
+static constexpr std::initializer_list<irs::type_info::type_id>
+    NumericStreamFeatures{irs::type<irs::granularity_prefix>::id()};
 
 bool canHandleValue(std::string const& key, VPackSlice const& value,
                     arangodb::iresearch::FieldMeta const& context) noexcept {
@@ -596,7 +596,7 @@ bool FieldIterator<IndexMetaStruct>::setValue(
         _value._indexFeatures = context.indexFeatures();
       } else {
         _value._fieldFeatures = pool->fieldFeatures();
-        _value._indexFeatures = pool->indexFeatures();
+        _value._indexFeatures = pool->features().indexFeatures();
       }
       _value._name = _nameBuffer;
     } break;

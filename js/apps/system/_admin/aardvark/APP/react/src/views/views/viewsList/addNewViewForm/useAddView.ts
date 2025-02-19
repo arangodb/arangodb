@@ -1,26 +1,25 @@
 import { useState } from "react";
 import { useSWRConfig } from "swr";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { getCurrentDB } from "../../../../utils/arangoClient";
+import { notifyError, notifySuccess } from "../../../../utils/notifications";
 
 export const useAddView = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { mutate } = useSWRConfig();
-  const onAdd = (values: any) => {
+  const onAdd = ({ name, ...values }: any) => {
     setIsLoading(true);
-    return getApiRouteForCurrentDB()
-      .post("/view", values)
+    return getCurrentDB()
+      .view(name)
+      .create(values)
       .then(() => {
         setIsLoading(false);
-        window.arangoHelper.arangoNotification(
-          "View",
-          "Creation in progress. This may take a while."
-        );
+        notifySuccess("View creation in progress, this may take a while.");
         mutate("/view");
       })
       .catch(error => {
-        const errorMessage = error?.response?.body?.errorMessage;
+        const errorMessage = error?.response?.parsedBody?.errorMessage;
         if (errorMessage) {
-          window.arangoHelper.arangoError("View", errorMessage);
+          notifyError(`View creation failed: ${errorMessage}`);
         }
         setIsLoading(false);
       });

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,9 @@
 
 #pragma once
 
+#include <utils/attribute_provider.hpp>
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
-#include "VPackDeserializer/deserializer.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -60,34 +60,6 @@ constexpr const char ANALYZER_VALUE_TYPE_BOOL[] = "bool";
 constexpr const char ANALYZER_VALUE_TYPE_NULL[] = "null";
 constexpr const char ANALYZER_VALUE_TYPE_ARRAY[] = "array";
 constexpr const char ANALYZER_VALUE_TYPE_OBJECT[] = "object";
-
-using AnalyzerValueTypeEnumDeserializer =
-    arangodb::velocypack::deserializer::enum_deserializer<
-        AnalyzerValueType,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::String,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_STRING>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Number,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_NUMBER>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Bool,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_BOOL>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Null,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_NULL>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Array,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_ARRAY>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Object,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_OBJECT>>>;
 
 }  // namespace iresearch
 }  // namespace arangodb

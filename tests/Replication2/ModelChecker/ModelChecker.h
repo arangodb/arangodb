@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -160,8 +161,8 @@ struct DFSEnumerator {
   friend auto operator<<(std::ostream& os, PathVectorType const& path)
       -> std::ostream& {
     for (auto const& [v, t] : path) {
-      os << "{" << v->state << "}" << std::endl
-         << " -[" << t << "]-> " << std::endl;
+      os << "{" << v->state << "}\n"
+         << " -[" << t << "]-> \n";
     }
     return os;
   }
@@ -292,15 +293,17 @@ struct DFSEnumerator {
             result.stats.eliminatedStates += 1;
           }
           auto checkResult = step->observer.check(step->state);
+          constexpr auto maxDepth = 40;
           if (isPrune(checkResult)) {
             continue;
           } else if (isError(checkResult)) {
             result.failed.emplace(checkResult.asError(), step,
                                   buildPathVector());
             return result;
-          } else if (v->depth > 40) {
-            result.failed.emplace(CheckError("path to long"), step,
-                                  buildPathVector());
+          } else if (v->depth > maxDepth) {
+            result.failed.emplace(
+                CheckError(fmt::format("path too long (>{})", maxDepth)), step,
+                buildPathVector());
             return result;
           }
           if (step->isActive()) {
@@ -389,8 +392,8 @@ struct RandomEnumerator {
   friend auto operator<<(std::ostream& os, PathVectorType const& path)
       -> std::ostream& {
     for (auto const& [v, t] : path) {
-      os << "{" << v->state << "}"
-         << " -[" << t << "]-> ";
+      os << "{" << v->state << "}\n"
+         << " -[" << t << "]-> \n";
     }
     return os;
   }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,6 +39,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
@@ -108,16 +109,8 @@ void checkFailed(JOB_STATUS status, velocypack::Slice q) {
               "object");
 }
 
-Node createNodeFromBuilder(VPackBuilder const& builder) {
-  VPackBuilder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(VPackBuilder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -131,20 +124,20 @@ Builder createBuilder(char const* c) {
   return builder;
 }
 
-Node createNode(char const* c) {
+NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
-Node createRootNode() { return createNode(agency); }
+NodePtr createRootNode() { return createNode(agency); }
 
-Node createAgency() { return createNode(agency).getOrCreate("arango"); }
+NodePtr createAgency() { return createNode(agency)->get("arango"); }
 
-Node createAgency(TestStructureType const& createTestStructure) {
+NodePtr createAgency(TestStructureType const& createTestStructure) {
   auto node = createNode(agency);
-  auto finalAgency = createTestStructure(node.toBuilder().slice(), "");
+  auto finalAgency = createTestStructure(node->toBuilder().slice(), "");
 
   auto finalAgencyNode = createNodeFromBuilder(*finalAgency);
-  return finalAgencyNode.getOrCreate("arango");
+  return finalAgencyNode->get("arango");
 }
 
 VPackBuilder createJob(std::string const& server) {
@@ -166,7 +159,7 @@ class CleanOutServerTest
     : public ::testing::Test,
       public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
-  Node baseStructure;
+  NodePtr baseStructure;
   write_ret_t fakeWriteResult;
   std::shared_ptr<Builder> transBuilder;
   trans_ret_t fakeTransResult;
@@ -187,10 +180,10 @@ TEST_F(CleanOutServerTest, cleanout_server_should_not_throw) {
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency();
+  auto agency = createAgency();
   // should not throw
   EXPECT_NO_THROW(
-      CleanOutServer(agency, &agent, JOBID, "unittest", "wurstserver"));
+      CleanOutServer(*agency, &agent, JOBID, "unittest", "wurstserver"));
 }
 
 TEST_F(CleanOutServerTest,
@@ -228,9 +221,10 @@ TEST_F(CleanOutServerTest,
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -265,9 +259,10 @@ TEST_F(CleanOutServerTest, cleanout_server_should_wait_if_server_is_blocked) {
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   ASSERT_TRUE(true);
 }
@@ -307,9 +302,10 @@ TEST_F(CleanOutServerTest,
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   ASSERT_TRUE(true);
 }
@@ -355,9 +351,10 @@ TEST_F(CleanOutServerTest,
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -399,9 +396,10 @@ TEST_F(CleanOutServerTest,
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -445,9 +443,10 @@ TEST_F(CleanOutServerTest,
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -492,9 +491,10 @@ TEST_F(CleanOutServerTest,
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -539,9 +539,10 @@ TEST_F(CleanOutServerTest,
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -614,8 +615,17 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
         EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-0")
                         .get("toServer")
                         .copyString() == "free");
+        EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-1")
+                        .get("toServer")
+                        .copyString() == "free");
+        EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-1")
+                        .get("remainsFollower")
+                        .getBool());
+        EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-1")
+                        .get("collection")
+                        .stringView() == "sat_collection");
         // second collection is not touched because of replicationVersion == 2
-        EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-1").isNone());
+        EXPECT_TRUE(writes.get("/arango/Target/ToDo/1-2").isNone());
 
         auto preconditions = q[0][1];
         EXPECT_TRUE(preconditions.get("/arango/Supervision/DBServers/leader")
@@ -635,9 +645,10 @@ TEST_F(CleanOutServerTest, cleanout_server_job_should_move_into_pending_if_ok) {
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   cleanOutServer.start(aborts);
   Verify(Method(mockAgent, write));
 }
@@ -717,10 +728,10 @@ TEST_F(CleanOutServerTest, test_cancel_pending_job) {
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer =
-      CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
+      CleanOutServer(*agency, &agent, JOB_STATUS::PENDING, JOBID);
 
   Mock<CleanOutServer> spy(cleanOutServer);
   Fake(Method(spy, abort));
@@ -776,9 +787,10 @@ TEST_F(CleanOutServerTest, test_cancel_todo_job) {
       });
   AgentInterface& agent = mockAgent.get();
 
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
-  auto cleanOutServer = CleanOutServer(agency, &agent, JOB_STATUS::TODO, JOBID);
+  auto cleanOutServer =
+      CleanOutServer(*agency, &agent, JOB_STATUS::TODO, JOBID);
   Mock<CleanOutServer> spy(cleanOutServer);
   Fake(Method(spy, abort));
 
@@ -816,10 +828,10 @@ TEST_F(CleanOutServerTest, when_there_are_still_subjobs_it_should_wait) {
   };
   Mock<AgentInterface> mockAgent;
   AgentInterface& agent = mockAgent.get();
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer =
-      CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
+      CleanOutServer(*agency, &agent, JOB_STATUS::PENDING, JOBID);
   cleanOutServer.run(aborts);
   ASSERT_TRUE(true);
 };
@@ -887,10 +899,10 @@ TEST_F(CleanOutServerTest,
         return fakeWriteResult;
       });
   AgentInterface& agent = mockAgent.get();
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer =
-      CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
+      CleanOutServer(*agency, &agent, JOB_STATUS::PENDING, JOBID);
   cleanOutServer.run(aborts);
   ASSERT_TRUE(true);
 }
@@ -930,10 +942,10 @@ TEST_F(CleanOutServerTest, failed_subjob_should_also_fail_job) {
         return fakeWriteResult;
       });
   AgentInterface& agent = mockAgent.get();
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer =
-      CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
+      CleanOutServer(*agency, &agent, JOB_STATUS::PENDING, JOBID);
   cleanOutServer.run(aborts);
   ASSERT_TRUE(true);
 }
@@ -1005,10 +1017,10 @@ TEST_F(CleanOutServerTest,
         return fakeWriteResult;
       });
   AgentInterface& agent = mockAgent.get();
-  Node agency = createAgency(createTestStructure);
+  auto agency = createAgency(createTestStructure);
   // should not throw
   auto cleanOutServer =
-      CleanOutServer(agency, &agent, JOB_STATUS::PENDING, JOBID);
+      CleanOutServer(*agency, &agent, JOB_STATUS::PENDING, JOBID);
   cleanOutServer.abort("test abort");
   ASSERT_TRUE(true);
 }

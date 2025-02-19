@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,9 +25,11 @@
 
 #include <atomic>
 #include <function2.hpp>
+#include <source_location>
 
 #include "Assertions/Assert.h"
-
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
 #include "Futures/Try.h"
 
 namespace arangodb {
@@ -49,7 +51,7 @@ namespace detail {
 ///   |                    ---> OnlyCallback ---                    |
 ///   +-------------------------------------------------------------+
 template<typename T>
-class SharedState {
+class SharedState : public async_registry::AddToAsyncRegistry {
   enum class State : uint8_t {
     Start = 1 << 0,
     OnlyResult = 1 << 1,
@@ -78,7 +80,9 @@ class SharedState {
 
  public:
   /// State will be Start
-  static SharedState* make() { return new SharedState(); }
+  static SharedState* make(std::source_location loc) {
+    return new SharedState(std::move(loc));
+  }
 
   /// State will be OnlyResult
   /// Result held will be move-constructed from `t`
@@ -198,6 +202,7 @@ class SharedState {
       case State::Start:
         if (_state.compare_exchange_strong(state, State::OnlyResult,
                                            std::memory_order_release)) {
+          update_state(async_registry::State::Resolved);
           return;
         }
         TRI_ASSERT(state == State::OnlyCallback);  // race with setCallback
@@ -231,11 +236,19 @@ class SharedState {
 
  private:
   /// empty shared state
-  SharedState() : _state(State::Start), _attached(2) {}
+  SharedState(std::source_location loc)
+      : async_registry::AddToAsyncRegistry(std::move(loc)),
+        _state(State::Start),
+        _attached(2) {
+    update_state(async_registry::State::Suspended);
+  }
 
   /// use to construct a ready future
   explicit SharedState(Try<T>&& t)
-      : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {}
+      : _result(std::move(t)), _state(State::OnlyResult), _attached(1) {
+    // is not added to async thread registry because it is immediately
+    // resolved
+  }
 
   /// use to construct a ready future
   template<typename... Args>
@@ -243,7 +256,10 @@ class SharedState {
       std::is_nothrow_constructible<T, Args&&...>::value)
       : _result(std::in_place, std::forward<Args>(args)...),
         _state(State::OnlyResult),
-        _attached(1) {}
+        _attached(1) {
+    // is not added to async thread registry because it is immediately
+    // resolved
+  }
 
   ~SharedState() {
     TRI_ASSERT(_attached == 0);
@@ -265,10 +281,14 @@ class SharedState {
     TRI_ASSERT(_state == State::Done);
     TRI_ASSERT(_callback);
 
+    update_state(async_registry::State::Running);
+
     _attached.fetch_add(1);
     // SharedStateScope makes this exception safe
     SharedStateScope scope(this);  // will call detachOne()
     _callback(std::move(_result));
+
+    update_state(async_registry::State::Resolved);
   }
 
  private:

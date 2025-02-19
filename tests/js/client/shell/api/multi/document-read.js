@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +21,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -551,7 +549,7 @@ function checking_a_documentSuite () {
     test_create_a_document_and_check_to_read_it: function() {
       let cmd = `/_api/document?collection=${cid._id}`;
       let body = { "Hallo" : "World" };
-      let doc = arango.POST_RAW(cmd, body);
+      let doc = arango.POST_RAW(cmd, body, { 'accept-encoding': 'identity' });
 
       assertEqual(doc.code, 201, doc);
       let location = doc.headers['location'];
@@ -559,7 +557,7 @@ function checking_a_documentSuite () {
 
       // get document;
       cmd = location;
-      doc = arango.GET_RAW(cmd);
+      doc = arango.GET_RAW(cmd, { 'accept-encoding': 'identity' });
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
@@ -567,7 +565,7 @@ function checking_a_documentSuite () {
       let content_length = doc.headers['content-length'];
 
       // get the document head;
-      doc = arango.HEAD_RAW(cmd);
+      doc = arango.HEAD_RAW(cmd, { 'accept-encoding': 'identity' });
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
@@ -604,6 +602,21 @@ function checking_a_documentSuite () {
       doc = arango.HEAD_RAW(cmd, hdr);
 
       assertEqual(doc.code, 412);
+      hdr = { "if-match": "nonMatching" };
+      doc = arango.HEAD_RAW(cmd, hdr);
+
+      assertEqual(doc.body, undefined);
+      assertEqual(doc.code, 412);
+    },
+
+    test_use_empty_array_for_documents_read: function () {
+      let cmd = `/_api/document/${cid._id}?onlyget=true`;
+      let body = [];
+      let doc = arango.PUT_RAW(cmd, body);
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertEqual(doc.parsedBody, []);
     },
 
   };

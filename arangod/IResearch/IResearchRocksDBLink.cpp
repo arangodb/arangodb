@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
+#include "Basics/StaticStrings.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchRocksDBLink.h"
@@ -53,10 +53,7 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()},
+                   collection.vocbase().engine<RocksDBEngine>()},
       IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -127,16 +124,14 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
   if (!isOpening) {
     link->setBuilding(true);
   }
-  auto const res =
-      link->init(definition, pathExists, [this]() -> irs::directory_attributes {
-        auto& selector = _server.getFeature<EngineSelectorFeature>();
-        TRI_ASSERT(selector.isRocksDB());
-        auto& engine = selector.engine<RocksDBEngine>();
+  auto const res = link->init(
+      definition, pathExists, [&collection]() -> irs::directory_attributes {
+        auto& engine = collection.vocbase().engine<RocksDBEngine>();
         auto* encryption = engine.encryptionProvider();
         if (encryption) {
           return irs::directory_attributes{
-              0, std::make_unique<RocksDBEncryptionProvider>(
-                     *encryption, engine.rocksDBOptions())};
+              std::make_unique<RocksDBEncryptionProvider>(
+                  *encryption, engine.rocksDBOptions())};
         }
         return irs::directory_attributes{};
       });

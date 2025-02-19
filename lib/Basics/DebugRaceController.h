@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,9 @@
 
 #include <any>
 #include <condition_variable>
+#include <memory>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 namespace arangodb {
@@ -42,27 +44,27 @@ class DebugRaceController {
  public:
   static DebugRaceController& sharedInstance();
 
-  DebugRaceController();
+  DebugRaceController() = default;
 
-  // Reset the sotread state here, will free the stored data
-  // and remove the didTrigger flag
+  // Reset the stored state here, will free the stored data.
   void reset();
 
-  // Access the data stored by waiting threads.
-  std::vector<std::any> data() const;
-
   // Caller is required to COPY the data to store here.
-  // Otherwise a concurrent thread might try to read it,
+  // Otherwise, a concurrent thread might try to read it,
   // after the caller has freed the memory.
   auto waitForOthers(
-      size_t numberOfThreadsToWaitFor, std::any myData,
-      arangodb::application_features::ApplicationServer const& server) -> bool;
+      std::size_t numberOfThreadsToWaitFor, std::any myData,
+      arangodb::application_features::ApplicationServer const& server)
+      -> std::optional<std::vector<std::any>>;
 
  private:
-  bool _didTrigger{false};
+  bool didTrigger(std::unique_lock<std::mutex> const& guard,
+                  std::size_t numberOfThreadsToWaitFor) const;
+
+ private:
   std::mutex mutable _mutex{};
-  std::vector<std::any> _data{};
   std::condition_variable _condVariable{};
+  std::vector<std::any> _data{};
 };
 }  // namespace basics
 }  // namespace arangodb

@@ -2,32 +2,29 @@
 /*global assertEqual, assertTrue, assertMatch, assertNotEqual
   assertUndefined, assertFalse, fail, REPLICATION_LOGGER_LAST */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the replication functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
@@ -567,7 +564,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
@@ -589,7 +586,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "hash", fields: ["a"] });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
@@ -611,7 +608,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "hash", fields: ["a", "b"], unique: true, sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
@@ -634,7 +631,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "hash", fields: ["a"], sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
@@ -656,7 +653,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"] });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -679,7 +676,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
@@ -701,7 +698,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a", "b", "c"], sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -724,7 +721,7 @@ function ReplicationLoggerSuite () {
 
       c.ensureIndex({ type: "skiplist", fields: ["a"], unique: true, sparse: true });
 
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertEqual(c._id, entry.cid);
@@ -744,7 +741,7 @@ function ReplicationLoggerSuite () {
 
       var tick = getLastLogTick();
       c.ensureIndex({ type: "fulltext", fields: ["a"], minLength: 5 });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
 
       var entry = getLogEntries(tick, 2100)[0];
       assertTrue(2100, entry.type);
@@ -766,7 +763,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a", "b"] });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -787,7 +784,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a"], geoJson: true });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -809,7 +806,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a", "b"], geoJson: false });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -832,7 +829,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a", "b"], geoJson: false });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -855,7 +852,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       c.ensureIndex({ type: "geo", fields: ["a"], geoJson: true });
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       var entry = getLogEntries(tick, 2100)[0];
 
       assertTrue(2100, entry.type);
@@ -879,7 +876,7 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       // use index at #1 (#0 is primary index)
-      var idx = c.getIndexes()[1];
+      var idx = c.indexes()[1];
       c.dropIndex(idx);
       var entry = getLogEntries(tick, 2101)[0];
 

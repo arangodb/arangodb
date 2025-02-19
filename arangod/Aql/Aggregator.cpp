@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,7 +68,7 @@ struct AggregatorInfo {
 
   /// @brief under which name this aggregator is pushed on a DB server. if left
   /// empty, the aggregator will only work on a coordinator and not be pushed
-  /// onto a DB server for example, the SUM aggregator is cumutative, so it can
+  /// onto a DB server for example, the SUM aggregator is commutative, so it can
   /// be pushed executed on partial results on the DB server as SUM too however,
   /// the LENGTH aggregator needs to be pushed as LENGTH to the DB server, but
   /// the partial lengths need to be aggregated on the coordinator using SUM
@@ -152,8 +152,6 @@ class MemoryBlockAllocator {
 struct AggregatorLength final : public Aggregator {
   explicit AggregatorLength(velocypack::Options const* opts)
       : Aggregator(opts), count(0) {}
-  AggregatorLength(velocypack::Options const* opts, uint64_t initialCount)
-      : Aggregator(opts), count(initialCount) {}
 
   void reset() override { count = 0; }
 
@@ -617,7 +615,7 @@ struct AggregatorUnique : public Aggregator {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (seen.contains(s)) {
       // already saw the same value
@@ -660,7 +658,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
   void reduce(AqlValue const& cmpValue) override final {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (!s.isArray()) {
       return;
@@ -669,7 +667,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
     for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.contains(it)) {
         // already saw the same value
-        return;
+        continue;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
@@ -700,7 +698,7 @@ struct AggregatorSortedUnique : public Aggregator {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (seen.find(s) != seen.end()) {
       // already saw the same value
@@ -735,7 +733,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
   void reduce(AqlValue const& cmpValue) override final {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (!s.isArray()) {
       return;
@@ -744,7 +742,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
     for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
-        return;
+        continue;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
@@ -771,7 +769,7 @@ struct AggregatorCountDistinct : public Aggregator {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (seen.contains(s)) {
       // already saw the same value
@@ -832,16 +830,16 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
 
-    VPackSlice s = materializer.slice(cmpValue, true);
+    VPackSlice s = materializer.slice(cmpValue);
 
     if (!s.isArray()) {
       return;
     }
 
     for (VPackSlice it : VPackArrayIterator(s)) {
-      if (seen.find(s) != seen.end()) {
+      if (seen.contains(it)) {
         // already saw the same value
-        return;
+        continue;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
@@ -933,6 +931,68 @@ struct AggregatorBitOr : public AggregatorBitFunction<BitFunctionOr> {
 struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
   explicit AggregatorBitXOr(velocypack::Options const* opts)
       : AggregatorBitFunction(opts) {}
+};
+
+struct AggregatorMergeLists : public Aggregator {
+  explicit AggregatorMergeLists(velocypack::Options const* opts)
+      : Aggregator(opts) {}
+
+  ~AggregatorMergeLists() { reset(); }
+
+  // cppcheck-suppress virtualCallInConstructor
+  void reset() override final { builder.clear(); }
+
+  void reduce(AqlValue const& cmpValue) override {
+    AqlValueMaterializer materializer(_vpackOptions);
+    VPackSlice s = materializer.slice(cmpValue);
+    if (!builder.isOpenArray()) {
+      builder.openArray();
+    }
+    builder.add(VPackArrayIterator(s));
+  }
+
+  AqlValue get() const override final {
+    if (!builder.isOpenArray()) {
+      builder.openArray();
+    }
+    builder.close();
+    return AqlValue(builder.slice());
+  }
+
+  mutable arangodb::velocypack::Builder builder;
+};
+
+struct AggregatorList : public Aggregator {
+  explicit AggregatorList(velocypack::Options const* opts) : Aggregator(opts) {}
+
+  ~AggregatorList() { reset(); }
+
+  // cppcheck-suppress virtualCallInConstructor
+  void reset() override final { builder.clear(); }
+
+  void reduce(AqlValue const& cmpValue) override {
+    AqlValueMaterializer materializer(_vpackOptions);
+    VPackSlice s = materializer.slice(cmpValue);
+    if (!builder.isOpenArray()) {
+      builder.openArray();
+    }
+    builder.add(s);
+  }
+
+  AqlValue get() const override final {
+    if (!builder.isOpenArray()) {
+      builder.openArray();
+    }
+
+    // be aware of the Window Executor: it calls reduce and get multiple times
+    // if preceding is `unbounded`. But closing the array here breaks the
+    // velocypack slice.
+    auto builderCopy = builder;
+    builderCopy.close();
+    return AqlValue(std::move(*builderCopy.steal()));
+  }
+
+  mutable arangodb::velocypack::Builder builder;
 };
 
 /// @brief all available aggregators with their meta data
@@ -1033,6 +1093,12 @@ std::unordered_map<std::string_view, AggregatorInfo> const aggregators = {
     {"BIT_XOR",
      {std::make_shared<GenericFactory<AggregatorBitXOr>>(), doesRequireInput,
       official, "BIT_XOR", "BIT_XOR"}},
+    {"MERGE_LISTS",
+     {std::make_shared<GenericFactory<AggregatorMergeLists>>(),
+      doesRequireInput, internalOnly, "", "MERGE_LISTS"}},
+    {"PUSH",
+     {std::make_shared<GenericFactory<AggregatorList>>(), doesRequireInput,
+      official, "PUSH", "MERGE_LISTS"}},
 };
 
 /// @brief aliases (user-visible) for aggregation functions

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -79,7 +79,6 @@ class SoftShutdownTracker
     uint64_t transactions{0};
     uint64_t pendingJobs{0};
     uint64_t doneJobs{0};
-    uint64_t pregelConductors{0};
     uint64_t lowPrioOngoingRequests{0};
     uint64_t lowPrioQueuedRequests{0};
 
@@ -91,7 +90,7 @@ class SoftShutdownTracker
     bool allClear() const noexcept {
       return AQLcursors == 0 && transactions == 0 && pendingJobs == 0 &&
              doneJobs == 0 && lowPrioOngoingRequests == 0 &&
-             lowPrioQueuedRequests == 0 && pregelConductors == 0;
+             lowPrioQueuedRequests == 0;
     }
   };
 

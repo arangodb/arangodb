@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,18 +22,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogThread.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
-#include "Logger/LogAppender.h"
+#include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 
-LogThread::LogThread(application_features::ApplicationServer& server,
-                     std::string const& name)
-    : Thread(server, name), _messages(64) {}
+LogThread::LogThread(std::string const& name, uint32_t maxQueuedLogMessages)
+    : Thread(name),
+      _messages(64),
+      _maxQueuedLogMessages(maxQueuedLogMessages) {}
 
 LogThread::~LogThread() {
   Logger::_active = false;
+
+  // make sure there are no memory leaks on uncontrolled shutdown
+  MessageEnvelope env{nullptr, nullptr};
+  while (_messages.pop(env)) {
+    delete env.msg;
+  }
 
   shutdown();
 }
@@ -46,17 +54,39 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     return true;
   }
 
-  bool const isDirectLogLevel =
+  bool isDirectLogLevel =
       (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
        message->_level == LogLevel::WARN);
 
-  if (!_messages.push({&group, message.get()})) {
+  auto numMessages =
+      _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
+
+  auto rollback = scopeGuard([&]() noexcept {
+    // roll back the counter update
+    _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
+
+    // and inform logger that we dropped a message
+    // the callback function is noexcept, too.
+    Logger::onDroppedMessage();
+  });
+
+  if (numMessages >= _maxQueuedLogMessages && !isDirectLogLevel) {
+    // log queue is full, and the message is not important enough
+    // to push it anyway. this will execute the rollback.
     return false;
   }
 
+  if (!_messages.push({&group, message.get()})) {
+    // unable to push message onto the queue.
+    // this will also execute the rollback.
+    return false;
+  }
+
+  rollback.cancel();
+
   // only release message if adding to the queue succeeded
   // otherwise we would leak here
-  message.release();
+  std::ignore = message.release();
 
   if (isDirectLogLevel) {
     this->flush();
@@ -105,11 +135,12 @@ bool LogThread::processPendingMessages() {
   MessageEnvelope env{nullptr, nullptr};
 
   while (_messages.pop(env)) {
+    _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
     worked = true;
     TRI_ASSERT(env.group != nullptr);
     TRI_ASSERT(env.msg != nullptr);
     try {
-      LogAppender::log(*env.group, *env.msg);
+      Logger::log(*env.group, *env.msg);
     } catch (...) {
     }
 

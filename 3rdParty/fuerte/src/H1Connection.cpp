@@ -22,6 +22,8 @@
 
 #include "H1Connection.h"
 
+#include <absl/strings/escaping.h>
+#include <absl/strings/str_cat.h>
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
@@ -177,8 +179,8 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
   // preemptively cache
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     _authHeader.append("Authorization: Basic ");
-    _authHeader.append(fu::encodeBase64(
-        this->_config._user + ":" + this->_config._password, true));
+    _authHeader.append(absl::Base64Escape(
+        absl::StrCat(this->_config._user, ":", this->_config._password)));
     _authHeader.append("\r\n");
   } else if (this->_config._authenticationType == AuthenticationType::Jwt) {
     if (this->_config._jwtToken.empty()) {
@@ -363,7 +365,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   FUERTE_ASSERT(this->_state == Connection::State::Connected ||
                 this->_state == Connection::State::Closed);
   this->_writing = false;  // indicate that no async write is ongoing any more
-  this->_proto.timer.cancel();  // cancel alarm for timeout
+  this->cancelTimer();  // cancel alarm for timeout
 
   auto const now = Clock::now();
   if (ec || _item == nullptr || _item->expires < now) {
@@ -403,7 +405,7 @@ template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   // Do not cancel timeout now, because we might be going on to read!
   if (_item == nullptr) {  // could happen on aborts
-    this->_proto.timer.cancel();
+    this->cancelTimer();
     this->shutdownConnection(Error::CloseRequested);
     return;
   }
@@ -443,7 +445,8 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_ASSERT(_response != nullptr);
     _messageComplete = false;  // prevent entering branch on EOF
 
-    this->_proto.timer.cancel();  // got response in time
+    this->cancelTimer();  // got response in time
+
     if (!_responseBuffer.empty()) {
       _response->setPayload(std::move(_responseBuffer), 0);
     }
@@ -502,8 +505,7 @@ template <SocketType ST>
 void H1Connection<ST>::setIOTimeout() {
   const bool isIdle = _item == nullptr;
   if (isIdle && !this->_config._useIdleTimeout) {
-    asio_ns::error_code ec;
-    this->_proto.timer.cancel(ec);
+    this->cancelTimer();
     return;
   }
 

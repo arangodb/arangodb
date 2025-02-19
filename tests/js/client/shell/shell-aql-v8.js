@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
 /*global assertEqual, assertTrue, assertFalse, fail, more */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test V8 invocation from AQL
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 
@@ -43,11 +40,13 @@ function V8QuerySuite () {
       } catch (err) {}
       
       functions.register('test::testudf', function() { return 42; });
+      functions.register('test::decodeURIComponent', function (text) { try { return decodeURIComponent(text); } catch (e) { return ''; } });
     },
     
     tearDownAll : function () {
       try {
         functions.unregister('test::testudf');
+        functions.unregister('test::decodeURIComponent');
       } catch (err) {}
     },
 
@@ -109,6 +108,11 @@ function V8QuerySuite () {
     testApplyUserDefinedHidden : function () {
       let results = db._query({ query: "RETURN APPLY(NOOPT('test::testudf'), [])" }).toArray();
       assertEqual(42, results[0]);
+    },
+
+    testApplyUserDefinedMultiple : function () {
+      let results = db._query({ query: "FOR i IN 0..10000 FILTER 'a' == test::decodeURIComponent('a') RETURN 'done'" }).toArray();
+      assertEqual('done', results[0]);
     },
 
   };

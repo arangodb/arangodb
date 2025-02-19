@@ -1,0 +1,18 @@
+name: arangodb_scheduler_medium_prio_dequeue_hist
+introducedIn: "3.12.1"
+help: |
+  Time required to take an item from the medium priority queue.
+unit: µs
+type: histogram
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This histogram provides the distribution of time required to take entries
+  from the medium priority queue, i.e., the amount of time the jobs were sitting
+  in the queue. Long dequeue times indicate that the server is under heavy load
+  and medium priority jobs cannot be dequeued in a timely manner.

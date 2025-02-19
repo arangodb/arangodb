@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -158,6 +158,7 @@ collectAll(InputIterator first, InputIterator last) {
 
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
   for (size_t i = 0; first != last; ++first, ++i) {
+    first->update_requester({ctx->p.id()});
     std::move(*first).thenFinal(
         [i, ctx](auto&& t) { ctx->results[i] = std::move(t); });
   }
@@ -176,6 +177,7 @@ namespace gather {
 
 template<typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
+  (ts.update_requester({c->p.id()}), ...);
   (std::move(ts).thenFinal(
        [&](Try<Ts>&& t) { std::get<I>(c->results) = std::move(t); }),
    ...);
@@ -211,6 +213,7 @@ namespace collect {
 
 template<typename C, typename... Ts, std::size_t... I>
 void thenFinalAll(C& c, std::index_sequence<I...>, Future<Ts>&&... ts) {
+  (ts.update_requester({c->p.id()}), ...);
   (std::move(ts).thenFinal([c](Try<Ts>&& t) {
     if (t.hasException()) {
       if (c->hadError.exchange(true, std::memory_order_release) == false) {

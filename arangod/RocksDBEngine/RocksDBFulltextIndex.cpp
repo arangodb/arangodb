@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -103,10 +103,7 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   collection.vocbase().engine<RocksDBEngine>()),
       _minWordLength(FulltextIndexLimits::minWordLengthDefault) {
   TRI_ASSERT(iid.isSet());
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
@@ -229,7 +226,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 
 Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
-                                    LocalDocumentId const& documentId,
+                                    LocalDocumentId documentId,
                                     velocypack::Slice doc,
                                     OperationOptions const& /*options*/,
                                     bool /*performChecks*/) {
@@ -265,7 +262,7 @@ Result RocksDBFulltextIndex::insert(transaction::Methods& trx,
 
 Result RocksDBFulltextIndex::remove(transaction::Methods& trx,
                                     RocksDBMethods* mthd,
-                                    LocalDocumentId const& documentId,
+                                    LocalDocumentId documentId,
                                     velocypack::Slice doc,
                                     OperationOptions const& /*options*/) {
   Result res;
@@ -485,8 +482,12 @@ Result RocksDBFulltextIndex::applyQueryToken(
   rocksdb::Slice end = bounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
 
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(
-      _cf, [&](rocksdb::ReadOptions& ro) { ro.iterate_upper_bound = &end; });
+  std::unique_ptr<rocksdb::Iterator> iter =
+      mthds->NewIterator(_cf, [&](rocksdb::ReadOptions& ro) {
+        if (!mthds->iteratorMustCheckBounds(ReadOwnWrites::no)) {
+          ro.iterate_upper_bound = &end;
+        }
+      });
 
   // set is used to perform an intersection with the result set
   std::set<LocalDocumentId> intersect;

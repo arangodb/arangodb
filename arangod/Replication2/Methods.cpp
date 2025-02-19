@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include <Basics/Exceptions.h>
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
+#include <absl/strings/str_cat.h>
 
 #include <iterator>
 #include <utility>
@@ -46,6 +47,8 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include "Agency/AgencyPaths.h"
@@ -59,6 +62,63 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+
+void ReplicatedLogMethods::AllLogsStatus::toVelocyPack(
+    velocypack::Builder& b) const {
+  VPackObjectBuilder ob(&b);
+
+  b.add(VPackValue("globalStatus"));
+  globalStatus.toVelocyPack(b);
+
+  if (snapshots.fail()) {
+    b.add(VPackValue("snapshots"));
+    velocypack::serialize(b, snapshots.result());
+  } else if (snapshots->get("result").isObject() &&
+             snapshots->get("result").hasKey("snapshots")) {
+    b.add(VPackValue("snapshots"));
+    b.add(snapshots->get("result")["snapshots"]);
+  }
+
+  if (shards.fail()) {
+    b.add(VPackValue("shards"));
+    velocypack::serialize(b, shards.result());
+  } else if (shards->get("result").isArray()) {
+    b.add(VPackValue("shards"));
+    b.add(shards->get("result"));
+  }
+}
+
+void ReplicatedLogMethods::CollectionStatus::toVelocyPack(
+    velocypack::Builder& b) const {
+  VPackObjectBuilder ob(&b);
+
+  b.add(VPackValue("groupId"));
+  b.add(VPackValue(groupId.id()));
+
+  b.add(VPackValue("allCollectionsInGroup"));
+  {
+    VPackArrayBuilder ab(&b);
+    for (auto const& collection : allCollectionsInGroup) {
+      b.add(VPackValue(collection));
+    }
+  }
+
+  b.add(VPackValue("collectionShards"));
+  {
+    VPackArrayBuilder ab(&b);
+    for (auto const& shard : collectionShards) {
+      b.add(VPackValue(shard.id()));
+    }
+  }
+
+  {
+    VPackObjectBuilder ob2(&b, "logs");
+    for (auto const& [logId, logStatus] : logs) {
+      b.add(VPackValue(to_string(logId)));
+      logStatus.toVelocyPack(b);
+    }
+  }
+}
 
 namespace {
 struct ReplicatedLogMethodsDBServer final
@@ -108,61 +168,55 @@ struct ReplicatedLogMethodsDBServer final
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  [[noreturn]] auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   auto getStatus(LogId id) const -> futures::Future<GenericLogStatus> override {
     return getLocalStatus(id).thenValue(
         [](LogStatus&& status) { return GenericLogStatus(std::move(status)); });
   }
 
-  auto getLogEntryByIndex(LogId id, LogIndex index) const
-      -> futures::Future<std::optional<PersistingLogEntry>> override {
-    auto entry = vocbase.getReplicatedLogById(id)
-                     ->getParticipant()
-                     ->copyInMemoryLog()
-                     .getEntryByIndex(index);
-    if (entry.has_value()) {
-      return entry->entry();
-    } else {
-      return std::nullopt;
-    }
-  }
-
   auto slice(LogId id, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    return vocbase.getReplicatedLogById(id)
-        ->getParticipant()
-        ->copyInMemoryLog()
-        .getInternalIteratorRange(start, stop);
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
+    auto iter = vocbase.getReplicatedLogById(id)
+                    ->getParticipant()
+                    ->getInternalLogIterator(LogRange(start, stop));
+    return {std::move(iter)};
   }
 
   auto poll(LogId id, LogIndex index, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto leader = vocbase.getReplicatedLogLeaderById(id);
     return vocbase.getReplicatedLogById(id)
         ->getParticipant()
         ->waitFor(index)
         .thenValue([index, limit, leader = std::move(leader),
                     self = shared_from_this()](
-                       auto&&) -> std::unique_ptr<PersistedLogIterator> {
-          auto log = leader->copyInMemoryLog();
-          return log.getInternalIteratorRange(index, index + limit);
+                       auto&&) -> std::unique_ptr<LogIterator> {
+          return leader->getInternalLogIterator(LogRange(index, index + limit));
         });
   }
 
   auto tail(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log =
-        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
-    auto stop = log.getNextIndex();
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
+    auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
+    auto status = participant->getQuickStatus();
+    auto logStats = status.local;
+    auto stop = logStats.spearHead.index + 1;
     auto start = stop.saturatedDecrement(limit);
-    return log.getInternalIteratorRange(start, stop);
+    return participant->getInternalLogIterator(LogRange(start, stop));
   }
 
   auto head(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
-    auto log =
-        vocbase.getReplicatedLogById(id)->getParticipant()->copyInMemoryLog();
-    auto start = log.getFirstIndex();
-    return log.getInternalIteratorRange(start, start + limit);
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
+    auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
+    auto status = participant->getQuickStatus();
+    auto logStats = status.local;
+    auto start = logStats.firstIndex;
+    auto bounds = LogRange(start, start + limit);
+    return participant->getInternalLogIterator(bounds);
   }
 
   auto ping(LogId id, std::optional<std::string> message) const
@@ -178,40 +232,113 @@ struct ReplicatedLogMethodsDBServer final
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id);
-    auto idx = log->insert(std::move(payload), waitForSync);
-    return log->waitFor(idx).thenValue([idx](auto&& result) {
-      return std::make_pair(idx, std::forward<decltype(result)>(result));
-    });
+    auto stateBase = vocbase.getReplicatedStateById(id);
+    auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+        vocbase.getReplicatedLogLeaderById(id));
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        auto idx = leaderState->insert(std::move(payload), waitForSync);
+        return log->waitFor(idx).thenValue([idx](auto&& result) {
+          return std::make_pair(idx, std::forward<decltype(result)>(result));
+        });
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
               bool waitForSync) const
       -> futures::Future<std::pair<std::vector<LogIndex>,
                                    replicated_log::WaitForResult>> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id);
-    auto indexes = std::vector<LogIndex>{};
-    while (auto payload = iter.next()) {
-      auto idx = log->insert(std::move(*payload));
-      indexes.push_back(idx);
+    auto stateBase = vocbase.getReplicatedStateById(id);
+    auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
+        vocbase.getReplicatedLogLeaderById(id));
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
     }
-    if (indexes.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "multi insert list must not be empty");
-    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        auto indexes = std::vector<LogIndex>{};
+        while (auto payload = iter.next()) {
+          auto idx = leaderState->insert(std::move(*payload), waitForSync);
+          indexes.push_back(idx);
+        }
+        if (indexes.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "multi insert list must not be empty");
+        }
 
-    return log->waitFor(indexes.back())
-        .thenValue([indexes = std::move(indexes)](auto&& result) mutable {
-          return std::make_pair(std::move(indexes),
-                                std::forward<decltype(result)>(result));
-        });
+        auto lastIndex = indexes.back();
+        return log->waitFor(lastIndex).thenValue(
+            [indexes = std::move(indexes)](auto&& result) mutable {
+              return std::make_pair(std::move(indexes),
+                                    std::forward<decltype(result)>(result));
+            });
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<LogIndex> override {
-    auto log = vocbase.getReplicatedLogLeaderById(id);
-    auto idx = log->insert(std::move(payload), waitForSync);
-    return {idx};
+    auto stateBase = vocbase.getReplicatedStateById(id);
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        return leaderState->insert(std::move(payload), waitForSync);
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto compact(LogId id) const
@@ -227,8 +354,31 @@ struct ReplicatedLogMethodsDBServer final
 
   auto release(LogId id, LogIndex index) const
       -> futures::Future<Result> override {
-    auto log = vocbase.getReplicatedLogById(id);
-    return log->getParticipant()->release(index);
+    auto stateBase = vocbase.getReplicatedStateById(id);
+    if (!stateBase.ok()) {
+      return std::move(stateBase).result();
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        return leaderState->release(index);
+      } else {
+        return Result(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/release API is only allowed on leaders; while "
+                        "trying to release state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      return Result(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/release API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto replaceParticipant(LogId id, ParticipantId const& participantToRemove,
@@ -245,15 +395,15 @@ struct ReplicatedLogMethodsDBServer final
 };
 
 namespace {
-struct VPackLogIterator final : PersistedLogIterator {
+struct VPackLogIterator final : LogIterator {
   explicit VPackLogIterator(
       std::shared_ptr<velocypack::Buffer<uint8_t>> buffer_ptr)
       : buffer(std::move(buffer_ptr)),
         iter(VPackSlice(buffer->data()).get("result")) {}
 
-  auto next() -> std::optional<PersistingLogEntry> override {
+  auto next() -> std::optional<LogEntry> override {
     while (iter != std::default_sentinel) {
-      return PersistingLogEntry::fromVelocyPack(*iter++);
+      return LogEntry::fromVelocyPack(*iter++);
     }
     return std::nullopt;
   }
@@ -270,50 +420,27 @@ struct ReplicatedLogMethodsCoordinator final
       std::enable_shared_from_this<ReplicatedLogMethodsCoordinator> {
   auto waitForLogReady(LogId id, std::uint64_t version) const
       -> futures::Future<ResultT<consensus::index_t>> override {
-    struct Context {
-      explicit Context(uint64_t version) : version(version) {}
-      futures::Promise<ResultT<consensus::index_t>> promise;
-      std::uint64_t version;
-    };
-
-    auto ctx = std::make_shared<Context>(version);
-    auto f = ctx->promise.getFuture();
-
     using namespace cluster::paths;
-    // register an agency callback and wait for the given version to appear in
-    // target (or bigger)
     auto path = aliases::current()
                     ->replicatedLogs()
                     ->database(vocbaseName)
                     ->log(id)
                     ->supervision();
-    auto cb = std::make_shared<AgencyCallback>(
-        server, path->str(SkipComponents(1)),
-        [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
-          if (slice.isNone()) {
-            return false;
-          }
+    return clusterFeature.agencyCallbackRegistry()
+        ->waitFor(path->str(SkipComponents(1)),
+                  [version](VPackSlice slice) {
+                    if (slice.isNone()) {
+                      return false;
+                    }
 
-          auto supervision = velocypack::deserialize<
-              replication2::agency::LogCurrentSupervision>(slice);
-          if (supervision.targetVersion >= ctx->version) {
-            ctx->promise.setValue(ResultT<consensus::index_t>{index});
-            return true;
-          }
-          return false;
-        },
-        true, true);
-
-    if (auto result =
-            clusterFeature.agencyCallbackRegistry()->registerCallback(cb, true);
-        result.fail()) {
-      return {result};
-    }
-
-    return std::move(f).then([self = shared_from_this(), cb](auto&& result) {
-      self->clusterFeature.agencyCallbackRegistry()->unregisterCallback(cb);
-      return std::move(result.get());
-    });
+                    auto supervision = velocypack::deserialize<
+                        replication2::agency::LogCurrentSupervision>(slice);
+                    if (supervision.targetVersion >= version) {
+                      return true;
+                    }
+                    return false;
+                  })
+        .thenValue([](auto index) { return ResultT{index}; });
   }
 
   void fillCreateOptions(CreateOptions& options) const {
@@ -497,26 +624,128 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
-  auto getLogEntryByIndex(LogId id, LogIndex index) const
-      -> futures::Future<std::optional<PersistingLogEntry>> override {
-    auto path =
-        basics::StringUtils::joinT("/", "_api/log", id, "entry", index.value);
-    network::RequestOptions opts;
-    opts.database = vocbaseName;
-    return network::sendRequest(pool, "server:" + getLogLeader(id),
-                                fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp) {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
+  auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> override {
+    // Identify the collection
+    auto col = clusterInfo.getCollectionNT(vocbaseName, cid);
+    if (!col) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection {} not found", cid));
+    }
+
+    // Find the shards corresponding to the collection
+    auto shardMap = col->shardIds();
+    if (!shardMap) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Shards of collection {} not found", cid));
+    }
+    std::vector<ShardID> shards;
+    shards.reserve(shardMap->size());
+    for (auto const& shard : *shardMap) {
+      shards.emplace_back(shard.first);
+    }
+
+    // Get the collection group
+    // This will help identify the replicated logs
+    auto group = clusterInfo.getCollectionGroupById(col->groupID());
+    if (!group) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection group {} not found", col->groupID().id()));
+    }
+
+    // Get all the leaders of these logs
+    std::map<LogId, ParticipantId> logLeaders;
+    for (auto const& sheaf : group->shardSheaves) {
+      auto leader = clusterInfo.getReplicatedLogLeader(sheaf.replicatedLog);
+      if (leader.ok()) {
+        logLeaders.emplace(sheaf.replicatedLog, std::move(leader).get());
+      }
+    }
+
+    // Get ongoing snapshot status of all replicated logs that have a leader
+    auto snapshotStatusFut = std::invoke([&] {
+      std::vector<futures::Future<ResultT<velocypack::SharedSlice>>> status;
+      status.reserve(logLeaders.size());
+      for (auto const& [logId, leader] : logLeaders) {
+        auto path = basics::StringUtils::joinT("/", "_api/document-state",
+                                               logId, "snapshot/status");
+        status.emplace_back(queryParticipantPath(leader, std::move(path)));
+      }
+      return futures::collectAll(status);
+    });
+
+    auto shardsStatusFut = std::invoke([&] {
+      std::vector<futures::Future<ResultT<velocypack::SharedSlice>>> status;
+      status.reserve(logLeaders.size());
+      for (auto const& [logId, leader] : logLeaders) {
+        auto path = basics::StringUtils::joinT("/", "_api/document-state",
+                                               logId, "shards");
+        status.emplace_back(queryParticipantPath(leader, std::move(path)));
+      }
+      return futures::collectAll(status);
+    });
+
+    // Get global status of replicated logs
+    auto globalStatusFut = std::invoke([&] {
+      std::vector<futures::Future<GlobalStatus>> status;
+      status.reserve(group->shardSheaves.size());
+      for (auto const& sheaf : group->shardSheaves) {
+        status.emplace_back(
+            getGlobalStatus(sheaf.replicatedLog,
+                            GlobalStatus::SpecificationSource::kLocalCache));
+      }
+      return futures::collectAll(status);
+    });
+
+    // Gather a list of all collections in the group
+    std::vector<CollectionID> collectionsInGroup;
+    collectionsInGroup.reserve(group->collections.size());
+    for (auto const& c : group->collections) {
+      auto collection = clusterInfo.getCollectionNT(vocbaseName, c.first);
+      if (collection) {
+        collectionsInGroup.emplace_back(collection->name());
+      } else {
+        collectionsInGroup.emplace_back(c.first);
+      }
+    }
+
+    return futures::collect(std::move(globalStatusFut),
+                            std::move(snapshotStatusFut),
+                            std::move(shardsStatusFut))
+        .thenValue([group = std::move(group), col = std::move(col),
+                    collectionsInGroup = std::move(collectionsInGroup),
+                    shards = std::move(shards),
+                    logLeaders =
+                        std::move(logLeaders)](auto&& tupleResult) mutable {
+          std::unordered_map<LogId, AllLogsStatus> logs;
+          auto& [globalStatuses, snapshotStatuses, shardsStatuses] =
+              tupleResult;
+          for (std::size_t idx{0}; idx < group->shardSheaves.size(); ++idx) {
+            auto logId = group->shardSheaves[idx].replicatedLog;
+            AllLogsStatus status;
+            status.globalStatus = std::move(globalStatuses[idx].get());
+            if (auto leader = logLeaders.find(logId);
+                leader != logLeaders.end()) {
+              auto dist = std::distance(logLeaders.begin(), leader);
+              status.snapshots = std::move(snapshotStatuses[dist].get());
+              status.shards = std::move(shardsStatuses[dist].get());
+            } else {
+              status.snapshots = status.shards =
+                  Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                         "Could not find replicated log leader"};
+            }
+            logs.emplace(logId, std::move(status));
           }
-          auto entry =
-              PersistingLogEntry::fromVelocyPack(resp.slice().get("result"));
-          return std::optional<PersistingLogEntry>(std::move(entry));
+          return CollectionStatus{col->groupID(), std::move(collectionsInGroup),
+                                  std::move(shards), std::move(logs)};
         });
   }
 
   auto slice(LogId id, LogIndex start, LogIndex stop) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "slice");
 
     network::RequestOptions opts;
@@ -525,19 +754,19 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["stop"] = to_string(stop);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
-          }
+        .thenValue(
+            [](network::Response&& resp) -> std::unique_ptr<LogIterator> {
+              if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+                THROW_ARANGO_EXCEPTION(resp.combinedResult());
+              }
 
-          return std::make_unique<VPackLogIterator>(
-              resp.response().stealPayload());
-        });
+              return std::make_unique<VPackLogIterator>(
+                  resp.response().stealPayload());
+            });
   }
 
   auto poll(LogId id, LogIndex index, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "poll");
 
     network::RequestOptions opts;
@@ -546,19 +775,19 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
-          }
+        .thenValue(
+            [](network::Response&& resp) -> std::unique_ptr<LogIterator> {
+              if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+                THROW_ARANGO_EXCEPTION(resp.combinedResult());
+              }
 
-          return std::make_unique<VPackLogIterator>(
-              resp.response().stealPayload());
-        });
+              return std::make_unique<VPackLogIterator>(
+                  resp.response().stealPayload());
+            });
   }
 
   auto tail(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "tail");
 
     network::RequestOptions opts;
@@ -566,19 +795,19 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
-          }
+        .thenValue(
+            [](network::Response&& resp) -> std::unique_ptr<LogIterator> {
+              if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+                THROW_ARANGO_EXCEPTION(resp.combinedResult());
+              }
 
-          return std::make_unique<VPackLogIterator>(
-              resp.response().stealPayload());
-        });
+              return std::make_unique<VPackLogIterator>(
+                  resp.response().stealPayload());
+            });
   }
 
   auto head(LogId id, std::size_t limit) const
-      -> futures::Future<std::unique_ptr<PersistedLogIterator>> override {
+      -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "head");
 
     network::RequestOptions opts;
@@ -586,15 +815,15 @@ struct ReplicatedLogMethodsCoordinator final
     opts.parameters["limit"] = std::to_string(limit);
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Get, path, {}, opts)
-        .thenValue([](network::Response&& resp)
-                       -> std::unique_ptr<PersistedLogIterator> {
-          if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
-            THROW_ARANGO_EXCEPTION(resp.combinedResult());
-          }
+        .thenValue(
+            [](network::Response&& resp) -> std::unique_ptr<LogIterator> {
+              if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
+                THROW_ARANGO_EXCEPTION(resp.combinedResult());
+              }
 
-          return std::make_unique<VPackLogIterator>(
-              resp.response().stealPayload());
-        });
+              return std::make_unique<VPackLogIterator>(
+                  resp.response().stealPayload());
+            });
   }
 
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
@@ -608,7 +837,7 @@ struct ReplicatedLogMethodsCoordinator final
                waitForSync ? "true" : "false");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
-                                payload.copyBuffer(), opts)
+                                payload.stealBuffer(), opts)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
@@ -718,7 +947,7 @@ struct ReplicatedLogMethodsCoordinator final
     opts.param(StaticStrings::DontWaitForCommit, "true");
     return network::sendRequest(pool, "server:" + getLogLeader(id),
                                 fuerte::RestVerb::Post, path,
-                                payload.copyBuffer(), opts)
+                                payload.stealBuffer(), opts)
         .thenValue([](network::Response&& resp) {
           if (resp.fail() || !fuerte::statusIsSuccess(resp.statusCode())) {
             THROW_ARANGO_EXCEPTION(resp.combinedResult());
@@ -814,7 +1043,6 @@ struct ReplicatedLogMethodsCoordinator final
   explicit ReplicatedLogMethodsCoordinator(DatabaseID vocbase,
                                            ArangodServer& server)
       : vocbaseName(std::move(vocbase)),
-        server(server),
         clusterFeature(server.getFeature<ClusterFeature>()),
         clusterInfo(clusterFeature.clusterInfo()),
         pool(server.getFeature<NetworkFeature>().pool()) {}
@@ -824,7 +1052,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto leader = clusterInfo.getReplicatedLogLeader(id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
-        throw ParticipantResignedException(leader.result(), ADB_HERE);
+        throw ParticipantResignedException(leader.result());
       } else {
         THROW_ARANGO_EXCEPTION(leader.result());
       }
@@ -951,6 +1179,34 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
+  auto queryParticipantPath(ParticipantId const& participant,
+                            std::string path) const
+      -> futures::Future<ResultT<velocypack::SharedSlice>> {
+    network::RequestOptions opts;
+    opts.database = vocbaseName;
+    opts.timeout = std::chrono::seconds{10};
+    return network::sendRequest(pool, "server:" + participant,
+                                fuerte::RestVerb::Get, std::move(path), {},
+                                opts)
+        .then([](futures::Try<network::Response>&& tryResult) mutable
+              -> ResultT<velocypack::SharedSlice> {
+          auto result = basics::catchToResultT(
+              [&] { return std::move(tryResult.get()); });
+
+          if (result.fail()) {
+            return result.result();
+          }
+
+          auto& response = result.get();
+          if (response.combinedResult().ok()) {
+            VPackBuilder b(response.stealResponse()->stealPayload());
+            return b.sharedSlice();
+          }
+
+          return response.combinedResult();
+        });
+  }
+
   auto collectGlobalStatusUsingSpec(
       std::shared_ptr<replication2::agency::LogPlanSpecification const> spec,
       GlobalStatus::SpecificationSource source) const
@@ -995,7 +1251,6 @@ struct ReplicatedLogMethodsCoordinator final
   }
 
   DatabaseID vocbaseName;
-  ArangodServer& server;
   ClusterFeature& clusterFeature;
   ClusterInfo& clusterInfo;
   network::ConnectionPool* pool;

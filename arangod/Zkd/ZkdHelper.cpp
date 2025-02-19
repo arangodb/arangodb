@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,21 +23,72 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "ZkdHelper.h"
 
+#include "Basics/application-exit.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Containers/SmallVector.h"
+#include "Logger/LogMacros.h"
+
+#include <absl/strings/str_cat.h>
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <iomanip>
-#include <iostream>
 #include <optional>
-#include <tuple>
 
 using namespace arangodb;
 using namespace arangodb::zkd;
+
+namespace {
+#ifdef USE_FAST_DOUBLE_MEMCMP_ENCODING
+auto encode_double_to_fast_memcmp_format(double const x) -> uint64_t {
+  static_assert(sizeof(double) == sizeof(uint64_t),
+                "size of double and uint64_t do not match");
+  // This was taken from
+  // https://yizhang82.dev/sorting-structured-data-2
+  uint64_t encoded;
+  std::memcpy(&encoded, &x, sizeof(encoded));
+  // hex 0x8000000000000000 is a 1 bit and 63 zeros
+  uint64_t constexpr SIGN_BIT_MASK = 0x8000000000000000;
+
+  // we want to have the zero pretty much in the middle of our bit-encoded
+  // distribution -0.0 and +0.0 would end up at different places so we convert
+  // -0.0 to +0.0
+  if (encoded == SIGN_BIT_MASK) {
+    encoded = 0;
+  }
+
+  // negative numbers should also be "lower" and positive numbers should be
+  // "higher"
+  if ((encoded & SIGN_BIT_MASK) > 0) {
+    // sign bit is set so we detected a negative number, we have to flip the
+    // sign bit and negate everything else by doing this we ensure that the
+    // smaller numbers are farther away from zero
+    encoded = ~encoded;
+  } else {
+    // positive numbers are already in the expected order so we only flip the
+    // sign-bit to make them bigger than negative numbers
+    encoded = encoded | SIGN_BIT_MASK;
+  }
+  return encoded;
+}
+
+std::array<std::byte, 8> uint64_to_big_endian_byte_array(uint64_t const v) {
+  std::array<std::byte, 8> arr;
+  arr[7] = static_cast<std::byte>(v & 0xff);
+  arr[6] = static_cast<std::byte>((v >> 8) & 0xff);
+  arr[3] = static_cast<std::byte>((v >> 32) & 0xff);
+  arr[5] = static_cast<std::byte>((v >> 16) & 0xff);
+  arr[4] = static_cast<std::byte>((v >> 24) & 0xff);
+  arr[2] = static_cast<std::byte>((v >> 40) & 0xff);
+  arr[1] = static_cast<std::byte>((v >> 48) & 0xff);
+  arr[0] = static_cast<std::byte>((v >> 56) & 0xff);
+  return arr;
+}
+#endif  // USE_FAST_DOUBLE_MEMCMP_ENCODING
+}  // anonymous namespace
 
 zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
   using namespace std::string_literals;
@@ -306,6 +357,7 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min,
   std::size_t step = 0;
   std::size_t dim = 0;
 
+  TRI_ASSERT(dimensions > 0 || max_size == 0);
   for (std::size_t i = 0; i < 8 * max_size; i++) {
     TRI_ASSERT(step == i / dimensions);
     TRI_ASSERT(dim == i % dimensions);
@@ -344,9 +396,8 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min,
 auto zkd::testInBox(byte_string_view cur, byte_string_view min,
                     byte_string_view max, std::size_t dimensions) -> bool {
   if (dimensions == 0) {
-    auto msg = std::string{"dimensions argument to "};
-    msg += __func__;
-    msg += " must be greater than zero.";
+    auto msg = absl::StrCat("dimensions argument to ", __func__,
+                            " must be greater than zero.");
     throw std::invalid_argument{msg};
   }
 
@@ -427,6 +478,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
     while (changeBP != 0 && !update_dims) {
       --changeBP;
       if (nisp.getBit(changeBP) == Bit::ZERO) {
+        TRI_ASSERT(dims > 0);
         auto dim = changeBP % dims;
         auto step = changeBP / dims;
         if (cmpResult[dim].saveMax <= step) {
@@ -455,6 +507,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
   // after `bitPos`
   auto const nextGreaterBitInDim = [dims](std::size_t const bitPos,
                                           std::size_t const dim) {
+    TRI_ASSERT(dims > 0);
     auto const posRem = bitPos % dims;
     auto const posFloor = bitPos - posRem;
     auto const result = dim > posRem ? (posFloor + dim) : posFloor + dims + dim;
@@ -622,11 +675,68 @@ void zkd::into_bit_writer_fixed_length<double>(BitWriter& bw, double x) {
   bw.write_big_endian_bits(base, 52);
 }
 
+auto zkd::into_zero_leading_fixed_length_byte_string(double const x)
+    -> byte_string {
+#ifdef USE_FAST_DOUBLE_MEMCMP_ENCODING
+  return into_zero_leading_fixed_length_byte_string_fast(x);
+#else
+  return into_zero_leading_fixed_length_byte_string_slow(x);
+#endif  // USE_FAST_DOUBLE_MEMCMP_ENCODING
+}
+
+auto zkd::into_zero_leading_fixed_length_byte_string_slow(double const x)
+    -> byte_string {
+  zkd::BitWriter bw;
+  bw.append(zkd::Bit::ZERO);  // add zero bit for `not infinity`
+  zkd::into_bit_writer_fixed_length(bw, x);
+  return std::move(bw).str();
+}
+
 template<>
 auto zkd::to_byte_string_fixed_length<double>(double x) -> byte_string {
+#ifdef USE_FAST_DOUBLE_MEMCMP_ENCODING
+  return double_to_byte_string_fixed_length_fast(x);
+#else
+  return double_to_byte_string_fixed_length_slow(x);
+#endif  // USE_FAST_DOUBLE_MEMCMP_ENCODING
+}
+
+auto zkd::double_to_byte_string_fixed_length_slow(double const x)
+    -> zkd::byte_string {
   BitWriter bw;
   zkd::into_bit_writer_fixed_length(bw, x);
   return std::move(bw).str();
+}
+
+auto zkd::into_zero_leading_fixed_length_byte_string_fast(double const x)
+    -> byte_string {
+#ifdef USE_FAST_DOUBLE_MEMCMP_ENCODING
+  uint64_t const encoded = encode_double_to_fast_memcmp_format(x);
+  uint64_t const zero_leading_part = encoded >> 1;
+
+  auto const byteArray = uint64_to_big_endian_byte_array(zero_leading_part);
+  byte_string bs{byteArray.data(), byteArray.size()};
+
+  // we are adding a zero to the front so we need 1 byte more at the end
+  std::byte const rest = static_cast<std::byte>(encoded << 7);
+  bs.push_back(rest);
+  return bs;
+#else
+  // This should never be called when the define is turned off
+  FATAL_ERROR_ABORT();
+#endif  // USE_FAST_DOUBLE_MEMCMP_ENCODING
+}
+
+auto zkd::double_to_byte_string_fixed_length_fast(double const x)
+    -> zkd::byte_string {
+#ifdef USE_FAST_DOUBLE_MEMCMP_ENCODING
+  uint64_t const encoded = encode_double_to_fast_memcmp_format(x);
+  auto const byteArray = uint64_to_big_endian_byte_array(encoded);
+  return {byteArray.data(), byteArray.size()};
+#else
+  // This should never be called when the define is turned off
+  FATAL_ERROR_ABORT();
+#endif  // USE_FAST_DOUBLE_MEMCMP_ENCODING
 }
 
 template<>

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,20 +23,23 @@
 
 #include "MoveShard.h"
 
+#include "Agency/AgencyPaths.h"
 #include "Agency/AgentInterface.h"
 #include "Agency/Job.h"
+#include "Agency/Node.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/TimeString.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
-#include "Logger/LogMacros.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
+using namespace arangodb::velocypack;
 
 constexpr auto PARENT_JOB_ID = "parentJob";
 constexpr auto EXPECTED_TARGET_VERSION = "expectedTargetVersion";
@@ -44,7 +47,7 @@ constexpr auto EXPECTED_TARGET_VERSION = "expectedTargetVersion";
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
-                     std::string const& shard, std::string const& from,
+                     ShardID const& shard, std::string const& from,
                      std::string const& to, bool isLeader, bool remainsFollower,
                      bool tryUndo)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
@@ -69,8 +72,8 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
   auto tmp_from = _snapshot.hasAsString(path + "fromServer");
   auto tmp_to = _snapshot.hasAsString(path + "toServer");
   auto tmp_shard = _snapshot.hasAsString(path + "shard");
-  auto tmp_isLeader = _snapshot.hasAsSlice(path + "isLeader");
-  auto tmp_remainsFollower = _snapshot.hasAsSlice(path + "remainsFollower");
+  auto tmp_isLeader = _snapshot.hasAsBool(path + "isLeader");
+  auto tmp_remainsFollower = _snapshot.hasAsBool(path + "remainsFollower");
   auto tmp_creator = _snapshot.hasAsString(path + "creator");
   auto tmp_parent = _snapshot.hasAsString(path + PARENT_JOB_ID);
   auto tmp_targetVersion = _snapshot.hasAsUInt(path + EXPECTED_TARGET_VERSION);
@@ -82,11 +85,9 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _collection = tmp_collection.value();
     _from = tmp_from.value();
     _to = tmp_to.value();
-    _shard = tmp_shard.value();
-    _isLeader = tmp_isLeader.value().isTrue();
-    _remainsFollower = tmp_remainsFollower.has_value()
-                           ? tmp_remainsFollower->isTrue()
-                           : _isLeader;
+    _shard = ShardID{tmp_shard.value()};
+    _isLeader = *tmp_isLeader;
+    _remainsFollower = tmp_remainsFollower.value_or(_isLeader);
     _toServerIsFollower = false;
     _creator = tmp_creator.value();
     if (tmp_parent) {
@@ -138,7 +139,10 @@ bool MoveShard::create(std::shared_ptr<VPackBuilder> envelope) {
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
 
-  Slice plan = _snapshot.hasAsSlice(planPath).value();
+  auto planNode = _snapshot.get(planPath);
+  TRI_ASSERT(planNode != nullptr);
+  auto planBuilder = planNode->toBuilder();
+  Slice plan = planBuilder.slice();
   TRI_ASSERT(plan.isArray());
   TRI_ASSERT(plan[0].isString());
 #endif
@@ -204,7 +208,7 @@ bool MoveShard::checkLeaderFollowerCurrent(
     auto sharedPath = _database + "/" + s.collection + "/";
     auto currentServersPath = curColPrefix + sharedPath + s.shard + "/servers";
     auto serverList = _snapshot.hasAsArray(currentServersPath);
-    if (serverList && (*serverList).length() > 0) {
+    if (serverList && serverList->size() > 0) {
       if (_from != (*serverList)[0].stringView()) {
         LOG_TOPIC("55261", DEBUG, Logger::SUPERVISION)
             << "MoveShard: From server " << _from
@@ -215,7 +219,7 @@ bool MoveShard::checkLeaderFollowerCurrent(
         break;
       }
       bool toFound = false;
-      for (auto server : VPackArrayIterator(*serverList)) {
+      for (auto server : *serverList) {
         if (_to == server.stringView()) {
           toFound = true;
           break;
@@ -269,8 +273,8 @@ bool MoveShard::start(bool&) {
     return false;
   }
   auto const& collection =
-      _snapshot.hasAsNode(planColPrefix + _database + "/" + _collection);
-  if (collection && collection->get().has("distributeShardsLike")) {
+      _snapshot.get(planColPrefix + _database + "/" + _collection);
+  if (collection && collection->has("distributeShardsLike")) {
     moveShardFinish(
         false, false,
         "collection must not have 'distributeShardsLike' attribute");
@@ -354,7 +358,8 @@ bool MoveShard::start(bool&) {
   // Look at Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice planned = _snapshot.hasAsSlice(planPath).value();
+  auto plannedBuilder = _snapshot.hasAsBuilder(planPath).value();
+  Slice planned = plannedBuilder.slice();
 
   int found = -1;
   int foundTo = -1;
@@ -571,9 +576,9 @@ bool MoveShard::start(bool&) {
             // "failoverCandidates":
             std::string foCandsPath = curPath.substr(0, curPath.size() - 7);
             foCandsPath += StaticStrings::FailoverCandidates;
-            auto foCands = this->_snapshot.hasAsSlice(foCandsPath);
+            auto foCands = this->_snapshot.hasAsBuilder(foCandsPath);
             if (foCands) {
-              addPreconditionUnchanged(pending, foCandsPath, *foCands);
+              addPreconditionUnchanged(pending, foCandsPath, foCands->slice());
             }
           });
       addPreconditionShardNotBlocked(pending, _shard);
@@ -581,6 +586,7 @@ bool MoveShard::start(bool&) {
       addMoveShardFromServerCanLock(pending);
       addPreconditionServerHealth(pending, _to,
                                   Supervision::HEALTH_STATUS_GOOD);
+      addPreconditionClonesStillExist(pending, _database, shardsLikeMe);
       addPreconditionUnchanged(pending, failedServersPrefix, failedServers);
       addPreconditionUnchanged(pending, cleanedPrefix, cleanedServers);
     }  // precondition done
@@ -614,7 +620,12 @@ bool MoveShard::startReplication2() {
   // Preconditions:
   //  - target version is as expected
   using namespace replication2;
-  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+
+  // The old mapping between stateId and shard is still used in ClusterInfo,
+  // hence the value_or alternative.
+  auto stateId = getReplicatedStateId(_snapshot, _database, _collection, _shard)
+                     .value_or(LogicalCollection::shardIdToStateId(_shard));
+
   auto targetPath = targetRepStatePrefix + _database + "/" + to_string(stateId);
   auto target = readStateTarget(_snapshot, _database, stateId).value();
 
@@ -735,7 +746,10 @@ JOB_STATUS MoveShard::status() {
 std::optional<std::uint64_t> MoveShard::getShardSupervisionVersion() {
   // read
   // arango/Current/ReplicatedLogs/<database>/<replicated-state-id>/supervision/targetVersion
-  auto stateId = LogicalCollection::shardIdToStateId(_shard);
+  // The old mapping between stateId and shard is still used in ClusterInfo,
+  // hence the value_or alternative.
+  auto stateId = getReplicatedStateId(_snapshot, _database, _collection, _shard)
+                     .value_or(LogicalCollection::shardIdToStateId(_shard));
   using namespace cluster::paths;
   auto path = aliases::current()
                   ->replicatedLogs()
@@ -806,7 +820,8 @@ JOB_STATUS MoveShard::pendingLeader() {
   // in the Plan:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice plan = _snapshot.hasAsSlice(planPath).value();
+  auto planBuilder = _snapshot.hasAsBuilder(planPath).value();
+  Slice plan = planBuilder.slice();
   Builder trx;
   Builder pre;  // precondition
   bool finishedAfterTransaction = false;
@@ -897,6 +912,7 @@ JOB_STATUS MoveShard::pendingLeader() {
                          }
                        });
         addPreconditionCollectionStillThere(pre, _database, _collection);
+        addPreconditionClonesStillExist(pre, _database, shardsLikeMe);
         addIncreasePlanVersion(trx);
         if (failed) {
           return PENDING;
@@ -936,7 +952,7 @@ JOB_STATUS MoveShard::pendingLeader() {
         auto const tmp = _snapshot.hasAsArray(shardPath + "/servers");
         if (tmp) {  // safe iterator below
           bool found = false;
-          for (auto const& server : VPackArrayIterator(*tmp)) {
+          for (auto const& server : *tmp) {
             if (server.isEqualString(_to)) {
               found = true;
               break;
@@ -1000,6 +1016,7 @@ JOB_STATUS MoveShard::pendingLeader() {
           return PENDING;
         }
         addPreconditionCollectionStillThere(pre, _database, _collection);
+        addPreconditionClonesStillExist(pre, _database, shardsLikeMe);
         addPreconditionCurrentReplicaShardGroup(pre, _database, shardsLikeMe,
                                                 _to);
         addIncreasePlanVersion(trx);
@@ -1105,6 +1122,7 @@ JOB_STATUS MoveShard::pendingLeader() {
           addIncreasePlanVersion(trx);
         }
         addPreconditionCollectionStillThere(pre, _database, _collection);
+        addPreconditionClonesStillExist(pre, _database, shardsLikeMe);
         addRemoveJobFromSomewhere(trx, "Pending", _jobId);
         Builder job;
         std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
@@ -1149,7 +1167,8 @@ JOB_STATUS MoveShard::pendingFollower() {
   // we abort:
   std::string planPath =
       planColPrefix + _database + "/" + _collection + "/shards/" + _shard;
-  Slice plan = _snapshot.hasAsSlice(planPath).value();
+  auto planBuilder = _snapshot.hasAsBuilder(planPath).value();
+  Slice plan = planBuilder.slice();
   if (plan.isArray() &&
       Job::countGoodOrBadServersInList(_snapshot, plan) < plan.length()) {
     LOG_TOPIC("f8c22", DEBUG, Logger::SUPERVISION)
@@ -1230,6 +1249,7 @@ JOB_STATUS MoveShard::pendingFollower() {
       std::ignore = _snapshot.hasAsBuilder(pendingPrefix + _jobId, job);
       addPutJobIntoSomewhere(trx, "Finished", job.slice(), "");
       addPreconditionCollectionStillThere(precondition, _database, _collection);
+      addPreconditionClonesStillExist(precondition, _database, shardsLikeMe);
       addReleaseShard(trx, _shard);
       addMoveShardToServerUnLock(trx);
       addMoveShardFromServerUnLock(trx);
@@ -1288,6 +1308,11 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
     // If the above finish failed, then we must be in PENDING
   }
 
+  if (!_snapshot.has(planColPrefix + _database + "/" + _collection)) {
+    moveShardFinish(true, false, "collection was dropped");
+    return Result{};
+  }
+
   // Can now only be PENDING
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =
@@ -1300,7 +1325,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
   if (_isLeader) {
     auto const& plan = _snapshot.hasAsArray(planColPrefix + _database + "/" +
                                             _collection + "/shards/" + _shard);
-    if (plan && plan.value()[0].copyString() == _to) {
+    if (plan && plan->operator[](0).copyString() == _to) {
       LOG_TOPIC("72a82", INFO, Logger::SUPERVISION)
           << "MoveShard can no longer abort through reversion to where it "
              "started. Flight forward, leaving Plan as it is now.";
@@ -1405,6 +1430,7 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
       // If the collection is gone in the meantime, we do nothing here, but
       // the round will move the job to Finished anyway:
       addPreconditionCollectionStillThere(trx, _database, _collection);
+      addPreconditionClonesStillExist(trx, _database, shardsLikeMe);
     }
   }
 

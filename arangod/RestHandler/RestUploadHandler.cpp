@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/files.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -109,6 +110,10 @@ RestStatus RestUploadHandler::execute() {
 
   b.add(VPackValue(VPackValueType::Object));
   b.add("filename", VPackValue(fullName));
+  if (ServerState::instance()->isClusterRole()) {
+    b.add(StaticStrings::AttrCoordinatorId,
+          VPackValue(ServerState::instance()->getId()));
+  }
   b.close();
 
   VPackSlice s = b.slice();
@@ -125,10 +130,6 @@ RestStatus RestUploadHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
-  if (_request->transportType() != Endpoint::TransportType::HTTP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
-
   std::string_view bodyPtr = _request->rawPayload();
   char const* beg = bodyPtr.data();
   char const* end = beg + bodyPtr.size();

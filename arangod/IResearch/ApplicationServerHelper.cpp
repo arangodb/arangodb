@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,17 +30,9 @@
 namespace arangodb {
 namespace iresearch {
 
-bool addFunction(arangodb::aql::AqlFunctionFeature& functions,
+void addFunction(arangodb::aql::AqlFunctionFeature& functions,
                  arangodb::aql::Function const& function) {
-  // check that a function by the given name is not registred to avoid
-  // triggering an assert inside AqlFunctionFeature::add(...)
-  if (functions.exists(function.name)) {
-    return false;
-  }
-
   functions.add(function);
-
-  return true;
 }
 
 arangodb::aql::Function const* getFunction(

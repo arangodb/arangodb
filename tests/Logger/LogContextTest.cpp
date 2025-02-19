@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -187,6 +187,73 @@ TEST_F(LogContextTest,
 
   LogContext::current().visit(countingVisitor);
   EXPECT_EQ(2, cnt);
+}
+
+TEST_F(
+    LogContextTest,
+    ScopedContext_DontRestoreOldContext_constructor_sets_the_given_LogContext_for_the_current_scope) {
+  unsigned cnt = 0;
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+  LogContext ctx;
+  {
+    ScopedValue v(
+        LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+    ctx = LogContext::current();
+  }
+
+  {
+    LogContext::ScopedContext c(
+        ctx, LogContext::ScopedContext::DontRestoreOldContext{});
+    LogContext::current().visit(countingVisitor);
+    EXPECT_EQ(2, cnt);
+  }
+}
+
+TEST_F(LogContextTest,
+       ScopedContext_restores_the_previous_LogContext_after_the_current_scope) {
+  unsigned cnt = 0;
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+  LogContext ctx;
+  {
+    ScopedValue v(
+        LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+    ctx = LogContext::current();
+  }
+
+  ScopedValue v(LogContext::makeValue().with<LogKey3>("outer"));
+
+  { LogContext::ScopedContext c(ctx); }
+
+  LogContext::current().visit(countingVisitor);
+  EXPECT_EQ(1, cnt);
+}
+
+TEST_F(
+    LogContextTest,
+    ScopedContext_DontRestoreOldContext_constructor_doesnt_restore_the_previous_LogContext_after_the_current_scope) {
+  unsigned cnt = 0;
+  LogContext::OverloadVisitor countingVisitor(
+      [&cnt](std::string_view, auto&&) { ++cnt; });
+  LogContext ctx;
+  {
+    ScopedValue v(
+        LogContext::makeValue().with<LogKey1>("blubb").with<LogKey2>(42));
+    ctx = LogContext::current();
+  }
+
+  auto value = LogContext::makeValue().with<LogKey3>("outer").share();
+  auto entry = LogContext::Current::pushValues(value);
+  entry = LogContext::EntryPtr{nullptr};
+
+  {
+    LogContext::ScopedContext c(
+        ctx, LogContext::ScopedContext::DontRestoreOldContext{});
+  }
+
+  LogContext::current().visit(countingVisitor);
+  EXPECT_EQ(0, cnt);
 }
 
 TEST_F(LogContextTest, ScopedContext_does_nothing_if_contexts_are_equivalent) {

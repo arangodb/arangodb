@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,11 +41,7 @@ class AqlItemBlockInputRange {
                                   std::size_t skipped = 0);
 
   AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
-                         arangodb::aql::SharedAqlItemBlockPtr const&,
-                         std::size_t startIndex);
-
-  AqlItemBlockInputRange(MainQueryState, std::size_t skipped,
-                         arangodb::aql::SharedAqlItemBlockPtr&&,
+                         SharedAqlItemBlockPtr,
                          std::size_t startIndex) noexcept;
 
   void reset() noexcept { _block.reset(nullptr); }
@@ -59,15 +55,19 @@ class AqlItemBlockInputRange {
 
   bool hasDataRow() const noexcept;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> peekDataRow() const;
+  std::pair<ExecutorState, InputAqlItemRow> peekDataRow() const;
 
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow();
+  /// @brief optimized version of peekDataRow, only to be used when it is known
+  /// that there is a next data row (i.e. if a previous call to hasDataRow()
+  /// returned true)
+  std::pair<ExecutorState, InputAqlItemRow> peekDataRow(HasDataRow) const;
+
+  std::pair<ExecutorState, InputAqlItemRow> nextDataRow();
 
   /// @brief optimized version of nextDataRow, only to be used when it is known
   /// that there is a next data row (i.e. if a previous call to hasDataRow()
   /// returned true)
-  std::pair<ExecutorState, arangodb::aql::InputAqlItemRow> nextDataRow(
-      HasDataRow);
+  std::pair<ExecutorState, InputAqlItemRow> nextDataRow(HasDataRow);
 
   /// @brief moves the row index one forward if we are at a row right now
   void advanceDataRow() noexcept;
@@ -76,11 +76,11 @@ class AqlItemBlockInputRange {
 
   bool hasShadowRow() const noexcept;
 
-  arangodb::aql::ShadowAqlItemRow peekShadowRow() const;
+  ShadowAqlItemRow peekShadowRow() const;
 
-  std::pair<ExecutorState, arangodb::aql::ShadowAqlItemRow> nextShadowRow();
+  std::pair<ExecutorState, ShadowAqlItemRow> nextShadowRow();
 
-  size_t skipAllRemainingDataRows();
+  size_t skipAllRemainingDataRows() noexcept;
 
   // depthOffset is added to depth, except it won't underflow.
   template<int depthOffset>
@@ -115,7 +115,9 @@ class AqlItemBlockInputRange {
    * @brief Skip over all remaining data rows until the next shadow row.
    * Count how many rows are skipped
    */
-  [[nodiscard]] auto countAndSkipAllRemainingDataRows() -> std::size_t;
+  [[nodiscard]] auto countAndSkipAllRemainingDataRows() noexcept -> std::size_t;
+
+  [[nodiscard]] auto numRowsLeft() const noexcept -> std::size_t;
 
  private:
   bool isIndexValid(std::size_t index) const noexcept;
@@ -127,8 +129,7 @@ class AqlItemBlockInputRange {
   template<LookAhead doPeek, RowType type>
   ExecutorState nextState() const noexcept;
 
- private:
-  arangodb::aql::SharedAqlItemBlockPtr _block{nullptr};
+  SharedAqlItemBlockPtr _block{nullptr};
   std::size_t _rowIndex{};
   MainQueryState _finalState{MainQueryState::HASMORE};
   // How many rows were skipped upstream

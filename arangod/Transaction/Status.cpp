@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,22 +23,45 @@
 
 #include "Transaction/Status.h"
 
+#include "Basics/debugging.h"
+
 #include <iostream>
 #include <cstring>
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
-Status statusFromString(char const* str, size_t len) {
-  if (len == 9 && memcmp(str, "undefined", len) == 0) {
+std::string_view statusString(Status status) {
+  switch (status) {
+    case transaction::Status::UNDEFINED:
+      return "undefined";
+    case transaction::Status::CREATED:
+      return "created";
+    case transaction::Status::RUNNING:
+      return "running";
+    case transaction::Status::COMMITTED:
+      return "committed";
+    case transaction::Status::ABORTED:
+      return "aborted";
+  }
+
+  TRI_ASSERT(false);
+  return "unknown";
+}
+
+Status statusFromString(std::string_view value) {
+  if (value == "undefined") {
     return Status::UNDEFINED;
-  } else if (len == 7 && memcmp(str, "created", len) == 0) {
+  }
+  if (value == "created") {
     return Status::CREATED;
-  } else if (len == 7 && memcmp(str, "running", len) == 0) {
+  }
+  if (value == "running") {
     return Status::RUNNING;
-  } else if (len == 9 && memcmp(str, "committed", len) == 0) {
+  }
+  if (value == "committed") {
     return Status::COMMITTED;
-  } else if (len == 7 && memcmp(str, "aborted", len) == 0) {
+  }
+  if (value == "aborted") {
     return Status::ABORTED;
   }
 
@@ -52,5 +75,4 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

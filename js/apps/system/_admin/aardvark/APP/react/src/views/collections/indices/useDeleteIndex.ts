@@ -1,6 +1,14 @@
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { getCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
+import { notifySuccess } from "../../../utils/notifications";
 
-export const useDeleteIndex = ({ collectionId }: { collectionId: string }) => {
+export const useDeleteIndex = ({
+  collectionId,
+  collectionName
+}: {
+  collectionId: string;
+  collectionName: string;
+}) => {
   const onDeleteIndex = ({
     id,
     onSuccess
@@ -8,7 +16,7 @@ export const useDeleteIndex = ({ collectionId }: { collectionId: string }) => {
     id: string;
     onSuccess: () => void;
   }) => {
-    postDeleteIndex({ id, onSuccess, collectionId });
+    postDeleteIndex({ id, onSuccess, collectionId, collectionName });
   };
   return { onDeleteIndex };
 };
@@ -34,22 +42,22 @@ const handleSuccess = ({
     desc: "Removing Index",
     collection: collectionId
   });
-  window.arangoHelper.arangoNotification(
-    `Index deletion in progress (ID: ${id}`
-  );
+  notifySuccess(`Index deletion in progress (ID: ${id})`);
   onSuccess();
 };
 const postDeleteIndex = async ({
   id,
   collectionId,
+  collectionName,
   onSuccess
 }: {
   id: string;
   collectionId: string;
+  collectionName: string;
   onSuccess: () => void;
 }) => {
   window.arangoHelper.checkDatabasePermissions(
-    function() {
+    function () {
       window.arangoHelper.arangoError(
         "You do not have the permissions to delete indexes in this database."
       );
@@ -57,24 +65,16 @@ const postDeleteIndex = async ({
     async () => {
       let result;
       try {
-        result = await getApiRouteForCurrentDB().delete(
-          `index/${id}`,
-          undefined,
-          {
-            "x-arango-async": "store"
-          }
+        const db = getCurrentDB();
+        const { encoded: encodedCollectionName } = encodeHelper(collectionName);
+        result = await db.createJob(() =>
+          db.collection(encodedCollectionName).dropIndex({ id })
         );
-        const asyncId = result.headers["x-arango-async-id"] as string;
 
-        if (asyncId) {
-          handleSuccess({ onSuccess, id, asyncId, collectionId });
-          return;
-        }
-        handleError();
+        handleSuccess({ onSuccess, id, asyncId: result.id, collectionId });
       } catch {
         handleError();
       }
-    
     }
   );
 };

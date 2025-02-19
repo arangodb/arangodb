@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,9 +25,7 @@
 
 #include <string_view>
 #include <type_traits>
-#ifdef _WIN32
-#include <iostream>
-#endif
+#include "RestServer/DatabaseFeature.h"
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
@@ -44,12 +42,13 @@ constexpr auto kNonServerFeatures =
                ArangodServer::id<SupervisorFeature>(),
                ArangodServer::id<DaemonFeature>(),
 #endif
+#ifdef USE_V8
                ArangodServer::id<FoxxFeature>(),
+#endif
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
-               ArangodServer::id<pregel::PregelFeature>(),
                ArangodServer::id<ServerFeature>(),
                ArangodServer::id<SslServerFeature>(),
                ArangodServer::id<StatisticsFeature>()};
@@ -69,6 +68,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
 
     server.addReporter(
         {[&](ArangodServer::State state) {
+           CrashHandler::setState(ArangodServer::stringifyState(state));
+
            if (state == ArangodServer::State::IN_START) {
              // drop priveleges before starting features
              server.getFeature<PrivilegeFeature>().dropPrivilegesPermanently();
@@ -80,6 +81,15 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         []<typename T>(auto& server, TypeTag<T>) {
           return std::make_unique<T>(server);
         },
+        [](auto& server, TypeTag<async_registry::Feature>) {
+          return std::make_unique<async_registry::Feature>(server);
+        },
+#ifdef TRI_HAVE_GETRLIMIT
+        [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
+          return std::make_unique<BumpFileDescriptorsFeature>(
+              server, "--server.descriptors-minimum");
+        },
+#endif
         [](auto& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
@@ -88,8 +98,17 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);
         },
+        [](auto& server, TypeTag<ClusterUpgradeFeature>) {
+          return std::make_unique<ClusterUpgradeFeature>(
+              server, server.template getFeature<arangodb::DatabaseFeature>());
+        },
         [&name](auto& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, name);
+        },
+        [](auto& server, TypeTag<GeneralServerFeature>) {
+          return std::make_unique<GeneralServerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<InitDatabaseFeature>) {
           return std::make_unique<InitDatabaseFeature>(server,
@@ -98,20 +117,67 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<LoggerFeature>) {
           return std::make_unique<LoggerFeature>(server, true);
         },
+        [](auto& server, TypeTag<metrics::MetricsFeature>) {
+          return std::make_unique<metrics::MetricsFeature>(
+              server,
+              LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+              LazyApplicationFeatureReference<StatisticsFeature>(server),
+              LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+              LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+                  server),
+              LazyApplicationFeatureReference<ClusterFeature>(server));
+        },
+        [](auto& server, TypeTag<NetworkFeature>) {
+          auto& metrics =
+              server.template getFeature<arangodb::metrics::MetricsFeature>();
+          return std::make_unique<NetworkFeature>(
+              server, metrics, network::ConnectionPool::Config{});
+        },
+        [](auto& server, TypeTag<QueryRegistryFeature>) {
+          return std::make_unique<QueryRegistryFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<ReplicationMetricsFeature>) {
+          return std::make_unique<ReplicationMetricsFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<VectorIndexFeature>) {
+          return std::make_unique<VectorIndexFeature>(server);
+        },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return std::make_unique<RocksDBEngine>(
               server,
-              server.template getFeature<arangodb::RocksDBOptionFeature>());
+              server.template getFeature<arangodb::RocksDBOptionFeature>(),
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
+        [](auto& server, TypeTag<SchedulerFeature>) {
+          return std::make_unique<SchedulerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+#ifdef USE_V8
         [&ret](auto& server, TypeTag<ScriptFeature>) {
           return std::make_unique<ScriptFeature>(server, &ret);
         },
+#endif
         [&ret](auto& server, TypeTag<ServerFeature>) {
           return std::make_unique<ServerFeature>(server, &ret);
         },
+        [](auto& server, TypeTag<CacheManagerFeature>) {
+          return std::make_unique<CacheManagerFeature>(
+              server, server.template getFeature<CacheOptionsFeature>());
+        },
         [](auto& server, TypeTag<ShutdownFeature>) {
           return std::make_unique<ShutdownFeature>(
-              server, std::array{ArangodServer::id<ScriptFeature>()});
+              server,
+#ifdef USE_V8
+              std::array { ArangodServer::id<ScriptFeature>() }
+#else
+              std::array { ArangodServer::id<AgencyFeaturePhase>() }
+#endif
+          );
         },
         [&name](auto& server, TypeTag<TempFeature>) {
           return std::make_unique<TempFeature>(server, name);
@@ -126,6 +192,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [&ret](auto& server, TypeTag<UpgradeFeature>) {
           return std::make_unique<UpgradeFeature>(server, &ret,
                                                   kNonServerFeatures);
+        },
+        [&](auto& server, TypeTag<V8DealerFeature>) {
+          return std::make_unique<V8DealerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<HttpEndpointProvider>) {
           return std::make_unique<EndpointFeature>(server);
@@ -160,34 +231,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   exit(EXIT_FAILURE);
 }
 
-#if _WIN32
-static int ARGC;
-static char** ARGV;
-
-static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
-  if (!TRI_InitWindowsEventLog()) {
-    return;
-  }
-  // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus =
-      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
-
-  // set start pending
-  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
-
-  TRI_GET_ARGV(ARGC, ARGV);
-  ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
-  runServer(ARGC, ARGV, context);
-
-  // service has stopped
-  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0, 0);
-  TRI_CloseWindowsEventlog();
-}
-
-#endif
-
-#ifdef __linux__
-
 // The following is a hack which is currently (September 2019) needed to
 // let our static executables compiled with libmusl and gcc 8.3.0 properly
 // detect that we are a multi-threaded application.
@@ -206,36 +249,16 @@ static void f() {
   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
   pthread_once(&once_control, gg);
 }
-#endif
 
 int main(int argc, char* argv[]) {
-#ifdef __linux__
   // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
     f();
   }
-#endif
 
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 
   TRI_GET_ARGV(argc, argv);
-#if _WIN32
-  if (argc > 1 && std::string_view(argv[1]) == "--start-service") {
-    ARGC = argc;
-    ARGV = argv;
-
-    SERVICE_TABLE_ENTRY ste[] = {
-        {TEXT(const_cast<char*>("")), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
-        {nullptr, nullptr}};
-
-    if (!StartServiceCtrlDispatcher(ste)) {
-      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
-                << GetLastError() << std::endl;
-      exit(EXIT_FAILURE);
-    }
-    return 0;
-  }
-#endif
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
   arangodb::restartAction = nullptr;
@@ -263,7 +286,6 @@ int main(int argc, char* argv[]) {
   // so the process does not have to be terminated. On Windows, we have
   // to do this because the solution below is not possible. In these
   // cases, we need outside help to get the process restarted.
-#if defined(__linux__) || defined(__APPLE__)
   res = chdir(workdir.c_str());
   if (res != 0) {
     std::cerr << "WARNING: could not change into directory '" << workdir << "'"
@@ -273,5 +295,4 @@ int main(int argc, char* argv[]) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
               << std::endl;
   }
-#endif
 }

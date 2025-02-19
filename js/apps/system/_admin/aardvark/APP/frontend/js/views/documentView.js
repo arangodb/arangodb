@@ -1,7 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, localStorage, window, arangoHelper, templateEngine, JSONEditor */
-/* global document, _ */
+/* global templateEngine */
 
 (function () {
   'use strict';
@@ -412,6 +409,9 @@
     },
 
     saveDocument: function () {
+      if (this.editor.repair) {
+        this.editor.repair();
+      }
       if ($('#saveDocumentButton').attr('disabled') === undefined) {
         if (this.collection.first().attributes._id.substr(0, 1) === '_') {
           var buttons = []; var tableContent = [];

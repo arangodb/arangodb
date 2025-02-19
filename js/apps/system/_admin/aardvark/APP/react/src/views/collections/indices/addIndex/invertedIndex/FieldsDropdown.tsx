@@ -1,10 +1,10 @@
+import { CreatableMultiSelect, OptionType } from "@arangodb/ui";
 import { Box, FormLabel, Spacer } from "@chakra-ui/react";
 import { FieldArray, useField } from "formik";
+import { isArray } from "lodash";
 import React from "react";
 import { components, MultiValueGenericProps } from "react-select";
-import CreatableMultiSelect from "../../../../../components/select/CreatableMultiSelect";
-import { OptionType } from "../../../../../components/select/SelectBase";
-import { IndexFormFieldProps } from "../IndexFormField";
+import { FormFieldProps } from "../../../../../components/form/FormField";
 import { IndexInfoTooltip } from "../IndexInfoTooltip";
 import { useInvertedIndexContext } from "./InvertedIndexContext";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
@@ -13,16 +13,20 @@ const MultiValueLabel = (
   props: MultiValueGenericProps<OptionType> & {
     fieldName: string;
     fieldIndex: number;
+    isBasicField?: boolean;
   }
 ) => {
   const { setCurrentFieldData, currentFieldData } = useInvertedIndexContext();
-  const { fieldName, fieldIndex, ...rest } = props;
+  const { fieldName, fieldIndex, isBasicField, ...rest } = props;
   const isSelected =
     currentFieldData?.fieldIndex === fieldIndex &&
     currentFieldData.fieldName === fieldName;
   return (
     <Box
       onClick={() => {
+        if (isBasicField) {
+          return;
+        }
         const fieldData = {
           fieldValue: props.data.value,
           fieldName,
@@ -30,21 +34,32 @@ const MultiValueLabel = (
         };
         setCurrentFieldData(fieldData);
       }}
-      textDecoration="underline"
-      cursor="pointer"
+      textDecoration={isBasicField ? "" : "underline"}
+      cursor={isBasicField ? "" : "pointer"}
       backgroundColor={isSelected ? "blue.100" : undefined}
     >
       <components.MultiValueLabel {...rest} />
     </Box>
   );
 };
-export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
+
+const getDropdownValue = (fieldValue: InvertedIndexValuesType[]) => {
+  if (fieldValue && isArray(fieldValue)) {
+    return fieldValue.map(data => {
+      if (typeof data === "string") {
+        return { label: data, value: data };
+      }
+      return { label: data.name || "", value: data.name || "" };
+    });
+  }
+  return [];
+};
+
+export const FieldsDropdown = ({ field }: { field: FormFieldProps }) => {
   const [formikField] = useField<InvertedIndexValuesType[]>(field.name);
   const { setCurrentFieldData } = useInvertedIndexContext();
-  const dropdownValue =
-    formikField.value?.map(data => {
-      return { label: data.name || "", value: data.name || "" };
-    }) || [];
+  const dropdownValue = getDropdownValue(formikField.value);
+
   return (
     <FieldArray name={field.name}>
       {({ push, remove }) => {
@@ -66,8 +81,13 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
                   const index = formikField.value?.findIndex(
                     fieldObj => fieldObj.name === props.data.value
                   );
+                  // if it follows the basic field type, we don't want to allow clicking
+                  const isBasicField = formikField.value.some(
+                    value => typeof value === "string"
+                  );
                   return (
                     <MultiValueLabel
+                      isBasicField={isBasicField}
                       fieldName={field.name}
                       fieldIndex={index}
                       {...props}
@@ -99,7 +119,11 @@ export const FieldsDropdown = ({ field }: { field: IndexFormFieldProps }) => {
               }}
               value={dropdownValue}
             />
-            {field.tooltip ? <IndexInfoTooltip label={field.tooltip} /> : <Spacer />}
+            {field.tooltip ? (
+              <IndexInfoTooltip label={field.tooltip} />
+            ) : (
+              <Spacer />
+            )}
           </Box>
         );
       }}

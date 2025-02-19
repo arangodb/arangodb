@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,11 +24,11 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
 #include "IResearchQueryCommon.h"
+#include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -4066,7 +4066,8 @@ class QueryPhrase : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -4098,7 +4099,8 @@ class QueryPhrase : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -4138,7 +4140,8 @@ class QueryPhrase : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -4170,7 +4173,8 @@ class QueryPhrase : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -6494,7 +6498,7 @@ class QueryPhraseSearch : public QueryPhrase {
       auto collection =
           vocbase.lookupCollection(absl::Substitute("testCollection$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };
     createIndex(0);

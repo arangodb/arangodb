@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,8 +26,11 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Functions.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
@@ -38,7 +41,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "debugging.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
@@ -47,12 +50,6 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>
-
-#ifdef _WIN32
-// turn off warnings about too long type name for debug symbols blabla in MSVC
-// only...
-#pragma warning(disable : 4503)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -398,8 +395,8 @@ ConditionPart::ConditionPart(Variable const* variable,
     valueNode = operatorNode->getMember(1);
   } else {
     valueNode = operatorNode->getMember(0);
-    if (Ast::IsReversibleOperator(operatorType)) {
-      operatorType = Ast::ReverseOperator(operatorType);
+    if (Ast::isReversibleOperator(operatorType)) {
+      operatorType = Ast::reverseOperator(operatorType);
     }
   }
 
@@ -659,15 +656,30 @@ std::unique_ptr<Condition> Condition::clone() const {
   return copy;
 }
 
+/// @brief replace variables in the condition with other variables
+void Condition::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceVariables(_root, replacements, true);
+}
+
+void Condition::replaceAttributeAccess(Variable const* searchVariable,
+                                       std::span<std::string_view> attribute,
+                                       Variable const* replaceVariable) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceAttributeAccess(_ast, _root, searchVariable, attribute,
+                                      replaceVariable);
+}
+
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
 void Condition::andCombine(AstNode const* node) {
-  if (_isNormalized) {
-    // already normalized
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "cannot and-combine normalized condition");
-  }
-
   if (_root == nullptr) {
     // condition was empty before
     _root = _ast->clone(node);
@@ -678,6 +690,12 @@ void Condition::andCombine(AstNode const* node) {
   }
 
   TRI_ASSERT(_root != nullptr);
+
+  // note: it seems that andCombine() is sometimes called even for
+  // conditions that have been normalized already. in this case, we
+  // clear the normalization flag again after we have modified the
+  // condition.
+  _isNormalized = false;
 }
 
 /// @brief locate indexes for each condition
@@ -705,7 +723,7 @@ std::pair<bool, bool> Condition::findIndexes(
     itemsInIndex = 1024;
   } else {
     // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = coll.count(&trx, transaction::CountType::TryCache);
+    itemsInIndex = coll.count(&trx, transaction::CountType::kTryCache);
   }
   if (_root == nullptr) {
     size_t dummy;
@@ -715,9 +733,13 @@ std::pair<bool, bool> Condition::findIndexes(
                    usedIndexes, dummy));
   }
 
+  ReadOwnWrites readOwnWrites =
+      ExecutionNode::castTo<DocumentProducingNode const*>(node)
+          ->canReadOwnWrites();
+
   return aql::utils::getBestIndexHandlesForFilterCondition(
       trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
-      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex);
+      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex, readOwnWrites);
 }
 
 /// @brief get the attributes for a sub-condition that are const
@@ -929,6 +951,100 @@ AstNode* Condition::createSimpleCondition(AstNode* node) const {
   return orNode;
 }
 
+bool areInRangeCallsIdentical(auto const* arrayNode, auto const* otherArrayNode,
+                              bool isFromTraverser) {
+  for (size_t i = 0; i < arrayNode->numMembers(); ++i) {
+    auto const* functionCallNodeElement = arrayNode->getMemberUnchecked(i);
+    auto const* functionCallNodeOtherElement =
+        otherArrayNode->getMemberUnchecked(i);
+
+    if (functionCallNodeElement->type != functionCallNodeOtherElement->type) {
+      return false;
+    }
+
+    switch (functionCallNodeElement->type) {
+      case NODE_TYPE_ATTRIBUTE_ACCESS: {
+        std::pair<Variable const*, std::vector<basics::AttributeName>>
+            attributeAccessForVariableResult;
+        std::pair<Variable const*, std::vector<basics::AttributeName>>
+            attributeAccessForVariableOtherResult;
+
+        if (!functionCallNodeElement->isAttributeAccessForVariable(
+                attributeAccessForVariableResult, isFromTraverser) ||
+            !functionCallNodeOtherElement->isAttributeAccessForVariable(
+                attributeAccessForVariableOtherResult, isFromTraverser) ||
+            attributeAccessForVariableResult.first !=
+                attributeAccessForVariableOtherResult.first ||
+            !basics::AttributeName::isIdentical(
+                attributeAccessForVariableResult.second,
+                attributeAccessForVariableOtherResult.second, false)) {
+          return false;
+        }
+        break;
+      }
+      case NODE_TYPE_VALUE: {
+        if (aql::compareAstNodes(functionCallNodeElement,
+                                 functionCallNodeOtherElement, true) != 0) {
+          return false;
+        }
+        break;
+      }
+      default: {
+        // We are being extremely pessimistic, meaning if we encounter
+        // anything else we will not remove the expression
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+bool canInRangeBeRemoved(auto const* inRangeNode, auto const* otherAndNode,
+                         bool isFromTraverser, Variable const* variable,
+                         Index const* index) {
+  for (std::size_t i{0}; i < otherAndNode->numMembers(); ++i) {
+    auto const* operand = otherAndNode->getMemberUnchecked(i);
+    if (operand->type != NODE_TYPE_FCALL ||
+        aql::functions::getFunctionName(*operand) != "IN_RANGE") {
+      continue;
+    }
+
+    // since we know that this is IN_RANGE node, it must contain 5 members
+    auto const* operandArrayNode = operand->getMember(0);
+    TRI_ASSERT(operandArrayNode->numMembers() == 5);
+
+    auto const* firstElemInRangeFunction = operandArrayNode->getMember(0);
+
+    bool isFieldCoveredByIndex{false};
+    std::pair<Variable const*, std::vector<basics::AttributeName>> result;
+    for (auto const& elem : index->fields()) {
+      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+          !firstElemInRangeFunction->isAttributeAccessForVariable(
+              result, isFromTraverser) ||
+          result.first != variable ||
+          !basics::AttributeName::isIdentical(result.second, elem, false)) {
+        ::clearAttributeAccess(result);
+        isFieldCoveredByIndex = true;
+        break;
+      }
+      ::clearAttributeAccess(result);
+    }
+
+    if (!isFieldCoveredByIndex) {
+      return false;
+    }
+
+    auto const* inRangeArrayNode = inRangeNode->getMember(0);
+    if (areInRangeCallsIdentical(inRangeArrayNode, operandArrayNode,
+                                 isFromTraverser)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 void Condition::collectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
     AstNode const* otherAndNode, containers::HashSet<size_t>& toRemove,
@@ -957,16 +1073,30 @@ void Condition::collectOverlappingMembers(
 
       ::clearAttributeAccess(result);
 
-      // only remove the condition if the index is exactly on the same attribute
-      // as the condition
       if (rhs->isNullValue() &&
           lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
-          result.first == variable && index->fields().size() == 1 &&
-          basics::AttributeName::isIdentical(result.second, index->fields()[0],
-                                             false)) {
-        toRemove.emplace(i);
-        // removed, no need to go on below...
-        continue;
+          result.first == variable) {
+        auto const mayRemoveIndexNonNullAttribute = [&] {
+          if (auto ty = index->type();
+              ty == Index::TRI_IDX_TYPE_MDI_INDEX ||
+              ty == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+            // For an MDI all fields are equal, and we are allowed to drop
+            // conditions for non-null on every attribute in the sparse case.
+            return true;
+          }
+
+          // otherwise only remove the condition if the index is exactly on the
+          // same attribute as the condition
+          return index->fields().size() == 1 &&
+                 basics::AttributeName::isIdentical(result.second,
+                                                    index->fields()[0], false);
+        }();
+
+        if (mayRemoveIndexNonNullAttribute) {
+          toRemove.emplace(i);
+          // removed, no need to go on below...
+          continue;
+        }
       }
     }
 
@@ -1012,6 +1142,14 @@ void Condition::collectOverlappingMembers(
             toRemove.emplace(i);
           }
         }
+      }
+    }
+
+    if (operand->type == NODE_TYPE_FCALL &&
+        functions::getFunctionName(*operand) == "IN_RANGE") {
+      if (canInRangeBeRemoved(operand, otherAndNode, isFromTraverser, variable,
+                              index)) {
+        toRemove.emplace(i);
       }
     }
   }
@@ -1093,7 +1231,8 @@ AstNode* Condition::removeCondition(ExecutionPlan const* plan,
 }
 
 /// @brief remove (now) invalid variables from the condition
-bool Condition::removeInvalidVariables(VarSet const& validVars) {
+bool Condition::removeInvalidVariables(VarSet const& validVars,
+                                       bool& noRemoves) {
   if (_root == nullptr) {
     return false;
   }
@@ -1134,6 +1273,7 @@ bool Condition::removeInvalidVariables(VarSet const& validVars) {
       }
 
       if (invalid) {
+        noRemoves = false;
         andNode->removeMemberUncheckedUnordered(j);
         // repeat with some member index
         TRI_ASSERT(nAnd > 0);
@@ -1741,8 +1881,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
               // non-constant condition
               else {
                 auto opType = operand->type;
-                if (aql::Ast::IsReversibleOperator(opType)) {
-                  opType = aql::Ast::ReverseOperator(opType);
+                if (aql::Ast::isReversibleOperator(opType)) {
+                  opType = aql::Ast::reverseOperator(opType);
                 }
                 if (me.operatorType == opType &&
                     normalize(me.valueNode) == normalize(lhs)) {
@@ -1868,7 +2008,7 @@ AstNode* Condition::transformNodePreorder(
     auto old = node;
 
     // create a new n-ary node
-    node = _ast->createNode(Ast::NaryOperatorType(old->type));
+    node = _ast->createNode(Ast::naryOperatorType(old->type));
     _ast->resources().reserveChildNodes(node, 2);
     node->addMember(
         transformNodePreorder(old->getMember(0), conditionOptimization));

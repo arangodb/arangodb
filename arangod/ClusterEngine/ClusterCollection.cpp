@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -143,7 +143,8 @@ Result ClusterCollection::updateProperties(velocypack::Slice slice) {
     // note: we have to exclude inverted indexes here,
     // as they are a different class type (no relationship to
     // ClusterIndex).
-    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    if (idx->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+        idx->type() != Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
       TRI_ASSERT(dynamic_cast<ClusterIndex*>(idx.get()) != nullptr);
       std::static_pointer_cast<ClusterIndex>(idx)->updateProperties(
           _info.slice());
@@ -199,9 +200,15 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
-                                                      bool restore,
-                                                      bool& created) {
+bool ClusterCollection::cacheEnabled() const noexcept {
+  return basics::VelocyPackHelper::getBooleanValue(
+      _info.slice(), StaticStrings::CacheEnabled, false);
+}
+
+futures::Future<std::shared_ptr<Index>> ClusterCollection::createIndex(
+    velocypack::Slice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress,
+    Replication2Callback replicationCb) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   // prevent concurrent dropping
@@ -212,13 +219,10 @@ std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
   if (idx) {
     created = false;
     // We already have this index.
-    return idx;
+    co_return idx;
   }
 
-  StorageEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
+  StorageEngine& engine = _logicalCollection.vocbase().engine();
 
   // We are sure that we do not have an index of this type.
   // We also hold the lock. Create it
@@ -231,7 +235,7 @@ std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
   _indexes.emplace(idx);
 
   created = true;
-  return idx;
+  co_return idx;
 }
 
 std::unique_ptr<IndexIterator> ClusterCollection::getAllIterator(
@@ -262,25 +266,25 @@ Result ClusterCollection::lookupKeyForUpdate(
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               std::string_view /*key*/,
-                               IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 std::string_view key,
+                                 IndexIterator::DocumentCallback const& cb,
+                                 LookupOptions options) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-// read using a token!
-Result ClusterCollection::read(transaction::Methods* /*trx*/,
-                               LocalDocumentId const& /*documentId*/,
-                               IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 LocalDocumentId token,
+                                 IndexIterator::DocumentCallback const& cb,
+                                 LookupOptions options,
+                                 StorageSnapshot const* snapshot) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::lookupDocument(
-    transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
-    velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
-    ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookup(transaction::Methods* trx,
+                                 std::span<LocalDocumentId> tokens,
+                                 MultiDocumentCallback const& cb,
+                                 LookupOptions options) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

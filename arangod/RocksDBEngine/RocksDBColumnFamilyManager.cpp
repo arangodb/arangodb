@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,29 +24,35 @@
 
 #include "RocksDBColumnFamilyManager.h"
 
+#include <span>
 #include <rocksdb/db.h>
 
 #include "Basics/debugging.h"
 
 namespace arangodb {
 
+// `Zkd` is the old designation for an unprefix mdi
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default",       "Documents",      "PrimaryIndex",
-        "EdgeIndex",     "VPackIndex",     "GeoIndex",
-        "FulltextIndex", "ReplicatedLogs", "ZkdIndex"};
+        "default",    "Documents",   "PrimaryIndex",  "EdgeIndex",
+        "VPackIndex", "GeoIndex",    "FulltextIndex", "ReplicatedLogs",
+        "ZkdIndex",   "MdiPrefixed", "VectorIndex"};  // We have to keep
+                                                      // `ZkdIndex` cf name for
+                                                      // backwards
+                                                      // compatibility.
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
-        "definitions", "documents", "primary",         "edge", "vpack",
-        "geo",         "fulltext",  "replicated-logs", "zkd"};
+        "definitions", "documents",    "primary",  "edge",
+        "vpack",       "geo",          "fulltext", "replicated-logs",
+        "mdi",         "mdi-prefixed", "vector"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
-    RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr,
+    RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
+                                            nullptr, nullptr, nullptr, nullptr,
                                             nullptr, nullptr, nullptr};
 
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::_defaultHandle =
@@ -113,10 +119,14 @@ char const* RocksDBColumnFamilyManager::name(
   return "unknown";
 }
 
-std::array<rocksdb::ColumnFamilyHandle*,
-           RocksDBColumnFamilyManager::numberOfColumnFamilies> const&
+std::span<rocksdb::ColumnFamilyHandle*>
 RocksDBColumnFamilyManager::allHandles() {
-  return _handles;
+  std::size_t valid_size{_handles.size()};
+  while (valid_size > 0 && _handles[valid_size - 1] == nullptr) {
+    --valid_size;
+  }
+
+  return std::span(_handles.data(), valid_size);
 }
 
 }  // namespace arangodb

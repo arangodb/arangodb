@@ -38,7 +38,7 @@ export const useCreateFulltextIndex = () => {
     return onCreateIndex({
       ...values,
       minLength: toNumber(values.minLength),
-      fields: values.fields.split(",")
+      fields: values.fields.split(",").map(field => field.trim())
     });
   };
   return { onCreate };

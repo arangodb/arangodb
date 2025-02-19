@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,20 +23,33 @@
 
 #pragma once
 
-#include <atomic>
-#include <mutex>
-
-#include <fuerte/requests.h>
-
-#include "Network/ConnectionPool.h"
 #include "Metrics/Fwd.h"
+#include "Network/ConnectionPool.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
+#include <fuerte/requests.h>
+
+#include <atomic>
+#include <cstdint>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <string_view>
+
 namespace arangodb {
+class Thread;
+
 namespace network {
 struct RequestOptions;
-}
+
+struct RetryableRequest {
+  virtual ~RetryableRequest() = default;
+  virtual bool isDone() const = 0;
+  virtual void retry() = 0;
+  virtual void cancel() = 0;
+};
+}  // namespace network
 
 class NetworkFeature final : public ArangodFeature {
  public:
@@ -46,8 +59,9 @@ class NetworkFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "Network"; }
 
-  explicit NetworkFeature(Server& server);
-  NetworkFeature(Server& server, network::ConnectionPool::Config);
+  NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+                 network::ConnectionPool::Config);
+  ~NetworkFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -79,6 +93,11 @@ class NetworkFeature final : public ArangodFeature {
                    std::unique_ptr<fuerte::Request>&& req,
                    RequestCallback&& cb);
 
+  void retryRequest(std::shared_ptr<network::RetryableRequest>, RequestLane,
+                    std::chrono::steady_clock::duration);
+
+  static uint64_t defaultIOThreads();
+
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
                       std::unique_ptr<fuerte::Request>& req);
@@ -87,20 +106,31 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  void cancelGarbageCollection() noexcept;
+  void injectAcceptEncodingHeader(fuerte::Request& req) const;
+  bool compressRequestBody(network::RequestOptions const& opts,
+                           fuerte::Request& req) const;
+
+  // configuration
   std::string _protocol;
   uint64_t _maxOpenConnections;
   uint64_t _idleTtlMilli;
   uint32_t _numIOThreads;
   bool _verifyHosts;
+
   std::atomic<bool> _prepared;
 
-  std::mutex _workItemMutex;
-  Scheduler::WorkHandle _workItem;
   /// @brief where rhythm is life, and life is rhythm :)
   std::function<void(bool)> _gcfunc;
 
   std::unique_ptr<network::ConnectionPool> _pool;
   std::atomic<network::ConnectionPool*> _poolPtr;
+
+  // protects _workItem and _retryRequests
+  std::mutex _workItemMutex;
+  Scheduler::WorkHandle _workItem;
+
+  std::unique_ptr<Thread> _retryThread;
 
   /// @brief number of cluster-internal forwarded requests
   /// (from one coordinator to another, in case load-balancing
@@ -117,6 +147,13 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _dequeueDurations;
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
+
+  uint64_t _compressRequestThreshold;
+
+  enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
+  CompressionType _compressionType;
+  std::string _compressionTypeLabel;
+  metrics::MetricsFeature& _metrics;
 };
 
 }  // namespace arangodb

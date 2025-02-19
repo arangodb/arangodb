@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,26 +21,15 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <iostream>
-#include <limits>
-
-#include <date/date.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Utf8Helper.h>
-
 #include "Index.h"
 
 #include "Aql/Projections.h"
 #include "Aql/Ast.h"
-#include "Aql/AstNode.h"
-#include "Aql/AttributeNamePath.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/datetime.h"
-#include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -48,6 +37,13 @@
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+
+#include <date/date.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Utf8Helper.h>
+
+#include <iostream>
+#include <limits>
 
 using namespace std::chrono;
 using namespace date;
@@ -187,7 +183,8 @@ Index::SortCosts Index::SortCosts::defaultCosts(size_t itemsInIndex) {
   TRI_ASSERT(!costs.supportsCondition);
   costs.coveredAttributes = 0;
   costs.estimatedCosts =
-      100.0 + /*for sort setup*/
+      0.01 * itemsInIndex + /*for sort setup, 1 percent of documents covered by
+                               index */
       1.05 * (itemsInIndex > 0 ? (static_cast<double>(itemsInIndex) *
                                   std::log2(static_cast<double>(itemsInIndex)))
                                : 0.0);
@@ -209,6 +206,7 @@ Index::Index(
       _collection(collection),
       _name(name),
       _fields(fields),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
       _sparse(sparse) {
@@ -226,6 +224,7 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
           slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ true,
           Index::allowExpansion(Index::type(
               slice.get(arangodb::StaticStrings::IndexType).stringView())))),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
@@ -234,10 +233,92 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
 
 Index::~Index() = default;
 
+/// @brief return the index name
+std::string const& Index::name() const {
+  if (_name == StaticStrings::IndexNameEdgeFrom ||
+      _name == StaticStrings::IndexNameEdgeTo) {
+    return StaticStrings::IndexNameEdge;
+  }
+  return _name;
+}
+
 void Index::name(std::string const& newName) {
   if (_name.empty()) {
     _name = newName;
   }
+}
+
+/// @brief return the index fields names
+std::vector<std::vector<std::string>> Index::fieldNames() const {
+  std::vector<std::vector<std::string>> result;
+  result.reserve(_fields.size());
+
+  for (auto const& it : _fields) {
+    std::vector<std::string> parts;
+    parts.reserve(it.size());
+    for (auto const& it2 : it) {
+      parts.emplace_back(it2.name);
+    }
+    result.emplace_back(std::move(parts));
+  }
+  return result;
+}
+
+/// @brief whether or not the ith attribute is expanded (somewhere)
+bool Index::isAttributeExpanded(size_t i) const {
+  if (i >= _fields.size()) {
+    return false;
+  }
+  return TRI_AttributeNamesHaveExpansion(_fields[i]);
+}
+
+/// @brief whether or not any attribute is expanded
+bool Index::isAttributeExpanded(
+    std::vector<basics::AttributeName> const& attribute) const {
+  for (auto const& it : _fields) {
+    if (!basics::AttributeName::namesMatch(attribute, it)) {
+      continue;
+    }
+    return TRI_AttributeNamesHaveExpansion(it);
+  }
+  return false;
+}
+
+/// @brief whether or not any attribute is expanded
+bool Index::attributeMatches(
+    std::vector<basics::AttributeName> const& attribute, bool isPrimary) const {
+  for (auto const& it : _fields) {
+    if (basics::AttributeName::isIdentical(attribute, it, true)) {
+      return true;
+    }
+  }
+  if (isPrimary) {
+    static std::vector<basics::AttributeName> const vec_id{
+        {StaticStrings::IdString, false}};
+    return basics::AttributeName::isIdentical(attribute, vec_id, true);
+  }
+  return false;
+}
+
+/// @brief whether or not the given attribute vector matches any of the index
+/// fields In case it does, the position will be returned as well.
+std::pair<bool, size_t> Index::attributeMatchesWithPos(
+    std::vector<basics::AttributeName> const& attribute, bool isPrimary) const {
+  size_t pos = 0;
+  for (auto const& it : _fields) {
+    if (basics::AttributeName::isIdentical(attribute, it, true)) {
+      return {true, pos};
+    }
+    pos++;
+  }
+  if (isPrimary) {
+    static std::vector<basics::AttributeName> const vec_id{
+        {StaticStrings::IdString, false}};
+    return basics::AttributeName::isIdentical(attribute, vec_id, true)
+               ? std::pair<bool, size_t>(true, pos)
+               : std::pair<bool, size_t>(false, -1);
+  }
+  return {false, -1};
 }
 
 size_t Index::sortWeight(arangodb::aql::AstNode const* node) {
@@ -343,8 +424,14 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "geo2") {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (type == "mdi") {
+    return TRI_IDX_TYPE_MDI_INDEX;
+  }
   if (type == "zkd") {
     return TRI_IDX_TYPE_ZKD_INDEX;
+  }
+  if (type == "mdi-prefixed") {
+    return TRI_IDX_TYPE_MDI_PREFIXED_INDEX;
   }
   if (type == iresearch::StaticStrings::ViewArangoSearchType) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -354,6 +441,9 @@ Index::IndexType Index::type(std::string_view type) {
   }
   if (type == arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE) {
     return TRI_IDX_TYPE_INVERTED_INDEX;
+  }
+  if (type == "vector") {
+    return TRI_IDX_TYPE_VECTOR_INDEX;
   }
   return TRI_IDX_TYPE_UNKNOWN;
 }
@@ -393,8 +483,14 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "noaccess";
     case TRI_IDX_TYPE_ZKD_INDEX:
       return "zkd";
+    case TRI_IDX_TYPE_MDI_INDEX:
+      return "mdi";
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return "mdi-prefixed";
     case TRI_IDX_TYPE_INVERTED_INDEX:
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
+    case TRI_IDX_TYPE_VECTOR_INDEX:
+      return "vector";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -452,7 +548,7 @@ bool Index::validateHandleName(bool extendedNames,
 IndexId Index::generateId() { return IndexId{TRI_NewTickServer()}; }
 
 /// @brief check if two index definitions share any identifiers (_id, name)
-bool Index::CompareIdentifiers(velocypack::Slice const& lhs,
+bool Index::compareIdentifiers(velocypack::Slice const& lhs,
                                velocypack::Slice const& rhs) {
   VPackSlice lhsId = lhs.get(arangodb::StaticStrings::IndexId);
   VPackSlice rhsId = rhs.get(arangodb::StaticStrings::IndexId);
@@ -473,19 +569,27 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs,
 
 /// @brief index comparator, used by the coordinator to detect if two index
 /// contents are the same
-bool Index::Compare(StorageEngine& engine, VPackSlice const& lhs,
+bool Index::compare(StorageEngine& engine, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  auto lhsType = lhs.get(arangodb::StaticStrings::IndexType);
-  TRI_ASSERT(lhsType.isString());
+  auto normalizeType = [](VPackSlice s) -> std::string_view {
+    TRI_ASSERT(s.isString());
+    // "zkd" is the old naming for "mdi", so we have to treat these
+    // two type names as identical.
+    if (s.stringView() == "zkd") {
+      return "mdi";
+    }
+    return s.stringView();
+  };
 
-  // type must be identical
-  if (!arangodb::basics::VelocyPackHelper::equal(
-          lhsType, rhs.get(arangodb::StaticStrings::IndexType), false)) {
+  auto lhsType = normalizeType(lhs.get(arangodb::StaticStrings::IndexType));
+  auto rhsType = normalizeType(rhs.get(arangodb::StaticStrings::IndexType));
+
+  if (lhsType != rhsType) {
     return false;
   }
 
   return engine.indexFactory()
-      .factory(lhsType.copyString())
+      .factory(std::string{lhsType})
       .equal(lhs, rhs, dbname);
 }
 
@@ -550,6 +654,12 @@ void Index::toVelocyPack(
   if (hasSelectivityEstimate() &&
       Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
+  }
+
+  auto const progress = _progress.load(std::memory_order_relaxed);
+  if (progress > -1 && progress < 100) {
+    builder.add("progress", VPackValue(progress));
+    builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
@@ -631,6 +741,10 @@ double Index::selectivityEstimate(std::string_view) const {
     return 1.0;
   }
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+void Index::updateClusterSelectivityEstimate(double /*estimate*/) {
+  TRI_ASSERT(false);  // should never be called except on Coordinator
 }
 
 /// @brief whether or not the index is implicitly unique
@@ -907,6 +1021,13 @@ bool Index::covers(aql::Projections& projections) const {
 
 bool Index::canWarmup() const noexcept { return false; }
 
+UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      "Requesting vector index definition on a non-vector index");
+}
+
 Result Index::warmup() {
   // we should never be called in the base class.
   TRI_ASSERT(!canWarmup());
@@ -914,6 +1035,18 @@ Result Index::warmup() {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
   return {};
+}
+
+/// @brief generate error result
+/// @param code the error key
+/// @param key the conflicting key
+Result& Index::addErrorMsg(Result& r, ErrorCode code,
+                           std::string_view key) const {
+  if (code != TRI_ERROR_NO_ERROR) {
+    r.reset(code);
+    return addErrorMsg(r, key);
+  }
+  return r;
 }
 
 /// @brief generate error message
@@ -1001,7 +1134,7 @@ AttributeAccessParts::AttributeAccessParts(aql::AstNode const* comparison,
     // got value == a.b  ->  flip the two sides
     attribute = comparison->getMember(1);
     value = comparison->getMember(0);
-    opType = aql::Ast::ReverseOperator(opType);
+    opType = aql::Ast::reverseOperator(opType);
   }
 
   TRI_ASSERT(attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);
@@ -1081,6 +1214,31 @@ std::vector<std::vector<basics::AttributeName>> Index::mergeFields(
   result.insert(result.end(), fields1.begin(), fields1.end());
   result.insert(result.end(), fields2.begin(), fields2.end());
   return result;
+}
+
+std::unique_ptr<AqlIndexStreamIterator> Index::streamForCondition(
+    transaction::Methods* trx, IndexStreamOptions const&) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string(
+          "no default implementation for streamForCondition. index type: ") +
+          typeName());
+}
+
+bool Index::supportsDistinctScan(
+    IndexDistinctScanOptions const&) const noexcept {
+  return false;
+}
+
+std::unique_ptr<AqlIndexDistinctScanIterator> Index::distinctScanFor(
+    transaction::Methods* trx, IndexDistinctScanOptions const&) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string(
+          "no default implementation for distinctScanFor. index-type = ") +
+          typeName());
 }
 
 }  // namespace arangodb

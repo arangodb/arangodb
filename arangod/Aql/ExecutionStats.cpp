@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -39,6 +38,8 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
+  builder.add("documentLookups", VPackValue(documentLookups));
+  builder.add("seeks", VPackValue(seeks));
   builder.add("scannedFull", VPackValue(scannedFull));
   builder.add("scannedIndex", VPackValue(scannedIndex));
   builder.add("cursorsCreated", VPackValue(cursorsCreated));
@@ -63,9 +64,11 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
       builder.openObject();
       builder.add("id", VPackValue(pair.first.id()));
       builder.add("calls", VPackValue(pair.second.calls));
+      builder.add("parallel", VPackValue(pair.second.parallel));
       builder.add("items", VPackValue(pair.second.items));
       builder.add("filtered", VPackValue(pair.second.filtered));
       builder.add("runtime", VPackValue(pair.second.runtime));
+      builder.add("fetching", VPackValue(pair.second.fetching));
       builder.close();
     }
     builder.close();
@@ -77,6 +80,8 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
 void ExecutionStats::add(ExecutionStats const& summand) {
   writesExecuted += summand.writesExecuted;
   writesIgnored += summand.writesIgnored;
+  documentLookups += summand.documentLookups;
+  seeks += summand.seeks;
   scannedFull += summand.scannedFull;
   scannedIndex += summand.scannedIndex;
   cursorsCreated += summand.cursorsCreated;
@@ -138,6 +143,8 @@ void ExecutionStats::addNode(arangodb::aql::ExecutionNodeId nid,
 ExecutionStats::ExecutionStats() noexcept
     : writesExecuted(0),
       writesIgnored(0),
+      documentLookups(0),
+      seeks(0),
       scannedFull(0),
       scannedIndex(0),
       cursorsCreated(0),
@@ -167,6 +174,10 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       slice, "writesExecuted", 0);
   writesIgnored = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "writesIgnored", 0);
+  documentLookups = basics::VelocyPackHelper::getNumericValue<uint64_t>(
+      slice, "documentLookups", 0);
+  seeks =
+      basics::VelocyPackHelper::getNumericValue<uint64_t>(slice, "seeks", 0);
   scannedFull = basics::VelocyPackHelper::getNumericValue<uint64_t>(
       slice, "scannedFull", 0);
   scannedIndex = basics::VelocyPackHelper::getNumericValue<uint64_t>(
@@ -208,11 +219,19 @@ ExecutionStats::ExecutionStats(VPackSlice slice) : ExecutionStats() {
       auto nid =
           ExecutionNodeId{val.get("id").getNumber<ExecutionNodeId::BaseType>()};
       node.calls = val.get("calls").getNumber<uint64_t>();
+      if (auto v = val.get("parallel"); v.isNumber()) {
+        node.parallel = v.getNumber<uint64_t>();
+      }
       node.items = val.get("items").getNumber<uint64_t>();
       if (VPackSlice s = val.get("filtered"); !s.isNone()) {
         node.filtered = s.getNumber<uint64_t>();
       }
       node.runtime = val.get("runtime").getNumber<double>();
+      if (auto v = val.get("fetching"); v.isNumber()) {
+        // fetching is introduced in 3.12. older versions do not
+        // have it.
+        node.fetching = v.getNumber<double>();
+      }
       auto const& alias = _nodeAliases.find(nid);
       if (alias != _nodeAliases.end()) {
         nid = alias->second;
@@ -239,6 +258,8 @@ void ExecutionStats::setIntermediateCommits(uint64_t value) {
 void ExecutionStats::clear() noexcept {
   writesExecuted = 0;
   writesIgnored = 0;
+  documentLookups = 0;
+  seeks = 0;
   scannedFull = 0;
   scannedIndex = 0;
   cursorsCreated = 0;

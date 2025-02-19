@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "Basics/Common.h"
+#include "Async/async.h"
+#include "Futures/Future.h"
 #include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
@@ -103,31 +104,24 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   /// each line of the input stream contains an individual JSON object
   //////////////////////////////////////////////////////////////////////////////
 
-  bool createFromJson(std::string const&);
-  bool createFromVPack(std::string const&);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates documents by JSON objects
-  /// the input stream is one big JSON array containing all documents
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool createByDocumentsList();
+  futures::Future<futures::Unit> createFromJson(std::string const&);
+  futures::Future<futures::Unit> createFromVPack(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates a documents from key/value lists
   //////////////////////////////////////////////////////////////////////////////
 
-  bool createFromKeyValueList();
+  futures::Future<futures::Unit> createFromKeyValueList();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief perform the actual import (insert/update/replace) operations
   //////////////////////////////////////////////////////////////////////////////
 
-  Result performImport(SingleCollectionTransaction& trx,
-                       RestImportResult& result,
-                       std::string const& collectionName,
-                       VPackBuilder const& babies, bool complete,
-                       OperationOptions const& opOptions);
+  async<Result> performImport(SingleCollectionTransaction& trx,
+                              RestImportResult& result,
+                              std::string const& collectionName,
+                              VPackBuilder const& babies, bool complete,
+                              OperationOptions const& opOptions);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief creates the result

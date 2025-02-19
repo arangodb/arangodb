@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,18 +23,17 @@
 
 #pragma once
 
+#include "Basics/Result.h"
+
+#include <velocypack/Builder.h>
+
+#include <cstddef>
 #include <memory>
+#include <optional>
 #include <unordered_set>
 #include <vector>
 
-#include "Basics/Common.h"
-#include "Basics/Result.h"
-
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
-
 namespace transaction {
 class Context;
 }
@@ -48,18 +47,26 @@ struct QueryResult {
   QueryResult(QueryResult&& other) = default;
   QueryResult& operator=(QueryResult&& other) = default;
 
-  QueryResult() : result(), cached(false), allowDirtyReads(false) {}
+  QueryResult()
+      : planCacheKey(std::nullopt), cached(false), allowDirtyReads(false) {}
 
   explicit QueryResult(Result const& res)
-      : result(res), cached(false), allowDirtyReads(false) {}
+      : result(res),
+        planCacheKey(std::nullopt),
+        cached(false),
+        allowDirtyReads(false) {}
 
   explicit QueryResult(Result&& res)
-      : result(std::move(res)), cached(false), allowDirtyReads(false) {}
+      : result(std::move(res)),
+        planCacheKey(std::nullopt),
+        cached(false),
+        allowDirtyReads(false) {}
 
   virtual ~QueryResult() = default;
 
   void reset(Result const& res) {
     result.reset(res);
+    planCacheKey.reset();
     cached = false;
     data.reset();
     extra.reset();
@@ -68,6 +75,7 @@ struct QueryResult {
 
   void reset(Result&& res) {
     result.reset(std::move(res));
+    planCacheKey.reset();
     cached = false;
     data.reset();
     extra.reset();
@@ -78,14 +86,35 @@ struct QueryResult {
   bool ok() const { return result.ok(); }
   bool fail() const { return result.fail(); }
   ErrorCode errorNumber() const { return result.errorNumber(); }
-  bool is(ErrorCode errorNumber) const {
-    return result.errorNumber() == errorNumber;
-  }
-  bool isNot(ErrorCode errorNumber) const { return !is(errorNumber); }
+  bool is(ErrorCode errorNumber) const { return result.is(errorNumber); }
+  bool isNot(ErrorCode errorNumber) const { return result.isNot(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
- public:
+  uint64_t memoryUsage() const noexcept {
+    uint64_t value = 0;
+    for (auto const& it : bindParameters) {
+      value += it.size() + 16; /* 16 bytes as an arbitrary overhead */
+    }
+    for (auto const& it : collectionNames) {
+      value += it.size() + 16; /* 16 bytes as an arbitrary overhead */
+    }
+    if (data != nullptr && data->buffer() != nullptr) {
+      value +=
+          data->buffer()->size() + 256 /* 256 bytes as an arbitrary overhead */;
+    }
+    if (extra != nullptr && extra->buffer() != nullptr) {
+      value += extra->buffer()->size() +
+               256 /* 256 bytes as an arbitrary overhead */;
+    }
+    if (context != nullptr) {
+      value += 256; /* 256 bytes as an arbitrary overhead */
+    }
+
+    return value;
+  }
+
   Result result;
+  std::optional<size_t> planCacheKey;
   bool cached;
   bool allowDirtyReads;  // indicate that query was done with dirty reads,
                          // we need to preserve this here, since query results

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerRule.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
@@ -77,9 +77,10 @@ class QueryLateMaterialization : public QueryTest {
       OperationOptions opt;
       static std::vector<std::string> const kEmpty;
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(vocbase()), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          transaction::Options());
+          transaction::StandaloneContext::create(
+              vocbase(), arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
       // insert into collection_1
       {
@@ -142,13 +143,19 @@ class QueryLateMaterialization : public QueryTest {
                        std::vector<velocypack::Slice> const& expectedDocs,
                        bool checkRuleOnly) {
     EXPECT_TRUE(tests::assertRules(
-        vocbase(), query, {aql::OptimizerRule::handleArangoSearchViewsRule}));
+        vocbase(), query, {aql::OptimizerRule::handleArangoSearchViewsRule},
+        nullptr,
+        R"({"optimizer":{"rules":["-arangosearch-constrained-sort"]}})"));
 
     EXPECT_TRUE(tests::assertRules(
         vocbase(), query,
-        {aql::OptimizerRule::lateDocumentMaterializationArangoSearchRule}));
+        {aql::OptimizerRule::lateDocumentMaterializationArangoSearchRule},
+        nullptr,
+        R"({"optimizer":{"rules":["-arangosearch-constrained-sort"]}})"));
 
-    auto queryResult = tests::executeQuery(vocbase(), query);
+    auto queryResult = tests::executeQuery(
+        vocbase(), query, nullptr,
+        R"({"optimizer":{"rules":["-arangosearch-constrained-sort"]}})");
     ASSERT_TRUE(queryResult.result.ok());
 
     auto result = queryResult.data->slice();
@@ -340,7 +347,9 @@ $0}}})",
     velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, LogicalDataSource::Serialization::Properties);
+    auto res =
+        view->properties(builder, LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -414,7 +423,7 @@ class QueryLateMaterializationSearch : public QueryLateMaterialization {
       auto collection =
           vocbase().lookupCollection(absl::Substitute("collection_$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };
     createIndex(1, false);
