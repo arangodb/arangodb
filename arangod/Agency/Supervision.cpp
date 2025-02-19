@@ -1820,10 +1820,9 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
   // job), or else the larger job can no longer detect any failures!
   // Returns true if there is something to do, false otherwise.
 
-  using namespace std::literals::string_literals;
-
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
+  constexpr size_t minimalKeepSeconds = 3600;
 
   auto cleanup = [&](std::string const& prefix, size_t limit) -> bool {
     auto pendingJobs = snapshot.hasAsChildren(pendingPrefix);
@@ -1857,19 +1856,25 @@ bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
           try {
             if (std::chrono::system_clock::now() -
                     stringToTimepoint(finished.value()) >
-                std::chrono::seconds{3600}) {
+                std::chrono::seconds{minimalKeepSeconds}) {
               v.emplace_back(p.first, *created);
             }
-          } catch (...) {  // unparseable timeFinished
+          } catch (...) { // unparseable timeFinished
             TRI_ASSERT(false);
+            LOG_TOPIC("98987", WARN, Logger::SUPERVISION)
+              << "Unparseable finished time."  << finished.value();
             v.emplace_back(p.first, *created);
           }
-        } else {  // in finished and yet missing timeFinished
+        } else { // in finished and yet missing timeFinished
           TRI_ASSERT(false);
+          LOG_TOPIC("99788", WARN, Logger::SUPERVISION)
+            << "Missing finished time in job.";
           v.emplace_back(p.first, *created);
         }
-      } else {  //  missing created
+      } else { //  missing created
         TRI_ASSERT(false);
+        LOG_TOPIC("99878", WARN, Logger::SUPERVISION)
+          << "Missing created time in job.";
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }
     }
@@ -3665,3 +3670,4 @@ void Supervision::checkUndoLeaderChangeActions() {
     }
   }
 }
+
