@@ -5,6 +5,8 @@ v3.11.14 (XXXX-XX-XX)
   Target/Finished and Failed. They will be forthwith be kept for at
   least 5m.
 
+* Upgraded OpenSSL to 3.4.1.
+
 
 v3.11.13 (2025-02-07)
 ---------------------
