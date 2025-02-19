@@ -52,6 +52,10 @@ struct Registry {
 
   /**
      Removes a coroutine thread registry from this registry.
+
+     Is called when all shared pointers to the thread registry coming from the
+     promises are deleted as well as the thread itself (can happen in any
+     order).
    */
   auto remove_thread(ThreadRegistry* registry) -> void;
 
