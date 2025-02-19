@@ -47,12 +47,23 @@ struct Registry;
    list of promises that live on this thread.
 
    A promise can be marked for deletion on any thread, the garbage collection
-   needs to be called manually on the owning thread and destroys all marked
+   needs to be called manually and destroys all marked
    promises. A promise can only be added on the owning thread, therefore adding
    and garbage collection cannot happen concurrently. The garbage collection can
    also not run during an iteration over all promises in the list.
 
-   This registry destroys itself when its ref counter is decremented to 0.
+   A thread registry contains an atomic list of promises. If a promise is marked
+   for deletion, it stays in this list, but is additionally added to the atomic
+   free list. The garbage collection goes through this free list, removes each
+   promise in this free list from the promise list (and from the free list as
+   well) and then destroys the promise. Each promise has a shared ptr to the
+   thread registry, which is removed when the promise is marked for deletion.
+   Additionally, the owning thread has a shared_ptr to the thread registry.
+   Therefore, a thread registry is destroyed only if both the thread is deleted
+   and all promises are marked for deletion (and when a thread registry is
+   destroyed, it deletes all its promises that remain in the free list). When a
+   thread registry is destroyed, it also removes itself from the global
+   registry.
  */
 struct ThreadRegistry : std::enable_shared_from_this<ThreadRegistry> {
   static auto make(std::shared_ptr<const Metrics> metrics,
