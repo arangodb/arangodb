@@ -1,0 +1,12 @@
+name: arangodb_async_registered_promises
+introducedIn: "3.12.4"
+help: |
+  Number of currently registered asynchronous promises.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Number of currently registered asynchronous promises.

@@ -1,5 +1,5 @@
+import { SwitchControl } from "@arangodb/ui";
 import React from "react";
-import { SwitchControl } from "../../../../../components/form/SwitchControl";
 import { useAnalyzersContext } from "../../../AnalyzersContext";
 
 export const AccentInput = ({

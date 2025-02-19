@@ -50,7 +50,7 @@
       $.ajax({
         type: 'GET',
         cache: false,
-        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/figures?details=true'),
+        url: arangoHelper.databaseUrl('/_api/collection/' + encodeURIComponent(this.get('name')) + '/figures?details=false'),
         contentType: 'application/json',
         processData: false,
         success: function (data) {

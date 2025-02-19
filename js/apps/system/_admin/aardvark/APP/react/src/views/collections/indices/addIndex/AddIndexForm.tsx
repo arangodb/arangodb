@@ -1,6 +1,6 @@
+import { SingleSelect } from "@arangodb/ui";
 import { Box, FormLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
-import SingleSelect from "../../../../components/select/SingleSelect";
 import { CollectionIndex } from "../CollectionIndex.types";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";

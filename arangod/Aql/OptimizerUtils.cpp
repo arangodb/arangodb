@@ -41,7 +41,6 @@
 #include "Aql/Expression.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/QueryContext.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
@@ -378,19 +377,13 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     bool const isOnlyAttributeAccess =
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
-    if (sortCondition.isUnidirectional()) {
-      // only go in here if we actually have a sort condition and it can in
-      // general be supported by an index. for this, a sort condition must not
-      // be empty, must consist only of attribute access, and all attributes
-      // must be sorted in the same direction
-      Index::SortCosts sc =
-          idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
-      if (sc.supportsCondition) {
-        supportsSort = true;
-      }
-      sortCost = sc.estimatedCosts;
-      coveredAttributes = sc.coveredAttributes;
+    Index::SortCosts sc =
+        idx->supportsSortCondition(&sortCondition, reference, itemsInIndex);
+    if (sc.supportsCondition) {
+      supportsSort = true;
     }
+    sortCost = sc.estimatedCosts;
+    coveredAttributes = sc.coveredAttributes;
 
     if (!supportsSort && isOnlyAttributeAccess && node->isOnlyEqualityMatch()) {
       // index cannot be used for sorting, but the filter condition consists
@@ -1323,8 +1316,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t& coveredAttributes) {
   if (!hint.isDisabled()) {
     // We do not have a condition. But we have a sort!
-    if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
-        sortCondition->isUnidirectional()) {
+    if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess()) {
       double bestCost = 0.0;
       std::shared_ptr<Index> bestIndex;
 

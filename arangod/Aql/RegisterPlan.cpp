@@ -146,6 +146,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(!regsToKeepStack.empty());
     regsToKeepStack.back().clear();
     for (auto const var : varsValid) {
+      TRI_ASSERT(var != nullptr);
       if (var->type() == Variable::Type::Regular && !isSetHere(var) &&
           isUsedLater(var)) {
         auto reg = plan->variableToRegisterId(var);
@@ -561,6 +562,7 @@ auto RegisterPlanT<T>::calcRegsToKeep(
     auto const& varsUsedLater = varsUsedLaterStack[idx];
 
     for (auto const var : stackEntry) {
+      TRI_ASSERT(var != nullptr);
       if (var->type() != Variable::Type::Regular) {
         continue;
       }

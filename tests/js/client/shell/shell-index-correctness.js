@@ -292,7 +292,7 @@ function IndexCorrectnessSuite() {
       coll.insert(arr);
       assertEqual(30000, coll.count());
 
-      assertEqual(coll.getIndexes().length, 1);
+      assertEqual(coll.indexes().length, 1);
 
       try {
         coll.ensureIndex({ type: "persistent", fields: ["v"], unique: true });
@@ -301,7 +301,7 @@ function IndexCorrectnessSuite() {
         assertEqual(internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, e.errorNum);
       }
 
-      let idx = coll.getIndexes();
+      let idx = coll.indexes();
     
       // should not have created an index
       assertEqual(idx.length, 1, idx);

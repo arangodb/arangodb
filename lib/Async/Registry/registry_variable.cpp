@@ -21,6 +21,8 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "registry_variable.h"
+#include <thread>
+#include "Async/Registry/promise.h"
 
 namespace arangodb::async_registry {
 
@@ -30,15 +32,20 @@ auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
     ThreadRegistryGuard() : _registry{registry.add_thread()} {}
 
-    /**
-       Runs when the current thread is deleted
-     */
-    ~ThreadRegistryGuard() {}
-
     std::shared_ptr<ThreadRegistry> _registry;
   };
   static thread_local auto registry_guard = ThreadRegistryGuard{};
   return *registry_guard._registry;
 }
 
+// get_current_coroutine_or_thread_id
+auto get_current_coroutine() noexcept -> Requester* {
+  struct Guard {
+    Guard() : _identifier{Requester::current_thread()} {}
+
+    Requester _identifier;
+  };
+  static thread_local auto guard = Guard{};
+  return &guard._identifier;
+}
 }  // namespace arangodb::async_registry

@@ -285,7 +285,7 @@ class agencyMgr {
       try {
         print(CYAN + Date() + ' attempting to dump agency in forceterminate!' + RESET);
         // set us a short deadline so we don't get stuck.
-        internal.SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 100);
+        internal.SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout / 10);
         this.dumpAgency();
       } catch(ex) {
         print(CYAN + Date() + ' aborted to dump agency in forceterminate! ' + ex + RESET);
@@ -298,11 +298,11 @@ class agencyMgr {
   detectAgencyAlive(httpAuthOptions) {
     if (!this.options.agency ||
         !this.shouldBeCompleted() ||
-        !this.moreIsAlreadyRunning()) {
+        this.moreIsAlreadyRunning()) {
       print("no agency check this time.");
       return;
     }
-    let count = (isArm || this.options.isInstrumented) ? 75 : 25;
+    let count = (isArm || this.options.isInstrumented) ? 75 : 30;
     while (count > 0) {
       let haveConfig = 0;
       let haveLeader = 0;

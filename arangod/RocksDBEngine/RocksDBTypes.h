@@ -61,6 +61,7 @@ enum class RocksDBEntryType : char {
   UniqueMdiIndexValue = 'Z',
   MdiVPackIndexValue = 'w',
   UniqueMdiVPackIndexValue = 'W',
+  VectorVPackIndexValue = 'v',
 };
 
 std::string_view rocksDBEntryTypeName(RocksDBEntryType);

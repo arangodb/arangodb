@@ -148,8 +148,8 @@ void removeCurrentServersReplicationTwo(
 void removePlanOrCurrentServers(std::unordered_set<std::string>& servers,
                                 VPackSlice plan, VPackSlice current) {
   for (auto const& database : VPackObjectIterator(plan.get("Databases"))) {
-    if (database.value.get(StaticStrings::ReplicationVersion)
-            .isEqualString("2")) {
+    auto replVersion = database.value.get(StaticStrings::ReplicationVersion);
+    if (replVersion.isString() && replVersion.isEqualString("2")) {
       auto planLogs = plan.get("ReplicatedLogs").get(database.key.stringView());
       auto currentLogs =
           current.get("ReplicatedLogs").get(database.key.stringView());

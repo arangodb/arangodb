@@ -23,10 +23,10 @@ such as renaming, adding or removing zones, please read
 "Theory and pragmatics of the tz code and data"
 <https://www.iana.org/time-zones/repository/theory.html>.
 It is also good to browse the mailing list archives
-<https://mm.icann.org/pipermail/tz/> for examples of patches that tend
-to work well.  Additions to data should contain commentary citing
-reliable sources as justification.  Citations should use "https:" URLs
-if available.
+<https://lists.iana.org/hyperkitty/list/tz@iana.org/>
+for examples of patches that tend to work well.
+Changes should contain commentary citing reliable sources.
+Citations should use "https:" URLs if available.
 
 For changes that fix sensitive security-related bugs, please see the
 distribution's 'SECURITY' file.
@@ -63,11 +63,15 @@ If you use Git the following workflow may be helpful:
   * Edit source files.  Include commentary that justifies the
     changes by citing reliable sources.
 
-  * Debug the changes, e.g.:
+  * Debug the changes locally, e.g.:
 
-        make check
-        make install
+        make TOPDIR=$PWD/tz clean check install
         ./zdump -v America/Los_Angeles
+
+    Although builds assume only basic POSIX, they use extra features
+    if available.  'make check' accesses validator.w3.org unless you
+    lack 'curl' or use 'make CURL=:'.  If you have the latest GCC,
+    "make CFLAGS='$(GCC_DEBUG_FLAGS)'" does extra checking.
 
   * For each separable change, commit it in the new branch, e.g.:
 

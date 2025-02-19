@@ -34,12 +34,12 @@ using namespace arangodb::async_registry;
 namespace {
 
 auto promises_in_registry(std::shared_ptr<ThreadRegistry> registry)
-    -> std::vector<Promise*> {
-  std::vector<Promise*> promises;
-  registry->for_promise([&](Promise* promise) { promises.push_back(promise); });
+    -> std::vector<PromiseSnapshot> {
+  std::vector<PromiseSnapshot> promises;
+  registry->for_promise(
+      [&](PromiseSnapshot promise) { promises.push_back(promise); });
   return promises;
 }
-
 }  // namespace
 
 struct AsyncThreadRegistryTest : ::testing::Test {};
@@ -48,10 +48,11 @@ using AsyncThreadRegistryDeathTest = AsyncThreadRegistryTest;
 TEST_F(AsyncThreadRegistryTest, adds_a_promise) {
   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
-  auto* promise_in = registry->add_promise();
+  auto* promise_in = registry->add_promise(Requester::current_thread(),
+                                           std::source_location::current());
 
   EXPECT_EQ(promises_in_registry(registry),
-            (std::vector<Promise*>{promise_in}));
+            (std::vector<PromiseSnapshot>{promise_in->snapshot()}));
 
   // make sure registry is cleaned up
   promise_in->mark_for_deletion();
@@ -62,7 +63,8 @@ TEST_F(AsyncThreadRegistryTest, adds_a_promise) {
 //   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
 //   std::jthread([&]() {
-//     EXPECT_DEATH(registry->add_promise(),
+//     EXPECT_DEATH(registry->add_promise(Requester::current_thread(),
+//     std::source_location::current()),
 //                  "Assertion failed");
 //   });
 // }
@@ -70,13 +72,17 @@ TEST_F(AsyncThreadRegistryTest, adds_a_promise) {
 TEST_F(AsyncThreadRegistryTest, iterates_over_all_promises) {
   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
-  auto* first_promise = registry->add_promise();
-  auto* second_promise = registry->add_promise();
-  auto* third_promise = registry->add_promise();
+  auto* first_promise = registry->add_promise(Requester::current_thread(),
+                                              std::source_location::current());
+  auto* second_promise = registry->add_promise(Requester::current_thread(),
+                                               std::source_location::current());
+  auto* third_promise = registry->add_promise(Requester::current_thread(),
+                                              std::source_location::current());
 
-  EXPECT_EQ(
-      promises_in_registry(registry),
-      (std::vector<Promise*>{third_promise, second_promise, first_promise}));
+  EXPECT_EQ(promises_in_registry(registry),
+            (std::vector<PromiseSnapshot>{third_promise->snapshot(),
+                                          second_promise->snapshot(),
+                                          first_promise->snapshot()}));
 
   // make sure registry is cleaned up
   first_promise->mark_for_deletion();
@@ -87,14 +93,18 @@ TEST_F(AsyncThreadRegistryTest, iterates_over_all_promises) {
 TEST_F(AsyncThreadRegistryTest, iterates_in_another_thread_over_all_promises) {
   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
-  auto* first_promise = registry->add_promise();
-  auto* second_promise = registry->add_promise();
-  auto* third_promise = registry->add_promise();
+  auto* first_promise = registry->add_promise(Requester::current_thread(),
+                                              std::source_location::current());
+  auto* second_promise = registry->add_promise(Requester::current_thread(),
+                                               std::source_location::current());
+  auto* third_promise = registry->add_promise(Requester::current_thread(),
+                                              std::source_location::current());
 
   std::thread([&]() {
-    EXPECT_EQ(
-        promises_in_registry(registry),
-        (std::vector<Promise*>{third_promise, second_promise, first_promise}));
+    EXPECT_EQ(promises_in_registry(registry),
+              (std::vector<PromiseSnapshot>{third_promise->snapshot(),
+                                            second_promise->snapshot(),
+                                            first_promise->snapshot()}));
   }).join();
 
   // make sure registry is cleaned up
@@ -106,16 +116,19 @@ TEST_F(AsyncThreadRegistryTest, iterates_in_another_thread_over_all_promises) {
 TEST_F(AsyncThreadRegistryTest,
        marked_promises_are_deleted_in_garbage_collection) {
   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
-  auto* promise_to_delete = registry->add_promise();
-  auto* another_promise = registry->add_promise();
+  auto* promise_to_delete = registry->add_promise(
+      Requester::current_thread(), std::source_location::current());
+  auto* another_promise = registry->add_promise(
+      Requester::current_thread(), std::source_location::current());
 
   promise_to_delete->mark_for_deletion();
   EXPECT_EQ(promises_in_registry(registry),
-            (std::vector<Promise*>{another_promise, promise_to_delete}));
+            (std::vector<PromiseSnapshot>{another_promise->snapshot(),
+                                          promise_to_delete->snapshot()}));
 
   registry->garbage_collect();
   EXPECT_EQ(promises_in_registry(registry),
-            (std::vector<Promise*>{another_promise}));
+            (std::vector<PromiseSnapshot>{another_promise->snapshot()}));
 
   // make sure registry is cleaned up
   another_promise->mark_for_deletion();
@@ -124,15 +137,19 @@ TEST_F(AsyncThreadRegistryTest,
 TEST_F(AsyncThreadRegistryTest, garbage_collection_deletes_marked_promises) {
   {
     auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
-    auto* first_promise = registry->add_promise();
-    auto* second_promise = registry->add_promise();
-    auto* third_promise = registry->add_promise();
+    auto* first_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
+    auto* second_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
+    auto* third_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
 
     first_promise->mark_for_deletion();
     registry->garbage_collect();
 
     EXPECT_EQ(promises_in_registry(registry),
-              (std::vector<Promise*>{third_promise, second_promise}));
+              (std::vector<PromiseSnapshot>{third_promise->snapshot(),
+                                            second_promise->snapshot()}));
 
     // clean up
     second_promise->mark_for_deletion();
@@ -140,15 +157,19 @@ TEST_F(AsyncThreadRegistryTest, garbage_collection_deletes_marked_promises) {
   }
   {
     auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
-    auto* first_promise = registry->add_promise();
-    auto* second_promise = registry->add_promise();
-    auto* third_promise = registry->add_promise();
+    auto* first_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
+    auto* second_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
+    auto* third_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
 
     second_promise->mark_for_deletion();
     registry->garbage_collect();
 
     EXPECT_EQ(promises_in_registry(registry),
-              (std::vector<Promise*>{third_promise, first_promise}));
+              (std::vector<PromiseSnapshot>{third_promise->snapshot(),
+                                            first_promise->snapshot()}));
 
     // clean up
     first_promise->mark_for_deletion();
@@ -156,15 +177,19 @@ TEST_F(AsyncThreadRegistryTest, garbage_collection_deletes_marked_promises) {
   }
   {
     auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
-    auto* first_promise = registry->add_promise();
-    auto* second_promise = registry->add_promise();
-    auto* third_promise = registry->add_promise();
+    auto* first_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
+    auto* second_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
+    auto* third_promise = registry->add_promise(
+        Requester::current_thread(), std::source_location::current());
 
     third_promise->mark_for_deletion();
     registry->garbage_collect();
 
     EXPECT_EQ(promises_in_registry(registry),
-              (std::vector<Promise*>{second_promise, first_promise}));
+              (std::vector<PromiseSnapshot>{second_promise->snapshot(),
+                                            first_promise->snapshot()}));
 
     // clean up
     first_promise->mark_for_deletion();
@@ -180,7 +205,8 @@ TEST_F(AsyncThreadRegistryTest, garbage_collection_deletes_marked_promises) {
 //   ThreadRegistry::make(std::make_shared<Metrics>());
 
 //   auto* promise =
-//       some_other_registry->add_promise();
+//       some_other_registry->add_promise(Requester::current_thread(),
+//       std::source_location::current());
 
 //   EXPECT_DEATH(registry->mark_for_deletion(promise), "Assertion failed");
 // }
@@ -189,14 +215,16 @@ TEST_F(AsyncThreadRegistryTest,
        another_thread_can_mark_a_promise_for_deletion) {
   auto registry = ThreadRegistry::make(std::make_shared<Metrics>());
 
-  auto* promise_to_delete = registry->add_promise();
-  auto* another_promise = registry->add_promise();
+  auto* promise_to_delete = registry->add_promise(
+      Requester::current_thread(), std::source_location::current());
+  auto* another_promise = registry->add_promise(
+      Requester::current_thread(), std::source_location::current());
 
   std::thread([&]() { promise_to_delete->mark_for_deletion(); }).join();
 
   registry->garbage_collect();
   EXPECT_EQ(promises_in_registry(registry),
-            (std::vector<Promise*>{another_promise}));
+            (std::vector<PromiseSnapshot>{another_promise->snapshot()}));
 
   // clean up
   another_promise->mark_for_deletion();

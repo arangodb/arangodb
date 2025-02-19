@@ -1,0 +1,12 @@
+name: arangodb_async_promises_total
+introducedIn: "3.12.4"
+help: |
+  Total number of registered asynchronous promises since database creation.
+unit: number
+type: counter
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  Total number of registered asynchronous promises since database creation.

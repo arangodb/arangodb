@@ -12,6 +12,9 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  arangosh_args:
+    type: string
+    default: ""
   use-minimal-debug-info:
     type: boolean
     default: true
@@ -26,7 +29,7 @@ parameters:
     default: false
   build-docker-image:
     type: string
-    default: ""
+    default: "arangodb/ubuntubuildarangodb-devel:12"
   nightly:
     type: boolean
     default: false
@@ -35,10 +38,10 @@ parameters:
     default: false # We use replication1 as default.
   c-compiler:
     type: string
-    default: "gcc"
+    default: "clang"
   cxx-compiler:
     type: string
-    default: "g++"
+    default: "clang++"
   sanitizer:
     type: string
     default: "" # should be empty, "tsan" or "alubsan"

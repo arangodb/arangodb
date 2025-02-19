@@ -50,14 +50,14 @@ function arrayIndexSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreateIndex : function () {
-      var indexes = collection.getIndexes();
+      var indexes = collection.indexes();
       
       assertEqual(1, indexes.length);
 
       collection.ensureIndex({ type: "persistent", fields: ["a[*]"] });
       collection.ensureIndex({ type: "persistent", fields: ["b[*]"], unique: true });
 
-      indexes = collection.getIndexes();
+      indexes = collection.indexes();
 
       assertEqual(3, indexes.length);
     },
@@ -157,7 +157,7 @@ function arrayIndexSuite () {
       collection.ensureIndex({ type: "persistent", fields: ["a[*]", "b[*]"] });
 
       assertEqual(n, collection.count());
-      assertEqual(3, collection.getIndexes().length);
+      assertEqual(3, collection.indexes().length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

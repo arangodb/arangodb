@@ -143,7 +143,8 @@ class Scheduler {
           _handler(std::move(handler)),
           _lane(lane),
           _disable(false),
-          _scheduler(scheduler) {}
+          _scheduler(scheduler),
+          _logContext(LogContext::current()) {}
 
     // This is not copyable or movable
     DelayedWorkItem(DelayedWorkItem const&) = delete;
@@ -159,6 +160,7 @@ class Scheduler {
       // If exchange returns false, the item was not yet scheduled.
       // Hence we are the first dealing with this DelayedWorkItem
       if (disabled == false) {
+        LogContext::ScopedContext ctxGuard(_logContext);
         // The following code moves the _handler into the Scheduler.
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
@@ -177,6 +179,7 @@ class Scheduler {
     RequestLane _lane;
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
+    LogContext _logContext;
   };
 
  protected:
@@ -192,7 +195,8 @@ class Scheduler {
       schedulerJobMemoryAccounting(-static_cast<int64_t>(sizeof(*this)));
     }
     void invoke() override {
-      LogContext::ScopedContext ctxGuard(logContext);
+      LogContext::ScopedContext ctxGuard(
+          logContext, LogContext::ScopedContext::DontRestoreOldContext{});
       this->operator()();
     }
 

@@ -310,7 +310,9 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -845,7 +847,9 @@ auto QuerySnippet::prepareFirstBranch(
     } else {
       // exp.node is now either an enumerate collection, index, or modification.
       TRI_ASSERT(exp.node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+                 exp.node->getType() == ExecutionNode::ENUMERATE_NEAR_VECTORS ||
                  exp.node->getType() == ExecutionNode::INDEX ||
+                 exp.node->getType() == ExecutionNode::INDEX_COLLECT ||
                  exp.node->getType() == ExecutionNode::INSERT ||
                  exp.node->getType() == ExecutionNode::UPDATE ||
                  exp.node->getType() == ExecutionNode::REMOVE ||

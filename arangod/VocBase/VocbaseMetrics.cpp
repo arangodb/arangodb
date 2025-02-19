@@ -19,14 +19,19 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 #include "VocbaseMetrics.h"
+#include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 
 DECLARE_GAUGE(arangodb_vocbase_shards_read_only_by_write_concern, std::uint64_t,
               "Number of shards that are in read-only mode because the number "
               "of in-sync replicas is lower than the write-concern");
+DECLARE_COUNTER(
+    arangodb_vocbase_transactions_lost_subordinates_total,
+    "Counts the number of lost subordinate transactions on database servers.");
 
 std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
     metrics::MetricsFeature& mf, std::string_view databaseName) {
@@ -44,8 +49,14 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
     return &mf.ensureMetric(std::move(builder));
   };
 
-  metrics->shards_read_only_by_write_concern =
-      createMetric(arangodb_vocbase_shards_read_only_by_write_concern{});
+  if (ServerState::instance()->isDBServer()) {
+    metrics->shards_read_only_by_write_concern =
+        createMetric(arangodb_vocbase_shards_read_only_by_write_concern{});
+  }
+  if (ServerState::instance()->isCoordinator()) {
+    metrics->transactions_lost_subordinates =
+        createMetric(arangodb_vocbase_transactions_lost_subordinates_total{});
+  }
   metrics->_metricsFeature = &mf;
 
   return metrics;
@@ -56,5 +67,11 @@ VocbaseMetrics::~VocbaseMetrics() {
   if (_metricsFeature == nullptr) {
     return;
   }
-  _metricsFeature->remove(*shards_read_only_by_write_concern);
+
+#define DELETE_METRIC(m)           \
+  if ((m) != nullptr) {            \
+    _metricsFeature->remove(*(m)); \
+  }
+  DELETE_METRIC(shards_read_only_by_write_concern);
+  DELETE_METRIC(transactions_lost_subordinates);
 }

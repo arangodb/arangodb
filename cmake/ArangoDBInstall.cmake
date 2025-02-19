@@ -185,7 +185,7 @@ if (UNIX)
     pkg_check_modules(SYSTEMD systemd)
 
     if (SYSTEMD_FOUND)
-      message(STATUS "-- systemd found")
+      message(STATUS "systemd found")
 
       # get systemd_unit_dir -- e.g /lib/systemd/system/
       # cmake to old: pkg_get_variable(SYSTEMD_UNIT_DIR systemd systemdsystemunitdir)
@@ -229,6 +229,7 @@ to_native_path("CMAKE_INSTALL_FULL_SYSCONFDIR_ARANGO")
 to_native_path("PKGDATADIR")
 to_native_path("CMAKE_INSTALL_DATAROOTDIR_ARANGO")
 to_native_path("ICU_DT_DEST")
+to_native_path("ICU_DT_LEGACY_DEST")
 to_native_path("CMAKE_INSTALL_SBINDIR")
 to_native_path("CMAKE_INSTALL_BINDIR")
 to_native_path("INSTALL_ICU_DT_DEST")
@@ -244,6 +245,10 @@ configure_file (
 install(FILES ${ICU_DT}
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME ${ICU_DT_DEST})
+
+install(FILES ${ICU_DT_LEGACY}
+  DESTINATION "${INSTALL_ICU_DT_DEST}"
+  RENAME ${ICU_DT_LEGACY_DEST})
 
 install(FILES "${CMAKE_SOURCE_DIR}/lib/Basics/exitcodes.dat"
   DESTINATION "${INSTALL_ICU_DT_DEST}"

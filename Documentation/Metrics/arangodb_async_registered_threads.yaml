@@ -1,7 +1,7 @@
 name: arangodb_async_registered_threads
-introducedIn: "3.12.3"
+introducedIn: "3.12.4"
 help: |
-  Number of registered threads that execute asynchronous functions.
+  Number of threads the asynchronous registry iterates over to list all asynchronous promises.
 unit: number
 type: gauge
 category: Statistics
@@ -9,4 +9,4 @@ complexity: advanced
 exposedBy:
   - dbserver
 description: |
-  Number of registered threads that execute asynchronous functions.
+  Number of threads the asynchronous registry iterates over to list all asynchronous promises.

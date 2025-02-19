@@ -92,6 +92,7 @@ class Optimizer {
     std::unique_ptr<std::unordered_map<int, double>> executionTimes;
 
     void toVelocyPack(velocypack::Builder& b) const;
+    static void toVelocyPackForCachedPlan(velocypack::Builder& b);
   };
 
   /// @brief constructor, this will initialize the rules database

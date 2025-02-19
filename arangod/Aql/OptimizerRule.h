@@ -206,6 +206,9 @@ struct OptimizerRule {
 
     removeUnnecessaryFiltersRule2,
 
+    // try to use vector index if possible
+    useVectorIndexForSort,
+
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule,
 
@@ -389,6 +392,8 @@ struct OptimizerRule {
     // replace adjacent index nodes with a join node if the indexes qualify
     // for it.
     joinIndexNodesRule,
+
+    useIndexForCollectRule,
 
     pushDownLateMaterialization,
 

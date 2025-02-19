@@ -158,6 +158,13 @@ class Ast {
   void setContainsParallelNode() noexcept;
   bool containsAsyncPrefetch() const noexcept;
   void setContainsAsyncPrefetch() noexcept;
+  bool containsBindParameters() const noexcept;
+  bool containsAttributeNameValueBindParameters() const noexcept;
+  bool containsCollectionNameValueBindParameters() const noexcept;
+  bool containsGraphNameValueBindParameters() const noexcept;
+  void setContainsGraphNameValueBindParameters() noexcept;
+  bool containsTraversalDepthValueBindParameters() const noexcept;
+  bool containsUpsertLookupValueBindParameters() const noexcept;
 
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
@@ -674,7 +681,6 @@ class Ast {
     return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
   }
 
- private:
   /// @brief the query
   QueryContext& _query;
 
@@ -713,6 +719,31 @@ class Ast {
 
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
+
+  /// @brief whether or not the query contains attribute name bind parameters
+  /// (e.g. doc.@attributeName)
+  bool _containsAttributeNameValueBindParameters;
+
+  /// @brief contains collection names in _value_ bind parameters
+  /// (e.g. "@collection") instead of collection name bind parameters
+  /// (e.g. "@@collection"). if the AST contains collection names in
+  /// value bind parameters, we cannot use the query plan cache for
+  /// this query.
+  bool _containsCollectionNameValueBindParameters;
+
+  /// @brief contains a graph name as a value bind parameter, e.g.
+  /// `FOR v, e IN 1..3 OUTBOUND start GRAPH @graph. if the AST contains
+  /// graph names like this, we cannot use the query plan cache for
+  /// this query.
+  bool _containsGraphNameValueBindParameters;
+
+  /// @brief contains traversal depth expressed via value bind parameters,
+  /// e.g. `FOR v, e IN @min .. @max ...`.
+  bool _containsTraversalDepthValueBindParameters;
+
+  /// @brief contains upsert lookup value expressed via a value bind parameter,
+  /// e.g. UPSERT @lookup ...
+  bool _containsUpsertLookupValueBindParameters;
 
   /// @brief contains INSERT / UPDATE / REPLACE / REMOVE / UPSERT
   bool _containsModificationNode;
