@@ -1,6 +1,10 @@
 devel
 -----
 
+* The agency supervision is clearing "finished" jobs too quickly from
+  Target/Finished and Failed. They will be forthwith be kept for at
+  least 1h.
+
 * Change default for --rocksdb.periodic-compaction-ttl from 30 days to
   24 hours. Note that certain deleted keys ranges in RocksDB might only be
   compacted away through periodic background compactions. Note that this
