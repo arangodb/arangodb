@@ -32,6 +32,7 @@
 
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Agency/ResignLeadership.h"
 #include "Agency/Supervision.h"
 #include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -1258,32 +1259,25 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
       arangodb::cluster::paths::root()->arango()->target()->toDo()->job(jobId);
 
   VPackBuilder builder;
-  {
-    VPackObjectBuilder ob(&builder);
-    builder.add("type", VPackValue(job));
-    builder.add("server", VPackValue(serverId));
-    builder.add("jobId", VPackValue(jobId));
-    builder.add("creator", VPackValue(ServerState::instance()->getId()));
-    if (job == "resignLeadership") {
-      if (body.isObject()) {
-        if (auto undoMoves = body.get("undoMoves"); undoMoves.isBool()) {
-          builder.add("undoMoves", VPackValue(undoMoves.isTrue()));
-        }
-
-        if (auto waitForInSync = body.get("waitForInSync");
-            waitForInSync.isBool()) {
-          builder.add("waitForInSync", VPackValue(waitForInSync.isTrue()));
-          if (auto timeout = body.get("waitForInSyncTimeout");
-              timeout.isNumber<uint64_t>()) {
-            builder.add("waitForInSyncTimeout",
-                        VPackValue(timeout.getNumber<uint64_t>()));
-          }
-        }
-      }
-    }
-    builder.add(
-        "timeCreated",
-        VPackValue(timepointToString(std::chrono::system_clock::now())));
+  if (job == "resignLeadership") {
+    auto jobDetails =
+        velocypack::deserialize<consensus::ResignLeadershipJobDetails>(
+            body, {.ignoreUnknownFields = true, .ignoreMissingFields = true});
+    auto jobInfo = consensus::ResignLeadershipJob{
+        .info = consensus::JobInfo{.server = serverId,
+                                   .jobId = jobId,
+                                   .creator = ServerState::instance()->getId()},
+        .details = jobDetails};
+    velocypack::serialize(builder, jobInfo);
+    LOG_DEVEL << "RestAdminClusterHandler resign leadership job: "
+              << inspection::json(builder.slice());
+  } else {
+    auto jobInfo = consensus::GenericJob{
+        .info = consensus::JobInfo{.server = serverId,
+                                   .jobId = jobId,
+                                   .creator = ServerState::instance()->getId()},
+        .type = job};
+    velocypack::serialize(builder, jobInfo);
   }
 
   return waitForFuture(

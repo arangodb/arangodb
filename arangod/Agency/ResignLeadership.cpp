@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Agency/ResignLeadership.h"
+#include <optional>
 
 #include "Agency/AgentInterface.h"
 #include "Agency/Helpers.h"
@@ -64,7 +65,7 @@ ResignLeadership::ResignLeadership(Node const& snapshot, AgentInterface* agent,
     _creator = tmp_creator.value();
     _undoMoves = tmp_undoMoves.value_or(true);
     _waitForInSync = tmp_waitForInSync.value_or(false);
-    _waitForInSyncTimeout = tmp_waitForInSyncTimeout.value_or(0);
+    _waitForInSyncTimeout = tmp_waitForInSyncTimeout;
   } else {
     std::stringstream err;
     err << "Failed to find job " << _jobId << " in agency.";
@@ -176,18 +177,15 @@ bool ResignLeadership::create(std::shared_ptr<VPackBuilder> envelope) {
     VPackArrayBuilder guard(_jb.get());
     VPackObjectBuilder guard2(_jb.get());
     _jb->add(VPackValue(path));
-    {
-      VPackObjectBuilder guard3(_jb.get());
-      _jb->add("type", VPackValue("resignLeadership"));
-      _jb->add("server", VPackValue(_server));
-      _jb->add("jobId", VPackValue(_jobId));
-      _jb->add("creator", VPackValue(_creator));
-      _jb->add("undoMoves", VPackValue(_undoMoves));
-      _jb->add("waitForInSync", VPackValue(_waitForInSync));
-      _jb->add("waitForInSyncTimeout", VPackValue(_waitForInSyncTimeout));
-      _jb->add("timeCreated",
-               VPackValue(timepointToString(std::chrono::system_clock::now())));
-    }
+    auto jobInfo = ResignLeadershipJob{
+        .info =
+            JobInfo{.server = _server, .jobId = _jobId, .creator = _creator},
+        .details = ResignLeadershipJobDetails{
+            .undoMoves = _undoMoves,
+            .waitForInSync = _waitForInSync,
+            .waitForInSyncTimeout = _waitForInSyncTimeout}};
+    velocypack::serialize(*_jb.get(), jobInfo);
+    LOG_DEVEL << "ResignLeadership: " << inspection::json(_jb->slice());
   }
 
   _status = TODO;
@@ -348,7 +346,7 @@ bool ResignLeadership::start(bool& aborts) {
             << "Not starting resign leadership job because some shards have no "
                "common in sync follower";
         // check if a timeout value is specified
-        if (_waitForInSyncTimeout > 0) {
+        if (_waitForInSyncTimeout) {
           auto tmp_time =
               _snapshot.hasAsString(pendingPrefix + _jobId + "/timeCreated");
           std::string timeCreatedString = tmp_time.value();
@@ -356,7 +354,7 @@ bool ResignLeadership::start(bool& aborts) {
               stringToTimepoint(timeCreatedString);
           Supervision::TimePoint now(std::chrono::system_clock::now());
           if (now - timeCreated >=
-              std::chrono::seconds{_waitForInSyncTimeout}) {
+              std::chrono::seconds{_waitForInSyncTimeout.value()}) {
             LOG_TOPIC("d4475", ERR, Logger::SUPERVISION)
                 << "Failing resign leadership job (" << _jobId
                 << ") because some shards have no common in sync follower";
