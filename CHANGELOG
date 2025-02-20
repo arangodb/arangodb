@@ -1,6 +1,8 @@
 v3.11.14 (XXXX-XX-XX)
 ---------------------
 
+* Fix concurrency bug which can lead to lost threads. See BTS-2087.
+
 * The agency supervision is clearing "finished" jobs too quickly from
   Target/Finished and Failed. They will be forthwith be kept for at least 1h.
 
