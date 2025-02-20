@@ -60,11 +60,14 @@ void SharedQueryState::invalidate() {
   }
   _cv.notify_all();  // wakeup everyone else
 
-  while (_numTasks.load() > 0) {
-    std::unique_lock<std::mutex> guard(_mutex);
-    _cv.wait_for(guard, std::chrono::milliseconds(1000),
-                 [&] { return _numTasks.load() == 0; });
-    if (_numTasks.load() > 0) {
+  if (_numTasks.load() > 0) {
+    while(true) {
+      std::unique_lock<std::mutex> guard(_mutex);
+      _cv.wait_for(guard, std::chrono::milliseconds(1000),
+                  [&] { return _numTasks.load() == 0; });
+      if (_numTasks.load() == 0) {
+        break;
+      }
       LOG_TOPIC("abcee", WARN, Logger::QUERIES)
           << "Waiting for " << _numTasks.load() << " tasks to finish";
     }
