@@ -24,6 +24,7 @@
 #include "SharedQueryState.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogMacros.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -59,9 +60,14 @@ void SharedQueryState::invalidate() {
   }
   _cv.notify_all();  // wakeup everyone else
 
-  if (_numTasks.load() > 0) {
+  while (_numTasks.load() > 0) {
     std::unique_lock<std::mutex> guard(_mutex);
-    _cv.wait(guard, [&] { return _numTasks.load() == 0; });
+    _cv.wait_for(guard, std::chrono::milliseconds(1000),
+                 [&] { return _numTasks.load() == 0; });
+    if (_numTasks.load() > 0) {
+      LOG_TOPIC("abcee", WARN, Logger::QUERIES)
+          << "Waiting for " << _numTasks.load() << " tasks to finish";
+    }
   }
 }
 

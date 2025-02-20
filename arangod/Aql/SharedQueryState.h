@@ -117,11 +117,14 @@ class SharedQueryState final
     // the going to sleep happens first, then we will wakt it up.
     unsigned num = _numTasks.fetch_add(1);
     if (num + 1 > _maxTasks) {
-      std::forward<F>(cb)(false);
+      // We first count down _numTasks to revert the counting up, since
+      // we have not - after all - started a new async task. Then we run
+      // the callback synchronously.
       std::unique_lock<std::mutex> guard(_mutex);
       _numTasks.fetch_sub(1);  // revert
       guard.unlock();
       _cv.notify_all();
+      std::forward<F>(cb)(false);
       return false;
     }
     bool queued =
@@ -147,11 +150,14 @@ class SharedQueryState final
         });
 
     if (!queued) {
-      std::forward<F>(cb)(false);
+      // We first count down _numTasks to revert the counting up, since
+      // we have not - after all - started a new async task. Then we run
+      // the callback synchronously.
       std::unique_lock<std::mutex> guard(_mutex);
       _numTasks.fetch_sub(1);  // revert
       guard.unlock();
       _cv.notify_all();
+      std::forward<F>(cb)(false);
     }
     return queued;
   }
