@@ -101,20 +101,24 @@ class SharedQueryState final
   /// execute a task in parallel if capacity is there
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
-    // The atomic _numTasks counts the number of ongoing tasks. When it
-    // drops to 0, we need to wake up a thread which is waiting for this
-    // on the condition variable _cv. We must not miss this event, or
-    // ellse we might have a thread which is waiting forever.
-    // The waiting thread uses a predicate to check if _numTasks is 0,
-    // and only goes to sleep when it is not. This happens under the
-    // mutex _mutex and releasing the mutex and going to sleep is an
-    // atomic operation. Thus, to not miss the event that _numTasks
-    // is reduced to zero, we must, whenever we decrement it, do this
-    // under the mutex, and then, after releasing the mutex, notify the
-    // condition variable _cv! Then either the decrement or the going to
-    // sleep happens first (serialized by the mutex). If the decrement
-    // happens first, the waiting thread is not even going to sleep, if
-    // the going to sleep happens first, then we will wakt it up.
+    // The atomic _numTasks counts the number of ongoing tasks asynchronous
+    // tasks. We need this such that we can wait for them to finish when
+    // the query is shut down. Note that this is *not* necessary for
+    // synchronous tasks.
+    // When _numTasks drops to 0, we need to wake up a thread which
+    // is waiting for this on the condition variable _cv. We must
+    // not miss this event, or else we might have a thread which is
+    // waiting forever. The waiting thread uses a predicate to check
+    // if _numTasks is 0, and only goes to sleep when it is not. This
+    // happens under the mutex _mutex and releasing the mutex and going
+    // to sleep is an atomic operation. Thus, to not miss the event that
+    // _numTasks is reduced to zero, we must, whenever we decrement it,
+    // do this under the mutex, and then, after releasing the mutex,
+    // notify the condition variable _cv! Then either the decrement or
+    // the going to sleep happens first (serialized by the mutex). If
+    // the decrement happens first, the waiting thread is not even going
+    // to sleep, if the going to sleep happens first, then we will wakt
+    // it up.
     unsigned num = _numTasks.fetch_add(1);
     if (num + 1 > _maxTasks) {
       // We first count down _numTasks to revert the counting up, since
