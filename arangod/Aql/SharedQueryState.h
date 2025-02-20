@@ -27,7 +27,6 @@
 #include <condition_variable>
 #include <function2.hpp>
 
-#include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/arangod.h"
 
@@ -123,7 +122,6 @@ class SharedQueryState final
       return false;
     }
     bool queued =
-        arangodb::basics::FileUtils::exists("/tmp/block") ? false :
         queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
           if (self->_valid) {
             bool triggerWakeUp = true;
