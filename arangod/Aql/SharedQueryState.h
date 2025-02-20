@@ -27,6 +27,8 @@
 #include <condition_variable>
 #include <function2.hpp>
 
+#include "Basics/FileUtils.h"
+#include "Logger/LogMacros.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
@@ -115,11 +117,13 @@ class SharedQueryState final
   bool asyncExecuteAndWakeup(F&& cb) {
     unsigned num = _numTasks.fetch_add(1);
     if (num + 1 > _maxTasks) {
+      LOG_DEVEL << "asyncExecuteAndWakeup: too many tasks!";
       _numTasks.fetch_sub(1);  // revert
       std::forward<F>(cb)(false);
       return false;
     }
     bool queued =
+        arangodb::basics::FileUtils::exists("/tmp/block") ? false :
         queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
           if (self->_valid) {
             bool triggerWakeUp = true;
@@ -128,12 +132,14 @@ class SharedQueryState final
             } catch (...) {
               TRI_ASSERT(false);
             }
+            LOG_DEVEL << "asyncExecuteAndWakeup finished!";
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
             if (triggerWakeUp) {
               self->notifyWaiter(guard);
             }
           } else {  // need to wakeup everybody
+            LOG_DEVEL << "asyncExecuteAndWakeup invalid finished";
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
             guard.unlock();
@@ -142,6 +148,7 @@ class SharedQueryState final
         });
 
     if (!queued) {
+      LOG_DEVEL << "asyncExecuteAndWakeup: could not queue task!";
       _numTasks.fetch_sub(1);  // revert
       std::forward<F>(cb)(false);
     }

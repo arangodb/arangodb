@@ -24,6 +24,7 @@
 #include "SharedQueryState.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Logger/LogMacros.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
@@ -62,7 +63,9 @@ void SharedQueryState::invalidate() {
 
   if (_numTasks.load() > 0) {
     std::unique_lock<std::mutex> guard(_mutex);
+    LOG_DEVEL << "Going to sleep for invalidate!";
     _cv.wait(guard, [&] { return _numTasks.load() == 0; });
+    LOG_DEVEL << "Have slept well for invalidate!";
   }
 }
 
