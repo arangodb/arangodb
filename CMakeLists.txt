@@ -534,6 +534,8 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}")
 # need threads
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread") # TODO use output from find_package
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread") # TODO use output from find_package
 
 if(THREADS_HAVE_PTHREAD_ARG)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
@@ -1080,7 +1082,6 @@ set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 add_subdirectory(3rdParty/faiss)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
-
 
 # ------------------------------------------------------------------------------
 # RocksDB
