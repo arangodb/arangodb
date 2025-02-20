@@ -1,7 +1,8 @@
 devel
 -----
 
-* Fix concurrency bug which can lead to lost threads. See BTS-2087.
+* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL 
+  query to hang and block a thread.
 
 * The agency supervision is clearing "finished" jobs too quickly from
   Target/Finished and Failed. They will be forthwith be kept for at least 1h.
