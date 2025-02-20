@@ -1070,7 +1070,13 @@ endif()
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
+
 add_subdirectory(3rdParty/faiss)
+
+set_property(
+  DIRECTORY 3rdParty/faiss
+  APPEND_STRING PROPERTY LINK_FLAGS "${FAISS_EXE_LINKER_FLAGS}"
+)
 
 # ------------------------------------------------------------------------------
 # RocksDB
