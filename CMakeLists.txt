@@ -530,10 +530,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # need threads
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread") # TODO use output from find_package
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread") # TODO use output from find_package
 
 set(CMAKE_EXE_LINKER_FLAGS
-  "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
+  "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS} -pthread"  # TODO use output from find_package
 )
 
 ################################################################################
@@ -1004,9 +1007,68 @@ endif()
 
 add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
 add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
-add_subdirectory(3rdParty EXCLUDE_FROM_ALL)
+add_subdirectory(3rdParty EXCLUDE_FROM_ALL) # TODO: specific includes
 
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
+
+# ------------------------------------------------------------------------------
+# ZLIB
+# ------------------------------------------------------------------------------
+
+add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+link_directories("${PROJECT_BINARY_DIR}/bin")
+
+# ------------------------------------------------------------------------------
+# FAISS
+# ------------------------------------------------------------------------------
+
+find_package(ZLIB REQUIRED) # TODO should be removed, see ZLIB above
+
+if(STATIC_EXECUTABLES)
+  # These variables are used when linking BIN_ARANGOD
+  # and are specific for how we build our docker build
+  # containers
+  # TODO avoid hard coded paths
+  if(ARCH_AMD64)
+    set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
+    set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a" CACHE PATH "BLAS static library path")
+  else()
+    set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
+    set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a" CACHE PATH "BLAS static library path")
+  endif()
+  message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
+
+  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
+
+  if(LIBOMP)
+    message(STATUS "Using hardcoded paths '-fopenmp=libomp -L/opt/omp -llapack -lgfortran'")
+  else()
+    message(FATAL_ERROR "libomp.a not found in /opt/omp")
+  endif()
+
+  # TODO avoid hard coded paths
+  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+else()
+  set(BLA_STATIC Off)
+  set(BLA_VENDOR OpenBLAS)
+  find_package(OpenMP)
+  find_package(LAPACK)
+  find_package(BLAS)
+
+  set(FAISS_EXE_LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
+
+  foreach(lapack_lib ${LAPACK_LIBRARIES})
+    message(STATUS "Using LAPACK library: ${lapack_lib}")
+    set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
+  endforeach()
+
+  set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} -lgfortran")
+endif()
+
+set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
+set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
+set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
+add_subdirectory(3rdParty/faiss)
 
 # ------------------------------------------------------------------------------
 # RocksDB
@@ -1035,13 +1097,6 @@ add_definitions("-DARANGODB_V8_VERSION=\"${V8_VERSION}\"")
 foreach(LINK_DIR ${V8_LINK_DIRECTORIES})
   link_directories("${LINK_DIR}")
 endforeach()
-
-# ------------------------------------------------------------------------------
-# ZLIB
-# ------------------------------------------------------------------------------
-
-add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
-link_directories("${PROJECT_BINARY_DIR}/bin")
 
 ################################################################################
 ## PATHS, installation, packages, frontend
