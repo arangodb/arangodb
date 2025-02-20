@@ -3,6 +3,7 @@ v3.11.12.1 (2025-02-21)
 
 * Fix concurrency bug which can lead to lost threads. See BTS-2087.
 
+
 v3.11.12 (2024-10-31)
 ---------------------
 
