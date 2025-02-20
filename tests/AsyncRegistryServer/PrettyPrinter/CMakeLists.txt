@@ -3,7 +3,7 @@ add_executable(gdb_pretty_printer
 target_link_libraries(gdb_pretty_printer
   PRIVATE
   arango_async_registry
-  arango # TODO get rid of this
+  arango
 )
 
 enable_testing()

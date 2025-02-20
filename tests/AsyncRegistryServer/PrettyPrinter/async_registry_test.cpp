@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Async/Registry/registry.h"
+#include "Async/Registry/registry_variable.h"
 
 #include <csignal>
 #include <iostream>
@@ -31,18 +32,36 @@ using namespace arangodb::async_registry;
 auto breakpoint() { raise(SIGINT); }
 
 int main() {
-  // create a registry
-  Registry registry;
-  auto thread_registry = registry.add_thread();
-  auto* promise = thread_registry->add_promise(Requester::current_thread(),
-                                               std::source_location::current());
-  const auto testee = 1;    // tuple of registries
-  const auto expected = 3;  // for one registry, get a string version of it
   breakpoint();
-  std::cout << "Hello after breakpoint" << testee + expected << std::endl;
+
+  // empty registry
+  auto thread_registry = registry.add_thread();
+  auto expected = std::string("async registry");
+
+  breakpoint();
+
+  // one promise
+  thread_registry->add_promise(Requester::current_thread(),
+                               std::source_location::current());
+  expected = std::string("async registry");
+
+  breakpoint();
+
+  // thread_registry->add_promise(Requester{promise->id()},
+  //                              std::source_location::current());
+  std::cout << "Hello after breakpoint " << expected << std::endl;
   // run_test(testee, expected) which internally calls breakpoint again
 
-  promise->mark_for_deletion();
-  thread_registry->garbage_collect();
   return 0;
 }
+
+// tests
+// - empty registry
+// - one stacktrace with one entry
+// - one stacktrace with complicated entries
+//     |- async 3
+//     |   |- async 2
+//     |- async 1
+//   - thread
+// - several stacktracees with one entry each
+// - several thread_registries (how will this be different?)
