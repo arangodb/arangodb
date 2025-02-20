@@ -529,15 +529,17 @@ set(CMAKE_CXX_STANDARD 20)
 # -std=c++20).
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}")
+
 # need threads
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread") # TODO use output from find_package
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread") # TODO use output from find_package
 
-set(CMAKE_EXE_LINKER_FLAGS
-  "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS} -pthread"  # TODO use output from find_package
-)
+if(THREADS_HAVE_PTHREAD_ARG)
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -pthread")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -pthread")
+endif()
 
 ################################################################################
 ## TARGET ARCHITECTURE
