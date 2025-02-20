@@ -101,7 +101,7 @@ class SharedQueryState final
   /// execute a task in parallel if capacity is there
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
-    // The atomic _numTasks counts the number of ongoing tasks asynchronous
+    // The atomic _numTasks counts the number of ongoing asynchronous
     // tasks. We need this such that we can wait for them to finish when
     // the query is shut down. Note that this is *not* necessary for
     // synchronous tasks.
