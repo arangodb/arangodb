@@ -1,10 +1,29 @@
 run
 select-frame function main
-print "Some printing"
-print testee
-print expected
-print registry
 
-continue
-quit 0
-# quit 1 makes ctest fail
+set $i = 0
+set $n = 2
+set $success = true
+
+while $i < $n
+			continue
+			select-frame function main
+
+			set $real = $_as_string(registry)
+			set $expected = expected.c_str()
+
+# _regex(str, regex) use that instead
+			if !$_streq($real, $expected)
+				 printf "Mismatch\n"
+	 			 p $real
+	 			 p $expected
+	 			 quit 1
+			end
+			set $i = $i + 1
+end
+
+if $success
+	 quit 0
+else
+	 quit 1
+end
