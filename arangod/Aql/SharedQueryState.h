@@ -129,7 +129,7 @@ class SharedQueryState final
     // notify the condition variable _cv! Then either the decrement or
     // the going to sleep happens first (serialized by the mutex). If
     // the decrement happens first, the waiting thread is not even going
-    // to sleep, if the going to sleep happens first, then we will wakt
+    // to sleep, if the going to sleep happens first, then we will wake
     // it up.
     unsigned num = _numTasks.fetch_add(1);
     if (num + 1 > _maxTasks) {
