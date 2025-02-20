@@ -176,7 +176,7 @@ struct MyVectorIterator : public AqlIndexStreamIterator {
     return true;
   }
 
-  using Value = std::vector<VPackSlice>;  //
+  using Value = std::vector<VPackSlice>;
 
   // positions in Value of fields that are used in the collect statement for
   // grouping

@@ -31,7 +31,7 @@ const database = "IndexCollectDatabase";
 const collection = "c";
 const indexCollectOptimizerRule = "use-index-for-collect";
 
-function IndexDistinctCollectOptimizerTestSuite() {
+function IndexCollectOptimizerTestSuite() {
   return {
     setUpAll: function () {
       db._createDatabase(database);
@@ -40,7 +40,7 @@ function IndexDistinctCollectOptimizerTestSuite() {
       const c = db._create(collection, { numberOfShards: 3 });
       const docs = [];
       for (let k = 0; k < 10000; k++) {
-        docs.push({ k, a: k % 10, b: k % 100 });
+        docs.push({ k, a: k % 10, b: k % 100, x: k % 10 });
       }
       c.save(docs);
     },
@@ -54,13 +54,13 @@ function IndexDistinctCollectOptimizerTestSuite() {
 
     testOptimizerRule: function () {
       db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"] });
-      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
+      db[collection].ensureIndex({ type: "persistent", fields: ["x"], sparse: true });
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a RETURN a`, true],
         [`FOR doc IN ${collection} COLLECT b = doc.b RETURN b`, false],
-        [`FOR doc IN ${collection} COLLECT k = doc.k RETURN k`, false], // because of bad selectivity
         [`FOR doc IN ${collection} COLLECT a = doc.a.c RETURN a`, false],
+        [`FOR doc IN ${collection} COLLECT a = doc.x RETURN a`, false], // does not work on sparse indexes
         [`FOR doc IN ${collection} SORT doc.a DESC COLLECT a = doc.a RETURN [a]`, false], // desc not possible
         [`FOR doc IN ${collection} SORT doc.a ASC COLLECT a = doc.a RETURN [a]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`, true],
@@ -115,10 +115,34 @@ function IndexDistinctCollectOptimizerTestSuite() {
         const attributes = icn.groups.map(x => x.attribute);
         assertEqual(attributes, expectedAttributes);
       }
+    },
+
+    // this tests cases that only apply for a COLLECT without an additional AGGREGATE in it
+    testDistinctIndexCollectOptimizerRule: function () {
+      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
+      db[collection].ensureIndex({ type: "persistent", fields: ["a"] });
+
+      const queries = [
+        [`FOR doc IN ${collection} COLLECT k = doc.k RETURN k`, false], // because of bad selectivity
+        [`FOR doc IN ${collection} COLLECT a = doc.a RETURN a`, true], // has a good selectivity
+      ];
+
+      for (const [query, optimized] of queries) {
+        const explain = db._createStatement(query).explain();
+        assertEqual(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, optimized, query);
+        if (optimized) {
+          const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
+          assertEqual(nodes.length, 1, query);
+          const indexCollect = nodes[0];
+          assertEqual(indexCollect.aggregations.length, 0);
+        }
+      }
     }
+
   };
 }
 
+// this suite tests cases where a query includes a COLLECT with an AGGREGATE. All general tests above (if not otherwise state) for a COLLECT statement also apply here and are not tested here again.
 function IndexAggregationCollectOptimizerTestSuite() {
   return {
     setUpAll: function () {
@@ -140,7 +164,7 @@ function IndexAggregationCollectOptimizerTestSuite() {
       db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
 
       const queries = [
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true], // no selectivity requiement
         [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b), c = SUM(doc.b) RETURN [a, b, c]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.c) RETURN [a, b]`, false],
         [`FOR doc IN ${collection} LET x = doc.a COLLECT a = doc.a AGGREGATE b = MAX(x + 1) RETURN [a, b]`, false], // does currently not support aggregation expressions with variables different than the document variable
@@ -226,7 +250,7 @@ function IndexCollectExecutionTestSuite() {
   };
 }
 
-jsunity.run(IndexDistinctCollectOptimizerTestSuite);
+jsunity.run(IndexCollectOptimizerTestSuite);
 jsunity.run(IndexAggregationCollectOptimizerTestSuite);
 jsunity.run(IndexCollectExecutionTestSuite);
 return jsunity.done();

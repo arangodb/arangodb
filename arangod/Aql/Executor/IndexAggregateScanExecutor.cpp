@@ -200,7 +200,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       aggregate(_aggregatorInstances, _infos.aggregations, context);
 
       hasMore = _iterator->next(_keySlices, docId, _projectionSlices);
-      LOG_AGG_SCAN << fmt::format("[SCAN] Found keys {} and projectsion {}",
+      LOG_AGG_SCAN << fmt::format("[SCAN] Found keys {} and projections {}",
                                   inspection::json(_keySlices),
                                   inspection::json(_projectionSlices));
 

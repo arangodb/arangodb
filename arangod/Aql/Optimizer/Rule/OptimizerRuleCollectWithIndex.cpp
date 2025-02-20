@@ -125,6 +125,11 @@ bool isIndexNodeEligible(IndexNode const& in) {
 
 bool isIndexNodeFirstNodeAfterSingleton(IndexNode const& indexNode) {
   auto singleton = indexNode.getFirstDependency();
+
+  if (singleton == nullptr) {
+    return false;
+  }
+
   // This is required because this rule runs after distribute in cluster
   // rules, and we might be in a subquery of a query that starts with a
   // coordinator part. the remote node usually ends up between the index and
@@ -135,7 +140,7 @@ bool isIndexNodeFirstNodeAfterSingleton(IndexNode const& indexNode) {
          singleton->getType() == EN::DISTRIBUTE) {
     singleton = singleton->getFirstDependency();
   }
-  if (singleton->getType() != EN ::SINGLETON) {
+  if (singleton != nullptr && singleton->getType() != EN ::SINGLETON) {
     LOG_RULE << "Index node is not the first node after a singleton.";
     return false;
   }
@@ -259,7 +264,7 @@ getEligibleAggregates(ExecutionPlan const& plan, CollectNode const& cn,
   for (auto const& agg : cn.aggregateVariables()) {
     // get the producing node for the in variable, it should be a calculation
     auto producer = plan.getVarSetBy(agg.inVar->id);
-    if (producer->getType() != EN::CALCULATION) {
+    if (producer != nullptr && producer->getType() != EN::CALCULATION) {
       return std::nullopt;
     }
     auto calculation = EN::castTo<CalculationNode*>(producer);
@@ -352,6 +357,11 @@ std::optional<IndexNode*> getDependentIndexNode(
 
 }  // namespace
 
+/**
+   This rule tries to combine an existing CollectNode with a dependent
+   existing index node (and does not look for other indexes that could be
+   applicable).
+ */
 void arangodb::aql::useIndexForCollect(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
