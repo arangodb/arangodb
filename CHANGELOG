@@ -1,6 +1,9 @@
 v3.11.14 (XXXX-XX-XX)
 ---------------------
 
+* The agency supervision is clearing "finished" jobs too quickly from
+  Target/Finished and Failed. They will be forthwith be kept for at least 1h.
+
 * Upgraded OpenSSL to 3.4.1.
 
 
