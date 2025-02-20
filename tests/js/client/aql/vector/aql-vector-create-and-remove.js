@@ -219,7 +219,7 @@ function VectorIndexTestCreationWithVectors() {
             let gen = randomNumberGeneratorFloat(seed);
 
             let docs = [];
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
@@ -253,7 +253,7 @@ function VectorIndexTestCreationWithVectors() {
             let gen = randomNumberGeneratorFloat(seed);
 
             let docs = [];
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
@@ -286,7 +286,7 @@ function VectorIndexTestCreationWithVectors() {
             let gen = randomNumberGeneratorFloat(seed);
 
             let docs = [];
-            for (let i = 0; i < 10; ++i) {
+            for (let i = 0; i < 100; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
