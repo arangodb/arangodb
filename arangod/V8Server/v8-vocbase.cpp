@@ -46,6 +46,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryPlanCache.h"
 #include "Aql/QueryResultV8.h"
 #include "Aql/QueryString.h"
 #include "Basics/HybridLogicalClock.h"
@@ -679,6 +680,14 @@ static void JS_ExplainAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
+  if (queryResult.planCacheKey.has_value()) {
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "planCacheKey"),
+              TRI_V8UInt64String<size_t>(isolate,
+                                         queryResult.planCacheKey.value()))
+        .FromMaybe(false);
+  }
+
   if (queryResult.data != nullptr) {
     if (query->queryOptions().allPlans) {
       result
@@ -776,25 +785,13 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
 
-  QueryAnalyzerRevisions analyzersRevision;
-  auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder.slice());
-  if (ADB_UNLIKELY(revisionRes.fail())) {
-    TRI_V8_THROW_EXCEPTION(revisionRes);
-  }
-
-  // simon: hack to get the behaviour of old second aql::Query constructor
-  VPackBuilder snippetBuilder;  // simon: hack to make format conform
-  snippetBuilder.openObject();
-  snippetBuilder.add("0", VPackValue(VPackValueType::Object));
-  snippetBuilder.add("nodes", queryBuilder.slice().get("nodes"));
-  snippetBuilder.close();
-  snippetBuilder.close();
-
   TRI_ASSERT(!ServerState::instance()->isDBServer());
-  VPackBuilder ignoreResponse;
-  query->prepareFromVelocyPack(
-      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
-      /*snippets*/ snippetBuilder.slice(), analyzersRevision);
+  auto const snippets = queryBuilder.slice().get("nodes");
+  auto const querySlice = velocypack::Slice::emptyObjectSlice();
+  auto const viewsSlice = velocypack::Slice::noneSlice();
+  query->prepareFromVelocyPack(querySlice, collections, viewsSlice, variables,
+                               snippets);
+  query->instantiatePlan(snippets);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -923,6 +920,14 @@ static void JS_ExecuteAql(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return the array value as it is. this is a performance optimization
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+  if (queryResult.planCacheKey.has_value()) {
+    result
+        ->Set(context, TRI_V8_ASCII_STRING(isolate, "planCacheKey"),
+              TRI_V8UInt64String<size_t>(isolate,
+                                         queryResult.planCacheKey.value()))
+        .FromMaybe(false);
+  }
 
   if (!queryResult.v8Data.IsEmpty()) {
     result
@@ -1302,6 +1307,64 @@ static void JS_QueryCacheInvalidateAql(
   }
 
   arangodb::aql::QueryCache::instance()->invalidate();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief invalidates the AQL query plan cache
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryPlanCacheInvalidate(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_PLAN_CACHE_INVALIDATE()");
+  }
+
+  if (!ExecContext::current().canUseDatabase(auth::Level::RW)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  }
+
+  auto& vocbase = GetContextVocBase(isolate);
+  vocbase.queryPlanCache().invalidateAll();
+  TRI_V8_TRY_CATCH_END
+}
+
+static void JS_QueryPlanCachePlans(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERY_PLAN_CACHE_PLANS()");
+  }
+
+  if (!ExecContext::current().canUseDatabase(auth::Level::RO)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+  }
+
+  auto& vocbase = GetContextVocBase(isolate);
+
+  auto filter = [](aql::QueryPlanCache::Key const& key,
+                   aql::QueryPlanCache::Value const& value) -> bool {
+    if (ExecContext::isAuthEnabled() && !ExecContext::current().isSuperuser()) {
+      // check if non-superusers have at least read permissions on all
+      // collections/views used in the query
+      for (auto const& dataSource : value.dataSources) {
+        if (!ExecContext::current().canUseCollection(dataSource.second.name,
+                                                     auth::Level::RO)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  };
+
+  VPackBuilder builder;
+  vocbase.queryPlanCache().toVelocyPack(builder, filter);
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice()));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2220,6 +2283,12 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_CACHE_INVALIDATE"),
       JS_QueryCacheInvalidateAql, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_PLAN_CACHE_INVALIDATE"),
+      JS_QueryPlanCacheInvalidate, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "AQL_QUERY_PLAN_CACHE_PLANS"),
+      JS_QueryPlanCachePlans, true);
 
   TRI_InitV8Replication(isolate, context, &vocbase, threadNumber, v8g);
 

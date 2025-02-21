@@ -23,10 +23,6 @@
 
 #include "GeneralServerFeature.h"
 
-#include <chrono>
-#include <stdexcept>
-#include <thread>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
@@ -34,6 +30,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
+#include "AsyncRegistryServer/RestHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -75,7 +72,6 @@
 #endif
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
-#include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCompactHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDatabaseHandler.h"
@@ -100,6 +96,7 @@
 #include "RestHandler/RestOptionsDescriptionHandler.h"
 #include "RestHandler/RestOptionsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
+#include "RestHandler/RestQueryPlanCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
@@ -139,6 +136,10 @@
 #include "Enterprise/RestHandler/RestHotBackupHandler.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
+
+#include <chrono>
+#include <stdexcept>
+#include <thread>
 
 using namespace arangodb::rest;
 using namespace arangodb::options;
@@ -651,9 +652,6 @@ void GeneralServerFeature::defineRemainingHandlers(
           iresearch::RestAnalyzerHandler>::createNoData  // handler
   );
 
-  f.addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
-                     RestHandlerCreator<RestBatchHandler>::createNoData);
-
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
@@ -772,6 +770,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_api/query-cache",
                      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
 
+  f.addPrefixHandler(
+      "/_api/query-plan-cache",
+      RestHandlerCreator<RestQueryPlanCacheHandler>::createNoData);
+
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
@@ -844,6 +846,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   // ...........................................................................
   // /_admin
   // ...........................................................................
+
+  f.addPrefixHandler(
+      "/_admin/async-registry",
+      RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/cluster",

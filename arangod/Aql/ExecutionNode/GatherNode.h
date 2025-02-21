@@ -147,5 +147,8 @@ class GatherNode final : public ExecutionNode {
   size_t _limit;
 };
 
+auto toString(GatherNode::SortMode mode) noexcept -> std::string_view;
+auto toString(GatherNode::Parallelism) noexcept -> std::string_view;
+
 }  // namespace aql
 }  // namespace arangodb

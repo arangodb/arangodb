@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual */
+/* global runSetup assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,9 +29,9 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
   for (let i = 0; i < 5; ++i) {
     db._drop('UnitTestsRecovery' + i);
     let c = db._create('UnitTestsRecovery' + i);
@@ -45,7 +45,7 @@ function runSetup () {
   let c;
   for (let i = 0; i < 4; ++i) {
     c = db._collection('UnitTestsRecovery' + i);
-    let idx = c.getIndexes();
+    let idx = c.indexes();
     for (let j = 1; j < idx.length; ++j) {
       c.dropIndex(idx[j].id);
     }
@@ -53,6 +53,7 @@ function runSetup () {
 
   c.save({ _key: 'crashme' }, true);
 
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -75,13 +76,13 @@ function recoverySuite () {
 
       for (i = 0; i < 4; ++i) {
         c = db._collection('UnitTestsRecovery' + i);
-        idx = c.getIndexes();
+        idx = c.indexes();
         assertEqual(1, idx.length);
         assertEqual('primary', idx[0].type);
       }
 
       c = db._collection('UnitTestsRecovery4');
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(3, idx.length);
     }
 
@@ -92,13 +93,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

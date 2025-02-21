@@ -36,18 +36,20 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const compareTicks = replication.compareTicks;
 const console = require('console');
 const internal = require('internal');
-const leaderEndpoint = arango.getEndpoint();
-const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 
 const cn = 'UnitTestsReplication';
 const cn2 = 'UnitTestsReplication2';
 
-const connectToLeader = function () {
+let IM = global.instanceManager;
+const leaderEndpoint = IM.arangods[0].endpoint;
+const followerEndpoint = IM.arangods[1].endpoint;
+
+const connectToLeader = function() {
   reconnectRetry(leaderEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
 
-const connectToFollower = function () {
+const connectToFollower = function() {
   reconnectRetry(followerEndpoint, db._name(), 'root', '');
   db._flushCache();
 };
@@ -666,7 +668,7 @@ function BaseTestConfig () {
         function (state) {
           let col = db._collection(cn);
           assertNotNull(col, 'collection does not exist');
-          let idx = col.getIndexes();
+          let idx = col.indexes();
           assertEqual(2, idx.length);
           assertEqual('primary', idx[0].type);
           assertEqual('persistent', idx[1].type);
@@ -699,7 +701,7 @@ function BaseTestConfig () {
         },
 
         function (state) {
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length);
           assertEqual('primary', idx[0].type);
         }
@@ -1300,7 +1302,7 @@ function BaseTestConfig () {
         function () { // followerFuncOngoing
         }, // followerFuncOngoing
         function (state) { // followerFuncFinal
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
@@ -1390,7 +1392,7 @@ function BaseTestConfig () {
         function (state) { // followerFuncFinal
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');
@@ -1459,7 +1461,7 @@ function BaseTestConfig () {
         function (state) { // followerFuncFinal
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
-          let idx = db._collection(cn).getIndexes();
+          let idx = db._collection(cn).indexes();
           assertEqual(1, idx.length); // primary
 
           let view = db._view(cn + 'View');

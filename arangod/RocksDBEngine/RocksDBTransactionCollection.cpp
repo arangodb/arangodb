@@ -213,6 +213,19 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
                                                 uint64_t commitSeq) {
   TRI_IF_FAILURE("DisableCommitCounts") { return; }
   TRI_ASSERT(_collection != nullptr);
+  if (_collection == nullptr) {
+    // This was observed once in production. We currently do not know how
+    // this can happen, since no code path should lead to this. We add this
+    // provision here to avoid a crash in case this happens again and we
+    // put out additional information to the log to be able to get to the
+    // bottom of this:
+    LOG_TOPIC("54241", ERR, arangodb::Logger::ENGINES)
+        << "commitCounts: _collcetion is nullptr, trxId=" << trxId
+        << ", commitSeq=" << commitSeq << ", usageLocked=" << _usageLocked
+        << ", collection id: " << id().id();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "commitCounts: _collection is nullptr");
+  }
   auto* rcoll = static_cast<RocksDBMetaCollection*>(_collection->getPhysical());
 
   // Update the collection count

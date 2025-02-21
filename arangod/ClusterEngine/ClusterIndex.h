@@ -30,6 +30,8 @@
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <atomic>
+
 namespace arangodb {
 class LogicalCollection;
 
@@ -103,10 +105,13 @@ class ClusterIndex : public Index {
 
   void updateProperties(velocypack::Slice slice);
 
+  bool supportsDistinctScan(
+      IndexDistinctScanOptions const& scanOptions) const noexcept override;
+
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
 
-  bool supportsStreamInterface(
+  StreamSupportResult supportsStreamInterface(
       IndexStreamOptions const&) const noexcept override;
 
   std::vector<std::vector<basics::AttributeName>> const& prefixFields()
@@ -114,12 +119,16 @@ class ClusterIndex : public Index {
     return _prefixFields;
   }
 
+  UserVectorIndexDefinition const& getVectorIndexDefinition() override;
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
   velocypack::Builder _info;
   bool _estimates;
-  double _clusterSelectivity;
+  std::atomic<double> _clusterSelectivity;
+
+  std::unique_ptr<UserVectorIndexDefinition> _vectorIndexDefinition;
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;

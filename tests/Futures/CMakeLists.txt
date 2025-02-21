@@ -1,5 +1,6 @@
 add_library(arango_tests_futures OBJECT
   FutureTest.cpp
+  FutureCoroutineTest.cpp
   PromiseTest.cpp
   TryTest.cpp)
 target_link_libraries(arango_tests_futures

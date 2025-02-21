@@ -33,6 +33,8 @@ const functionsDocumentation = {
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const trs = require('@arangodb/testutils/testrunners');
+const { versionHas } = require("@arangodb/test-helper");
+const isCov = versionHas('coverage');
 
 const testPaths = {
   'communication': [ tu.pathForTesting('client/communication') ],
@@ -41,6 +43,9 @@ const testPaths = {
 function communication (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
+  if (isCov) {
+    options.oneTestTimeout *= 2;
+  }
 
   return new trs.runLocalInArangoshRunner(options, 'communication', {}).run(testCases);
 }
@@ -51,6 +56,9 @@ function communicationSsl (options) {
     'protocol': 'ssl'
   };
   _.defaults(opts, options);
+  if (isCov) {
+    opts.oneTestTimeout *= 2;
+  }
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
@@ -58,9 +66,11 @@ function communicationSsl (options) {
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['communication'] = communication;
-  testFns['communication_ssl'] = communicationSsl;
+  if (versionHas('maintainer-mode')) {
+    Object.assign(allTestPaths, testPaths);
+    testFns['communication'] = communication;
+    testFns['communication_ssl'] = communicationSsl;
 
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+    tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  }
 };

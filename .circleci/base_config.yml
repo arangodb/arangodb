@@ -8,12 +8,18 @@ parameters:
   enterprise-commit:
     type: string
     default: ""
+  arangosh_args:
+    type: string
+    default: ""
+  use-minimal-debug-info:
+    type: boolean
+    default: true
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:5"
+    default: "arangodb/ubuntubuildarangodb-devel:12"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5b5ffda4
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -22,6 +28,9 @@ parameters:
     type: boolean
     default: false
   create-docker-images:
+    type: boolean
+    default: false
+  rebuild-test-docker-images:
     type: boolean
     default: false
   nightly:
@@ -35,13 +44,16 @@ parameters:
     default: ""
   ui:
     type: string
-    default: "off"
+    default: "on"
   ui-deployment:
     type: string
     default: ""
   ui-testsuites:
     type: string
     default: ""
+  rta-branch:
+    type: string
+    default: "main"
   c-compiler:
     type: string
     default: "clang"
@@ -51,16 +63,15 @@ parameters:
   # these are basically global constants
   build-targets:
     type: string
-    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend arangovpack"
+    default: "arangodb"
+    # The arangodb target consists of arangod and the list of client-tools which already
+    # conditionally contains arangobackup and arangosh, depending on whether we build in
+    # enterprise mode, and whether we build with V8 or not.
+    # This should also improve build times because this way the individual targets can be
+    # built in parallel (a list of individual targets is built serially).
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
-  enterprise-build-targets:
-    type: string
-    default: "arangobackup"
-  v8-build-targets:
-    type: string
-    default: "arangosh"
 
 commands:
   checkout-arangodb:
@@ -241,6 +252,25 @@ jobs:
               echo "Nothing to cancel"
             fi
 
+  build-frontend:
+    docker:
+      - image: << pipeline.parameters.build-docker-image >>
+    resource_class: large
+    steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
+      - run:
+          name: Build frontend
+          command: |
+            cd js/apps/system/_admin/aardvark/APP/react
+            yarn install
+            yarn build
+      - persist_to_workspace:
+          root: .
+          paths:
+            - js/apps/system/_admin/aardvark/APP/react/build
+
   compile-linux:
     parameters:
       preset:
@@ -288,6 +318,11 @@ jobs:
       - run:
           name: Configure
           command: |
+            MINIMAL_DEBUGINFO="OFF"
+            if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
+              MINIMAL_DEBUGINFO="ON"
+            fi
+
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
@@ -296,22 +331,17 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
-              -DCMAKE_INSTALL_PREFIX=/
+              -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
+              -DCMAKE_INSTALL_PREFIX=/ 
       - run:
           name: Build
           command: |
             TARGETS="<< pipeline.parameters.build-targets >>"
-            if [ << parameters.build-v8 >> = true ]; then
-              TARGETS="$TARGETS << pipeline.parameters.v8-build-targets >>"
-            fi
-            if [ << parameters.enterprise >> = true ]; then
-              TARGETS="$TARGETS << pipeline.parameters.enterprise-build-targets >>"
-            fi
             if [ << parameters.build-tests >> = true ]; then
               TARGETS="$TARGETS << pipeline.parameters.test-build-targets >>"
             fi
             echo "Building targets: $TARGETS"
-            cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
+            cmake --build --preset << parameters.preset >> --parallel 16 --target $TARGETS
       - when:
           condition:
             or:
@@ -344,7 +374,7 @@ jobs:
                 command: |
                   mkdir install
                   # Note: ATM this will rebuild the frontend
-                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 16 --target install
                   cp build/bin/arangodb ./install/usr/bin/
                   if [ << parameters.enterprise >> = true ]; then
                     cp build/bin/rclone-arangodb ./install/usr/bin/
@@ -363,6 +393,10 @@ jobs:
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
             rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
+      - run:
+          name: List build artifacts
+          command: |
+            ls -Ssha build/bin/
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -436,6 +470,9 @@ jobs:
         type: string
       suites:
         type: string
+      arangosh_args:
+        type: string
+        default: ""
       size:
         type: string
       extraArgs:
@@ -458,18 +495,46 @@ jobs:
           name: Enabled coredumps
           command: ulimit -c unlimited
       - run:
+          name: Log processes
+          command: |
+            export PS_FORMAT="pid,%cpu,%mem,rss,thcount,oom,oomadj,args"
+            ps | head -n 1
+            echo "======"
+            while true; do
+              sleep 3
+              ps -a | grep "[a]rangod " || true | while read line ; do echo "$(date +"%T") > $line" ; done ;
+              echo "======"
+            done
+          background: true
+      - when:
+          condition:
+            not:
+              equal: [ << pipeline.parameters.sanitizer >>, ""]
+          steps:
+            - run:
+                name: Symbolizer server
+                command: ./utils/llvm-symbolizer-server.py
+                background: true
+      - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
             mkdir work
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
-              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
+              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
-              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export SAN_MODE=alubsan
             elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
-              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
+              # Needed to ignore TSAN errors from OpenMP
+              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-19/lib/libarcher.so
+              export ARCHER_OPTIONS="verbose=1"
+              if ! [ -f ${OMP_TOOL_LIBRARIES} ]; then
+                echo "File ${OMP_TOOL_LIBRARIES} does not exist."
+                exit 1
+              fi
+              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
               export SAN_MODE=tsan
             fi
 
@@ -481,10 +546,10 @@ jobs:
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
+              --arangosh_args '<< parameters.arangosh_args >>' \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs " << parameters.extraArgs >>" \
-              --definition tests/test-definitions.txt
+              --extraArgs ' << parameters.extraArgs >>'
       - run:
           name: Copy test results
           when: always
@@ -545,7 +610,12 @@ jobs:
         type: string
       browser:
         type: string
-      # TODO add more parameters
+      rta-branch:
+        type: string
+        default: "main"
+      arangosh_args:
+        type: string
+        default: ""
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -558,7 +628,7 @@ jobs:
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
-            #git checkout circleci
+            git checkout << pipeline.parameters.rta-branch >>
       - run:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
@@ -566,9 +636,26 @@ jobs:
             pwd
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
+            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
+              export ASAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export LSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export SAN_MODE=alubsan
+              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
+            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
+              sudo sysctl vm.mmap_rnd_bits=28
+              export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=/utils/llvm-symbolizer-client.py"
+              export SAN_MODE=tsan
+              cp work/ArangoDB/ubsan_arangodb_suppressions.txt work/ArangoDB/build/bin/ubsan_arangodb_suppressions.txt
+              cp work/ArangoDB/tsan_arangodb_suppressions.txt work/ArangoDB/build/bin/tsan_arangodb_suppressions.txt
+              cp work/ArangoDB/lsan_arangodb_suppressions.txt work/ArangoDB/build/bin/lsan_arangodb_suppressions.txt
+            fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
             bash -x ./jenkins/circleci_tar.sh \
+              --no-checkdata \
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \

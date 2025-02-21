@@ -139,11 +139,11 @@ function lateDocumentMaterializationRuleTestSuite () {
 
       // usually the batch materialize rule only does something if there are enough documents in the collection
       // by enabling this failure point we can trick the optimizer into always applying the optimization
-      require('internal').debugSetFailAt("batch-materialize-no-estimation");
+      global.instanceManager.debugSetFailAt("batch-materialize-no-estimation");
     },
 
     tearDownAll : function () {
-      require('internal').debugClearFailAt("batch-materialize-no-estimation");
+      global.instanceManager.debugClearFailAt("batch-materialize-no-estimation");
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         try { db._drop(collectionNames[i]); } catch(e) {}
         for (j = 0; j < numOfExpCollections; ++j) {
@@ -495,6 +495,16 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(1, result.length);
       assertEqual(result[0]._key, 'c0');
     },
+    testQueryResultsPrefixEarlyPruningNoOptimizeProjections() {
+      const options = {optimizer: {rules: ["-optimize-projections"] } };
+      let query = "FOR d IN " + prefixIndexCollectionName + " FILTER d.obj.b == {sb: 'b_val_0'} SORT d.obj.b LIMIT 10 RETURN d";
+      let plan = db._createStatement({query, options}).explain().plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertNotEqual(-1, plan.rules.indexOf(earlyPruningRuleName));
+      let result = db._query(query, null, options).toArray();
+      assertEqual(1, result.length);
+      assertEqual(result[0]._key, 'c0');
+    },
     testConstrainedSortOnDbServer() {
       let query = "FOR d IN " + prefixIndexCollectionName  + " FILTER d.obj.b == {sb: 'b_val_0'} " +
                   "SORT d.obj.b LIMIT 10 RETURN {key: d._key, value:  d.some_value_from_doc}";
@@ -548,7 +558,7 @@ function lateDocumentMaterializationRuleTestSuite () {
                 
       } finally {
         db._drop(withIndexCollectionName);
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
       }
     },
 

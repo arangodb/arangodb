@@ -106,6 +106,9 @@ struct ShortestPathOptions : public BaseOptions {
   auto setDefaultWeight(double weight) -> void;
   auto getDefaultWeight() const -> double;
 
+  auto setAlgorithm(std::string attribute) -> void;
+  auto getAlgorithm() const& -> std::string;
+
  private:
   /// These options come from the query's text
   uint64_t _minDepth;
@@ -115,6 +118,9 @@ struct ShortestPathOptions : public BaseOptions {
 
   /// @brief Lookup info to find all reverse edges.
   std::vector<LookupInfo> _reverseLookupInfos;
+
+  /// Algorithm choice for k-shortest paths:
+  std::string _algorithm;
 };
 
 }  // namespace graph

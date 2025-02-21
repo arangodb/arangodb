@@ -35,7 +35,6 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/BlockCollector.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/SingletonNode.h"
@@ -98,6 +97,11 @@ class asserthelper {
 
 using SplitType =
     std::variant<std::vector<std::size_t>, std::size_t, std::monostate>;
+template<size_t... vs>
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
+template<size_t step>
+const SplitType splitStep = SplitType{step};
+const SplitType noSplit = SplitType{std::monostate{}};
 
 auto inline to_string(SplitType const& splitType) -> std::string {
   using namespace std::string_literals;
@@ -560,8 +564,8 @@ struct ExecutorTestHelper {
   std::size_t _unorderedSkippedRows;
   std::size_t _inputSubqueryDepth = 0;
 
-  SplitType _inputSplit = {std::monostate()};
-  SplitType _outputSplit = {std::monostate()};
+  SplitType _inputSplit = noSplit;
+  SplitType _outputSplit = noSplit;
 
   arangodb::aql::Query& _query;
   arangodb::aql::AqlItemBlockManager& _itemBlockManager;

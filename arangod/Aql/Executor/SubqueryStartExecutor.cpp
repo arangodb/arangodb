@@ -23,15 +23,13 @@
 
 #include "SubqueryStartExecutor.h"
 
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionState.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
-#include "Logger/LogMacros.h"
-
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 SubqueryStartExecutor::SubqueryStartExecutor(Fetcher&, Infos&) {}
 
@@ -46,7 +44,8 @@ auto SubqueryStartExecutor::produceRows(AqlItemBlockInputRange& input,
   TRI_ASSERT(!_inputRow.isInitialized());
   if (input.hasDataRow()) {
     TRI_ASSERT(!output.isFull());
-    std::tie(_upstreamState, _inputRow) = input.peekDataRow();
+    std::tie(_upstreamState, _inputRow) =
+        input.peekDataRow(AqlItemBlockInputRange::HasDataRow{});
     output.copyRow(_inputRow);
     output.advanceRow();
     return {ExecutorState::DONE, NoStats{}, AqlCall{}};
@@ -67,7 +66,8 @@ auto SubqueryStartExecutor::skipRowsRange(AqlItemBlockInputRange& input,
   if (input.hasDataRow()) {
     // Do not consume the row.
     // It needs to be reported in Produce.
-    std::tie(_upstreamState, _inputRow) = input.peekDataRow();
+    std::tie(_upstreamState, _inputRow) =
+        input.peekDataRow(AqlItemBlockInputRange::HasDataRow{});
     call.didSkip(1);
     return {ExecutorState::DONE, NoStats{}, call.getSkipCount(), AqlCall{}};
   }
@@ -79,6 +79,7 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
   TRI_ASSERT(!output.allRowsUsed());
   if (_inputRow.isInitialized()) {
     // Actually consume the input row now.
+    TRI_ASSERT(input.hasDataRow());
     auto const [upstreamState, inputRow] = input.nextDataRow();
     // We are only supposed to report the inputRow we
     // have seen in produce as a ShadowRow
@@ -111,3 +112,7 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
   // Nothing to create here.
   return 0;
 }
+
+template class ExecutionBlockImpl<SubqueryStartExecutor>;
+
+}  // namespace arangodb::aql

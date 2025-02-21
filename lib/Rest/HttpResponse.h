@@ -34,11 +34,8 @@
 #include <vector>
 
 namespace arangodb {
-class RestBatchHandler;
 
 class HttpResponse : public GeneralResponse {
-  friend class RestBatchHandler;  // TODO must be removed
-
  public:
   HttpResponse(ResponseCode code, uint64_t mid,
                std::unique_ptr<basics::StringBuffer> buffer,
@@ -71,10 +68,7 @@ class HttpResponse : public GeneralResponse {
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
 
-  void clearBody() noexcept {
-    _body->clear();
-    _bodySize = 0;
-  }
+  void clearBody() noexcept override;
 
   void reset(ResponseCode code) override final;
 

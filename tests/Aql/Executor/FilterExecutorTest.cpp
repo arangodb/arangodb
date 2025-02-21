@@ -64,7 +64,7 @@ class FilterExecutorTest
 
   FilterExecutorTest()
       : itemBlockManager(monitor),
-        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
+        block(itemBlockManager.requestBlock(1000, 1)),
         outputRegisters(),
         infos(0) {}
 
@@ -80,11 +80,6 @@ class FilterExecutorTest
     return FilterExecutorInfos{0};
   }
 };
-
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(FilterExecutor, FilterExecutorTest,
                         ::testing::Values(splitIntoBlocks<2, 3>,

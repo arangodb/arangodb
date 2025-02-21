@@ -36,8 +36,9 @@ const db = arangodb.db;
 const internal = require("internal");
 const time = internal.time;
 
-const leaderEndpoint = arango.getEndpoint();
-const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
+let IM = global.instanceManager;
+const leaderEndpoint = IM.arangods[0].endpoint;
+const followerEndpoint = IM.arangods[1].endpoint;
 
 const username = "root";
 const password = "";
@@ -242,7 +243,7 @@ describe('Global Replication on a fresh boot', function () {
       // First Part Create Collection
       let mcol = db._create(docColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       // Validate it is created properly
       waitForReplication();
@@ -252,7 +253,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
 
       connectToLeader();
       // Second Part Drop it again
@@ -270,7 +271,7 @@ describe('Global Replication on a fresh boot', function () {
       // First Part Create Collection
       let mcol = db._createEdgeCollection(edgeColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       connectToFollower();
       // Validate it is created properly
@@ -279,7 +280,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
 
       connectToLeader();
       // Second Part Drop it again
@@ -428,17 +429,17 @@ describe('Global Replication on a fresh boot', function () {
       it("should replicate index creation", function () {
         connectToLeader();
 
-        let oIdx = db._collection(docColName).getIndexes();
+        let oIdx = db._collection(docColName).indexes();
 
         db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
 
-        let mIdx = db._collection(docColName).getIndexes();
+        let mIdx = db._collection(docColName).indexes();
 
         waitForReplication();
         connectToFollower();
 
         internal.sleep(5); // makes test more reliable
-        let sIdx = db._collection(docColName).getIndexes();
+        let sIdx = db._collection(docColName).indexes();
         compareIndexes(sIdx, mIdx, true);
         compareIndexes(sIdx, oIdx, false);
       });
@@ -447,7 +448,7 @@ describe('Global Replication on a fresh boot', function () {
         connectToLeader();
 
         let c = db._collection(docColName);
-        let oIdx = c.getIndexes();
+        let oIdx = c.indexes();
 
         c.truncate({ compact: false });
         let docs = [];
@@ -460,13 +461,13 @@ describe('Global Replication on a fresh boot', function () {
         }
 
         c.ensureIndex({ type: "hash", fields: ["value2"] });
-        let mIdx = c.getIndexes();
+        let mIdx = c.indexes();
 
         waitForReplication();
         connectToFollower();
 
         internal.sleep(5); // makes test more reliable
-        let sIdx = db._collection(docColName).getIndexes();
+        let sIdx = db._collection(docColName).indexes();
         expect(db._collection(docColName).count()).to.eq(10000);
 
         compareIndexes(sIdx, mIdx, true);
@@ -511,7 +512,7 @@ describe('Global Replication on a fresh boot', function () {
       // First Part Create Collection
       let mcol = db._create(docColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
       testCollectionExists(docColName); 
 
       connectToFollower();
@@ -522,7 +523,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
 
       connectToLeader();
       db._useDatabase(dbName);
@@ -543,7 +544,7 @@ describe('Global Replication on a fresh boot', function () {
       // First Part Create Collection
       let mcol = db._createEdgeCollection(edgeColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       connectToFollower();
       // Validate it is created properly
@@ -553,7 +554,7 @@ describe('Global Replication on a fresh boot', function () {
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
 
       connectToLeader();
       db._useDatabase(dbName);
@@ -689,18 +690,18 @@ describe('Global Replication on a fresh boot', function () {
       it("should replicate index creation", function () {
         connectToLeader();
         db._useDatabase(dbName);
-        let oIdx = db._collection(docColName).getIndexes();
+        let oIdx = db._collection(docColName).indexes();
 
         db._collection(docColName).ensureIndex({ type: "hash", fields: ["value"] });
 
-        let mIdx = db._collection(docColName).getIndexes();
+        let mIdx = db._collection(docColName).indexes();
 
         waitForReplication();
         connectToFollower();
         db._useDatabase(dbName);
 
         internal.sleep(5); // makes test more reliable
-        let sIdx = db._collection(docColName).getIndexes();
+        let sIdx = db._collection(docColName).indexes();
         
         compareIndexes(sIdx, mIdx, true);
         compareIndexes(sIdx, oIdx, false);
@@ -711,7 +712,7 @@ describe('Global Replication on a fresh boot', function () {
         db._useDatabase(dbName);
 
         let c = db._collection(docColName);
-        let oIdx = c.getIndexes();
+        let oIdx = c.indexes();
 
         c.truncate();
         let docs = [];
@@ -724,14 +725,14 @@ describe('Global Replication on a fresh boot', function () {
         }
 
         c.ensureIndex({ type: "hash", fields: ["value2"] });
-        let mIdx = c.getIndexes();
+        let mIdx = c.indexes();
 
         waitForReplication();
         connectToFollower();
         db._useDatabase(dbName);
 
         internal.sleep(5); // makes test more reliable
-        let sIdx = db._collection(docColName).getIndexes();
+        let sIdx = db._collection(docColName).indexes();
         expect(db._collection(docColName).count()).to.eq(10000);
 
         compareIndexes(sIdx, mIdx, true);
@@ -801,14 +802,14 @@ describe('Setup global replication on empty follower and leader has some data', 
       // First Part Create Collection
       let mcol = db._collection(docColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       connectToFollower();
       testCollectionExists(docColName);
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
     });
 
     it("should have synced the edge collection", function () {
@@ -816,7 +817,7 @@ describe('Setup global replication on empty follower and leader has some data', 
       // First Part Create Collection
       let mcol = db._collection(edgeColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       connectToFollower();
 
@@ -825,7 +826,7 @@ describe('Setup global replication on empty follower and leader has some data', 
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
     });
 
     it("should have synced the database", function () {
@@ -852,7 +853,7 @@ describe('Setup global replication on empty follower and leader has some data', 
       // First Part Create Collection
       let mcol = db._collection(docColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       connectToFollower();
       db._useDatabase(dbName);
@@ -860,7 +861,7 @@ describe('Setup global replication on empty follower and leader has some data', 
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
     });
 
     it("should have synced the edge collection", function () {
@@ -870,7 +871,7 @@ describe('Setup global replication on empty follower and leader has some data', 
       // First Part Create Collection
       let mcol = db._collection(edgeColName);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       connectToFollower();
       db._useDatabase(dbName);
@@ -880,7 +881,7 @@ describe('Setup global replication on empty follower and leader has some data', 
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
     });
 
     describe("content of an existing collection", function () {
@@ -947,7 +948,7 @@ describe('Test switch off and restart replication', function() {
 
       let mcol = db._create(col);
       let mProps = mcol.properties();
-      let mIdxs = mcol.getIndexes();
+      let mIdxs = mcol.indexes();
 
       startReplication();
 
@@ -956,7 +957,7 @@ describe('Test switch off and restart replication', function() {
       let scol = db._collection(col);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
-      compareIndexes(scol.getIndexes(), mIdxs, true);
+      compareIndexes(scol.indexes(), mIdxs, true);
 
       // Second part. Delete collection
 
@@ -984,16 +985,16 @@ describe('Test switch off and restart replication', function() {
 
       connectToLeader();
       let mcol = db._collection(col);
-      let omidx = mcol.getIndexes();
+      let omidx = mcol.indexes();
       mcol.ensureIndex({ type: "hash", fields: ["value"] });
 
-      let midxs = mcol.getIndexes();
+      let midxs = mcol.indexes();
 
       startReplication();
 
       connectToFollower();
       let scol = db._collection(col);
-      let sidxs = scol.getIndexes();
+      let sidxs = scol.indexes();
       compareIndexes(sidxs, midxs, true);
       compareIndexes(sidxs, omidx, false);
 

@@ -276,22 +276,6 @@ function saveToJunitXML(options, results) {
   };
   let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
 
-  if (results.hasOwnProperty('crashreport')) {
-    results['crash'] = {
-      crash_report: {
-        status: false,
-        failed: 1,
-        all: {
-          status: false,
-          failed: 1,
-          message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
-        }
-      },
-      status: false,
-      failed: 1,
-    };
-  }
-
   const addOptionalDuration = (elem, test) => {
     if (test.hasOwnProperty('duration') && test.duration !== undefined) {
       // time is in seconds
@@ -511,7 +495,7 @@ function unitTestPrettyPrintResults (options, results) {
               failedMessages += '\n';
               onlyFailedMessages += '\n';
             }
-            m = '      "' + one + '" failed: ' + details[one];
+            m = '      "' + one + '" failed: ' + details[one].replaceAll('\\n', '\n');
             failedMessages += RED + m + RESET + '\n\n';
             onlyFailedMessages += m + '\n\n';
             count++;
@@ -534,7 +518,7 @@ function unitTestPrettyPrintResults (options, results) {
     color = RED;
     statusMessage = 'Fail';
   }
-  if (results.crashed === true || cu.GDB_OUTPUT !== '') {
+  if (results.crashed === true) {
     color = RED;
     for (let failed in failedRuns) {
       crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -1038,18 +1022,36 @@ function writeDefaultReports(options, testSuites) {
 
 }
 
+function processCrashReport(result) {
+  if (cu.GDB_OUTPUT !== '') {
+    result['crashreport'] = cu.GDB_OUTPUT;
+    result['crash'] = {
+      crash_report: {
+        status: false,
+        failed: 1,
+        all: {
+          status: false,
+          failed: 1,
+          message: (result.crashed ? "SUT crashed: \n": "SUT was aborted: \n") + cu.GDB_OUTPUT
+        }
+      },
+      status: false,
+      failed: 1,
+    };
+    result.status = false;
+    result.crashed = true;
+  }
+}
+
 function writeReports(options, results) {
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status && cu.GDB_OUTPUT === ''), true);
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed || cu.GDB_OUTPUT !== ''), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed), true);
 }
 
 function dumpAllResults(options, results) {
   let j;
 
   try {
-    if (cu.GDB_OUTPUT !== '') {
-      results['crashreport'] = cu.GDB_OUTPUT;
-    }
     j = JSON.stringify(results);
   } catch (err) {
     j = inspect(results);
@@ -1139,6 +1141,7 @@ exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
 exports.addFailRunsMessage = addFailRunsMessage;
+exports.processCrashReport = processCrashReport;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;

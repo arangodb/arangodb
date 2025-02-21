@@ -92,6 +92,7 @@ class Optimizer {
     std::unique_ptr<std::unordered_map<int, double>> executionTimes;
 
     void toVelocyPack(velocypack::Builder& b) const;
+    static void toVelocyPackForCachedPlan(velocypack::Builder& b);
   };
 
   /// @brief constructor, this will initialize the rules database
@@ -148,6 +149,8 @@ class Optimizer {
 
   void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
 
+  void toVelocyPack(velocypack::Builder& b) const;
+
  private:
   /// @brief disable a specific rule
   void disableRule(ExecutionPlan* plan, int level);
@@ -167,13 +170,14 @@ class Optimizer {
                        RuleDatabase::iterator const& nextRule);
 
   void finalizePlans();
+
+  void checkForcedIndexHints();
+
   void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
 
- public:
   /// @brief optimizer statistics
   Stats _stats;
 
- private:
   /// @brief the current set of plans to be optimized
   PlanList _plans;
 

@@ -190,7 +190,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
   var idx;
 
   var locateGeoIndex1 = function (collection, loc, order) {
-    var inds = collection.getIndexes();
+    var inds = collection.indexes();
     var i;
 
     for (i = 0;  i < inds.length;  ++i) {
@@ -207,7 +207,7 @@ ArangoCollection.prototype.geo = function (loc, order) {
   };
 
   var locateGeoIndex2 = function (collection, lat, lon) {
-    var inds = collection.getIndexes();
+    var inds = collection.indexes();
     var i;
 
     for (i = 0;  i < inds.length;  ++i) {

@@ -28,6 +28,7 @@
 #include <string>
 #include <string_view>
 
+#include "Basics/threads-posix.h"
 #include "Basics/threads.h"
 #include "Basics/DownCast.h"
 
@@ -42,6 +43,7 @@ struct ConditionVariable;
 class ThreadNameFetcher {
  public:
   ThreadNameFetcher() noexcept;
+  ThreadNameFetcher(TRI_tid_t id) noexcept;
   ThreadNameFetcher(ThreadNameFetcher const&) = delete;
   ThreadNameFetcher& operator=(ThreadNameFetcher const&) = delete;
 
@@ -93,6 +95,9 @@ class Thread {
   /// @brief returns the thread id
   static TRI_tid_t currentThreadId();
 
+  /// @brief returns the kernel thread id
+  static TRI_pid_t currentKernelThreadId();
+
  public:
   [[deprecated("server argument is no longer needed")]] Thread(
       application_features::ApplicationServer&, std::string const& name,
@@ -131,7 +136,10 @@ class Thread {
 
   /// @brief true, if the thread is still running
   bool isRunning() const noexcept {
-    return _state.load(std::memory_order_relaxed) != ThreadState::STOPPED;
+    // need acquire to ensure we establish a happens before relation with the
+    // update that sets the state to STOPPED, so threads that wait for isRunning
+    // to return false are properly synchronized
+    return _state.load(std::memory_order_acquire) != ThreadState::STOPPED;
   }
 
   /// @brief checks if the current thread was asked to stop

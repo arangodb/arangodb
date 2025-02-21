@@ -25,8 +25,9 @@
 
 #include "RocksDBVPackIndex.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
+#include "Aql/IndexDistrinctScan.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/SortCondition.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -36,6 +37,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
+#include "Containers/Enumerate.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
@@ -50,11 +52,9 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -62,7 +62,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "Aql/IndexStreamIterator.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -76,7 +75,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include "Containers/Enumerate.h"
+#include <optional>
 
 using namespace arangodb;
 
@@ -113,10 +112,6 @@ using VPackIndexCacheType = cache::TransactionalCache<cache::VPackKeyHasher>;
 // lists: lexicographically and within each slot according to these rules.
 // ...........................................................................
 
-/// @brief Iterator structure for RocksDB unique index.
-/// This iterator can be used only for equality lookups that use all
-/// index attributes. It uses a point lookup and no seeks
-
 namespace arangodb {
 
 class RocksDBVPackIndexInIterator final : public IndexIterator {
@@ -147,6 +142,10 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     ResourceUsageScope scope(_resourceMonitor, _searchValues.size());
     // now we are responsible for tracking memory usage
     _memoryUsage += scope.trackedAndSteal();
+
+    if (opts.limit > 0) {
+      _wrapped->setLimit(opts.limit);
+    }
   }
 
   ~RocksDBVPackIndexInIterator() override {
@@ -282,6 +281,9 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
   void adjustIterator() {
     bool wasRearmed = _wrapped->rearm(_current.value(), _indexIteratorOptions);
     TRI_ASSERT(wasRearmed);
+    if (_indexIteratorOptions.limit > 0) {
+      _wrapped->setLimit(_indexIteratorOptions.limit);
+    }
   }
 
   ResourceMonitor& _resourceMonitor;
@@ -547,7 +549,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       RocksDBVPackIndexSearchValueFormat format)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
+        _cmp(index->comparator()),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _resourceMonitor(monitor),
@@ -675,6 +677,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(l > 0 || _cache == nullptr);
 
     return true;
+  }
+
+  void setLimit(uint64_t limit) noexcept override {
+    _limitPerLookupValue = limit;
   }
 
   /// @brief Get the next limit many elements in the index
@@ -921,7 +927,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     ensureIterator();
     TRI_ASSERT(_iterator != nullptr);
 
-    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0)) {
+    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0) ||
+        _limitPerLookupValue.value_or(UINT64_MAX) == 0) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -933,6 +940,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     }
 
     TRI_ASSERT(limit > 0);
+    TRI_ASSERT(_limitPerLookupValue.value_or(UINT64_MAX) > 0);
 
     // cannot get here if we have a cache
     do {
@@ -943,6 +951,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         // validate that Iterator is in a good shape and hasn't failed
         rocksutils::checkIteratorStatus(*_iterator);
         return false;
+      }
+      if (_limitPerLookupValue.has_value()) {
+        uint64_t& l = *_limitPerLookupValue;
+        --l;
+        if (l == 0) {
+          return false;
+        }
       }
 
       if (--limit == 0) {
@@ -1155,7 +1170,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   static constexpr size_t expectedIteratorMemoryUsage = 8192;
 
   RocksDBVPackIndex const* _index;
-  RocksDBVPackComparator const* _cmp;
+  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<VPackIndexCacheType> _cache;
   size_t const _maxCacheValueSize;
@@ -1183,6 +1198,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   // memory used by this iterator
   size_t _memoryUsage;
+
+  // optional limit for the number of index results to produce.
+  // this is only used as a performance optimization. the iterator will
+  // stop producing results once this limit was exceeded. if not set,
+  // it does nothing.
+  std::optional<uint64_t> _limitPerLookupValue;
+
   RocksDBVPackIndexSearchValueFormat const _format;
   bool _mustSeek;
 };
@@ -2903,7 +2925,8 @@ void RocksDBVPackIndex::warmupInternal(transaction::Methods* trx) {
     rocksdb::Slice key = it->key();
     TRI_ASSERT(objectId() == RocksDBKey::objectId(key));
     VPackSlice v = RocksDBKey::indexedVPack(key);
-    if (basics::VelocyPackHelper::compare(v, builder.slice(), true) != 0) {
+    int cmp = basics::VelocyPackHelper::compare(v, builder.slice(), true);
+    if (cmp != 0) {
       // index values are different. now do a lookup in cache/rocksdb
       builder.clear();
       builder.add(v);
@@ -3066,7 +3089,9 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
   bool reset(std::span<VPackSlice> span,
              std::span<VPackSlice> constants) override {
-    TRI_ASSERT(constants.size() == _options.constantsSize);
+    TRI_ASSERT(constants.size() == _options.constantsSize)
+        << "constants.size() = " << constants.size()
+        << ", options = " << _options.constantsSize;
     _constants = constants;
     VPackBuilder keyBuilder;
     constructKey(keyBuilder, constants, {});
@@ -3091,7 +3116,7 @@ struct RocksDBVPackStreamIterator final : AqlIndexStreamIterator {
 
 std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
     transaction::Methods* trx, IndexStreamOptions const& opts) {
-  if (!supportsStreamInterface(opts)) {
+  if (!supportsStreamInterface(opts).hasSupport()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "RocksDBVPackIndex streamForCondition was "
                                    "called with unsupported options.");
@@ -3125,44 +3150,166 @@ std::unique_ptr<AqlIndexStreamIterator> RocksDBVPackIndex::streamForCondition(
   return stream;
 }
 
-bool RocksDBVPackIndex::checkSupportsStreamInterface(
+Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
     std::vector<std::vector<basics::AttributeName>> const& coveredFields,
-    IndexStreamOptions const& streamOpts) noexcept {
-  // TODO expand this for fixed values that can be moved into the index
-
+    std::vector<std::vector<basics::AttributeName>> const& fields,
+    bool isUnique, IndexStreamOptions const& streamOpts) noexcept {
   // we can only project values that are in range
   for (auto idx : streamOpts.projectedFields) {
     if (idx > coveredFields.size()) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
   }
 
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
-  if (streamOpts.usedKeyFields.size() != 1) {
-    return false;
-  }
-
   for (auto constantValue : streamOpts.constantFields) {
     if (constantValue != idx) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
     idx += 1;
   }
 
   for (auto keyIdx : streamOpts.usedKeyFields) {
     if (keyIdx != idx) {
-      return false;
+      return StreamSupportResult::makeUnsupported();
     }
     idx += 1;
+  }
+
+  if (idx > fields.size()) {
+    return StreamSupportResult::makeUnsupported();
+  }
+
+  // The uniqueness of this index can only be used if all fields are used.
+  // Example: if we index triples [doc.a, doc.b, doc.c] then the uniqueness
+  // refers to the triples and just taking a prefix [doc.a, doc.b] is not
+  // necessarily unique. Thus, we should not pick an optimized strategy for
+  // joining two unique indexes.
+  bool const hasUniqueTuples = isUnique && idx == fields.size();
+  TRI_ASSERT((streamOpts.usedKeyFields.size() == 1 && hasUniqueTuples) ||
+             !hasUniqueTuples);
+
+  return StreamSupportResult::makeSupported(hasUniqueTuples);
+}
+
+Index::StreamSupportResult RocksDBVPackIndex::supportsStreamInterface(
+    IndexStreamOptions const& streamOpts) const noexcept {
+  return checkSupportsStreamInterface(_coveredFields, _fields, _unique,
+                                      streamOpts);
+}
+
+bool RocksDBVPackIndex::supportsScanDistinctForFields(
+    IndexDistinctScanOptions const& options,
+    std::vector<std::vector<basics::AttributeName>> const& fields) noexcept {
+  auto distinctFields = options.distinctFields;
+  if (not options.sorted) {
+    // if no sorted output is required, we can change the order of fields
+    std::sort(distinctFields.begin(), distinctFields.end());
+  }
+
+  // we only support distinct scans for a prefix of the fields
+  for (size_t k = 0; k < distinctFields.size(); k++) {
+    if (k >= fields.size()) {
+      return false;
+    }
+    if (k != distinctFields[k]) {
+      return false;
+    }
   }
 
   return true;
 }
 
-bool RocksDBVPackIndex::supportsStreamInterface(
-    IndexStreamOptions const& streamOpts) const noexcept {
-  return checkSupportsStreamInterface(_coveredFields, streamOpts);
+bool RocksDBVPackIndex::supportsDistinctScan(
+    IndexDistinctScanOptions const& scanOptions) const noexcept {
+  return supportsScanDistinctForFields(scanOptions, _fields);
+}
+
+template<bool isUnique>
+struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
+  explicit RocksDBVPackIndexDistinctScanIterator(
+      RocksDBVPackIndex* index, transaction::Methods* trx,
+      std::vector<std::size_t> inverseFieldMapping)
+      : index(index),
+        trx(trx),
+        inverseFieldMapping(std::move(inverseFieldMapping)),
+        bounds(
+            isUnique
+                ? RocksDBKeyBounds::UniqueVPackIndex(index->objectId(), false)
+                : RocksDBKeyBounds::VPackIndex(index->objectId(), false)) {
+    end = bounds.end();
+  }
+
+  bool next(std::span<SliceType> values) override {
+    TRI_ASSERT(values.size() == inverseFieldMapping.size())
+        << inverseFieldMapping << " " << values.size();
+    if (iterator) {
+      RocksDBKey key;
+      key.constructVPackIndexValue(index->objectId(), nextSeekTarget.slice(),
+                                   LocalDocumentId{0});
+      iterator->Seek(key.string());
+
+    } else {
+      RocksDBTransactionMethods* mthds =
+          RocksDBTransactionState::toMethods(trx, index->collection().id());
+      iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+        TRI_ASSERT(opts.prefix_same_as_start);
+        opts.iterate_upper_bound = &end;
+      });
+      iterator->Seek(bounds.start());
+    }
+
+    if (not iterator->Valid()) {
+      return false;
+    }
+
+    // extract values from key
+    VPackSlice keySlice = RocksDBKey::indexedVPack(iterator->key());
+    size_t k = 0;
+    nextSeekTarget.clear();
+    {
+      VPackArrayBuilder ar{&nextSeekTarget, true};
+      for (auto s : VPackArrayIterator(keySlice)) {
+        nextSeekTarget.add(s);
+        values[inverseFieldMapping[k++]] = s;
+        if (k >= values.size()) {
+          break;
+        }
+      }
+      nextSeekTarget.add(VPackSlice::maxKeySlice());
+    }
+    return true;
+  }
+
+  RocksDBVPackIndex* index;
+  transaction::Methods* trx;
+  std::vector<std::size_t> inverseFieldMapping;
+
+  std::unique_ptr<rocksdb::Iterator> iterator;
+  RocksDBKeyBounds bounds;
+  rocksdb::Slice end;
+  velocypack::Builder nextSeekTarget;
+};
+
+std::unique_ptr<AqlIndexDistinctScanIterator>
+RocksDBVPackIndex::distinctScanFor(
+    transaction::Methods* trx, IndexDistinctScanOptions const& scanOptions) {
+  TRI_ASSERT(supportsDistinctScan(scanOptions));
+
+  std::vector<std::size_t> inverseFieldMapping;
+  inverseFieldMapping.resize(scanOptions.distinctFields.size());
+  for (size_t k = 0; k < scanOptions.distinctFields.size(); k++) {
+    inverseFieldMapping[scanOptions.distinctFields[k]] = k;
+  }
+
+  if (unique()) {
+    return std::make_unique<RocksDBVPackIndexDistinctScanIterator<true>>(
+        this, trx, std::move(inverseFieldMapping));
+  } else {
+    return std::make_unique<RocksDBVPackIndexDistinctScanIterator<false>>(
+        this, trx, std::move(inverseFieldMapping));
+  }
 }
 
 }  // namespace arangodb

@@ -31,11 +31,9 @@
 #include "Containers/SmallVector.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
-#include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBValue.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -130,11 +128,23 @@ class RocksDBVPackIndex : public RocksDBIndex {
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
 
-  bool supportsStreamInterface(
+  StreamSupportResult supportsStreamInterface(
       IndexStreamOptions const&) const noexcept override;
-  static bool checkSupportsStreamInterface(
+  static StreamSupportResult checkSupportsStreamInterface(
       std::vector<std::vector<basics::AttributeName>> const& coveredFields,
-      IndexStreamOptions const&) noexcept;
+      std::vector<std::vector<basics::AttributeName>> const& fields,
+      bool isUnique, IndexStreamOptions const&) noexcept;
+
+  bool supportsDistinctScan(
+      IndexDistinctScanOptions const& scanOptions) const noexcept override;
+
+  std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
+      transaction::Methods* trx,
+      IndexDistinctScanOptions const& scanOptions) override;
+
+  static bool supportsScanDistinctForFields(
+      IndexDistinctScanOptions const&,
+      std::vector<std::vector<basics::AttributeName>> const& fields) noexcept;
 
   virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const&) override;

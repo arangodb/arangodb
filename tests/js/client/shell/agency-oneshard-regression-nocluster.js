@@ -26,7 +26,7 @@
 const jsunity = require("jsunity");
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require("fs");
-const {executeExternalAndWait} = require("internal");
+const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
 
 function UpgradeForceOneShardRegressionSuite() {
   'use strict';
@@ -66,7 +66,7 @@ function UpgradeForceOneShardRegressionSuite() {
       const args = [];
       addConnectionArgs(args);
       require("console").warn(`Start arangod agency with args: ${JSON.stringify(args)}`);
-      const actualRc = executeExternalAndWait(arangod, args);
+      const actualRc = executeExternalAndWaitWithSanitizer(arangod, args, 'agency_oneshard_regression-noncluster');
       assertEqual(actualRc.exit, 0, `Instead process exited with ${JSON.stringify(actualRc)}`);
     }
   };

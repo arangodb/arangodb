@@ -44,6 +44,7 @@
 #include "Aql/Executor/SubqueryEndExecutor.h"
 #include "Aql/Executor/SubqueryStartExecutor.h"
 #include "Aql/Query.h"
+#include "Basics/ScopeGuard.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Transaction/Context.h"
@@ -237,11 +238,6 @@ class SplicedSubqueryIntegrationTest
     return split;
   }
 };
-
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
 
 INSTANTIATE_TEST_CASE_P(SplicedSubqueryIntegrationTest,
                         SplicedSubqueryIntegrationTest,

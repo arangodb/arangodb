@@ -146,6 +146,7 @@ void RegisterPlanWalkerT<T>::after(T* en) {
     TRI_ASSERT(!regsToKeepStack.empty());
     regsToKeepStack.back().clear();
     for (auto const var : varsValid) {
+      TRI_ASSERT(var != nullptr);
       if (var->type() == Variable::Type::Regular && !isSetHere(var) &&
           isUsedLater(var)) {
         auto reg = plan->variableToRegisterId(var);
@@ -486,7 +487,8 @@ template<typename T>
 RegisterId RegisterPlanT<T>::registerVariable(
     Variable const* v, std::set<RegisterId>& unusedRegisters) {
   RegisterId regId;
-  if (v->type() == Variable::Type::Const) {
+  if (v->type() == Variable::Type::Const ||
+      v->type() == Variable::Type::BindParameter) {
     regId = RegisterId::makeConst(nrConstRegs++);
   } else if (unusedRegisters.empty()) {
     regId = addRegister();
@@ -495,7 +497,9 @@ RegisterId RegisterPlanT<T>::registerVariable(
     regId = *iter;
     unusedRegisters.erase(iter);
   }
-  TRI_ASSERT(regId.isConstRegister() == (v->type() == Variable::Type::Const));
+  TRI_ASSERT(regId.isConstRegister() ==
+             (v->type() == Variable::Type::Const ||
+              v->type() == Variable::Type::BindParameter));
 
   auto [_, inserted] = varInfo.try_emplace(v->id, VarInfo(depth, regId));
   TRI_ASSERT(inserted);
@@ -558,6 +562,7 @@ auto RegisterPlanT<T>::calcRegsToKeep(
     auto const& varsUsedLater = varsUsedLaterStack[idx];
 
     for (auto const var : stackEntry) {
+      TRI_ASSERT(var != nullptr);
       if (var->type() != Variable::Type::Regular) {
         continue;
       }

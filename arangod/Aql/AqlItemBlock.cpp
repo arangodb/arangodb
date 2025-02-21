@@ -27,7 +27,6 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Range.h"
-#include "Aql/RegisterPlan.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
@@ -1148,7 +1147,7 @@ bool AqlItemBlock::isShadowRow(size_t row) const noexcept {
   return _shadowRows.is(row);
 }
 
-size_t AqlItemBlock::getShadowRowDepth(size_t row) const {
+size_t AqlItemBlock::getShadowRowDepth(size_t row) const noexcept {
   TRI_ASSERT(isShadowRow(row));
   TRI_ASSERT(hasShadowRows());
   return _shadowRows.getDepth(row);

@@ -1,7 +1,7 @@
 add_library(arangoserver STATIC
   Actions/ActionFeature.cpp
-  Actions/RestActionHandler.cpp
   Actions/actions.cpp
+  Actions/RestActionHandler.cpp
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
@@ -54,6 +54,7 @@ add_library(arangoserver STATIC
   FeaturePhases/ServerFeaturePhase.cpp
   GeneralServer/Acceptor.cpp
   GeneralServer/AcceptorTcp.cpp
+  GeneralServer/AcceptorUnixDomain.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
   GeneralServer/CommTask.cpp
@@ -77,7 +78,6 @@ add_library(arangoserver STATIC
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestAuthReloadHandler.cpp
   RestHandler/RestBaseHandler.cpp
-  RestHandler/RestBatchHandler.cpp
   RestHandler/RestCompactHandler.cpp
   RestHandler/RestCursorHandler.cpp
   RestHandler/RestDatabaseHandler.cpp
@@ -98,6 +98,7 @@ add_library(arangoserver STATIC
   RestHandler/RestOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestQueryPlanCacheHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
@@ -119,6 +120,7 @@ add_library(arangoserver STATIC
   RestServer/BootstrapFeature.cpp
   RestServer/CheckVersionFeature.cpp
   RestServer/CpuUsageFeature.cpp
+  RestServer/DaemonFeature.cpp
   RestServer/DatabaseFeature.cpp
   RestServer/DatabasePathFeature.cpp
   RestServer/DumpLimitsFeature.cpp
@@ -134,12 +136,13 @@ add_library(arangoserver STATIC
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/NonceFeature.cpp
-  RestServer/QueryRegistryFeature.cpp
   RestServer/PrivilegeFeature.cpp
+  RestServer/QueryRegistryFeature.cpp
   RestServer/ServerFeature.cpp
   RestServer/ServerIdFeature.cpp
   RestServer/SharedPRNGFeature.cpp
   RestServer/SoftShutdownFeature.cpp
+  RestServer/SupervisorFeature.cpp
   RestServer/SystemDatabaseFeature.cpp
   RestServer/TemporaryStorageFeature.cpp
   RestServer/TimeZoneFeature.cpp
@@ -147,15 +150,7 @@ add_library(arangoserver STATIC
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
-  Scheduler/LockfreeThreadPool.cpp
-  Scheduler/Scheduler.cpp
-  Scheduler/SchedulerFeature.cpp
-  Scheduler/SchedulerMetrics.cpp
-  Scheduler/SimpleThreadPool.cpp
-  Scheduler/SupervisedScheduler.cpp
-  Scheduler/ThreadPoolScheduler.cpp
-  Scheduler/ThreadPoolScheduler.cpp
-  Scheduler/WorkStealingThreadPool.cpp
+  RestServer/VectorIndexFeature.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp
@@ -184,15 +179,6 @@ add_library(arangoserver STATIC
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
   Transaction/Status.cpp)
-if (MSVC)
-  target_sources(arangoserver PRIVATE
-    RestServer/WindowsServiceFeature.cpp)
-else()
-  target_sources(arangoserver PRIVATE
-    GeneralServer/AcceptorUnixDomain.cpp
-    RestServer/DaemonFeature.cpp
-    RestServer/SupervisorFeature.cpp)
-endif()
 if (USE_V8) 
   target_sources(arangoserver PRIVATE
     FeaturePhases/FoxxFeaturePhase.cpp
@@ -229,6 +215,7 @@ target_link_libraries(arangoserver
   arango_storage_engine
   arango_utils
   arango_vocbase
+  arango_scheduler
   boost_boost
   ${MSVC_LIBS})
 if (MSVC)

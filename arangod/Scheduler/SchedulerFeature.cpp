@@ -36,7 +36,6 @@
 #include "Basics/signals.h"
 #include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -253,7 +252,7 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
               &_schedulerType,
               std::unordered_set<std::string>{"supervised", "threadpools"}),
           arangodb::options::makeFlags(arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31210);
+      .setIntroducedIn(31201);
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
@@ -336,7 +335,8 @@ void SchedulerFeature::prepare() {
       // requests. this is because coordinators are the gatekeepers, and they
       // should perform all the throttling.
       uint64_t ongoingLowPriorityLimit =
-          ServerState::instance()->isDBServer()
+          ServerState::instance()->isDBServer() ||
+                  ServerState::instance()->isAgent()
               ? 0
               : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
                                       _nrMaximalThreads);
@@ -480,7 +480,7 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
           LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
               << "hangup received, about to reopen logfile (sender pid "
               << processIdRequesting << ")";
-          LogAppender::reopen();
+          Logger::reopen();
           LOG_TOPIC("23db2", INFO, arangodb::Logger::FIXME)
               << "hangup received, reopened logfile";
         } catch (...) {

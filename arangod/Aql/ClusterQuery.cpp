@@ -26,6 +26,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Timing.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -36,11 +37,10 @@
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 
@@ -51,12 +51,13 @@ using namespace arangodb::aql;
 constexpr double kFastPathLockTimeout = 2.0;
 
 ClusterQuery::ClusterQuery(QueryId id,
+                           std::shared_ptr<velocypack::Builder> bindParameters,
                            std::shared_ptr<transaction::Context> ctx,
                            QueryOptions options)
     : Query{id,
             ctx,
             {},
-            /*bindParams*/ nullptr,
+            bindParameters,
             std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
@@ -73,13 +74,16 @@ ClusterQuery::~ClusterQuery() {
 /// @brief factory method for creating a cluster query. this must be used to
 /// ensure that ClusterQuery objects are always created using shared_ptrs.
 std::shared_ptr<ClusterQuery> ClusterQuery::create(
-    QueryId id, std::shared_ptr<transaction::Context> ctx,
-    QueryOptions options) {
+    QueryId id, std::shared_ptr<velocypack::Builder> bindParameters,
+    std::shared_ptr<transaction::Context> ctx, QueryOptions options) {
   // workaround to enable make_shared on a class with a protected constructor
   struct MakeSharedQuery final : ClusterQuery {
-    MakeSharedQuery(QueryId id, std::shared_ptr<transaction::Context> ctx,
+    MakeSharedQuery(QueryId id,
+                    std::shared_ptr<velocypack::Builder> bindParameters,
+                    std::shared_ptr<transaction::Context> ctx,
                     QueryOptions options)
-        : ClusterQuery{id, std::move(ctx), std::move(options)} {}
+        : ClusterQuery{id, std::move(bindParameters), std::move(ctx),
+                       std::move(options)} {}
 
     ~MakeSharedQuery() final {
       // Destroy this query, otherwise it's still
@@ -89,8 +93,8 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
     }
   };
   TRI_ASSERT(ctx != nullptr);
-  return std::make_shared<MakeSharedQuery>(id, std::move(ctx),
-                                           std::move(options));
+  return std::make_shared<MakeSharedQuery>(id, std::move(bindParameters),
+                                           std::move(ctx), std::move(options));
 }
 
 void ClusterQuery::buildTraverserEngines(velocypack::Slice traverserSlice,
@@ -125,7 +129,7 @@ void ClusterQuery::prepareFromVelocyPack(
       << " this: " << (uintptr_t)this;
 
   // track memory usage
-  ResourceUsageScope scope(_resourceMonitor);
+  ResourceUsageScope scope(*_resourceMonitor);
   scope.increase(querySlice.byteSize() + collections.byteSize() +
                  variables.byteSize() + snippets.byteSize() +
                  traverserSlice.byteSize());
@@ -200,7 +204,8 @@ void ClusterQuery::prepareFromVelocyPack(
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) {
-    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet,
+                                                         /*simple*/ false);
     TRI_ASSERT(plan != nullptr);
 
     ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
@@ -275,7 +280,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
 
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
-      executionStats.setPeakMemoryUsage(_resourceMonitor.peak());
+      executionStats.setPeakMemoryUsage(_resourceMonitor->peak());
       executionStats.setExecutionTime(elapsedSince(_startTime));
       executionStats.setIntermediateCommits(
           _trx->state()->numIntermediateCommits());

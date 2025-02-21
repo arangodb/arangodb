@@ -30,6 +30,7 @@
 
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathResult.h"
+#include "Graph/Types/ForbiddenVertices.h"
 
 #include <set>
 
@@ -52,6 +53,54 @@ struct TwoSidedEnumeratorOptions;
 template<class ProviderType, class Step>
 class PathResult;
 
+// This class `TwoSidedEnumerator` is used for shortest path searches,
+// as well as for k-shortest-path searches, for all-shortest-path searches
+// and for k-paths (finding all paths from source to target), whenever the
+// length is measured not by an edge weight, but simply by path length
+// (number of edges).
+// It works by doing a breadth-first graph traversal from both sides and
+// then matching findings.
+// This class is used in very different situations (single server, cluster,
+// various different types of smart and not so smart graphs, with tracing
+// and without, etc.). Therefore we need many template parameters. Let me
+// here give an overview over what they do:
+//  - QueueType: This is the queue being used to track which steps to visit
+//    next. It is always `FifoQueue`, but it needs to be a template
+//    argument since there is a wrapper template for tracing `QueueTracer`,
+//    so it is sometimes QueueTracer<FifoQueue>.
+//  - PathStoreType: This is a class to store paths. Its type depends on
+//    the type ProviderType::Step (see below) and on the presence of a
+//    tracing wrapper type.
+//  - ProviderType: This is a class which delivers the actual graph data,
+//    essentially to answer the question as to what the neighbours of a
+//    vertex are. This can be `SingleServerProvider` or `ClusterProvider`.
+//    Again, there is a tracing wrapper.
+//  - PathValidatorType: Finally, this is a class which is used to validate
+//    if paths are valid. Various filtering conditions can be handed in,
+//    but the most important one is to specify the uniqueness conditions
+//    on edges and vertices. Again, there is a tracing wrapper.
+// A few words on uniqueness conditions are in order, since they are
+// specified in the PathValidator, but have very strong interferences with
+// the actual algorithm. For edges, there is either "no uniqueness"
+// or "path uniqueness" (which means no edge may appear more than once
+// on a single path), or "global uniqueness" (which means no edge may
+// appear more than once in the whole traversal. For vertices, there is
+// either "no uniqueness" or "path uniqueness" (no vertex may appear
+// more than once on a single path), or "global uniqueness", which says
+// that no vertex may occur more than once in the whole traversal.
+// The great variety is only used for normal graph traversals, and so in
+// particular not here in the `TwoSidedEnumerator`. Here, only two
+// combinations are in use:
+//   vertex path uniqueness / edge path uniqueness
+//   vertex global uniqueness / edge path uniqueness
+// The first is for finding all possible loopless paths and edge uniqueness
+// follows from vertex uniqueness. This is used for k-paths and the versions
+// of all-shortest-paths and k-shortest-paths which do not use Yen's
+// algorithm. The second combination is used for (two-sided) Dijkstra-type
+// computations, where we are only interested in the shortest path. This
+// is also what Yen's algorithm does, just computing various shortest paths
+// one after another.
+
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidatorType>
 class TwoSidedEnumerator {
@@ -62,6 +111,12 @@ class TwoSidedEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
+  using VertexSet =
+      arangodb::containers::HashSet<VertexRef, std::hash<VertexRef>,
+                                    std::equal_to<VertexRef>>;
+  using Edge = ProviderType::Step::EdgeType;
+  using EdgeSet =
+      arangodb::containers::HashSet<Edge, std::hash<Edge>, std::equal_to<Edge>>;
 
   using Shell = std::multiset<Step>;
   using ResultList = std::vector<std::pair<Step, Step>>;
@@ -99,10 +154,17 @@ class TwoSidedEnumerator {
 
     auto provider() -> ProviderType&;
 
-   private:
-    auto clearProvider() -> void;
+    auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenVertices(std::move(forbidden));
+    };
 
-   private:
+    auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
+        -> void requires HasForbidden<PathValidatorType> {
+      _validator.setForbiddenEdges(std::move(forbidden));
+    };
+
+   private : auto clearProvider() -> void;
     // Fast path, to test if we find a connecting vertex between left and right.
     Shell _shell{};
 
@@ -176,6 +238,14 @@ class TwoSidedEnumerator {
    */
   bool getNextPath(arangodb::velocypack::Builder& result);
 
+  // The reference returned by the following call is only valid until
+  // getNextPath is called again or until the TwoSidedEnumerator is destroyed
+  // or otherwise modified!
+  PathResult<ProviderType, typename ProviderType::Step> const&
+  getLastPathResult() const {
+    return _resultPath;
+  }
+
   /**
    * @brief Skip the next Path, like getNextPath, but does not return the path.
    *
@@ -191,6 +261,20 @@ class TwoSidedEnumerator {
    * the last time this method was called.
    */
   auto stealStats() -> aql::TraversalStats;
+
+  auto setForbiddenVertices(std::shared_ptr<VertexSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    _left.setForbiddenVertices(forbidden);
+    _right.setForbiddenVertices(std::move(forbidden));
+  };
+
+  auto setForbiddenEdges(std::shared_ptr<EdgeSet> forbidden)
+      -> void requires HasForbidden<PathValidatorType> {
+    _left.setForbiddenEdges(forbidden);
+    _right.setForbiddenEdges(std::move(forbidden));
+  };
+
+  auto setEmitWeight(bool flag) { _emitWeight = flag; }
 
  private:
   [[nodiscard]] auto searchDone() const -> bool;
@@ -223,6 +307,7 @@ class TwoSidedEnumerator {
   bool _resultsFetched{false};
   size_t _baselineDepth;
   bool _algorithmFinished{false};
+  bool _emitWeight{false};
 
   PathResult<ProviderType, Step> _resultPath;
 };

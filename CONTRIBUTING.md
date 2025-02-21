@@ -39,8 +39,8 @@ yet.
   the appropriate branches there. This will most likely be **devel**.
 
 - You must use the Apache License for your changes and have signed our
-  [CLA](https://www.arangodb.com/documents/cla.pdf). We cannot accept pull requests
-  from contributors that didn't sign the CLA.
+  [CLA](https://arangodb.com/community/#contribute). We cannot accept pull requests
+  from contributors who didn't sign the CLA.
 
 - Please let us know if you plan to work on a ticket. This way we can make sure
   redundant work is avoided.
@@ -816,6 +816,8 @@ or skipped depending on parameters:
 | `-noasan`                | These tests will not be ran if *san instrumented binaries are used                                                                                                                                                                                                                                                                                                                            |
 |  `-noinstr`              | These tests will not be ran if instrumented binaries are used, be it *san or gcov                                                                                                                                                                                                                                                                                                             | 
 |  `-nocov`                | These tests will not be ran if gcov instrumented binaries are used.                                                                                                                                                                                                                                                                                                                           | 
+|  `-fp`                   | These tests will only be ran if failurepoints are enabled while building the binaries to be used in the tests                                                                                                                                                                                                                                                                                 |
+|  `-r2`                   | These tests will not be ran if --replicationVersion 1 (default) is specified for an ArangoDB deployment.                                                                                                                                                                                                                                                                                      |
 | `-timecritical`          | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to _true_.                                                                                                                               |
 | `-spec`                  | These tests are run using the mocha framework instead of jsunity.                                                                                                                                                                                                                                                                                                                             |
 | `-nightly`               | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.                                                                                                                                                                                                                                                                |
@@ -934,7 +936,7 @@ suite (in this case `testTokens`):
 
 Running a test against a server you started (instead of letting the script start its own server):
 
-    scripts/unittest shell_client --test api-batch.js --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
+    scripts/unittest shell_api --test analyzer.js --server tcp://127.0.0.1:8529 --serverRoot /tmp/123
 
 Re-running previously failed tests:
 
@@ -1189,6 +1191,12 @@ Debugging a storage engine:
     (gdb) catch throw
     (gdb) r
     arangod> require("jsunity").runTest("tests/js/client/shell/shell-client.js");
+
+### Filtering GDB stacktraces 
+`scripts/filter_stacktraces.js [list of gdb output files] --extremeVerbosity true`
+- reads `js/client/modules/@arangodb/testutils/filter_gdb_stacks.json` 
+- applies it to all files with the output of gdb with stacktraces, filtering out threads in the json file.
+- `--extremeVerbosity` will print unfiltered stacks in order to ease adding them to `filter_gdb_stacks.json`.
 
 ### Forcing downgrade from VPack to JSON
 

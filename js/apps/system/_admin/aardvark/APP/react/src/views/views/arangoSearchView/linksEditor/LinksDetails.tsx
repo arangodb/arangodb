@@ -1,9 +1,8 @@
+import { InfoTooltip } from "@arangodb/ui";
 import { Checkbox, Grid, HStack, Stack } from "@chakra-ui/react";
-
 import { useFormikContext } from "formik";
 import { get } from "lodash";
 import React from "react";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useEditViewContext } from "../../editView/EditViewContext";
 import { ArangoSearchViewPropertiesType } from "../../View.types";
 import { AnalyzersDropdown } from "./AnalyzersDropdown";
@@ -47,6 +46,16 @@ export const LinksDetails = () => {
             tooltip="For array values track the value position in arrays."
           />
           <StoreIDValuesCheckbox />
+          <CheckboxField
+            id="cache"
+            label="Cache"
+            isDisabled={!window.frontendConfig.isEnterprise}
+            tooltip={
+              window.frontendConfig.isEnterprise
+              ? "Always cache field normalization values in memory."
+              : "Field normalization value caching is available in the Enterprise Edition."
+            }
+          />
           {!isFieldView && (
             <CheckboxField
               id="inBackground"
@@ -62,8 +71,8 @@ export const LinksDetails = () => {
 
 const StoreIDValuesCheckbox = () => {
   const id = "storeValues";
-  const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
-  const isChecked = getCurrentLinkValue([id]) === "id" ? true : false;
+  const { setCurrentLinkValue, getCurrentLinkValueDefault } = useLinkModifiers();
+  const isChecked = getCurrentLinkValueDefault([id]) === "id" ? true : false;
   return (
     <HStack>
       <Checkbox
@@ -86,18 +95,21 @@ const CheckboxField = ({
   id,
   label,
   tooltip,
+  isDisabled,
   onChange
 }: {
   id: string;
   label: string;
   tooltip: string;
+  isDisabled?: boolean;
   onChange?: (value: boolean) => void;
 }) => {
-  const { setCurrentLinkValue, getCurrentLinkValue } = useLinkModifiers();
-  const isChecked = getCurrentLinkValue([id]);
+  const { setCurrentLinkValue, getCurrentLinkValueDefault } = useLinkModifiers();
+  const isChecked = getCurrentLinkValueDefault([id]);
   return (
     <HStack>
       <Checkbox
+        isDisabled={isDisabled}
         isChecked={isChecked}
         margin="0"
         borderColor="gray.400"

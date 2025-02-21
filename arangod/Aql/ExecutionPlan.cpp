@@ -23,7 +23,6 @@
 
 #include "ExecutionPlan.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -33,6 +32,7 @@
 #include "Aql/ExecutionNode/CollectNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -66,6 +66,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Containers/SmallVector.h"
 #include "Graph/PathType.h"
 #include "Graph/ShortestPathOptions.h"
@@ -78,11 +79,22 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
+#include <initializer_list>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
+
+static constexpr std::initializer_list<ExecutionNode::NodeType>
+    indexHintCheckTypes{
+        ExecutionNode::ENUMERATE_COLLECTION,
+#ifdef EXTENDED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+        ExecutionNode::TRAVERSAL,
+        ExecutionNode::ENUMERATE_PATHS,
+#endif
+    };
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief validate the counters of the plan
@@ -293,18 +305,18 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           if (value->stringEqualsCaseInsensitive(
                   StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
-                arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
+                traverser::TraverserOptions::UniquenessLevel::PATH;
           } else if (value->stringEqualsCaseInsensitive(
                          StaticStrings::GraphQueryGlobal)) {
             options->uniqueVertices =
-                arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
+                traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           // path is the default
           if (value->stringEqualsCaseInsensitive(
                   StaticStrings::GraphQueryNone)) {
             options->uniqueEdges =
-                arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
+                traverser::TraverserOptions::UniquenessLevel::NONE;
           } else if (value->stringEqualsCaseInsensitive(
                          StaticStrings::GraphQueryGlobal)) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -349,14 +361,30 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             // query and if the query is not a modification query.
             options->setParallelism(Ast::validatedParallelism(value));
           }
-        } else if (name == arangodb::StaticStrings::MaxProjections) {
+        } else if (name == StaticStrings::MaxProjections) {
           auto maxProjections = parseMaxProjections(value);
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
-            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "TRAVERSAL",
                                                   name);
           } else {
             options->setMaxProjections(maxProjections.get());
+          }
+        } else if (name == StaticStrings::IndexHintOptionForce) {
+#ifdef EXTENDED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+          // will be handled by the following handler for "indexHint"
+#else
+          // TODO: forceIndexHint is currently not supported for traversal index
+          // hints
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
+                                                "TRAVERSAL", name);
+#endif
+        } else if (name == StaticStrings::IndexHintOption) {
+          options->setHint(
+              IndexHint(ast->query(), optionsNode, IndexHint::FromTraversal{}));
+        } else if (name == arangodb::StaticStrings::UseCache) {
+          if (value->isBoolValue()) {
+            options->setUseCache(value->getBoolValue());
           }
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
@@ -378,7 +406,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
   return options;
 }
 
-std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
+std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
     arangodb::graph::PathType::Type type) {
   TRI_ASSERT(direction != nullptr);
@@ -406,10 +434,38 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         TRI_ASSERT(value->isConstant());
 
         if (name == "weightAttribute" && value->isStringValue()) {
-          options->setWeightAttribute(
-              std::string(value->getStringValue(), value->getStringLength()));
+          options->setWeightAttribute(value->getString());
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->setDefaultWeight(value->getDoubleValue());
+        } else if (name == StaticStrings::IndexHintOptionForce) {
+#ifdef EXTENDED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+          // will be handled by the following handler for "indexHint"
+#else
+          // TODO: index hints are currently unsupported for paths queries
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name);
+#endif
+        } else if (name == StaticStrings::IndexHintOption) {
+#ifdef EXTENDED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+          // TODO: enable this code once the index code for paths queries
+          // support multi-key indexes and conditions
+          options->setHint(IndexHint(ast->query(), optionsNode,
+                                     IndexHint::FromPathsQuery{}));
+#else
+          // TODO: index hints are currently unsupported for paths queries
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name);
+#endif
+        } else if (name == arangodb::StaticStrings::UseCache) {
+          if (value->isBoolValue()) {
+            options->setUseCache(value->getBoolValue());
+          }
+        } else if (name == arangodb::StaticStrings::Algorithm) {
+          if (value->isStringValue()) {
+            options->setAlgorithm(value->getStringValue());
+          }
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
@@ -598,8 +654,23 @@ void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
     EnumerateCollectionNode const* en =
         ExecutionNode::castTo<EnumerateCollectionNode const*>(&node);
     auto const& hint = en->hint();
-    _hasForcedIndexHints |=
-        hint.type() == aql::IndexHint::HintType::Simple && hint.isForced();
+    _hasForcedIndexHints |= hint.isSet() && hint.isForced();
+#if EXTENDED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+  } else if (type == ExecutionNode::TRAVERSAL) {
+    // TODO: enable this code when we fully support forced index hints for
+    // traversals. then also add other graph node types here.
+    TraversalNode const* en =
+        ExecutionNode::castTo<TraversalNode const*>(&node);
+    auto const& hint = en->hint();
+    _hasForcedIndexHints |= hint.isSet() && hint.isForced();
+  } else if (type == ExecutionNode::ENUMERATE_PATHS) {
+    // TODO: enable this code when we fully support forced index hints for
+    // traversals. then also add other graph node types here.
+    EnumeratePathsNode const* en =
+        ExecutionNode::castTo<EnumeratePathsNode const*>(&node);
+    auto const& hint = en->hint();
+    _hasForcedIndexHints |= hint.isSet() && hint.isForced();
+#endif
   }
 }
 
@@ -627,24 +698,45 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
   }
 }
 
+/// @brief process a list of views in a VelocyPack
+void ExecutionPlan::extendCollectionsByViewsFromVelocyPack(
+    aql::Collections& colls, velocypack::Slice viewsSlice) {
+  if (!viewsSlice.isArray()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "json for views is not an array");
+  }
+
+  for (auto view : VPackArrayIterator(viewsSlice)) {
+    colls.add(basics::VelocyPackHelper::checkAndGetStringValue(view, "name"),
+              AccessMode::fromString(
+                  arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
+                      view, "type")),
+              aql::Collection::Hint::None);
+  }
+}
+
 /// @brief create an execution plan from VelocyPack
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
-    Ast* ast, velocypack::Slice slice) {
+    Ast* ast, velocypack::Slice slice, bool simpleSnippetFormat) {
   TRI_ASSERT(ast != nullptr);
 
   auto plan = std::make_unique<ExecutionPlan>(ast, /*trackMemoryUsage*/ true);
-  plan->_root = plan->fromSlice(slice);
+  plan->_root = plan->fromSlice(slice, simpleSnippetFormat);
   plan->setVarUsageComputed();
 
-  if (auto rules = slice.get("rules"); rules.isArray()) {
-    for (auto rule : VPackArrayIterator(rules)) {
-      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
-      plan->_appliedRules.push_back(ruleId);
-    }
-  }
+  if (!simpleSnippetFormat) {
+    TRI_ASSERT(slice.isObject());
 
-  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
-    plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
+    if (auto rules = slice.get("rules"); rules.isArray()) {
+      for (auto rule : VPackArrayIterator(rules)) {
+        int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
+        plan->_appliedRules.push_back(ruleId);
+      }
+    }
+
+    if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
+      plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
+    }
   }
 
   return plan;
@@ -708,6 +800,8 @@ void ExecutionPlan::toVelocyPack(
     }
   }
   builder.close();
+
+  builder.add("asyncPrefetchNodes", VPackValue(_asyncPrefetchNodes));
 
   // the following attributes are read by the explainer
   CostEstimate estimate = _root->getCost();
@@ -1140,6 +1234,18 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
               handled = true;
             }
           }
+        } else if (name == "aggregateIntoExpressionOnDBServers") {
+          auto value = member->getMember(0);
+          if (value->isBoolValue()) {
+            options.aggregateIntoExpressionOnDBServers = value->getBoolValue();
+            handled = true;
+          }
+        } else if (name == StaticStrings::IndexHintDisableIndex) {
+          auto value = member->getMember(0);
+          if (value->isBoolValue()) {
+            options.disableIndex = value->getBoolValue();
+            handled = true;
+          }
         }
         if (!handled) {
           invalidOptionAttribute(_ast->query(), "unknown", "COLLECT", name);
@@ -1244,9 +1350,10 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
     }
-    IndexHint hint(_ast->query(), options);
+    IndexHint hint(_ast->query(), options,
+                   IndexHint::FromCollectionOperation{});
     en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
-                                             false, hint);
+                                             false, std::move(hint));
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
       // this is a FOR node that belongs to an UPSERT query
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
@@ -1508,13 +1615,13 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* graph = node->getMember(3);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(4),
-                                arangodb::graph::PathType::Type::ShortestPath);
+      createPathsQueryOptions(getAst(), direction, node->getMember(4),
+                              arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
-  auto spNode =
-      new ShortestPathNode(this, nextId(), &(_ast->query().vocbase()),
-                           direction, start, target, graph, std::move(options));
+  auto spNode = createNode<ShortestPathNode>(
+      this, nextId(), &(_ast->query().vocbase()), direction, start, target,
+      graph, std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1531,9 +1638,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
     spNode->setEdgeOutput(v);
   }
 
-  ExecutionNode* en = registerNode(spNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, spNode);
 }
 
 /// @brief create an execution plan element from an AST for ENUMERATE_PATHS node
@@ -1557,10 +1662,10 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   AstNode const* graph = node->getMember(4);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(5), type);
+      createPathsQueryOptions(getAst(), direction, node->getMember(5), type);
 
   // First create the node
-  auto spNode = new EnumeratePathsNode(
+  auto spNode = createNode<EnumeratePathsNode>(
       this, nextId(), &(_ast->query().vocbase()), type, direction, start,
       target, graph, std::move(options));
 
@@ -1570,9 +1675,7 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   TRI_ASSERT(v != nullptr);
   spNode->setPathOutput(v);
 
-  ExecutionNode* en = registerNode(spNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, spNode);
 }
 
 /// @brief create an execution plan element from an AST FILTER node
@@ -1730,11 +1833,12 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      elements.emplace_back(v, isAscending);
+      elements.push_back(SortElement::create(v, isAscending));
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      elements.emplace_back(getOutVariable(calc), isAscending);
+      elements.push_back(
+          SortElement::create(getOutVariable(calc), isAscending));
       previous = calc;
     }
   }
@@ -1864,9 +1968,13 @@ ExecutionNode* ExecutionPlan::fromNodeLimit(ExecutionNode* previous,
   auto count = node->getMember(1);
 
   if (offset->type != NODE_TYPE_VALUE || count->type != NODE_TYPE_VALUE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
-        "LIMIT offset/count values must be constant numeric values");
+    if (_ast->query().queryOptions().usePlanCache) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING);
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE,
+          "LIMIT offset/count values must be constant numeric values");
+    }
   }
 
   TRI_ASSERT(offset->type == NODE_TYPE_VALUE);
@@ -2291,7 +2399,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVar, /*isAscending*/ true);
+    elements.push_back(SortElement::create(rangeVar, /*isAscending*/ true));
     auto en = registerNode(
         std::make_unique<SortNode>(this, nextId(), std::move(elements), false));
     previous = addDependency(previous, en);
@@ -2352,7 +2460,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = createNode<SingletonNode>(this, nextId());
+  ExecutionNode* en =
+      createNode<SingletonNode>(this, nextId(), _ast->bindParameterVariables());
 
   size_t const n = node->numMembers();
 
@@ -2488,7 +2597,7 @@ template<WalkerUniqueness U>
 void ExecutionPlan::findNodesOfType(
     containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
-    bool enterSubqueries) {
+    bool enterSubqueries) const {
   // check if any of the node types is actually present in the plan
   bool haveNodes = std::any_of(
       types.begin(), types.end(),
@@ -2504,7 +2613,7 @@ void ExecutionPlan::findNodesOfType(
 /// @brief find nodes of a certain type
 void ExecutionPlan::findNodesOfType(
     containers::SmallVector<ExecutionNode*, 8>& result,
-    ExecutionNode::NodeType type, bool enterSubqueries) {
+    ExecutionNode::NodeType type, bool enterSubqueries) const {
   findNodesOfType<WalkerUniqueness::NonUnique>(result, {type}, enterSubqueries);
 }
 
@@ -2512,7 +2621,7 @@ void ExecutionPlan::findNodesOfType(
 void ExecutionPlan::findNodesOfType(
     containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
-    bool enterSubqueries) {
+    bool enterSubqueries) const {
   findNodesOfType<WalkerUniqueness::NonUnique>(result, types, enterSubqueries);
 }
 
@@ -2520,7 +2629,7 @@ void ExecutionPlan::findNodesOfType(
 void ExecutionPlan::findUniqueNodesOfType(
     containers::SmallVector<ExecutionNode*, 8>& result,
     std::initializer_list<ExecutionNode::NodeType> const& types,
-    bool enterSubqueries) {
+    bool enterSubqueries) const {
   findNodesOfType<WalkerUniqueness::Unique>(result, types, enterSubqueries);
 }
 
@@ -2709,13 +2818,24 @@ void ExecutionPlan::insertBefore(ExecutionNode* current,
 }
 
 /// @brief create a plan from VPack
-ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
-  if (!slice.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "plan slice is not an object");
+ExecutionNode* ExecutionPlan::fromSlice(velocypack::Slice slice,
+                                        bool simpleSnippetFormat) {
+  VPackSlice nodes = VPackSlice::noneSlice();
+
+  if (simpleSnippetFormat) {
+    // simple format. we are expecting just an array with the nodes
+    nodes = slice;
+  } else {
+    // complex format. we are expecting an object with a "nodes" attribute
+    // that contains an array with the nodes
+    if (!slice.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "plan slice is not an object");
+    }
+
+    nodes = slice.get("nodes");
   }
 
-  VPackSlice nodes = slice.get("nodes");
   if (!nodes.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "plan \"nodes\" attribute is not an array");
@@ -2750,7 +2870,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
       // found a subquery node. now do magick here
       VPackSlice subquery = it.get("subquery");
       // create the subquery nodes from the "subquery" sub-node
-      auto subqueryNode = fromSlice(subquery);
+      auto subqueryNode = fromSlice(subquery, /*simple*/ false);
 
       // register the just created subquery
       ExecutionNode::castTo<SubqueryNode*>(ret)->setSubquery(subqueryNode,
@@ -2759,7 +2879,7 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
   }
 
   // all nodes have been created. now add the dependencies
-  for (VPackSlice const it : VPackArrayIterator(nodes)) {
+  for (VPackSlice it : VPackArrayIterator(nodes)) {
     // read the node's own id
     auto thisId = ExecutionNodeId{
         it.get("id").getNumericValue<ExecutionNodeId::BaseType>()};
@@ -2923,9 +3043,50 @@ AstNode const* ExecutionPlan::resolveVariableAlias(AstNode const* node) const {
   return node;
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#include <iostream>
+IndexHint ExecutionPlan::firstUnsatisfiedForcedIndexHint() const {
+  if (hasForcedIndexHints()) {
+    // plan contains forced index hints.
+    // now check if they are all satisfied.
+    containers::SmallVector<ExecutionNode*, 8> nodes;
+    findNodesOfType(nodes, ::indexHintCheckTypes, true);
+    for (auto n : nodes) {
+      TRI_ASSERT(n);
+      TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+                 n->getType() == ExecutionNode::TRAVERSAL ||
+                 n->getType() == ExecutionNode::ENUMERATE_PATHS);
 
+      auto const& hint = [](ExecutionNode const* n) {
+        // extract indexHint from node
+        if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+          return ExecutionNode::castTo<EnumerateCollectionNode const*>(n)
+              ->hint();
+        }
+#ifdef EXTENDED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+        if (n->getType() == ExecutionNode::TRAVERSAL) {
+          return ExecutionNode::castTo<TraversalNode const*>(n)->hint();
+        }
+        if (n->getType() == ExecutionNode::ENUMERATE_PATHS) {
+          return ExecutionNode::castTo<EnumeratePathsNode const*>(n)->hint();
+        }
+#endif
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            absl::StrCat("invalid node type encountered with forcedIndexHint: ",
+                         n->getTypeString()));
+      }(n);
+
+      if (hint.isSet() && hint.isForced()) {
+        // unsatisfied index hint.
+        return hint;
+      }
+    }
+  }
+
+  return IndexHint{};
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 /// @brief show an overview over the plan
 struct Shower final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -3001,6 +3162,12 @@ struct Shower final
         }
         break;
       }
+      case ExecutionNode::ENUMERATE_NEAR_VECTORS: {
+        auto* enumNode =
+            ExecutionNode::castTo<EnumerateNearVectorNode const*>(&node);
+        absl::StrAppend(&result, " $", enumNode->documentOutVariable()->id,
+                        " NEAR $", enumNode->inVariable()->id);
+      } break;
       case ExecutionNode::INDEX: {
         auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
         absl::StrAppend(&result, " ", indexNode->collection()->name(), " -> ",
@@ -3013,6 +3180,12 @@ struct Shower final
         break;
       }
       case ExecutionNode::ENUMERATE_COLLECTION:
+        absl::StrAppend(
+            &result, " -> $",
+            ExecutionNode::castTo<EnumerateCollectionNode const*>(&node)
+                ->outVariable()
+                ->id);
+        [[fallthrough]];
       case ExecutionNode::UPDATE:
       case ExecutionNode::INSERT:
       case ExecutionNode::REMOVE:

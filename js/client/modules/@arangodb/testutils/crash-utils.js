@@ -116,6 +116,7 @@ function readGdbFileFiltered(gdbOutputFile, options) {
     let stack = [];
     let longStack = [];
     let moreMessages = [];
+    let countPrinted = 0;
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
         var line = buf.utf8Slice(lineStart, j);
@@ -165,9 +166,13 @@ function readGdbFileFiltered(gdbOutputFile, options) {
             inStack = false;
           }
         } else {
-            GDB_OUTPUT += line.trim() + '\n';
+          GDB_OUTPUT += line.trim() + '\n';
+          countPrinted += 1;
         }
       }
+    }
+    if (countPrinted === 0) {
+      GDB_OUTPUT += "All stacks filtered\n";
     }
   } catch (ex) {
     let err="failed to read " + gdbOutputFile + " -> " + ex + '\n' + ex.stack;
@@ -292,14 +297,14 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     var matchVarTmp = /\/var\/tmp/;
     var matchSystemdCoredump = /.*systemd-coredump*/;
     var corePattern = fs.readBuffer(cpf);
-    var cp = corePattern.utf8Slice(0, corePattern.length);
+    var cp = corePattern.utf8Slice(0, corePattern.length).trim();
 
     if (matchApport.exec(cp) !== null) {
       print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
       return;
     }
 
-    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%s", "%t", "%u"];
+    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%t", "%u"];
     const replaceKnownPatterns = (s) => {
       knownPatterns.forEach(p => {
         s = s.replace(p, "*");
@@ -319,9 +324,9 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     } else {
       let found = false;
-      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid).trim();
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
       if (options.coreDirectory.search('/') < 0) {
-        let rx = new RegExp(options.coreDirectory);
+        let rx = new RegExp(cp.replace(/%[sdeEghiItu]/, '.*').replace(/%p/, instanceInfo.pid));
         fs.list('.').forEach((file) => {
           if (file.match(rx) != null) {
             options.coreDirectory = file;
@@ -331,8 +336,8 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
         });
       }
       if (!found) {
-        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + RESET);
-        print(RED + 'Directory: ' + JSON.stringify(fs.list('.')));
+        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + '"' + RESET);
+        print(RED + 'Directory (' + fs.makeAbsolute('.') + '): ' + JSON.stringify(fs.list('.')));
         return;
       }
     }
@@ -370,12 +375,12 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   } else {
     instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
-  }
-  // renice debugger to lowest prio so it doesn't steal test resources
-  try {
-    internal.setPriorityExternal(instanceInfo.debuggerInfo.pid.pid, 20);
-  } catch (ex) {
-    print(`${RED} renicing of debugger ${instanceInfo.debuggerInfo.pid.pid} failed: ${ex} ${RESET}`);
+    // renice debugger to lowest prio so it doesn't steal test resources
+    try {
+      internal.setPriorityExternal(instanceInfo.debuggerInfo.pid.pid, 20);
+    } catch (ex) {
+      print(`${RED} renicing of debugger ${instanceInfo.debuggerInfo.pid.pid} failed: ${ex} ${RESET}`);
+    }
   }
 }
 
@@ -417,6 +422,7 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
   return instanceInfo.debuggerInfo.hint;
 }
 
+exports.readGdbFileFiltered = readGdbFileFiltered;
 exports.aggregateDebugger = aggregateDebugger;
 exports.generateCrashDump = generateCrashDump;
 exports.analyzeCrash = analyzeCrash;

@@ -6,29 +6,9 @@ import sys
 import time
 from threading import Thread
 from traceback import print_exc
-
-from site_config import SiteConfig
-from testing_runner import TestingRunner
 from dmesg import DmesgWatcher, dmesg_runner
-
-
-# pylint: disable=broad-except
-def launch(args, tests):
-    """Manage test execution on our own"""
-    runner = None
-    try:
-        runner = TestingRunner(SiteConfig(Path(args.definitions).resolve()))
-        for test in tests:
-            runner.register_test_func(test)
-        runner.sort_by_priority()
-    except Exception as exc:
-        logging.exception("exception in launch")
-        raise exc
-    create_report = True
-    if args.no_report:
-        logging.info("won't generate report as you demanded!")
-        create_report = False
-    launch_runner(runner, create_report)
+from overload_thread import spawn_overload_watcher_thread, shutdown_overload_watcher_thread
+from site_config import SiteConfig
 
 
 def launch_runner(runner, create_report):
@@ -36,6 +16,7 @@ def launch_runner(runner, create_report):
     dmesg = DmesgWatcher(runner.cfg)
     dmesg_thread = Thread(target=dmesg_runner, args=[dmesg])
     dmesg_thread.start()
+    spawn_overload_watcher_thread(runner.cfg)
     time.sleep(3)
     logging.info(runner.scenarios)
     try:
@@ -57,6 +38,7 @@ def launch_runner(runner, create_report):
     finally:
         sys.stderr.flush()
         sys.stdout.flush()
+        shutdown_overload_watcher_thread()
         runner.create_log_file()
         runner.create_testruns_file()
         dmesg.end_run()

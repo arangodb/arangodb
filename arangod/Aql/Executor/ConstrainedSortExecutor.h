@@ -29,6 +29,7 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 
 #include <cstdint>
+#include <boost/container/flat_set.hpp>
 #include <memory>
 #include <vector>
 
@@ -43,13 +44,61 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 
 class ConstrainedLessThan;
+class FilterStats;
 class RegisterInfos;
 class InputAqlItemRow;
 class AqlItemBlockInputRange;
 class NoStats;
 class OutputAqlItemRow;
-class SortExecutorInfos;
 struct SortRegister;
+class QueryContext;
+
+class ConstraintSortExecutorInfos {
+ public:
+  ConstraintSortExecutorInfos(RegisterCount nrOutputRegisters,
+                              RegIdFlatSet const& registersToClear,
+                              std::vector<SortRegister> sortRegisters,
+                              std::size_t limit, AqlItemBlockManager& manager,
+                              QueryContext& query,
+                              velocypack::Options const* options,
+                              ResourceMonitor& resourceMonitor);
+
+  ConstraintSortExecutorInfos() = delete;
+  ConstraintSortExecutorInfos(ConstraintSortExecutorInfos&&) = default;
+  ConstraintSortExecutorInfos(ConstraintSortExecutorInfos const&) = delete;
+  ~ConstraintSortExecutorInfos() = default;
+
+  [[nodiscard]] RegisterCount numberOfOutputRegisters() const {
+    return _numOutRegs;
+  }
+  [[nodiscard]] RegIdFlatSet const& registersToClear() const {
+    return _registersToClear;
+  }
+  [[nodiscard]] velocypack::Options const* vpackOptions() const noexcept {
+    return _vpackOptions;
+  }
+  [[nodiscard]] std::vector<SortRegister> const& sortRegisters()
+      const noexcept {
+    return _sortRegisters;
+  }
+  [[nodiscard]] ResourceMonitor& getResourceMonitor() const {
+    return _resourceMonitor;
+  }
+  [[nodiscard]] size_t limit() const noexcept { return _limit; }
+  [[nodiscard]] AqlItemBlockManager& itemBlockManager() noexcept {
+    return _manager;
+  }
+
+ private:
+  RegisterCount _numOutRegs;
+  RegIdFlatSet _registersToClear;
+  std::size_t _limit;
+  AqlItemBlockManager& _manager;
+  QueryContext& _query;
+  velocypack::Options const* _vpackOptions;
+  ResourceMonitor& _resourceMonitor;
+  std::vector<SortRegister> _sortRegisters;
+};
 
 /**
  * @brief Implementation of Sort Node
@@ -62,8 +111,8 @@ class ConstrainedSortExecutor {
         BlockPassthrough::Disable;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
-  using Infos = SortExecutorInfos;
-  using Stats = NoStats;
+  using Infos = ConstraintSortExecutorInfos;
+  using Stats = FilterStats;
 
   ConstrainedSortExecutor(Fetcher& fetcher, Infos&);
   ~ConstrainedSortExecutor();
@@ -99,7 +148,7 @@ class ConstrainedSortExecutor {
 
  private:
   bool compareInput(size_t rosPos, InputAqlItemRow const& row) const;
-  void pushRow(InputAqlItemRow const& row);
+  void pushRow(InputAqlItemRow const& row, Stats& stats);
 
   // We're done producing when we've emitted all rows from our heap.
   bool doneProducing() const noexcept;
@@ -109,7 +158,7 @@ class ConstrainedSortExecutor {
   // sort as well. This is for fullCount queries only.
   bool doneSkipping() const noexcept;
 
-  ExecutorState consumeInput(AqlItemBlockInputRange& inputRange);
+  ExecutorState consumeInput(AqlItemBlockInputRange& inputRange, Stats& state);
 
   size_t memoryUsageForSort() const noexcept;
 

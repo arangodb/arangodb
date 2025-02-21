@@ -31,6 +31,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
@@ -42,8 +43,7 @@
 
 #include <utility>
 
-using namespace arangodb;
-using namespace arangodb::aql;
+namespace arangodb::aql {
 
 EnumerateCollectionExecutorInfos::EnumerateCollectionExecutorInfos(
     RegisterId outputRegister, aql::QueryContext& query,
@@ -127,11 +127,12 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
 
-  _cursor = _trx.indexScan(
-      _infos.getQuery().resourceMonitor(), _infos.getCollection()->name(),
-      (_infos.getRandom() ? transaction::Methods::CursorType::ANY
-                          : transaction::Methods::CursorType::ALL),
-      infos.canReadOwnWrites());
+  _cursor = _trx.indexScan(_infos.getCollection()->name(),
+                           (_infos.getRandom()
+                                ? transaction::Methods::CursorType::ANY
+                                : transaction::Methods::CursorType::ALL),
+                           infos.canReadOwnWrites())
+                .waitAndGet();
 
   if (!_infos.getCount()) {
     if (_infos.getProduceResult()) {
@@ -347,3 +348,7 @@ void EnumerateCollectionExecutor::initializeCursor() {
   _cursorHasMore = false;
   _cursor->reset();
 }
+
+template class ExecutionBlockImpl<EnumerateCollectionExecutor>;
+
+}  // namespace arangodb::aql

@@ -21,31 +21,18 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fcntl.h>
-#include <stdio.h>
-#include <algorithm>
-#include <cstring>
-#include <iostream>
-#include <memory>
-
-#include "Basics/operating-system.h"
-
-#ifdef TRI_HAVE_UNISTD_H
-#include <unistd.h>
-#endif
-
 #include "LogAppenderFile.h"
 
-#include "ApplicationFeatures/ShellColorsFeature.h"
+#include <fcntl.h>
+#include <cstring>
+
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
-#include "Basics/debugging.h"
 #include "Basics/files.h"
-#include "Basics/voc-errors.h"
+#include "Basics/operating-system.h"
 #include "Logger/Logger.h"
 
-using namespace arangodb;
-using namespace arangodb::basics;
+namespace arangodb {
 
 std::mutex LogAppenderFileFactory::_openAppendersMutex;
 std::vector<std::shared_ptr<LogAppenderFile>>
@@ -53,13 +40,6 @@ std::vector<std::shared_ptr<LogAppenderFile>>
 
 int LogAppenderFileFactory::_fileMode = S_IRUSR | S_IWUSR | S_IRGRP;
 int LogAppenderFileFactory::_fileGroup = 0;
-
-LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
-    : LogAppender(), _fd(fd), _useColors(false) {}
-
-void LogAppenderStream::logMessage(LogMessage const& message) {
-  this->writeLogMessage(message._level, message._topicId, message._message);
-}
 
 LogAppenderFile::LogAppenderFile(std::string const& filename, int fd)
     : LogAppenderStream(filename, fd), _filename(filename) {
@@ -78,7 +58,7 @@ void LogAppenderFile::writeLogMessage(LogLevel level, size_t /*topicId*/,
     auto n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
-      if (allowStdLogging()) {
+      if (Logger::allowStdLogging()) {
         fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
       }
       return;  // give up, but do not try to log the failure via the Logger
@@ -131,10 +111,8 @@ std::shared_ptr<LogAppenderFile> LogAppenderFileFactory::getFileAppender(
   int fd = TRI_CREATE(filename.c_str(),
                       O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
   if (fd < 0) {
-    TRI_ERRORBUF;
-    TRI_SYSTEM_ERROR();
     std::cerr << "cannot write to file '" << filename
-              << "': " << TRI_GET_ERRORBUF << std::endl;
+              << "': " << TRI_LAST_ERROR_STR << std::endl;
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
   }
@@ -181,7 +159,7 @@ void LogAppenderFileFactory::reopenAll() {
     std::string backup(filename);
     backup.append(".old");
 
-    std::ignore = FileUtils::remove(backup);
+    std::ignore = basics::FileUtils::remove(backup);
     TRI_RenameFile(filename.c_str(), backup.c_str());
 
     // open new log file
@@ -206,7 +184,7 @@ void LogAppenderFileFactory::reopenAll() {
 #endif
 
     if (!Logger::_keepLogRotate) {
-      std::ignore = FileUtils::remove(backup);
+      std::ignore = basics::FileUtils::remove(backup);
     }
 
     // and also tell the appender of the file descriptor change
@@ -262,63 +240,4 @@ void LogAppenderFileFactory::setAppenders(
 }
 #endif
 
-LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, int fd)
-    : LogAppenderStream(filename, fd) {
-  _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
-}
-
-LogAppenderStdStream::~LogAppenderStdStream() {
-  // flush output stream on shutdown
-  if (allowStdLogging()) {
-    FILE* fp = (_fd == STDOUT_FILENO ? stdout : stderr);
-    fflush(fp);
-  }
-}
-
-void LogAppenderStdStream::writeLogMessage(LogLevel level, size_t topicId,
-                                           std::string const& message) {
-  writeLogMessage(_fd, _useColors, level, topicId, message);
-}
-
-void LogAppenderStdStream::writeLogMessage(int fd, bool useColors,
-                                           LogLevel level, size_t /*topicId*/,
-                                           std::string const& message) {
-  if (!allowStdLogging()) {
-    return;
-  }
-
-  // out stream
-  FILE* fp = (fd == STDOUT_FILENO ? stdout : stderr);
-
-  if (useColors) {
-    // joyful color output
-    if (level == LogLevel::FATAL || level == LogLevel::ERR) {
-      fprintf(fp, "%s%s%s", ShellColorsFeature::SHELL_COLOR_RED,
-              message.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
-    } else if (level == LogLevel::WARN) {
-      fprintf(fp, "%s%s%s", ShellColorsFeature::SHELL_COLOR_YELLOW,
-              message.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
-    } else {
-      fprintf(fp, "%s%s%s", ShellColorsFeature::SHELL_COLOR_RESET,
-              message.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
-    }
-  } else {
-    // non-colored output
-    fprintf(fp, "%s", message.c_str());
-  }
-
-  if (level == LogLevel::FATAL || level == LogLevel::ERR ||
-      level == LogLevel::WARN || level == LogLevel::INFO) {
-    // flush the output so it becomes visible immediately
-    // at least for log levels that are used seldomly
-    // it would probably be overkill to flush everytime we
-    // encounter a log message for level DEBUG or TRACE
-    fflush(fp);
-  }
-}
-
-LogAppenderStderr::LogAppenderStderr()
-    : LogAppenderStdStream("+", STDERR_FILENO) {}
-
-LogAppenderStdout::LogAppenderStdout()
-    : LogAppenderStdStream("-", STDOUT_FILENO) {}
+}  // namespace arangodb

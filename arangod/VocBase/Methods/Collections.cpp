@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryPlanCache.h"
 #include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -1281,6 +1282,8 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
     }
   }
 
+  coll.vocbase().queryPlanCache().invalidate(coll.guid());
+
 // If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
   res = DropColEnterprise(&coll, options.allowDropSystem);
@@ -1291,6 +1294,10 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
     res = coll.vocbase().dropCollection(coll.id(), options.allowDropSystem);
   }
 #endif
+
+  if (res.ok()) {
+    coll.vocbase().queryPlanCache().invalidate(coll.guid());
+  }
 
   LOG_TOPIC_IF("1bf4d", WARN, Logger::ENGINES,
                res.fail() && res.isNot(TRI_ERROR_FORBIDDEN) &&
@@ -1373,9 +1380,9 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
     auto cid = std::to_string(collection.id().id());
     auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
     OperationOptions options(ExecContext::current());
-    auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
-                                     options, withRevisions, withData)
-                   .waitAndGet();
+    auto res =
+        co_await checksumOnCoordinator(feature, collection.vocbase().name(),
+                                       cid, options, withRevisions, withData);
     if (res.ok()) {
       revId = RevisionId::fromSlice(res.slice().get("revision"));
       checksum = res.slice().get("checksum").getUInt();
@@ -1405,9 +1412,9 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator =
-      trx.indexScan(monitor, collection.name(),
-                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator = co_await trx.indexScan(collection.name(),
+                                         transaction::Methods::CursorType::ALL,
+                                         ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId, aql::DocumentData&&,
                              VPackSlice slice) {

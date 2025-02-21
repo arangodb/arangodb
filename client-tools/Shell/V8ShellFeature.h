@@ -60,12 +60,13 @@ class V8ShellFeature final : public ArangoshFeature {
   bool _copyInstallation;
   bool _removeCopyInstallation;
   uint64_t _gcInterval;
+  uint32_t _executionDeadline;
 
  public:
   ErrorCode runShell(std::vector<std::string> const& positionals);
   bool runScript(std::vector<std::string> const& files,
                  std::vector<std::string> const&, bool,
-                 std::vector<std::string> const& mainArgs, bool);
+                 std::vector<std::string> const& mainArgs);
   bool runString(std::vector<std::string> const& files,
                  std::vector<std::string> const&);
   bool runUnitTests(std::vector<std::string> const& files,

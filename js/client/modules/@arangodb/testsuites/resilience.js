@@ -120,7 +120,7 @@ function clientResilience (options) {
 
   let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runInArangoshRunner(localOptions, 'client_resilience', {
+  let rc = new trs.runLocalInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',

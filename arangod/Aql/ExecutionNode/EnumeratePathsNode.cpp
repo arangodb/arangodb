@@ -35,7 +35,9 @@
 #include "Aql/ProfileLevel.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/Enumerators/TwoSidedEnumerator.h"
+#include "Graph/Enumerators/YenEnumerator.h"
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
@@ -46,6 +48,7 @@
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 
 #include <memory>
@@ -56,8 +59,8 @@ using namespace arangodb::aql;
 using namespace arangodb::graph;
 
 namespace {
-static void parseNodeInput(AstNode const* node, std::string& id,
-                           Variable const*& variable, char const* part) {
+void parseNodeInput(AstNode const* node, std::string& id,
+                    Variable const*& variable, char const* part) {
   switch (node->type) {
     case NODE_TYPE_REFERENCE:
       variable = static_cast<Variable*>(node->getData());
@@ -66,18 +69,20 @@ static void parseNodeInput(AstNode const* node, std::string& id,
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_PARSE, std::string("invalid ") + part +
-                                       " vertex. Must either be "
-                                       "an _id string or an object with _id.");
+            TRI_ERROR_QUERY_PARSE,
+            absl::StrCat("invalid ", part,
+                         " vertex. Must either be an _id string or an object "
+                         "with _id."));
       }
       variable = nullptr;
       id = node->getString();
       break;
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     std::string("invalid ") + part +
-                                         " vertex. Must either be an "
-                                         "_id string or an object with _id.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          absl::StrCat(
+              "invalid ", part,
+              " vertex. Must either be an _id string or an object with _id."));
   }
 }
 
@@ -176,7 +181,7 @@ EnumeratePathsNode::EnumeratePathsNode(
 EnumeratePathsNode::~EnumeratePathsNode() = default;
 
 EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base)
+                                       velocypack::Slice base)
     : GraphNode(plan, base),
       _pathType(arangodb::graph::PathType::Type::KShortestPaths),
       _pathOutVariable(nullptr),
@@ -189,9 +194,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
       _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _pathType = arangodb::graph::PathType::fromString(
-        base.get(StaticStrings::GraphQueryShortestPathType)
-            .copyString()
-            .c_str());
+        base.get(StaticStrings::GraphQueryShortestPathType).stringView());
   }
 
   // Path out variable
@@ -249,7 +252,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalEdgeConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -258,7 +261,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalVertexConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -473,13 +476,13 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices());
+        opts->produceVertices(), opts->useCache());
 
     using Provider = SingleServerProvider<SingleServerProviderStep>;
     if (opts->query().queryOptions().getTraversalProfileLevel() ==
@@ -506,6 +509,15 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  YenEnumeratorWithProvider<Provider>, Provider,
+                  SingleServerBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
             return _makeExecutionBlockImpl<KShortestPathsEnumerator<Provider>,
                                            Provider,
                                            SingleServerBaseProviderOptions>(
@@ -544,6 +556,15 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  WeightedYenEnumeratorWithProvider<Provider>, Provider,
+                  SingleServerBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
             return _makeExecutionBlockImpl<
                 WeightedKShortestPathsEnumerator<Provider>, Provider,
                 SingleServerBaseProviderOptions>(
@@ -584,6 +605,15 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 
           if (!opts->useWeight()) {
             // Non-Weighted Variant
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  TracedYenEnumeratorWithProvider<Provider>,
+                  ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
             return _makeExecutionBlockImpl<
                 TracedKShortestPathsEnumerator<Provider>,
                 ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
@@ -622,9 +652,18 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
                   return previousWeight + weight;
                 });
 
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  TracedWeightedYenEnumeratorWithProvider<Provider>,
+                  ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
             return _makeExecutionBlockImpl<
-                WeightedKShortestPathsEnumerator<Provider>, Provider,
-                SingleServerBaseProviderOptions>(
+                TracedWeightedKShortestPathsEnumerator<Provider>,
+                ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
                 opts, std::move(forwardProviderOptions),
                 std::move(backwardProviderOptions), enumeratorOptions,
                 validatorOptions, outputRegister, engine, sourceInput,
@@ -636,87 +675,217 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
           std::abort();
       }
     }
-  } else {
+  } else {  // Cluster case (on coordinator)
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
     ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
                                                       opts->produceVertices());
+    forwardProviderOptions.setClearEdgeCacheOnClear(false);
     ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
                                                        opts->produceVertices());
+    backwardProviderOptions.setClearEdgeCacheOnClear(false);
+    // A comment is in order here: For all cases covered here
+    // (k-shortest-paths, all shortest paths, k-paths) we do not need to
+    // filter edges when we fetch them from dbservers. As a consequence,
+    // we can keep the local edge cache in the ClusterProvider across
+    // calls to its `clear` method. This is very beneficial when we do
+    // multiple such computations, for example, when we get multiple
+    // results from upstream, for which we must run a computation for each
+    // one. Or for k-shortest-path for the Yen algorithm, in which we have
+    // to compute multiple shortest paths. Therefore, we reset this
+    // flag here in the forward and backward providers.
 
     using ClusterProvider = ClusterProvider<ClusterProviderStep>;
-    switch (pathType()) {
-      case arangodb::graph::PathType::Type::KPaths:
-        return _makeExecutionBlockImpl<KPathEnumerator<ClusterProvider>,
-                                       ClusterProvider,
-                                       ClusterBaseProviderOptions>(
-            opts, std::move(forwardProviderOptions),
-            std::move(backwardProviderOptions), enumeratorOptions,
-            validatorOptions, outputRegister, engine, sourceInput, targetInput,
-            registerInfos);
-      case arangodb::graph::PathType::Type::AllShortestPaths:
-        return _makeExecutionBlockImpl<
-            AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
-            ClusterBaseProviderOptions>(opts, std::move(forwardProviderOptions),
-                                        std::move(backwardProviderOptions),
-                                        enumeratorOptions, validatorOptions,
-                                        outputRegister, engine, sourceInput,
-                                        targetInput, registerInfos);
-      case arangodb::graph::PathType::Type::KShortestPaths:
-        // TODO: deduplicate with SingleServer && SingleServer non-traced
-        //  variant. Too much code duplication right now.
-        enumeratorOptions.setMinDepth(0);
-        enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
-
-        if (!opts->useWeight()) {
-          // Non-Weighted Variant
+    if (opts->query().queryOptions().getTraversalProfileLevel() ==
+        TraversalProfileLevel::None) {
+      switch (pathType()) {
+        case arangodb::graph::PathType::Type::KPaths:
+          return _makeExecutionBlockImpl<KPathEnumerator<ClusterProvider>,
+                                         ClusterProvider,
+                                         ClusterBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        case arangodb::graph::PathType::Type::AllShortestPaths:
           return _makeExecutionBlockImpl<
-              KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+              AllShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
               ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
-        } else {
-          // Weighted Variant
-          double defaultWeight = opts->getDefaultWeight();
-          std::string weightAttribute = opts->getWeightAttribute();
-          forwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
+        case arangodb::graph::PathType::Type::KShortestPaths:
+          // TODO: deduplicate with SingleServer && SingleServer non-traced
+          //  variant. Too much code duplication right now.
+          enumeratorOptions.setMinDepth(0);
+          enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
 
-                return previousWeight + weight;
-              });
-          backwardProviderOptions.setWeightEdgeCallback(
-              [weightAttribute = weightAttribute, defaultWeight](
-                  double previousWeight, VPackSlice edge) -> double {
-                auto const weight =
-                    arangodb::basics::VelocyPackHelper::getNumericValue<double>(
-                        edge, weightAttribute, defaultWeight);
-                if (weight < 0.) {
-                  THROW_ARANGO_EXCEPTION(TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
-                }
+          if (!opts->useWeight()) {
+            // Non-Weighted Variant
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  YenEnumeratorWithProvider<ClusterProvider>, ClusterProvider,
+                  ClusterBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
+            return _makeExecutionBlockImpl<
+                KShortestPathsEnumerator<ClusterProvider>, ClusterProvider,
+                ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          } else {
+            // Weighted Variant
+            double defaultWeight = opts->getDefaultWeight();
+            std::string weightAttribute = opts->getWeightAttribute();
+            forwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
 
-                return previousWeight + weight;
-              });
+                  return previousWeight + weight;
+                });
+            backwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
 
-          return _makeExecutionBlockImpl<
-              WeightedKShortestPathsEnumerator<ClusterProvider>,
-              ClusterProvider, ClusterBaseProviderOptions>(
+                  return previousWeight + weight;
+                });
+
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  WeightedYenEnumeratorWithProvider<ClusterProvider>,
+                  ClusterProvider, ClusterBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
+            return _makeExecutionBlockImpl<
+                WeightedKShortestPathsEnumerator<ClusterProvider>,
+                ClusterProvider, ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          }
+        default:
+          ADB_PROD_ASSERT(false)
+              << "unknown PathType in EnumeratePathsNode::createBlock";
+      }
+    } else {
+      // Tracing variants for cluster:
+      switch (pathType()) {
+        case arangodb::graph::PathType::Type::KPaths:
+          return _makeExecutionBlockImpl<TracedKPathEnumerator<ClusterProvider>,
+                                         ProviderTracer<ClusterProvider>,
+                                         ClusterBaseProviderOptions>(
               opts, std::move(forwardProviderOptions),
               std::move(backwardProviderOptions), enumeratorOptions,
               validatorOptions, outputRegister, engine, sourceInput,
               targetInput, registerInfos);
-        }
-      default:
-        ADB_PROD_ASSERT(false)
-            << "unknown PathType in EnumeratePathsNode::createBlock";
+        case arangodb::graph::PathType::Type::AllShortestPaths:
+          return _makeExecutionBlockImpl<
+              TracedAllShortestPathsEnumerator<ClusterProvider>,
+              ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+              opts, std::move(forwardProviderOptions),
+              std::move(backwardProviderOptions), enumeratorOptions,
+              validatorOptions, outputRegister, engine, sourceInput,
+              targetInput, registerInfos);
+        case arangodb::graph::PathType::Type::KShortestPaths:
+          // TODO: deduplicate with SingleServer && SingleServer non-traced
+          //  variant. Too much code duplication right now.
+          enumeratorOptions.setMinDepth(0);
+          enumeratorOptions.setMaxDepth(std::numeric_limits<size_t>::max());
+
+          if (!opts->useWeight()) {
+            // Non-Weighted Variant
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  TracedYenEnumeratorWithProvider<ClusterProvider>,
+                  ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
+            return _makeExecutionBlockImpl<
+                TracedKShortestPathsEnumerator<ClusterProvider>,
+                ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          } else {
+            // Weighted Variant
+            double defaultWeight = opts->getDefaultWeight();
+            std::string weightAttribute = opts->getWeightAttribute();
+            forwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+            backwardProviderOptions.setWeightEdgeCallback(
+                [weightAttribute = weightAttribute, defaultWeight](
+                    double previousWeight, VPackSlice edge) -> double {
+                  auto const weight =
+                      arangodb::basics::VelocyPackHelper::getNumericValue<
+                          double>(edge, weightAttribute, defaultWeight);
+                  if (weight < 0.) {
+                    THROW_ARANGO_EXCEPTION(
+                        TRI_ERROR_GRAPH_NEGATIVE_EDGE_WEIGHT);
+                  }
+
+                  return previousWeight + weight;
+                });
+
+            if (opts->getAlgorithm() != StaticStrings::Legacy) {
+              return _makeExecutionBlockImpl<
+                  TracedWeightedYenEnumeratorWithProvider<ClusterProvider>,
+                  ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+                  opts, std::move(forwardProviderOptions),
+                  std::move(backwardProviderOptions), enumeratorOptions,
+                  validatorOptions, outputRegister, engine, sourceInput,
+                  targetInput, registerInfos);
+            }
+            return _makeExecutionBlockImpl<
+                TracedWeightedKShortestPathsEnumerator<ClusterProvider>,
+                ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
+                opts, std::move(forwardProviderOptions),
+                std::move(backwardProviderOptions), enumeratorOptions,
+                validatorOptions, outputRegister, engine, sourceInput,
+                targetInput, registerInfos);
+          }
+        default:
+          ADB_PROD_ASSERT(false)
+              << "unknown PathType in EnumeratePathsNode::createBlock";
+      }
     }
   }
 
@@ -779,6 +948,64 @@ void EnumeratePathsNode::replaceVariables(
   if (_distributeVariable != nullptr) {
     _distributeVariable = Variable::replace(_distributeVariable, replacements);
   }
+
+  for (auto& it : _globalEdgeConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition = Ast::replaceVariables(_fromCondition, replacements, true);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition = Ast::replaceVariables(_toCondition, replacements, true);
+  }
+}
+
+void EnumeratePathsNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
+  if (_inStartVariable != nullptr && searchVariable == _inStartVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inStartVariable = replaceVariable;
+  }
+  if (_inTargetVariable != nullptr && searchVariable == _inTargetVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inTargetVariable = replaceVariable;
+  }
+  // note: _distributeVariable does not need to be replaced, as it is only
+  // populated by the optimizer, using a temporary calculation that the
+  // optimizer just inserted and that invokes any of the MAKE_DISTRIBUTE_...
+  // internal functions.
+
+  for (auto& it : _globalEdgeConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _fromCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _toCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
 }
 
 /// @brief getVariablesSetHere
@@ -820,7 +1047,6 @@ EnumeratePathsNode::buildReverseUsedIndexes() const {
 std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
-  constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;
   indexAccessors.reserve(numEdgeColls);
@@ -843,11 +1069,22 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     // arbitrary value for "number of edges in collection" used here. the
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
+
+    // use most specific index hint here
+    // TODO: this code is prepared to use index hints, but due to the
+    // "onlyEdgeIndexes" flag set to true here, the optimizer will _always_ pick
+    // the edge index for the paths query. we should fix the condition handling
+    // inside path queries so that it can work with arbitrary, multi-field
+    // conditions and thus indexes.
+    auto indexHint = hint().getFromNested(
+        (reverse ? opposite : dir) == TRI_EDGE_IN ? "inbound" : "outbound",
+        _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
+        /*onlyEdgeIndexes*/ true);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");

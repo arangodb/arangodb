@@ -25,7 +25,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
 #include "Aql/Projections.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExpressionContext.h"

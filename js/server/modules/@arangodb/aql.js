@@ -24,22 +24,22 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var INTERNAL = require('internal');
-var ArangoError = require('@arangodb').ArangoError;
+const INTERNAL = require('internal');
+const ArangoError = require('@arangodb').ArangoError;
 
 // / @brief user functions cache
-var UserFunctions = { };
+let UserFunctions = { };
 
 // / @brief throw a runtime exception
 function THROW (func, error, data, moreMessage) {
   'use strict';
 
-  var prefix = '';
+  let prefix = '';
   if (func !== null && func !== '') {
     prefix = "in function '" + func + "()': ";
   }
 
-  var err = new ArangoError();
+  let err = new ArangoError();
 
   err.errorNum = error.code;
   if (typeof data === 'string') {
@@ -63,8 +63,8 @@ function DB_PREFIX () {
 function reloadUserFunctions () {
   'use strict';
 
-  var prefix = DB_PREFIX();
-  var c = INTERNAL.db._collection('_aqlfunctions');
+  const prefix = DB_PREFIX();
+  let c = INTERNAL.db._collection('_aqlfunctions');
 
   if (c === null) {
     // collection not found. now reset all user functions
@@ -73,12 +73,12 @@ function reloadUserFunctions () {
     return;
   }
 
-  var foundError = false;
-  var functions = { };
+  let foundError = false;
+  let functions = {};
 
   c.toArray().forEach(function (f) {
-    var key = f._key.replace(/:{1,}/g, '::');
-    var code;
+    let key = f._key.replace(/:{1,}/g, '::');
+    let code;
 
     if (f.code.match(/^\(?function\s+\(/)) {
       code = f.code;
@@ -87,7 +87,7 @@ function reloadUserFunctions () {
     }
 
     try {
-      var res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
+      let res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
       if (typeof res !== 'function') {
         foundError = true;
       }
@@ -116,11 +116,58 @@ function reloadUserFunctions () {
   }
 }
 
+// reload a single AQL user-defined function by name
+function reloadUserFunction (name) {
+  'use strict';
+
+  let prefix = DB_PREFIX();
+  let c = INTERNAL.db._collection('_aqlfunctions');
+
+  if (c === null) {
+    UserFunctions = {};
+    return;
+  }
+
+  if (!UserFunctions.hasOwnProperty(prefix)) {
+    UserFunctions[prefix] = {};
+  }
+
+  let key = name.replace(/:{1,}/g, '::').toUpperCase();
+
+  try {
+    // use the single-document GET operation here, which does not require a full
+    // AQL query setup and is much cheaper and less error-prone than a full AQL
+    // query.
+    let doc = c.document(key);
+    let code;
+    if (doc.code.match(/^\(?function\s+\(/)) {
+      code = doc.code;
+    } else {
+      code = '(function() { var callback = ' + doc.code + ';\n return callback; })();';
+    }
+
+    try {
+      let res = INTERNAL.executeScript(code, undefined, '(user function ' + key + ')');
+      if (typeof res !== 'function') {
+        THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+      }
+      UserFunctions[prefix][key] = {
+        name: key,
+        func: res,
+        isDeterministic: doc.isDeterministic || false
+      };
+    } catch (err) {
+      THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
+    }
+  } catch (err) {
+  }
+}
+
 // / @brief box a value into the AQL datatype system
 function FIX_VALUE (value) {
   'use strict';
 
-  var type = typeof (value);
+  let type = typeof (value);
 
   if (value === undefined ||
     value === null ||
@@ -133,8 +180,8 @@ function FIX_VALUE (value) {
   }
 
   if (Array.isArray(value)) {
-    var i, n = value.length;
-    for (i = 0; i < n; ++i) {
+    const n = value.length;
+    for (let i = 0; i < n; ++i) {
       value[i] = FIX_VALUE(value[i]);
     }
 
@@ -142,7 +189,7 @@ function FIX_VALUE (value) {
   }
 
   if (type === 'object') {
-    var result = { };
+    let result = {};
 
     Object.keys(value).forEach(function (k) {
       if (typeof value[k] !== 'function') {
@@ -160,15 +207,17 @@ function FIX_VALUE (value) {
 exports.FCALL_USER = function (name, parameters, func) {
   'use strict';
 
-  var prefix = DB_PREFIX(), reloaded = false;
+  let prefix = DB_PREFIX(), reloaded = false;
   if (!UserFunctions.hasOwnProperty(prefix)) {
-    reloadUserFunctions();
+    // gracefully only reload the one missing function
+    reloadUserFunction(name);
     reloaded = true;
   }
 
   if (!UserFunctions[prefix].hasOwnProperty(name) && !reloaded) {
     // last chance
-    reloadUserFunctions();
+    // gracefully only reload the one missing function
+    reloadUserFunction(name);
   }
 
   if (!UserFunctions[prefix].hasOwnProperty(name)) {
@@ -191,4 +240,9 @@ exports.AQL_V8 = function (value) {
   return value;
 };
 
+// reload all AQL user-defined functions for the current database
 exports.reload = reloadUserFunctions;
+
+// flush the cache for user-defined functions for all databases.
+// not meant to be part of the public API
+exports.flush = () => { UserFunctions = {}; };

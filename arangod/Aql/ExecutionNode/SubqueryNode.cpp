@@ -189,7 +189,7 @@ bool SubqueryNode::mayAccessCollections() {
 
   // if the subquery contains any of these nodes, it may access data from
   // a collection
-  std::initializer_list<ExecutionNode::NodeType> const types = {
+  static constexpr std::initializer_list<ExecutionNode::NodeType> types{
       ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
       ExecutionNode::ENUMERATE_COLLECTION,
       ExecutionNode::INDEX,

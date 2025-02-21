@@ -80,8 +80,9 @@ class SiteConfig:
     """this environment - adapted to oskar defaults"""
 
     # pylint: disable=too-few-public-methods disable=too-many-instance-attributes
-    def __init__(self, definition_file):
+    def __init__(self, base_source_dir, build_dir):
         # pylint: disable=too-many-statements disable=too-many-branches
+        self.basedir = Path.cwd()
         self.datetime_format = "%Y-%m-%dT%H%M%SZ"
         self.trace = False
         self.portbase = 7000
@@ -142,12 +143,7 @@ class SiteConfig:
             self.max_load /= 2
         self.deadline = datetime.now() + timedelta(seconds=self.timeout)
         self.hard_deadline = datetime.now() + timedelta(seconds=self.timeout + 660)
-        if definition_file.is_file():
-            definition_file = definition_file.parent
-        # base_source_dir = (definition_file / '..').resolve()
-        # TODO - find a better solution
-        base_source_dir = Path(".").resolve()
-        bin_dir = (base_source_dir / "build" / "bin").resolve()
+        bin_dir = (build_dir / "bin").resolve()
         socket_count = "was not allowed to see socket counts!"
         try:
             socket_count = str(get_socket_count())
@@ -173,6 +169,7 @@ class SiteConfig:
 {san_gcov_msg}"""
         )
         self.cfgdir = base_source_dir / "etc" / "testing"
+        self.build_dir = build_dir
         self.bin_dir = bin_dir
         self.base_path = base_source_dir
         self.test_data_dir = base_source_dir

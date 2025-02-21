@@ -326,6 +326,7 @@ Coordinators.)");
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
+                      arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Enterprise))
       .setLongDescription(R"(If set to `true`, forces the cluster into creating
 all future collections with only a single shard and using the same DB-Server as
@@ -333,8 +334,7 @@ as these collections' shards leader. All collections created this way are
 eligible for specific AQL query optimizations that can improve query performance
 and provide advanced transactional guarantees.
 
-**Warning**: If you use multiple Coordinators, use the same value on all
-Coordinators.)");
+**Warning**: Use the same value on all Coordinators and all DBServers!)");
 
   options->addOption(
       "--cluster.create-waits-for-sync-replication",
@@ -374,7 +374,7 @@ Coordinators.)");
       .setLongDescription(R"(The possible values for the option are:
 
 - `jwt-all`: requires a valid JWT for all accesses to `/_admin/cluster` and its
-  sub-routes. If you use this configuration, the **CLUSTER** and **NODES**
+  sub-routes. If you use this configuration, the **Cluster** and **Nodes**
   sections of the web interface are disabled, as they rely on the ability to
   read data from several cluster APIs.
 
@@ -443,6 +443,27 @@ different servers do not execute their connectivity checks all at the
 same time.
 Setting this option to a value of zero disables these connectivity checks.")")
       .setIntroducedIn(31104);
+
+  options
+      ->addOption(
+          "--cluster.no-heartbeat-delay-before-shutdown",
+          "The delay (in seconds) before shutting down a coordinator "
+          "if no heartbeat can be sent. Set to 0 to deactivate this shutdown",
+          new DoubleParameter(&_noHeartbeatDelayBeforeShutdown, 1.0, 0.0,
+                              std::numeric_limits<double>::max(), true, true),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer))
+      .setLongDescription(
+          R"(Setting this option to a value greater than zero will
+let a coordinator which cannot send a heartbeat to the agency for the specified time
+shut down. This is necessary to prevent that a coordinator survives longer than the
+agency supervision has patience before it removes the coordinator from the agency
+meta data. Without this it would be possible that a coordinator is still running
+transactions and committing them, which could, for example, render hotbackups
+inconsistent.)")
+      .setIntroducedIn(31204);
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -612,7 +633,11 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  // in the unit tests we have situations where prepare is called on an already
+  // prepared feature
   if (_agencyCache == nullptr || _clusterInfo == nullptr) {
+    TRI_ASSERT(_agencyCache == nullptr);
+    TRI_ASSERT(_clusterInfo == nullptr);
     allocateMembers();
   }
 
@@ -679,19 +704,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  // This must remain here for proper function after hot restores
-  auto role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    if (!_agencyCache->start()) {
-      LOG_TOPIC("4680e", FATAL, Logger::CLUSTER)
-          << "unable to start agency cache thread";
-      FATAL_ERROR_EXIT();
-    }
-
-    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER)
-        << "Waiting for agency cache to become ready.";
-  }
-
   if (!ServerState::instance()->integrateIntoCluster(
           _requestedRole, _myEndpoint, _myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
@@ -701,6 +713,7 @@ void ClusterFeature::prepare() {
 
   auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
 
+  auto role = ServerState::instance()->getRole();
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
     LOG_TOPIC("613f4", FATAL, arangodb::Logger::CLUSTER)
@@ -741,11 +754,13 @@ DECLARE_COUNTER(arangodb_network_connectivity_failures_dbservers_total,
 void ClusterFeature::start() {
   // return if cluster is disabled
   if (!_enableCluster) {
-    startHeartbeatThread(nullptr, 5000, 5, std::string());
+    startHeartbeatThread(nullptr, 5000, 5, _noHeartbeatDelayBeforeShutdown,
+                         std::string());
     return;
   }
 
   auto role = ServerState::instance()->getRole();
+  TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
 
   // We need to wait for any cluster operation, which needs access to the
   // agency cache for it to become ready. The essentials in the cluster, namely
@@ -754,6 +769,15 @@ void ClusterFeature::start() {
   // empty agency. There are also other measures that guard against such a
   // outcome. But there is also no point continuing with a first agency poll.
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
+    if (!_agencyCache->start()) {
+      LOG_TOPIC("4680e", FATAL, Logger::CLUSTER)
+          << "unable to start agency cache thread";
+      FATAL_ERROR_EXIT();
+    }
+
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER)
+        << "Waiting for agency cache to become ready.";
+
     _agencyCache->waitFor(1).waitAndGet();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
         << "Agency cache is ready. Starting cluster cache syncers";
@@ -836,6 +860,7 @@ void ClusterFeature::start() {
       << (_myAdvertisedEndpoint.empty() ? "-" : _myAdvertisedEndpoint)
       << ", role: " << ServerState::roleToString(role);
 
+  TRI_ASSERT(_agencyCache);
   auto [acb, idx] = _agencyCache->read(std::vector<std::string>{
       AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
   auto result = acb->slice();
@@ -866,7 +891,7 @@ void ClusterFeature::start() {
   }
 
   startHeartbeatThread(_agencyCallbackRegistry.get(), _heartbeatInterval, 5,
-                       endpoints);
+                       _noHeartbeatDelayBeforeShutdown, endpoints);
   _clusterInfo->startSyncers();
 
   comm.increment("Current/Version");
@@ -971,17 +996,16 @@ void ClusterFeature::stop() {
     // We try to actively cancel all open requests that may still be in the
     // Agency. We cannot react to them anymore.
     _asyncAgencyCommPool->shutdownConnections();
+    _asyncAgencyCommPool->drainConnections();
+    _asyncAgencyCommPool->stop();
   }
 }
 
 void ClusterFeature::unprepare() {
   if (_enableCluster) {
     _clusterInfo->unprepare();
-    if (_asyncAgencyCommPool) {
-      _asyncAgencyCommPool->drainConnections();
-      _asyncAgencyCommPool->stop();
-    }
   }
+  _agencyCache.reset();
 }
 
 void ClusterFeature::shutdown() try {
@@ -1029,10 +1053,12 @@ void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
 /// @brief common routine to start heartbeat with or without cluster active
 void ClusterFeature::startHeartbeatThread(
     AgencyCallbackRegistry* agencyCallbackRegistry, uint64_t interval_ms,
-    uint64_t maxFailsBeforeWarning, std::string const& endpoints) {
+    uint64_t maxFailsBeforeWarning, double noHeartbeatDelayBeforeShutdown,
+    std::string const& endpoints) {
   _heartbeatThread = std::make_shared<HeartbeatThread>(
       server(), agencyCallbackRegistry,
-      std::chrono::microseconds(interval_ms * 1000), maxFailsBeforeWarning);
+      std::chrono::microseconds(interval_ms * 1000), maxFailsBeforeWarning,
+      noHeartbeatDelayBeforeShutdown);
 
   if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
     // failure only occures in cluster mode.
@@ -1062,7 +1088,11 @@ void ClusterFeature::shutdownHeartbeatThread() {
         LOG_TOPIC("d8a5b", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the heartbeat "
                "thread";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        FATAL_ERROR_ABORT();
+#else
         FATAL_ERROR_EXIT();
+#endif
       }
       if (++counter % 50 == 0) {
         LOG_TOPIC("acaa9", WARN, arangodb::Logger::CLUSTER)
@@ -1092,7 +1122,11 @@ void ClusterFeature::shutdownAgencyCache() {
       if (std::chrono::steady_clock::now() - start > std::chrono::seconds(65)) {
         LOG_TOPIC("b5a8d", FATAL, Logger::CLUSTER)
             << "exiting prematurely as we failed terminating the agency cache";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        FATAL_ERROR_ABORT();
+#else
         FATAL_ERROR_EXIT();
+#endif
       }
       if (++counter % 50 == 0) {
         LOG_TOPIC("acab0", WARN, arangodb::Logger::CLUSTER)

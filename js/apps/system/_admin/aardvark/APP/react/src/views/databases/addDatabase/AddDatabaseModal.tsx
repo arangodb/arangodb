@@ -42,7 +42,7 @@ export const AddDatabaseModal = ({
               users,
               replicationFactor: isSatellite ? "satellite" : replicationFactor,
               sharding: isOneShard ? "single" : "",
-              writeConcern
+              writeConcern: isSatellite ? undefined : writeConcern
             }
           : { users }
       );
@@ -50,7 +50,7 @@ export const AddDatabaseModal = ({
       mutate("/databases");
       onClose();
     } catch (error: any) {
-      const errorMessage = error?.response?.body?.errorMessage;
+      const errorMessage = error?.response?.parsedBody?.errorMessage;
       if (errorMessage) {
         notifyError(`Database creation error: ${errorMessage}`);
       }

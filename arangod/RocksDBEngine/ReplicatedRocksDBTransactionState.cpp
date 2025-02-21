@@ -328,7 +328,8 @@ RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
 }
 
 void ReplicatedRocksDBTransactionState::beginQuery(
-    ResourceMonitor* resourceMonitor, bool isModificationQuery) {
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool isModificationQuery) {
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(

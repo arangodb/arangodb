@@ -84,7 +84,7 @@ class GraphNode : public ExecutionNode {
             AstNode const* direction, AstNode const* graph,
             std::unique_ptr<graph::BaseOptions> options);
 
-  GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
+  GraphNode(ExecutionPlan* plan, velocypack::Slice base);
 
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,
@@ -114,6 +114,8 @@ class GraphNode : public ExecutionNode {
   bool isLocalGraphNode() const;
   // Can be fully pushed down to a DBServer and is available on all DBServers
   bool isEligibleAsSatelliteTraversal() const;
+
+  IndexHint const& hint() const;
 
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;

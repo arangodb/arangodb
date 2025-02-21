@@ -12,7 +12,7 @@ export const QueryResults = () => {
     return null;
   }
   return (
-    <Box paddingX="3" paddingTop="5">
+    <Box paddingX="3" paddingTop="5" position="relative" top="58px">
       <Flex width={"100%"} alignItems={"flex-end"}>
         <Button
           ml={"auto"}
@@ -24,15 +24,14 @@ export const QueryResults = () => {
         </Button>
       </Flex>
       <Box background="white" marginTop="4" paddingBottom="4">
-        {queryResults.map((queryResult, index) => {
+        {queryResults.map((queryResult) => {
           if (
             queryResult.status === "loading" &&
             queryResult.type !== "query"
           ) {
             return (
               <QueryResultLoading
-                key={index}
-                index={index}
+                key={queryResult.asyncJobId}
                 queryResult={queryResult}
               />
             );
@@ -40,8 +39,7 @@ export const QueryResults = () => {
           if (queryResult.status === "error") {
             return (
               <QueryResultError
-                key={index}
-                index={index}
+                key={queryResult.asyncJobId}
                 queryResult={queryResult}
               />
             );
@@ -52,8 +50,7 @@ export const QueryResults = () => {
           ) {
             return (
               <QueryProfileResult
-                key={index}
-                index={index}
+                key={queryResult.asyncJobId}
                 queryResult={queryResult}
               />
             );
@@ -62,7 +59,6 @@ export const QueryResults = () => {
             return (
               <QueryExecuteResult
                 key={queryResult.asyncJobId}
-                index={index}
                 queryResult={queryResult}
               />
             );

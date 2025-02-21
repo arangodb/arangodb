@@ -66,6 +66,10 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const RebalanceShards;
   static std::string const Rebalance;
   static std::string const ShardStatistics;
+  static std::string const VPackSortMigration;
+  static std::string const VPackSortMigrationCheck;
+  static std::string const VPackSortMigrationMigrate;
+  static std::string const VPackSortMigrationStatus;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -107,7 +111,10 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRebalanceExecute();
   RestStatus handleRebalancePlan();
 
- private:
+  typedef futures::Future<futures::Unit> FutureVoid;
+
+  FutureVoid handleVPackSortMigration(std::string const& subCommand);
+
   struct MoveShardContext {
     std::string database;
     std::string collection;
@@ -143,7 +150,6 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
                                          VPackSlice body);
 
   typedef std::chrono::steady_clock clock;
-  typedef futures::Future<futures::Unit> FutureVoid;
 
   FutureVoid waitForSupervisionState(bool state,
                                      std::string const& reactivationTime,

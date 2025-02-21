@@ -23,22 +23,10 @@
 
 #include "vocbase.h"
 
-#include <algorithm>
-#include <chrono>
-#include <exception>
-#include <memory>
-#include <type_traits>
-#include <unordered_map>
-#include <utility>
-
-#include <velocypack/Collection.h>
-#include <velocypack/Slice.h>
-#include <velocypack/Value.h>
-#include <velocypack/ValueType.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryPlanCache.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
@@ -100,8 +88,20 @@
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/VocbaseMetrics.h"
 
-#include <thread>
 #include <absl/strings/str_cat.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <thread>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -127,6 +127,10 @@ void TRI_vocbase_t::forceUse() noexcept {
 void TRI_vocbase_t::release() noexcept {
   [[maybe_unused]] auto v = _refCount.fetch_sub(2, std::memory_order_release);
   TRI_ASSERT(v >= 2);
+}
+
+arangodb::VocbasePtr TRI_vocbase_t::getSharedPtr() noexcept {
+  return VocbasePtr{use() ? this : nullptr};
 }
 
 bool TRI_vocbase_t::isDangling() const noexcept {
@@ -483,6 +487,7 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
+  queryPlanCache().invalidate(collection.guid());
   aql::QueryCache::instance()->invalidate(this);
 
   collection.setDeleted();
@@ -504,6 +509,8 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
 }
 
 void TRI_vocbase_t::stop() {
+  queryPlanCache().invalidateAll();
+
   try {
     shutdownReplicatedLogs();
 
@@ -652,7 +659,11 @@ void TRI_vocbase_t::inventory(
       *this, [&result](LogicalView::ptr const& view) -> bool {
         if (view) {
           result.openObject();
-          view->properties(result, LogicalDataSource::Serialization::Inventory);
+          auto res = view->properties(
+              result, LogicalDataSource::Serialization::Inventory);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
           result.close();
         }
 
@@ -1060,6 +1071,7 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   checkCollectionInvariants();
 
   // invalidate all entries in the query cache now
+  queryPlanCache().invalidateAll();
   aql::QueryCache::instance()->invalidate(this);
 
   return TRI_ERROR_NO_ERROR;
@@ -1164,6 +1176,11 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   _dataSourceByName.erase(oldName);
 
   checkCollectionInvariants();
+
+  // invalidate all entries in the query cache now
+  queryPlanCache().invalidateAll();
+  aql::QueryCache::instance()->invalidate(this);
+
   locker.unlock();
   writeLocker.unlock();
   _versionTracker.track("rename collection");
@@ -1309,6 +1326,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   }
 
   // invalidate all entries in the query cache now
+  queryPlanCache().invalidateAll();
   aql::QueryCache::instance()->invalidate(this);
 
   unregisterView(*view);
@@ -1318,7 +1336,7 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   events::DropView(dbName, view->name(), TRI_ERROR_NO_ERROR);
   _versionTracker.track("drop view");
 
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
@@ -1328,7 +1346,8 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
           info.server().getFeature<DatabaseFeature>().extendedNames()) {}
 
 TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
-                             VersionTracker& versionTracker, bool extendedNames)
+                             VersionTracker& versionTracker, bool extendedNames,
+                             bool isInternal)
     : _server(info.server()),
       _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
       _versionTracker(versionTracker),
@@ -1347,13 +1366,26 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
     _metrics = std::make_unique<VocbaseMetrics>();
   }
 
-  if (_info.server().hasFeature<QueryRegistryFeature>()) {
+  if (_info.server().hasFeature<QueryRegistryFeature>() && !isInternal) {
     QueryRegistryFeature& feature =
         _info.server().getFeature<QueryRegistryFeature>();
     _queries = std::make_unique<aql::QueryList>(feature);
 
     numberOfCursorsMetric = feature.cursorsMetric();
     memoryUsageMetric = feature.cursorsMemoryUsageMetric();
+    _queryPlanCache = std::make_unique<aql::QueryPlanCache>(
+        feature.queryPlanCacheMaxEntries(),
+        feature.queryPlanCacheMaxMemoryUsage(),
+        feature.queryPlanCacheMaxIndividualEntrySize(),
+        feature.queryPlanCacheInvalidationTime(),
+        feature.queryPlanCacheHitsMetric(),
+        feature.queryPlanCacheMissesMetric(),
+        feature.queryPlanCacheMemoryUsage());
+  } else {
+    // create only a stub
+    _queryPlanCache = std::make_unique<aql::QueryPlanCache>(
+        /*maxEntries*/ 0, /*maxMemoryUsage*/ 0, /*maxIndividualEntrySize*/ 0,
+        1.0, nullptr, nullptr, nullptr);
   }
   _cursorRepository = std::make_unique<CursorRepository>(
       *this, numberOfCursorsMetric, memoryUsageMetric);
@@ -1466,14 +1498,14 @@ std::string const& TRI_vocbase_t::shardingPrototypeName() const {
       return StaticStrings::UsersCollection;
     case ShardingPrototype::Graphs:
       // Specifically set defaults should win
-      return StaticStrings::GraphCollection;
+      return StaticStrings::GraphsCollection;
     case ShardingPrototype::Undefined:
       if (isSystem()) {
         // The sharding Prototype for system databases is always the users
         return StaticStrings::UsersCollection;
       } else {
         // All others should follow _graphs
-        return StaticStrings::GraphCollection;
+        return StaticStrings::GraphsCollection;
       }
   }
 }

@@ -33,8 +33,8 @@ const {
   arangoClusterInfoFlush,
   arangoClusterInfoGetAnalyzersRevision,
   arangoClusterInfoWaitForPlanVersion,
-  agency
 } = require("@arangodb/test-helper");
+let IM = global.instanceManager;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,17 +216,17 @@ function analyzersRevisionTestSuite () {
       }
     },
     testAnalyzersCleanupAfterFailedInsert: function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
       try {
-      	db._createDatabase(dbName);
+        db._createDatabase(dbName);
         db._useDatabase(dbName);
-        internal.debugSetFailAt('FailStoreAnalyzer'); 
+        IM.debugSetFailAt('FailStoreAnalyzer');
         try {
           analyzers.save("FailedToStore", "identity");
           fail();
@@ -236,23 +236,23 @@ function analyzersRevisionTestSuite () {
         assertTrue(null === analyzers.analyzer(dbName + "::FailedToStore"));
         waitForCompletedRevision(dbName, 0);
       } finally {
-      	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
-      	internal.debugRemoveFailAt('FailStoreAnalyzer');
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName); } catch (e) {}
+        IM.debugRemoveFailAt('FailStoreAnalyzer');
       }
     },
     testAnalyzersCleanupAfterFailedInsertCommit: function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
       try {
-      	db._createDatabase(dbName);
+        db._createDatabase(dbName);
         db._useDatabase(dbName);
-        internal.debugSetFailAt('FinishModifyingAnalyzerCoordinator'); 
+        IM.debugSetFailAt('FinishModifyingAnalyzerCoordinator'); 
         try {
           analyzers.save("FailedToStore", "identity");
           fail();
@@ -264,14 +264,14 @@ function analyzersRevisionTestSuite () {
         // observe unstable state of Agency
         waitForRevision(dbName, 0, 1);
         // now let`s allow scheduled cleanup to do the job
-        internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
+        IM.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
         let tries = 0;
         while (tries < 5) {
           tries++;
           arangoClusterInfoFlush();
           let recovered_revision = arangoClusterInfoGetAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
-          	break;
+            break;
           }
           internal.sleep(5);
         }
@@ -283,25 +283,25 @@ function analyzersRevisionTestSuite () {
         assertFalse(null === analyzer);
         assertEqual('identity', analyzer.type());
       } finally {
-      	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
-      	internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName); } catch (e) {}
+        IM.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
       }
     },
     testAnalyzersCleanupAfterFailedRemoveUpdate: function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
       try {
-      	db._createDatabase(dbName);
+        db._createDatabase(dbName);
         db._useDatabase(dbName);
-      	analyzers.save("TestAnalyzer", "identity");
-      	internal.debugSetFailAt('UpdateAnalyzerForRemove');
-      	try {
+        analyzers.save("TestAnalyzer", "identity");
+        IM.debugSetFailAt('UpdateAnalyzerForRemove');
+        try {
           analyzers.remove("TestAnalyzer", true);
           fail();
         } catch(e) {
@@ -310,31 +310,31 @@ function analyzersRevisionTestSuite () {
         analyzers.save("TestAnalyzer2", "identity"); // to trigger cleanup
         assertFalse(null === analyzers.analyzer(dbName + "::TestAnalyzer")); // check analyzer still here
       } finally {
-      	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
-      	internal.debugRemoveFailAt('UpdateAnalyzerForRemove');
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName); } catch (e) {}
+        IM.debugRemoveFailAt('UpdateAnalyzerForRemove');
       }
     },
     testAnalyzersCleanupAfterFailedRemoveCommit: function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       let dbName = "testDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
       try {
-      	db._createDatabase(dbName);
+        db._createDatabase(dbName);
         db._useDatabase(dbName);
-      	analyzers.save("TestAnalyzer", "identity");
-      	internal.debugSetFailAt('FinishModifyingAnalyzerCoordinator');
-      	try {
+        analyzers.save("TestAnalyzer", "identity");
+        IM.debugSetFailAt('FinishModifyingAnalyzerCoordinator');
+        try {
           analyzers.remove("TestAnalyzer", true);
           fail();
         } catch(e) {
           assertEqual(ERRORS.ERROR_DEBUG.code, e.errorNum);
         }
-        internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
+        IM.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
         // wait for repair procedures
         let tries = 0;
         while (tries < 5) {
@@ -342,16 +342,16 @@ function analyzersRevisionTestSuite () {
           arangoClusterInfoFlush();
           let recovered_revision = arangoClusterInfoGetAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
-          	break;
+            break;
           }
           internal.sleep(5);
         }
         analyzers.save("TestAnalyzer2", "identity"); // to trigger cleanup and next revision
         assertFalse(null === analyzers.analyzer(dbName + "::TestAnalyzer")); // check analyzer still here
       } finally {
-      	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
-      	internal.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName); } catch (e) {}
+        IM.debugRemoveFailAt('FinishModifyingAnalyzerCoordinator');
       }
     },
     testAnalyzersInsertOnUpdatedDatabase: function() {
@@ -359,15 +359,15 @@ function analyzersRevisionTestSuite () {
       let dbName = "testDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
       try {
-      	db._createDatabase(dbName);
+        db._createDatabase(dbName);
         db._useDatabase(dbName);
         // remove analyzers revision record for this database from agency
         let preconditions = {};
         let operations = {};
         operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
-        agency.call("write", [[operations, preconditions]]);
-        agency.increaseVersion("Plan/Version");
-        let requiredVersion = agency.get("Plan/Version").arango.Plan.Version;
+        IM.agencyMgr.call("write", [[operations, preconditions]]);
+        IM.agencyMgr.increaseVersion("Plan/Version");
+        let requiredVersion = IM.agencyMgr.get("Plan/Version").arango.Plan.Version;
         // Avoid incorrect parsing here:
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
@@ -377,46 +377,46 @@ function analyzersRevisionTestSuite () {
         analyzers.save("TestAnalyzer", "identity");
         waitForCompletedRevision(dbName, 1);
       } finally {
-      	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName); } catch (e) {}
       }
     },
     testAnalyzersInsertOnUpdatedDatabaseFullAnalyzers: function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
       db._useDatabase("_system");
       let dbName = "testDbName";
       try { db._dropDatabase(dbName); } catch (e) {}
       try {
-      	db._createDatabase(dbName);
+        db._createDatabase(dbName);
         db._useDatabase(dbName);
-        internal.debugClearFailAt();
-        internal.debugSetFailAt('AlwaysSwapAnalyzersRevision');
+        IM.debugClearFailAt();
+        IM.debugSetFailAt('AlwaysSwapAnalyzersRevision');
         // remove  full Analyzers part from agency
         let preconditions = {};
         let operations = {};
         operations['/arango/Plan/Analyzers'] = {'op': 'delete'};
-        agency.call("write", [[operations, preconditions]]);
-        agency.increaseVersion("Plan/Version");
-        let requiredVersion = agency.get("Plan/Version").arango.Plan.Version;
+        IM.agencyMgr.call("write", [[operations, preconditions]]);
+        IM.agencyMgr.increaseVersion("Plan/Version");
+        let requiredVersion = IM.agencyMgr.get("Plan/Version").arango.Plan.Version;
         // Avoid incorrect parsing here:
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
         // Wait until the coordinator has seen the Plan update
         arangoClusterInfoWaitForPlanVersion(requiredVersion);
         // Continue with the test.
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
         analyzers.save("TestAnalyzer", "identity");
         waitForCompletedRevision(dbName, 1);
       } finally {
-      	internal.debugClearFailAt();
-      	db._useDatabase("_system");
-      	try { db._dropDatabase(dbName); } catch (e) {}
+        IM.debugClearFailAt();
+        db._useDatabase("_system");
+        try { db._dropDatabase(dbName); } catch (e) {}
       }
     },
     testAnalyzersReadingRevisionsForUpdatedDatabase: function() {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
       db._useDatabase("_system");
@@ -431,17 +431,17 @@ function analyzersRevisionTestSuite () {
         }
         db._createDatabase(dbName);
         db._useDatabase(dbName);
-        internal.debugClearFailAt();
-        internal.debugSetFailAt('AlwaysSwapAnalyzersRevision');
+        IM.debugClearFailAt();
+        IM.debugSetFailAt('AlwaysSwapAnalyzersRevision');
         // remove Analyzers part  to simulate freshly updated cluster
         // where system already has created custom analyzers and revisions
         // but other database have not
         let preconditions = {};
         let operations = {};
         operations['/arango/Plan/Analyzers/' + dbName] = {'op': 'delete'};
-        agency.call("write", [[operations, preconditions]]);
-        agency.increaseVersion("Plan/Version");
-        let requiredVersion = agency.get("Plan/Version").arango.Plan.Version;
+        IM.agencyMgr.call("write", [[operations, preconditions]]);
+        IM.agencyMgr.increaseVersion("Plan/Version");
+        let requiredVersion = IM.agencyMgr.get("Plan/Version").arango.Plan.Version;
         // Avoid incorrect parsing here:
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
@@ -449,12 +449,12 @@ function analyzersRevisionTestSuite () {
         arangoClusterInfoWaitForPlanVersion(requiredVersion);
         // Continue with the test.
         db._query("RETURN TOKENS('Test', '::SystemTestAnalyzer') "); // check system revision is still read
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       } finally {
-      	internal.debugClearFailAt();
-      	db._useDatabase("_system");
+        IM.debugClearFailAt();
+        db._useDatabase("_system");
         analyzers.remove("SystemTestAnalyzer", true);
-      	try { db._dropDatabase(dbName); } catch (e) {}
+        try { db._dropDatabase(dbName); } catch (e) {}
       }
     }
   };

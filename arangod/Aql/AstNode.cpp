@@ -38,6 +38,7 @@
 #include "Basics/fasthash.h"
 #include "Containers/FlatHashSet.h"
 #include "Transaction/Methods.h"
+#include "VocBase/vocbase.h"
 
 #include <array>
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -88,7 +89,7 @@ constexpr frozen::unordered_map<int, std::string_view, 26> kOperators{
     {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN), "array NOT IN"}};
 
 /// @brief type names for AST nodes
-frozen::unordered_map<int, std::string_view, 80> kTypeNames{
+frozen::unordered_map<int, std::string_view, 81> kTypeNames{
     {static_cast<int>(NODE_TYPE_ROOT), "root"},
     {static_cast<int>(NODE_TYPE_FOR), "for"},
     {static_cast<int>(NODE_TYPE_LET), "let"},
@@ -171,6 +172,7 @@ frozen::unordered_map<int, std::string_view, 80> kTypeNames{
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
     {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
+    {static_cast<int>(NODE_TYPE_DESTRUCTURING), "destructuring"},
     {static_cast<int>(NODE_TYPE_WINDOW), "window"},
 };
 
@@ -649,6 +651,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_FOR_VIEW:
     case NODE_TYPE_WINDOW:
     case NODE_TYPE_ARRAY_FILTER:
+    case NODE_TYPE_DESTRUCTURING:
       break;
   }
 
@@ -893,8 +896,10 @@ std::string_view AstNode::getTypeString(AstNodeType type) {
     return (*it).second;
   }
 
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                 "missing node type in kTypeNames");
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_NOT_IMPLEMENTED,
+      absl::StrCat("missing node type in kTypeNames: ",
+                   static_cast<int>(type)));
 }
 
 /// @brief return the value type name of a node
@@ -1011,7 +1016,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
 void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
-  TRI_ASSERT(valueHasVelocyPackRepresentation());
+  TRI_ASSERT(valueHasVelocyPackRepresentation()) << this->toString();
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
     switch (value.type) {
@@ -1557,6 +1562,7 @@ bool AstNode::isSimple() const {
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
       type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_ARRAY_FILTER ||
+      type == NODE_TYPE_DESTRUCTURING ||
       type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
       type == NODE_TYPE_OPERATOR_TERNARY ||
       type == NODE_TYPE_OPERATOR_NARY_AND ||
@@ -2373,10 +2379,10 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     return;
   }
 
-  std::string message("stringification not supported for node type ");
-  message.append(getTypeString());
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("stringification not supported for node type ",
+                   getTypeString()));
 }
 
 /// note that this may throw and that the caller is responsible for
@@ -2604,13 +2610,14 @@ void AstNode::changeMember(size_t i, AstNode* node) {
 }
 
 void AstNode::removeMemberUnchecked(size_t i) {
-  TRI_ASSERT(members.size() > 0);
+  TRI_ASSERT(members.size() > i);
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   members.erase(members.begin() + i);
 }
 
 void AstNode::removeMemberUncheckedUnordered(size_t i) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(members.size() > i);
   std::swap(members[i], members.back());
   members.pop_back();
 }

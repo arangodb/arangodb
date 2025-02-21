@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global runSetup assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,9 +29,9 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
   let c = db._create('UnitTestsRecovery');
@@ -40,6 +40,7 @@ function runSetup () {
   
   internal.wal.flush(true, true);
 
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -60,17 +61,17 @@ function recoverySuite () {
     testIndexesAfterFlush: function () {
       var c = db._collection('UnitTestsRecovery'), idx;
 
-      assertEqual(3, c.getIndexes().length);
-      idx = c.getIndexes()[0];
+      assertEqual(3, c.indexes().length);
+      idx = c.indexes()[0];
       assertEqual('primary', idx.type);
 
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value1' ], idx.fields);
       assertEqual('skiplist', idx.type);
       
-      idx = c.getIndexes()[2];
+      idx = c.indexes()[2];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value2' ], idx.fields);
@@ -84,13 +85,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

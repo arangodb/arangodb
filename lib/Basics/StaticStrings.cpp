@@ -110,6 +110,7 @@ std::string const StaticStrings::JobsCollection("_jobs");
 std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
 std::string const StaticStrings::FrontendCollection("_frontend");
+std::string const StaticStrings::QueriesCollection("_queries");
 std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
@@ -157,6 +158,7 @@ std::string const StaticStrings::IndexNameEdge("edge");
 std::string const StaticStrings::IndexNameEdgeFrom("edge_from");
 std::string const StaticStrings::IndexNameEdgeTo("edge_to");
 std::string const StaticStrings::IndexNamePrimary("primary");
+std::string const StaticStrings::IndexNameVector("vector");
 
 // index hint strings
 std::string const StaticStrings::IndexHintDisableIndex("disableIndex");
@@ -173,6 +175,8 @@ std::string const StaticStrings::Parallelism("parallelism");
 std::string const StaticStrings::ForceOneShardAttributeValue(
     "forceOneShardAttributeValue");
 std::string const StaticStrings::JoinStrategyType("joinStrategyType");
+std::string const StaticStrings::Algorithm("algorithm");
+std::string const StaticStrings::Legacy("legacy");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -195,8 +199,6 @@ std::string const StaticStrings::AllowDirtyReads("x-arango-allow-dirty-read");
 std::string const StaticStrings::Async("x-arango-async");
 std::string const StaticStrings::AsyncId("x-arango-async-id");
 std::string const StaticStrings::Authorization("authorization");
-std::string const StaticStrings::BatchContentType(
-    "application/x-arango-batchpart");
 std::string const StaticStrings::CacheControl("cache-control");
 std::string const StaticStrings::Chunked("chunked");
 std::string const StaticStrings::Close("Close");
@@ -304,7 +306,6 @@ std::string const StaticStrings::ReplicationVersion("replicationVersion");
 std::string const StaticStrings::ReplicatedLogs("replicatedLogs");
 
 // graph attribute names
-std::string const StaticStrings::GraphCollection("_graphs");
 std::string const StaticStrings::GraphFrom("from");
 std::string const StaticStrings::GraphTo("to");
 std::string const StaticStrings::GraphOptions("options");

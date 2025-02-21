@@ -199,7 +199,7 @@ function pad(n) {
 }
 
 /* print query string */
-function printQuery(query, cacheable) {
+function printQuery(query, cacheable, planCacheKey) {
   'use strict';
   // restrict max length of printed query to avoid endless printing for
   // very long query strings
@@ -209,7 +209,10 @@ function printQuery(query, cacheable) {
     headline += ' - truncated...';
     query = query.substr(0, maxLength / 2) + ' ... ' + query.substr(query.length - maxLength / 2);
   }
-  headline += ', cacheable: ' + (cacheable ? 'true' : 'false');
+  if (planCacheKey !== undefined) {
+    headline += ', plan cache key: "' + planCacheKey + '"';
+  }
+  headline += ', results cachable: ' + (cacheable ? 'true' : 'false');
   headline += '):';
   stringBuilder.appendLine(section(headline));
   stringBuilder.appendLine(' ' + value(stringBuilder.wrap(query, 100)));
@@ -672,7 +675,7 @@ function printTraversalDetails(traversals) {
 
   traversals.forEach(node => {
     outTable.alignNewEntry();
-    outTable.addCell(0, String(node.id));
+    outTable.addCell(0, variable(String(node.id)));
     outTable.addCell(1, node.minMaxDepth);
     outTable.addCell(2, node.vertexCollectionNameStr, node.vertexCollectionNameStrLen);
     outTable.addCell(3, node.edgeCollectionNameStr, node.edgeCollectionNameStrLen);
@@ -728,7 +731,7 @@ function printShortestPathDetails(shortestPaths) {
   stringBuilder.appendLine(line);
 
   for (let sp of shortestPaths) {
-    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + variable(sp.id) + '   ';
 
     if (sp.hasOwnProperty('vertexCollectionNameStr')) {
       line += sp.vertexCollectionNameStr +
@@ -828,13 +831,16 @@ function processQuery(query, explain, planIndex) {
     maxFilteredLen = String('Filtered').length,
     maxRuntimeLen = String('Runtime [s]').length,
     stats = explain.stats;
-
-  let plan = explain.plan;
-  if (plan === undefined) {
+  
+  if (explain === undefined || (explain.plan === undefined && explain.plans === undefined)) {
     throw "incomplete query execution plan data - this should not happen unless when connected to a DB-Server. fetching query plans/profiles from a DB-Server is not supported!";
   }
+
+  let plan;
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
+  } else {
+    plan = explain.plan;
   }
 
   /// mode with actual runtime stats per node
@@ -886,7 +892,14 @@ function processQuery(query, explain, planIndex) {
     // the code can be removed when only supporting server versions
     // >= 3.12.
     stats.nodes.forEach(n => {
-      nodes[n.id].runtime = n.runtime;
+      // the try..catch here is necessary because we may have nodes inside
+      // the stats object that are not contained in the original plan.
+      // this can happen for parallel traversals, which inserts additional
+      // nodes into the plan on the DB servers after the plan is shipped
+      // to the servers.
+      try {
+        nodes[n.id].runtime = n.runtime;
+      } catch (err) {}
     });
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id) && !n.hasOwnProperty('fetching')) {
@@ -1003,20 +1016,20 @@ function processQuery(query, explain, planIndex) {
     return node;
   };
 
-  var buildExpression = function (node) {
+  const buildExpression = function (node) {
     // replace "raw" value with proper subNodes
     node = checkRawData(node);
 
-    var binaryOperator = function (node, name) {
+    const binaryOperator = function (node, name) {
       if (name.match(/^[a-zA-Z]+$/)) {
         // make it a keyword
         name = keyword(name.toUpperCase());
       }
-      var lhs = buildExpression(node.subNodes[0]);
-      var rhs = buildExpression(node.subNodes[1]);
+      const lhs = buildExpression(node.subNodes[0]);
+      const rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
         // array operator node... prepend "all" | "any" | "none" to node type
-        name = node.subNodes[2].quantifier + ' ' + name;
+        name = keyword(node.subNodes[2].quantifier.toUpperCase()) + ' ' + name;
       }
       if (node.sorted) {
         return lhs + ' ' + name + ' ' + annotation('/* sorted */') + ' ' + rhs;
@@ -1029,14 +1042,14 @@ function processQuery(query, explain, planIndex) {
     switch (node.type) {
       case 'reference':
         if (references.hasOwnProperty(node.name)) {
-          var ref = references[node.name];
-          var c = '*';
+          const ref = references[node.name];
+          let c = '*';
           if (ref.length > 5 && ref[5]) {
             c = '?';
           }
           delete references[node.name];
           if (Array.isArray(ref)) {
-            var out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join(c));
+            let out = buildExpression(ref[1]) + '[' + (new Array(ref[0] + 1).join(c));
             if (ref[2].type !== 'no-op') {
               out += ' ' + keyword('FILTER') + ' ' + buildExpression(ref[2]);
             }
@@ -1175,7 +1188,7 @@ function processQuery(query, explain, planIndex) {
     }
   };
 
-  var buildSimpleExpression = function (simpleExpressions) {
+  const buildSimpleExpression = function (simpleExpressions) {
     let rc = '';
 
     for (let indexNo in simpleExpressions) {
@@ -1201,8 +1214,8 @@ function processQuery(query, explain, planIndex) {
     return rc;
   };
 
-  var buildBound = function (attr, operators, bound) {
-    var boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
+  const buildBound = function (attr, operators, bound) {
+    const boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
     return attribute(attr) + ' ' + operators[bound.include ? 1 : 0] + ' ' + boundValue;
   };
 
@@ -1267,11 +1280,11 @@ function processQuery(query, explain, planIndex) {
     indexes.push(idx);
   };
 
-  var label = function (node) {
-    var rc, v, vNames, e, eNames, edgeCols, i, d, directions, isLast;
-    var parts = [];
-    var types = [];
-    var filter = '';
+  const label = function (node) {
+    let rc, v, vNames, e, eNames, edgeCols, i, d, directions, isLast;
+    let parts = [];
+    let types = [];
+    let filter = '';
     // index in this array gives the traversal direction
     const translate = ['ANY', 'INBOUND', 'OUTBOUND'];
     // get all indexes of a graph node, i.e. traversal, shortest path, etc.
@@ -1289,7 +1302,7 @@ function processQuery(query, explain, planIndex) {
         allIndexes.push(ix);
 
         // level-specific indexes
-        for (var l in node.indexes.levels) {
+        for (let l in node.indexes.levels) {
           ix = node.indexes.levels[l][i];
           ix.collection = node.edgeCollections[i];
           ix.condition = keyword("level " + parseInt(l, 10) + " " + translate[d]);
@@ -1381,7 +1394,13 @@ function processQuery(query, explain, planIndex) {
 
     switch (node.type) {
       case 'SingletonNode':
-        return keyword('ROOT');
+        let bindVars = [];
+        if (node.bindParameterVariables) {
+          for (const [name, bindVar] of Object.entries(node.bindParameterVariables)) {
+            bindVars.push(variableName(bindVar) + ' = ' + variable("@" + name));
+          }
+        }
+        return keyword('ROOT') + ' ' + bindVars.join(', ');
       case 'NoResultsNode':
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':
@@ -1407,7 +1426,20 @@ function processQuery(query, explain, planIndex) {
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
-        return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
+        if (node.mode === "object") {
+          return keyword('FOR') + ' [' + variableName(node.keyOutVariable) + ', ' + variableName(node.valueOutVariable) + '] ' + keyword('OF') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* object iteration */') + filter;
+        } else {
+          return keyword('FOR') + ' ' + variableName(node.outVariable) + ' ' + keyword('IN') + ' ' + variableName(node.inVariable) + '   ' + annotation('/* list iteration */') + filter;
+        }
+        break;
+      case 'EnumerateNearVectorNode': {
+        let searchParameters = '';
+        if (node.hasOwnProperty("searchParameters") && JSON.stringify(node.searchParameters) !== "{}") {
+          searchParameters = keyword(' WITH SEARCH PARAMETERS ') + JSON.stringify(node.searchParameters);
+        }
+
+        return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters;
+      }
       case 'EnumerateViewNode':
         var condition = '';
         if (node.condition && node.condition.hasOwnProperty('type')) {
@@ -1490,9 +1522,13 @@ function processQuery(query, explain, planIndex) {
         });
         return keyword('JOIN');
       case 'IndexNode':
+        var limit = '';
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        if (node.limit > 0) {
+          limit = '   '  + keyword('LIMIT') + ' ' + value(JSON.stringify(node.limit)) + ' ' + annotation('/* early reducing results */');
         }
         if (node.projections) {
           // produce LET nodes for each projection output register
@@ -1521,7 +1557,7 @@ function processQuery(query, explain, planIndex) {
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
-          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter + limit +
           '   ' + annotation(indexAnnotation);
 
       case 'TraversalNode': {
@@ -1800,10 +1836,28 @@ function processQuery(query, explain, planIndex) {
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
+      case 'IndexCollectNode':
+        iterateIndexes(node.index, 0, node, types, false);
+        let indexCollect = keyword('FOR ') + variableName(node.oldIndexVariable) + keyword(' IN ') + collection(node.collection) + keyword(' COLLECT ') + node.groups.map(function (grp) {
+          return variableName(grp.outVariable) + ' = ' + variableName(node.oldIndexVariable) + '.' + grp.attribute.map((p) => attribute(p)).join('.');
+        }).join(', ');
+        if (node.aggregations.length > 0) {
+          indexCollect += keyword(' AGGREGATE') + ' ' +
+              node.aggregations.map(function (node) {
+                return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + buildExpression(node.expression) + ')';
+              }).join(', ') + annotation(' /* full index scan */');
+        } else {
+          indexCollect += annotation(' /* distinct value index scan */');
+        }
+        return indexCollect;
       case 'SortNode':
-        return keyword('SORT') + ' ' + node.elements.map(function (node) {
-          return variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC');
-        }).join(', ') + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
+        const groupedElements = node.numberOfTopGroupedElements > 0 ?
+          '; ' + keyword('GROUPED BY') + ' '
+          + node.elements.slice(0, node.numberOfTopGroupedElements).map((element) => variableName(element.inVariable)).join(', ') : '';
+        return keyword('SORT') + ' '
+          + node.elements.slice(node.numberOfTopGroupedElements, node.elements.length).map((node) => variableName(node.inVariable) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC')).join(', ')
+          + groupedElements
+          + annotation(`   /* sorting strategy: ${node.strategy.split("-").join(" ")} */`);
       case 'LimitNode':
         return keyword('LIMIT') + ' ' + value(JSON.stringify(node.offset)) + ', ' + value(JSON.stringify(node.limit)) + (node.fullCount ? '  ' + annotation('/* fullCount */') : '');
       case 'ReturnNode':
@@ -2041,10 +2095,14 @@ function processQuery(query, explain, planIndex) {
           }
         }
         let varString = '';
-        if (node.outVariable.id !== node.oldDocVariable.id) {
-          varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+        if (node.hasOwnProperty('oldDocVariable')) {
+          if (node.outVariable.id !== node.oldDocVariable.id) {
+            varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+          } else {
+            varString = variableName(node.oldDocVariable);
+          }
         } else {
-          varString = variableName(node.oldDocVariable);
+          varString = variableName(node.outVariable);
         }
         return keyword('MATERIALIZE') + ' ' + varString + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
       case 'OffsetMaterializeNode':
@@ -2232,7 +2290,7 @@ function processQuery(query, explain, planIndex) {
   };
 
   if (planIndex === undefined) {
-    printQuery(query, explain.cacheable);
+    printQuery(query, explain.cacheable, explain.planCacheKey);
   }
 
   stringBuilder.appendLine(section('Execution plan:'));
@@ -2363,6 +2421,9 @@ function profileQuery(data, shouldPrint) {
   let stmt = db._createStatement(data);
   let cursor = stmt.execute();
   let extra = cursor.getExtra();
+  if (cursor.planCacheKey !== undefined) {
+    extra.planCacheKey = cursor.planCacheKey;
+  }
   processQuery(data.query, extra, undefined);
 
   if (shouldPrint === undefined || shouldPrint) {
@@ -2406,6 +2467,7 @@ function debug(query, bindVars, options) {
     database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
+    analyzers: {},
     collections: {},
     views: {}
   };
@@ -2485,8 +2547,7 @@ function debug(query, bindVars, options) {
         type: v.type(),
         properties: v.properties()
       };
-    } else {
-      // a collection
+    } else if (isNaN(collection.name)) {
       if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
         // an internal smart-graph collection. let's skip this
         return;
@@ -2512,7 +2573,7 @@ function debug(query, bindVars, options) {
         name: collection.name,
         type: c.type(),
         properties: c.properties(),
-        indexes: c.getIndexes(true),
+        indexes: c.indexes(true),
         count: c.count(),
         counts: c.count(true),
         examples
@@ -2560,6 +2621,31 @@ function debug(query, bindVars, options) {
     result.collections[c.name] = c;
   });
 
+  let used_analyzers = new Set();
+  Object.values(result.views).forEach(v => {
+    let links = v["properties"]["links"];
+    Object.values(links).forEach(c => {
+      let curr_analyzers = c["analyzers"];
+      curr_analyzers.forEach(a => {
+        used_analyzers.add(a);
+      });
+    });
+  });
+
+  let analyzers = require("@arangodb/analyzers");
+  let all_analyzers = analyzers.toArray();
+  used_analyzers.forEach(used_a => {
+    let re = new RegExp(String.raw`::${used_a}$`, "g");
+    let found = all_analyzers.find((a) => a.name().match(re));
+    if(found) {
+      // it means that it is not a system analyzer
+      result.analyzers[used_a] = {
+        type: analyzers.analyzer(used_a).type(),
+        properties: analyzers.analyzer(used_a).properties()
+      };
+    }
+  });
+  
   result.graphs = graphs;
   return result;
 }
@@ -2614,6 +2700,28 @@ function inspectDump(filename, outfile) {
   });
   print();
 
+  // drop views to be able to recreate analyzers
+  print("/*drop views */");
+  Object.keys(data.views || {}).forEach(function (view) {
+    print("db._dropView(" + JSON.stringify(view) + ");");
+  });
+  print();
+
+  // all analyzers if they are exists
+  if (data.hasOwnProperty("analyzers")) {
+    print("/* analyzers setup */");
+    const analyzers_names = Object.keys(data.analyzers);
+    if (analyzers_names.length > 0) {
+      print("var analyzers = require('@arangodb/analyzers')");
+      for (let i = 0; i < analyzers_names.length; ++i) {
+        let name = analyzers_names[i];
+        print(`try { analyzers.remove("${name}"); } catch (err) { print(String(err)); }`);
+        print(`analyzers.save("${name}", ${JSON.stringify(data.analyzers[name]["type"])}, ${JSON.stringify(data.analyzers[name]["properties"])})`);
+      }
+    }
+    print();
+  }
+
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
   const keys = Object.keys(data.collections);
@@ -2638,6 +2746,8 @@ function inspectDump(filename, outfile) {
         if (details.properties.isSmart) {
           delete details.properties.numberOfShards;
         }
+        delete details.properties.objectId;
+        delete details.properties.statusString;
         print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
       } else {
         print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
@@ -2678,7 +2788,6 @@ function inspectDump(filename, outfile) {
   print("/* views */");
   Object.keys(data.views || {}).forEach(function (view) {
     let details = data.views[view];
-    print("db._dropView(" + JSON.stringify(view) + ");");
     print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();

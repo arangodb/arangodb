@@ -423,6 +423,7 @@ bool RemoveFollower::start(bool&) {
       // --- Check that Planned servers are still as we expect
       addPreconditionUnchanged(trx, planPath, planned);
       addPreconditionShardNotBlocked(trx, _shard);
+      addPreconditionClonesStillExist(trx, _database, shardsLikeMe);
       for (auto const& srv : kept) {
         addPreconditionServerHealth(trx, srv, Supervision::HEALTH_STATUS_GOOD);
       }

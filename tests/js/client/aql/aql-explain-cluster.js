@@ -127,14 +127,6 @@ function explainSuite () {
       prev = node.id;
       
       node = nodes[n++];
-      assertEqual("SortNode", node.type);
-      assertEqual([ prev ], node.dependencies);
-      assertEqual(1, node.elements.length);
-      assertEqual("a", node.elements[0].inVariable.name);
-      assertTrue(node.stable);
-      prev = node.id;
-      
-      node = nodes[n++];
       assertEqual("CollectNode", node.type);
       assertEqual([ prev ], node.dependencies);
       assertEqual(1, node.groups.length);

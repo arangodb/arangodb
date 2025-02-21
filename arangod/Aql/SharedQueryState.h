@@ -39,7 +39,7 @@ namespace aql {
 class SharedQueryState final
     : public std::enable_shared_from_this<SharedQueryState> {
  public:
-  SharedQueryState(SharedQueryState const&) = delete;
+  SharedQueryState(SharedQueryState const&);
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
   SharedQueryState(ArangodServer& server);
@@ -98,14 +98,39 @@ class SharedQueryState final
 
   void resetWakeupHandler();
 
-  void resetNumWakeups();
-
   /// execute a task in parallel if capacity is there
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
+    // The atomic _numTasks counts the number of ongoing asynchronous
+    // tasks. We need this for two purposes: One is to limit parallelism
+    // so we need to know how many tasks we have already launched. But
+    // Secondly, we want to wait for them to finish when the query is
+    // shut down, in particular when it is killed or has run into an
+    // exception. Note that this is *not* necessary for synchronous
+    // tasks.
+    // When _numTasks drops to 0, we need to wake up a thread which
+    // is waiting for this on the condition variable _cv. We must
+    // not miss this event, or else we might have a thread which is
+    // waiting forever. The waiting thread uses a predicate to check
+    // if _numTasks is 0, and only goes to sleep when it is not. This
+    // happens under the mutex _mutex and releasing the mutex and going
+    // to sleep is an atomic operation. Thus, to not miss the event that
+    // _numTasks is reduced to zero, we must, whenever we decrement it,
+    // do this under the mutex, and then, after releasing the mutex,
+    // notify the condition variable _cv! Then either the decrement or
+    // the going to sleep happens first (serialized by the mutex). If
+    // the decrement happens first, the waiting thread is not even going
+    // to sleep, if the going to sleep happens first, then we will wake
+    // it up.
     unsigned num = _numTasks.fetch_add(1);
     if (num + 1 > _maxTasks) {
+      // We first count down _numTasks to revert the counting up, since
+      // we have not - after all - started a new async task. Then we run
+      // the callback synchronously.
+      std::unique_lock<std::mutex> guard(_mutex);
       _numTasks.fetch_sub(1);  // revert
+      guard.unlock();
+      _cv.notify_all();
       std::forward<F>(cb)(false);
       return false;
     }
@@ -132,7 +157,13 @@ class SharedQueryState final
         });
 
     if (!queued) {
+      // We first count down _numTasks to revert the counting up, since
+      // we have not - after all - started a new async task. Then we run
+      // the callback synchronously.
+      std::unique_lock<std::mutex> guard(_mutex);
       _numTasks.fetch_sub(1);  // revert
+      guard.unlock();
+      _cv.notify_all();
       std::forward<F>(cb)(false);
     }
     return queued;
@@ -158,12 +189,21 @@ class SharedQueryState final
   /// @brief a callback function which is used to implement continueAfterPause.
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
-  std::function<bool()> _wakeupCb;
+  std::function<bool()> _wakeupCallback;
 
   unsigned _numWakeups;  // number of times
-  unsigned _cbVersion;   // increased once callstack is done
+  // The callbackVersion is used to identify callbacks that are associated with
+  // a specific RestHandler. Every time a new callback is set, the version is
+  // updated. That allows us to identify wakeups that are associated with a
+  // callback who's RestHandler has already finished.
+  unsigned _callbackVersion;
 
   unsigned _maxTasks;
+  // Note that we are waiting for _numTasks to drop down to zero using
+  // the condition Variable _cv above, which is protected by the mutex
+  // _mutex above. Therefore, to avoid losing wakeups, it is necessary
+  // to only ever reduce the value of _numTasks under the mutex and then
+  // wake up the condition variable _cv!
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

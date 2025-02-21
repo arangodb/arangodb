@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertTrue, assertNotEqual, NORMALIZE_STRING */
+/* global runSetup assertTrue, assertNotEqual, NORMALIZE_STRING */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -29,13 +29,14 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
 
   db._createDatabase(extendedName);
   db._useDatabase(extendedName);
   db._create("test");
   db.test.insert({_key: "testi"}, {waitForSync: true});
+  return 0;
 }
 
 function recoverySuite () {
@@ -60,13 +61,5 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

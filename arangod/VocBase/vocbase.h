@@ -41,6 +41,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -55,7 +56,8 @@ class ApplicationServer;
 }
 namespace aql {
 class QueryList;
-}
+class QueryPlanCache;
+}  // namespace aql
 namespace replication2 {
 class LogId;
 struct LogIndex;
@@ -126,8 +128,17 @@ struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
   explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
+
+  // note: isInternal=true is currently only used for the special internal
+  // vocbase object that is used to execute IResearchAqlAnalyzer computations,
+  // namely calculationVocbase.
+  // all other vocbases do not set it.
+  // the isInternal flag is necessary for a slightly different setup of the
+  // internal vocbase object, which does not use the MetricsFeature, because
+  // it can outlive the entire ApplicationServer stack.
   TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
-                arangodb::VersionTracker& versionTracker, bool extendedNames);
+                arangodb::VersionTracker& versionTracker, bool extendedNames,
+                bool isInternal = false);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -178,6 +189,7 @@ struct TRI_vocbase_t {
                                   // ReadWriteLock)
 
   std::unique_ptr<arangodb::aql::QueryList> _queries;
+  std::unique_ptr<arangodb::aql::QueryPlanCache> _queryPlanCache;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
 
   std::unique_ptr<arangodb::VocbaseMetrics> _metrics;
@@ -279,6 +291,9 @@ struct TRI_vocbase_t {
   void addReplicationApplier();
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
+  arangodb::aql::QueryPlanCache& queryPlanCache() const {
+    return *_queryPlanCache;
+  }
   arangodb::CursorRepository* cursorRepository() const {
     return _cursorRepository.get();
   }
@@ -292,6 +307,8 @@ struct TRI_vocbase_t {
 
   /// @brief decrease the reference counter for a database
   void release() noexcept;
+
+  arangodb::VocbasePtr getSharedPtr() noexcept;
 
   /// @brief returns whether the database is dangling
   bool isDangling() const noexcept;

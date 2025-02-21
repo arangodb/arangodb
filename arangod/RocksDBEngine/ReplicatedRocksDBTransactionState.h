@@ -43,7 +43,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
   RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const override;
 
-  void beginQuery(ResourceMonitor* resourceMonitor,
+  void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
                   bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
 

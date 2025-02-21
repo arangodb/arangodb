@@ -40,6 +40,8 @@ const userSet = helper.userSet;
 const systemLevel = helper.systemLevel;
 const dbLevel = helper.dbLevel;
 const colLevel = helper.colLevel;
+const arango = require('internal').arango;
+let connectionHandle = arango.getConnectionHandle();
 
 const db = require('internal').db;
 for (let l of rightLevels) {
@@ -193,4 +195,10 @@ describe('User Rights Management', () => {
       }
     }
   });
+
+});
+after(() => {
+  arango.connectHandle(connectionHandle);
+  db._drop(colName);
+  db._useDatabase('_system');
 });

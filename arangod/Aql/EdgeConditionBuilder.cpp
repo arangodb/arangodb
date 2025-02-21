@@ -122,3 +122,31 @@ AstNode* EdgeConditionBuilder::getInboundCondition() {
 arangodb::ResourceMonitor& EdgeConditionBuilder::resourceMonitor() {
   return _resourceMonitor;
 }
+
+void EdgeConditionBuilder::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  auto replace = [&](AstNode*& condition) {
+    if (condition != nullptr) {
+      condition = Ast::replaceVariables(condition, replacements, true);
+    }
+  };
+
+  replace(_fromCondition);
+  replace(_toCondition);
+  replace(_modCondition);
+}
+
+void EdgeConditionBuilder::replaceAttributeAccess(
+    Ast* ast, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable) {
+  auto replace = [&](AstNode*& condition) {
+    if (condition != nullptr) {
+      condition = Ast::replaceAttributeAccess(ast, condition, searchVariable,
+                                              attribute, replaceVariable);
+    }
+  };
+
+  replace(_fromCondition);
+  replace(_toCondition);
+  replace(_modCondition);
+}

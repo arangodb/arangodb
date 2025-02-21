@@ -1,3 +1,4 @@
+import { Box } from "@chakra-ui/react";
 import React from "react";
 import { HashRouter, Route, Switch } from "react-router-dom";
 import { ChakraCustomProvider } from "../../theme/ChakraCustomProvider";
@@ -11,21 +12,23 @@ export const DatabasesViewWrap = () => {
   useDisableNavBar();
   useGlobalStyleReset();
   return (
-    <ChakraCustomProvider overrideNonReact>
-      <HashRouter basename="/" hashType={"noslash"}>
-        <Switch>
-          <Route path="/databases" exact>
-            <DatabasesProvider>
-              <DatabasesView />
-            </DatabasesProvider>
-          </Route>
-          <Route path="/databases/:databaseName">
-            <DatabasesProvider isFormDisabled>
-              <SingleDatabaseView />
-            </DatabasesProvider>
-          </Route>
-        </Switch>
-      </HashRouter>
-    </ChakraCustomProvider>
+    <Box width="100%">
+      <ChakraCustomProvider overrideNonReact>
+        <HashRouter basename="/" hashType={"noslash"}>
+          <Switch>
+            <Route path="/databases" exact>
+              <DatabasesProvider>
+                <DatabasesView />
+              </DatabasesProvider>
+            </Route>
+            <Route path="/databases/:databaseName">
+              <DatabasesProvider isFormDisabled>
+                <SingleDatabaseView />
+              </DatabasesProvider>
+            </Route>
+          </Switch>
+        </HashRouter>
+      </ChakraCustomProvider>
+    </Box>
   );
 };

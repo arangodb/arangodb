@@ -56,6 +56,7 @@
 #include <string_view>
 #include <function2/function2.hpp>
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 #include <velocypack/velocypack-common.h>
 
 namespace arangodb {
@@ -333,6 +334,12 @@ class IndexIterator {
     return false;
   }
 
+  // set an optional limit for the index iterator.
+  // the default implementation does nothing. derived classes can override it
+  // as a performance optimization, so that fewer index results will be
+  // produced.
+  virtual void setLimit(uint64_t limit) noexcept {}
+
   /// @brief skip the next toSkip many elements.
   ///        skipped will be increased by the amount of skipped elements
   ///        afterwards Check hasMore()==true before using this NOTE: This will
@@ -455,6 +462,9 @@ struct IndexIteratorOptions {
   bool waitForSync = false;
   /// @brief iterator will be used with late materialization
   bool forLateMaterialization{false};
+  /// @brief forces the materialize node past this index, even if its not a
+  /// unique one
+  bool pushDownMaterialization{false};
 };
 
 /// index estimate map, defined here because it was convenient

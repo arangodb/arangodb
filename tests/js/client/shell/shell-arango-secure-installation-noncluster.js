@@ -28,6 +28,7 @@ let jsunity = require('jsunity');
 let internal = require('internal');
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
+const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
 
 function arangoSecureInstallationSuite () {
   'use strict';
@@ -58,9 +59,8 @@ function arangoSecureInstallationSuite () {
 
       // set no password for the database
       try {
-        let args = [path];
         // invoke arango-secure-installation without password. this will fail
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
+        const actualRc = executeExternalAndWaitWithSanitizer(arangoSecureInstallation, [path], 'shell-arango-secure-installation-noncluster-1');
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(1, actualRc.exit, actualRc);
       } finally {
@@ -78,9 +78,8 @@ function arangoSecureInstallationSuite () {
       // set an initial password for the database
       internal.env['ARANGODB_DEFAULT_ROOT_PASSWORD'] = 'haxxmann';
       try {
-        let args = [path];
         // invoke arango-secure-installation with password. this must succeed
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
+        const actualRc = executeExternalAndWaitWithSanitizer(arangoSecureInstallation, [path], 'shell-arango-secure-installation-noncluster-2');
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(0, actualRc.exit, actualRc);
       } finally {

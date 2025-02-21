@@ -23,7 +23,6 @@
 
 #include "QuerySnippet.h"
 
-#include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode/DistributeConsumerNode.h"
 #include "Aql/ExecutionNode/DistributeNode.h"
@@ -40,6 +39,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
@@ -309,7 +310,9 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::ENUMERATE_COLLECTION:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
     case ExecutionNode::REMOVE:
@@ -470,6 +473,15 @@ void QuerySnippet::serializeIntoBuilder(
     // it needs to expose its input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
+    // No DBServer-internal parallelism (yet)
+    auto const parallelism = internalGather->parallelism();
+    LOG_TOPIC_IF("dd0f1", DEBUG, Logger::QUERIES,
+                 parallelism != GatherNode::Parallelism::Serial)
+        << "Overriding parallelism of " << toString(parallelism) << " with "
+        << toString(GatherNode::Parallelism::Serial)
+        << " on the DBServer's gather node (belonging to " << _sinkNode->id()
+        << ")";
+    internalGather->setParallelism(GatherNode::Parallelism::Serial);
     auto const reservedId = ExecutionNodeId::InternalNode;
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
@@ -520,7 +532,7 @@ void QuerySnippet::serializeIntoBuilder(
         }
       } else {
         // In this case we actually do not care for the real value, we just need
-        // to ensure that every client get's exactly one copy.
+        // to ensure that every client gets exactly one copy.
         for (size_t i = 0; i < numberOfShardsToPermutate; i++) {
           distIds.emplace_back(StringUtils::itoa(i));
         }
@@ -835,7 +847,9 @@ auto QuerySnippet::prepareFirstBranch(
     } else {
       // exp.node is now either an enumerate collection, index, or modification.
       TRI_ASSERT(exp.node->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+                 exp.node->getType() == ExecutionNode::ENUMERATE_NEAR_VECTORS ||
                  exp.node->getType() == ExecutionNode::INDEX ||
+                 exp.node->getType() == ExecutionNode::INDEX_COLLECT ||
                  exp.node->getType() == ExecutionNode::INSERT ||
                  exp.node->getType() == ExecutionNode::UPDATE ||
                  exp.node->getType() == ExecutionNode::REMOVE ||

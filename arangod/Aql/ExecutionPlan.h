@@ -26,6 +26,7 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/IndexHint.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortElement.h"
@@ -86,9 +87,13 @@ class ExecutionPlan {
   static void getCollectionsFromVelocyPack(aql::Collections& colls,
                                            velocypack::Slice slice);
 
+  /// @brief process the list of collections in a VelocyPack
+  static void extendCollectionsByViewsFromVelocyPack(aql::Collections& colls,
+                                                     velocypack::Slice slice);
+
   /// @brief create an execution plan from VelocyPack
   static std::unique_ptr<ExecutionPlan> instantiateFromVelocyPack(
-      Ast* ast, velocypack::Slice slice);
+      Ast* ast, velocypack::Slice slice, bool simpleSnippetFormat);
 
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
@@ -133,6 +138,10 @@ class ExecutionPlan {
   void decreaseAsyncPrefetchNodes() noexcept;
 
   size_t asyncPrefetchNodes() const noexcept;
+
+  /// @brief returns the first unsatisfied forced index hint, if
+  /// one exists. otherwise returns an empty index hint
+  IndexHint firstUnsatisfiedForcedIndexHint() const;
 
   /// @brief return the next value for a node id
   ExecutionNodeId nextId();
@@ -208,18 +217,18 @@ class ExecutionPlan {
 
   /// @brief find nodes of a certain type
   void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
-                       ExecutionNode::NodeType, bool enterSubqueries);
+                       ExecutionNode::NodeType, bool enterSubqueries) const;
 
   /// @brief find nodes of certain types
   void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
-                       bool enterSubqueries);
+                       bool enterSubqueries) const;
 
   /// @brief find unique nodes of certain types
   void findUniqueNodesOfType(
       containers::SmallVector<ExecutionNode*, 8>& result,
       std::initializer_list<ExecutionNode::NodeType> const&,
-      bool enterSubqueries);
+      bool enterSubqueries) const;
 
   /// @brief find all end nodes in a plan
   void findEndNodes(containers::SmallVector<ExecutionNode*, 8>& result,
@@ -302,8 +311,11 @@ class ExecutionPlan {
   /// @brief create an execution plan from an abstract syntax tree node
   ExecutionNode* fromNode(AstNode const*);
 
-  /// @brief create an execution plan from VPack
-  ExecutionNode* fromSlice(velocypack::Slice const& slice);
+  /// @brief create an execution plan from VPack.
+  /// if simpleSnippetFormat is true, then the slice is expected to be an
+  /// array of nodes. if simpleSnippetFormat is false, then the slice is
+  /// expected to be an object with a "nodes" array.
+  ExecutionNode* fromSlice(velocypack::Slice slice, bool simpleSnippetFormat);
 
   /// @brief whether or not the plan contains at least one node of this type
   bool contains(ExecutionNode::NodeType) const;
@@ -329,7 +341,7 @@ class ExecutionPlan {
   /// @brief find nodes of certain types
   void findNodesOfType(containers::SmallVector<ExecutionNode*, 8>& result,
                        std::initializer_list<ExecutionNode::NodeType> const&,
-                       bool enterSubqueries);
+                       bool enterSubqueries) const;
 
   /// @brief creates a calculation node
   ExecutionNode* createCalculation(Variable*, AstNode const*, ExecutionNode*);
@@ -412,7 +424,6 @@ class ExecutionPlan {
   std::vector<AggregateVarInfo> prepareAggregateVars(ExecutionNode** previous,
                                                      AstNode const* node);
 
- private:
   /// @brief map from node id to the actual node
   std::unordered_map<ExecutionNodeId, ExecutionNode*> _ids;
 
@@ -426,7 +437,7 @@ class ExecutionPlan {
   std::vector<int> _appliedRules;
 
   /// @brief which optimizer rules were disabled for a plan
-  ::arangodb::containers::HashSet<int> _disabledRules;
+  containers::HashSet<int> _disabledRules;
 
   /// @brief whether or not memory usage should be tracked for this plan.
   /// note: tracking memory usage requires accessing the Ast/Query objects,

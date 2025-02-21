@@ -37,11 +37,9 @@ const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
-const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
@@ -106,22 +104,6 @@ const TOP_DIR = (function findTopDir () {
   return topDir;
 }());
 
-// create additional system environment variables for coverage
-function coverageEnvironment () {
-  let result = [];
-  let name = 'LLVM_PROFILE_FILE';
-
-  if (process.env.hasOwnProperty(name)) {
-    result.push(
-      name +
-      "=" +
-      process.env[name] +
-      "/" +
-      crypto.md5(String(internal.time() + Math.random())));
-  }
-
-  return result;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
@@ -370,15 +352,12 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
   
-  let sh = new sanHandler(cmd.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
+  let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  sh.setSanOptions();
-
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
   
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
-  sh.resetSanOptions();
   const deltaTime = time() - startTime;
   let errorMessage = ' - ';
   if (sh.fetchSanFileAfterExit(res.pid)) {
@@ -444,10 +423,10 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       duration: deltaTime
     };
   } else if (res.status === 'TIMEOUT') {
-    print('Date() + Killing ' + cmd + ' - ' + JSON.stringify(args));
+    print(`${RED}${Date()} Killing ${cmd} - ${JSON.stringify(args)} after ${timeout}s${RESET}`);
     let resKill = killExternal(res.pid, abortSignal);
     if (coreCheck) {
-      print(Date() + " executeAndWait: Marking crashy because of timeout - " + JSON.stringify(instanceInfo));
+      print(`${Date()} executeAndWait: Marking crashy because of timeout - ${JSON.stringify(instanceInfo)}`);
       crashUtils.analyzeCrash(cmd,
                               instanceInfo,
                               options,
@@ -487,7 +466,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
 exports.setupBinaries = setupBinaries;
 exports.endpointToURL = endpointToURL;
-exports.coverageEnvironment = coverageEnvironment;
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;

@@ -30,7 +30,7 @@ export const QueryOptionsPane = () => {
             {mode === "json" ? "Show Table" : "Show JSON"}
           </Button>
         </TabList>
-        <TabPanels height="calc(100% - 32px)">
+        <TabPanels height="calc(100% - 32px)" overflow="auto">
           <TabPanel padding="0" height="full">
             <BindVariablesTab mode={mode} />
           </TabPanel>

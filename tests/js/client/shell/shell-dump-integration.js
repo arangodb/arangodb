@@ -34,6 +34,7 @@ const isCluster = require("internal").isCluster();
 const dbs = ["_system", "maçã", "😀", "ﻚﻠﺑ ﻞﻄﻴﻓ", "testName"];
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 const collectionToBeIgnored = ["UnitTestCollectionNoNoDumpA", "UnitTestCollectionNoNoDumpB"];
+const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
 
 const validatorJson = {
   "message": "",
@@ -90,7 +91,7 @@ function dumpIntegrationSuite() {
     args.push(path);
     addConnectionArgs(args);
 
-    let actualRc = internal.executeExternalAndWait(arangodump, args);
+    const actualRc = executeExternalAndWaitWithSanitizer(arangodump, args, 'shell-dump-integration');
     assertTrue(actualRc.hasOwnProperty("exit"));
     assertEqual(expectRc, actualRc.exit);
     return fs.listTree(path);

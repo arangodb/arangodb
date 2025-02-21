@@ -99,13 +99,6 @@ std::chrono::milliseconds sleepTimeFromWaitTime(double waitTime) {
   return std::chrono::seconds(2);
 }
 
-bool isVelocyPack(httpclient::SimpleHttpResult const& response) {
-  bool found = false;
-  std::string const& cType =
-      response.getHeaderField(StaticStrings::ContentTypeHeader, found);
-  return found && cType == StaticStrings::MimeTypeVPack;
-}
-
 std::string const kTypeString = "type";
 std::string const kDataString = "data";
 
@@ -310,7 +303,11 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
           .param("batchId", std::to_string(config.batch.id))
           .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
       reqOptions.database = config.vocbase.name();
-      reqOptions.timeout = network::Timeout(25.0);
+      // We take a relatively generous timeout here, because we have seen
+      // cases in which the leader was under heavy load or RocksDB had
+      // a compaction debt or the user has relatively large documents,
+      // in which case a batch of 5000 can be relatively large.
+      reqOptions.timeout = network::Timeout(900.0);
       auto buffer = requestBuilder.steal();
       auto f = network::sendRequestRetry(
           pool, config.leader.endpoint, fuerte::RestVerb::Put, path,
@@ -465,7 +462,11 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
             .param("serverId", state.localServerIdString)
             .param("batchId", std::to_string(config.batch.id))
             .param("encodeAsHLC", encodeAsHLC ? "true" : "false");
-        reqOptions.timeout = network::Timeout(25.0);
+        // We take a relatively generous timeout here, because we have seen
+        // cases in which the leader was under heavy load or RocksDB had
+        // a compaction debt or the user has relatively large documents,
+        // in which case a batch of 5000 can be relatively large.
+        reqOptions.timeout = network::Timeout(900.0);
         reqOptions.database = config.vocbase.name();
         auto buffer = requestBuilder.steal();
         auto f = network::sendRequestRetry(
@@ -844,7 +845,7 @@ Result DatabaseInitialSyncer::parseCollectionDump(
   char const* p = data.begin();
   char const* end = p + data.length();
 
-  if (isVelocyPack(*response)) {
+  if (replutils::isVelocyPack(*response)) {
     // received a velocypack response from the leader
 
     // intentional copy
@@ -1000,20 +1001,12 @@ void DatabaseInitialSyncer::fetchDumpChunk(
     std::string url =
         absl::StrCat(baseUrl, "&from=", fromTick, "&chunkSize=", chunkSize);
 
-    bool isVPack = false;
     auto headers = replutils::createHeaders();
-    if (_config.leader.version() >= 30800) {
-      // from 3.8 onwards, it is safe and also faster to retrieve vpack-encoded
-      // dumps. in previous versions there may be vpack encoding issues for the
-      // /_api/replication/dump responses.
-      headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
-      isVPack = true;
-    }
 
     _config.progress.set(absl::StrCat(
         "fetching leader collection dump for collection '", coll->name(),
-        "', type: ", typeString, ", format: ", (isVPack ? "vpack" : "json"),
-        ", id: ", leaderColl, ", batch ", batch, ", url: ", url));
+        "', type: ", typeString, ", format: vpack, id: ", leaderColl,
+        ", batch ", batch, ", url: ", url));
 
     double t = TRI_microtime();
 
@@ -1627,17 +1620,12 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
              urlEncode(requestResume.toHLC()) + "&encodeAsHLC=true";
     }
 
-    bool isVPack = false;
     auto headers = replutils::createHeaders();
-    if (_config.leader.version() >= 31000) {
-      headers[StaticStrings::Accept] = StaticStrings::MimeTypeVPack;
-      isVPack = true;
-    }
 
     _config.progress.set(absl::StrCat(
         "fetching leader collection revision ranges for collection '",
-        coll->name(), "', type: ", typeString, ", format: ",
-        (isVPack ? "vpack" : "json"), ", id: ", leaderColl, ", url: ", url));
+        coll->name(), "', type: ", typeString,
+        ", format: vpack, id: ", leaderColl, ", url: ", url));
 
     double t = TRI_microtime();
 
@@ -1725,14 +1713,15 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       stats.numSyncBytesReceived += response->getContentLength();
     }
 
-    auto body = response->getBodyVelocyPack();
-    if (!body) {
+    VPackBuilder body;
+    Result res = replutils::parseResponse(body, response.get());
+    if (res.fail()) {
       ++stats.numFailedConnects;
       return Result(
           TRI_ERROR_INTERNAL,
           "received improperly formed response when fetching revision tree");
     }
-    treeLeader = containers::RevisionTree::deserialize(body->slice());
+    treeLeader = containers::RevisionTree::deserialize(body.slice());
     if (!treeLeader) {
       ++stats.numFailedConnects;
       return Result(
@@ -1966,12 +1955,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     // the shared status will wait in its destructor until all posted
     // requests have been completed/canceled!
     auto self = shared_from_this();
-    auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+    Syncer::JobSynchronizerScope sharedStatus(self);
 
     // order initial chunk. this will block until the initial response
     // has arrived
-    fetchRevisionsChunk(sharedStatus, url, coll, leaderColl, requestPayload,
-                        requestResume);
+    fetchRevisionsChunk(sharedStatus.clone(), url, coll, leaderColl,
+                        requestPayload, requestResume);
 
     // Builder will be recycled
     VPackBuilder responseBuilder;
@@ -2000,7 +1989,7 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
 
       VPackSlice slice;
 
-      if (isVelocyPack(*chunkResponse)) {
+      if (replutils::isVelocyPack(*chunkResponse)) {
         // velocypack body...
 
         // intentional copy of options
@@ -2064,8 +2053,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       if (requestResume < RevisionId::max() && !isAborted()) {
         // already fetch next chunk in the background, by posting the
         // request to the scheduler, which can run it asynchronously
-        sharedStatus->request([self, url, sharedStatus, coll, leaderColl,
-                               requestResume, &requestPayload]() {
+        sharedStatus->request([self, url, sharedStatus = sharedStatus.clone(),
+                               coll, leaderColl, requestResume,
+                               &requestPayload]() {
           std::static_pointer_cast<DatabaseInitialSyncer>(self)
               ->fetchRevisionsChunk(sharedStatus, url, coll, leaderColl,
                                     requestPayload, requestResume);

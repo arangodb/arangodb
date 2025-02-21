@@ -34,7 +34,6 @@
 #include "Basics/icu-helper.h"
 #include "Cluster/ServerState.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/Version.h"
@@ -127,7 +126,7 @@ int main(int argc, char* argv[]) {
       arangodb::LogTimeFormats::TimeFormat::UTCDateStringMicros);
   arangodb::Logger::setShowThreadIdentifier(true);
   arangodb::Logger::initialize(false, 10000);
-  arangodb::LogAppender::addAppender(arangodb::Logger::defaultLogGroup(), "-");
+  arangodb::Logger::addAppender(arangodb::Logger::defaultLogGroup(), "-");
 
   sc.prepare();
 
@@ -139,6 +138,7 @@ int main(int argc, char* argv[]) {
   // so we do it here in a central place
   arangodb::ServerState::instance()->setRebootId(arangodb::RebootId{1});
   arangodb::ServerState::instance()->setGoogleTest(true);
+  IcuInitializer::setup(ARGV0);
 
   // enable mocking globally - not awesome, but helps to prevent runtime
   // assertions in queries

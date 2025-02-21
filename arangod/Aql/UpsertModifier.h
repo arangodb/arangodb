@@ -38,25 +38,13 @@ namespace arangodb::aql {
 
 struct ModificationExecutorInfos;
 
-// TODO Remove this state, and use a variant as in SimpleModifier.
-//      It makes most sense to do this when implementing async upsert
-//      operations, so I'm leaving it for now.
-enum class ModificationExecutorResultState {
-  // State that is used when the Executor's modifier has not been
-  // asked to produce a result.
-  // this is also the initial state.
-  NoResult,
-  // State that is used when the Executor's modifier has been asked
-  // to produce a result, but it returned a WAITING status, i.e. the
-  // result is not yet ready to consume.
-  // This state cannot happen in single servers!
-  WaitingForResult,
-  // State that is used when the Executor's modifier has produced
-  // a result that is ready to consume.
-  HaveResult,
-};
+class UpsertModifier : public std::enable_shared_from_this<UpsertModifier> {
+  struct NoResult {};
+  struct Waiting {};
+  struct HaveResult {};
+  using ResultType =
+      std::variant<NoResult, Waiting, HaveResult, std::exception_ptr>;
 
-class UpsertModifier {
  public:
   enum class OperationType {
     // Return the OLD and/or NEW value, if requested, otherwise CopyRow
@@ -95,8 +83,6 @@ class UpsertModifier {
 
   ~UpsertModifier() = default;
 
-  ModificationExecutorResultState resultState() const noexcept;
-
   void checkException() const {}
   void resetResult() noexcept;
   void reset();
@@ -116,6 +102,13 @@ class UpsertModifier {
   bool hasResultOrException() const noexcept;
   bool hasNeitherResultNorOperationPending() const noexcept;
 
+  // Destroy all InputAqlItemRows, and with it SharedAqlItemBlockPtrs, this
+  // holds. This is necessary to ensure the lifetime of the AqlItemBlocks is
+  // shorter than of the AqlItemBlockManager, to which they are returned.
+  // Also makes sure the transaction Methods will not be used from this point
+  // on, as they might have been destroyed.
+  void stopAndClear() noexcept;
+
  private:
   bool resultAvailable() const;
   VPackArrayIterator getUpdateResultsIterator() const;
@@ -126,6 +119,8 @@ class UpsertModifier {
                                   AqlValue const& updateDoc);
   OperationType insertCase(ModificationExecutorAccumulator& accu,
                            AqlValue const& insertDoc);
+
+  futures::Future<futures::Unit> transactInternal(transaction::Methods& trx);
 
   ModificationExecutorInfos& _infos;
   std::vector<ModOp> _operations;
@@ -139,8 +134,11 @@ class UpsertModifier {
 
   size_t const _batchSize;
 
-  mutable std::mutex _resultStateMutex;
-  ModificationExecutorResultState _resultState;
+  mutable std::mutex _trxMutex;
+  bool _trxAlive = true;
+
+  mutable std::mutex _resultMutex;
+  ResultType _results;
 };
 
 }  // namespace arangodb::aql

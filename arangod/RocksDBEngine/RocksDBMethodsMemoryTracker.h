@@ -62,7 +62,7 @@ class RocksDBMethodsMemoryTracker {
 
   void popSavePoint() noexcept;
 
-  void beginQuery(ResourceMonitor* resourceMonitor);
+  void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor);
 
   void endQuery() noexcept;
 
@@ -104,7 +104,7 @@ class RocksDBMethodsMemoryTracker {
   metrics::Gauge<std::uint64_t>* _metric;
 
   // the underlying ResourceMonitor to publish to. can be a nullptr!
-  ResourceMonitor* _resourceMonitor;
+  std::shared_ptr<ResourceMonitor> _resourceMonitor;
 
   containers::SmallVector<std::uint64_t, 4> _savePoints;
 };

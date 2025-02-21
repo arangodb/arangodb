@@ -1,6 +1,6 @@
+import { InputControl } from "@arangodb/ui";
 import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { InputControl } from "../../../../components/form/InputControl";
 import { useAnalyzersContext } from "../../AnalyzersContext";
 
 export const DelimiterConfig = ({

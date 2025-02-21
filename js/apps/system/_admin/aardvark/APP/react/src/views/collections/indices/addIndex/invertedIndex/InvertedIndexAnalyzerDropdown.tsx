@@ -1,11 +1,10 @@
+import { SingleSelectControl, OptionType } from "@arangodb/ui";
 import { FormLabel, Spacer } from "@chakra-ui/react";
 import { useField, useFormikContext } from "formik";
 import React, { useEffect, useState } from "react";
 import useSWR from "swr";
-import { SelectControl } from "../../../../../components/form/SelectControl";
-import { OptionType } from "../../../../../components/select/SelectBase";
-import { getApiRouteForCurrentDB } from "../../../../../utils/arangoClient";
 import { FormFieldProps } from "../../../../../components/form/FormField";
+import { getCurrentDB } from "../../../../../utils/arangoClient";
 import { InvertedIndexValuesType } from "./useCreateInvertedIndex";
 
 export const InvertedIndexAnalyzerDropdown = ({
@@ -18,13 +17,9 @@ export const InvertedIndexAnalyzerDropdown = ({
   dependentFieldName?: string;
 }) => {
   const [options, setOptions] = useState<OptionType[]>([]);
-  const { data: analyzersResponse } = useSWR("/analyzer", path =>
-    getApiRouteForCurrentDB().get(path)
+  const { data: analyzersList } = useSWR("/analyzer", () =>
+    getCurrentDB().listAnalyzers()
   );
-  const analyzersList = analyzersResponse?.body.result as {
-    name: string;
-    features: string[];
-  }[];
   const { setFieldValue } = useFormikContext<InvertedIndexValuesType>();
   const [formikField] = useField(field.name);
   const analyzerName = formikField.value;
@@ -64,7 +59,7 @@ export const InvertedIndexAnalyzerDropdown = ({
   return (
     <>
       <FormLabel htmlFor={field.name}>{field.label}</FormLabel>
-      <SelectControl
+      <SingleSelectControl
         isDisabled={field.isDisabled}
         selectProps={{
           autoFocus,

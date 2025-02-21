@@ -48,7 +48,8 @@ using namespace arangodb::aql;
 QueryContext::QueryContext(TRI_vocbase_t& vocbase,
                            transaction::OperationOrigin operationOrigin,
                            QueryId id)
-    : _resourceMonitor(GlobalResourceMonitor::instance()),
+    : _resourceMonitor(
+          std::make_shared<ResourceMonitor>(GlobalResourceMonitor::instance())),
       _queryId(id ? id : TRI_NewServerSpecificTick()),
       _collections(&vocbase),
       _vocbase(vocbase),
@@ -100,6 +101,8 @@ std::string const& QueryContext::user() const { return StaticStrings::Empty; }
 
 QueryWarnings& QueryContext::warnings() { return _warnings; }
 
+QueryWarnings const& QueryContext::warnings() const { return _warnings; }
+
 /// @brief look up a graph either from our cache list or from the _graphs
 ///        collection
 ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
@@ -128,15 +131,12 @@ ResultT<graph::Graph const*> QueryContext::lookupGraphByName(
   return graphPtr;
 }
 
-void QueryContext::addDataSource(  // track DataSource
-    std::shared_ptr<arangodb::LogicalDataSource> const&
-        ds  // DataSource to track
-) {
+void QueryContext::addDataSource(LogicalDataSource const& ds) {
   TRI_ASSERT(_execState != QueryExecutionState::ValueType::EXECUTION);
-  _queryDataSources.try_emplace(ds->guid(), ds->name());
+  _queryDataSources.try_emplace(ds.guid(), ds.name());
 }
 
-aql::Ast* QueryContext::ast() { return _ast.get(); }
+aql::Ast* QueryContext::ast() const { return _ast.get(); }
 
 void QueryContext::enterV8Executor() {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
