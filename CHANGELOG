@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
+  reference.
+
 * The agency supervision is clearing "finished" jobs too quickly from
   Target/Finished and Failed. They will be forthwith be kept for at least 1h.
 
