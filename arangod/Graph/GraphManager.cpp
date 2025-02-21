@@ -22,30 +22,25 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GraphManager.h"
-#include "GraphOperations.h"
-
-#include <velocypack/Buffer.h>
-#include <velocypack/Collection.h>
-#include <velocypack/Iterator.h>
-#include <array>
-#include <boost/range/join.hpp>
-#include <utility>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
-#include "Basics/ReadLocker.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
+#include "Graph/GraphOperations.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/RequestOptions.h"
 #include "Sharding/ShardingInfo.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -63,13 +58,20 @@
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
+#include <boost/range/join.hpp>
+#include <velocypack/Buffer.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Iterator.h>
+
+#include <array>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::graph;
 using VelocyPackHelper = basics::VelocyPackHelper;
 
 namespace {
-static bool arrayContainsCollection(VPackSlice array,
-                                    std::string const& colName) {
+bool arrayContainsCollection(VPackSlice array, std::string const& colName) {
   TRI_ASSERT(array.isArray());
   for (VPackSlice it : VPackArrayIterator(array)) {
     if (it.stringView() == colName) {
@@ -140,6 +142,7 @@ bool GraphManager::renameGraphCollection(std::string const& oldName,
   if (res.fail()) {
     return false;
   }
+  invalidateQueryOptimizerCaches();
   return true;
 }
 
@@ -387,7 +390,7 @@ OperationResult GraphManager::createGraph(VPackSlice document,
   }
 
   // finally save the graph
-  return storeGraph(*(graph.get()), waitForSync, false);
+  return storeGraph(*graph, waitForSync, false);
 }
 
 OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
@@ -417,6 +420,9 @@ OperationResult GraphManager::storeGraph(Graph const& graph, bool waitForSync,
                                             builder.slice(), options);
 
   res = trx.finish(result.result);
+
+  invalidateQueryOptimizerCaches();
+
   if (res.fail() && result.ok()) {
     return OperationResult{std::move(res), options};
   }
@@ -497,7 +503,7 @@ Result GraphManager::ensureAllCollections(Graph* graph,
       if (col->type() != TRI_COL_TYPE_EDGE) {
         return Result(
             TRI_ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,
-            "Collection: '" + col->name() + "' is not an EdgeCollection");
+            "Collection: '" + col->name() + "' is not an edge collection");
       } else {
         // found the collection
         existentEdgeCollections.emplace(std::move(col));
@@ -826,7 +832,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
     for (auto const& it : graph->edgeCollections()) {
       if (!checkCollectionAccess(it)) {
         return {TRI_ERROR_FORBIDDEN,
-                "Createing Graphs requires RW access on the database (" +
+                "Createing graphs requires RW access on the database (" +
                     databaseName + ")"};
       }
     }
@@ -835,7 +841,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
     for (auto const& it : graph->vertexCollections()) {
       if (!checkCollectionAccess(it)) {
         return {TRI_ERROR_FORBIDDEN,
-                "Createing Graphs requires RW access on the database (" +
+                "Createing graphs requires RW access on the database (" +
                     databaseName + ")"};
       }
     }
@@ -844,7 +850,7 @@ Result GraphManager::checkCreateGraphPermissions(Graph const* graph) const {
         << logprefix << "No write access to " << databaseName << "."
         << StaticStrings::GraphsCollection;
     return {TRI_ERROR_ARANGO_READ_ONLY,
-            "Createing Graphs requires RW access on the database (" +
+            "Createing graphs requires RW access on the database (" +
                 databaseName + ")"};
   }
 
@@ -932,6 +938,8 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
     builder.add(StaticStrings::KeyString, VPackValue(graph.name()));
   }
 
+  invalidateQueryOptimizerCaches();
+
   {  // Remove from _graphs
     OperationOptions options(ExecContext::current());
     options.waitForSync = waitForSync;
@@ -997,6 +1005,8 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
       return OperationResult{firstDropError, options};
     }
   }
+
+  ctx()->vocbase().queryPlanCache().invalidateAll();
 
   return OperationResult{TRI_ERROR_NO_ERROR, options};
 }
@@ -1238,3 +1248,48 @@ Result GraphManager::ensureVertexShardingMatches(
   return TRI_ERROR_NO_ERROR;
 }
 #endif
+
+void GraphManager::invalidateQueryOptimizerCaches() const {
+  // First our own cache:
+  _vocbase.queryPlanCache().invalidateAll();
+
+  LOG_TOPIC("33232", TRACE, Logger::GRAPHS)
+      << "Invalidating query optimizer cache locally.";
+
+  // If we are in a cluster, send a request to all other coordinators:
+  if (!ServerState::instance()->isCoordinator()) {
+    return;
+  }
+
+  auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+  auto& nf = _vocbase.server().getFeature<NetworkFeature>();
+
+  auto coords = ci.getCurrentCoordinators();
+  std::vector<futures::Future<network::Response>> requests;
+  requests.reserve(coords.size());
+
+  network::RequestOptions opts;
+  opts.database = _vocbase.name();
+
+  std::string path{"/_api/query-plan-cache"};
+  for (auto const& server : coords) {
+    if (server != ServerState::instance()->getId()) {
+      // Do not send a message to ourselves!
+      auto f =
+          network::sendRequestRetry(nf.pool(), "server:" + server,
+                                    fuerte::RestVerb::Delete, path, {}, opts);
+      requests.emplace_back(std::move(f).then(
+          [server](auto&& response) { return std::move(response).get(); }));
+      LOG_TOPIC("33231", TRACE, Logger::GRAPHS)
+          << "Invalidating query optimizer cache remotely on server " << server
+          << " (fire-and-forget)";
+    }
+  }
+  // We just do a fire-and-forget here, the worst that can happen is that
+  // we did not reach a coordinator and it is still using an old cache
+  // entry referring to a graph situtation that does not exist anymore.
+  // Since the query cache entries are invalidated automatically after some
+  // time, this fixes itself. After all, the only thing we could potentially
+  // do would be to retry, but this is already done by `sendRequestRetry`.
+  // So we just return here and let the request objects go out of scope.
+}

@@ -157,6 +157,7 @@ class StaticStrings {
   static std::string const IndexNameEdgeFrom;
   static std::string const IndexNameEdgeTo;
   static std::string const IndexNamePrimary;
+  static std::string const IndexNameVector;
 
   // index hint strings
   static std::string const IndexHintDisableIndex;
@@ -174,6 +175,8 @@ class StaticStrings {
   static std::string const JoinStrategyType;
   static std::string const Algorithm;
   static std::string const Legacy;
+  static std::string_view constexpr PushDownMaterialization{
+      "pushDownMaterialization"};
 
   // HTTP headers
   static std::string const Accept;

@@ -1,3 +1,8 @@
+import {
+  CreatableMultiSelectControl,
+  SingleSelectControl,
+  SwitchControl
+} from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   AccordionButton,
@@ -11,10 +16,7 @@ import {
 } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { CreatableMultiSelectControl } from "../../../../components/form/CreatableMultiSelectControl";
-import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
-import { SwitchControl } from "../../../../components/form/SwitchControl";
 
 export const StoredValuesAccordionItem = () => {
   return (
@@ -75,7 +77,7 @@ const StoredValuesFields = () => {
                     <FormLabel htmlFor={`storedValues.${index}.compression`}>
                       Compression
                     </FormLabel>
-                    <SelectControl
+                    <SingleSelectControl
                       name={`storedValues.${index}.compression`}
                       selectProps={{
                         options: compressionOptions
@@ -83,19 +85,15 @@ const StoredValuesFields = () => {
                     />
                   </Box>
                   <Box minWidth={"0"}>
-                    <FormLabel
-                      htmlFor={`storedValues.${index}.cache`}
-                    >
-                      Cache
-                    </FormLabel>
                     <SwitchControl
+                      label="Cache"
                       switchProps={{
                         isDisabled: !window.frontendConfig.isEnterprise
                       }}
                       tooltip={
                         window.frontendConfig.isEnterprise
-                        ? undefined
-                        : "Field normalization value caching is available in Enterprise plans."
+                          ? undefined
+                          : "Field normalization value caching is available in the Enterprise Edition."
                       }
                       name={`storedValues.${index}.cache`}
                     />

@@ -209,13 +209,14 @@ class runInArangoshRunner extends testRunnerBase {
     return this.instanceManager.findEndpoint();
   }
   runOneTest(file) {
-    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let args = ct.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
 
     args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);
 
     args['javascript.unit-test-filter'] = this.options.testCase;
+
+    args['javascript.execution-deadline'] = this.options.oneTestTimeout;
 
     if (this.options.forceJson) {
       args['server.force-json'] = true;
@@ -230,7 +231,7 @@ class runInArangoshRunner extends testRunnerBase {
     if (this.addArgs !== undefined) {
       args = Object.assign(args, this.addArgs);
     }
-    // TODO require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager);
+    require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
     let rc = pu.executeAndWait(pu.ARANGOSH_BIN, toArgv(args), this.options, 'arangosh', this.instanceManager.rootDir, this.options.coreCheck);
     return readTestResult(this.instanceManager.rootDir, rc, args['javascript.unit-tests']);
   }
@@ -273,7 +274,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
     }
 
     try {
-      SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout * 1000);
+      SetGlobalExecutionDeadlineTo(this.options.oneTestTimeout);
       let result = testFunc();
       let timeout = SetGlobalExecutionDeadlineTo(0.0);
       if (timeout) {
@@ -281,7 +282,7 @@ class runLocalInArangoshRunner extends testRunnerBase {
           timeout: true,
           forceTerminate: true,
           status: false,
-          message: `test aborted due to ${require('internal').getDeadlineReasonString()}. Original test status: ${JSON.stringify(result)}`,
+          message: `test aborted due to >>${require('internal').getDeadlineReasonString()}<<. Original test status: ${JSON.stringify(result)}`,
         };
       }
       if (result === undefined) {

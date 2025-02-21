@@ -231,10 +231,10 @@ function IResearchFeatureDDLTestSuite1() {
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(2, Object.keys(properties.links).length);
-        var indexes = db.TestCollection0.getIndexes(false);
+        var indexes = db.TestCollection0.indexes(false);
         assertEqual(2, indexes.length);
         assertEqual("primary", indexes[0].type);
-        indexes = db.TestCollection0.getIndexes(false, true);
+        indexes = db.TestCollection0.indexes(false, true);
         assertEqual(3, indexes.length);
         var ii = indexes[1];
         assertEqual("primary", indexes[0].type);
@@ -246,7 +246,7 @@ function IResearchFeatureDDLTestSuite1() {
         assertEqual("arangosearch", link.type);
         db._dropView("TestView");
         assertEqual(null, db._view("TestView"));
-        assertEqual(2, db.TestCollection0.getIndexes(false, true).length);
+        assertEqual(2, db.TestCollection0.indexes(false, true).length);
       }
       let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
       assertEqual(100, result.length);
@@ -275,7 +275,7 @@ function IResearchFeatureDDLTestSuite1() {
         let properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(2, Object.keys(properties.links).length);
-        var indexes = db.TestCollection0.getIndexes(false, true);
+        var indexes = db.TestCollection0.indexes(false, true);
         assertEqual(3, indexes.length);
         var ii = indexes[1];
         assertNotEqual(null, ii);
@@ -288,7 +288,7 @@ function IResearchFeatureDDLTestSuite1() {
         properties = view.properties();
         assertTrue(Object === properties.links.constructor);
         assertEqual(0, Object.keys(properties.links).length);
-        assertEqual(2, db.TestCollection0.getIndexes(false, true).length);
+        assertEqual(2, db.TestCollection0.indexes(false, true).length);
       }
       let result = db._query("FOR doc IN TestCollection0 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.name_1 != 'wrong' RETURN doc").toArray();
       assertEqual(100, result.length);
@@ -1761,7 +1761,7 @@ function IResearchFeatureDDLTestSuite1() {
       // check link stats
       checkIndexMetrics(function () {
         for (const type of types) {
-          let figures = db.TestCollection.getIndexes(true, true)
+          let figures = db.TestCollection.indexes(true, true)
             .find(e => e.type === type)
             .figures;
           assertNotEqual(null, figures);
@@ -1793,7 +1793,7 @@ function IResearchFeatureDDLTestSuite1() {
       // check link stats
       checkIndexMetrics(function () {
         for (const type of types) {
-          let figures = db.TestCollection.getIndexes(true, true)
+          let figures = db.TestCollection.indexes(true, true)
             .find(e => e.type === type)
             .figures;
           assertNotEqual(null, figures);
@@ -1832,7 +1832,7 @@ function IResearchFeatureDDLTestSuite1() {
       // check link stats
       checkIndexMetrics(function () {
         for (const type of types) {
-          let figures = db.TestCollection.getIndexes(true, true)
+          let figures = db.TestCollection.indexes(true, true)
             .find(e => e.type === type)
             .figures;
           assertNotEqual(null, figures);
@@ -1872,7 +1872,7 @@ function IResearchFeatureDDLTestSuite1() {
       // check link stats
       checkIndexMetrics(function () {
         for (const type of types) {
-          let figures = db.TestCollection.getIndexes(true, true)
+          let figures = db.TestCollection.indexes(true, true)
             .find(e => e.type === type)
             .figures;
           assertNotEqual(null, figures);
@@ -1907,7 +1907,7 @@ function IResearchFeatureDDLTestSuite1() {
       // check link stats
       checkIndexMetrics(function () {
         for (const type of types) {
-          let figures = db.TestCollection.getIndexes(true, true)
+          let figures = db.TestCollection.indexes(true, true)
             .find(e => e.type === type)
             .figures;
           assertNotEqual(null, figures);
@@ -2310,7 +2310,7 @@ function IResearchFeatureDDLTestSuite2() {
       assertEqual(initialCount + inTransCount, docs.length);
 
       // inBackground should not be returned as part of index definition
-      let indexes = col.getIndexes(false, true);
+      let indexes = col.indexes(false, true);
       assertEqual(3, indexes.length);
       var index = indexes[1];
       assertEqual("inverted", index.type);

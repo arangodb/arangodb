@@ -40,6 +40,8 @@
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
+#include "Aql/ExecutionNode/MaterializeNode.h"
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
@@ -62,6 +64,7 @@
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionNode/SubqueryStartExecutionNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/MaterializeNode.h"
 #include "Aql/ExecutionNode/UpdateNode.h"
 #include "Aql/ExecutionNode/UpsertNode.h"
 #include "Aql/ExecutionNode/WindowNode.h"
@@ -207,7 +210,7 @@ void replaceGatherNodeVariables(
       // no match. now check all our replacements and compare how
       // their sources are actually calculated (e.g. #2 may mean
       // "foo.bar")
-      cmp = it.toString();
+      cmp = it.toVarAccessString();
       for (auto const& it3 : replacements) {
         auto setter = plan->getVarSetBy(it3.first->id);
         if (setter == nullptr || setter->getType() != EN::CALCULATION) {
@@ -635,7 +638,9 @@ static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
 static constexpr std::initializer_list<arangodb::aql::ExecutionNode::NodeType>
     scatterInClusterNodeTypes{
         arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION,
+        arangodb::aql::ExecutionNode::ENUMERATE_NEAR_VECTORS,
         arangodb::aql::ExecutionNode::INDEX,
+        arangodb::aql::ExecutionNode::MATERIALIZE,
         arangodb::aql::ExecutionNode::ENUMERATE_IRESEARCH_VIEW,
         arangodb::aql::ExecutionNode::INSERT,
         arangodb::aql::ExecutionNode::UPDATE,
@@ -3081,6 +3086,23 @@ struct SortToIndexNode final
     }
   }
 
+  SortElementVector makeIndexSortElements(SortCondition const& sortCondition,
+                                          Variable const* outVariable) {
+    TRI_ASSERT(sortCondition.isOnlyAttributeAccess());
+    SortElementVector elements;
+    elements.reserve(sortCondition.numAttributes());
+    for (auto const& field : sortCondition.sortFields()) {
+      std::vector<std::string> path;
+      path.reserve(field.attributes.size());
+      std::transform(field.attributes.begin(), field.attributes.end(),
+                     std::back_inserter(path),
+                     [](auto const& a) { return a.name; });
+      elements.push_back(
+          SortElement::createWithPath(outVariable, field.asc, path));
+    }
+    return elements;
+  }
+
   bool handleEnumerateCollectionNode(
       EnumerateCollectionNode* enumerateCollectionNode) {
     if (_sortNode == nullptr) {
@@ -3104,9 +3126,8 @@ struct SortToIndexNode final
     SortCondition sortCondition(_plan, _sorts, constAttributes,
                                 nonNullAttributes, _variableDefinitions);
 
-    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
-        sortCondition.isUnidirectional()) {
-      // we have found a sort condition, which is unidirectional
+    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess()) {
+      // we have found a sort condition
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
@@ -3129,31 +3150,45 @@ struct SortToIndexNode final
         condition->normalize(_plan);
         TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
-        opts.ascending = sortCondition.isAscending();
+        TRI_ASSERT(!sortCondition.isEmpty());
+        opts.ascending = sortCondition.sortFields()[0].asc;
         opts.useCache = false;
-        auto n = _plan->createNode<IndexNode>(
+        auto indexNode = _plan->createNode<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
             outVariable, usedIndexes,
             false,  // here we could always assume false as there is no lookup
                     // condition here
             std::move(condition), opts);
 
-        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
-        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
+        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*indexNode);
+        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan,
+                                                                  *indexNode);
 
-        _plan->replaceNode(enumerateCollectionNode, n);
+        _plan->replaceNode(enumerateCollectionNode, indexNode);
         _modified = true;
 
         if (coveredAttributes == sortCondition.numAttributes()) {
-          // if the index covers the complete sort condition, we can also remove
-          // the sort node
-          n->needsGatherNodeSort(true);
-          _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+          deleteSortNode(indexNode, sortCondition);
+        } else if (usedIndexes.size() == 1 &&
+                   usedIndexes[0]->type() ==
+                       Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+          _sortNode->setGroupedElements(coveredAttributes);
         }
       }
     }
 
     return true;  // always abort further searching here
+  }
+
+  void deleteSortNode(IndexNode* indexNode, SortCondition& sortCondition) {
+    // sort condition is fully covered by index... now we can remove the
+    auto sortNode = _plan->getNodeById(_sortNode->id());
+    _plan->unlinkNode(sortNode);
+    // we need to have a sorted result later on, so we will need a sorted
+    // GatherNode in the cluster
+    indexNode->needsGatherNodeSort(
+        makeIndexSortElements(sortCondition, indexNode->outVariable()));
+    _modified = true;
   }
 
   bool handleIndexNode(IndexNode* indexNode) {
@@ -3207,7 +3242,6 @@ struct SortToIndexNode final
 
     // if we get here, we either have one index or multiple indexes on the same
     // attributes
-    bool handled = false;
 
     if (indexes.size() == 1 && isSorted) {
       // if we have just a single index and we can use it for the filtering
@@ -3226,13 +3260,13 @@ struct SortToIndexNode final
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
     // FIXME: why not just call index->supportsSortCondition here always?
-    bool indexCoversSortCondition = false;
+    bool indexFullyCoversSortCondition = false;
     if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
-      indexCoversSortCondition =
+      indexFullyCoversSortCondition =
           index->supportsSortCondition(&sortCondition, outVariable, 1)
               .supportsCondition;
     } else {
-      indexCoversSortCondition =
+      indexFullyCoversSortCondition =
           isOnlyAttributeAccess && isSorted && !isSparse &&
           sortCondition.isUnidirectional() &&
           sortCondition.isAscending() == indexNode->options().ascending &&
@@ -3240,44 +3274,43 @@ struct SortToIndexNode final
               sortCondition.numAttributes();
     }
 
-    if (indexCoversSortCondition) {
-      // sort condition is fully covered by index... now we can remove the
-      // sort node from the plan
-      _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-      // we need to have a sorted result later on, so we will need a sorted
-      // GatherNode in the cluster
-      indexNode->needsGatherNodeSort(true);
-      _modified = true;
-      handled = true;
-    }
+    if (indexFullyCoversSortCondition) {
+      deleteSortNode(indexNode, sortCondition);
+    } else if (index->type() ==
+               Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+      auto [numberOfCoveredAttributes, sortIsAscending] =
+          sortCondition.coveredUnidirectionalAttributesWithDirection(
+              outVariable, fields);
+      if (isOnlyAttributeAccess && isSorted && !isSparse &&
+          numberOfCoveredAttributes > 0) {
+        indexNode->setAscending(sortIsAscending);
+        _sortNode->setGroupedElements(numberOfCoveredAttributes);
+        _modified = true;
+      }
+    } else {
+      if (isOnlyAttributeAccess && indexes.size() == 1) {
+        // special case... the index cannot be used for sorting, but we only
+        // compare with equality lookups.
+        // now check if the equality lookup attributes are the same as
+        // the index attributes
+        auto root = cond->root();
 
-    if (!handled && isOnlyAttributeAccess && indexes.size() == 1) {
-      // special case... the index cannot be used for sorting, but we only
-      // compare with equality lookups.
-      // now check if the equality lookup attributes are the same as
-      // the index attributes
-      auto root = cond->root();
+        if (root != nullptr) {
+          auto condNode = root->getMember(0);
 
-      if (root != nullptr) {
-        auto condNode = root->getMember(0);
+          if (condNode->isOnlyEqualityMatch()) {
+            // now check if the index fields are the same as the sort condition
+            // fields e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1,
+            // c.value2
+            size_t const numCovered =
+                sortCondition.coveredAttributes(outVariable, fields);
 
-        if (condNode->isOnlyEqualityMatch()) {
-          // now check if the index fields are the same as the sort condition
-          // fields e.g. FILTER c.value1 == 1 && c.value2 == 42 SORT c.value1,
-          // c.value2
-          size_t const numCovered =
-              sortCondition.coveredAttributes(outVariable, fields);
-
-          if (numCovered == sortCondition.numAttributes() &&
-              sortCondition.isUnidirectional() &&
-              (isSorted || fields.size() >= sortCondition.numAttributes())) {
-            // no need to sort
-            _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
-            indexNode->setAscending(sortCondition.isAscending());
-            // we need to have a sorted result later on, so we will need a
-            // sorted GatherNode in the cluster
-            indexNode->needsGatherNodeSort(true);
-            _modified = true;
+            if (numCovered == sortCondition.numAttributes() &&
+                sortCondition.isUnidirectional() &&
+                (isSorted || fields.size() >= sortCondition.numAttributes())) {
+              deleteSortNode(indexNode, sortCondition);
+              indexNode->setAscending(sortCondition.isAscending());
+            }
           }
         }
       }
@@ -3337,8 +3370,10 @@ struct SortToIndexNode final
       case EN::DISTRIBUTE:
       case EN::GATHER:
       case EN::REMOTE:
+      case EN::MATERIALIZE:
       case EN::LIMIT:  // LIMIT is criterion to stop
-        return true;   // abort.
+      case EN::ENUMERATE_NEAR_VECTORS:
+        return true;  // abort.
 
       case EN::SORT:  // pulling two sorts together is done elsewhere.
         if (!_sorts.empty() || _sortNode != nullptr) {
@@ -3346,13 +3381,13 @@ struct SortToIndexNode final
         }
         _sortNode = ExecutionNode::castTo<SortNode*>(en);
         for (auto& it : _sortNode->elements()) {
+          TRI_ASSERT(it.attributePath.empty());
           _sorts.emplace_back(it.var, it.ascending);
         }
         return false;
 
       case EN::INDEX:
         return handleIndexNode(ExecutionNode::castTo<IndexNode*>(en));
-
       case EN::ENUMERATE_COLLECTION:
         return handleEnumerateCollectionNode(
             ExecutionNode::castTo<EnumerateCollectionNode*>(en));
@@ -3787,6 +3822,9 @@ auto extractVocbaseFromNode(ExecutionNode* at) -> TRI_vocbase_t* {
 //
 // In an ideal world the node itself would know how to compute these parameters
 // for GatherNode (sortMode, parallelism, and elements), and we'd just ask it.
+//
+// firstDependency servers to indicate what was the first dependency to the
+// execution node before it got unlinked and linked with remote nodes
 auto insertGatherNode(
     ExecutionPlan& plan, ExecutionNode* node,
     SmallUnorderedMap<ExecutionNode*, ExecutionNode*> const& subqueries)
@@ -3810,33 +3848,30 @@ auto insertGatherNode(
                                                parallelism);
     } break;
     case ExecutionNode::INDEX: {
-      auto elements = SortElementVector{};
       auto idxNode = ExecutionNode::castTo<IndexNode const*>(node);
       auto collection = idxNode->collection();
       TRI_ASSERT(collection != nullptr);
       auto numberOfShards = collection->numberOfShards();
 
-      Variable const* sortVariable = idxNode->outVariable();
-      bool isSortAscending = idxNode->options().ascending;
-      auto allIndexes = idxNode->getIndexes();
-      TRI_ASSERT(!allIndexes.empty());
+      auto elements = [&] {
+        auto allIndexes = idxNode->getIndexes();
+        TRI_ASSERT(!allIndexes.empty());
 
-      // Using Index for sort only works if all indexes are equal.
-      auto const& first = allIndexes[0];
-      // also check if we actually need to bother about the sortedness of the
-      // result, or if we use the index for filtering only
-      if (first->isSorted() && idxNode->needsGatherNodeSort()) {
-        for (auto const& path : first->fieldNames()) {
-          elements.push_back(
-              SortElement::createWithPath(sortVariable, isSortAscending, path));
-        }
-        for (auto const& it : allIndexes) {
-          if (first != it) {
-            elements.clear();
-            break;
+        // Using Index for sort only works if all indexes are equal.
+        auto const& first = allIndexes[0];
+
+        // also check if we actually need to bother about the sortedness of the
+        // result, or if we use the index for filtering only
+        if (first->isSorted() && idxNode->needsGatherNodeSort()) {
+          for (auto const& it : allIndexes) {
+            if (first != it) {
+              return SortElementVector{};
+            }
           }
         }
-      }
+
+        return idxNode->getSortElements();
+      }();
 
       auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
       auto parallelism = GatherNode::evaluateParallelism(*collection);
@@ -3848,6 +3883,43 @@ auto insertGatherNode(
         gatherNode->elements(elements);
       }
       return gatherNode;
+    }
+    case ExecutionNode::MATERIALIZE: {
+      auto const* materializeNode =
+          ExecutionNode::castTo<materialize::MaterializeNode const*>(node);
+      auto const* maybeEnumerateNearVectorNode =
+          plan.getVarSetBy(materializeNode->outVariable().id);
+
+      if (maybeEnumerateNearVectorNode != nullptr &&
+          maybeEnumerateNearVectorNode->getType() ==
+              ExecutionNode::ENUMERATE_NEAR_VECTORS) {
+        auto const* enumerateNearVectorNode =
+            ExecutionNode::castTo<EnumerateNearVectorNode const*>(
+                maybeEnumerateNearVectorNode);
+        auto elements = SortElementVector{};
+        auto const* collection = enumerateNearVectorNode->collection();
+        TRI_ASSERT(collection != nullptr);
+        auto numberOfShards = collection->numberOfShards();
+
+        Variable const* sortVariable =
+            enumerateNearVectorNode->distanceOutVariable();
+        elements.push_back(SortElement::createWithPath(
+            sortVariable, enumerateNearVectorNode->isAscending(), {}));
+
+        auto sortMode = GatherNode::evaluateSortMode(numberOfShards);
+        auto parallelism = GatherNode::evaluateParallelism(*collection);
+
+        gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(), sortMode,
+                                                 parallelism);
+
+        if (!elements.empty() && numberOfShards != 1) {
+          gatherNode->elements(elements);
+        }
+        return gatherNode;
+      }
+      gatherNode = plan.createNode<GatherNode>(&plan, plan.nextId(),
+                                               GatherNode::SortMode::Default);
+      break;
     }
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
@@ -4659,8 +4731,9 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             collectNode->groupVariables(copy);
 
             replaceGatherNodeVariables(plan.get(), gatherNode, replacements);
-          } else if (  //! collectNode->groupVariables().empty() &&
-              !collectNode->hasOutVariable()) {
+          } else if (!collectNode->hasOutVariable() ||
+                     collectNode->getOptions()
+                         .aggregateIntoExpressionOnDBServers) {
             // clone a COLLECT v1 = expr, v2 = expr ... operation from the
             // coordinator to the DB server(s), and leave an aggregate COLLECT
             // node on the coordinator for total aggregation
@@ -4696,11 +4769,25 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               outVars.emplace_back(GroupVarInfo{out, it.inVar});
             }
 
+            Variable const* expressionVariable = nullptr;
+            Variable const* outVariable = nullptr;
+            std::vector<std::pair<Variable const*, std::string>> keepVariables;
+
+            bool const aggregateOutVariablesOnDBServers =
+                collectNode->getOptions().aggregateIntoExpressionOnDBServers &&
+                collectNode->hasOutVariable();
+
+            if (aggregateOutVariablesOnDBServers) {
+              outVariable =
+                  plan->getAst()->variables()->createTemporaryVariable();
+              expressionVariable = collectNode->expressionVariable();
+              keepVariables = collectNode->keepVariables();
+            }
+
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
-                dbServerAggVars, nullptr, nullptr,
-                std::vector<std::pair<Variable const*, std::string>>{},
-                collectNode->variableMap());
+                dbServerAggVars, expressionVariable, outVariable,
+                std::move(keepVariables), collectNode->variableMap());
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -4722,6 +4809,11 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
               it.inVar = dbServerAggVars[j].outVar;
               it.type = Aggregator::runOnCoordinatorAs(it.type);
               ++j;
+            }
+
+            if (aggregateOutVariablesOnDBServers) {
+              TRI_ASSERT(outVariable != nullptr);
+              collectNode->setMergeListsAggregation(outVariable);
             }
 
             removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
@@ -4827,12 +4919,14 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
         case EN::LIMIT:
         case EN::INDEX:
         case EN::ENUMERATE_COLLECTION:
+        case EN::ENUMERATE_NEAR_VECTORS:
         case EN::TRAVERSAL:
         case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
         case EN::SUBQUERY:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::MATERIALIZE:
           // do break
           stopSearching = true;
           break;
@@ -4883,7 +4977,8 @@ void arangodb::aql::distributeFilterCalcToClusterRule(
 
         default: {
           // should not reach this point
-          TRI_ASSERT(false);
+          TRI_ASSERT(false)
+              << "Unhandled node type " << inspectNode->getTypeString();
         }
       }
 
@@ -4934,7 +5029,9 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::SINGLETON:
         case EN::ENUMERATE_COLLECTION:
         case EN::ENUMERATE_LIST:
+        case EN::ENUMERATE_NEAR_VECTORS:
         case EN::COLLECT:
+        case EN::INDEX_COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -4955,10 +5052,11 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::TRAVERSAL:
         case EN::ENUMERATE_PATHS:
         case EN::SHORTEST_PATH:
-        case EN::REMOTESINGLE:
+        case EN::REMOTE_SINGLE:
         case EN::REMOTE_MULTIPLE:
         case EN::ENUMERATE_IRESEARCH_VIEW:
         case EN::WINDOW:
+        case EN::MATERIALIZE:
         case EN::OFFSET_INFO_MATERIALIZE:
 
           // For all these, we do not want to pull a SortNode further down
@@ -5010,10 +5108,7 @@ void arangodb::aql::distributeSortToClusterRule(
           // ready to rumble!
           break;
         }
-        // late-materialization should be set only after sort nodes are
-        // distributed in cluster as it accounts this disctribution. So we
-        // should not encounter this kind of nodes for now
-        case EN::MATERIALIZE:
+        // we should not encounter this kind of nodes for now
         case EN::SUBQUERY_START:
         case EN::SUBQUERY_END:
         case EN::DISTRIBUTE_CONSUMER:
@@ -7187,6 +7282,21 @@ static bool optimizeSortNode(ExecutionPlan* plan, SortNode* sort,
       // establish a cross-shard sortedness by distance.
       info.exesToModify.emplace(sort, expr);
       info.nodesToRemove.emplace(expr->node());
+    } else {
+      // In the cluster case, we want to leave the SORT node in - for now!
+      // This is to achieve that the GATHER node which is introduced to
+      // distribute the query in the cluster remembers to sort things
+      // using merge sort. However, later there will be a rule which
+      // moves the sorting to the dbserver. When this rule is triggered,
+      // we do not want to reinsert the SORT node on the dbserver, since
+      // there, the items are already sorted by means of the geo index.
+      // Therefore, we tell the sort node here, not to be reinserted
+      // on the dbserver later on.
+      // This is crucial to avoid that the SORT node remains and pulls
+      // the whole collection out of the geo index, on the grounds that
+      // the SORT node wants to sort the results, which is very bad for
+      // performance.
+      sort->dontReinsertInCluster();
     }
     return true;
   }
@@ -7524,6 +7634,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::FILTER:
     case ExecutionNode::LIMIT:
     case ExecutionNode::SORT:
@@ -7536,6 +7647,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
@@ -7543,7 +7655,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::RETURN:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::SCATTER:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_START:

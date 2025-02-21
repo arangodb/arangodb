@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Async/Registry/promise.h"
 #include "Futures/Exceptions.h"
 #include "Futures/SharedState.h"
 #include "Futures/Unit.h"
@@ -120,15 +121,16 @@ class Promise {
 
   arangodb::futures::Future<T> getFuture();
 
-  auto set_promise_waiter(void* waiter) {
-    return _state->set_promise_waiter(waiter);
-  }
   auto id() -> void* { return _state->id(); }
-  auto update_source_location(std::source_location loc) {
+  auto update_source_location(std::source_location loc) -> void {
     _state->update_source_location(std::move(loc));
   }
-  auto update_state(async_registry::State state) {
-    _state->update_state(std::move(state));
+  auto update_state(async_registry::State state)
+      -> std::optional<async_registry::State> {
+    return _state->update_state(std::move(state));
+  }
+  auto update_requester(async_registry::Requester waiter) -> void {
+    return _state->update_requester(waiter);
   }
 
  private:

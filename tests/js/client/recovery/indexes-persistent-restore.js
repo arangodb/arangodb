@@ -65,7 +65,7 @@ function recoverySuite () {
 
     testIndexesRocksDBRestore: function () {
       var c = db._collection('UnitTestsRecovery1'), idx, i;
-      idx = c.getIndexes()[1];
+      idx = c.indexes()[1];
       assertFalse(idx.unique);
       assertFalse(idx.sparse);
       assertEqual([ 'value' ], idx.fields);

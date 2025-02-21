@@ -35,7 +35,7 @@ let db = arangodb.db;
 
 let { versionHas } = require('@arangodb/test-helper');
 
-const isCov = versionHas('coverage');
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const {
   launchSnippetInBG,
   joinBGShells,
@@ -126,7 +126,7 @@ function CommunicationSuite() {
       db[cn].insert({ _key: "stop" }, { overwriteMode: "ignore" });
       let tries = 0;
       let done = 0;
-      const waitFor = isCov ? 80 * 4 : 80;
+      const waitFor = isInstr ? 80 * 7 : 80;
       joinBGShells(IM.options, clients, waitFor, cn);
 
       assertEqual(1 + clients.length, db[cn].count());
@@ -188,7 +188,7 @@ function CommunicationSuite() {
       };
 
       // run the suite for 5 minutes
-      runTests(tests, 5 * 60);
+      runTests(tests, 5 * 60 * (isInstr ? 2 : 1));
     },
   };
 }
@@ -429,7 +429,7 @@ function GenericAqlSetupPathSuite(type) {
       });
 
       debug("waiting for all test clients");
-      const waitFor = isCov ? 60 * 4 : 60;
+      const waitFor = isInstr ? 60 * 4 : 60;
       joinBGShells(IM.options, clients, waitFor, cn);
       assertEqual(clients.length, db[cn].count());
       let stats = {};
@@ -452,20 +452,19 @@ function GenericAqlSetupPathSuite(type) {
   const USE_EXCLUSIVE = 1;
   const NON_EXCLUSIVE = 2;
   const NO_SHARD_SYNC = 3;
-
+  const nCov = !versionHas('coverage');
   const testCases = [
-    ["Exclusive", exclusiveQuery, true, USE_EXCLUSIVE],
-    ["Write", writeQuery, true, NON_EXCLUSIVE],
-    ["Read", readQuery, false, NON_EXCLUSIVE],
-    ["JSExclusive", jsExclusive, true, USE_EXCLUSIVE],
-    ["JSWrite", jsWrite, true, NON_EXCLUSIVE],
-    ["JSRead", jsRead, false, NON_EXCLUSIVE],
-    ["APIExclusive", apiExclusive, true, USE_EXCLUSIVE],
-    ["APIWrite", apiWrite, true, NON_EXCLUSIVE],
-    ["APIRead", apiRead, false, NON_EXCLUSIVE],
-    ["DocumentWrite", documentWrite, true, NO_SHARD_SYNC]
+    ["Exclusive", exclusiveQuery, true, USE_EXCLUSIVE, true],
+    ["Write", writeQuery, true, NON_EXCLUSIVE, true],
+    ["Read", readQuery, false, NON_EXCLUSIVE, true],
+    ["JSExclusive", jsExclusive, true, USE_EXCLUSIVE, nCov],
+    ["JSWrite", jsWrite, true, NON_EXCLUSIVE, nCov],
+    ["JSRead", jsRead, false, NON_EXCLUSIVE, nCov],
+    ["APIExclusive", apiExclusive, true, USE_EXCLUSIVE, true],
+    ["APIWrite", apiWrite, true, NON_EXCLUSIVE, true],
+    ["APIRead", apiRead, false, NON_EXCLUSIVE, true],
+    ["DocumentWrite", documentWrite, true, NO_SHARD_SYNC, true]
   ];
-
   const addTestCase = (suite, first, second) => {
     const [fName, fCode, fWrites, fExclusive] = first;
     const [sName, sCode, sWrites, sExclusive] = second;
@@ -654,7 +653,9 @@ function GenericAqlSetupPathSuite(type) {
   // this way we get all permutations without duplicates.
   for (let i = 0; i < lastTypeTestCase; ++i) {
     for (let j = i; j < testCases.length; ++j) {
-      addTestCase(testSuite, testCases[i], testCases[j]);
+      if (testCases[i][4] && testCases[j][4]) {
+        addTestCase(testSuite, testCases[i], testCases[j]);
+      }
     }
   }
 

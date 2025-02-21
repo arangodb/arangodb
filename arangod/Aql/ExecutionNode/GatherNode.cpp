@@ -146,6 +146,7 @@ auto arangodb::aql::toString(GatherNode::SortMode mode) noexcept
       case SHORTEST_PATH:
       case ENUMERATE_PATHS:
       case INDEX:
+      case ENUMERATE_NEAR_VECTORS:
       case ENUMERATE_COLLECTION: {
         auto const* cNode = castTo<CollectionAccessingNode const*>(node);
         if (!cNode->isUsedAsSatellite() &&
@@ -170,7 +171,7 @@ auto arangodb::aql::toString(GatherNode::SortMode mode) noexcept
       case DISTRIBUTE:
         TRI_ASSERT(false);
         return nullptr;  // diamond boundary
-      case REMOTESINGLE:
+      case REMOTE_SINGLE:
       case REMOTE_MULTIPLE:
         // While being a CollectionAccessingNode, it lives on the Coordinator.
         // However it should thus not be encountered here.

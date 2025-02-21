@@ -602,8 +602,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     SynchronizeShard& job,
     std::chrono::time_point<std::chrono::steady_clock> endTime,
     std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice config,
-    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy,
-    bool syncByRevision, AgencyCache& agencyCache) {
+    VPackBuilder& sy, bool syncByRevision, AgencyCache& agencyCache,
+    replutils::LeaderInfo& leaderInfo, TRI_voc_tick_t& lastLogTick) {
   auto& vocbase = col->vocbase();
   auto database = vocbase.name();
 
@@ -625,14 +625,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     // In this phase we use the normal leader ID without following term id:
     syncer->setLeaderId(leaderId);
   }
-
-  syncer->setOnSuccessCallback(
-      [tailingSyncer](DatabaseInitialSyncer& syncer) -> Result {
-        // store leader info for later, so that the next phases don't need to
-        // acquire it again. this saves an HTTP roundtrip to the leader when
-        // initializing the WAL tailing.
-        return tailingSyncer->inheritFromInitialSyncer(syncer);
-      });
 
   ReplicationTimeoutFeature& timeouts =
       job.feature().server().getFeature<ReplicationTimeoutFeature>();
@@ -699,6 +691,9 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
           << r.errorMessage();
       return r;
     }
+
+    leaderInfo = syncer->leaderInfo();
+    lastLogTick = syncer->getLastLogTick();
 
     {
       VPackObjectBuilder o(&sy);
@@ -1120,18 +1115,6 @@ bool SynchronizeShard::first() {
         << shardNameForLogging() << " for central "
         << ::shardNameForLogging(database, planId);
 
-    // the destructor of the tailingSyncer will automatically unregister itself
-    // from the leader in case it still has to do so (it will do it at most once
-    // per tailingSyncer object, and only if the tailingSyncer registered itself
-    // on the leader)
-    std::shared_ptr<DatabaseTailingSyncer> tailingSyncer =
-        buildTailingSyncer(guard.database(), ep);
-
-    // tailingSyncer cannot be a nullptr here, because
-    // DatabaseTailingSyncer::create() returns the result of a make_shared
-    // operation.
-    TRI_ASSERT(tailingSyncer != nullptr);
-
     try {
       // From here on we perform a number of steps, each of which can
       // fail. If it fails with an exception, it is caught, but this
@@ -1197,9 +1180,12 @@ bool SynchronizeShard::first() {
       startTime = std::chrono::system_clock::now();
 
       VPackBuilder builder;
+      auto leaderInfo = replutils::LeaderInfo::createEmpty();
+      TRI_voc_tick_t lastLogTick = 0;
       ResultT<SyncerId> syncRes = replicationSynchronize(
-          *this, _endTimeForAttempt, collection, config.slice(), tailingSyncer,
-          builder, syncByRevision, _clusterFeature.agencyCache());
+          *this, _endTimeForAttempt, collection, config.slice(), builder,
+          syncByRevision, _clusterFeature.agencyCache(), leaderInfo,
+          lastLogTick);
 
       auto const endTime = std::chrono::system_clock::now();
 
@@ -1264,6 +1250,18 @@ bool SynchronizeShard::first() {
       ReplicationTimeoutFeature& timeouts =
           _feature.server().getFeature<ReplicationTimeoutFeature>();
 
+      // the destructor of the tailingSyncer will automatically unregister
+      // itself from the leader in case it still has to do so (it will do it at
+      // most once per tailingSyncer object, and only if the tailingSyncer
+      // registered itself on the leader)
+      std::shared_ptr<DatabaseTailingSyncer> tailingSyncer =
+          buildTailingSyncer(guard.database(), ep);
+
+      // tailingSyncer cannot be a nullptr here, because
+      // DatabaseTailingSyncer::create() returns the result of a make_shared
+      // operation.
+      TRI_ASSERT(tailingSyncer != nullptr);
+      tailingSyncer->inheritFromInitialSyncer(leaderInfo, lastLogTick);
       tailingSyncer->setCancellationCheckCallback(
           [=, endTime = _endTimeForAttempt, shardName = shardNameForLogging(),
            &timeouts]() -> bool {

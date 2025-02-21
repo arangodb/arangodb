@@ -96,6 +96,56 @@ function WriteConcernReadOnlyMetricSuite() {
       }
       assertNotEqual(k, 100);
     },
+
+    testCheckMetricChangeWriteConcern: function () {
+
+      const c = db._create("c", {numberOfShards: 1, replicationFactor: 2, writeConcern: 2});
+      const [shard, [leader, follower]] = Object.entries(c.shards(true))[0];
+
+      // this should work
+      c.insert({});
+      waitForShardsInSync(c.name());
+
+      // query metric, it should be zero
+      let metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
+      assertEqual(metricValue, 0);
+
+      // suspend the follower
+      global.instanceManager.debugSetFailAt("LogicalCollection::insert", '', follower);
+      global.instanceManager.debugSetFailAt("SynchronizeShard::disable", '', follower);
+
+      // trigger a follower drop
+      c.insert({});
+
+      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
+      assertEqual(metricValue, 1); // one shard does not have enough in sync follower
+
+      // change write concern
+      c.properties({writeConcern: 1});
+
+      // should work fine
+      c.insert({});
+
+      metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
+      assertEqual(metricValue, 0);
+
+      global.instanceManager.debugClearFailAt();
+      waitForShardsInSync(c.name());
+
+      // now drop the database. we expect the metric to be gone
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+
+      let k = 0;
+      for (; k < 100; k++) {
+        const metrics = getAllMetric(getUrlById(leader), '');
+        if (metrics.indexOf(database) === -1) {
+          break;
+        }
+        internal.sleep(0.5);
+      }
+      assertNotEqual(k, 100);
+    },
   };
 }
 

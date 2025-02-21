@@ -301,26 +301,9 @@ class RocksDBMdiIndexIterator final : public IndexIterator {
 
 namespace {
 
-auto convertDouble(double x) -> zkd::byte_string {
-  zkd::BitWriter bw;
-  bw.append(zkd::Bit::ZERO);  // add zero bit for `not infinity`
-  zkd::into_bit_writer_fixed_length(bw, x);
-  return std::move(bw).str();
-}
-
-auto accessDocumentPath(VPackSlice doc,
-                        std::vector<basics::AttributeName> const& path)
-    -> VPackSlice {
-  for (auto&& attrib : path) {
-    TRI_ASSERT(attrib.shouldExpand == false);
-    if (!doc.isObject()) {
-      return VPackSlice::noneSlice();
-    }
-
-    doc = doc.get(attrib.name);
-  }
-
-  return doc;
+auto convertDouble(double const x) -> zkd::byte_string {
+  // leading with zero to indicate `not infinity`
+  return zkd::into_zero_leading_fixed_length_byte_string(x);
 }
 
 ResultT<zkd::byte_string> readDocumentKey(
@@ -330,7 +313,7 @@ ResultT<zkd::byte_string> readDocumentKey(
   v.reserve(fields.size());
 
   for (auto const& path : fields) {
-    VPackSlice value = accessDocumentPath(doc, path);
+    VPackSlice value = rocksutils::accessDocumentPath(doc, path);
     if (!value.isNumber<double>()) {
       return {TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE};
     }

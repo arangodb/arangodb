@@ -61,11 +61,6 @@ class NoResultsExecutorTest
   }
 };
 
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
-
 auto NoResultsInputSplits =
     ::testing::Values(splitIntoBlocks<2, 3>, splitStep<1>, splitStep<2>);
 // This is just a random list of calls.

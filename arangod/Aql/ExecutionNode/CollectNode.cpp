@@ -67,7 +67,7 @@ CollectNode::CollectNode(
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables)
     : ExecutionNode(plan, base),
-      _options(base),
+      _options(base.get("collectOptions")),
       _groupVariables(groupVariables),
       _aggregateVariables(aggregateVariables),
       _expressionVariable(expressionVariable),
@@ -446,10 +446,11 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -458,6 +459,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -472,6 +474,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::SINGLETON:
     case ExecutionNode::SUBQUERY_START:
     case ExecutionNode::COLLECT:
+    case ExecutionNode::INDEX_COLLECT:
       return true;
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::ENUMERATE_LIST:
@@ -496,7 +499,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
@@ -505,6 +508,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::OFFSET_INFO_MATERIALIZE:
     case ExecutionNode::ASYNC:
     case ExecutionNode::WINDOW:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
       return false;
     case ExecutionNode::MUTEX:  // should not appear here
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
@@ -518,12 +522,14 @@ auto isLoop(ExecutionNode const& node) -> bool {
   switch (node.getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::JOIN:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW:
+    case ExecutionNode::ENUMERATE_NEAR_VECTORS:
     case ExecutionNode::COLLECT:
       return true;
     case ExecutionNode::SINGLETON:
@@ -544,7 +550,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
     case ExecutionNode::NORESULTS:
     case ExecutionNode::DISTRIBUTE:
     case ExecutionNode::UPSERT:
-    case ExecutionNode::REMOTESINGLE:
+    case ExecutionNode::REMOTE_SINGLE:
     case ExecutionNode::REMOTE_MULTIPLE:
     case ExecutionNode::DISTRIBUTE_CONSUMER:
     case ExecutionNode::SUBQUERY_END:
@@ -741,7 +747,10 @@ void CollectNode::aggregationMethod(
   _options.fixMethod(method);
 }
 
-CollectOptions& CollectNode::getOptions() { return _options; }
+CollectOptions& CollectNode::getOptions() noexcept { return _options; }
+CollectOptions const& CollectNode::getOptions() const noexcept {
+  return _options;
+}
 
 bool CollectNode::hasOutVariable() const { return _outVariable != nullptr; }
 
@@ -838,4 +847,13 @@ std::vector<Variable const*> CollectNode::getVariablesSetHere() const {
     v.emplace_back(_outVariable);
   }
   return v;
+}
+
+void CollectNode::setMergeListsAggregation(Variable const* outVariable) {
+  _aggregateVariables.emplace_back(
+      AggregateVarInfo{_outVariable, outVariable, "MERGE_LISTS"});
+
+  // clear out variable and expression variable
+  _outVariable = _expressionVariable = nullptr;
+  _keepVariables.clear();
 }

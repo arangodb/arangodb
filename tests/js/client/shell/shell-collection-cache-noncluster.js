@@ -58,7 +58,7 @@ function CollectionCacheSuite () {
       assertEqual(f.cacheUsage, 0);
       assertEqual(f.cacheLifeTimeHitRate, 0);
 
-      let idxs = c.getIndexes(true);
+      let idxs = c.indexes(true);
       idxs.forEach(function(idx) {
         if (idx.type === 'primary') {
           assertTrue(idx.figures.cacheInUse, idx);
@@ -74,7 +74,7 @@ function CollectionCacheSuite () {
       assertFalse(p.cacheEnabled, p);
       let f = c.figures();
       assertFalse(f.cacheInUse, f);
-      let idxs = c.getIndexes(true);
+      let idxs = c.indexes(true);
       idxs.forEach(function(idx) {
         if (idx.type === 'primary') {
           assertFalse(idx.figures.cacheInUse);
@@ -89,7 +89,7 @@ function CollectionCacheSuite () {
       f = c.figures();
       assertTrue(f.cacheInUse, f);
       assertEqual(f.cacheLifeTimeHitRate, 0);
-      idxs = c.getIndexes(true);
+      idxs = c.indexes(true);
       idxs.forEach(function(idx) {
         if (idx.type === 'primary') {
           assertTrue(idx.figures.cacheInUse);
@@ -103,7 +103,7 @@ function CollectionCacheSuite () {
       assertFalse(p.cacheEnabled, p);
       f = c.figures();
       assertFalse(f.cacheInUse, f);
-      idxs = c.getIndexes(true);
+      idxs = c.indexes(true);
       idxs.forEach(function(idx) {
         if (idx.type === 'primary') {
           assertFalse(idx.figures.cacheInUse);
@@ -132,7 +132,7 @@ function CollectionCacheSuite () {
       assertEqual(f.cacheUsage, 0);
       assertEqual(f.cacheLifeTimeHitRate, 0);
 
-      let idxs = c.getIndexes(true);
+      let idxs = c.indexes(true);
       idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
           assertTrue(idx.figures.cacheSize > 0);

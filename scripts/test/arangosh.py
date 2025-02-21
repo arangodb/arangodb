@@ -3,13 +3,12 @@
 import logging
 import os
 from async_client import (
+    ArangoCLIprogressiveTimeoutExecutor,
+
     make_logfile_params,
     logfile_line_result,
     delete_logfile_params,
 )
-
-from async_client import ArangoCLIprogressiveTimeoutExecutor
-
 
 class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
     """configuration"""
@@ -114,4 +113,5 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         )
         delete_logfile_params(params)
         ret["error"] = params["error"]
+        ret['pid'] = params['pid']
         return ret

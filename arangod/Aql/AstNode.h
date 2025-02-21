@@ -56,45 +56,70 @@ using AstNodeFlagsType = uint32_t;
 /// the flags are used to prevent repeated calculations of node properties
 /// (e.g. is the node value constant, sorted etc.)
 enum AstNodeFlagType : AstNodeFlagsType {
-  DETERMINED_SORTED =
-      0x0000001,  // node is a list and its members are sorted asc.
-  DETERMINED_CONSTANT = 0x0000002,  // node value is constant (i.e. not dynamic)
-  DETERMINED_SIMPLE =
-      0x0000004,  // node value is simple (i.e. for use in a simple expression)
-  DETERMINED_NONDETERMINISTIC = 0x0000010,  // node produces non-deterministic
-                                            // result (e.g. function call nodes)
-  DETERMINED_RUNONDBSERVER =
-      0x0000020,  // node can run on the DB server in a cluster setup
-  DETERMINED_CHECKUNIQUENESS =
-      0x0000040,              // object's keys must be checked for uniqueness
-  DETERMINED_V8 = 0x0000080,  // node will use V8 internally
+  // node is an array and its members are sorted asc.
+  DETERMINED_SORTED = 0x0000001,
 
-  VALUE_SORTED = 0x0000100,    // node is a list and its members are sorted asc.
-  VALUE_CONSTANT = 0x0000200,  // node value is constant (i.e. not dynamic)
-  VALUE_SIMPLE =
-      0x0000400,  // node value is simple (i.e. for use in a simple expression)
-  VALUE_NONDETERMINISTIC = 0x0001000,  // node produces non-deterministic result
-                                       // (e.g. function call nodes)
-  VALUE_RUNONDBSERVER =
-      0x0002000,  // node can run on the DB server in a cluster setup
-  VALUE_CHECKUNIQUENESS =
-      0x0004000,         // object's keys must be checked for uniqueness
-  VALUE_V8 = 0x0008000,  // node will use V8 internally
-  FLAG_KEEP_VARIABLENAME =
-      0x0010000,  // node is a reference to a variable name, not the variable
-                  // value (used in KEEP nodes)
-  FLAG_BIND_PARAMETER = 0x0020000,  // node was created from a bind parameter
-  FLAG_FINALIZED =
-      0x0040000,  // node has been finalized and should not be modified; only
-                  // set and checked in maintainer mode
-  FLAG_SUBQUERY_REFERENCE = 0x0080000,  // node references a subquery
+  // node value is constant (i.e. not dynamic)
+  DETERMINED_CONSTANT = 0x0000002,
 
-  FLAG_INTERNAL_CONST = 0x0100000,  // internal, constant node
+  // node value is simple (i.e. for use in a simple expression)
+  DETERMINED_SIMPLE = 0x0000004,
 
-  FLAG_BOOLEAN_EXPANSION = 0x0200000,  // make expansion result boolean
+  // node produces non-deterministic result (e.g. function call nodes)
+  DETERMINED_NONDETERMINISTIC = 0x0000010,
 
-  FLAG_READ_OWN_WRITES =
-      0x0400000,  // reads own writes (only needed for UPSERT FOR nodes)
+  // node can run on the DB server in a cluster setup
+  DETERMINED_RUNONDBSERVER = 0x0000020,
+
+  // object's keys must be checked for uniqueness
+  DETERMINED_CHECKUNIQUENESS = 0x0000040,
+
+  // node will use V8 internally
+  DETERMINED_V8 = 0x0000080,
+
+  // node is a list and its members are sorted asc.
+  VALUE_SORTED = 0x0000100,
+
+  // node value is constant (i.e. not dynamic)
+  VALUE_CONSTANT = 0x0000200,
+
+  // node value is simple (i.e. for use in a simple expression)
+  VALUE_SIMPLE = 0x0000400,
+
+  // node produces non-deterministic result (e.g. function call nodes)
+  VALUE_NONDETERMINISTIC = 0x0001000,
+
+  // node can run on the DB server in a cluster setup
+  VALUE_RUNONDBSERVER = 0x0002000,
+
+  // object's keys must be checked for uniqueness
+  VALUE_CHECKUNIQUENESS = 0x0004000,
+
+  // node will use V8 internally
+  VALUE_V8 = 0x0008000,
+
+  // node is a reference to a variable name, not the variable value (used in
+  // KEEP nodes)
+  FLAG_KEEP_VARIABLENAME = 0x0010000,
+
+  // node was created from a bind parameter
+  FLAG_BIND_PARAMETER = 0x0020000,
+
+  // node has been finalized and should not be modified; only set and checked in
+  // maintainer mode
+  FLAG_FINALIZED = 0x0040000,
+
+  // node references a subquery
+  FLAG_SUBQUERY_REFERENCE = 0x0080000,
+
+  // internal, constant node
+  FLAG_INTERNAL_CONST = 0x0100000,
+
+  // make expansion result boolean
+  FLAG_BOOLEAN_EXPANSION = 0x0200000,
+
+  // reads own writes (only needed for UPSERT FOR nodes)
+  FLAG_READ_OWN_WRITES = 0x0400000,
 };
 
 /// @brief enumeration of AST node value types

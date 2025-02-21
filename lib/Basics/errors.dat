@@ -248,6 +248,7 @@ ERROR_QUERY_BIND_PARAMETERS_INVALID,1550,"invalid structure of bind parameters",
 ERROR_QUERY_BIND_PARAMETER_MISSING,1551,"no value specified for declared bind parameter '%s'","Will be raised when a bind parameter was declared in the query but the query is being executed with no value for that parameter."
 ERROR_QUERY_BIND_PARAMETER_UNDECLARED,1552,"bind parameter '%s' was not declared in the query","Will be raised when a value gets specified for an undeclared bind parameter."
 ERROR_QUERY_BIND_PARAMETER_TYPE,1553,"bind parameter '%s' has an invalid value or type","Will be raised when a bind parameter has an invalid value or type."
+ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,1554,"failed vector search","APPROX_NEAR function could not apply vector search, either the vector index is missing or the query optimization could not apply vector index."
 ERROR_QUERY_INVALID_ARITHMETIC_VALUE,1561,"invalid arithmetic value","Will be raised when a non-numeric value is used in an arithmetic operation."
 ERROR_QUERY_DIVISION_BY_ZERO,1562,"division by zero","Will be raised when there is an attempt to divide by zero."
 ERROR_QUERY_ARRAY_EXPECTED,1563,"array expected","Will be raised when a non-array operand is used for an operation that expects an array argument operand."
@@ -272,6 +273,7 @@ ERROR_QUERY_FUNCTION_INVALID_NAME,1580,"invalid user function name","Will be rai
 ERROR_QUERY_FUNCTION_INVALID_CODE,1581,"invalid user function code","Will be raised when a user function is registered with invalid code."
 ERROR_QUERY_FUNCTION_NOT_FOUND,1582,"user function '%s()' not found","Will be raised when a user function is accessed but not found."
 ERROR_QUERY_FUNCTION_RUNTIME_ERROR,1583,"user function runtime error: %s","Will be raised when a user function throws a runtime exception."
+ERROR_QUERY_NOT_ELIGIBLE_FOR_PLAN_CACHING,1584,"query is not eligible for plan caching","Will be raised when a query is not eligible for plan caching and yet, the usePlanCache option was set to true."
 
 ################################################################################
 ## AQL query registry errors

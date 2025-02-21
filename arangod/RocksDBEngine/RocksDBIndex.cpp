@@ -38,6 +38,7 @@
 #include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
+#include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -405,6 +406,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
       return RocksDBKeyBounds::MdiIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return RocksDBKeyBounds::MdiVPackIndex(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_VECTOR_INDEX:
+      return RocksDBKeyBounds::VectorVPackIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

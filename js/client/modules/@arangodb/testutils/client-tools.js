@@ -33,6 +33,9 @@ const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 const { sanHandler } = require('@arangodb/testutils/san-file-handler');
 const executeExternal = internal.executeExternal;
+const { versionHas } = require("@arangodb/test-helper");
+const isCov = versionHas('coverage');
+const isSan = versionHas('tsan') || versionHas('aulsan');
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -347,7 +350,7 @@ function launchInShellBG  (file) {
   const logFile = `file://${file}.log`;
   let moreArgs = {
     'server.database': arango.getDatabaseName(),
-    'server.request-timeout': '30',
+    'server.request-timeout': IM.options.serverRequestTimeout,
     'log.foreground-tty': 'false',
     //'log.level': ['info', 'httpclient=debug', 'V8=debug'],
     'log.output': logFile,
@@ -455,9 +458,14 @@ function joinBGShells (options, clients, waitFor, cn) {
           client.failed = failed;
           client.done = true;
         }
-        if (client.status.status === 'TERMINATED' && client.status.exit === 0) {
-          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
-          client.failed = false;
+        if (client.status === 'TERMINATED') {
+          if (client.exit === 0) {
+            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+            client.failed = false;
+          } else {
+            IM.options.cleanup = false;
+            client.failed = true;
+          }
         }
       }
     });
@@ -558,7 +566,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     print(argv);
   }
   
-  let timeout = (options.isInstrumented) ? 60 * 26 : 60 * 15;
+  let timeout = (options.isInstrumented) ? 60 * 30 : 60 * 15;
   return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
 }
 function rtaWaitShardsInSync(options, instanceManager) {
@@ -581,6 +589,7 @@ function rtaWaitShardsInSync(options, instanceManager) {
     print(myargs);
   }
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, myargs, options, 'arangosh', instanceManager.rootDir, options.coreCheck);
+  return rc;
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangoimport
@@ -677,7 +686,6 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
-    // 'server.request-timeout': 1200 // default now.
     'server.connection-timeout': 10 // 5s default
   };
 
@@ -716,11 +724,13 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
     'rtaNegFilter': '',
-    'makedataDB': "_system"
+    'makedataDB': "_system",
+    'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
   });
 
   tu.CopyIntoList(optionsDocumentation, [
     ' Client tools options:',
+    '   - `serverRequestTimeout` The http timeout to arangods of any client tool',
     '   - `makedataDB`: Database to run makedata with, defaults to _system',
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',

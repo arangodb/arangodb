@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Feature.h"
 
+#include "Basics/FutureSharedLock.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
@@ -52,10 +53,9 @@ DECLARE_GAUGE(arangodb_async_registered_threads, std::uint64_t,
               "list all asynchronous promises");
 
 Feature::Feature(Server& server)
-    : ArangodFeature{server, *this},
-      metrics{create_metrics(
-          server.template getFeature<arangodb::metrics::MetricsFeature>())} {
-  registry.set_metrics(metrics);
+    : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
+  startsAfter<metrics::MetricsFeature>();
+  startsAfter<SchedulerFeature>();
 }
 
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
@@ -67,6 +67,10 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       metrics_feature.addShared(arangodb_async_threads_total{}),
       metrics_feature.addShared(arangodb_async_running_threads{}),
       metrics_feature.addShared(arangodb_async_registered_threads{}));
+}
+auto Feature::asyncLock()
+    -> futures::Future<futures::FutureSharedLock<SchedulerWrapper>::LockGuard> {
+  return _async_mutex.asyncLockExclusive();
 }
 
 struct Feature::PromiseCleanupThread {
@@ -92,6 +96,9 @@ struct Feature::PromiseCleanupThread {
 };
 
 void Feature::start() {
+  metrics = create_metrics(
+      server().template getFeature<arangodb::metrics::MetricsFeature>());
+  registry.set_metrics(metrics);
   _cleanupThread = std::make_shared<PromiseCleanupThread>(_options.gc_timeout);
 }
 

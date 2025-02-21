@@ -55,7 +55,7 @@ function ArangoSearchDanglingLinkSuite () {
       db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
       db._dropView("dangle");
       let nCount = 0;
-      while(db.foo.getIndexes(true, true).length > 1) {
+      while(db.foo.indexes(true, true).length > 1) {
         internal.sleep(1);
         nCount++;
         // 30 secs should be more than enough to kick in cleanup
@@ -69,13 +69,13 @@ function ArangoSearchDanglingLinkSuite () {
       db._createView("dangle", "arangosearch", {links:{foo:{includeAllFields:true}}});
       db._dropView("dangle");
       let nCount = 0;
-      while(db.foo.getIndexes(true, true).length > 1 && nCount < 10) {
+      while(db.foo.indexes(true, true).length > 1 && nCount < 10) {
         internal.sleep(1);
         nCount++;
       }
       assertEqual(10, nCount);
       IM.debugClearFailAt("IResearchLink::failDropDangling");
-      while(db.foo.getIndexes(true, true).length > 1) {
+      while(db.foo.indexes(true, true).length > 1) {
         internal.sleep(1);
         nCount++;
         // 30 secs should be more than enough to kick in cleanup

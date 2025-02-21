@@ -69,11 +69,6 @@ class ReturnExecutorTest
   }
 };
 
-template<size_t... vs>
-const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
-template<size_t step>
-const SplitType splitStep = SplitType{step};
-
 INSTANTIATE_TEST_CASE_P(
     ReturnExecutor, ReturnExecutorTest,
     ::testing::Combine(::testing::Values(splitIntoBlocks<2, 3>,

@@ -1,6 +1,6 @@
+import { OptionType } from "@arangodb/ui";
 import { CollectionMetadata, CollectionType } from "arangojs/collection";
 import useSWR from "swr";
-import { OptionType } from "../../../components/select/SelectBase";
 import {
   getApiRouteForCurrentDB,
   getCurrentDB
@@ -77,18 +77,18 @@ const useCollectionOptions = () => {
   >(`/collections`, fetchCollections);
   const result = data?.reduce(
     (acc, collection) => {
-      if (collection.type === CollectionType.EDGE_COLLECTION) {
+      if (collection.isSystem) {
+        acc.systemCollectionOptions.push({
+          label: collection.name,
+          value: collection.name
+        });
+      } else if (collection.type === CollectionType.EDGE_COLLECTION) {
         acc.edgeCollectionOptions.push({
           label: collection.name,
           value: collection.name
         });
       } else if (collection.type === CollectionType.DOCUMENT_COLLECTION) {
         acc.documentCollectionOptions.push({
-          label: collection.name,
-          value: collection.name
-        });
-      } else if (collection.isSystem) {
-        acc.systemCollectionOptions.push({
           label: collection.name,
           value: collection.name
         });
@@ -122,9 +122,9 @@ export const useQuerySpotlightOptions = () => {
       options: builtinFunctions || []
     },
     { label: "Keywords", options: AQL_KEYWORDS_OPTIONS },
-    { label: "Edges", options: edgeCollectionOptions || [] },
-    { label: "Documents", options: documentCollectionOptions || [] },
-    { label: "System", options: systemCollectionOptions || [] }
+    { label: "Edge Collections", options: edgeCollectionOptions || [] },
+    { label: "Document Collections", options: documentCollectionOptions || [] },
+    { label: "System Collections", options: systemCollectionOptions || [] }
   ];
   return {
     groupedOptions,

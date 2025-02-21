@@ -11,6 +11,6 @@ target_link_libraries(arango_futures
   PUBLIC
   arango_inspection
   arango_assertions
-  arango_async_registry
-  arango_utils
-  velocypack)
+  arango_async_interface 
+  velocypack
+)
