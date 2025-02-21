@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Basics/TimeString.h"
 #include "Job.h"
 #include "Supervision.h"
 
@@ -55,6 +56,54 @@ struct ResignLeadership : public Job {
 
   std::string _server;
   bool _undoMoves{true};
+  bool _waitForInSync{false};
+  std::optional<uint64_t> _waitForInSyncTimeout{30 * 60};
 };
+
+struct JobInfo {
+  std::string server;
+  std::string jobId;
+  std::string creator;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, JobInfo& x) {
+  return f.object(x).fields(
+      f.field("server", x.server), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated",
+              timepointToString(std::chrono::system_clock::now())));
+}
+struct GenericJob {
+  JobInfo info;
+  std::string type;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, GenericJob& x) {
+  return f.object(x).fields(f.embedFields(x.info), f.field("type", x.type));
+}
+
+struct ResignLeadershipJobDetails {
+  bool undoMoves = true;
+  bool waitForInSync = false;
+  std::optional<uint64_t> waitForInSyncTimeout;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ResignLeadershipJobDetails& x) {
+  return f.object(x).fields(
+      f.field("undoMoves", x.undoMoves),
+      f.field("waitForInSync", x.waitForInSync),
+      f.field("waitForInSyncTimeout", x.waitForInSyncTimeout));
+}
+struct ResignLeadershipJob {
+  JobInfo info;
+  ResignLeadershipJobDetails details;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ResignLeadershipJob& x) {
+  return f.object(x).fields(f.embedFields(x.info),
+                            f.field("type", std::string("resignLeadership")),
+                            f.embedFields(x.details));
+}
+
 }  // namespace consensus
 }  // namespace arangodb
