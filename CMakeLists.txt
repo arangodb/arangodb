@@ -1064,7 +1064,7 @@ else()
     set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
   endforeach()
 
-  set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} -lgfortran")
+  set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS}")
 endif()
 
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
