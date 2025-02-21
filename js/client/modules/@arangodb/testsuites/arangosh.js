@@ -112,6 +112,9 @@ function arangosh (options) {
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
 
     if (!failSuccess) {
+      if (cu.GDB_OUTPUT !== '') {
+        ret.crashed = true;
+      }
       ret.failed += 1;
       ret[section].failed = 1;
       ret[section]['message'] =
@@ -322,6 +325,9 @@ function arangosh (options) {
     echoSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
 
     if (!echoSuccess) {
+      if (cu.GDB_OUTPUT !== '') {
+        ret.crashed = true;
+      }
       ret.failed += 1;
       ret.testArangoshExitCodeEcho.failed = 1;
       ret.testArangoshExitCodeEcho['message'] =
@@ -370,6 +376,9 @@ function arangosh (options) {
     shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
 
     if (!shebangSuccess) {
+      if (cu.GDB_OUTPUT !== '') {
+        ret.crashed = true;
+      }
       ret.failed += 1;
       ret.testArangoshShebang.failed = 1;
       ret.testArangoshShebang['message'] =
