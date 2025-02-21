@@ -1,7 +1,7 @@
 devel
 -----
 
-* fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
+* Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
   reference.
 
 * The agency supervision is clearing "finished" jobs too quickly from
