@@ -218,7 +218,7 @@ def kill_children(identifier, params, children):
         except psutil.AccessDenied:
             pass
         try:
-            one_child.kill()
+            one_child.send_signal(signal.SIGBUS)
         except psutil.NoSuchProcess:  # pragma: no cover
             pass
     print_log(
@@ -566,6 +566,7 @@ class ArangoCLIprogressiveTimeoutExecutor:
                 timeout_str = "TIMEOUT OCCURED!"
                 logging.info(timeout_str)
                 timeout_str += "\n"
+                params['error'] += timeout_str
             elif rc_exit is None:
                 print_log(f"{identifier} waiting for regular exit", params)
                 rc_exit = process.wait()

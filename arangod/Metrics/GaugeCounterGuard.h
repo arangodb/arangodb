@@ -44,6 +44,13 @@ struct GaugeCounterGuard {
   ~GaugeCounterGuard() { reset(); }
   GaugeCounterGuard() = default;
 
+  explicit GaugeCounterGuard(Gauge<T>* metric, T initialValue = {})
+      : _metric(metric) {
+    if (metric != nullptr) {
+      add(initialValue);
+    }
+  }
+
   explicit GaugeCounterGuard(Gauge<T>& metric, T initialValue = {})
       : _metric(&metric) {
     add(initialValue);

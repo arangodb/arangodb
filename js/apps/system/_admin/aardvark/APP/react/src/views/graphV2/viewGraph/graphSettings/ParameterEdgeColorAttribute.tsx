@@ -1,3 +1,4 @@
+import { InfoTooltip } from "@arangodb/ui";
 import {
   FormControl,
   FormErrorMessage,
@@ -5,7 +6,6 @@ import {
   Input
 } from "@chakra-ui/react";
 import React, { ChangeEvent } from "react";
-import { InfoTooltip } from "../../../../components/tooltip/InfoTooltip";
 import { useGraph } from "../GraphContext";
 import { useUrlParameterContext } from "../UrlParametersContext";
 

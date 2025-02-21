@@ -608,7 +608,7 @@ function getServerData(arango) {
                 Object.keys(localCol.properties()).forEach( function(property) {
                   local[localDB][colName][property] = localCol.properties()[property];
                 });
-                local[localDB][colName].index = localCol.getIndexes();
+                local[localDB][colName].index = localCol.indexes();
                 local[localDB][colName].count = localCol.count();
               });});
             db._useDatabase('_system');

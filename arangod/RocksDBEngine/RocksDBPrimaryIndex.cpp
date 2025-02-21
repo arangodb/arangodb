@@ -775,12 +775,9 @@ Result RocksDBPrimaryIndex::insert(transaction::Methods& trx,
   // we do not need to perform any additional checks here since the document key
   // is already locked at the beginning of the insert operation
 
-  if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
-    // invalidate new index cache entry to avoid caching without committing
-    // first
-    invalidateCacheEntry(key->string().data(),
-                         static_cast<uint32_t>(key->string().size()));
-  }
+  // invalidate new index cache entry to avoid caching without committing first
+  invalidateCacheEntry(key->string().data(),
+                       static_cast<uint32_t>(key->string().size()));
 
   TRI_ASSERT(revision.isSet());
   auto value = RocksDBValue::PrimaryIndexValue(documentId, revision);

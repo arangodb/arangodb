@@ -32,6 +32,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -45,6 +46,7 @@
 #include "Transaction/MethodsApi.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/VocbaseMetrics.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Slice.h>
@@ -289,17 +291,27 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
         if (state->isCoordinator()) {
           TRI_ASSERT(state->id().isCoordinatorTransactionId());
 
-          Result res;
+          Result error;
           for (Try<arangodb::network::Response> const& tryRes : responses) {
             network::Response const& resp =
                 tryRes.get();  // throws exceptions upwards
-            res = ::checkTransactionResult(tidPlus, status, resp);
+            Result res = ::checkTransactionResult(tidPlus, status, resp);
             if (res.fail()) {
+              LOG_TOPIC("59bb0", ERR, Logger::TRANSACTIONS)
+                  << " failed to " << stateString << " transaction "
+                  << state->id() << " on server " << resp.destination;
+              error = std::move(res);
+              if (resp.fail()) {
+                // only on communication error
+                state->vocbase()
+                    .metrics()
+                    .transactions_lost_subordinates->count();
+              }
               break;
             }
           }
 
-          return res;
+          return error;
         }
 
         TRI_ASSERT(state->isDBServer());

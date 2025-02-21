@@ -1,12 +1,27 @@
 #include "Async/async.h"
+#include "Async/Registry/promise.h"
+#include "Async/Registry/registry_variable.h"
 #include "Async/Registry/registry.h"
 #include "Async/Registry/thread_registry.h"
+#include "Inspection/Format.h"
+#include "Inspection/JsonPrintInspector.h"
+#include "Utils/ExecContext.h"
 
 #include <gtest/gtest.h>
+#include <coroutine>
 #include <thread>
 #include <deque>
+#include <variant>
 
 namespace {
+
+auto promise_count(arangodb::async_registry::ThreadRegistry& registry) -> uint {
+  uint promise_count = 0;
+  registry.for_promise([&](arangodb::async_registry::PromiseSnapshot promise) {
+    promise_count++;
+  });
+  return promise_count;
+}
 
 struct WaitSlot {
   void resume() {
@@ -72,7 +87,6 @@ struct ConcurrentNoWait {
             }
             handle.resume();
           }
-          arangodb::coroutine::get_thread_registry().garbage_collect();
         }) {}
 
   auto stop() -> void {
@@ -136,9 +150,13 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
   void SetUp() override { InstanceCounterValue::instanceCounter = 0; }
 
   void TearDown() override {
-    arangodb::coroutine::get_thread_registry().garbage_collect();
+    arangodb::async_registry::get_thread_registry().garbage_collect();
     wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              0);
+    EXPECT_TRUE(std::holds_alternative<arangodb::async_registry::ThreadId>(
+        *arangodb::async_registry::get_current_coroutine()));
   }
 
   WaitType wait;
@@ -342,59 +360,406 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
   EXPECT_EQ(awaitable.await_resume(), 0);
 }
 
-TYPED_TEST(AsyncTest, promises_are_only_removed_after_garbage_collection) {
+TYPED_TEST(AsyncTest, coroutine_is_removed_before_registry_entry) {
   using ValueType = TypeParam::second_type;
 
   auto coro = []() -> async<ValueType> { co_return 12; };
 
   {
     coro().reset();
-
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              1);
   }
   {
     std::move(coro()).operator co_await().await_resume();
-
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              2);
   }
   {
     { coro(); }
 
-    EXPECT_EQ(InstanceCounterValue::instanceCounter, 1);
-    arangodb::async_registry::get_thread_registry().garbage_collect();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
+    EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()),
+              3);
   }
 }
 
-auto foo() -> async<CopyOnlyValue> { co_return 1; }
-auto bar() -> async<CopyOnlyValue> { co_return 4; }
-auto baz() -> async<CopyOnlyValue> { co_return 2; }
-TEST(AsyncTest, promises_are_registered) {
+namespace {
+auto foo() -> async<void> { co_return; }
+auto bar() -> async<void> { co_return; }
+auto baz() -> async<void> { co_return; }
+}  // namespace
+TYPED_TEST(AsyncTest, promises_are_registered_in_global_async_registry) {
   auto coro_foo = foo();
+  EXPECT_EQ(promise_count(arangodb::async_registry::get_thread_registry()), 1);
 
   std::jthread([&]() {
     auto coro_bar = bar();
     auto coro_baz = baz();
 
-    std::vector<std::string> names;
-    arangodb::async_registry::coroutine_registry.for_promise(
-        [&](arangodb::async_registry::PromiseInList* promise) {
-          names.push_back(promise->_where.function_name());
+    std::vector<std::string_view> names;
+    arangodb::async_registry::registry.for_promise(
+        [&](arangodb::async_registry::PromiseSnapshot promise) {
+          names.push_back(promise.source_location.function_name);
         });
     EXPECT_EQ(names.size(), 3);
     EXPECT_TRUE(names[0].find("foo") != std::string::npos);
     EXPECT_TRUE(names[1].find("baz") != std::string::npos);
     EXPECT_TRUE(names[2].find("bar") != std::string::npos);
-
-    coro_bar.reset();
-    coro_baz.reset();
-    arangodb::async_registry::get_thread_registry().garbage_collect();
-  });
-
-  coro_foo.reset();
-  arangodb::async_registry::get_thread_registry().garbage_collect();
+  }).join();
 }
+
+struct ExecContext_Waiting : public arangodb::ExecContext {
+  ExecContext_Waiting()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Waiting",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Calling : public arangodb::ExecContext {
+  ExecContext_Calling()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Calling",
+                              "", arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_Begin : public arangodb::ExecContext {
+  ExecContext_Begin()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "Begin", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+struct ExecContext_End : public arangodb::ExecContext {
+  ExecContext_End()
+      : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                              arangodb::ExecContext::Type::Default, "End", "",
+                              arangodb::auth::Level::RW,
+                              arangodb::auth::Level::NONE, true) {}
+};
+TYPED_TEST(AsyncTest, execution_context_is_local_to_coroutine) {
+  ExecContextScope exec(std::make_shared<ExecContext_Begin>());
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  auto waiting_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Waiting>());
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_await this->wait;
+    EXPECT_EQ(ExecContext::current().user(), "Waiting");
+    co_return;
+  }();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  auto trivial_coro = []() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    co_return;
+  }();
+
+  auto calling_coro = [&]() -> async<void> {
+    EXPECT_EQ(ExecContext::current().user(), "Begin");
+    ExecContextScope exec(std::make_shared<ExecContext_Calling>());
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(waiting_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_await std::move(trivial_coro);
+    EXPECT_EQ(ExecContext::current().user(), "Calling");
+    co_return;
+  };
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  calling_coro();
+  EXPECT_EQ(ExecContext::current().user(), "Begin");
+
+  ExecContextScope new_exec(std::make_shared<ExecContext_End>());
+  EXPECT_EQ(ExecContext::current().user(), "End");
+
+  this->wait.resume();
+  this->wait.await();
+  EXPECT_EQ(ExecContext::current().user(), "End");
+}
+
+namespace {
+auto find_promise_by_name(std::string_view name)
+    -> std::optional<async_registry::PromiseSnapshot> {
+  std::optional<async_registry::PromiseSnapshot> requested_promise =
+      std::nullopt;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
+        if (promise.source_location.function_name.find(name) !=
+            std::string::npos) {
+          requested_promise = promise;
+        }
+      });
+  return requested_promise;
+}
+}  // namespace
+TYPED_TEST(
+    AsyncTest,
+    async_promises_in_async_registry_know_their_requester_with_nested_coroutines) {
+  using TestType = decltype(this);
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  struct Functions {
+    static auto awaited_by_awaited_fn(TestType test) -> async<void> {
+      auto promise = find_promise_by_name("awaited_by_awaited_fn");
+      EXPECT_TRUE(promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::PromiseId>(
+          promise->requester));
+      co_await test->wait;
+
+      co_return;
+    };
+    static auto awaited_fn(TestType test) -> async<void> {
+      auto promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::PromiseId>(
+          promise->requester));
+
+      auto fn = Functions::awaited_by_awaited_fn(test);
+      auto awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{promise->id});
+
+      co_await std::move(fn);
+      awaited_promise = find_promise_by_name("awaited_by_awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{promise->id});
+
+      co_return;
+    };
+    static auto waiter_fn(TestType test) -> async<void> {
+      auto waiter_promise = find_promise_by_name("waiter_fn");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      auto fn = Functions::awaited_fn(test);
+
+      auto awaited_promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      co_await std::move(fn);
+
+      awaited_promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      // waiter did not change
+      waiter_promise = find_promise_by_name("waiter_fn");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      co_return;
+    };
+  };
+
+  Functions::waiter_fn(this);
+
+  this->wait.resume();
+  this->wait.await();
+}
+
+TYPED_TEST(
+    AsyncTest,
+    async_promises_in_async_registry_know_their_requester_with_two_requests_after_each_other) {
+  using TestType = decltype(this);
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  struct Functions {
+    static auto awaited_2_fn() -> async<void> {
+      auto promise = find_promise_by_name("awaited_2_fn");
+      EXPECT_TRUE(promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::PromiseId>(
+          promise->requester));
+
+      co_return;
+    };
+    static auto awaited_fn(TestType test) -> async<void> {
+      auto promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::PromiseId>(
+          promise->requester));
+
+      co_await test->wait;
+
+      co_return;
+    };
+    static auto waiter_fn(TestType test) -> async<void> {
+      auto waiter_promise = find_promise_by_name("waiter_fn");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      auto fn = Functions::awaited_fn(test);
+      auto fn_2 = Functions::awaited_2_fn();
+
+      auto awaited_promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+      auto awaited_2_promise = find_promise_by_name("awaited_2_fn");
+      EXPECT_TRUE(awaited_2_promise.has_value());
+      EXPECT_EQ(awaited_2_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      co_await std::move(fn);
+      awaited_promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      co_await std::move(fn_2);
+      awaited_2_promise = find_promise_by_name("awaited_2_fn");
+      EXPECT_TRUE(awaited_2_promise.has_value());
+      EXPECT_EQ(awaited_2_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      // waiter did not change
+      waiter_promise = find_promise_by_name("waiter_fn");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      co_return;
+    };
+  };
+
+  Functions::waiter_fn(this);
+
+  this->wait.resume();
+  this->wait.await();
+}
+
+TYPED_TEST(AsyncTest,
+           async_promises_in_async_registry_know_their_requester_with_move) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  using TestType = decltype(this);
+  struct Functions {
+    static auto awaited_fn(TestType test) -> async<void> {
+      auto promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(promise.has_value());
+      EXPECT_TRUE(
+          std::holds_alternative<async_registry::ThreadId>(promise->requester));
+
+      co_await test->wait;
+
+      co_return;
+    };
+    static auto waiter_fn(async<void>&& fn) -> async<void> {
+      auto waiter_promise = find_promise_by_name("waiter_fn");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      auto awaited_promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      co_await std::move(fn);
+
+      awaited_promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      // waiter did not change
+      waiter_promise = find_promise_by_name("waiter_fn");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      co_return;
+    };
+  };
+
+  auto awaited_coro = Functions::awaited_fn(this);
+  Functions::waiter_fn(std::move(awaited_coro));
+
+  this->wait.resume();
+  this->wait.await();
+}
+
+TYPED_TEST(
+    AsyncTest,
+    async_promises_in_async_registry_know_their_requester_with_move_and_call_without_await) {
+  arangodb::async_registry::get_thread_registry().garbage_collect();
+  using TestType = decltype(this);
+  struct Functions {
+    static auto awaited_2_fn(TestType test) -> async<void> {
+      co_await test->wait;
+      co_return;
+    };
+    static auto awaited_fn() -> async<void> { co_return; };
+    static auto waiter_fn(async<void>&& fn, TestType test) -> async<void> {
+      co_await std::move(fn);
+
+      auto a = awaited_2_fn(test);
+
+      auto waiter_promise = find_promise_by_name("waiter_fn");
+      EXPECT_TRUE(waiter_promise.has_value());
+      EXPECT_TRUE(std::holds_alternative<async_registry::ThreadId>(
+          waiter_promise->requester));
+
+      auto awaited_promise = find_promise_by_name("awaited_fn");
+      EXPECT_TRUE(awaited_promise.has_value());
+      EXPECT_EQ(awaited_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      auto awaited_2_promise = find_promise_by_name("awaited_2_fn");
+      EXPECT_TRUE(awaited_2_promise.has_value());
+      EXPECT_EQ(awaited_2_promise->requester,
+                async_registry::Requester{waiter_promise->id});
+
+      co_return;
+    };
+  };
+
+  auto awaited_coro = Functions::awaited_fn();
+  Functions::waiter_fn(std::move(awaited_coro), this);
+
+  this->wait.resume();
+  this->wait.await();
+}
+
+namespace {
+auto expect_all_promises_in_state(arangodb::async_registry::State state,
+                                  uint number_of_promises) {
+  uint count = 0;
+  arangodb::async_registry::registry.for_promise(
+      [&](arangodb::async_registry::PromiseSnapshot promise) {
+        count++;
+        EXPECT_EQ(promise.state, state);
+      });
+  EXPECT_EQ(count, number_of_promises);
+}
+}  // namespace
+TYPED_TEST(AsyncTest, async_promises_in_async_registry_know_their_state) {
+  {
+    auto coro = [&]() -> async<int> {
+      co_await this->wait;
+      co_return 12;
+    }();
+
+    if (std::is_same<decltype(this->wait), WaitSlot>()) {
+      expect_all_promises_in_state(arangodb::async_registry::State::Suspended,
+                                   1);
+    }
+
+    this->wait.resume();
+    this->wait.await();
+
+    expect_all_promises_in_state(arangodb::async_registry::State::Resolved, 1);
+  }
+
+  expect_all_promises_in_state(arangodb::async_registry::State::Deleted, 1);
+}
+
+#include "AsyncTestLineNumbers.tpp"

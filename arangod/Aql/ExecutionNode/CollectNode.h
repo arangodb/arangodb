@@ -82,7 +82,8 @@ class CollectNode : public ExecutionNode {
   void aggregationMethod(CollectOptions::CollectMethod method) noexcept;
 
   /// @brief getOptions
-  CollectOptions& getOptions();
+  CollectOptions& getOptions() noexcept;
+  CollectOptions const& getOptions() const noexcept;
 
   /// @brief calculate the expression register
   void calcExpressionRegister(RegisterId& expressionRegister,
@@ -148,6 +149,9 @@ class CollectNode : public ExecutionNode {
 
   /// @brief set the expression variable
   void expressionVariable(Variable const* variable);
+  Variable const* expressionVariable() const noexcept {
+    return _expressionVariable;
+  }
 
   /// @brief return whether or not the collect has keep variables
   bool hasKeepVariables() const noexcept;
@@ -188,6 +192,8 @@ class CollectNode : public ExecutionNode {
   static void calculateAccessibleUserVariables(
       ExecutionNode const& node,
       std::vector<std::pair<Variable const*, std::string>>& userVariables);
+
+  void setMergeListsAggregation(Variable const* outVariable);
 
  protected:
   /// @brief export to VelocyPack

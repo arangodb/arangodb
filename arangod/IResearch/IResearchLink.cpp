@@ -21,22 +21,22 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "IResearchLink.h"
 #include "IResearchLinkCoordinator.h"
 
-#include <index/column_info.hpp>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryPlanCache.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
-#include "IResearchDocument.h"
-#ifdef USE_ENTERPRISE
 #include "Cluster/ClusterMethods.h"
+#ifdef USE_ENTERPRISE
 #include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchMetricStats.h"
 #include "IResearch/IResearchView.h"
@@ -52,6 +52,7 @@
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
+#include <index/column_info.hpp>
 
 using namespace std::literals;
 
@@ -537,6 +538,7 @@ void IResearchLink::removeMetrics() {
 }
 
 void IResearchLink::invalidateQueryCache(TRI_vocbase_t* vocbase) {
+  vocbase->queryPlanCache().invalidate(_viewGuid);
   aql::QueryCache::instance()->invalidate(vocbase, _viewGuid);
 }
 

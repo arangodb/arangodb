@@ -1,12 +1,14 @@
+import {
+  CreatableMultiSelectControl,
+  CreatableSingleSelectControl,
+  InputControl,
+  MultiSelectControl,
+  OptionType,
+  SwitchControl
+} from "@arangodb/ui";
 import { FormLabel, Spacer } from "@chakra-ui/react";
 import React, { ReactNode } from "react";
 import { IndexInfoTooltip } from "../../views/collections/indices/addIndex/IndexInfoTooltip";
-import { OptionType } from "../select/SelectBase";
-import { CreatableMultiSelectControl } from "./CreatableMultiSelectControl";
-import { CreatableSingleSelectControl } from "./CreatableSingleSelectControl";
-import { InputControl } from "./InputControl";
-import { MultiSelectControl } from "./MultiSelectControl";
-import { SwitchControl } from "./SwitchControl";
 
 export type FormFieldProps = {
   label: string;

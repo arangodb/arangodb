@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail */
+/* global runSetup, print, assertEqual, assertTrue, assertFalse, assertNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -27,10 +27,13 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+let IM = global.instanceManager;
 
-function runSetup () {
+
+
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
@@ -44,14 +47,21 @@ function runSetup () {
 
   for (let i = 0; i < 80000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
+    if (IM.options.isInstrumented && i % 100 === 0) {
+      print('.');
+    }
   }
 
   for (let i = 10000; i < 40000; i++) {
     c.remove("doc_" + i);
+    if (IM.options.isInstrumented && i % 100 === 0) {
+      print('.');
+    }
   }
 
   c.save({ name: "crashme" }, { waitForSync: true });
 
+  return 0;
 }
 
 function recoverySuite () {
@@ -81,13 +91,5 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

@@ -127,8 +127,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Executor/ExecutorTestHelper.cpp
   Aql/Executor/FilterExecutorTest.cpp
   Aql/Executor/GatherExecutorCommonTest.cpp
+  Aql/Executor/GroupedSortExecutorTest.cpp
   Aql/Executor/HashedCollectExecutorTest.cpp
   Aql/Executor/IdExecutorTest.cpp
+  Aql/Executor/IndexAggregateScanExecutorTest.cpp
   Aql/Executor/InsertExecutorTest.cpp
   Aql/Executor/LimitExecutorTest.cpp
   Aql/Executor/NoResultsExecutorTest.cpp
@@ -333,6 +335,7 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
+  arango_tests_async_registry_server
   arango_tests_basics
   arango_tests_replication2
   arango_tests_replication2_pure
@@ -423,5 +426,7 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
 endforeach()
 
 add_subdirectory(Actor)
+add_subdirectory(Async)
+add_subdirectory(AsyncRegistryServer)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)

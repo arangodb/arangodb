@@ -3,6 +3,7 @@
 from collections import namedtuple
 from datetime import date
 import argparse
+import json
 import os
 import re
 import sys
@@ -80,6 +81,9 @@ def parse_arguments():
     )
     parser.add_argument(
         "--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run"
+    )
+    parser.add_argument(
+        "--rta-branch", type=str, help="which branch for the ui tests to check out"
     )
     parser.add_argument(
         "--validate-only",
@@ -164,14 +168,16 @@ def read_definition_line(line):
 
     flags = []
     params = {}
+    arangosh_args = []
     args = []
 
     for idx, bit in enumerate(remainder):
         if bit == "--":
             args = remainder[idx + 1 :]
             break
-
-        if "=" in bit:
+        if bit.startswith("--"):
+            arangosh_args.append(bit)
+        elif "=" in bit:
             key, value = bit.split("=", maxsplit=1)
             params[key] = value
         else:
@@ -191,12 +197,15 @@ def read_definition_line(line):
     is_cluster = "cluster" in flags
     params = validate_params(params)
 
+    if len(arangosh_args) == 0:
+        arangosh_args = ""
     return {
         "name": params.get("name", suites),
         "suites": suites,
         "size": params.get("size", "medium" if is_cluster else "small"),
         "flags": flags,
         "args": args,
+        "arangosh_args": arangosh_args,
         "params": params,
     }
 
@@ -304,11 +313,16 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
     )
-
+    arangosh_args = ""
+    if 'arangosh_args' in test:
+        # Yaml workaround: prepend an A to stop bad things from happening.
+        arangosh_args = "A " + json.dumps(test["arangosh_args"])
+        del(test["arangosh_args"])
     job = {
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
+        "arangosh_args": arangosh_args,
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
         "requires": build_jobs,
@@ -342,16 +356,18 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     return {"run-linux-tests": job}
 
 
-def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement):
+def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, rta_branch):
     edition = "ee" if build_config.enterprise else "ce"
     job = {
         "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
         "suiteName": filter_statement,
+        "arangosh_args": "",
         "deployment": deployment_mode,
         "browser": "Remote_CHROME",
         "enterprise": "EP" if build_config.enterprise else "C",
         "filterStatement": f"--ui-include-test-suite {filter_statement}",
         "requires": build_jobs,
+        "rta-branch": rta_branch,
     }
     return {"run-rta-tests": job}
 
@@ -401,7 +417,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
     for deployment in deployments:
         for test_suite in ui_testsuites:
             jobs.append(
-                create_rta_test_job(build_config, build_jobs, deployment, test_suite)
+                create_rta_test_job(build_config, build_jobs, deployment, test_suite, args.rta_branch)
             )
 
 
@@ -600,10 +616,14 @@ def main():
     """entrypoint"""
     try:
         args = parse_arguments()
+        if args.sanitizer is None:
+            args.sanitizer = ""
         if not args.sanitizer in ["", "tsan", "alubsan"]:
             raise Exception(
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
+        if args.ui_testsuites is None:
+            args.ui_testsuites = ""
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do

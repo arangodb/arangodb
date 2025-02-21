@@ -1,9 +1,8 @@
+import { MultiSelect, OptionType } from "@arangodb/ui";
 import { Box } from "@chakra-ui/react";
 import { useField } from "formik";
 import React, { useEffect, useState } from "react";
 import { components, MultiValueGenericProps } from "react-select";
-import MultiSelect from "../../../../components/select/MultiSelect";
-import { OptionType } from "../../../../components/select/SelectBase";
 import { getCurrentDB } from "../../../../utils/arangoClient";
 import { useEditViewContext } from "../../editView/EditViewContext";
 

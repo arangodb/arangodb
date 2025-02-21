@@ -28,6 +28,7 @@
 #include <thread>
 
 #include "Basics/operating-system.h"
+#include "Basics/threads-posix.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -80,6 +81,10 @@ struct ThreadNumber {
 /// @brief local thread number
 static thread_local ::ThreadNumber LOCAL_THREAD_NUMBER{};
 static thread_local char const* LOCAL_THREAD_NAME = nullptr;
+
+ThreadNameFetcher::ThreadNameFetcher(TRI_tid_t id) noexcept {
+  pthread_getname_np(id, _buffer, 32);
+}
 
 // retrieve the current thread's name. the string view will
 // remain valid as long as the ThreadNameFetcher remains valid.
@@ -149,6 +154,14 @@ void Thread::startThread(void* arg) {
 
 /// @brief returns the process id
 TRI_pid_t Thread::currentProcessId() { return getpid(); }
+
+/// @brief returns the kernel thread id
+#ifdef HAVE_SYS_GETTID
+TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
+#else
+#include <sys/syscall.h>
+TRI_pid_t Thread::currentKernelThreadId() { return syscall(SYS_gettid); }
+#endif
 
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {

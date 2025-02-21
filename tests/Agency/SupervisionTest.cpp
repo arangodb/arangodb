@@ -27,6 +27,7 @@
 #include "Agency/Job.h"
 #include "Agency/Node.h"
 #include "Agency/Supervision.h"
+#include "Basics/TimeString.h"
 #include "Mocks/Servers.h"
 
 #include "gtest/gtest.h"
@@ -459,6 +460,21 @@ static void makeHotbackupTransferJob(NodePtr& snapshot, size_t year, size_t id,
                         createNode(st.c_str()));
 }
 
+static void makeFinishedMoveShardJob(NodePtr& snapshot, size_t year,
+                                     std::string const& id, char const* job) {
+  std::string st = std::string(job) + "\"timeCreated\": \"" +
+                   std::to_string(year) + "-02-25T12:38:29Z\"\n}";
+  snapshot =
+      snapshot->placeAt("/Target/Finished/" + id, createNode(st.c_str()));
+}
+
+static void makeFailedMoveShardJob(NodePtr& snapshot, size_t year,
+                                   std::string const& id, char const* job) {
+  std::string st = std::string(job) + "\"timeCreated\": \"" +
+                   std::to_string(year) + "-02-25T12:38:29Z\"\n}";
+  snapshot = snapshot->placeAt("/Target/Failed/" + id, createNode(st.c_str()));
+}
+
 TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   for (size_t i = 0; i < 200; ++i) {
     makeHotbackupTransferJob(_snapshot, 1900 + i, 1000000 + i,
@@ -493,9 +509,9 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs) {
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
   content = content[0];
-  EXPECT_EQ(content.length(), 100);
-  // We expect the first 100 jobs to be deleted:
-  for (size_t i = 0; i < 100; ++i) {
+  EXPECT_EQ(content.length(), 190);
+  // We expect the first 190 jobs to be deleted:
+  for (size_t i = 0; i < 190; ++i) {
     std::string jobId =
         "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
     VPackSlice guck = content.get(jobId);
@@ -527,9 +543,9 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_empty) {
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
   content = content[0];
-  EXPECT_EQ(content.length(), 100);
-  // We expect the first 100 jobs to be deleted:
-  for (size_t i = 0; i < 100; ++i) {
+  EXPECT_EQ(content.length(), 190);
+  // We expect the first 190 jobs to be deleted:
+  for (size_t i = 0; i < 190; ++i) {
     std::string jobId =
         "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
     VPackSlice guck = content.get(jobId);
@@ -707,11 +723,19 @@ TEST_F(SupervisionTestClass, cleanup_hotback_transfer_jobs_diverse) {
   EXPECT_TRUE(content.isArray());
   EXPECT_EQ(content.length(), 1);
   content = content[0];
-  EXPECT_EQ(content.length(), 5);
+  EXPECT_EQ(content.length(), 95);
   // We expect the oldest suitable jobs to be deleted:
   for (size_t i = 0; i < 5; ++i) {
     std::string jobId =
         "/Target/HotBackup/TransferJobs/" + std::to_string(1000000 + i);
+    VPackSlice guck = content.get(jobId);
+    EXPECT_TRUE(guck.isObject());
+    EXPECT_TRUE(guck.hasKey("op"));
+    EXPECT_EQ(guck.get("op").copyString(), "delete");
+  }
+  for (size_t i = 0; i < 90; ++i) {
+    std::string jobId =
+        "/Target/HotBackup/TransferJobs/" + std::to_string(2000000 + i);
     VPackSlice guck = content.get(jobId);
     EXPECT_TRUE(guck.isObject());
     EXPECT_TRUE(guck.hasKey("op"));
@@ -995,4 +1019,327 @@ TEST_F(SupervisionTestClass, fail_hotbackup_transfer_jobs) {
       "/Target/HotBackup/TransferJobs/1234567/DBServers/"
       "PRMR-a0b13c71-2472-4985-bc48-ffa091d26e03/Status");
   EXPECT_EQ(guck.copyString(), "RUNNING");
+}
+
+TEST_F(SupervisionTestClass, cleanup_failed_jobs) {
+  for (size_t i = 0; i < 2001; ++i) {
+    makeFailedMoveShardJob(_snapshot, 1970 + i, std::to_string(1000000 + i),
+                           R"=(
+{
+  "timeFinished": "2024-12-09T10:22:22Z",
+  "collection": "45",
+  "creator": "16020029",
+  "database": "d",
+  "fromServer": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
+  "isLeader": true,
+  "jobId": "0",
+  "remainsFollower": false,
+  "shard": "s46",
+  "timeStarted": "2024-12-09T10:22:22Z",
+  "toServer": "PRMR-9dd10e6b-c8d6-4007-b449-54c2e355e340",
+  "tryUndo": false,
+  "type": "moveShard",
+)=");
+  };
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      *_snapshot, envelope, false);
+  EXPECT_TRUE(sthTodo);
+  VPackSlice content = envelope->slice();
+  EXPECT_TRUE(content.isArray());
+  EXPECT_EQ(content.length(), 1);
+  content = content[0];
+  EXPECT_EQ(content.length(), 1001);
+  // We expect the first 1001 jobs to be deleted:
+  for (size_t i = 0; i < 1001; ++i) {
+    std::string jobId = "/Target/Failed/" + std::to_string(1000000 + i);
+    VPackSlice guck = content.get(jobId);
+    EXPECT_TRUE(guck.isObject());
+    EXPECT_TRUE(guck.hasKey("op"));
+    EXPECT_EQ(guck.get("op").copyString(), "delete");
+  }
+}
+
+TEST_F(SupervisionTestClass, not_cleanup_failed_sub_jobs) {
+  for (size_t i = 0; i < 2001; ++i) {
+    makeFailedMoveShardJob(_snapshot, 1970 + i, "1234567-" + std::to_string(i),
+                           R"=(
+{
+  "timeFinished": "2024-12-09T10:22:22Z",
+  "collection": "45",
+  "creator": "16020029",
+  "database": "d",
+  "fromServer": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
+  "isLeader": true,
+  "jobId": "0",
+  "parentJob": "1234567",
+  "remainsFollower": false,
+  "shard": "s46",
+  "timeStarted": "2024-12-09T10:22:22Z",
+  "toServer": "PRMR-9dd10e6b-c8d6-4007-b449-54c2e355e340",
+  "tryUndo": false,
+  "type": "moveShard",
+)=");
+  };
+
+  _snapshot = _snapshot->placeAt("/Target/Pending/1234567", createNode(R"=(
+{
+  "creator": "16020029",
+  "server": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
+  "jobId": "1234567",
+  "timeCreated": "2024-12-09T10:22:21Z",
+  "timeStarted": "2024-12-09T10:22:22Z",
+  "type": "cleanOutServer"
+}
+)="));
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      *_snapshot, envelope, false);
+  EXPECT_FALSE(sthTodo);
+}
+
+namespace {
+
+NodePtr createServerInPlan(NodePtr& snapshot, std::string const& name) {
+  return snapshot->placeAt("/Plan/" + name, createNode(R"=(
+  "none"
+  )="));
+}
+
+NodePtr createServerInServersRegistered(NodePtr& snapshot,
+                                        std::string const& name) {
+  return snapshot->placeAt("/Current/ServersRegistered" + name, createNode(R"=(
+  {
+    "numberOfCores": 32,
+    "timestamp": "2024-12-11T13:01:24Z",
+    "host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "version": 31204,
+    "physicalMemory": 67108737024,
+    "versionString": "3.12.4-devel",
+    "engine": "rocksdb",
+    "endpoint": "tcp://localhost:8530",
+    "advertisedEndpoint": "",
+    "extendedNamesDatabases": true
+  } 
+  )="));
+}
+
+NodePtr createServerInHealth(NodePtr& snapshot, std::string const& name,
+                             std::string const& status,
+                             std::string const& timestamp,
+                             std::string const& lastAckedTime) {
+  std::string json = R"=(
+  {
+    "Version": "3.12.4-devel",
+    "Engine": "rocksdb",
+    "SyncStatus": "SERVING",
+    "Endpoint": "tcp://localhost:8530",
+    "ShortName": "Coordinator0003",
+    "Host": "1a00546e9ae740aeadf30f0090f43b8d",
+    "SyncTime": "2024-12-11T13:06:26Z",
+    "Timestamp": ")=" +
+                     timestamp + R"=(",
+    "LastAckedTime": ")=" +
+                     lastAckedTime + R"=(",
+    "Status": "FAILED"
+  }
+  )=";
+  return snapshot->placeAt("/Supervision/Health/" + name,
+                           createNode(json.c_str()));
+}
+
+NodePtr createEmptyPlanCollections(NodePtr& snapshot) {
+  return snapshot->placeAt("/Plan/Collections", createNode(R"=(
+  {
+  }
+  )="));
+}
+
+}  // namespace
+
+TEST_F(SupervisionTestClass, cleanup_expired_coordinator) {
+  _snapshot = createServerInPlan(_snapshot, "Coordinators/CRDN-1");
+  _snapshot = createServerInServersRegistered(_snapshot, "CRDN-1");
+  _snapshot =
+      createServerInHealth(_snapshot, "CRDN-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+
+  NodePtr transient = createNode("{}");
+  transient =
+      createServerInHealth(transient, "CRDN-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*_snapshot, *transient,
+                                                     "Coordinators", 60);
+  EXPECT_EQ(map.size(), 1);
+  EXPECT_EQ(map.begin()->first, "CRDN-1");
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_coordinator) {
+  _snapshot = createServerInPlan(_snapshot, "Coordinators/CRDN-1");
+  _snapshot = createServerInServersRegistered(_snapshot, "CRDN-1");
+  _snapshot =
+      createServerInHealth(_snapshot, "CRDN-1", "GOOD",
+                           timepointToString(std::chrono::system_clock::now()),
+                           "2024-12-11T13:06:27Z");
+
+  NodePtr transient = createNode("{}");
+  transient =
+      createServerInHealth(transient, "CRDN-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*_snapshot, *transient,
+                                                     "Coordinators", 60);
+  EXPECT_EQ(map.size(), 0);
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_coordinator2) {
+  _snapshot = createServerInPlan(_snapshot, "Coordinators/CRDN-1");
+  _snapshot = createServerInServersRegistered(_snapshot, "CRDN-1");
+  _snapshot =
+      createServerInHealth(_snapshot, "CRDN-1", "GOOD", "2024-12-11T13:06:27Z",
+                           "2024-12-11T13:06:27Z");
+
+  NodePtr transient = createNode("{}");
+  transient = createServerInHealth(
+      transient, "CRDN-1", "FAILED", "2024-12-11T13:06:27Z",
+      timepointToString(std::chrono::system_clock::now()));
+  auto map = arangodb::consensus::deletionCandidates(*_snapshot, *transient,
+                                                     "Coordinators", 60);
+  EXPECT_EQ(map.size(), 0);
+}
+
+TEST_F(SupervisionTestClass, cleanup_expired_dbserver) {
+  NodePtr snapshot = createNode("{}");
+  snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
+  snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
+  snapshot =
+      createServerInHealth(snapshot, "PRMR-1", "FAILED", "2024-12-11T13:06:27Z",
+                           "2024-12-11T13:06:27Z");
+
+  snapshot = createEmptyPlanCollections(snapshot);
+  NodePtr transient = createNode("{}");
+  transient =
+      createServerInHealth(transient, "PRMR-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*snapshot, *transient,
+                                                     "DBServers", 60);
+  EXPECT_EQ(map.size(), 1);
+  EXPECT_EQ(map.begin()->first, "PRMR-1");
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver) {
+  NodePtr snapshot = createNode("{}");
+  snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
+  snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
+  snapshot =
+      createServerInHealth(snapshot, "PRMR-1", "GOOD",
+                           timepointToString(std::chrono::system_clock::now()),
+                           "2024-12-11T13:06:27Z");
+  snapshot = createEmptyPlanCollections(snapshot);
+  NodePtr transient = createNode("{}");
+  transient =
+      createServerInHealth(transient, "PRMR-1", "FAILED",
+                           "2024-12-11T13:06:27Z", "2024-12-11T13:06:27Z");
+  auto map = arangodb::consensus::deletionCandidates(*snapshot, *transient,
+                                                     "DBServers", 60);
+  EXPECT_EQ(map.size(), 0);
+}
+
+TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver2) {
+  NodePtr snapshot = createNode("{}");
+  snapshot = createServerInPlan(snapshot, "DBServers/PRMR-1");
+  snapshot = createServerInServersRegistered(snapshot, "PRMR-1");
+  snapshot =
+      createServerInHealth(snapshot, "PRMR-1", "GOOD", "2024-12-11T13:06:27Z",
+                           "2024-12-11T13:06:27Z");
+  snapshot = createEmptyPlanCollections(snapshot);
+  NodePtr transient = createNode("{}");
+  transient = createServerInHealth(
+      transient, "PRMR-1", "FAILED", "2024-12-11T13:06:27Z",
+      timepointToString(std::chrono::system_clock::now()));
+  auto map = arangodb::consensus::deletionCandidates(*snapshot, *transient,
+                                                     "DBServers", 60);
+  EXPECT_EQ(map.size(), 0);
+}
+TEST_F(SupervisionTestClass, only_cleanup_finished_job_after_one_hour) {
+  auto head = R"=(
+{
+  "timeFinished": ")=";
+  auto foot = R"=(",
+  "collection": "45",
+  "creator": "16020029",
+  "database": "d",
+  "fromServer": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
+  "isLeader": true,
+  "jobId": "0",
+  "remainsFollower": false,
+  "shard": "s46",
+  "timeStarted": "2024-12-09T10:22:22Z",
+  "toServer": "PRMR-9dd10e6b-c8d6-4007-b449-54c2e355e340",
+  "tryUndo": false,
+  "type": "moveShard",
+)=";
+
+  for (size_t i = 0; i < 1001; ++i) {
+    auto finishedJobStr =
+        head +
+        std::format(
+            "{:%Y-%m-%dT%H:%M:%SZ}",
+            floor<std::chrono::seconds>(std::chrono::system_clock::now() -
+                                        i * std::chrono::minutes(2))) +
+        foot;
+    makeFinishedMoveShardJob(_snapshot, 2024, std::to_string(i),
+                             finishedJobStr.c_str());
+  };
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      *_snapshot, envelope, true);
+
+  auto workItems = envelope->slice()[0];
+  EXPECT_TRUE(sthTodo);
+  EXPECT_TRUE(workItems.length() < 500);
+  EXPECT_TRUE(workItems.length() > 450);
+}
+
+TEST_F(SupervisionTestClass, only_cleanup_failed_job_after_one_hour) {
+  auto head = R"=(
+{
+  "timeFinished": ")=";
+  auto foot = R"=(",
+  "collection": "45",
+  "creator": "16020029",
+  "database": "d",
+  "fromServer": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
+  "isLeader": true,
+  "jobId": "0",
+  "remainsFollower": false,
+  "shard": "s46",
+  "timeStarted": "2024-12-09T10:22:22Z",
+  "toServer": "PRMR-9dd10e6b-c8d6-4007-b449-54c2e355e340",
+  "tryUndo": false,
+  "type": "moveShard",
+)=";
+
+  for (size_t i = 0; i < 2001; ++i) {
+    auto finishedJobStr =
+        head +
+        std::format(
+            "{:%Y-%m-%dT%H:%M:%SZ}",
+            floor<std::chrono::seconds>(std::chrono::system_clock::now() -
+                                        i * std::chrono::minutes(2))) +
+        foot;
+    makeFailedMoveShardJob(_snapshot, 2024, std::to_string(i),
+                           finishedJobStr.c_str());
+  };
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      *_snapshot, envelope, false);
+
+  auto workItems = envelope->slice()[0];
+  EXPECT_TRUE(sthTodo);
+  EXPECT_TRUE(workItems.length() < 1000);
+  EXPECT_TRUE(workItems.length() > 950);
 }

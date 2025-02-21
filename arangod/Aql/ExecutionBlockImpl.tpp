@@ -87,6 +87,8 @@ class MaterializeRocksDBExecutor;
 class MaterializeSearchExecutor;
 template<typename FetcherType, typename ModifierType>
 class ModificationExecutor;
+struct IndexDistinctScanExecutor;
+struct IndexAggregateScanExecutor;
 
 class LimitExecutor;
 class ReturnExecutor;
@@ -114,6 +116,8 @@ class DistinctCollectExecutor;
 class EnumerateCollectionExecutor;
 class EnumerateListExecutor;
 class EnumerateListObjectExecutor;
+class GroupedSortExecutor;
+class EnumerateNearVectorsExecutor;
 }  // namespace aql
 
 namespace graph {
@@ -149,6 +153,37 @@ using KShortestPaths = arangodb::graph::KShortestPathsEnumerator<
 using KShortestPathsTracer = arangodb::graph::TracedKShortestPathsEnumerator<
     arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
 
+using YenPaths = arangodb::graph::YenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using YenPathsTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using YenPathsCluster = arangodb::graph::YenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using YenPathsClusterTracer = arangodb::graph::TracedYenEnumeratorWithProvider<
+    arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPaths = arangodb::graph::WeightedYenEnumeratorWithProvider<
+    arangodb::graph::SingleServerProvider<
+        arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
+
+using WeightedYenPathsCluster =
+    arangodb::graph::WeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
+using WeightedYenPathsClusterTracer =
+    arangodb::graph::TracedWeightedYenEnumeratorWithProvider<
+        arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
+
 using WeightedKShortestPaths =
     arangodb::graph::WeightedKShortestPathsEnumerator<
         arangodb::graph::SingleServerProvider<SingleServerProviderStep>>;
@@ -164,11 +199,12 @@ using ShortestPathTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::SingleServerProvider<
         arangodb::graph::SingleServerProviderStep>>;
 
-using WeightedShortestPath = arangodb::graph::WeightedShortestPathEnumerator<
-    arangodb::graph::SingleServerProvider<
-        arangodb::graph::SingleServerProviderStep>>;
+using WeightedShortestPath =
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
+        arangodb::graph::SingleServerProvider<
+            arangodb::graph::SingleServerProviderStep>>;
 using WeightedShortestPathTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::SingleServerProvider<
             arangodb::graph::SingleServerProviderStep>>;
 
@@ -206,10 +242,10 @@ using ShortestPathClusterTracer = arangodb::graph::TracedShortestPathEnumerator<
     arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 using WeightedShortestPathCluster =
-    arangodb::graph::WeightedShortestPathEnumerator<
+    arangodb::graph::WeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 using WeightedShortestPathClusterTracer =
-    arangodb::graph::TracedWeightedShortestPathEnumerator<
+    arangodb::graph::TracedWeightedShortestPathEnumeratorAlias<
         arangodb::graph::ClusterProvider<arangodb::graph::ClusterProviderStep>>;
 
 namespace arangodb::aql {
@@ -775,12 +811,21 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   EnumeratePathsExecutor<WeightedKShortestPathsTracer>,
                   EnumeratePathsExecutor<WeightedKShortestPathsCluster>,
                   EnumeratePathsExecutor<WeightedKShortestPathsClusterTracer>,
+                  EnumeratePathsExecutor<YenPaths>,
+                  EnumeratePathsExecutor<YenPathsTracer>,
+                  EnumeratePathsExecutor<YenPathsCluster>,
+                  EnumeratePathsExecutor<YenPathsClusterTracer>,
+                  EnumeratePathsExecutor<WeightedYenPaths>,
+                  EnumeratePathsExecutor<WeightedYenPathsTracer>,
+                  EnumeratePathsExecutor<WeightedYenPathsCluster>,
+                  EnumeratePathsExecutor<WeightedYenPathsClusterTracer>,
                   ParallelUnsortedGatherExecutor, JoinExecutor,
                   IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>,
                   IdExecutor<ConstFetcher>, HashedCollectExecutor,
                   AccuWindowExecutor, WindowExecutor, IndexExecutor,
                   EnumerateCollectionExecutor, DistinctCollectExecutor,
                   ConstrainedSortExecutor, CountCollectExecutor,
+                  GroupedSortExecutor,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
                   TestLambdaSkipExecutor,
 #endif
@@ -809,6 +854,8 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   SingleRemoteModificationExecutor<Replace>,
                   SingleRemoteModificationExecutor<Upsert>,
                   MultipleRemoteModificationExecutor, SortExecutor,
+                  EnumerateNearVectorsExecutor, IndexDistinctScanExecutor,
+                  IndexAggregateScanExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
                   MaterializeSearchExecutor>) ||

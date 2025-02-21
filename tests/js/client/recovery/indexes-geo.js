@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue, assertNotNull */
+/* global runSetup assertEqual, assertFalse, assertTrue, assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -29,9 +29,9 @@ var internal = require('internal');
 var simple = require('@arangodb/simple-query');
 var jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
@@ -74,6 +74,7 @@ function runSetup () {
   c = db._create('test');
   c.save({ _key: 'crashme' }, true);
 
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -94,7 +95,7 @@ function recoverySuite () {
     testIndexesGeo: function () {
       var c = db._collection('UnitTestsRecovery1'), idx, i;
       var geo1 = null, geo2 = null;
-      idx = c.getIndexes();
+      idx = c.indexes();
 
       for (i = 1; i < idx.length; ++i) {
         if (idx[i].type === 'geo1' || (idx[i].type === 'geo' && idx[i].fields.length === 1)) {
@@ -118,7 +119,7 @@ function recoverySuite () {
       assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geo2.id).limit(100).toArray().length);
 
       c = db._collection('UnitTestsRecovery2');
-      geo1 = c.getIndexes()[1];
+      geo1 = c.indexes()[1];
       assertFalse(geo1.unique);
       assertTrue(geo1.sparse);
       assertTrue(geo1.geoJson);
@@ -127,7 +128,7 @@ function recoverySuite () {
       assertEqual(100, new simple.SimpleQueryNear(c, 0, 0, geo1.id).limit(100).toArray().length);
 
       c = db._collection('UnitTestsRecovery3');
-      geo1 = c.getIndexes()[1];
+      geo1 = c.indexes()[1];
       assertFalse(geo1.unique);
       assertTrue(geo1.sparse);
       assertFalse(geo1.geoJson);
@@ -143,13 +144,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

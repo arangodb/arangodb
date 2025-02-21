@@ -1,11 +1,9 @@
+import { ReactTable, TableControl, useSortableReactTable } from "@arangodb/ui";
 import { Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { some } from "lodash";
 import React from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { ReactTable } from "../../../components/table/ReactTable";
-import { TableControl } from "../../../components/table/TableControl";
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { ServiceDescription } from "../Service.types";
 import { useServicesContext } from "../ServicesContext";
 const columnHelper = createColumnHelper<ServiceDescription>();
@@ -120,10 +118,7 @@ export const ServicesTable = () => {
   });
   return (
     <Stack>
-      <TableControl<ServiceDescription>
-        table={tableInstance}
-        columns={TABLE_COLUMNS}
-      />
+      <TableControl<ServiceDescription> table={tableInstance} />
       <ReactTable<ServiceDescription>
         table={tableInstance}
         emptyStateMessage="No services found"

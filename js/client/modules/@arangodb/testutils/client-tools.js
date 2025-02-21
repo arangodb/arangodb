@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango */
+/* global print, arango, db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -27,10 +27,15 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
-
+const { sanHandler } = require('@arangodb/testutils/san-file-handler');
+const executeExternal = internal.executeExternal;
+const { versionHas } = require("@arangodb/test-helper");
+const isCov = versionHas('coverage');
+const isSan = versionHas('tsan') || versionHas('aulsan');
 
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -46,7 +51,7 @@ const RESET = internal.COLORS.COLOR_RESET;
 let logCounter = 0;
 
 class ConfigBuilder {
-  constructor(type) {
+  constructor (type) {
     this.config = {
       'log.foreground-tty': 'true'
     };
@@ -68,11 +73,11 @@ class ConfigBuilder {
       this.logprefix = 'import';
       break;
     default:
-      throw 'Sorry this type of Arango-Binary is not yet implemented: ' + type;
+      throw new Error('Sorry this type of Arango-Binary is not yet implemented: ' + type);
     }
   }
 
-  setWhatToImport(what) {
+  setWhatToImport (what) {
     this.config['file'] = fs.join(pu.TOP_DIR, what.data);
     this.config['collection'] = what.coll;
     this.config['type'] = what.type;
@@ -212,6 +217,11 @@ class ConfigBuilder {
       this.config['--compress-output'] = true;
     }
   }
+  activateVPack() {
+    if (this.type === 'dump') {
+      this.config['--dump-vpack'] = true;
+    }
+  }
   deactivateCompression() {
     if (this.type === 'dump') {
       this.config['--compress-output'] = false;
@@ -296,7 +306,7 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
 // //////////////////////////////////////////////////////////////////////////////
 
 function makeArgsArangosh (options) {
-  return {
+  let args = {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
@@ -304,6 +314,17 @@ function makeArgsArangosh (options) {
     'server.password': options.password,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
+
+  if (options.forceNoCompress) {
+    args['compress-transfer'] = false;
+  }
+  if (options.forceJson) {
+    args['server.force-json'] = true;
+  }
+  if (options.extremeVerbosity) {
+    args['log.level'] = ['warning', 'httpclient=debug', 'V8=debug'];
+  }
+  return args;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -321,6 +342,192 @@ function runArangoshCmd (options, instanceInfo, addArgs, cmds, coreCheck = false
   internal.env.INSTANCEINFO = JSON.stringify(instanceInfo.getStructure());
   const argv = toArgv(args).concat(cmds);
   return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangoshcmd', instanceInfo.rootDir, coreCheck);
+}
+
+function launchInShellBG  (file) {
+  let IM = global.instanceManager;
+  let args = makeArgsArangosh(IM.options);
+  const logFile = `file://${file}.log`;
+  let moreArgs = {
+    'server.database': arango.getDatabaseName(),
+    'server.request-timeout': IM.options.serverRequestTimeout,
+    'log.foreground-tty': 'false',
+    //'log.level': ['info', 'httpclient=debug', 'V8=debug'],
+    'log.output': logFile,
+    'javascript.execute': file,
+    'server.endpoint': IM.endpoint,
+  };
+  _.assign(args, moreArgs);
+
+  let sh = new sanHandler(pu.ARANGOSH_BIN.replace(/.*\//, ''), IM.options);
+  sh.detectLogfiles(IM.rootDir, IM.rootDir);
+  let env = sh.getSanOptions();
+  env['INSTANCEINFO'] = JSON.stringify(IM.getStructure());
+  const argv = toArgv(args);
+  let result = executeExternal(pu.ARANGOSH_BIN, argv, false, env);
+  result.sh = sh;
+  result['logFile'] = logFile;
+  if (!result.hasOwnProperty('pid')) {
+    throw new Error(`failed to launch arangosh with ${file} NO PID`);
+  }
+  let status = internal.statusExternal(result.pid);
+  if (status.status !==  "RUNNING") {
+    throw new Error(`failed to launch arangosh with ${file} and ${result.pid}`);
+  }
+  result.args = args;
+  return result;
+};
+
+function launchSnippetInBG (options, snippet, key, cn, single=false) {
+  let file = fs.getTempFile() + "-" + key;
+  if (single) {
+    fs.write(file, `
+    (function() {
+        function checkStop(noJitter){}
+ ////////////////////////////////////////////////////////////////////////////////
+       ${snippet}
+////////////////////////////////////////////////////////////////////////////////
+        db['${cn}'].insert({ _key: "${key}", done: true, iterations: 1, b: [{c: [{d: 'qwerty'}]}] });
+    })();
+    `);
+  } else {
+    fs.write(file, `
+(function() {
+  let tries = 0;
+  function checkStop(noJitter) {
+    tries += 1;
+    if (${options.extremeVerbosity}) {
+      console.info(\`checking \${tries} \${noJitter} => \${tries % 10 === 0 || noJitter}\`)
+    }
+    if (noJitter || tries % 10 === 0) {
+     
+      let ret = db['${cn}'].exists('stop');
+      if (${options.extremeVerbosity}) {
+       console.info(\`\${JSON.stringify(ret)} ret. \${ret !== false}\`)
+      }
+      return ret !== false;
+    }
+    if (${options.extremeVerbosity}) {
+      console.info('continue')
+    }
+    return false;
+  }
+  try {
+    while (true) {
+      if (checkStop(false)) {
+        console.info("exiting");
+        break;
+      }
+////////////////////////////////////////////////////////////////////////////////
+      function testCode() {
+      ${snippet} ;
+        return true;
+      };
+      if (!testCode()){
+        break;
+      }
+////////////////////////////////////////////////////////////////////////////////
+      if (${options.extremeVerbosity}) {
+        console.info(\`.\${tries} - \${tries%10}\`);
+      }
+    }
+  } catch (ex) {
+     console.error(\`test has thrown: \${ex}\n\${ex.stack}\`);
+     throw ex;
+  }
+  db['${cn}'].insert({ _key: "${key}", done: true, iterations: tries });
+})();
+    `);
+  }
+  let client = launchInShellBG(file);
+  print(`${CYAN}started client with key '${key}', pid ${client.pid}, args: ${JSON.stringify(client.args)}${RESET}`);
+  return { key, file, client, done: false };
+}
+
+function joinBGShells (options, clients, waitFor, cn) {
+  let IM = global.instanceManager;
+  let tries = 0;
+  let done = 0;
+  while (++tries < waitFor) {
+    clients.forEach(function (client) {
+      if (!client.done) {
+        client.status = internal.statusExternal(client.client.pid);
+        if (client.status.status !== 'RUNNING') {
+          let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          IM.serverCrashedLocal |= failed;
+          client.failed = failed;
+          client.done = true;
+        }
+        if (client.status === 'TERMINATED') {
+          if (client.exit === 0) {
+            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+            client.failed = false;
+          } else {
+            IM.options.cleanup = false;
+            client.failed = true;
+          }
+        }
+      }
+    });
+
+    done = clients.reduce(function (accumulator, currentValue) {
+      return accumulator + (currentValue.done ? 1 : 0);
+    }, 0);
+
+    if (done === clients.length) {
+      break;
+    }
+
+    internal.sleep(0.5);
+    if (options.extremeVerbosity && tries %10 === 0) {
+      print(cn);
+      print(db._collections());
+      print(db[cn].toArray());
+    }
+  }
+
+  if (done !== clients.length) {
+    options.cleanup = false;
+    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}`);
+  }
+}
+
+function cleanupBGShells (clients, cn) {
+  let IM = global.instanceManager;
+  clients.forEach(function (client) {
+    try {
+      if (IM.options.cleanup) {
+        fs.remove(client.file);
+      }
+    } catch (err) { }
+
+    const logfile = client.file + '.log';
+    if (client.failed) {
+      if (fs.exists(logfile)) {
+        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
+      } else {
+        print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile${RESET}`);
+      }
+    } else {
+      try {
+        if (IM.options.cleanup) {
+          fs.remove(logfile);
+        }
+      } catch (err) { }
+    }
+    if (!client.done) {
+      // hard-kill all running instances
+      try {
+        let status = internal.statusExternal(client.client.pid).status;
+        print(`${RED}${Date()} current not done client ${client.client.pid} status: ${status}${RESET}`);
+        if (status === 'RUNNING') {
+          print(`${RED}${Date()} forcefully killing test client with pid ${client.client.pid} ${db['${cn}'].exists('stop')}\n${JSON.stringify(db['${cn}'].toArray())}`);
+          internal.killExternal(client.client.pid, 9 /*SIGKILL*/);
+          client.status = internal.statusExternal(client.client.pid);
+        }
+      } catch (err) { }
+    }
+  });
 }
 
 function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, moreargv=[], addArgs=undefined) {
@@ -354,13 +561,12 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (options.hasOwnProperty('makedataArgs')) {
     argv = argv.concat(toArgv(options['makedataArgs']));
   }
-  print('\n' + (new Date()).toISOString() + GREEN + " [============] Makedata : Trying " +
-        args['javascript.execute'] + '\n ' + msg + ' ... ', RESET);
+  print(`\n${(new Date()).toISOString()}${GREEN}[============] Makedata : Trying ${args['javascript.execute']}\n ${msg} ... ${RESET}`);
   if (options.extremeVerbosity !== 'silence') {
     print(argv);
   }
   
-  let timeout = (options.isInstrumented) ? 60 * 22 : 60 * 15;
+  let timeout = (options.isInstrumented) ? 60 * 30 : 60 * 15;
   return pu.executeAndWait(pu.ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
 }
 function rtaWaitShardsInSync(options, instanceManager) {
@@ -383,6 +589,7 @@ function rtaWaitShardsInSync(options, instanceManager) {
     print(myargs);
   }
   let rc = pu.executeAndWait(pu.ARANGOSH_BIN, myargs, options, 'arangosh', instanceManager.rootDir, options.coreCheck);
+  return rc;
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief runs arangoimport
@@ -479,7 +686,6 @@ function runArangoBenchmark (options, instanceInfo, cmds, rootDir, coreCheck = f
     'server.username': options.username,
     'server.password': options.password,
     'server.endpoint': instanceInfo.endpoint,
-    // 'server.request-timeout': 1200 // default now.
     'server.connection-timeout': 10 // 5s default
   };
 
@@ -500,6 +706,10 @@ exports.makeArgs = {
 exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
   arangoshCmd: runArangoshCmd,
+  launchInShellBG: launchInShellBG,
+  launchSnippetInBG: launchSnippetInBG,
+  joinBGShells: joinBGShells,
+  cleanupBGShells: cleanupBGShells,
   arangoImport: runArangoImportCfg,
   arangoDumpRestore: runArangoDumpRestore,
   arangoDumpRestoreWithConfig: runArangoDumpRestoreCfg,
@@ -514,11 +724,13 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
     'makedataArgs': undefined,
     'rtaNegFilter': '',
-    'makedataDB': "_system"
+    'makedataDB': "_system",
+    'serverRequestTimeout': (isCov || isSan) ? 30 * 40 : 120
   });
 
   tu.CopyIntoList(optionsDocumentation, [
     ' Client tools options:',
+    '   - `serverRequestTimeout` The http timeout to arangods of any client tool',
     '   - `makedataDB`: Database to run makedata with, defaults to _system',
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',

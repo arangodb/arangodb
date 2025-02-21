@@ -410,7 +410,7 @@ function ArrayIndexNonArraySuite () {
   let col;
 
   const checkElementsInIndex = function (count) {
-    var allIndexes = col.getIndexes(true);
+    var allIndexes = col.indexes(true);
     assertEqual(allIndexes.length, 2, "We have more than one index!");
   };
 

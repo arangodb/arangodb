@@ -78,7 +78,7 @@ using namespace arangodb::basics::StringUtils;
 
 static std::unordered_set<std::string> const alwaysRemoveProperties({ID, NAME});
 static std::unordered_set<std::string> const selectivityEstimates(
-    {SELECTIVITY_ESTIMATE});
+    {SELECTIVITY_ESTIMATE, "trainedData"});
 static VPackValue const VP_DELETE("delete");
 static VPackValue const VP_SET("set");
 
@@ -2663,22 +2663,53 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         // that we have been restarted but the leader did not notice that
         // we were gone, we must check if the leader is set correctly here
         // locally for our shard:
+        VPackSlice theLeader = VPackSlice::emptyStringSlice();
         VPackSlice lshard = localdb.get(shname);
         TRI_ASSERT(lshard.isObject());
         bool needsResyncBecauseOfRestart = false;
         if (lshard.isObject()) {  // just in case
-          VPackSlice theLeader = lshard.get(THE_LEADER);
+          theLeader = lshard.get(THE_LEADER);
           if (theLeader.isString() &&
               theLeader.stringView() ==
                   maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
             needsResyncBecauseOfRestart = true;
           }
         }
+        TRI_ASSERT(cservers.length() > 0);
+        auto currentLeader = cservers[0].stringView();
+        auto planLeader = pservers[0].stringView();
 
         // if we are considered to be in sync there is nothing to do
         if (!needsResyncBecauseOfRestart && indexOf(cservers, serverId) > 0) {
           continue;
         }
+
+        if (currentLeader.starts_with("_") || planLeader != currentLeader) {
+          // Do not attempt to sync if the server in current is still resigned
+          // or not equal to the planned leader.
+          // Thus, we never
+          // 1. sync with a server resigned in plan.
+          //    (Leadership is about to change)
+          // 2. if plan is not equal to current
+          //    (probably going to change as well)
+          // 3. if current is resigned
+          //    (new leader hasn't confirmed leadership yet)
+
+          LOG_TOPIC("2dba7", INFO, Logger::MAINTENANCE)
+              << "refuse to synchronize shard " << dbname << "/" << colname
+              << "/" << shname
+              << " with a resigned leader in current - myself = " << serverId
+              << " plan servers = " << pservers.toJson()
+              << " current servers = " << cservers.toJson();
+          continue;
+        }
+
+        LOG_TOPIC("3d7a8", DEBUG, Logger::MAINTENANCE)
+            << "detected synchronize shard" << dbname << "/" << colname << "/"
+            << shname << ": myself = " << serverId
+            << " plan servers = " << pservers.toJson()
+            << " current servers = " << cservers.toJson()
+            << " local theLeader = " << theLeader.toJson();
 
         std::string leader = pservers[0].copyString();
         std::string forcedResync =

@@ -3,6 +3,7 @@
   "version": "3.0.0",
   "private": true,
   "dependencies": {
+    "@arangodb/ui": "^0.0.17",
     "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/react": "^2.8.2",
     "@chakra-ui/theme-tools": "^2.1.2",
@@ -14,7 +15,7 @@
     "ajv": "^8.12.0",
     "ajv-errors": "^3.0.0",
     "ansi-html-community": "0.0.8",
-    "arangojs": "^9.0.0",
+    "arangojs": "^9.1.0",
     "axios": "^0.21.2",
     "backbone": "^1.4.1",
     "crypto-js": "^3.3.0",
@@ -65,7 +66,8 @@
     "build": "react-app-rewired build",
     "test": "react-app-rewired test",
     "lint": "eslint",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "local-add-ui": "yalc add @arangodb/ui && yarn install"
   },
   "eslintConfig": {
     "extends": "react-app"

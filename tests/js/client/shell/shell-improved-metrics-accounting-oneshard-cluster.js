@@ -35,7 +35,7 @@ const ImprovedMemoryAccounting = internal.load(base);
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-if (internal.debugCanUseFailAt()) {
+if (global.instanceManager.debugCanUseFailAt()) {
     const base_fail_at = require("fs").join(internal.pathForTesting('client'), 
     'shell', 'shell-improved-metrics-accounting-fail-at.inc');
     const ImprovedMemoryAccountingFailAt = internal.load(base_fail_at);

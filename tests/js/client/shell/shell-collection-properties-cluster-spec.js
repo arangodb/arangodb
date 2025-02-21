@@ -37,7 +37,7 @@ const cn2 = "UnitTestPropertiesFollower";
 // check whether all shards have the right amount of followers
 function checkReplicationFactor(name, fac) {
     // first we need the plan id of the collection
-    let plan = global.instanceManager.getFromPlan('Plan/Collections/_system');
+    let plan = global.instanceManager.agencyMgr.getFromPlan('Plan/Collections/_system');
     let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
         if (result) {
             return result;
@@ -48,7 +48,7 @@ function checkReplicationFactor(name, fac) {
     }, undefined);
 
     for (let i = 0; i < 120; i++) {
-        let current = global.instanceManager.getFromPlan('Current/Collections/_system');
+        let current = global.instanceManager.agencyMgr.getFromPlan('Current/Collections/_system');
         let shards = Object.values(current.arango.Current.Collections['_system'][collectionId]);
         let finished = 0;
         shards.forEach(entry => {
@@ -59,7 +59,7 @@ function checkReplicationFactor(name, fac) {
         }
         internal.sleep(0.5);
     }
-    let current = global.instanceManager.getFromPlan('Current/Collections/_system');
+    let current = global.instanceManager.agencyMgr.getFromPlan('Current/Collections/_system');
     let val = current.arango.Current.Collections['_system'][collectionId];
     expect(true).to.equal(false, "Expected replicationFactor of " + fac + " in collection "
       + name + " is not reflected properly in " +

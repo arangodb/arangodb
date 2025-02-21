@@ -75,7 +75,7 @@ function ClusterCollectionSuite () {
       let indexes;
       let tries = 0;
       while (++tries < 60) {
-        indexes = c.getIndexes(true);
+        indexes = c.indexes(true);
         // if this fails, increase wait-time in ClusterEngine::waitForEstimatorSync
         if (indexes[1].selectivityEstimate >= 0.999) {
           break;
@@ -92,7 +92,7 @@ function ClusterCollectionSuite () {
      
       tries = 0; 
       while (++tries < 60) {
-        indexes = c.getIndexes(true);
+        indexes = c.indexes(true);
         // if this fails, increase wait-time in ClusterEngine::waitForEstimatorSync
         if (indexes[1].selectivityEstimate <= 0.501) {
           break;

@@ -211,6 +211,7 @@ Supervision::Supervision(ArangodServer& server,
       _okThreshold(5.),
       _delayAddFollower(0),
       _delayFailedFollower(0),
+      _expiredServersGracePeriod(3600),
       _jobId(0),
       _jobIdMax(0),
       _lastUpdateIndex(0),
@@ -1362,8 +1363,11 @@ std::string Supervision::serverHealth(std::string_view serverName) const {
 //      Remove coordinator everywhere
 //      Remove DB server everywhere, if not leader of a shard
 
-std::unordered_map<ServerID, std::string> deletionCandidates(
-    Node const& snapshot, Node const& transient, std::string const& type) {
+std::unordered_map<ServerID, std::string>
+arangodb::consensus::deletionCandidates(Node const& snapshot,
+                                        Node const& transient,
+                                        std::string const& type,
+                                        double gracePeriod) {
   using namespace std::chrono;
   std::unordered_map<ServerID, std::string> serverList;
   std::string const planPath = "/Plan/" + type;
@@ -1375,22 +1379,29 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
       auto const& transientHeartbeat =
           transient.get("/Supervision/Health/" + serverId.first);
       try {
-        // Do we have a transient heartbeat younger than a day?
+        // Do we have a transient heartbeat younger than the gracePeriod?
+        // Note that we take the LastAckedTime value here, since this is
+        // the time we have last seen a new heartbeat from that server
+        // here in this agency leader.
         if (transientHeartbeat) {
           auto const t = stringToTimepoint(
-              transientHeartbeat->get("Timestamp")->getString().value());
-          if (t > system_clock::now() - hours(24)) {
+              transientHeartbeat->get("LastAckedTime")->getString().value());
+          if (t > system_clock::now() -
+                      seconds(static_cast<uint64_t>(gracePeriod))) {
             continue;
           }
         }
-        // Else do we have a persistent heartbeat younger than a day?
+        // Else do we have a persistent heartbeat younger than the gracePeriod?
+        // Note that we take the Timestamp value here, since this is the
+        // time of the last persisted status change of that server.
         auto const& persistentHeartbeat =
             snapshot.get("/Supervision/Health/" + serverId.first);
         if (persistentHeartbeat) {
           persistedTimeStamp =
               persistentHeartbeat->get("Timestamp")->getString().value();
           auto const t = stringToTimepoint(persistedTimeStamp);
-          if (t > system_clock::now() - hours(24)) {
+          if (t > system_clock::now() -
+                      seconds(static_cast<uint64_t>(gracePeriod))) {
             continue;
           }
         } else {
@@ -1406,6 +1417,8 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
 
       // We are still here?
       serverList.emplace(serverId.first, persistedTimeStamp);
+      LOG_TOPIC("66521", INFO, Logger::SUPERVISION)
+          << "Removing expired server: " << serverId.first;
     }
   }
 
@@ -1443,7 +1456,8 @@ std::unordered_map<ServerID, std::string> deletionCandidates(
 
 void Supervision::cleanupExpiredServers(Node const& snapshot,
                                         Node const& transient) {
-  auto servers = deletionCandidates(snapshot, transient, "DBServers");
+  auto servers = deletionCandidates(snapshot, transient, "DBServers",
+                                    _expiredServersGracePeriod);
   auto const& currentDatabases = *snapshot.get("Current/Databases");
 
   VPackBuilder del;
@@ -1493,7 +1507,8 @@ void Supervision::cleanupExpiredServers(Node const& snapshot,
   }
 
   trxs.clear();
-  servers = deletionCandidates(snapshot, transient, "Coordinators");
+  servers = deletionCandidates(snapshot, transient, "Coordinators",
+                               _expiredServersGracePeriod);
   {
     VPackArrayBuilder t(&trxs);
     for (auto const& server : servers) {
@@ -1763,29 +1778,70 @@ void Supervision::handleJobs() {
   failBrokenHotbackupTransferJobs();
 }
 
-// Guarded by caller
-void Supervision::cleanupFinishedAndFailedJobs() {
-  // This deletes old Supervision jobs in /Target/Finished and
-  // /Target/Failed. We can be rather generous here since old
-  // snapshots and log entries are kept for much longer.
-  // We only keep up to 500 finished jobs and 1000 failed jobs.
+bool arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+    Node const& snapshot, std::shared_ptr<VPackBuilder> envelope,
+    bool doFinished) {
+  // This deletes old Supervision jobs in /Target/Finished (doFinished=true)
+  // or /Target/Failed (doFinished=false). We can be rather generous
+  // here since old snapshots and log entries are kept for much longer.
+  // We only keep up to 500 finished jobs and 1000 failed jobs. Note
+  // that we must not throw away failed jobs which are subjobs of a
+  // larger job (e.g. MoveShard jobs in the context of a CleanOutServer
+  // job), or else the larger job can no longer detect any failures!
+  // Returns true if there is something to do, false otherwise.
 
   constexpr size_t maximalFinishedJobs = 500;
   constexpr size_t maximalFailedJobs = 1000;
+  constexpr size_t minimalKeepSeconds = 3600;
 
-  auto cleanup = [&](std::string const& prefix, size_t limit) {
-    auto const& jobs = *snapshot().hasAsChildren(prefix);
+  auto cleanup = [&](std::string const& prefix, size_t limit) -> bool {
+    auto const* pendingJobs = snapshot.hasAsChildren(pendingPrefix);
+    auto const& jobs = *snapshot.hasAsChildren(prefix);
     if (jobs.size() <= 2 * limit) {
-      return;
+      return false;
     }
     typedef std::pair<std::string, std::string> keyDate;
     std::vector<keyDate> v;
     v.reserve(jobs.size());
     for (auto const& p : jobs) {
+      // Let's first see if this is a subjob of a larger job:
+      auto pos = p.first.find('-');
+      if (pos != std::string::npos) {
+        auto const& parent = p.first.substr(0, pos);
+        if (pendingJobs != nullptr && pendingJobs->find(parent) != nullptr) {
+          LOG_TOPIC("99887", TRACE, Logger::SUPERVISION)
+              << "Skipping removal of subjob " << p.first << " of parent "
+              << parent << " since the parent is still pending.";
+          continue;  // this is a subjob, and its parent is still pending, let's
+                     // keep it
+        }
+      }
       auto created = p.second->hasAsString("timeCreated");
       if (created) {
-        v.emplace_back(p.first, *created);
-      } else {
+        auto finished = p.second->hasAsString("timeFinished");
+        if (finished) {
+          try {
+            if (std::chrono::system_clock::now() -
+                    stringToTimepoint(finished.value()) >
+                std::chrono::seconds{minimalKeepSeconds}) {
+              v.emplace_back(p.first, *created);
+            }
+          } catch (...) {  // unparseable timeFinished
+            TRI_ASSERT(false);
+            LOG_TOPIC("98987", WARN, Logger::SUPERVISION)
+                << "Unparseable finished time." << finished.value();
+            v.emplace_back(p.first, *created);
+          }
+        } else {  // in finished and yet missing timeFinished
+          TRI_ASSERT(false);
+          LOG_TOPIC("99788", WARN, Logger::SUPERVISION)
+              << "Missing finished time in job.";
+          v.emplace_back(p.first, *created);
+        }
+      } else {  //  missing created
+        TRI_ASSERT(false);
+        LOG_TOPIC("99878", WARN, Logger::SUPERVISION)
+            << "Missing created time in job.";
         v.emplace_back(p.first, "1970");  // will be sorted very early
       }
     }
@@ -1793,13 +1849,16 @@ void Supervision::cleanupFinishedAndFailedJobs() {
               [](keyDate const& a, keyDate const& b) -> bool {
                 return a.second < b.second;
               });
-    size_t toBeDeleted = v.size() - limit;  // known to be positive
+    if (v.size() <= limit) {
+      return false;
+    }
+    size_t toBeDeleted = v.size() - limit;
     LOG_TOPIC("98451", INFO, Logger::AGENCY) << "Deleting " << toBeDeleted
                                              << " old jobs"
                                                 " in "
                                              << prefix;
-    VPackBuilder trx;  // We build a transaction here
-    {                  // Pair for operation, no precondition here
+    {  // Pair for operation, no precondition here
+      VPackBuilder& trx(*envelope);
       VPackArrayBuilder guard1(&trx);
       {
         VPackObjectBuilder guard2(&trx);
@@ -1812,11 +1871,47 @@ void Supervision::cleanupFinishedAndFailedJobs() {
         }
       }
     }
-    singleWriteTransaction(_agent, trx, false);  // do not care about the result
+    return true;
   };
 
-  cleanup(finishedPrefix, maximalFinishedJobs);
-  cleanup(failedPrefix, maximalFailedJobs);
+  if (doFinished) {
+    return cleanup(finishedPrefix, maximalFinishedJobs);
+  } else {
+    return cleanup(failedPrefix, maximalFailedJobs);
+  }
+}
+
+// Guarded by caller
+void Supervision::cleanupFinishedAndFailedJobs() {
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      snapshot(), envelope, true);
+  if (sthTodo) {
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION)
+          << "Failed to remove old transfer jobs or locks: "
+          << envelope->toJson();
+    }
+    singleWriteTransaction(_agent, *envelope,
+                           false);  // do not care about the result
+  };
+
+  envelope->clear();
+  sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      snapshot(), envelope, false);
+  if (sthTodo) {
+    write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
+
+    if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
+      LOG_TOPIC("1232e", INFO, Logger::SUPERVISION)
+          << "Failed to remove old transfer jobs or locks: "
+          << envelope->toJson();
+    }
+    singleWriteTransaction(_agent, *envelope,
+                           false);  // do not care about the result
+  };
 }
 
 // Guarded by caller
@@ -1824,9 +1919,9 @@ void arangodb::consensus::cleanupHotbackupTransferJobsFunctional(
     Node const& snapshot, std::shared_ptr<VPackBuilder> envelope) {
   // This deletes old Hotbackup transfer jobs in
   // /Target/HotBackup/TransferJobs according to their time stamp.
-  // We keep at most 100 transfer jobs which are completed.
+  // We keep at most 10 transfer jobs which are completed.
   // We also delete old hotbackup transfer job locks if needed.
-  constexpr uint64_t maximalNumberTransferJobs = 100;
+  constexpr uint64_t maximalNumberTransferJobs = 10;
   constexpr char const* prefix = HOTBACKUP_TRANSFER_JOBS;
 
   auto static const noJobs = Node::Children{};
@@ -2017,7 +2112,7 @@ void Supervision::cleanupHotbackupTransferJobs() {
     write_ret_t res = singleWriteTransaction(_agent, *envelope, false);
 
     if (!res.accepted || (res.indices.size() == 1 && res.indices[0] == 0)) {
-      LOG_TOPIC("1232b", INFO, Logger::SUPERVISION)
+      LOG_TOPIC("1232d", INFO, Logger::SUPERVISION)
           << "Failed to remove old transfer jobs or locks: "
           << envelope->toJson();
     }
@@ -3391,6 +3486,8 @@ bool Supervision::start(Agent* agent) {
   _delayFailedFollower = _agent->config().supervisionDelayFailedFollower();
   _failedLeaderAddsFollower =
       _agent->config().supervisionFailedLeaderAddsFollower();
+  _expiredServersGracePeriod =
+      _agent->config().supervisionExpiredServersGracePeriod();
   return start();
 }
 

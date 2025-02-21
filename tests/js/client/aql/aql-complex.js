@@ -191,7 +191,7 @@ function ahuacatlComplexTestSuite () {
     testArrayNesting1 : function () {
       var array = { };
       var last = array;
-      let depth = (isCov) ? 50:75;
+      let depth = (isCov) ? 30:75;
       for (var i = 1; i < depth; ++i) {
         last["level" + i] = { };
         last = last["level" + i];

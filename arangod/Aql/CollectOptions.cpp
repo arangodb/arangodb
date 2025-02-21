@@ -23,6 +23,7 @@
 
 #include "CollectOptions.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -35,16 +36,22 @@ CollectOptions::CollectOptions() noexcept
 /// @brief constructor
 CollectOptions::CollectOptions(velocypack::Slice slice)
     : method(CollectMethod::kUndefined), fixed(true) {
-  if (VPackSlice v = slice.get("collectOptions"); v.isObject()) {
-    v = v.get("method");
-    if (v.isString()) {
+  if (slice.isObject()) {
+    if (auto v = slice.get("method"); v.isString()) {
       method = methodFromString(v.stringView());
     }
+    if (VPackSlice v = slice.get("fixed"); v.isBoolean()) {
+      fixed = v.isTrue();
+    }
+    if (VPackSlice v = slice.get("aggregateIntoExpressionOnDBServers");
+        v.isBoolean()) {
+      aggregateIntoExpressionOnDBServers = v.isTrue();
+    }
+    if (VPackSlice v = slice.get(StaticStrings::IndexHintDisableIndex);
+        v.isBoolean()) {
+      disableIndex = v.isTrue();
+    }
   }
-  if (VPackSlice v = slice.get("fixed"); v.isBoolean()) {
-    fixed = v.isTrue();
-  }
-
   TRI_ASSERT(method != CollectMethod::kUndefined || !fixed);
 }
 
@@ -78,6 +85,9 @@ void CollectOptions::toVelocyPack(velocypack::Builder& builder) const {
   VPackObjectBuilder guard(&builder);
   builder.add("method", VPackValue(methodToString(method)));
   builder.add("fixed", VPackValue(fixed));
+  builder.add(StaticStrings::IndexHintDisableIndex, VPackValue(disableIndex));
+  builder.add("aggregateIntoExpressionOnDBServers",
+              VPackValue(aggregateIntoExpressionOnDBServers));
 }
 
 /// @brief get the aggregation method from a string
@@ -117,4 +127,8 @@ std::string_view CollectOptions::methodToString(
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                  "cannot stringify unknown aggregation method");
+}
+
+bool CollectOptions::requiresSortedInput() const noexcept {
+  return method != arangodb::aql::CollectOptions::CollectMethod::kHash;
 }

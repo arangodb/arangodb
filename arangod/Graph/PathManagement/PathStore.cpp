@@ -117,10 +117,11 @@ auto PathStore<Step>::buildPath(Step const& vertex, PathResultType& path) const
   while (!myStep->isFirst()) {
     path.prependVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
-    path.prependEdge(myStep->getEdge());
-
     TRI_ASSERT(size() > myStep->getPrevious());
-    myStep = &_schreier[myStep->getPrevious()];
+    Step const* prevStep = &_schreier[myStep->getPrevious()];
+    path.prependEdge(myStep->getEdge(),
+                     myStep->getWeight() - prevStep->getWeight());
+    myStep = prevStep;
   }
   path.prependVertex(myStep->getVertex());
 }
@@ -144,23 +145,25 @@ auto PathStore<Step>::reverseBuildPath(
   TRI_ASSERT(size() > vertex.getPrevious());
   // We have added the vertex, but we still need the edge on the other side of
   // the path
+  Step const* prevStep = &_schreier[vertex.getPrevious()];
 
   TRI_ASSERT(vertex.getEdge().isValid());
-  path.appendEdge(vertex.getEdge());
+  path.appendEdge(vertex.getEdge(), vertex.getWeight() - prevStep->getWeight());
 
   // Append the weight, as we do accumulate the weight on all steps,
   // this only needs to be added once.
   path.addWeight(vertex.getWeight());
 
-  Step const* myStep = &_schreier[vertex.getPrevious()];
+  Step const* myStep = prevStep;
 
   while (!myStep->isFirst()) {
     path.appendVertex(myStep->getVertex());
     TRI_ASSERT(myStep->getEdge().isValid());
-    path.appendEdge(myStep->getEdge());
-
     TRI_ASSERT(size() > myStep->getPrevious());
-    myStep = &_schreier[myStep->getPrevious()];
+    prevStep = &_schreier[myStep->getPrevious()];
+    path.appendEdge(myStep->getEdge(),
+                    myStep->getWeight() - prevStep->getWeight());
+    myStep = prevStep;
   }
   path.appendVertex(myStep->getVertex());
 }

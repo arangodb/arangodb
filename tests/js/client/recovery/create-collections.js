@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse */
+/* global runSetup assertEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,9 +29,9 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop('UnitTestsRecovery1');
   var c = db._create('UnitTestsRecovery1', {
@@ -72,6 +72,7 @@ function runSetup () {
   c.ensureIndex({ type: "hash", fields: ["value42"], unique: true });
   c.save({ _key: 'crashme' }, true);
   
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -98,7 +99,7 @@ function recoverySuite () {
       assertTrue(prop.waitForSync);
       assertEqual(2, c.type());
       assertFalse(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(3, idx.length);
 
       c = db._collection('UnitTestsRecovery2');
@@ -107,7 +108,7 @@ function recoverySuite () {
       assertFalse(prop.waitForSync);
       assertEqual(2, c.type());
       assertFalse(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(2, idx.length);
       assertEqual('skiplist', idx[1].type);
       assertFalse(idx[1].unique);
@@ -119,7 +120,7 @@ function recoverySuite () {
       assertFalse(prop.waitForSync);
       assertEqual(3, c.type());
       assertFalse(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(3, idx.length);
       assertEqual('edge', idx[1].type);
       assertEqual('skiplist', idx[2].type);
@@ -130,7 +131,7 @@ function recoverySuite () {
       prop = c.properties();
       assertEqual(2, c.type());
       assertTrue(prop.isSystem);
-      idx = c.getIndexes();
+      idx = c.indexes();
       assertEqual(2, idx.length);
       assertEqual('hash', idx[1].type);
       assertTrue(idx[1].unique);
@@ -143,13 +144,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

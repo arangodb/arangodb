@@ -149,6 +149,12 @@ There is also a yet-unmerged branch "feature/rocksdb-latest" in that repo that
 includes the latest version of RocksDB for a future potential upgrade.
 It is based on RocksDB 9.5 as of the time of this writing (July 2024).
 
+Here is a bug fix, which we did first in our RocksDB fork:
+  https://github.com/arangodb/rocksdb/pull/7
+
+There is a corresponding PR in the main repository:
+  https://github.com/facebook/rocksdb/pull/12983
+
 ## s2geometry
 
 Just update code and directory name (commit hash) and apply patch
@@ -401,7 +407,8 @@ Upstream is: https://chromium.googlesource.com/v8/v8.git
 
 ## velocypack
 
-our fast and compact format for serialization and storage
+2dd3644585fe4cf56f6f3caad4810e3a225a8fe7
+Our fast and compact format for serialization and storage
 
 Maintained at:
 https://github.com/arangodb/velocypack/

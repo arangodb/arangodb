@@ -46,6 +46,9 @@ class FileDescriptorsFeature : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
 
+  uint64_t current() const noexcept;
+  uint64_t limit() const noexcept;
+
   // count the number of open files, by scanning /proc/self/fd.
   // note: this can be expensive
   void countOpenFiles();

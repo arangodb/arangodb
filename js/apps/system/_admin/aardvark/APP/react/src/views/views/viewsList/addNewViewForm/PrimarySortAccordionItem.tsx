@@ -1,3 +1,4 @@
+import { InputControl, SingleSelectControl, SwitchControl } from "@arangodb/ui";
 import { CloseIcon } from "@chakra-ui/icons";
 import {
   AccordionButton,
@@ -11,9 +12,18 @@ import {
 } from "@chakra-ui/react";
 import { FieldArray, useFormikContext } from "formik";
 import React from "react";
-import { InputControl } from "../../../../components/form/InputControl";
-import { SelectControl } from "../../../../components/form/SelectControl";
 import { AddNewViewFormValues } from "./AddNewViewForm.types";
+
+const compressionOptions = [
+  {
+    label: "LZ4",
+    value: "lz4"
+  },
+  {
+    label: "None",
+    value: "none"
+  }
+];
 
 export const PrimarySortAccordionItem = () => {
   return (
@@ -26,10 +36,37 @@ export const PrimarySortAccordionItem = () => {
       </AccordionButton>
       <AccordionPanel pb={4}>
         <PrimarySortFields />
+        <Box
+          display={"grid"}
+          gridTemplateColumns={"200px 1fr"}
+          rowGap="5"
+          pt={4}
+        >
+          <FormLabel htmlFor="primarySortCompression">Compression</FormLabel>
+          <SingleSelectControl
+            name="primarySortCompression"
+            selectProps={{
+              options: compressionOptions
+            }}
+          />
+          <FormLabel htmlFor="primarySortCache">Cache</FormLabel>
+          <SwitchControl
+            name="primarySortCache"
+            switchProps={{
+              isDisabled: !window.frontendConfig.isEnterprise
+            }}
+            tooltip={
+              window.frontendConfig.isEnterprise
+                ? undefined
+                : "Primary key column caching is available in the Enterprise Edition."
+            }
+          />
+        </Box>
       </AccordionPanel>
     </AccordionItem>
   );
 };
+
 const directionOptions = [
   {
     label: "Ascending",
@@ -40,6 +77,7 @@ const directionOptions = [
     value: "desc"
   }
 ];
+
 const PrimarySortFields = () => {
   const { values } = useFormikContext<AddNewViewFormValues>();
   return (
@@ -67,7 +105,7 @@ const PrimarySortFields = () => {
                     <FormLabel htmlFor={`primarySort.${index}.direction`}>
                       Direction
                     </FormLabel>
-                    <SelectControl
+                    <SingleSelectControl
                       name={`primarySort.${index}.direction`}
                       selectProps={{
                         options: directionOptions

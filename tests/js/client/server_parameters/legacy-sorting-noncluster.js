@@ -140,14 +140,14 @@ function legacySortingTestSuite() {
       assertEqual("LEGACY", res.result.current);
 
       let c = db._collection(cn);
-      let indexes = c.getIndexes();
+      let indexes = c.indexes();
       let names = indexes.map(x => x.name);
       let ids_system = indexes.map(x => x.id);
       let r = arango.GET("/_admin/cluster/vpackSortMigration/check");
 
       db._useDatabase(dn);
       c = db._collection(cn);
-      indexes = c.getIndexes();
+      indexes = c.indexes();
       let ids_dn = indexes.map(x => x.id);
       db._useDatabase("_system");
 
@@ -177,7 +177,7 @@ function legacySortingTestSuite() {
       for (let d of ["_system", dn]) {
         db._useDatabase(d);
         c = db._collection(cn);
-        indexes = c.getIndexes();
+        indexes = c.indexes();
         for (let i of indexes) {
           if (i.id !== cn + "/0") {   // primary index
             c.dropIndex(i.id);

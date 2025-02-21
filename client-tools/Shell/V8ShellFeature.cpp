@@ -92,6 +92,7 @@ V8ShellFeature::V8ShellFeature(Server& server, std::string const& name)
       _copyInstallation(false),
       _removeCopyInstallation(false),
       _gcInterval(50),
+      _executionDeadline(0),
       _name(name),
       _isolate(nullptr) {
   setOptional(false);
@@ -142,6 +143,13 @@ void V8ShellFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--javascript.gc-interval",
       "Request-based garbage collection interval (each n-th command).",
       new UInt64Parameter(&_gcInterval));
+
+  options->addOption(
+      "--javascript.execution-deadline",
+      "deadline in seconds. Once reached, calls will throw. "
+      "HTTP timeouts will be adjusted.",
+      new UInt32Parameter(&_executionDeadline),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
 void V8ShellFeature::validateOptions(
@@ -630,8 +638,7 @@ ErrorCode V8ShellFeature::runShell(
 bool V8ShellFeature::runScript(std::vector<std::string> const& files,
                                std::vector<std::string> const& positionals,
                                bool execute,
-                               std::vector<std::string> const& mainArgs,
-                               bool runMain) {
+                               std::vector<std::string> const& mainArgs) {
   auto isolate = _isolate;
   v8::Locker locker{_isolate};
 
@@ -708,72 +715,6 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
         std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
         LOG_TOPIC("c254f", ERR, arangodb::Logger::FIXME) << exception;
         ok = false;
-      }
-      if (ok && runMain) {
-        v8::TryCatch tryCatch(isolate);
-        // run the garbage collection for at most 30 seconds
-        TRI_RunGarbageCollectionV8(isolate, 30.0);
-
-        // parameter array
-        v8::Handle<v8::Array> params = v8::Array::New(isolate);
-
-        params
-            ->Set(context, 0,
-                  TRI_V8_STD_STRING(isolate, files[files.size() - 1]))
-            .FromMaybe(false);
-
-        for (size_t i = 0; i < mainArgs.size(); ++i) {
-          params
-              ->Set(context, (uint32_t)(i + 1),
-                    TRI_V8_STD_STRING(isolate, mainArgs[i]))
-              .FromMaybe(false);
-        }
-
-        // call main
-        v8::Handle<v8::String> mainFuncName =
-            TRI_V8_ASCII_STRING(isolate, "main");
-        v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
-            context->Global()
-                ->Get(context, mainFuncName)
-                .FromMaybe(v8::Handle<v8::Value>()));
-
-        if (!main.IsEmpty() && !main->IsUndefined()) {
-          v8::Handle<v8::Value> args[] = {params};
-          try {
-            v8::Handle<v8::Value> result =
-                main->Call(TRI_IGETC, main, 1, args)
-                    .FromMaybe(v8::Local<v8::Value>());
-            if (tryCatch.HasCaught()) {
-              if (tryCatch.CanContinue()) {
-                TRI_LogV8Exception(isolate, &tryCatch);
-                ok = false;
-              } else {
-                // will stop, so need for v8g->_canceled = true;
-                TRI_ASSERT(!ok);
-              }
-            } else {
-              ok = TRI_ObjectToDouble(isolate, result) == 0;
-            }
-          } catch (arangodb::basics::Exception const& ex) {
-            LOG_TOPIC("525a4", ERR, arangodb::Logger::FIXME)
-                << "caught exception " << TRI_errno_string(ex.code()) << ": "
-                << ex.what();
-            ok = false;
-          } catch (std::bad_alloc const&) {
-            LOG_TOPIC("abc8b", ERR, arangodb::Logger::FIXME)
-                << "caught exception "
-                << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-            ok = false;
-          } catch (...) {
-            LOG_TOPIC("4da99", ERR, arangodb::Logger::FIXME)
-                << "caught unknown exception";
-            ok = false;
-          }
-        } else {
-          LOG_TOPIC("5da99", ERR, arangodb::Logger::FIXME)
-              << "Function 'main' was not found";
-          ok = false;
-        }
       }
     } else {
       ok = TRI_ParseJavaScriptFile(_isolate, file.c_str());
@@ -1183,7 +1124,7 @@ void V8ShellFeature::initGlobals() {
 
   TRI_InitV8Buffer(_isolate);
   TRI_InitV8Utils(_isolate, context, _startupDirectory, modules);
-  TRI_InitV8Deadline(_isolate);
+  TRI_InitV8Deadline(_isolate, _executionDeadline);
   TRI_InitV8Shell(_isolate);
 
   // pager functions (overwrite existing SYS_OUTPUT from InitV8Utils)

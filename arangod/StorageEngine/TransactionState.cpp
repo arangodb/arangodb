@@ -657,18 +657,27 @@ containers::FlatHashSet<ServerID> const& TransactionState::knownServers()
 
 bool TransactionState::knowsServer(std::string_view uuid) const noexcept {
   TRI_ASSERT(!uuid.empty());
+  if (uuid.starts_with('_')) {
+    uuid = uuid.substr(1);
+  }
   return _knownServers.contains(uuid);
 }
 
 /// @brief add a server to the known set
 void TransactionState::addKnownServer(std::string_view uuid) {
   TRI_ASSERT(!uuid.empty());
+  if (uuid.starts_with('_')) {
+    uuid = uuid.substr(1);
+  }
   _knownServers.emplace(uuid);
 }
 
 /// @brief remove a server from the known set
 void TransactionState::removeKnownServer(std::string_view uuid) {
   TRI_ASSERT(!uuid.empty());
+  if (uuid.starts_with('_')) {
+    uuid = uuid.substr(1);
+  }
   _knownServers.erase(uuid);
 }
 

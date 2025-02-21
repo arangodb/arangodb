@@ -25,14 +25,15 @@
 
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <s2/base/integral_types.h>
+
+#include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <string_view>
 #include <vector>
@@ -43,7 +44,11 @@ class LogicalCollection;
 struct IndexIteratorOptions;
 struct ResourceMonitor;
 struct AqlIndexStreamIterator;
+struct AqlIndexDistinctScanIterator;
 struct IndexStreamOptions;
+struct IndexDistinctScanOptions;
+
+struct UserVectorIndexDefinition;
 
 namespace velocypack {
 class Builder;
@@ -106,7 +111,8 @@ class Index {
     TRI_IDX_TYPE_ZKD_INDEX,
     TRI_IDX_TYPE_MDI_INDEX,
     TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
-    TRI_IDX_TYPE_INVERTED_INDEX
+    TRI_IDX_TYPE_INVERTED_INDEX,
+    TRI_IDX_TYPE_VECTOR_INDEX,
   };
 
   /// @brief: helper struct returned by index methods that determine the costs
@@ -321,13 +327,19 @@ class Index {
     Internals = 8,
     /// @brief serialize for inventory
     Inventory = 16,
+    /// @brief serialize for maintenance work
+    /// This mode should be used to indicate which
+    /// data should be transferred in maintenance service
+    /// For now this is same as Internals mode except for
+    /// vector index where we ignore trainedData
+    Maintenance = 32,
   };
 
   /// @brief helper for building flags
   template<typename... Args>
   static inline constexpr std::underlying_type<Serialize>::type makeFlags(
       Serialize flag, Args... args) {
-    return static_cast<std::underlying_type<Serialize>::type>(flag) +
+    return static_cast<std::underlying_type<Serialize>::type>(flag) |
            makeFlags(args...);
   }
 
@@ -427,6 +439,13 @@ class Index {
 
   virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
       transaction::Methods* trx, IndexStreamOptions const&);
+
+  virtual bool supportsDistinctScan(
+      IndexDistinctScanOptions const&) const noexcept;
+  virtual std::unique_ptr<AqlIndexDistinctScanIterator> distinctScanFor(
+      transaction::Methods* trx, IndexDistinctScanOptions const&);
+
+  virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();
