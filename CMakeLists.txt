@@ -1026,6 +1026,12 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 
 find_package(ZLIB REQUIRED) # TODO should be removed, see ZLIB above
 
+# It could be so easy if add_subdirectory allowed to pass variables
+# Instead be need to save the original, modify, add, and restore
+# thew flags.
+set(CMAKE_EXE_LINKER_FLAGS_ORIG "${CMAKE_EXE_LINKER_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
+
 if(STATIC_EXECUTABLES)
   # These variables are used when linking BIN_ARANGOD
   # and are specific for how we build our docker build
@@ -1070,10 +1076,6 @@ endif()
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
-
-# it could be so easy if add_subdirectory allowed to pass variables
-set(CMAKE_EXE_LINKER_FLAGS_ORIG "${CMAKE_EXE_LINKER_FLAGS}")
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
 
 add_subdirectory(3rdParty/faiss)
 
@@ -1208,7 +1210,6 @@ list(INSERT SYSTEM_LIBRARIES 0
 add_subdirectory(lib)
 add_subdirectory(client-tools)
 add_subdirectory(arangod)
-
 
 if(USE_GOOGLE_TESTS)
   add_subdirectory(tests)
