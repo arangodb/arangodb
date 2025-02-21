@@ -407,7 +407,8 @@ Upstream is: https://chromium.googlesource.com/v8/v8.git
 
 ## velocypack
 
-our fast and compact format for serialization and storage
+2dd3644585fe4cf56f6f3caad4810e3a225a8fe7
+Our fast and compact format for serialization and storage
 
 Maintained at:
 https://github.com/arangodb/velocypack/
