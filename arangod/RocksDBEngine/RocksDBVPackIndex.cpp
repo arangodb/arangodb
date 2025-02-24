@@ -3161,14 +3161,6 @@ Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
     }
   }
 
-  // only one key fields is supported currently
-  if (streamOpts.usedKeyFields.size() != 1) {
-    return StreamSupportResult::makeUnsupported();
-  }
-  if (streamOpts.usedKeyFields[0] >= fields.size()) {
-    return StreamSupportResult::makeUnsupported();
-  }
-
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
   for (auto constantValue : streamOpts.constantFields) {
@@ -3194,8 +3186,9 @@ Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
   // refers to the triples and just taking a prefix [doc.a, doc.b] is not
   // necessarily unique. Thus, we should not pick an optimized strategy for
   // joining two unique indexes.
-  TRI_ASSERT(streamOpts.usedKeyFields.size() == 1);
   bool const hasUniqueTuples = isUnique && idx == fields.size();
+  TRI_ASSERT((streamOpts.usedKeyFields.size() == 1 && hasUniqueTuples) ||
+             !hasUniqueTuples);
 
   return StreamSupportResult::makeSupported(hasUniqueTuples);
 }
