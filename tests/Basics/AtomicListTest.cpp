@@ -51,7 +51,6 @@ struct Entry {
   size_t memoryUsage() const noexcept { return sizeof(Entry); }
 };
 
-
 TEST(BoundedListTests, testBasicOperation) {
   BoundedList<Entry> list(1024 * 1024, 3);
   list.prepend(Entry{1});
