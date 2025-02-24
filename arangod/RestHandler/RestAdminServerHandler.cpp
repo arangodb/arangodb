@@ -67,6 +67,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleJWTSecretsReload();
   } else if (suffixes.size() == 1 && suffixes[0] == "encryption") {
     handleEncryptionKeyRotation();
+  } else if (suffixes.size() == 1 && suffixes[0] == "api-calls") {
+    handleApiCalls();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -298,3 +300,42 @@ void RestAdminServerHandler::handleEncryptionKeyRotation() {
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
 }
 #endif
+
+void RestAdminServerHandler::handleApiCalls() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+
+  // Get current and historical snapshots using the public method
+  auto snapshots = server().getAPICallHistory();
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("calls", VPackValue(VPackValueType::Array));
+
+  // Iterate through all snapshots and their nodes
+  for (auto const& snapshot : snapshots) {
+    auto node = snapshot->getSnapshot();
+    while (node != nullptr) {
+      builder.openObject();
+      builder.add(
+          "timestamp",
+          VPackValue(std::chrono::duration_cast<std::chrono::milliseconds>(
+                         node->_data.timeStamp.time_since_epoch())
+                         .count()));
+      // Convert RequestType to string using static method
+      builder.add("requestType",
+                  VPackValue(rest::requestToString(node->_data.requestType)));
+      builder.add("path", VPackValue(node->_data.path));
+      builder.add("database", VPackValue(node->_data.database));
+      builder.close();  // object
+      node = node->next();
+    }
+  }
+
+  builder.close();  // array
+  builder.close();  // object
+  generateOk(rest::ResponseCode::OK, builder.slice());
+}

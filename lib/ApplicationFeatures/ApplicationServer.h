@@ -38,6 +38,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
 #include "Containers/AtomicList.h"
+#include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
 
@@ -45,16 +46,17 @@ namespace arangodb {
 
 struct ApiCallRecord {
   std::chrono::system_clock::time_point timeStamp;
+  arangodb::rest::RequestType requestType;
   std::string path;
   std::string database;
-  std::shared_ptr<std::string> additionalInfo;  // filled in by RestHandler
-  ApiCallRecord(std::string_view path, std::string_view database)
+  ApiCallRecord(arangodb::rest::RequestType requestType, std::string_view path,
+                std::string_view database)
       : timeStamp(std::chrono::system_clock::now()),
+        requestType(requestType),
         path(path),
         database(database) {}
   size_t memoryUsage() const noexcept;
 };
-
 
 template<typename T>
 struct TypeTag;
@@ -238,6 +240,15 @@ class ApplicationServer {
   void disableFeatures(std::span<const size_t>);
   void forceDisableFeatures(std::span<const size_t>);
 
+  void recordAPICall(arangodb::rest::RequestType requestType,
+                     std::string_view path, std::string_view database);
+
+  // Get historical snapshots of API calls
+  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallHistory()
+      const {
+    return _apiCallRecord.getHistoricalSnapshot();
+  }
+
  private:
   friend class ApplicationFeature;
 
@@ -300,9 +311,6 @@ class ApplicationServer {
   void reportServerProgress(State);
   void reportFeatureProgress(State, std::string_view);
 
-  std::shared_ptr<ApiCallRecord> recordAPICall(std::string_view path,
-                                               std::string_view database);
-
  private:
   // the current state
   std::atomic<State> _state;
@@ -353,7 +361,7 @@ class ApplicationServer {
   bool _dumpOptions = false;
 
   /// record of recent api calls:
-  arangodb::BoundedList<std::shared_ptr<ApiCallRecord>> _apiCallRecord;
+  arangodb::BoundedList<ApiCallRecord> _apiCallRecord;
 };
 /**
 // ApplicationServerT is intended to provide statically checked access to

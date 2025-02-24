@@ -440,6 +440,12 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
+
+  // Record the request here in the ApplicationServer:
+  server.recordAPICall(request->requestType(), request->requestPath(),
+                       request->databaseName());
+
+  // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
   auto handler =
       factory->createHandler(server, std::move(request), std::move(response));
@@ -452,9 +458,6 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
                        VPackBuffer<uint8_t>());
     return;
   }
-
-  /// TODO: Want to record the request here in a bounded list.
-  auto apiCallRecord = server.recordAPICall(request->requestPath, request->databaseName());
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase

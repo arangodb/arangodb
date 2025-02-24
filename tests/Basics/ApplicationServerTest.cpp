@@ -161,3 +161,32 @@ TEST(ApplicationServerTest, test_startsBeforeCyclic) {
   }
   EXPECT_TRUE(failed);
 }
+
+TEST(ApplicationServerTest, test_apiCallHistory) {
+  auto options = std::make_shared<options::ProgramOptions>(
+      "arangod", "something", "", "path");
+  TestApplicationServer server(options, "path");
+
+  // Record some API calls
+  server.recordAPICall(rest::RequestType::GET, "/test1", "db1");
+  server.recordAPICall(rest::RequestType::POST, "/test2", "db2");
+
+  // Get the history
+  auto history = server.getAPICallHistory();
+  EXPECT_FALSE(history.empty());
+
+  // Check the most recent call (should be first due to prepend)
+  auto firstList = history[0];
+  auto node = firstList->getSnapshot();
+  EXPECT_NE(node, nullptr);
+  EXPECT_EQ(node->_data.path, "/test2");
+  EXPECT_EQ(node->_data.database, "db2");
+  EXPECT_EQ(node->_data.requestType, rest::RequestType::POST);
+
+  // Check the second call
+  node = node->next();
+  EXPECT_NE(node, nullptr);
+  EXPECT_EQ(node->_data.path, "/test1");
+  EXPECT_EQ(node->_data.database, "db1");
+  EXPECT_EQ(node->_data.requestType, rest::RequestType::GET);
+}

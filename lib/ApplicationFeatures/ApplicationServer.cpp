@@ -77,8 +77,7 @@ auto nonEmptyFeatures(
 }  // namespace
 
 size_t arangodb::ApiCallRecord::memoryUsage() const noexcept {
-  return sizeof(timeStamp) + 3 * sizeof(std::string) + path.size() +
-         database.size() + additionalInfo.size();
+  return sizeof(ApiCallRecord) + path.size() + database.size();
 }
 
 std::atomic<bool> ApplicationServer::CTRL_C(false);
@@ -892,11 +891,8 @@ std::string_view ApplicationServer::stringifyState(State state) {
   return "unknown";
 }
 
-std::shared_ptr<arangodb::ApiCallRecord> ApplicationServer::recordAPICall(
-    std::string_view path, std::string_view database) {
-  auto acr = std::make_shared<ApiCallRecord>(path, database);
-  auto acr_copy = acr;
-  _apiCallRecord.prepend(std::move(acr_copy));
-  return acr;
+void ApplicationServer::recordAPICall(arangodb::rest::RequestType requestType,
+                                      std::string_view path,
+                                      std::string_view database) {
+  _apiCallRecord.prepend(ApiCallRecord(requestType, path, database));
 }
-
