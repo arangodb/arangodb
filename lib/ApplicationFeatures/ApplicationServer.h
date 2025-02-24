@@ -251,6 +251,10 @@ class ApplicationServer {
     return _apiCallRecord.getHistoricalSnapshot();
   }
 
+  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallTrash() {
+    return _apiCallRecord.getTrash();
+  }
+
  private:
   friend class ApplicationFeature;
 

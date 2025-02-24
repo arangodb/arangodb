@@ -233,3 +233,62 @@ TEST(BoundedListTests, testOrderPreservation) {
   ASSERT_EQ(count, numEntries);
   ASSERT_EQ(expected, size_t(-1));  // We should have counted down to -1
 }
+
+TEST(BoundedListTests, testTrashCollection) {
+  // Calculate memory threshold to force rotations
+  const size_t entrySize = sizeof(Entry);
+  const size_t entriesPerBatch = 1000;
+  const size_t memoryThreshold = entrySize * entriesPerBatch;
+  const size_t maxHistory = 3;
+  
+  BoundedList<Entry> list(memoryThreshold, maxHistory);
+  
+  // Fill multiple batches to force rotations
+  const size_t totalBatches = maxHistory + 2; // Create more than maxHistory to force trash
+  const size_t totalEntries = entriesPerBatch * totalBatches;
+  
+  for (size_t i = 0; i < totalEntries; ++i) {
+    list.prepend(Entry{static_cast<int>(i)});
+  }
+  
+  // Get trash and verify
+  auto trash = list.getTrash();
+  ASSERT_FALSE(trash.empty());
+  
+  // Verify each trashed batch has entries
+  size_t totalTrashedEntries = 0;
+  for (const auto& batch : trash) {
+    auto* node = batch->getSnapshot();
+    size_t batchCount = 0;
+    while (node != nullptr) {
+      batchCount++;
+      node = node->next();
+    }
+    ASSERT_GT(batchCount, 0);
+    totalTrashedEntries += batchCount;
+  }
+  
+  // Verify trash is cleared after getting it
+  auto emptyTrash = list.getTrash();
+  ASSERT_TRUE(emptyTrash.empty());
+  
+  // Verify we can still access current and historical entries
+  auto current = list.getCurrentSnapshot();
+  ASSERT_TRUE(current->getSnapshot() != nullptr);
+  
+  auto historical = list.getHistoricalSnapshot();
+  ASSERT_LE(historical.size(), maxHistory + 1); // +1 for current
+  
+  // Count remaining entries
+  size_t remainingEntries = 0;
+  for (const auto& snapshot : historical) {
+    auto* node = snapshot->getSnapshot();
+    while (node != nullptr) {
+      remainingEntries++;
+      node = node->next();
+    }
+  }
+  
+  // Total entries should equal original amount
+  ASSERT_EQ(remainingEntries + totalTrashedEntries, totalEntries);
+}

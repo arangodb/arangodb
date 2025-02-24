@@ -138,6 +138,7 @@ class BoundedList {
   std::atomic<std::shared_ptr<AtomicList<T>>> _current;
   std::atomic<std::size_t> _memoryUsage;
   std::vector<std::shared_ptr<AtomicList<T>>> _history;
+  std::vector<std::shared_ptr<AtomicList<T>>> _trash;
   size_t _ringBufferPos;
   mutable std::mutex
       _mutex;  // protecting write access to _current and _history
@@ -254,6 +255,20 @@ class BoundedList {
       }
     }
     return snapshots;
+  }
+
+  std::vector<std::shared_ptr<AtomicList<T>>> getTrash() {
+    // This method is to extract the trashed batches for external removal.
+    std::lock_guard<std::mutex> guard(_mutex);
+    std::vector<std::shared_ptr<AtomicList<T>>> trashHeap;
+    trashHeap.reserve(_trash.size());
+    // This synchronizes with the storing of a new empty list in the
+    // `prepend` method.
+    for (size_t i = 0; i < _trash.size(); ++i) {
+      trashHeap.push_back(_trash[i]);
+    }
+    _trash.clear();
+    return trashHeap;
   }
 };
 
