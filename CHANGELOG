@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add visibility for recent api calls.
+
 * BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL 
   query to hang and block a thread.
 
