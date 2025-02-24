@@ -862,10 +862,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     setResult({ex.code(), absl::StrCat("AQL: ", ex.message(),
                                        QueryExecutionState::toStringWithPrefix(
                                            _execState))});
-    auto bindParameters = _bindParameters.builder();
-    LOG_TOPIC("25362", WARN, Logger::QUERIES)
-        << "Exception during query execution, query string: " << _queryString
-        << " bind parameters: " << bindParameters->slice().toJson();
     cleanupPlanAndEngine(/*sync*/ true);
     queryResult.reset(result());
   } catch (std::bad_alloc const&) {
