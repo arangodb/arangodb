@@ -899,8 +899,10 @@ void ApplicationServer::recordAPICall(arangodb::rest::RequestType requestType,
   auto diff = std::chrono::steady_clock::now() - start;
   _totalTime.fetch_add(diff.count(), std::memory_order_relaxed);
   _totalCount.fetch_add(1, std::memory_order_relaxed);
+#if 0
   if (diff.count() > 1000) {
     LOG_TOPIC("36271", WARN, Logger::ENGINES)
         << "Call to recordAPICall took " << diff.count() << " nanoseconds.";
   }
+#endif
 }
