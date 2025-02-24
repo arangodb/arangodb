@@ -6,8 +6,9 @@ This python-package includes one package that pretty-prints the async registry i
 
 ## Pretty printing in gdb
 
-When debugging, it can be helful to get an overview of all active async operations at the current execution state. The standard version is almost impossible to read due to the complexity of the registry. To use the async-registry pretty-printer in gdb you need to give the `.gdbinit` file in this directory to gdb at startup, e.g. via:
-
+When debugging, it can be helful to get an overview of all active async operations at the current execution state. The standard version is almost impossible to read due to the complexity of the registry. To use the async-registry pretty-printer in gdb you need to 
+1. Start gdb from inside the arangodb directory
+2. give the `.gdbinit` file in this directory to gdb at startup, e.g. via:
 ```sh
 gdb -ix <path to the .gdbinit file in this directory> <executable via --args or pid via -p>
 ```
@@ -25,5 +26,5 @@ python3 -m unittest discover
 ArangoDB provides a REST call which gives you all active async operations. The pretty-printer python script improves the readability of the output. Use it as the following:
 
 ```sh
-curl -s <server>/_admin/async-registry -u root: | ./asyncregistry/src/pretty-printer.py
+curl -s <server>/_admin/async-registry -u root: | ./src/pretty-printer.py
 ```

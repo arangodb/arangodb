@@ -25,7 +25,7 @@ class AsyncRegistryPrinter:
                 # there is always a synchronous thread waiting for the root async observable
                 waiting_thread = data.requester.content
                 stacktrace.append(("─ ", str(waiting_thread)))
-                yield ("[%s]" % str(waiting_thread), "\n" + "\n".join(ascii + str(promise) for (ascii, promise) in stacktrace))
+                yield ("\n[%s]" % str(waiting_thread), "\n" + "\n".join(ascii + str(promise) for (ascii, promise) in stacktrace))
 
 def async_registry (val):
     if str(val.type) == 'arangodb::async_registry::Registry':
