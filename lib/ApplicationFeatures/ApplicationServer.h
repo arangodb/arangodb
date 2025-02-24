@@ -244,8 +244,10 @@ class ApplicationServer {
                      std::string_view path, std::string_view database);
 
   // Get historical snapshots of API calls
-  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallHistory()
-      const {
+  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallHistory(
+      uint64_t& time, uint64_t& count) const {
+    time = _totalTime.load(std::memory_order_relaxed);
+    count = _totalCount.load(std::memory_order_relaxed);
     return _apiCallRecord.getHistoricalSnapshot();
   }
 
@@ -362,6 +364,8 @@ class ApplicationServer {
 
   /// record of recent api calls:
   arangodb::BoundedList<ApiCallRecord> _apiCallRecord;
+  std::atomic<uint64_t> _totalTime{0};
+  std::atomic<uint64_t> _totalCount{0};
 };
 /**
 // ApplicationServerT is intended to provide statically checked access to

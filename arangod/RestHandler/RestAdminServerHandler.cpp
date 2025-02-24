@@ -309,33 +309,42 @@ void RestAdminServerHandler::handleApiCalls() {
   }
 
   // Get current and historical snapshots using the public method
-  auto snapshots = server().getAPICallHistory();
+  uint64_t time;
+  uint64_t count;
+  auto snapshots = server().getAPICallHistory(time, count);
 
   VPackBuilder builder;
-  builder.openObject();
-  builder.add("calls", VPackValue(VPackValueType::Array));
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add("totalTime", VPackValue(time));
+    builder.add("totalCount", VPackValue(count));
+    builder.add(VPackValue("calls"));
+    {
+      VPackArrayBuilder guard2(&builder);
 
-  // Iterate through all snapshots and their nodes
-  for (auto const& snapshot : snapshots) {
-    auto node = snapshot->getSnapshot();
-    while (node != nullptr) {
-      builder.openObject();
-      builder.add(
-          "timestamp",
-          VPackValue(std::chrono::duration_cast<std::chrono::milliseconds>(
-                         node->_data.timeStamp.time_since_epoch())
-                         .count()));
-      // Convert RequestType to string using static method
-      builder.add("requestType",
-                  VPackValue(rest::requestToString(node->_data.requestType)));
-      builder.add("path", VPackValue(node->_data.path));
-      builder.add("database", VPackValue(node->_data.database));
-      builder.close();  // object
-      node = node->next();
+      // Iterate through all snapshots and their nodes
+      for (auto const& snapshot : snapshots) {
+        auto node = snapshot->getSnapshot();
+        while (node != nullptr) {
+          {
+            VPackObjectBuilder guard3(&builder);
+            builder.add(
+                "timestamp",
+                VPackValue(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(
+                        node->_data.timeStamp.time_since_epoch())
+                        .count()));
+            // Convert RequestType to string using static method
+            builder.add(
+                "requestType",
+                VPackValue(rest::requestToString(node->_data.requestType)));
+            builder.add("path", VPackValue(node->_data.path));
+            builder.add("database", VPackValue(node->_data.database));
+          }
+          node = node->next();
+        }
+      }
     }
   }
-
-  builder.close();  // array
-  builder.close();  // object
   generateOk(rest::ResponseCode::OK, builder.slice());
 }

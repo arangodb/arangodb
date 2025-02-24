@@ -894,5 +894,13 @@ std::string_view ApplicationServer::stringifyState(State state) {
 void ApplicationServer::recordAPICall(arangodb::rest::RequestType requestType,
                                       std::string_view path,
                                       std::string_view database) {
+  auto start = std::chrono::steady_clock::now();
   _apiCallRecord.prepend(ApiCallRecord(requestType, path, database));
+  auto diff = std::chrono::steady_clock::now() - start;
+  _totalTime.fetch_add(diff.count(), std::memory_order_relaxed);
+  _totalCount.fetch_add(1, std::memory_order_relaxed);
+  if (diff.count() > 1000) {
+    LOG_TOPIC("12345", WARN, Logger::ENGINES)
+        << "Call to recordAPICall took " << diff.count() << " nanoseconds.";
+  }
 }
