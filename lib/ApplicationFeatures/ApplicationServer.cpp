@@ -636,6 +636,10 @@ void ApplicationServer::start() {
 
   Result res;
 
+  // Start the cleanup thread first
+  _stopCleanupThread.store(false, std::memory_order_relaxed);
+  _cleanupThread = std::jthread([this] { cleanupLoop(); });
+
   for (ApplicationFeature& feature : _orderedFeatures) {
     if (!feature.isEnabled()) {
       continue;
@@ -763,6 +767,12 @@ void ApplicationServer::start() {
 
 void ApplicationServer::stop() {
   LOG_TOPIC("3e53e", TRACE, Logger::STARTUP) << "ApplicationServer::stop";
+
+  // Stop and join the cleanup thread first
+  _stopCleanupThread.store(true, std::memory_order_relaxed);
+  if (_cleanupThread.joinable()) {
+    _cleanupThread.join();
+  }
 
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
        ++it) {
@@ -905,4 +915,29 @@ void ApplicationServer::recordAPICall(arangodb::rest::RequestType requestType,
         << "Call to recordAPICall took " << diff.count() << " nanoseconds.";
   }
 #endif
+}
+
+void ApplicationServer::cleanupLoop() {
+  while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
+    // Get the trash and measure the time
+    auto start = std::chrono::steady_clock::now();
+    auto trash = _apiCallRecord.getTrash();
+    size_t count = trash.size();
+
+    // Explicitly destroy the lists
+    trash.clear();
+
+    auto duration = std::chrono::steady_clock::now() - start;
+    auto nanoseconds =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+
+    if (count > 0) {
+      LOG_TOPIC("53626", INFO, Logger::MEMORY)
+          << "Cleaned up " << count << " API call record lists in "
+          << nanoseconds.count() << " nanoseconds";
+    }
+
+    // Sleep for 100ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
 }

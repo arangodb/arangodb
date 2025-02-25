@@ -34,6 +34,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <jthread>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
@@ -370,6 +371,15 @@ class ApplicationServer {
   arangodb::BoundedList<ApiCallRecord> _apiCallRecord;
   std::atomic<uint64_t> _totalTime{0};
   std::atomic<uint64_t> _totalCount{0};
+
+  // Flag to control the cleanup thread
+  std::atomic<bool> _stopCleanupThread{false};
+
+  // The cleanup thread itself
+  std::jthread _cleanupThread;
+
+  // Cleanup thread function
+  void cleanupLoop();
 };
 /**
 // ApplicationServerT is intended to provide statically checked access to
