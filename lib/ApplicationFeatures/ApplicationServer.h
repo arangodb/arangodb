@@ -245,15 +245,9 @@ class ApplicationServer {
                      std::string_view path, std::string_view database);
 
   // Get historical snapshots of API calls
-  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallHistory(
-      uint64_t& time, uint64_t& count) const {
-    time = _totalTime.load(std::memory_order_relaxed);
-    count = _totalCount.load(std::memory_order_relaxed);
-    return _apiCallRecord.getHistoricalSnapshot();
-  }
-
-  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallTrash() {
-    return _apiCallRecord.getTrash();
+  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallHistory()
+      const {
+    return _apiCallRecord->getHistoricalSnapshot();
   }
 
  private:
@@ -370,10 +364,14 @@ class ApplicationServer {
   // whether or not to record recent API calls
   bool _recordApiCalls = true;
 
+  // Memory limit for one list of ApiCallRecords:
+  size_t _memoryPerApiRecordList = 100000;
+
+  // Number of ApiCallRecord lists in ring buffer:
+  size_t _numberOfApiRecordLists = 256;
+
   /// record of recent api calls:
-  arangodb::BoundedList<ApiCallRecord> _apiCallRecord;
-  std::atomic<uint64_t> _totalTime{0};
-  std::atomic<uint64_t> _totalCount{0};
+  std::unique_ptr<arangodb::BoundedList<ApiCallRecord>> _apiCallRecord;
 
   // Flag to control the cleanup thread
   std::atomic<bool> _stopCleanupThread{false};

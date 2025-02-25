@@ -309,15 +309,11 @@ void RestAdminServerHandler::handleApiCalls() {
   }
 
   // Get current and historical snapshots using the public method
-  uint64_t time;
-  uint64_t count;
-  auto snapshots = server().getAPICallHistory(time, count);
+  auto snapshots = server().getAPICallHistory();
 
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
-    builder.add("totalTime", VPackValue(time));
-    builder.add("totalCount", VPackValue(count));
     builder.add(VPackValue("calls"));
     {
       VPackArrayBuilder guard2(&builder);

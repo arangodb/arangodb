@@ -89,8 +89,7 @@ ApplicationServer::ApplicationServer(
       _options(options),
       _features{features},
       _fail{failCallback},  // register callback function for failures
-      _binaryPath{binaryPath},
-      _apiCallRecord(100000, 256) {
+      _binaryPath{binaryPath} {
   addReporter(ProgressHandler{
       [server = this](ApplicationServer::State state) {
         server->progressInfo(server->stringifyState(state), "");
@@ -361,8 +360,22 @@ void ApplicationServer::collectOptions() {
 
   _options->addOption(
       "--server.api-call-recording",
-      "Record recent API calls for debugging purposes.",
+      "Record recent API calls for debugging purposes (default: true).",
       new BooleanParameter(&_recordApiCalls),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
+
+  _options->addOption(
+      "--server.memory-per-api-call-list",
+      "Memory limit from which a new list of api call records is started.",
+      new UInt64Parameter(&_memoryPerApiRecordList),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
+
+  _options->addOption(
+      "--server.number-of-api-call-lists",
+      "Number of lists of api call records in ring buffer.",
+      new UInt64Parameter(&_numberOfApiRecordLists),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
@@ -613,6 +626,9 @@ void ApplicationServer::disableDependentFeatures() {
 
 void ApplicationServer::prepare() {
   LOG_TOPIC("04e8f", TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
+
+  _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
+      _memoryPerApiRecordList, _numberOfApiRecordLists);
 
   for (ApplicationFeature& feature : _orderedFeatures) {
     reportFeatureProgress(_state.load(std::memory_order_relaxed),
@@ -914,16 +930,8 @@ std::string_view ApplicationServer::stringifyState(State state) {
 void ApplicationServer::recordAPICall(arangodb::rest::RequestType requestType,
                                       std::string_view path,
                                       std::string_view database) {
-  if (_recordApiCalls) {
-    auto start = std::chrono::steady_clock::now();
-    _apiCallRecord.prepend(ApiCallRecord(requestType, path, database));
-    auto diff = std::chrono::steady_clock::now() - start;
-    _totalTime.fetch_add(diff.count(), std::memory_order_relaxed);
-    _totalCount.fetch_add(1, std::memory_order_relaxed);
-    if (diff.count() > 1000) {
-      LOG_TOPIC("36271", WARN, Logger::ENGINES)
-          << "Call to recordAPICall took " << diff.count() << " nanoseconds.";
-    }
+  if (_recordApiCalls && _apiCallRecord != nullptr) {
+    _apiCallRecord->prepend(ApiCallRecord(requestType, path, database));
   }
 }
 
@@ -931,7 +939,7 @@ void ApplicationServer::cleanupLoop() {
   while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
     // Get the trash and measure the time
     auto start = std::chrono::steady_clock::now();
-    auto trash = _apiCallRecord.getTrash();
+    auto trash = _apiCallRecord->getTrash();
     size_t count = trash.size();
 
     // Explicitly destroy the lists
@@ -942,7 +950,7 @@ void ApplicationServer::cleanupLoop() {
         std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
 
     if (count > 0) {
-      LOG_TOPIC("53626", INFO, Logger::MEMORY)
+      LOG_TOPIC("53626", TRACE, Logger::MEMORY)
           << "Cleaned up " << count << " API call record lists in "
           << nanoseconds.count() << " nanoseconds";
     }
