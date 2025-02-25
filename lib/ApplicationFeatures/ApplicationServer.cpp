@@ -639,6 +639,9 @@ void ApplicationServer::start() {
   // Start the cleanup thread first
   _stopCleanupThread.store(false, std::memory_order_relaxed);
   _cleanupThread = std::jthread([this] { cleanupLoop(); });
+#ifdef TRI_HAVE_SYS_PRCTL_H
+  pthread_setname_np(_cleanupThread.native_handle(), "CleanupTrashThread");
+#endif
 
   for (ApplicationFeature& feature : _orderedFeatures) {
     if (!feature.isEnabled()) {

@@ -191,8 +191,12 @@ class BoundedList {
         // We first store a new empty list in _current, so that any other thread
         // will prepend to that one as soon as possible.
         _memoryUsage.fetch_sub(newUsage);
+        auto toDelete = std::move(_history[_ringBufferPos]);
         _history[_ringBufferPos] = std::move(current);
         _ringBufferPos = (_ringBufferPos + 1) % _maxHistory;
+        if (toDelete != nullptr) {
+          _trash.emplace_back(std::move(toDelete));
+        }
         // If somebody prepended something to his copy of _current before
         // we are completely done here, it will be prepended to the list,
         // which is already or will be soon in _history.
