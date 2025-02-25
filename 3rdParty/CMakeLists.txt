@@ -57,7 +57,7 @@ set(SNAPPY_BUILD_DIR "${SNAPPY_BUILD_DIR}" PARENT_SCOPE)
 ## LIBUNWIND
 ################################################################################
 
-if (USE_LIBUNWIND)
+if (USE_LIBUNWIND AND LINUX)
   add_subdirectory(libunwind)
   include_directories(SYSTEM "${LIBUNWIND_HOME}/include")
   set(LIBUNWIND_HOME "${LIBUNWIND_HOME}" PARENT_SCOPE)
@@ -73,12 +73,11 @@ if (USE_JEMALLOC)
 add_subdirectory(jemalloc)
 
 if(WIN32)
-  include_directories(SYSTEM "${JEMALLOC_HOME}/include")
+  include_directories(SYSTEM "${JEMALLOC_INCLUDE}")
   link_directories("${JEMALLOC_HOME}/lib")
   set(JEMALLOC_HOME "${JEMALLOC_HOME}" PARENT_SCOPE)
   set(SYS_LIBS ${SYS_LIBS} jemalloc PARENT_SCOPE)
   set(JEMALLOC_LIB "${JEMALLOC_LIB}" PARENT_SCOPE)
-
 else()
     include_directories(SYSTEM "${JEMALLOC_HOME}/include")
     link_directories("${JEMALLOC_HOME}/lib")
