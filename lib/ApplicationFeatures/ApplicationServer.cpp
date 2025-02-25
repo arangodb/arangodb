@@ -359,6 +359,13 @@ void ApplicationServer::collectOptions() {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
+  _options->addOption(
+      "--server.api-call-recording",
+      "Record recent API calls for debugging purposes.",
+      new BooleanParameter(&_recordApiCalls),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
+
   apply(
       [this](ApplicationFeature& feature) {
         LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
@@ -907,17 +914,17 @@ std::string_view ApplicationServer::stringifyState(State state) {
 void ApplicationServer::recordAPICall(arangodb::rest::RequestType requestType,
                                       std::string_view path,
                                       std::string_view database) {
-  auto start = std::chrono::steady_clock::now();
-  _apiCallRecord.prepend(ApiCallRecord(requestType, path, database));
-  auto diff = std::chrono::steady_clock::now() - start;
-  _totalTime.fetch_add(diff.count(), std::memory_order_relaxed);
-  _totalCount.fetch_add(1, std::memory_order_relaxed);
-#if 0
-  if (diff.count() > 1000) {
-    LOG_TOPIC("36271", WARN, Logger::ENGINES)
-        << "Call to recordAPICall took " << diff.count() << " nanoseconds.";
+  if (_recordApiCalls) {
+    auto start = std::chrono::steady_clock::now();
+    _apiCallRecord.prepend(ApiCallRecord(requestType, path, database));
+    auto diff = std::chrono::steady_clock::now() - start;
+    _totalTime.fetch_add(diff.count(), std::memory_order_relaxed);
+    _totalCount.fetch_add(1, std::memory_order_relaxed);
+    if (diff.count() > 1000) {
+      LOG_TOPIC("36271", WARN, Logger::ENGINES)
+          << "Call to recordAPICall took " << diff.count() << " nanoseconds.";
+    }
   }
-#endif
 }
 
 void ApplicationServer::cleanupLoop() {

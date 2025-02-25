@@ -367,6 +367,9 @@ class ApplicationServer {
   // whether or not to dump configuration options
   bool _dumpOptions = false;
 
+  // whether or not to record recent API calls
+  bool _recordApiCalls = true;
+
   /// record of recent api calls:
   arangodb::BoundedList<ApiCallRecord> _apiCallRecord;
   std::atomic<uint64_t> _totalTime{0};
