@@ -44,7 +44,7 @@ if (getOptions === true) {
     };
 }
 
-function QueryLoggerWithPlanCacheSuite() {
+function QueryLoggerWithCacheSuite() {
     let collection;
     const dbName = "queryLoggingAndCachingDB";
     const colName = "col";
@@ -61,7 +61,7 @@ function QueryLoggerWithPlanCacheSuite() {
 
         setUp: function() {
             db._useDatabase(dbName);
-            collection = db._create(colName, {numberOfShards: 3});
+            collection = db._create(colName);
             let docs = [];
             for (let i = 0; i < 10; ++i) {
                 docs.push({
@@ -70,64 +70,39 @@ function QueryLoggerWithPlanCacheSuite() {
             }
             collection.save(docs);
 
-            planCache.clear();
+            let result = cache.properties({
+                mode: "on"
+            });
+            assertEqual("on", result.mode);
         },
 
         tearDown: function() {
             db._drop(colName);
+            db._flushCache();
         },
 
-        testPlanCachingAndLogging: function() {
-            let query = aql`FOR d IN ${collection} FILTER d.val > 5 RETURN d`;
-            query.options = {
-                optimizePlanForCaching: true,
-                usePlanCache: true,
-                cache: false
-            };
+        testCachingAndLogging: function() {
+            const query = aql`FOR d IN ${collection} FILTER d.val > 50 LIMIT 1 RETURN d`;
 
             let res = db._query(query);
-            assertFalse(res.hasOwnProperty("planCacheKey"));
+            assertFalse(res._cached);
 
             res = db._query(query);
-            assertTrue(res.hasOwnProperty("planCacheKey"));
+            assertTrue(res._cached);
         },
 
-        testPlanCachingAndLoggingWithModification: function() {
-            let query = aql`FOR i IN 10..20 INSERT {val: i} INTO ${collection}`;
-            query.options = {
-                optimizePlanForCaching: true,
-                usePlanCache: true,
-                cache: false
-            };
+        testCachingAndLoggingWithModification: function() {
+            const query = aql`FOR i IN 1..10 INSERT {val: i * 2} INTO ${collection}`;
 
             let res = db._query(query);
-            assertFalse(res.hasOwnProperty("planCacheKey"));
+            assertFalse(res._cached);
 
             res = db._query(query);
-            assertTrue(res.hasOwnProperty("planCacheKey"));
-        },
-
-        testPlanCachingAndLoggingWithExplain: function() {
-            let query = aql`FOR d IN ${collection} FILTER d.val > 50 LIMIT 1 RETURN d`;
-            query.options = {
-                optimizePlanForCaching: true,
-                usePlanCache: true,
-                cache: false
-            };
-
-            let stmt = db._createStatement(query);
-            let res = stmt.explain();
-            assertFalse(res.hasOwnProperty("planCacheKey"));
-            assertNotUndefined(res.plan, res);
-
-            stmt = db._createStatement(query);
-            res = stmt.explain();
-            assertTrue(res.hasOwnProperty("planCacheKey"));
-            assertNotUndefined(res.plan, res);
+            assertFalse(res._cached);
         },
     };
 }
 
-jsunity.run(QueryLoggerWithPlanCacheSuite);
+jsunity.run(QueryLoggerWithCacheSuite);
 
 return jsunity.done();
