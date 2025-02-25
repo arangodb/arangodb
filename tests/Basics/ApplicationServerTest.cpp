@@ -172,9 +172,7 @@ TEST(ApplicationServerTest, test_apiCallHistory) {
   server.recordAPICall(rest::RequestType::POST, "/test2", "db2");
 
   // Get the history
-  uint64_t time;
-  uint64_t count;
-  auto history = server.getAPICallHistory(time, count);
+  auto history = server.getAPICallHistory();
   EXPECT_FALSE(history.empty());
 
   // Check the most recent call (should be first due to prepend)
