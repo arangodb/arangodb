@@ -502,6 +502,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief was this query killed (can only be set once)
   std::atomic<bool> _queryKilled;
+
+  // If the query object was constructed from cache
+  // the consequence is that _ast is nullptr
+  bool _isCached{false};
 };
 
 }  // namespace aql
