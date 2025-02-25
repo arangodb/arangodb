@@ -6,6 +6,8 @@ if(WIN32)
   set(JEMALLOC_HOME "${CMAKE_CURRENT_BINARY_DIR}/../../vcpkg_installed/x64-windows")
   find_library(jemalloc NAMES jemalloc REQUIRED NO_DEFAULT_PATH PATHS "${JEMALLOC_HOME}/lib")
   find_path(jemalloc_include NAMES jemalloc/jemalloc.h REQUIRED NO_DEFAULT_PATH PATHS "${JEMALLOC_HOME}/include")
+  add_custom_target(jemalloc_build)
+
 else () # Linux / Darwin
 
 project(jemalloc C)
