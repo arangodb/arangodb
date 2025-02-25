@@ -3,8 +3,6 @@ devel
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
-* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL 
-
 * Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
   reference.
 
