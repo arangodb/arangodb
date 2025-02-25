@@ -31,6 +31,8 @@ using namespace arangodb::async_registry;
 
 auto breakpoint() { raise(SIGINT); }
 
+// auto const any_char = "[ \t\n\r\f\v]|[^ \t\n\r\f\v]";
+
 int main() {
   breakpoint();
 
@@ -41,13 +43,32 @@ int main() {
   breakpoint();
 
   // one promise
-  thread_registry->add_promise(Requester::current_thread(),
-                               std::source_location::current());
-  expected = std::string("async registry");
+  auto promise = thread_registry->add_promise(Requester::current_thread(),
+                                              std::source_location::current());
+  auto promise_snapshot = promise->snapshot();
+  // expected = std::string("async registry = {[thread [0-9]*] = \n [.]*}");
+  // expected = std::string("async_registry = [ \t\n\r\f\v]|[^ \t\n\r\f\v]*");
+
+  // $1 = "async registry = {[thread 112020] = \n  ┌ \"int main()\"
+  // (\"/home/jvolmer/code/arangodb/tests/AsyncRegistryServer/PrettyPrinter/async_registry_test.cpp\":47),
+  // thread 112020, Running\n─ thread 112020}"
+  expected = fmt::format(
+      "async registry = {{[thread {}] = \n  ┌ \"{}\" (\"{}\":{}), thread {}, "
+      "{}\n─ thread {}}}",
+      promise_snapshot.thread.kernel_id,
+      promise_snapshot.source_location.function_name,
+      promise_snapshot.source_location.file_name,
+      promise_snapshot.source_location.line, promise_snapshot.thread.kernel_id,
+      arangodb::inspection::json(promise_snapshot.state),
+      promise_snapshot.thread.kernel_id);
+
+  // expected = fmt::format(
+  //     "async_registry = {}{{2,2}}thread \[0-9]+{} = \n  ┌ {}*main(){}*",
+  //     any_char, any_char, any_char, any_char);
 
   breakpoint();
 
-  // thread_registry->add_promise(Requester{promise->id()},
+  // thread_registry->add_promise(Requester{first_promise->id()},
   //                              std::source_location::current());
   std::cout << "Hello after breakpoint " << expected << std::endl;
   // run_test(testee, expected) which internally calls breakpoint again

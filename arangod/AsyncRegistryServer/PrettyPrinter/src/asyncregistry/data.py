@@ -14,7 +14,7 @@ class State:
 
     def __str__(self):
         if len(self.name) > len("arangodb::async_registry::State::"):
-            return self.name[len("arangodb::async_registry::State::"):]
+            return "\"" + self.name[len("arangodb::async_registry::State::"):] + "\""
         else:
             return self.name
     

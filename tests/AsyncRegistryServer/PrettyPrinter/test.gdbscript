@@ -2,7 +2,8 @@ run
 select-frame function main
 
 set $i = 0
-set $n = 2
+# how to get this number automatically?
+set $n = 2 
 set $success = true
 
 while $i < $n
@@ -12,7 +13,7 @@ while $i < $n
 			set $real = $_as_string(registry)
 			set $expected = expected.c_str()
 
-# _regex(str, regex) use that instead
+#if !$_regex($real, $expected)
 			if !$_streq($real, $expected)
 				 printf "Mismatch\n"
 	 			 p $real
