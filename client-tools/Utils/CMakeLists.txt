@@ -19,3 +19,5 @@ target_link_libraries(clienttools_utils
 )
 target_include_directories(clienttools_utils PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)
 
+add_dependencies(clienttools_utils v8_build)
+
