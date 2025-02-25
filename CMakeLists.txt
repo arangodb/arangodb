@@ -691,9 +691,14 @@ endif ()
 # LIBUNWIND
 # ------------------------------------------------------------------------------
 
+if(USE_LIBUNWIND AND NOT LINUX)
+  set(USE_LIBUNWIND OFF)
+  message(STATUS "LIBUNWIND is only supported on Linux!")
+endif()
+
 if (USE_LIBUNWIND)
   add_definitions("-DARANGODB_HAVE_LIBUNWIND=1")
-endif ()
+endif()
 
 # ------------------------------------------------------------------------------
 # NDEBUG
@@ -754,12 +759,16 @@ endfunction()
 
 function(add_compile_warnings_flags)
   if (USE_FAIL_ON_WARNINGS)
-    add_compile_options(-Werror -Wno-error=deprecated-declarations)
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-      # This option has too many false positives
-      add_compile_options(-Wno-error=maybe-uninitialized)
-      # This prevents useful partial initializations
-      add_compile_options(-Wno-missing-field-initializers)
+    if(MSVC)
+      add_compile_options(/W4 /WX)
+    else()
+      add_compile_options(-Werror -Wno-error=deprecated-declarations)
+      if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+        # This option has too many false positives
+        add_compile_options(-Wno-error=maybe-uninitialized)
+        # This prevents useful partial initializations
+        add_compile_options(-Wno-missing-field-initializers)
+      endif()
     endif()
   endif ()
 endfunction()
@@ -811,15 +820,27 @@ else ()
 endif ()
 
 # flags for builds without debug symbols
-set(NODEBUGINFO_FLAGS "-g0")
+if(MSVC)
+  set(NODEBUGINFO_FLAGS "/Zl")
+else()
+  set(NODEBUGINFO_FLAGS "-g0")
+endif()
 
 # flags for builds with debug symbols
 if (USE_MINIMAL_DEBUGINFO)
   # minimal debug symbols
-  set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
+  if(MSVC)
+    set(DEBUGINFO_FLAGS "-Z7")
+  else()
+    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
+  endif()
 else ()
   # full debug symbols
-  set(DEBUGINFO_FLAGS "-g -gz")
+  if(MSVC)
+    set(DEBUGINFO_FLAGS "-Zi")
+  else()
+    set(DEBUGINFO_FLAGS "-g -gz")
+  endif()
 endif ()
 
 # c
@@ -850,6 +871,13 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
 endif ()
+
+if(MSVC)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG=1")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG=1")
+endif()
+
+
 
 # put together the final flags
 set(CMAKE_C_FLAGS    "${BASE_FLAGS} ${BASE_C_FLAGS} ${CMAKE_C_FLAGS} ${EXTRA_C_FLAGS}")
