@@ -6,7 +6,6 @@ add_executable(${BIN_ARANGOVPACK}
 target_include_directories(${BIN_ARANGOVPACK} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGOVPACK}
-  arango
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost
