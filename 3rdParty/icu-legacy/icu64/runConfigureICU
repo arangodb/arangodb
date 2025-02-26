@@ -36,6 +36,7 @@ the runConfigureICU command:
 
 The following names can be supplied as the argument for platform:
 
+    Clang/MSVC          Use the CLang via Microsoft Visual C++ compiler on MSYS
     AIX                 Use the IBM Visual Age xlc_r/xlC_r compilers on AIX
     AIX/GCC             Use the GNU gcc/g++ compilers on AIX
     Cygwin              Use the GNU gcc/g++ compilers on Cygwin
@@ -316,6 +317,17 @@ case $platform in
         RELEASE_CFLAGS='-O3'
         RELEASE_CXXFLAGS='-O3'
         export CXXFLAGS
+        ;;
+    CLang/MSVC)
+        THE_OS="MSYS"
+        THE_COMP="Microsoft Visual C++"
+        CC=clang-cl; export CC
+        CXX=clang-cl; export CXX
+        RELEASE_CFLAGS='-Gy -MD'
+        RELEASE_CXXFLAGS='-Gy -MD'
+        DEBUG_CFLAGS='-FS -Zi -MDd'
+        DEBUG_CXXFLAGS='-FS -Zi -MDd'
+        DEBUG_LDFLAGS='-DEBUG'
         ;;
     MSYS/MSVC)
         THE_OS="MSYS"

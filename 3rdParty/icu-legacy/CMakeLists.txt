@@ -58,7 +58,9 @@ ExternalProject_Add(
   PREFIX
     ${ICU64_BINARY_DIR}
   CONFIGURE_COMMAND
-    bash -c "${ICU64_SOURCE_DIR}/configure"
+    C:/msys64/usr/bin/bash -c "${ICU64_SOURCE_DIR}/configure"
+      THE_OS="MSYS"
+      THE_COMP="Microsoft Visual C++"
       CC=${CMAKE_C_COMPILER}
       CXX=${CMAKE_CXX_COMPILER}
       CFLAGS=${ICU_C_FLAGS}

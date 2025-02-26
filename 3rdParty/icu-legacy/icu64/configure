@@ -4359,14 +4359,14 @@ fi
 
 # Check that the linker is usable
 
-case "${host}" in
-    *-*-cygwin*|*-*-mingw*)
-        if test "$GCC" != yes && test -n "`link --version 2>&1 | grep 'GNU coreutils'`"; then
-            as_fn_error $? "link.exe is not a valid linker. Your PATH is incorrect.
-                  Please follow the directions in ICU's readme." "$LINENO" 5
-        fi;;
-    *);;
-esac
+# case "${host}" in
+#     *-*-cygwin*|*-*-mingw*)
+#         if test "$GCC" != yes && test -n "`link --version 2>&1 | grep 'GNU coreutils'`"; then
+#             as_fn_error $? "link.exe is not a valid linker. Your PATH is incorrect.
+#                   Please follow the directions in ICU's readme." "$LINENO" 5
+#         fi;;
+#     *);;
+# esac
 
 # Determine the executable suffix
 # We don't use AC_EXEEXT because some compilers output separate debugging
