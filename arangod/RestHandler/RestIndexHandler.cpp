@@ -260,7 +260,9 @@ RestStatus RestIndexHandler::getIndexes() {
       // via the `Maintenance` and `ClusterInfo`. This means that if we discover
       // a ready index in the agency, which is not visible locally, we have to
       // report it, too (and prepend the collection name with a slash to the
-      // id!).
+      // id!). Note that we must not do this for edge indexes, otherwise
+      // smart edge collections are unhappy, because of some unholy fake
+      // indexes, which ought not to be visible.
 
       // all indexes we already reported:
       containers::FlatHashSet<std::string> covered;
@@ -285,8 +287,9 @@ RestStatus RestIndexHandler::getIndexes() {
         // including the ones which are currently being built:
         for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
           std::string_view iid = pi.get("id").stringView();
+          std::string_view type = pi.get("type").stringView();
           // avoid reporting an index twice
-          if (covered.contains(iid)) {
+          if (covered.contains(iid) || type == "edge") {
             continue;
           }
 
@@ -394,8 +397,9 @@ RestStatus RestIndexHandler::getIndexes() {
       }
       for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
         std::string_view iid = pi.get("id").stringView();
+        std::string_view type = pi.get("type").stringView();
         // avoid reporting an index twice
-        if (covered.contains(iid)) {
+        if (covered.contains(iid) || type == "edge") {
           continue;
         }
         std::string id_str = absl::StrCat(cName, "/", iid);
