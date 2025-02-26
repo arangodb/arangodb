@@ -390,20 +390,7 @@ RestStatus RestIndexHandler::getIndexes() {
       // value. this attribute should be deprecated and removed
       tmp.add("identifiers", VPackValue(VPackValueType::Object));
       for (auto pi : VPackArrayIterator(indexes.slice())) {
-        std::string iid = absl::StrCat(
-            cName, "/", pi.get(StaticStrings::IndexId).stringView());
-        tmp.add(VPackValue(iid));
-        VPackObjectBuilder o(&tmp);
-        for (auto source :
-             VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
-          if (source.key.stringView() == StaticStrings::IndexId) {
-            tmp.add(
-                StaticStrings::IndexId,
-                VPackValue(absl::StrCat(cName, "/", source.key.stringView())));
-          } else {
-            tmp.add(source.key.stringView(), source.value);
-          }
-        }
+        tmp.add(pi.get(StaticStrings::IndexId).stringView(), pi);
       }
       for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
         std::string_view iid = pi.get("id").stringView();
@@ -411,7 +398,17 @@ RestStatus RestIndexHandler::getIndexes() {
         if (covered.contains(iid)) {
           continue;
         }
-        tmp.add(iid, pi);
+        std::string id_str = absl::StrCat(cName, "/", iid);
+        tmp.add(VPackValue(id_str));
+        VPackObjectBuilder o(&tmp);
+        for (auto source :
+             VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
+          if (source.key.stringView() == StaticStrings::IndexId) {
+            tmp.add(StaticStrings::IndexId, VPackValue(id_str));
+          } else {
+            tmp.add(source.key.stringView(), source.value);
+          }
+        }
       }
     }
 
