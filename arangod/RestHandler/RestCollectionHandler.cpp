@@ -391,8 +391,9 @@ void RestCollectionHandler::handleCommandPost() {
       options, collections,
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
-      /*isNewDatabase*/ false    // here always false
-  );
+      /*isNewDatabase*/ false,   // here always false
+      /*allowEnterpriseCollectionsOnSingleServer*/ false,
+      /*isRestore*/ false, task);
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
@@ -414,6 +415,13 @@ void RestCollectionHandler::handleCommandPost() {
   } else {
     generateError(res);
   }
+
+  std::vector<task_registry::TaskSnapshot> tasks_at_end;
+  task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
+    tasks_at_end.emplace_back(std::move(task));
+  });
+  LOG_DEVEL << fmt::format("tasks on coordinator: {}",
+                           inspection::json(tasks_at_end));
 }
 
 futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {

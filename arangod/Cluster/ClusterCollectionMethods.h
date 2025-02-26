@@ -47,6 +47,10 @@ namespace replication2 {
 struct CollectionGroupUpdates;
 }
 
+namespace task_registry {
+struct Task;
+}
+
 struct ClusterCollectionMethods {
   // static only class, never initialize
   ClusterCollectionMethods() = delete;
@@ -66,7 +70,8 @@ struct ClusterCollectionMethods {
       TRI_vocbase_t& vocbase,
       std::vector<CreateCollectionBody> parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase)
+      bool enforceReplicationFactor, bool isNewDatabase,
+      std::shared_ptr<task_registry::Task> task = nullptr)
       -> arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>;
 
   [[nodiscard]] static auto toPlanEntry(

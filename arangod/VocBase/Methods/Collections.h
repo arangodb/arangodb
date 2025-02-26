@@ -48,6 +48,10 @@ namespace transaction {
 class Methods;
 }
 
+namespace task_registry {
+struct Task;
+}
+
 struct CollectionDropOptions {
   // allow dropping system collection
   bool allowDropSystem = false;
@@ -111,8 +115,8 @@ struct Collections {
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called
-                                // during restore
+      bool isRestore = false,  // whether this is being called during restore
+      std::shared_ptr<task_registry::Task> task = nullptr);
 
   /// Create shard, can only be used on DBServers.
   /// Should only be called by Maintenance.
