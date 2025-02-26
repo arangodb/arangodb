@@ -293,8 +293,8 @@ RestStatus RestIndexHandler::getIndexes() {
           VPackObjectBuilder o(&tmp);
           for (auto source :
                VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
-            if (source.key.stringView() == StaticStrings::IdString) {
-              tmp.add(StaticStrings::IdString,
+            if (source.key.stringView() == StaticStrings::IndexId) {
+              tmp.add(StaticStrings::IndexId,
                       VPackValue(
                           absl::StrCat(cName, "/", source.key.stringView())));
             } else {
@@ -391,14 +391,14 @@ RestStatus RestIndexHandler::getIndexes() {
       tmp.add("identifiers", VPackValue(VPackValueType::Object));
       for (auto pi : VPackArrayIterator(indexes.slice())) {
         std::string iid = absl::StrCat(
-            cName, "/", pi.get(StaticStrings::IdString).stringView());
+            cName, "/", pi.get(StaticStrings::IndexId).stringView());
         tmp.add(VPackValue(iid));
         VPackObjectBuilder o(&tmp);
         for (auto source :
              VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
-          if (source.key.stringView() == StaticStrings::IdString) {
+          if (source.key.stringView() == StaticStrings::IndexId) {
             tmp.add(
-                StaticStrings::IdString,
+                StaticStrings::IndexId,
                 VPackValue(absl::StrCat(cName, "/", source.key.stringView())));
           } else {
             tmp.add(source.key.stringView(), source.value);
