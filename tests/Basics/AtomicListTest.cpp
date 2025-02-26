@@ -246,7 +246,8 @@ TEST(BoundedListTests, testTrashCollection) {
   // Fill multiple batches to force rotations
   const size_t totalBatches =
       maxHistory + 2;  // Create more than maxHistory to force trash
-  const size_t totalEntries = entriesPerBatch * totalBatches;
+  const size_t totalEntries = entriesPerBatch * totalBatches + 17;
+  // plus 17 to have some in the current list!
 
   for (size_t i = 0; i < totalEntries; ++i) {
     list.prepend(Entry{static_cast<int>(i)});
