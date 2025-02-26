@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-2089: Fix a crash when query logging and query cache were enabled.
+
 * Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
   reference.
 
