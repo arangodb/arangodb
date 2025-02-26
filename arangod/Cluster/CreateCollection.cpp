@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Tasks/task_registry_variable.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -57,7 +58,14 @@ using namespace arangodb::methods;
 CreateCollection::CreateCollection(MaintenanceFeature& feature,
                                    ActionDescription const& desc)
     : ActionBase(feature, desc),
-      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
+      _task{task_registry::registry.create_task("Create collection")} {
+  std::vector<task_registry::TaskSnapshot> tasks;
+  task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
+    tasks.emplace_back(std::move(task));
+  });
+  LOG_DEVEL << fmt::format("tasks on dbserver: {}", inspection::json(tasks));
+
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);

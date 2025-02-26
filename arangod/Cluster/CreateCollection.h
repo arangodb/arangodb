@@ -38,6 +38,10 @@ namespace arangodb {
 
 struct ShardID;
 
+namespace task_registry {
+struct Task;
+}
+
 namespace replication2::agency {
 struct CollectionGroupPlanSpecification;
 }  // namespace replication2::agency
@@ -57,6 +61,7 @@ class CreateCollection : public ActionBase, public ShardDefinition {
  private:
   bool _doNotIncrement =
       false;  // indicate that `setState` shall not increment the version
+  std::shared_ptr<task_registry::Task> _task;
 
   static Result createCollectionReplication2(
       TRI_vocbase_t& vocbase, replication2::LogId logId, ShardID const& shard,

@@ -38,6 +38,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -337,6 +338,13 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
+  auto task = task_registry::registry.create_task("Create collection");
+  std::vector<task_registry::TaskSnapshot> tasks;
+  task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
+    tasks.emplace_back(std::move(task));
+  });
+  LOG_DEVEL << fmt::format("tasks on coordinator: {}", inspection::json(tasks));
+
   if (ServerState::instance()->isDBServer()) {
     generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
     return;
