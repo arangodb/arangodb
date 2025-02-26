@@ -85,7 +85,6 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 
         testVectorIndexCreationCorrect: function() {
             let beforeVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
-            print("CORRECT before version: " + beforeVersion)
             collection.ensureIndex({
                 "name": "test",
                 "params": {
@@ -101,7 +100,6 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
             internal.sleep(5);
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
-            print("CORRECT after version: " + afterVersion)
 
             assertTrue(afterVersion - beforeVersion < 10);
         },
@@ -172,7 +170,6 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
                 "type": "vector"
             }];
             let beforeVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
-            print("INCORRECT before version: " + beforeVersion)
             IM.agencyMgr.set(`Plan/Collections/${dbName}/${collection._id}/indexes`, indexRequestWithoutNProbes);
             IM.agencyMgr.increaseVersion("Plan/Version");
 
@@ -180,7 +177,6 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
             internal.sleep(5);
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
-            print("INCORRECT after version: " + afterVersion)
 
             assertTrue(afterVersion - beforeVersion < 10);
         },
