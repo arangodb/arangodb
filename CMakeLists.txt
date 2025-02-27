@@ -1057,7 +1057,11 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 ## PATHS, installation, packages, frontend
 ################################################################################
 
-add_subdirectory(Documentation)
+message(STATUS "Skip documentation for now...")
+
+add_custom_target(man)
+# add_subdirectory(Documentation)
+
 include(ArangoDBInstall)
 if(USE_FRONTEND)
   include(frontend/aardvark)

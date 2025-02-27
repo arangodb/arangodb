@@ -9137,15 +9137,15 @@ else
       echo "Not rebuilding data/rules.mk, assuming prebuilt data in data/in"
       touch data/rules.mk
     fi
-    echo "Spawning Python to generate test/testdata/rules.mk..."
-    PYTHONPATH="$srcdir/test/testdata:$srcdir/data" $PYTHON -m buildtool \
-        --mode gnumake \
-        --seqmode parallel \
-        --src_dir "$srcdir/test/testdata" \
-        > test/testdata/rules.mk
-    if test "$?" != "0"; then
-        as_fn_error $? "Python failed to run; see above error." "$LINENO" 5
-    fi
+    echo "Spawning Python to generate test/testdata/rules.mk... NOT."
+    # PYTHONPATH="$srcdir/test/testdata:$srcdir/data" $PYTHON -m buildtool \
+    #     --mode gnumake \
+    #     --seqmode parallel \
+    #     --src_dir "$srcdir/test/testdata" \
+    #     > test/testdata/rules.mk
+    # if test "$?" != "0"; then
+    #     as_fn_error $? "Python failed to run; see above error." "$LINENO" 5
+    # fi
 fi
 
 echo
