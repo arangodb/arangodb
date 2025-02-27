@@ -180,12 +180,15 @@ TEST(BoundedListTests, testConcurrentOperation) {
   size_t current_memory = 0;
   auto snapshots = list.getHistoricalSnapshot();
   for (const auto& snapshot : snapshots) {
+    size_t mem = 0;
     auto* node = snapshot->getSnapshot();
     while (node != nullptr) {
       ++total_count;
-      current_memory += node->_data.memoryUsage();
+      mem += node->_data.memoryUsage();
       node = node->next();
     }
+    std::cout << "Memory usage in one list: " << mem << std::endl;
+    current_memory += mem;
   }
 
   // Verify that we have fewer elements than prepended due to the memory limit
@@ -194,6 +197,7 @@ TEST(BoundedListTests, testConcurrentOperation) {
   // Verify memory usage is within expected bounds
   // Maximum possible memory usage is maxHistory * memoryThreshold with some
   // overhead
+  ASSERT_LE(snapshots.size(), maxHistory);
   ASSERT_LE(current_memory,
             memoryThreshold * maxHistory * 1.1);  // Allow 10% overhead
 
