@@ -1077,7 +1077,7 @@ set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 
-add_subdirectory(3rdParty/faiss)
+add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
 
