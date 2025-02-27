@@ -280,6 +280,22 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_basic_http_client PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+add_library(arango_basic_maskings STATIC
+      Maskings/AttributeMasking.cpp
+      Maskings/Collection.cpp
+      Maskings/MaskingFunction.cpp
+      Maskings/Maskings.cpp
+      Maskings/Path.cpp
+      Maskings/RandomMask.cpp
+      Maskings/RandomStringMask.cpp
+)
+target_link_libraries(arango_basic_maskings
+  PUBLIC velocypack
+         arango_basic_errors
+)
+target_include_directories(arango_basic_maskings PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+
 add_library(arango_lightweight STATIC
         ApplicationFeatures/ApplicationFeature.cpp
         ApplicationFeatures/ApplicationServer.cpp
@@ -350,13 +366,6 @@ add_library(arango STATIC
   Basics/RocksDBUtils.cpp
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
-  Maskings/AttributeMasking.cpp
-  Maskings/Collection.cpp
-  Maskings/MaskingFunction.cpp
-  Maskings/Maskings.cpp
-  Maskings/Path.cpp
-  Maskings/RandomMask.cpp
-  Maskings/RandomStringMask.cpp
 )
 
 target_link_libraries(arango
