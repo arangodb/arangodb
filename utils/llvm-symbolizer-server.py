@@ -4,7 +4,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import subprocess
 
 symbolizer = subprocess.Popen(
-    ["llvm-symbolizer-16", "--demangle", "--inlines", "--default-arch=x86_64"],
+    ["llvm-symbolizer-19", "--demangle", "--inlines", "--default-arch=x86_64"],
     stdout=subprocess.PIPE,
     stdin=subprocess.PIPE,
 )

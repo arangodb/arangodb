@@ -218,6 +218,18 @@ function VectorIndexL2TestSuite() {
             );
         },
 
+        testApproxL2MutipleSortAttributes: function() {
+            const query = aql`
+                FOR d IN ${collection}
+                SORT APPROX_NEAR_L2(d.vector, ${randomPoint}), d.nonVector LIMIT 5
+                RETURN {key: d._key}`;
+
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query
+            );
+        },
+
         testApproxL2MultipleTopK: function() {
             const query =
                 "FOR d IN " +

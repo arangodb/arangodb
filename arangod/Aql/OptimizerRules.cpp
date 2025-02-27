@@ -3098,7 +3098,7 @@ struct SortToIndexNode final
                      std::back_inserter(path),
                      [](auto const& a) { return a.name; });
       elements.push_back(
-          SortElement::createWithPath(outVariable, field.order, path));
+          SortElement::createWithPath(outVariable, field.asc, path));
     }
     return elements;
   }
@@ -3126,9 +3126,8 @@ struct SortToIndexNode final
     SortCondition sortCondition(_plan, _sorts, constAttributes,
                                 nonNullAttributes, _variableDefinitions);
 
-    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess() &&
-        sortCondition.isUnidirectional()) {
-      // we have found a sort condition, which is unidirectional
+    if (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess()) {
+      // we have found a sort condition
       // now check if any of the collection's indexes covers it
 
       Variable const* outVariable = enumerateCollectionNode->outVariable();
@@ -3151,27 +3150,29 @@ struct SortToIndexNode final
         condition->normalize(_plan);
         TRI_ASSERT(usedIndexes.size() == 1);
         IndexIteratorOptions opts;
-        opts.ascending = sortCondition.isAscending();
+        TRI_ASSERT(!sortCondition.isEmpty());
+        opts.ascending = sortCondition.sortFields()[0].asc;
         opts.useCache = false;
-        auto n = _plan->createNode<IndexNode>(
+        auto indexNode = _plan->createNode<IndexNode>(
             _plan, _plan->nextId(), enumerateCollectionNode->collection(),
             outVariable, usedIndexes,
             false,  // here we could always assume false as there is no lookup
                     // condition here
             std::move(condition), opts);
 
-        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
-        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
+        enumerateCollectionNode->CollectionAccessingNode::cloneInto(*indexNode);
+        enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan,
+                                                                  *indexNode);
 
-        _plan->replaceNode(enumerateCollectionNode, n);
+        _plan->replaceNode(enumerateCollectionNode, indexNode);
         _modified = true;
 
         if (coveredAttributes == sortCondition.numAttributes()) {
-          // if the index covers the complete sort condition, we can also remove
-          // the sort node
-          n->needsGatherNodeSort(
-              makeIndexSortElements(sortCondition, outVariable));
-          _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+          deleteSortNode(indexNode, sortCondition);
+        } else if (usedIndexes.size() == 1 &&
+                   usedIndexes[0]->type() ==
+                       Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+          _sortNode->setGroupedElements(coveredAttributes);
         }
       }
     }
@@ -3181,8 +3182,8 @@ struct SortToIndexNode final
 
   void deleteSortNode(IndexNode* indexNode, SortCondition& sortCondition) {
     // sort condition is fully covered by index... now we can remove the
-    // sort node from the plan
-    _plan->unlinkNode(_plan->getNodeById(_sortNode->id()));
+    auto sortNode = _plan->getNodeById(_sortNode->id());
+    _plan->unlinkNode(sortNode);
     // we need to have a sorted result later on, so we will need a sorted
     // GatherNode in the cluster
     indexNode->needsGatherNodeSort(
@@ -3259,13 +3260,13 @@ struct SortToIndexNode final
         (!sortCondition.isEmpty() && sortCondition.isOnlyAttributeAccess());
 
     // FIXME: why not just call index->supportsSortCondition here always?
-    bool indexCoversSortCondition = false;
+    bool indexFullyCoversSortCondition = false;
     if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
-      indexCoversSortCondition =
+      indexFullyCoversSortCondition =
           index->supportsSortCondition(&sortCondition, outVariable, 1)
               .supportsCondition;
     } else {
-      indexCoversSortCondition =
+      indexFullyCoversSortCondition =
           isOnlyAttributeAccess && isSorted && !isSparse &&
           sortCondition.isUnidirectional() &&
           sortCondition.isAscending() == indexNode->options().ascending &&
@@ -3273,18 +3274,17 @@ struct SortToIndexNode final
               sortCondition.numAttributes();
     }
 
-    if (indexCoversSortCondition) {
+    if (indexFullyCoversSortCondition) {
       deleteSortNode(indexNode, sortCondition);
     } else if (index->type() ==
                Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX) {
-      auto numberOfCoveredAttributes =
-          sortCondition.coveredAttributes(outVariable, fields);
+      auto [numberOfCoveredAttributes, sortIsAscending] =
+          sortCondition.coveredUnidirectionalAttributesWithDirection(
+              outVariable, fields);
       if (isOnlyAttributeAccess && isSorted && !isSparse &&
-          sortCondition.isUnidirectional() &&
-          sortCondition.isAscending() == indexNode->options().ascending &&
           numberOfCoveredAttributes > 0) {
-        auto sortNode = _plan->getNodeById(_sortNode->id());
-        ((SortNode*)sortNode)->setGroupedElements(numberOfCoveredAttributes);
+        indexNode->setAscending(sortIsAscending);
+        _sortNode->setGroupedElements(numberOfCoveredAttributes);
         _modified = true;
       }
     } else {
@@ -5031,6 +5031,7 @@ void arangodb::aql::distributeSortToClusterRule(
         case EN::ENUMERATE_LIST:
         case EN::ENUMERATE_NEAR_VECTORS:
         case EN::COLLECT:
+        case EN::INDEX_COLLECT:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -7646,6 +7647,7 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::INDEX_COLLECT:
     case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:

@@ -130,6 +130,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Executor/GroupedSortExecutorTest.cpp
   Aql/Executor/HashedCollectExecutorTest.cpp
   Aql/Executor/IdExecutorTest.cpp
+  Aql/Executor/IndexAggregateScanExecutorTest.cpp
   Aql/Executor/InsertExecutorTest.cpp
   Aql/Executor/LimitExecutorTest.cpp
   Aql/Executor/NoResultsExecutorTest.cpp
@@ -293,6 +294,8 @@ if (LINUX)
     set_source_files_properties(${ARANGODB_TESTS_SOURCES} PROPERTIES COMPILE_FLAGS -fno-var-tracking)
   endif ()
 endif ()
+
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
 
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})

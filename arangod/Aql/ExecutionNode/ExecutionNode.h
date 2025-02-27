@@ -158,6 +158,7 @@ class ExecutionNode {
     REMOTE_MULTIPLE = 36,
     JOIN = 37,
     ENUMERATE_NEAR_VECTORS = 38,
+    INDEX_COLLECT = 39,
 
     MAX_NODE_TYPE_VALUE
   };

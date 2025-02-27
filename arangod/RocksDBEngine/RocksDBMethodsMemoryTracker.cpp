@@ -26,8 +26,6 @@
 #include "Basics/ResourceUsage.h"
 #include "Metrics/Gauge.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "Statistics/ServerStatistics.h"
-#include "Transaction/OperationOrigin.h"
 
 namespace arangodb {
 

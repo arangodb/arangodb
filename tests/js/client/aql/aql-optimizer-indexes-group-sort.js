@@ -51,7 +51,7 @@ function optimizerIndexesGroupSortTestSuite() {
     return stmt.explain().plan;
   };
   const query_plan_uses_index_for_sorting = function (plan) {
-    return ["use-indexes", "use-index-for-sort"].every((rule) => plan.rules.indexOf(rule) >= 0);
+    return ["use-index-for-sort"].every((rule) => plan.rules.indexOf(rule) >= 0);
   };
   const sort_node_does_a_group_sort = function (plan, numberOfGroupedElements = 1) {
     const sort_nodes = plan.nodes.filter((node) => node.type === "SortNode");
@@ -170,7 +170,7 @@ function optimizerIndexesGroupSortTestSuite() {
         return {
           a: i % 9,
           x: 100 - i - 1,
-          b: randomNumber()
+          b: Math.floor(randomNumber() * 100)
         };
       }));
       collection.ensureIndex({ type: "persistent", fields: ["a", "b"] });
@@ -191,24 +191,174 @@ function optimizerIndexesGroupSortTestSuite() {
     /// @brief test index usage
     ////////////////////////////////////////////////////////////////////////////////
 
-    test_sorting_in_different_direction: function () {
+    test_index_is_used_when_sort_directions_of_all_used_index_fields_is_the_same: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
       const collection = create_collection();
+      collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
+        return {
+          a: i % 9,
+          x: 100 - i - 1,
+          b: Math.floor(randomNumber() * 100),
+          c: i
+        };
+      }));
       collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"] });
       waitForEstimatorSync();
 
-      // all desc should work
-      let plan = query_plan("FOR doc IN @@collection SORT doc.a DESC, doc.x DESC RETURN doc", collection.name());
+      var queries = [
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.x DESC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.x ASC RETURN doc.b"],
+
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.x ASC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x ASC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.b ASC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection SORT doc.a DESC, doc.b ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c ASC, doc.x DESC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x DESC RETURN doc.b"],
+      ];
+      for (let [numberOfGroupedElements, query] of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        assertTrue(sort_node_does_a_group_sort(plan, numberOfGroupedElements), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
+
+      queries = [
+        "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x ASC RETURN doc.b",
+        "FOR doc IN @@collection SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x DESC RETURN doc.b",
+        "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x DESC RETURN doc.b",
+        "FOR doc IN @@collection SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x ASC RETURN doc.b",
+      ];
+      for (let query of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        // uses full index, therefore full sort node is exchanged by index node
+        assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
+    },
+
+    ///////////////////////////////////////////////////////////////////////////////
+    /// @brief test index usage
+    ////////////////////////////////////////////////////////////////////////////////
+
+    test_uses_sparse_index_when_sort_registers_start_with_index_fields_and_are_not_null: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
+      const collection = create_collection();
+      collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
+        return {
+          a: i % 9 === 0 ? null : i % 9,
+          x: 100 - i - 1,
+          b: Math.floor(randomNumber() * 100),
+          c: i % 2 === 0 ? null : i
+        };
+      }));
+      collection.ensureIndex({ type: "persistent", fields: ["a"], sparse: true });
+      waitForEstimatorSync();
+
+      let query = "FOR doc IN @@collection SORT doc.a, doc.x RETURN doc.b";
+      let plan = query_plan(query, collection.name());
+      // cannot use index because a document with a==null is not included in the sparse index
+      assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+      assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+
+      var queries = [
+        "FOR doc IN @@collection FILTER doc.a > null SORT doc.a, doc.x RETURN doc.b",
+        "FOR doc IN @@collection FILTER doc.a != null SORT doc.a, doc.x RETURN doc.b",
+        "FOR doc IN @@collection FILTER doc.a > 0 SORT doc.a, doc.x RETURN doc.b",
+        "FOR doc IN @@collection FILTER doc.a >= 'some_string' SORT doc.a, doc.x RETURN doc.b",
+      ];
+      for (let query of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
+
+      collection.ensureIndex({ type: "persistent", fields: ["c", "d"], sparse: true });
+      waitForEstimatorSync();
+
+      query = "FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.d, doc.x RETURN doc.b";
+      plan = query_plan(query, collection.name());
+      assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+      // uses full index, therefore no group sort necessary
+      assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+      assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+
+      query = "FOR doc IN @@collection FILTER doc.c > null AND doc.d > null SORT doc.c, doc.x RETURN doc.b";
+      plan = query_plan(query, collection.name());
       assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
       assertTrue(sort_node_does_a_group_sort(plan), plan.nodes);
+      assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
 
-      // TODO all sorted index fields desc should work (currently does not work)
-      plan = query_plan("FOR doc IN @@collection SORT doc.a DESC, doc.x ASC RETURN doc", collection.name());
-      assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules); // TODO should be true
-      // assertTrue(sort_node_does_a_group_sort(plan), plan.nodes); // TODO should work
-
-      // combined desc and asc in index fields should not work
-      plan = query_plan("FOR doc IN @@collection SORT doc.a ASC, doc.b DESC, doc.x DESC RETURN doc", collection.name());
+      query = "FOR doc IN @@collection FILTER doc.c > null SORT doc.c, doc.x RETURN doc.b";
+      plan = query_plan(query, collection.name());
+      // does not assure that doc.d != null, therefore cannot use index
       assertFalse(query_plan_uses_index_for_sorting(plan), plan.rules);
+      assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+    },
+
+    ///////////////////////////////////////////////////////////////////////////////
+    /// @brief test index usage
+    ////////////////////////////////////////////////////////////////////////////////
+
+    test_sparse_index_works_with_different_sort_directions: function () {
+      let randomNumber = randomNumberGeneratorInt(seed);
+      const collection = create_collection();
+      collection.insert(Array.from({ length: 100 }, (_, index) => index).map(i => {
+        return {
+          a: i % 9 === 0 ? null : i % 9,
+          x: 100 - i - 1,
+          b: Math.floor(randomNumber() * 100),
+          c: i % 2 === 0 ? null : i
+        };
+      }));
+      collection.ensureIndex({ type: "persistent", fields: ["a", "b", "c"], sparse: true });
+      waitForEstimatorSync();
+
+      var queries = [
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b DESC, doc.x DESC RETURN doc.b"],
+        [2, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.x ASC RETURN doc.b"],
+
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.x ASC RETURN doc.b"],
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b DESC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b DESC, doc.x ASC RETURN doc.b"],
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b ASC, doc.x DESC RETURN doc.b"],
+        [1, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b DESC, doc.c ASC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b DESC, doc.c ASC, doc.x DESC RETURN doc.b"],
+        [2, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x ASC RETURN doc.b"],
+        [2, "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.c DESC, doc.x DESC RETURN doc.b"],
+      ];
+      for (let [numberOfGroupedElements, query] of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        assertTrue(sort_node_does_a_group_sort(plan, numberOfGroupedElements), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
+
+      queries = [
+        "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x ASC RETURN doc.b",
+        "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a ASC, doc.b ASC, doc.c ASC, doc.x DESC RETURN doc.b",
+        "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x DESC RETURN doc.b",
+        "FOR doc IN @@collection FILTER doc.a > null AND doc.b > null AND doc.c > null SORT doc.a DESC, doc.b DESC, doc.c DESC, doc.x ASC RETURN doc.b",
+      ];
+      for (let query of queries) {
+        let plan = query_plan(query, collection.name());
+        assertTrue(query_plan_uses_index_for_sorting(plan), plan.rules);
+        // uses full index, therefore full sort node is exchanged by index node
+        assertFalse(sort_node_does_a_group_sort(plan), plan.nodes);
+        assertEqual(expected_results(query, collection.name()), execute(query, collection.name()), query);
+      }
     },
 
   };

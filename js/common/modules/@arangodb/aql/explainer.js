@@ -1836,6 +1836,20 @@ function processQuery(query, explain, planIndex) {
           (node.keepVariables ? ' ' + keyword('KEEP') + ' ' + node.keepVariables.map(function (variable) { return variableName(variable.variable); }).join(', ') : '') +
           '   ' + annotation('/* ' + node.collectOptions.method + ' */');
         return collect;
+      case 'IndexCollectNode':
+        iterateIndexes(node.index, 0, node, types, false);
+        let indexCollect = keyword('FOR ') + variableName(node.oldIndexVariable) + keyword(' IN ') + collection(node.collection) + keyword(' COLLECT ') + node.groups.map(function (grp) {
+          return variableName(grp.outVariable) + ' = ' + variableName(node.oldIndexVariable) + '.' + grp.attribute.map((p) => attribute(p)).join('.');
+        }).join(', ');
+        if (node.aggregations.length > 0) {
+          indexCollect += keyword(' AGGREGATE') + ' ' +
+              node.aggregations.map(function (node) {
+                return variableName(node.outVariable) + ' = ' + func(node.type) + '(' + buildExpression(node.expression) + ')';
+              }).join(', ') + annotation(' /* full index scan */');
+        } else {
+          indexCollect += annotation(' /* distinct value index scan */');
+        }
+        return indexCollect;
       case 'SortNode':
         const groupedElements = node.numberOfTopGroupedElements > 0 ?
           '; ' + keyword('GROUPED BY') + ' '

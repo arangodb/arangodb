@@ -46,10 +46,10 @@ struct IndexStreamIterator {
   virtual ~IndexStreamIterator() = default;
   // load the current position into the span.
   // returns false if the end of the index range was reached.
-  virtual bool position(std::span<SliceType>) const = 0;
-  // seek to the given position. The span is updated with the actual new
+  virtual bool position(std::span<SliceType> keys) const = 0;
+  // seek to the given position. The position is updated with the actual new
   // position. returns false if the end of the index range was reached.
-  virtual bool seek(std::span<SliceType>) = 0;
+  virtual bool seek(std::span<SliceType> keys) = 0;
 
   // loads the document id and fills the projections (if any)
   virtual DocIdType load(std::span<SliceType> projections) const = 0;
@@ -59,17 +59,17 @@ struct IndexStreamIterator {
   // different key set. In that case `key` is updated with the found key.
   // returns true if an entry with key was found. LocalDocumentId and
   // projections are loaded.
-  virtual bool next(std::span<SliceType> key, DocIdType&,
+  virtual bool next(std::span<SliceType> keys, DocIdType&,
                     std::span<SliceType> projections) = 0;
 
   // cache the current key. The span has to stay valid until this function
   // is called again.
-  virtual void cacheCurrentKey(std::span<SliceType>) = 0;
+  virtual void cacheCurrentKey(std::span<SliceType> keys) = 0;
 
   // called to reset the iterator to the initial position and loads that
   // positions keys into span. returns false if the iterator is exhausted.
   // Constants remain valid until the next reset call.
-  virtual bool reset(std::span<SliceType> span,
+  virtual bool reset(std::span<SliceType> keys,
                      std::span<SliceType> constants) = 0;
 };
 

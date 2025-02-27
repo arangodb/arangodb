@@ -26,6 +26,7 @@
 #include "RocksDBVPackIndex.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/IndexDistrinctScan.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/SortCondition.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -3160,14 +3161,6 @@ Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
     }
   }
 
-  // only one key fields is supported currently
-  if (streamOpts.usedKeyFields.size() != 1) {
-    return StreamSupportResult::makeUnsupported();
-  }
-  if (streamOpts.usedKeyFields[0] >= fields.size()) {
-    return StreamSupportResult::makeUnsupported();
-  }
-
   // for persisted indexes, we can only use a prefix of the indexed keys
   std::size_t idx = 0;
   for (auto constantValue : streamOpts.constantFields) {
@@ -3193,8 +3186,9 @@ Index::StreamSupportResult RocksDBVPackIndex::checkSupportsStreamInterface(
   // refers to the triples and just taking a prefix [doc.a, doc.b] is not
   // necessarily unique. Thus, we should not pick an optimized strategy for
   // joining two unique indexes.
-  TRI_ASSERT(streamOpts.usedKeyFields.size() == 1);
   bool const hasUniqueTuples = isUnique && idx == fields.size();
+  TRI_ASSERT((streamOpts.usedKeyFields.size() == 1 && hasUniqueTuples) ||
+             !hasUniqueTuples);
 
   return StreamSupportResult::makeSupported(hasUniqueTuples);
 }
@@ -3203,6 +3197,119 @@ Index::StreamSupportResult RocksDBVPackIndex::supportsStreamInterface(
     IndexStreamOptions const& streamOpts) const noexcept {
   return checkSupportsStreamInterface(_coveredFields, _fields, _unique,
                                       streamOpts);
+}
+
+bool RocksDBVPackIndex::supportsScanDistinctForFields(
+    IndexDistinctScanOptions const& options,
+    std::vector<std::vector<basics::AttributeName>> const& fields) noexcept {
+  auto distinctFields = options.distinctFields;
+  if (not options.sorted) {
+    // if no sorted output is required, we can change the order of fields
+    std::sort(distinctFields.begin(), distinctFields.end());
+  }
+
+  // we only support distinct scans for a prefix of the fields
+  for (size_t k = 0; k < distinctFields.size(); k++) {
+    if (k >= fields.size()) {
+      return false;
+    }
+    if (k != distinctFields[k]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool RocksDBVPackIndex::supportsDistinctScan(
+    IndexDistinctScanOptions const& scanOptions) const noexcept {
+  return supportsScanDistinctForFields(scanOptions, _fields);
+}
+
+template<bool isUnique>
+struct RocksDBVPackIndexDistinctScanIterator : AqlIndexDistinctScanIterator {
+  explicit RocksDBVPackIndexDistinctScanIterator(
+      RocksDBVPackIndex* index, transaction::Methods* trx,
+      std::vector<std::size_t> inverseFieldMapping)
+      : index(index),
+        trx(trx),
+        inverseFieldMapping(std::move(inverseFieldMapping)),
+        bounds(
+            isUnique
+                ? RocksDBKeyBounds::UniqueVPackIndex(index->objectId(), false)
+                : RocksDBKeyBounds::VPackIndex(index->objectId(), false)) {
+    end = bounds.end();
+  }
+
+  bool next(std::span<SliceType> values) override {
+    TRI_ASSERT(values.size() == inverseFieldMapping.size())
+        << inverseFieldMapping << " " << values.size();
+    if (iterator) {
+      RocksDBKey key;
+      key.constructVPackIndexValue(index->objectId(), nextSeekTarget.slice(),
+                                   LocalDocumentId{0});
+      iterator->Seek(key.string());
+
+    } else {
+      RocksDBTransactionMethods* mthds =
+          RocksDBTransactionState::toMethods(trx, index->collection().id());
+      iterator = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+        TRI_ASSERT(opts.prefix_same_as_start);
+        opts.iterate_upper_bound = &end;
+      });
+      iterator->Seek(bounds.start());
+    }
+
+    if (not iterator->Valid()) {
+      return false;
+    }
+
+    // extract values from key
+    VPackSlice keySlice = RocksDBKey::indexedVPack(iterator->key());
+    size_t k = 0;
+    nextSeekTarget.clear();
+    {
+      VPackArrayBuilder ar{&nextSeekTarget, true};
+      for (auto s : VPackArrayIterator(keySlice)) {
+        nextSeekTarget.add(s);
+        values[inverseFieldMapping[k++]] = s;
+        if (k >= values.size()) {
+          break;
+        }
+      }
+      nextSeekTarget.add(VPackSlice::maxKeySlice());
+    }
+    return true;
+  }
+
+  RocksDBVPackIndex* index;
+  transaction::Methods* trx;
+  std::vector<std::size_t> inverseFieldMapping;
+
+  std::unique_ptr<rocksdb::Iterator> iterator;
+  RocksDBKeyBounds bounds;
+  rocksdb::Slice end;
+  velocypack::Builder nextSeekTarget;
+};
+
+std::unique_ptr<AqlIndexDistinctScanIterator>
+RocksDBVPackIndex::distinctScanFor(
+    transaction::Methods* trx, IndexDistinctScanOptions const& scanOptions) {
+  TRI_ASSERT(supportsDistinctScan(scanOptions));
+
+  std::vector<std::size_t> inverseFieldMapping;
+  inverseFieldMapping.resize(scanOptions.distinctFields.size());
+  for (size_t k = 0; k < scanOptions.distinctFields.size(); k++) {
+    inverseFieldMapping[scanOptions.distinctFields[k]] = k;
+  }
+
+  if (unique()) {
+    return std::make_unique<RocksDBVPackIndexDistinctScanIterator<true>>(
+        this, trx, std::move(inverseFieldMapping));
+  } else {
+    return std::make_unique<RocksDBVPackIndexDistinctScanIterator<false>>(
+        this, trx, std::move(inverseFieldMapping));
+  }
 }
 
 }  // namespace arangodb

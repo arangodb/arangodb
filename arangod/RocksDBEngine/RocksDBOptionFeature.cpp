@@ -273,8 +273,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _pendingCompactionBytesStopTrigger(32ULL * 1024ULL * 1024ULL * 1024ULL),
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
-      _periodicCompactionTtl(30 * 24 * 60 * 60),
-      _recycleLogFileNum(0),
+      _periodicCompactionTtl(24 * 60 * 60),  // once per day by default
+      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
       _compressionType(::kCompressionTypeLZ4),
       _blobCompressionType(::kCompressionTypeLZ4),
       _blockCacheType(::kBlockCacheTypeLRU),

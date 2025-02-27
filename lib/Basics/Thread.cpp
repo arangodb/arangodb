@@ -156,7 +156,12 @@ void Thread::startThread(void* arg) {
 TRI_pid_t Thread::currentProcessId() { return getpid(); }
 
 /// @brief returns the kernel thread id
+#ifdef HAVE_SYS_GETTID
 TRI_pid_t Thread::currentKernelThreadId() { return gettid(); }
+#else
+#include <sys/syscall.h>
+TRI_pid_t Thread::currentKernelThreadId() { return syscall(SYS_gettid); }
+#endif
 
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {

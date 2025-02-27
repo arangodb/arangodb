@@ -346,10 +346,8 @@ Zone	Africa/Lome	0:04:52 -	LMT	1893
 
 # Angola
 #
-# From Paul Eggert (2018-02-16):
-# Shanks gives 1911-05-26 for the transition to WAT,
-# evidently confusing the date of the Portuguese decree
-# (see Europe/Lisbon) with the date that it took effect.
+# From Tim Parenti (2024-07-01), per Paul Eggert (2018-02-16):
+# For timestamps before independence, see commentary for Europe/Lisbon.
 #
 Zone	Africa/Luanda	0:52:56	-	LMT	1892
 			0:52:04	-	LMT	1911 Dec 31 23:00u # Luanda MT?
@@ -1086,10 +1084,10 @@ Zone	Asia/Muscat	3:54:24 -	LMT	1920
 			4:00	-	+04
 
 # India
-# From Paul Eggert (2014-08-11), after a heads-up from Stephen Colebourne:
-# According to a Portuguese decree (1911-05-26)
-# https://dre.pt/pdf1sdip/1911/05/12500/23132313.pdf
-# Portuguese India switched to UT +05 on 1912-01-01.
+# From Tim Parenti (2024-07-01), per Paul Eggert (2014-08-11), after a
+# heads-up from Stephen Colebourne:
+# According to a Portuguese decree (1911-05-24), Portuguese India switched to
+# UT +05 on 1912-01-01 (see Europe/Lisbon).
 #Zone	Asia/Panaji	[not enough info to complete]
 
 # Cambodia
@@ -1828,6 +1826,27 @@ Zone	Pacific/Wake	11:06:28 -	LMT	1901
 # Wallis and Futuna
 Zone	Pacific/Wallis	12:15:20 -	LMT	1901
 			12:00	-	+12
+
+
+# From Paul Eggert (2024-05-22):
+# The following zones pretend that standard time extends backward
+# indefinitely into the past, and so are ahistorical.
+# In current TZDB these entries are links to geographical locations
+# that agree with the ahistorical zones since 1970.
+# These are in numeric rather than alphabetic order.
+
+# Zone	NAME		STDOFF	RULES	FORMAT	[UNTIL]
+Zone	HST		-10:00	-	HST
+Zone	PST8PDT		 -8:00	US	P%sT
+Zone	MST		 -7:00	-	MST
+Zone	MST7MDT		 -7:00	US	M%sT
+Zone	CST6CDT		 -6:00	US	C%sT
+Zone	EST		 -5:00	-	EST
+Zone	EST5EDT		 -5:00	US	E%sT
+Zone	WET		  0:00	EU	WE%sT
+Zone	CET		  1:00	C-Eur	CE%sT
+Zone	MET		  1:00	C-Eur	ME%sT
+Zone	EET		  2:00	EU	EE%sT
 
 # Local Variables:
 # coding: utf-8

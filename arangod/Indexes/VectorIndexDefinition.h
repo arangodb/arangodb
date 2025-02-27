@@ -93,8 +93,15 @@ struct UserVectorIndexDefinition {
               }
               return inspection::Status::Success{};
             }),
-        f.field("metric", x.metric), f.field("nLists", x.nLists),
-        f.field("nLists", x.nLists), f.field("factory", x.factory),
+        f.field("metric", x.metric),
+        f.field("nLists", x.nLists)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"nLists must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
+        f.field("factory", x.factory),
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),
         f.field("defaultNProbe", x.defaultNProbe)

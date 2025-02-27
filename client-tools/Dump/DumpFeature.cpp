@@ -867,13 +867,14 @@ void DumpFeature::collectOptions(
                      "Include system collections.",
                      new BooleanParameter(&_options.includeSystemCollections));
 
-  options->addOption("--output-directory", "The output directory.",
+  options->addOption("--output-directory",
+                     "The folder path to write the dump to.",
                      new StringParameter(&_options.outputPath));
 
   options->addOption("--overwrite", "Overwrite data in the output directory.",
                      new BooleanParameter(&_options.overwrite));
 
-  options->addOption("--progress", "Show the progress.",
+  options->addOption("--progress", "Show the dump progress.",
                      new BooleanParameter(&_options.progress));
 
   options->addObsoleteOption(

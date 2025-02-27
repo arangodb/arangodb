@@ -116,6 +116,7 @@ function readGdbFileFiltered(gdbOutputFile, options) {
     let stack = [];
     let longStack = [];
     let moreMessages = [];
+    let countPrinted = 0;
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
         var line = buf.utf8Slice(lineStart, j);
@@ -165,9 +166,13 @@ function readGdbFileFiltered(gdbOutputFile, options) {
             inStack = false;
           }
         } else {
-            GDB_OUTPUT += line.trim() + '\n';
+          GDB_OUTPUT += line.trim() + '\n';
+          countPrinted += 1;
         }
       }
+    }
+    if (countPrinted === 0) {
+      GDB_OUTPUT += "All stacks filtered\n";
     }
   } catch (ex) {
     let err="failed to read " + gdbOutputFile + " -> " + ex + '\n' + ex.stack;
@@ -417,6 +422,7 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
   return instanceInfo.debuggerInfo.hint;
 }
 
+exports.readGdbFileFiltered = readGdbFileFiltered;
 exports.aggregateDebugger = aggregateDebugger;
 exports.generateCrashDump = generateCrashDump;
 exports.analyzeCrash = analyzeCrash;
