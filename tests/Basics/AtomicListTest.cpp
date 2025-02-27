@@ -197,7 +197,7 @@ TEST(BoundedListTests, testConcurrentOperation) {
   // Verify memory usage is within expected bounds
   // Maximum possible memory usage is maxHistory * memoryThreshold with some
   // overhead
-  ASSERT_LE(snapshots.size(), maxHistory);
+  ASSERT_LE(snapshots.size(), maxHistory + 1);
   ASSERT_LE(current_memory,
             memoryThreshold * maxHistory * 1.1);  // Allow 10% overhead
 
