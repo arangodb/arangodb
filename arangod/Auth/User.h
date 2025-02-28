@@ -122,10 +122,8 @@ class User {
   Result getAccessTokens(velocypack::Builder& builder) const;
 
   // Create an access token
-    Result createAccessToken(
-                       std::string const& name,
-                       double validUntil,
-                       velocypack::Builder& b);
+  Result createAccessToken(std::string const& name, double validUntil,
+                           velocypack::Builder& b);
 
   // Delete an access token
   Result deleteAccessToken(uint64_t id);

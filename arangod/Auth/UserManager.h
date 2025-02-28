@@ -115,7 +115,7 @@ class UserManager {
 
   // Convenience methods to check a password or access token
   bool checkPassword(std::string const& username, std::string const& password);
-    bool checkAccessToken(std::string const& token, std::string& username);
+  bool checkAccessToken(std::string const& token, std::string& username);
 
   auth::Level databaseAuthLevel(std::string const& username,
                                 std::string const& dbname,
@@ -132,10 +132,8 @@ class UserManager {
   Result deleteAccessToken(std::string const& user, uint64_t id);
 
   // Creates an access tokens for an user
-    Result createAccessToken(std::string const& user,
-                       std::string const& name,
-                       double validUntil,
-                       velocypack::Builder&);
+  Result createAccessToken(std::string const& user, std::string const& name,
+                           double validUntil, velocypack::Builder&);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Overwrite internally cached permissions, only use

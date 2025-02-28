@@ -40,8 +40,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-RestAccessTokenHandler::RestAccessTokenHandler(ArangodServer& server, GeneralRequest* request,
-                                 GeneralResponse* response)
+RestAccessTokenHandler::RestAccessTokenHandler(ArangodServer& server,
+                                               GeneralRequest* request,
+                                               GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
 RestStatus RestAccessTokenHandler::execute() {
@@ -58,7 +59,7 @@ RestStatus RestAccessTokenHandler::execute() {
 
   if (suffixes.size() < 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-      "path parameter 'user' is missing");
+                  "path parameter 'user' is missing");
     return RestStatus::DONE;
   }
 
@@ -81,11 +82,12 @@ RestStatus RestAccessTokenHandler::execute() {
 
     default:
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+      return RestStatus::DONE;
   }
 }
 
-RestStatus RestAccessTokenHandler::showAccessTokens(auth::UserManager* um, std::string const& user) {
+RestStatus RestAccessTokenHandler::showAccessTokens(auth::UserManager* um,
+                                                    std::string const& user) {
   VPackBuilder tokens;
   Result result = um->accessTokens(user, tokens);
 
@@ -98,7 +100,8 @@ RestStatus RestAccessTokenHandler::showAccessTokens(auth::UserManager* um, std::
   return RestStatus::DONE;
 }
 
-RestStatus RestAccessTokenHandler::createAccessToken(auth::UserManager* um, std::string const& user) {
+RestStatus RestAccessTokenHandler::createAccessToken(auth::UserManager* um,
+                                                     std::string const& user) {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || !body.isObject()) {
@@ -124,12 +127,13 @@ RestStatus RestAccessTokenHandler::createAccessToken(auth::UserManager* um, std:
   return RestStatus::DONE;
 }
 
-RestStatus RestAccessTokenHandler::deleteAccessToken(auth::UserManager* um, std::string const& user) {
+RestStatus RestAccessTokenHandler::deleteAccessToken(auth::UserManager* um,
+                                                     std::string const& user) {
   auto const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-		  "path parameter 'id' is missing");
+                  "path parameter 'id' is missing");
     return RestStatus::DONE;
   }
 
@@ -144,4 +148,3 @@ RestStatus RestAccessTokenHandler::deleteAccessToken(auth::UserManager* um, std:
 
   return RestStatus::DONE;
 }
-

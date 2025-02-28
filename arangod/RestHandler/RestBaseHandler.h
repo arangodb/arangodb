@@ -78,12 +78,12 @@ class RestBaseHandler : public rest::RestHandler {
   void generateForbidden();
 
  protected:
-    bool isAdminUser() const;
-    bool isSelfUser(std::string const& user) const;
-    bool canAccessUser(std::string const& user) const;
+  bool isAdminUser() const;
+  bool isSelfUser(std::string const& user) const;
+  bool canAccessUser(std::string const& user) const;
 
-    // parses the request body as VelocyPack, generates body
-    velocypack::Slice parseVPackBody(bool& success);
+  // parses the request body as VelocyPack, generates body
+  velocypack::Slice parseVPackBody(bool& success);
 
   template<typename Payload>
   void writeResult(Payload&&, velocypack::Options const& options);

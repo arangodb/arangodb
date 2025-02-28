@@ -70,8 +70,7 @@ std::string const RestVocbaseBaseHandler::AGENCY_PRIV_PATH =
     "/_api/agency_priv";
 
 // analyzer path
-std::string const RestVocbaseBaseHandler::ANALYZER_PATH =
-    "/_api/analyzer";
+std::string const RestVocbaseBaseHandler::ANALYZER_PATH = "/_api/analyzer";
 
 // collection path
 std::string const RestVocbaseBaseHandler::COLLECTION_PATH = "/_api/collection";

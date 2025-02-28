@@ -132,9 +132,8 @@ RestStatus RestAuthHandler::execute() {
     }
   });
 
-  bool checked = isAccessToken
-  ? um->checkAccessToken(token, username)
-  : um->checkPassword(username, password);
+  bool checked = isAccessToken ? um->checkAccessToken(token, username)
+                               : um->checkPassword(username, password);
 
   if (checked) {
     VPackBuilder resultBuilder;

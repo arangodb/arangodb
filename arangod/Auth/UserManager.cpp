@@ -720,27 +720,25 @@ Result auth::UserManager::removeAllUsers() {
 }
 
 Result auth::UserManager::accessTokens(std::string const& user,
-				       velocypack::Builder& builder) {
-  Result result = accessUser(user, [&](auth::User const& u) {
-    return u.getAccessTokens(builder);
-  });
+                                       velocypack::Builder& builder) {
+  Result result = accessUser(
+      user, [&](auth::User const& u) { return u.getAccessTokens(builder); });
 
   return result;
 }
 
 Result auth::UserManager::deleteAccessToken(std::string const& user,
-					    uint64_t id) {
-  Result result = updateUser(user, [&](auth::User& u) {
-    return u.deleteAccessToken(id);
-  });
+                                            uint64_t id) {
+  Result result =
+      updateUser(user, [&](auth::User& u) { return u.deleteAccessToken(id); });
 
   return result;
 }
 
 Result auth::UserManager::createAccessToken(std::string const& user,
-           std::string const& name,
-           double validUntil,
-					    velocypack::Builder& builder) {
+                                            std::string const& name,
+                                            double validUntil,
+                                            velocypack::Builder& builder) {
   Result result = updateUser(user, [&](auth::User& u) {
     return u.createAccessToken(name, validUntil, builder);
   });
@@ -770,9 +768,10 @@ bool auth::UserManager::checkPassword(std::string const& username,
 }
 
 Result auth::UserManager::extractUsername(std::string const& token,
-					  std::string& username) const {
+                                          std::string& username) const {
   if (token.starts_with("v1.")) {
-    std::string unhex = StringUtils::decodeHex(token.c_str() + 3, token.size() - 3);
+    std::string unhex =
+        StringUtils::decodeHex(token.c_str() + 3, token.size() - 3);
 
     StringBuffer in;
     in.appendText(unhex);
@@ -783,8 +782,8 @@ Result auth::UserManager::extractUsername(std::string const& token,
     if (ErrorCode r = in.gzipUncompress(out, 0);
           r != TRI_ERROR_NO_ERROR) {
       return {
-	r,
-	"a decoding error occurred while gunzping"};
+        r,
+        "a decoding error occurred while gunzping"};
     }
     */
 
@@ -797,7 +796,7 @@ Result auth::UserManager::extractUsername(std::string const& token,
 
     VPackSlice user = at.get("u");
 
-    if (! user.isString()) {
+    if (!user.isString()) {
       return {TRI_ERROR_BAD_PARAMETER};
     }
 
@@ -810,7 +809,7 @@ Result auth::UserManager::extractUsername(std::string const& token,
 }
 
 bool auth::UserManager::checkAccessToken(std::string const& token,
-                                      std::string& username) {
+                                         std::string& username) {
   Result result = extractUsername(token, username);
 
   if (!result.ok()) {

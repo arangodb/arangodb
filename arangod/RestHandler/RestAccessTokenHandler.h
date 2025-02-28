@@ -25,9 +25,9 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
- namespace auth {
-   class UserManager;
- }
+namespace auth {
+class UserManager;
+}
 
 class RestAccessTokenHandler : public RestVocbaseBaseHandler {
  public:

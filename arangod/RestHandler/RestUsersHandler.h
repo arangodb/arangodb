@@ -40,7 +40,6 @@ class RestUsersHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
 
  private:
-
   // helper to generate a compliant response for individual user requests
   void generateUserResult(rest::ResponseCode code,
                           velocypack::Builder const& doc);
