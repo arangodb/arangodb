@@ -38,6 +38,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/ConditionVariable.h"
+#include "Basics/TimeString.h"
 #include "Containers/AtomicList.h"
 #include "Rest/CommonDefines.h"
 #include "Inspection/Status.h"
@@ -73,31 +74,14 @@ auto inspect(Inspector& f, ApiCallRecord& record) {
         std::chrono::system_clock::time_point const& tp,
         SerializedType& result) const {
       // Convert time_point to ISO 8601 string format
-      auto timeT = std::chrono::system_clock::to_time_t(tp);
-      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    tp.time_since_epoch()) %
-                1000;
-
-      char buffer[32];
-      struct tm timeInfo;
-#ifdef _WIN32
-      gmtime_s(&timeInfo, &timeT);
-#else
-      gmtime_r(&timeT, &timeInfo);
-#endif
-      strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", &timeInfo);
-
-      result = std::string(buffer) + "." +
-               std::to_string(ms.count()).substr(0, 3) + "Z";
+      result = timepointToString(tp);
       return {};
     }
 
     arangodb::inspection::Status fromSerialized(
         SerializedType const& str,
         std::chrono::system_clock::time_point& result) const {
-      // In a production system, this would parse the ISO 8601 time string
-      // For simplicity, we'll just use the current time when deserializing
-      result = std::chrono::system_clock::now();
+      result = stringToTimepoint(str);
       return {};
     }
   };
