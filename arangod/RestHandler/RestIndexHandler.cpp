@@ -279,8 +279,7 @@ RestStatus RestIndexHandler::getIndexes() {
           tmp.add(pi);
 
           // note this index as already covered
-          auto pos = iid.find('/');
-          if (pos != std::string::npos) {
+          if (auto pos = iid.find('/'); pos != std::string::npos) {
             iid = iid.substr(pos + 1);
           }
           covered.emplace(iid);
