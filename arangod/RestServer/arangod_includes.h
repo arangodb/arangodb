@@ -79,6 +79,7 @@
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
+#include "GeneralServer/ApiRecordingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"

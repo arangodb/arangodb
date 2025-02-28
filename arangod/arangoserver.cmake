@@ -136,6 +136,7 @@ add_library(arangoserver STATIC
   RestServer/LogBufferFeature.cpp
   RestServer/MaxMapCountFeature.cpp
   RestServer/NonceFeature.cpp
+  RestServer/ApiRecordingFeature.cpp
   RestServer/PrivilegeFeature.cpp
   RestServer/QueryRegistryFeature.cpp
   RestServer/ServerFeature.cpp

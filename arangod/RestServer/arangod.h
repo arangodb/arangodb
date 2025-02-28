@@ -97,6 +97,7 @@ class MaintenanceFeature;
 class MaxMapCountFeature;
 class NetworkFeature;
 class NonceFeature;
+class ApiRecordingFeature;
 class OptionsCheckFeature;
 class PrivilegeFeature;
 class QueryRegistryFeature;
@@ -202,6 +203,7 @@ using ArangodFeaturesList = TypeList<
     VersionFeature,
     ActionFeature,
     AgencyFeature,
+    ApiRecordingFeature,
     AqlFeature,
     async_registry::Feature,
     AuthenticationFeature,
