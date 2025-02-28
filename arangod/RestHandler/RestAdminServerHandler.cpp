@@ -308,9 +308,6 @@ void RestAdminServerHandler::handleApiCalls() {
     return;
   }
 
-  // Get current and historical snapshots using the public method
-  auto snapshots = server().getAPICallHistory();
-
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -318,28 +315,20 @@ void RestAdminServerHandler::handleApiCalls() {
     {
       VPackArrayBuilder guard2(&builder);
 
-      // Iterate through all snapshots and their nodes
-      for (auto const& snapshot : snapshots) {
-        auto node = snapshot->getSnapshot();
-        while (node != nullptr) {
-          {
-            VPackObjectBuilder guard3(&builder);
-            builder.add(
-                "timestamp",
-                VPackValue(
-                    std::chrono::duration_cast<std::chrono::milliseconds>(
-                        node->_data.timeStamp.time_since_epoch())
-                        .count()));
-            // Convert RequestType to string using static method
-            builder.add(
-                "requestType",
-                VPackValue(rest::requestToString(node->_data.requestType)));
-            builder.add("path", VPackValue(node->_data.path));
-            builder.add("database", VPackValue(node->_data.database));
-          }
-          node = node->next();
-        }
-      }
+      // Use doForApiCallRecords to iterate through records
+      server().doForApiCallRecords([&builder](ApiCallRecord const& record) {
+        VPackObjectBuilder guard3(&builder);
+        builder.add(
+            "timestamp",
+            VPackValue(std::chrono::duration_cast<std::chrono::milliseconds>(
+                           record.timeStamp.time_since_epoch())
+                           .count()));
+        // Convert RequestType to string using static method
+        builder.add("requestType",
+                    VPackValue(rest::requestToString(record.requestType)));
+        builder.add("path", VPackValue(record.path));
+        builder.add("database", VPackValue(record.database));
+      });
     }
   }
   generateOk(rest::ResponseCode::OK, builder.slice());

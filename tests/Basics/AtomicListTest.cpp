@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Containers/AtomicList.h"
+#include <thread>
 
 #include "gtest/gtest.h"
 
@@ -56,18 +57,14 @@ TEST(BoundedListTests, testBasicOperation) {
   list.prepend(Entry{1});
   list.prepend(Entry{2});
   list.prepend(Entry{3});
-  std::shared_ptr<AtomicList<Entry>> a = list.getCurrentSnapshot();
-  AtomicList<Entry>::Node* p = a->getSnapshot();
-  ASSERT_TRUE(p != nullptr);
-  ASSERT_EQ(p->_data.a, 3);
-  p = p->next();
-  ASSERT_TRUE(p != nullptr);
-  ASSERT_EQ(p->_data.a, 2);
-  p = p->next();
-  ASSERT_TRUE(p != nullptr);
-  ASSERT_EQ(p->_data.a, 1);
-  p = p->next();
-  ASSERT_TRUE(p == nullptr);
+
+  std::vector<int> values;
+  list.forItems([&values](const Entry& entry) { values.push_back(entry.a); });
+
+  ASSERT_EQ(values.size(), 3);
+  ASSERT_EQ(values[0], 3);
+  ASSERT_EQ(values[1], 2);
+  ASSERT_EQ(values[2], 1);
 }
 
 TEST(AtomicListTests, testConcurrentOperation) {
@@ -136,19 +133,11 @@ TEST(BoundedListTests, testConcurrentOperation) {
 
   std::atomic<int64_t> dummy{0};
 
-  // Create a thread that continuously takes snapshots
+  // Create a thread that continuously reads items
   std::thread reader([&list, &keep_running, &dummy]() {
     while (keep_running.load()) {
-      // Get both current and historical snapshots
-      auto snapshots = list.getHistoricalSnapshot();
       int64_t sum = 0;
-      for (const auto& snapshot : snapshots) {
-        auto* node = snapshot->getSnapshot();
-        while (node != nullptr) {
-          sum += node->_data.a;
-          node = node->next();
-        }
-      }
+      list.forItems([&sum](const Entry& entry) { sum += entry.a; });
       dummy.fetch_add(sum);
     }
   });
@@ -175,29 +164,18 @@ TEST(BoundedListTests, testConcurrentOperation) {
   keep_running.store(false);
   reader.join();
 
-  // Count total elements across all lists
+  // Count total elements
   size_t total_count = 0;
   size_t current_memory = 0;
-  auto snapshots = list.getHistoricalSnapshot();
-  for (const auto& snapshot : snapshots) {
-    size_t mem = 0;
-    auto* node = snapshot->getSnapshot();
-    while (node != nullptr) {
-      ++total_count;
-      mem += node->_data.memoryUsage();
-      node = node->next();
-    }
-    std::cout << "Memory usage in one list: " << mem << std::endl;
-    current_memory += mem;
-  }
+  list.forItems([&](const Entry& entry) {
+    ++total_count;
+    current_memory += entry.memoryUsage();
+  });
 
   // Verify that we have fewer elements than prepended due to the memory limit
   ASSERT_LT(total_count, total_prepended.load());
 
   // Verify memory usage is within expected bounds
-  // Maximum possible memory usage is maxHistory * memoryThreshold with some
-  // overhead
-  ASSERT_LE(snapshots.size(), maxHistory + 1);
   ASSERT_LE(current_memory,
             memoryThreshold * maxHistory * 1.1);  // Allow 10% overhead
 
@@ -219,20 +197,14 @@ TEST(BoundedListTests, testOrderPreservation) {
     list.prepend(Entry{static_cast<int>(i)});
   }
 
-  // Get snapshot and verify reverse order
-  auto snapshot = list.getHistoricalSnapshot();
-  // First verify we have all elements
+  // Verify reverse order
   size_t count = 0;
   size_t expected = numEntries - 1;  // Start with highest number
-  for (auto const& l : snapshot) {
-    auto* node = l->getSnapshot();
-    while (node != nullptr) {
-      ASSERT_EQ(node->_data.a, expected);
-      expected--;
-      count++;
-      node = node->next();
-    }
-  }
+  list.forItems([&](const Entry& entry) {
+    ASSERT_EQ(entry.a, expected);
+    expected--;
+    count++;
+  });
 
   ASSERT_EQ(count, numEntries);
   ASSERT_EQ(expected, size_t(-1));  // We should have counted down to -1
@@ -258,43 +230,10 @@ TEST(BoundedListTests, testTrashCollection) {
   }
 
   // Get trash and verify
-  auto trash = list.getTrash();
-  ASSERT_FALSE(trash.empty());
-
-  // Verify each trashed batch has entries
-  size_t totalTrashedEntries = 0;
-  for (const auto& batch : trash) {
-    auto* node = batch->getSnapshot();
-    size_t batchCount = 0;
-    while (node != nullptr) {
-      batchCount++;
-      node = node->next();
-    }
-    ASSERT_GT(batchCount, 0);
-    totalTrashedEntries += batchCount;
-  }
+  size_t count = list.clearTrash();
+  ASSERT_GT(count, 0);
 
   // Verify trash is cleared after getting it
-  auto emptyTrash = list.getTrash();
-  ASSERT_TRUE(emptyTrash.empty());
-
-  // Verify we can still access current and historical entries
-  auto current = list.getCurrentSnapshot();
-  ASSERT_TRUE(current->getSnapshot() != nullptr);
-
-  auto historical = list.getHistoricalSnapshot();
-  ASSERT_LE(historical.size(), maxHistory + 1);  // +1 for current
-
-  // Count remaining entries
-  size_t remainingEntries = 0;
-  for (const auto& snapshot : historical) {
-    auto* node = snapshot->getSnapshot();
-    while (node != nullptr) {
-      remainingEntries++;
-      node = node->next();
-    }
-  }
-
-  // Total entries should equal original amount
-  ASSERT_EQ(remainingEntries + totalTrashedEntries, totalEntries);
+  count = list.clearTrash();
+  ASSERT_EQ(count, 0);
 }

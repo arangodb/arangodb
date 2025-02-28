@@ -27,6 +27,7 @@
 #include <memory>
 #include <mutex>
 #include <vector>
+#include <type_traits>
 
 namespace arangodb {
 
@@ -122,9 +123,11 @@ class AtomicList {
 // configured with the _maxHistory argument. The total upper limit for the
 // memory usage (which can occasionally overshoot a bit) is thus
 //   _memoryThreshold * _maxHistory.
-// It is possible to take a snapshot of the current list and of all
-// historic lists. These snapshots may be traversed, but it is not allowed
-// to delete the Node pointers.
+// The forItems method provides a convenient way
+// to iterate over all items in the list from newest to oldest, executing a
+// callback function for each item. Note that it internally takes a snapshot
+// of the current list and of all historic lists, so it is safe to call this
+// method from multiple threads concurrently.
 // The type T must be an object which has a move constructor and has
 // a method called `memoryUsage` which estimates the memory usage
 // (including all substructures) in bytes. It should always return a
@@ -229,50 +232,43 @@ class BoundedList {
     }
   }
 
-  // Get current list snapshot
-  std::shared_ptr<AtomicList<T>> getCurrentSnapshot() const {
-    // Use the `getSnapshot` method of the AtomicList and then follow
-    // the Nodes, but do not delete any Node! The allocation is safe as
-    // long as you keep the shared_ptr. Note however, that it is possible
-    // that Nodes are prepended to the list whilst you hold it!
-    // This can throw in out of memory situations.
-    return _current.load(std::memory_order_acquire);
-    // This synchronizes with a store when a new list is stored in the
-    // `prepend` method above.
-  }
-
-  // Get historical snapshots
-  std::vector<std::shared_ptr<AtomicList<T>>> getHistoricalSnapshot() const {
-    // Use the `getSnapshot` method of the AtomicLists and then follow
-    // the Nodes, but do not delete any Node! The allocation is safe as long
-    // as you keep the shared_ptrs.
-    std::lock_guard<std::mutex> guard(_mutex);
+  // Make forItems signature more type-safe by requiring F to be callable with
+  // T&
+  template<typename F,
+           typename = std::enable_if_t<std::is_invocable_v<F, T const&>>>
+  void forItems(F&& callback) const {
+    // Get snapshots under lock
     std::vector<std::shared_ptr<AtomicList<T>>> snapshots;
-    snapshots.reserve(_history.size() + 1);
-    snapshots.push_back(_current.load(std::memory_order_acquire));
-    // This synchronizes with the storing of a new empty list in the
-    // `prepend` method.
-    for (size_t i = 0; i < _maxHistory; ++i) {
-      size_t pos = (_ringBufferPos + _maxHistory - 1 - i) % _maxHistory;
-      if (_history[pos] != nullptr) {
-        snapshots.push_back(_history[pos]);
+    {
+      std::lock_guard<std::mutex> guard(_mutex);
+      snapshots.reserve(_history.size() + 1);
+      snapshots.push_back(_current.load(std::memory_order_acquire));
+
+      for (size_t i = 0; i < _maxHistory; ++i) {
+        size_t pos = (_ringBufferPos + _maxHistory - 1 - i) % _maxHistory;
+        if (_history[pos] != nullptr) {
+          snapshots.push_back(_history[pos]);
+        }
       }
     }
-    return snapshots;
+
+    // Process items from newest to oldest
+    for (const auto& list : snapshots) {
+      auto* node = list->getSnapshot();
+      while (node != nullptr) {
+        callback(node->_data);
+        node = node->next();
+      }
+    }
   }
 
-  std::vector<std::shared_ptr<AtomicList<T>>> getTrash() {
-    // This method is to extract the trashed batches for external removal.
+  size_t clearTrash() {
+    // This method is called by a cleanup thread to free old batches.
+    // Returns the number of batches that were freed.
     std::lock_guard<std::mutex> guard(_mutex);
-    std::vector<std::shared_ptr<AtomicList<T>>> trashHeap;
-    trashHeap.reserve(_trash.size());
-    // This synchronizes with the storing of a new empty list in the
-    // `prepend` method.
-    for (size_t i = 0; i < _trash.size(); ++i) {
-      trashHeap.push_back(_trash[i]);
-    }
+    size_t freedBatches = _trash.size();
     _trash.clear();
-    return trashHeap;
+    return freedBatches;
   }
 };
 

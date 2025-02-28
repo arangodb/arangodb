@@ -244,10 +244,14 @@ class ApplicationServer {
   void recordAPICall(arangodb::rest::RequestType requestType,
                      std::string_view path, std::string_view database);
 
-  // Get historical snapshots of API calls
-  std::vector<std::shared_ptr<AtomicList<ApiCallRecord>>> getAPICallHistory()
-      const {
-    return _apiCallRecord->getHistoricalSnapshot();
+  // Iterates over API call records from newest to oldest, invoking the given
+  // callback function for each record. Thread-safe.
+  template<typename F, typename = std::enable_if_t<
+                           std::is_invocable_v<F, ApiCallRecord const&>>>
+  void doForApiCallRecords(F&& callback) const {
+    if (_apiCallRecord) {
+      _apiCallRecord->forItems(std::forward<F>(callback));
+    }
   }
 
  private:

@@ -939,11 +939,7 @@ void ApplicationServer::cleanupLoop() {
   while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
     // Get the trash and measure the time
     auto start = std::chrono::steady_clock::now();
-    auto trash = _apiCallRecord->getTrash();
-    size_t count = trash.size();
-
-    // Explicitly destroy the lists
-    trash.clear();
+    size_t count = _apiCallRecord->clearTrash();
 
     auto duration = std::chrono::steady_clock::now() - start;
     auto nanoseconds =
