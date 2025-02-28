@@ -23,20 +23,114 @@
 
 #pragma once
 
+#include <atomic>
+#include <chrono>
+#include <memory>
+#include <string>
+#include <string_view>
+#include <thread>
+
 #include "RestServer/arangod.h"
+#include "Containers/AtomicList.h"
+#include "Rest/CommonDefines.h"
+#include "Inspection/Status.h"
+#include "Basics/TimeString.h"
 
 namespace arangodb {
+
+struct ApiCallRecord {
+  std::chrono::system_clock::time_point timeStamp;
+  arangodb::rest::RequestType requestType;
+  std::string path;
+  std::string database;
+
+  ApiCallRecord(arangodb::rest::RequestType requestType, std::string_view path,
+                std::string_view database)
+      : timeStamp(std::chrono::system_clock::now()),
+        requestType(requestType),
+        path(path),
+        database(database) {}
+
+  size_t memoryUsage() const noexcept;
+};
+
+// Inspector for ApiCallRecord to allow serialization using the Inspection
+// library
+template<class Inspector>
+auto inspect(Inspector& f, ApiCallRecord& record) {
+  // Transformer for std::chrono::system_clock::time_point to ISO 8601 string
+  struct TimePointTransformer {
+    using SerializedType = std::string;
+
+    arangodb::inspection::Status toSerialized(
+        std::chrono::system_clock::time_point const& tp,
+        SerializedType& result) const {
+      // Convert time_point to ISO 8601 string format
+      result = timepointToString(tp);
+      return {};
+    }
+
+    arangodb::inspection::Status fromSerialized(
+        SerializedType const& str,
+        std::chrono::system_clock::time_point& result) const {
+      result = stringToTimepoint(str);
+      return {};
+    }
+  };
+
+  return f.object(record).fields(f.field("timeStamp", record.timeStamp)
+                                     .transformWith(TimePointTransformer{}),
+                                 f.field("requestType", record.requestType),
+                                 f.field("path", record.path),
+                                 f.field("database", record.database));
+}
 
 class ApiRecordingFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
 
   explicit ApiRecordingFeature(Server& server);
+  ~ApiRecordingFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+  void start() override final;
+  void stop() override final;
+
+  void recordAPICall(arangodb::rest::RequestType requestType,
+                     std::string_view path, std::string_view database);
+
+  // Iterates over API call records from newest to oldest, invoking the given
+  // callback function for each record. Thread-safe.
+  template<typename F>
+  requires std::is_invocable_v<F, ApiCallRecord const&>
+  void doForApiCallRecords(F&& callback) const {
+    if (_apiCallRecord) {
+      _apiCallRecord->forItems(std::forward<F>(callback));
+    }
+  }
 
  private:
-  bool _enabled{false};
+  // Cleanup thread function
+  void cleanupLoop();
+
+  // Whether or not to record recent API calls
+  bool _enabled{true};
+
+  // Memory limit for one list of ApiCallRecords:
+  size_t _memoryPerApiRecordList{100000};
+
+  // Number of ApiCallRecord lists in ring buffer:
+  size_t _numberOfApiRecordLists{256};
+
+  /// record of recent api calls:
+  std::unique_ptr<arangodb::BoundedList<ApiCallRecord>> _apiCallRecord;
+
+  // Flag to control the cleanup thread
+  std::atomic<bool> _stopCleanupThread{false};
+
+  // The cleanup thread itself
+  std::jthread _cleanupThread;
 };
 
 }  // namespace arangodb

@@ -25,10 +25,17 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "ProgramOptions/Parameters.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::options;
 
 namespace arangodb {
+
+size_t ApiCallRecord::memoryUsage() const noexcept {
+  return sizeof(ApiCallRecord) + path.size() + database.size();
+}
 
 ApiRecordingFeature::ApiRecordingFeature(Server& server)
     : ArangodFeature{server, *this} {
@@ -36,7 +43,92 @@ ApiRecordingFeature::ApiRecordingFeature(Server& server)
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
 
+ApiRecordingFeature::~ApiRecordingFeature() {
+  // Ensure cleanup thread is stopped if not already
+  _stopCleanupThread.store(true, std::memory_order_relaxed);
+  if (_cleanupThread.joinable()) {
+    _cleanupThread.join();
+  }
+}
+
 void ApiRecordingFeature::collectOptions(
-    std::shared_ptr<ProgramOptions> options) {}
+    std::shared_ptr<ProgramOptions> options) {
+  options->addOption(
+      "--server.api-call-recording",
+      "Record recent API calls for debugging purposes (default: true).",
+      new BooleanParameter(&_enabled),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
+
+  options->addOption(
+      "--server.memory-per-api-call-list",
+      "Memory limit from which a new list of api call records is started.",
+      new UInt64Parameter(&_memoryPerApiRecordList),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
+
+  options->addOption(
+      "--server.number-of-api-call-lists",
+      "Number of lists of api call records in ring buffer.",
+      new UInt64Parameter(&_numberOfApiRecordLists),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
+}
+
+void ApiRecordingFeature::prepare() {
+  // Initialize the API call record list if enabled
+  if (_enabled) {
+    _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
+        _memoryPerApiRecordList, _numberOfApiRecordLists);
+  }
+}
+
+void ApiRecordingFeature::start() {
+  // Start the cleanup thread if enabled
+  if (_enabled) {
+    _stopCleanupThread.store(false, std::memory_order_relaxed);
+    _cleanupThread = std::jthread([this] { cleanupLoop(); });
+#ifdef TRI_HAVE_SYS_PRCTL_H
+    pthread_setname_np(_cleanupThread.native_handle(), "ApiRecordCleanup");
+#endif
+  }
+}
+
+void ApiRecordingFeature::stop() {
+  // Stop and join the cleanup thread
+  _stopCleanupThread.store(true, std::memory_order_relaxed);
+  if (_cleanupThread.joinable()) {
+    _cleanupThread.join();
+  }
+}
+
+void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
+                                        std::string_view path,
+                                        std::string_view database) {
+  if (_enabled && _apiCallRecord != nullptr) {
+    _apiCallRecord->prepend(ApiCallRecord(requestType, path, database));
+  }
+}
+
+void ApiRecordingFeature::cleanupLoop() {
+  while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
+    // Get the trash and measure the time
+    auto start = std::chrono::steady_clock::now();
+    size_t count = _apiCallRecord->clearTrash();
+
+    auto duration = std::chrono::steady_clock::now() - start;
+    auto nanoseconds =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+
+    if (count > 0) {
+      LOG_TOPIC("53626", TRACE, Logger::MEMORY)
+          << "Cleaned up " << count << " API call record lists in "
+          << nanoseconds.count() << " nanoseconds";
+    }
+
+    // Sleep for 100ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+}
 
 }  // namespace arangodb

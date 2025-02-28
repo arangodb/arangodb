@@ -35,6 +35,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -309,6 +310,8 @@ void RestAdminServerHandler::handleApiCalls() {
     return;
   }
 
+  auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
+
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -317,9 +320,10 @@ void RestAdminServerHandler::handleApiCalls() {
       VPackArrayBuilder guard2(&builder);
 
       // Use doForApiCallRecords to iterate through records
-      server().doForApiCallRecords([&builder](ApiCallRecord const& record) {
-        arangodb::velocypack::serialize(builder, record);
-      });
+      apiRecordingFeature.doForApiCallRecords(
+          [&builder](ApiCallRecord const& record) {
+            arangodb::velocypack::serialize(builder, record);
+          });
     }
   }
   generateOk(rest::ResponseCode::OK, builder.slice());

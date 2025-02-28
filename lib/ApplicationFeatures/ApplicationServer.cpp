@@ -76,10 +76,6 @@ auto nonEmptyFeatures(
 
 }  // namespace
 
-size_t arangodb::ApiCallRecord::memoryUsage() const noexcept {
-  return sizeof(ApiCallRecord) + path.size() + database.size();
-}
-
 std::atomic<bool> ApplicationServer::CTRL_C(false);
 
 ApplicationServer::ApplicationServer(
@@ -358,27 +354,6 @@ void ApplicationServer::collectOptions() {
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
-  _options->addOption(
-      "--server.api-call-recording",
-      "Record recent API calls for debugging purposes (default: true).",
-      new BooleanParameter(&_recordApiCalls),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  _options->addOption(
-      "--server.memory-per-api-call-list",
-      "Memory limit from which a new list of api call records is started.",
-      new UInt64Parameter(&_memoryPerApiRecordList),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  _options->addOption(
-      "--server.number-of-api-call-lists",
-      "Number of lists of api call records in ring buffer.",
-      new UInt64Parameter(&_numberOfApiRecordLists),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
   apply(
       [this](ApplicationFeature& feature) {
         LOG_TOPIC("b2731", TRACE, Logger::STARTUP)
@@ -627,9 +602,6 @@ void ApplicationServer::disableDependentFeatures() {
 void ApplicationServer::prepare() {
   LOG_TOPIC("04e8f", TRACE, Logger::STARTUP) << "ApplicationServer::prepare";
 
-  _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
-      _memoryPerApiRecordList, _numberOfApiRecordLists);
-
   for (ApplicationFeature& feature : _orderedFeatures) {
     reportFeatureProgress(_state.load(std::memory_order_relaxed),
                           feature.name());
@@ -658,13 +630,6 @@ void ApplicationServer::start() {
   LOG_TOPIC("8ef64", TRACE, Logger::STARTUP) << "ApplicationServer::start";
 
   Result res;
-
-  // Start the cleanup thread first
-  _stopCleanupThread.store(false, std::memory_order_relaxed);
-  _cleanupThread = std::jthread([this] { cleanupLoop(); });
-#ifdef TRI_HAVE_SYS_PRCTL_H
-  pthread_setname_np(_cleanupThread.native_handle(), "CleanupTrashThread");
-#endif
 
   for (ApplicationFeature& feature : _orderedFeatures) {
     if (!feature.isEnabled()) {
@@ -794,12 +759,6 @@ void ApplicationServer::start() {
 void ApplicationServer::stop() {
   LOG_TOPIC("3e53e", TRACE, Logger::STARTUP) << "ApplicationServer::stop";
 
-  // Stop and join the cleanup thread first
-  _stopCleanupThread.store(true, std::memory_order_relaxed);
-  if (_cleanupThread.joinable()) {
-    _cleanupThread.join();
-  }
-
   for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
        ++it) {
     ApplicationFeature& feature = (*it).get();
@@ -925,33 +884,4 @@ std::string_view ApplicationServer::stringifyState(State state) {
   // we should never get here
   TRI_ASSERT(false);
   return "unknown";
-}
-
-void ApplicationServer::recordAPICall(arangodb::rest::RequestType requestType,
-                                      std::string_view path,
-                                      std::string_view database) {
-  if (_recordApiCalls && _apiCallRecord != nullptr) {
-    _apiCallRecord->prepend(ApiCallRecord(requestType, path, database));
-  }
-}
-
-void ApplicationServer::cleanupLoop() {
-  while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
-    // Get the trash and measure the time
-    auto start = std::chrono::steady_clock::now();
-    size_t count = _apiCallRecord->clearTrash();
-
-    auto duration = std::chrono::steady_clock::now() - start;
-    auto nanoseconds =
-        std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
-
-    if (count > 0) {
-      LOG_TOPIC("53626", TRACE, Logger::MEMORY)
-          << "Cleaned up " << count << " API call record lists in "
-          << nanoseconds.count() << " nanoseconds";
-    }
-
-    // Sleep for 100ms
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  }
 }
