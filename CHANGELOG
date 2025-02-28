@@ -4,12 +4,6 @@ devel
 * Fix vector index comparison in maintenance, which causes loop with agency and
   dbservers.
 
-* Fix a bug in the index API /_api/index?withHidden=true, which can lead to
-  two problems: (1) A newly created index is potentially not shown in the very
-  moment when it is finished. (2) A newly created index is shown twice in
-  the result, once with `isBuilding: true` and once without.
-  This fixes BTS-2044.
-
 * BTS-2089: Fix a crash when query logging and query cache were enabled.
 
 * Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
