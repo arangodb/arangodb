@@ -1,6 +1,8 @@
 devel
 -----
 
+* Introduces first changes for the new diskusage based license.
+
 * Fix a bug in the index API /_api/index?withHidden=true, which can lead to
   two problems: (1) A newly created index is potentially not shown in the very
   moment when it is finished. (2) A newly created index is shown twice in
