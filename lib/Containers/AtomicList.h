@@ -187,9 +187,8 @@ class BoundedList {
       if (_current.load(std::memory_order_relaxed) == current) {
         // If somebody else came before us, we do not bother to rotate!
         _current.store(std::make_shared<AtomicList<T>>(),
-                       std::memory_order_seq_cst);
-        // We use a sequentially consistent store here because it happens
-        // only rarely. This synchronizes with the load above.
+                       std::memory_order_release);
+        // This synchronizes with the load above.
 
         // We first store a new empty list in _current, so that any other thread
         // will prepend to that one as soon as possible.
@@ -235,7 +234,7 @@ class BoundedList {
   // Make forItems signature more type-safe by requiring F to be callable with
   // T&
   template<typename F>
-    requires std::is_invocable_v<F, T const&>
+  requires std::is_invocable_v<F, T const&>
   void forItems(F&& callback) const {
     // Get snapshots under lock
     std::vector<std::shared_ptr<AtomicList<T>>> snapshots;
