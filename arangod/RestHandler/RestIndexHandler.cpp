@@ -290,7 +290,7 @@ RestStatus RestIndexHandler::getIndexes() {
           std::string_view iid = pi.get("id").stringView();
           // avoid reporting an index twice
           if (covered.contains(iid) ||
-              pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
+              !pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
             continue;
           }
 
@@ -398,7 +398,7 @@ RestStatus RestIndexHandler::getIndexes() {
         std::string_view iid = pi.get("id").stringView();
         // avoid reporting an index twice
         if (covered.contains(iid) ||
-            pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
+            !pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
           continue;
         }
         std::string id_str = absl::StrCat(cName, "/", iid);
