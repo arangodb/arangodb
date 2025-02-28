@@ -79,7 +79,6 @@
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
 #endif
-#include "GeneralServer/ApiRecordingFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
@@ -98,6 +97,7 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/StateMachines/BlackHole/BlackHoleStateMachineFeature.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachineFeature.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
