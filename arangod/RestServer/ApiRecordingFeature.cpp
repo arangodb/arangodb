@@ -62,15 +62,16 @@ void ApiRecordingFeature::collectOptions(
 
   options->addOption(
       "--server.memory-per-api-call-list",
-      "Memory limit from which a new list of api call records is started.",
-      new UInt64Parameter(&_memoryPerApiRecordList),
+      "Memory limit for a list of ApiCallRecords. Exceeding this limit results "
+      "in a new list beeing created.",
+      new UInt64Parameter(&_memoryPerApiRecordList, 1, 1000, 1000000000),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 
   options->addOption(
       "--server.number-of-api-call-lists",
       "Number of lists of api call records in ring buffer.",
-      new UInt64Parameter(&_numberOfApiRecordLists),
+      new UInt64Parameter(&_numberOfApiRecordLists, 1, 3, 1000),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 }
