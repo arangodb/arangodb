@@ -51,9 +51,8 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-UniformCharacter UCR(
+  UniformCharacter UCR(20);
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
-constexpr size_t UCR_LENGTH = 20;
 }  // namespace
 
 // create a hash in _outHash_ given a method like "sha1" and an input string.
@@ -462,7 +461,7 @@ Result auth::User::createAccessToken(std::string const& name, double validUntil,
     o->add("e", uint64_t(validUntil));
     o->add("c", uint64_t(now));
     o->add("u", _username);
-    o->add("r", UCR.random(UCR_LENGTH));
+    o->add("r", UCR.random());
   }
 
   StringBuffer buffer;
