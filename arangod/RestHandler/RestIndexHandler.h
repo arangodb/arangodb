@@ -36,6 +36,10 @@
 namespace arangodb {
 class LogicalCollection;
 
+namespace task_registry {
+struct Task;
+}
+
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestIndexHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
@@ -68,5 +72,6 @@ class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
 
   std::mutex _mutex;
   CreateInBackgroundData _createInBackgroundData;
+  std::shared_ptr<task_registry::Task> _task;
 };
 }  // namespace arangodb
