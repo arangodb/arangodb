@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -31,6 +31,7 @@
 #include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -718,6 +719,35 @@ Result auth::UserManager::removeAllUsers() {
   return res;
 }
 
+Result auth::UserManager::accessTokens(std::string const& user,
+				       velocypack::Builder& builder) {
+  Result result = accessUser(user, [&](auth::User const& u) {
+    return u.getAccessTokens(builder);
+  });
+
+  return result;
+}
+
+Result auth::UserManager::deleteAccessToken(std::string const& user,
+					    uint64_t id) {
+  Result result = updateUser(user, [&](auth::User& u) {
+    return u.deleteAccessToken(id);
+  });
+
+  return result;
+}
+
+Result auth::UserManager::createAccessToken(std::string const& user,
+           std::string const& name,
+           double validUntil,
+					    velocypack::Builder& builder) {
+  Result result = updateUser(user, [&](auth::User& u) {
+    return u.createAccessToken(name, validUntil, builder);
+  });
+
+  return result;
+}
+
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
   if (username.empty()) {
@@ -733,6 +763,69 @@ bool auth::UserManager::checkPassword(std::string const& username,
     auth::User const& user = it->second;
     if (user.isActive()) {
       return user.checkPassword(password);
+    }
+  }
+
+  return false;
+}
+
+Result auth::UserManager::extractUsername(std::string const& token,
+					  std::string& username) const {
+  if (token.starts_with("v1.")) {
+    std::string unhex = StringUtils::decodeHex(token.c_str() + 3, token.size() - 3);
+
+    StringBuffer in;
+    in.appendText(unhex);
+
+    /*
+    StringBuffer out;
+
+    if (ErrorCode r = in.gzipUncompress(out, 0);
+          r != TRI_ERROR_NO_ERROR) {
+      return {
+	r,
+	"a decoding error occurred while gunzping"};
+    }
+    */
+
+    auto json = VPackParser::fromJson(in.toString());
+    VPackSlice at = json->slice();
+
+    if (!at.isObject()) {
+      return {TRI_ERROR_BAD_PARAMETER};
+    }
+
+    VPackSlice user = at.get("u");
+
+    if (! user.isString()) {
+      return {TRI_ERROR_BAD_PARAMETER};
+    }
+
+    username = user.copyString();
+
+    return {TRI_ERROR_NO_ERROR};
+  } else {
+    return {TRI_ERROR_INCOMPATIBLE_VERSION};
+  }
+}
+
+bool auth::UserManager::checkAccessToken(std::string const& token,
+                                      std::string& username) {
+  Result result = extractUsername(token, username);
+
+  if (!result.ok()) {
+    return false;
+  }
+
+  loadFromDB();
+
+  READ_LOCKER(readGuard, _userCacheLock);
+  UserMap::iterator it = _userCache.find(username);
+
+  if (it != _userCache.end()) {
+    auth::User const& user = it->second;
+    if (user.isActive()) {
+      return user.checkAccessToken(token);
     }
   }
 

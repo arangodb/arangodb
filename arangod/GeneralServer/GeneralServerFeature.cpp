@@ -70,6 +70,7 @@
 #ifdef USE_V8
 #include "RestHandler/RestAqlUserFunctionsHandler.h"
 #endif
+#include "RestHandler/RestAccessTokenHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestAuthReloadHandler.h"
 #include "RestHandler/RestCompactHandler.h"
@@ -717,6 +718,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::USERS_PATH,
                      RestHandlerCreator<RestUsersHandler>::createNoData);
+
+  f.addPrefixHandler(RestVocbaseBaseHandler::ACCESS_TOKEN_PATH,
+                     RestHandlerCreator<RestAccessTokenHandler>::createNoData);
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData);

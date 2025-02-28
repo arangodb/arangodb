@@ -100,13 +100,23 @@ RestStatus RestAuthHandler::execute() {
 
   VPackSlice usernameSlice = slice.get("username");
   VPackSlice passwordSlice = slice.get("password");
+  VPackSlice accessTokenSlice = slice.get("access_token");
 
-  if (!usernameSlice.isString() || !passwordSlice.isString()) {
+  std::string username;
+  std::string password;
+  std::string token;
+
+  bool isAccessToken = false;
+
+  if (accessTokenSlice.isString()) {
+    isAccessToken = true;
+    token = accessTokenSlice.copyString();
+  } else if (usernameSlice.isString() && passwordSlice.isString()) {
+    username = usernameSlice.copyString();
+    password = passwordSlice.copyString();
+  } else {
     return badRequest();
   }
-
-  std::string username = usernameSlice.copyString();
-  std::string password = passwordSlice.copyString();
 
   bool isValid = false;
 
@@ -122,7 +132,11 @@ RestStatus RestAuthHandler::execute() {
     }
   });
 
-  if (um->checkPassword(username, password)) {
+  bool checked = isAccessToken
+  ? um->checkAccessToken(token, username)
+  : um->checkPassword(username, password);
+
+  if (checked) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);

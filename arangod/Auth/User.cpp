@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -22,12 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Auth/User.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -42,7 +41,6 @@
 #include "Transaction/Helpers.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Iterator.h>
 
@@ -52,9 +50,14 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-// private hash function
+namespace {
+  UniformCharacter UCR("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
+  constexpr size_t UCR_LENGTH = 20;
+}
+
+// create a hash in _outHash_ given a method like "sha1" and an input string.
 static ErrorCode HexHashFromData(std::string_view hashMethod,
-                                 std::string const& str, std::string& outHash) {
+                                 std::string const &str, std::string &outHash) {
   // maximum length is 64 bytes for SHA512
   char buffer[64];
   size_t cryptedLength;
@@ -91,7 +94,7 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
   return TRI_ERROR_NO_ERROR;
 }
 
-static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
+static void AddAuthLevel(VPackBuilder &builder, auth::Level lvl) {
   if (lvl == auth::Level::RW) {
     builder.add("read", VPackValue(true));
     builder.add("write", VPackValue(true));
@@ -125,8 +128,8 @@ static auth::Level AuthLevelFromSlice(VPackSlice slice) {
 
 // ============= static ==================
 
-auth::User auth::User::newUser(std::string const& user,
-                               std::string const& password) {
+auth::User auth::User::newUser(std::string const &user,
+                               std::string const &password) {
   auth::User entry("", RevisionId::none());
   entry._active = true;
 
@@ -148,10 +151,10 @@ auth::User auth::User::newUser(std::string const& user,
   return entry;
 }
 
-void auth::User::fromDocumentDatabases(auth::User& entry,
-                                       VPackSlice const& databasesSlice,
-                                       VPackSlice const& userSlice) {
-  for (auto const& obj : VPackObjectIterator(databasesSlice)) {
+void auth::User::fromDocumentDatabases(auth::User &entry,
+                                       VPackSlice const &databasesSlice,
+                                       VPackSlice const &userSlice) {
+  for (auto const &obj: VPackObjectIterator(databasesSlice)) {
     std::string const dbName = obj.key.copyString();
 
     if (obj.value.isObject()) {
@@ -165,14 +168,14 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
 
       try {
         entry.grantDatabase(dbName, databaseAuth);
-      } catch (arangodb::basics::Exception const& e) {
+      } catch (arangodb::basics::Exception const &e) {
         LOG_TOPIC("a01a9", DEBUG, Logger::AUTHENTICATION) << e.message();
       }
 
       VPackSlice collectionsSlice = obj.value.get("collections");
 
       if (collectionsSlice.isObject()) {
-        for (auto collection : VPackObjectIterator(collectionsSlice)) {
+        for (auto collection: VPackObjectIterator(collectionsSlice)) {
           std::string const cName = collection.key.copyString();
           auto const collPerSlice = collection.value.get("permissions");
 
@@ -180,7 +183,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
             try {
               entry.grantCollection(dbName, cName,
                                     AuthLevelFromSlice(collPerSlice));
-            } catch (arangodb::basics::Exception const& e) {
+            } catch (arangodb::basics::Exception const &e) {
               LOG_TOPIC("181fa", DEBUG, Logger::AUTHENTICATION) << e.message();
             }
           }
@@ -191,7 +194,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
           << "updating deprecated access rights struct for user '"
           << userSlice.stringView() << "'";
       VPackValueLength length;
-      char const* value = obj.value.getString(length);
+      char const *value = obj.value.getString(length);
 
       if (TRI_CaseEqualString(value, "rw", 2)) {
         entry.grantDatabase(dbName, auth::Level::RW);
@@ -204,7 +207,7 @@ void auth::User::fromDocumentDatabases(auth::User& entry,
   }
 }
 
-auth::User auth::User::fromDocument(VPackSlice const& slice) {
+auth::User auth::User::fromDocument(VPackSlice const &slice) {
   if (slice.isNone() || !slice.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -241,7 +244,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!simpleSlice.isObject()) {
     LOG_TOPIC("e159f", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract simple";
-    return auth::User("", RevisionId::none());
+    return {"", RevisionId::none()};
   }
 
   VPackSlice const methodSlice = simpleSlice.get("method");
@@ -252,7 +255,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
       !hashSlice.isString()) {
     LOG_TOPIC("09122", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract password internals";
-    return auth::User("", RevisionId::none());
+    return {"", RevisionId::none()};
   }
 
   // extract "active" attribute
@@ -261,7 +264,7 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
   if (!activeSlice.isBoolean()) {
     LOG_TOPIC("857e0", DEBUG, arangodb::Logger::AUTHENTICATION)
         << "cannot extract active flag";
-    return auth::User("", RevisionId::none());
+    return {"", RevisionId::none()};
   }
 
   auth::User entry(keySlice.copyString(), rev);
@@ -290,6 +293,14 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
     entry._configData.add(userConfigSlice);
   }
 
+  VPackSlice userAccessTokens = slice.get("accessTokens");
+  if (userAccessTokens.isArray()) {
+    entry._accessTokens.clear();
+    entry._accessTokens.add(userAccessTokens);
+  } else {
+    VPackArrayBuilder a(&entry._accessTokens);
+  }
+
   // ensure the root user always has the right to change permissions
   if (entry._username == "root") {
     entry.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
@@ -302,14 +313,46 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
 // ===================== Constructor =======================
 
-auth::User::User(std::string&& key, RevisionId rid)
-    : _key(std::move(key)), _rev(rid), _loaded(TRI_microtime()) {}
+auth::User::User(std::string &&key, RevisionId rid)
+  : _key(std::move(key)), _rev(rid), _loaded(TRI_microtime()) {
+}
 
 // ======================= Methods ==========================
 
 void auth::User::touch() { _loaded = TRI_microtime(); }
 
-bool auth::User::checkPassword(std::string const& password) const {
+bool auth::User::checkAccessToken(std::string const& token) const {
+  auto now = TRI_microtime();
+
+  for (auto const& doc : VPackArrayIterator(_accessTokens.slice())) {
+    VPackSlice a = doc.get("active");
+
+    if (!a.isBool() || !a.getBoolean()) {
+      continue;
+    }
+
+    VPackSlice e = doc.get("valid_until");
+
+    if (!e.isNumber() && e.getNumericValue<uint64_t>() > now) {
+      continue;
+    }
+
+    VPackSlice n = doc.get("token");
+
+    if (n.isString()) {
+      size_t len;
+      char const* nValue = n.getString(len);
+
+      if (len == token.size() && std::string(nValue, len) == token) {
+	return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+bool auth::User::checkPassword(std::string const &password) const {
   std::string hash;
   auto res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -319,7 +362,7 @@ bool auth::User::checkPassword(std::string const& password) const {
   return _passwordHash == hash;
 }
 
-void auth::User::updatePassword(std::string const& password) {
+void auth::User::updatePassword(std::string const &password) {
   std::string hash;
   auto res = HexHashFromData(_passwordMethod, _passwordSalt + password, hash);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -332,8 +375,7 @@ void auth::User::updatePassword(std::string const& password) {
 VPackBuilder auth::User::toVPackBuilder() const {
   TRI_ASSERT(!_username.empty());
 
-  VPackBuilder builder;
-  {
+  VPackBuilder builder; {
     VPackObjectBuilder o(&builder, true);
 
     if (!_key.empty()) {
@@ -355,11 +397,10 @@ VPackBuilder auth::User::toVPackBuilder() const {
         builder.add("salt", VPackValue(_passwordSalt));
         builder.add("method", VPackValue(_passwordMethod));
       }
-    }
-
-    {  // databases sub-object
+    } {
+      // databases sub-object
       VPackObjectBuilder o2(&builder, "databases", true);
-      for (auto const& dbCtxPair : _dbAccess) {
+      for (auto const &dbCtxPair: _dbAccess) {
         VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
 
         // permissions
@@ -373,7 +414,7 @@ VPackBuilder auth::User::toVPackBuilder() const {
         {
           VPackObjectBuilder o5(&builder, "collections", true);
 
-          for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
+          for (auto const &colAccessPair: dbCtxPair.second._collectionAccess) {
             VPackObjectBuilder o6(&builder, colAccessPair.first, true);
             VPackObjectBuilder o7(&builder, "permissions", true);
             AddAuthLevel(builder, colAccessPair.second);
@@ -391,11 +432,160 @@ VPackBuilder auth::User::toVPackBuilder() const {
         _configData.slice().isObject()) {
       builder.add("configData", _configData.slice());
     }
+
+    if (!_accessTokens.isEmpty() && _accessTokens.isClosed() &&
+        _accessTokens.slice().isArray()) {
+      builder.add("accessTokens", _accessTokens.slice());
+    }
   }
   return builder;
 }
 
-void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
+Result auth::User::createAccessToken(std::string const& name,
+             double validUntil, VPackBuilder& builder
+				     ) {
+  if (name.empty()) {
+    return {TRI_ERROR_BAD_PARAMETER, "'name' must not be empty"};
+  }
+
+  double now = TRI_microtime();
+  bool active = true;
+
+  if (validUntil < now) {
+    active = false;
+  }
+
+  VPackBuilder jwt;
+  {
+    VPackObjectBuilder o(&jwt, true);
+    o->add("e", uint64_t(validUntil));
+    o->add("c", uint64_t(now));
+    o->add("u", _username);
+    o->add("r", UCR.random(UCR_LENGTH));
+  }
+
+  StringBuffer buffer;
+  buffer.appendText(jwt.toJson());
+
+  // do not compress as this will make the text larger
+  // buffer.gzipCompress(false);
+
+  std::string token = "v1." + StringUtils::encodeHex(buffer.toString());
+  std::string fingerprint = token.size() > 6
+    ? token.substr(0, 3) + ".." + token.substr(token.size() - 6)
+    : "error";
+
+  uint64_t id = 0;
+  VPackBuilder newTokens;
+
+  {
+    VPackArrayBuilder ap(&newTokens);
+
+    if (!_accessTokens.isEmpty() && _accessTokens.slice().isArray()) {
+      for (auto const& doc : VPackArrayIterator(_accessTokens.slice())) {
+	VPackSlice n = doc.get("name");
+
+	if (n.isString()) {
+	  size_t len;
+	  char const* nameValue = n.getString(len);
+	  if (len > 0 && name == std::string(nameValue, len)) {
+	    return {TRI_ERROR_ARANGO_DUPLICATE_NAME};
+	  }
+	}
+
+	VPackSlice v = doc.get("id");
+
+	  uint64_t m = v.getNumericValue<uint64_t>();
+	  
+	  if (id < m) {
+	    id = m;
+	  }
+
+
+	ap->add(doc);
+      }
+    }
+
+    ++id;
+
+    builder.clear();
+    {
+      VPackObjectBuilder o(&builder, true);
+      o->add("id", id);
+      o->add("name", name);
+      o->add("valid_until", uint64_t(validUntil));
+      o->add("created_at", uint64_t(now));
+      o->add("fingerprint", fingerprint);
+      o->add("active", active);
+      o->add("token", token);
+    }
+    newTokens.add(builder.slice());
+  }
+
+  _accessTokens = newTokens;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result auth::User::getAccessTokens(VPackBuilder& builder) const {
+  double now = TRI_microtime();
+
+  VPackBuilder tokens;
+  {
+    VPackArrayBuilder a(&tokens);
+
+    for (auto const& doc : VPackArrayIterator(_accessTokens.slice())) {
+      VPackSlice v = doc.get("valid_until");
+      uint64_t validUntil = v.getNumericValue<uint64_t>();
+
+      VPackSlice w = doc.get("active");
+      bool active = w.getBoolean();
+
+      if (active && validUntil < now) {
+	active = false;
+      }
+
+      VPackObjectBuilder b(&tokens, true);
+      b->add("id", doc.get("id"));
+      b->add("name", doc.get("name"));
+      b->add("valid_until", validUntil);
+      b->add("created_at", doc.get("created_at"));
+      b->add("fingerprint", doc.get("fingerprint"));
+      b->add("active", active);
+    }
+  }
+
+  builder.clear();
+  VPackObjectBuilder o(&builder, true);
+  o->add("tokens", tokens.slice());
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result auth::User::deleteAccessToken(uint64_t id) {
+  VPackBuilder newTokens;
+
+  {
+    VPackArrayBuilder ap(&newTokens);
+
+    if (!_accessTokens.isEmpty() && _accessTokens.slice().isArray()) {
+      for (auto const& doc : VPackArrayIterator(_accessTokens.slice())) {
+        VPackSlice v = doc.get("id");
+        uint64_t m = v.getNumericValue<uint64_t>();
+
+        if (m != id) {
+          newTokens.add(doc);
+        }
+      }
+    }
+  }
+
+  _accessTokens = newTokens;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+void auth::User::grantDatabase(std::string const &dbname, auth::Level level) {
   if (dbname.empty() || level == auth::Level::UNDEFINED) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot set rights for empty db name");
@@ -403,7 +593,7 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
       level != auth::Level::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
+      TRI_ERROR_FORBIDDEN, "Cannot lower access level of 'root' to _system");
   }
   LOG_TOPIC("b9d75", DEBUG, Logger::AUTHENTICATION)
       << _username << ": Granting " << auth::convertFromAuthLevel(level)
@@ -421,27 +611,27 @@ void auth::User::grantDatabase(std::string const& dbname, auth::Level level) {
 }
 
 /// Removes the entry, returns true if entry existed
-bool auth::User::removeDatabase(std::string const& dbname) {
+bool auth::User::removeDatabase(std::string const &dbname) {
   if (dbname.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot remove rights for empty db name");
   }
   if (_username == "root" && dbname == StaticStrings::SystemDatabase) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "Cannot remove access level of 'root' to _system");
+      TRI_ERROR_FORBIDDEN, "Cannot remove access level of 'root' to _system");
   }
   LOG_TOPIC("f1382", DEBUG, Logger::AUTHENTICATION)
       << _username << ": Removing grant on " << dbname;
   return _dbAccess.erase(dbname) > 0;
 }
 
-void auth::User::grantCollection(std::string const& dbname,
-                                 std::string const& cname,
+void auth::User::grantCollection(std::string const &dbname,
+                                 std::string const &cname,
                                  auth::Level const level) {
   if (dbname.empty() || cname.empty() || level == auth::Level::UNDEFINED) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "Cannot set rights for empty db / collection name");
+      TRI_ERROR_BAD_PARAMETER,
+      "Cannot set rights for empty db / collection name");
   } else if (cname[0] == '_') {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot set rights for system collections");
@@ -459,24 +649,24 @@ void auth::User::grantCollection(std::string const& dbname,
       << " on " << dbname << "/" << cname;
 
   auto [it, emplaced] = _dbAccess.try_emplace(
-      dbname, arangodb::lazyConstruct([&] {
-        // do not overwrite wildcard access to a database, by granting more
-        // specific rights to a collection in a specific db
-        auth::Level lvl = auth::Level::UNDEFINED;
-        return DBAuthContext(lvl, CollLevelMap({{cname, level}}));
-      }));
+    dbname, arangodb::lazyConstruct([&] {
+      // do not overwrite wildcard access to a database, by granting more
+      // specific rights to a collection in a specific db
+      auth::Level lvl = auth::Level::UNDEFINED;
+      return DBAuthContext(lvl, CollLevelMap({{cname, level}}));
+    }));
   if (!emplaced) {
     it->second._collectionAccess[cname] = level;
   }
 }
 
 /// Removes the collection right, returns true if entry existed
-bool auth::User::removeCollection(std::string const& dbname,
-                                  std::string const& cname) {
+bool auth::User::removeCollection(std::string const &dbname,
+                                  std::string const &cname) {
   if (dbname.empty() || cname.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_BAD_PARAMETER,
-        "Cannot set rights for empty db / collection name");
+      TRI_ERROR_BAD_PARAMETER,
+      "Cannot set rights for empty db / collection name");
   }
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
       (cname == "*")) {
@@ -486,7 +676,7 @@ bool auth::User::removeCollection(std::string const& dbname,
   }
   LOG_TOPIC("78e62", DEBUG, Logger::AUTHENTICATION)
       << _username << ": Removing grant on " << dbname << "/" << cname;
-  auto const& it = _dbAccess.find(dbname);
+  auto const &it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     return it->second._collectionAccess.erase(cname) > 0;
   }
@@ -494,9 +684,10 @@ bool auth::User::removeCollection(std::string const& dbname,
 }
 
 // Resolve the access level for this database.
-auth::Level auth::User::configuredDBAuthLevel(std::string const& dbname) const {
+auth::Level auth::User::configuredDBAuthLevel(std::string const &dbname) const {
   auto it = _dbAccess.find(dbname);
-  if (it != _dbAccess.end()) {  // found specific grant
+  if (it != _dbAccess.end()) {
+    // found specific grant
     return it->second._databaseAuthLevel;
   }
   return auth::Level::UNDEFINED;
@@ -504,20 +695,20 @@ auth::Level auth::User::configuredDBAuthLevel(std::string const& dbname) const {
 
 // Resolve rights for the specified collection.
 auth::Level auth::User::configuredCollectionAuthLevel(
-    std::string const& dbname, std::string const& cname) const {
+  std::string const &dbname, std::string const &cname) const {
   auto it = _dbAccess.find(dbname);
   if (it != _dbAccess.end()) {
     // Second try to find a specific grant
-    CollLevelMap::const_iterator pair =
+    auto pair =
         it->second._collectionAccess.find(cname);
     if (pair != it->second._collectionAccess.end()) {
-      return pair->second;  // found specific collection grant
+      return pair->second; // found specific collection grant
     }
   }
   return auth::Level::UNDEFINED;
 }
 
-auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
+auth::Level auth::User::databaseAuthLevel(std::string const &dbname) const {
   auth::Level lvl = configuredDBAuthLevel(dbname);
   if (lvl == auth::Level::UNDEFINED && dbname != "*") {
     // take best from wildcard or _system
@@ -537,10 +728,10 @@ auth::Level auth::User::databaseAuthLevel(std::string const& dbname) const {
 }
 
 /// Find the access level for a collection. Will automatically try to fall back
-auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
+auth::Level auth::User::collectionAuthLevel(std::string const &dbname,
                                             std::string_view cname) const {
   if (cname.empty() || (dbname == "*" && cname != "*")) {
-    return auth::Level::NONE;  // invalid collection names
+    return auth::Level::NONE; // invalid collection names
   }
   // we must have got a non-empty collection name when we get here
   TRI_ASSERT(cname[0] < '0' || cname[0] > '9');
@@ -560,15 +751,17 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   }
 
   auth::Level lvl = auth::Level::NONE;
-  if (dbname != "*") {  // skip special rules for wildcard
+  if (dbname != "*") {
+    // skip special rules for wildcard
     auto it = _dbAccess.find(dbname);
     if (it != _dbAccess.end()) {
       // Second try to find a specific grant
-      CollLevelMap::const_iterator pair =
+      auto pair =
           it->second._collectionAccess.find(cname);
       if (pair != it->second._collectionAccess.end()) {
-        return pair->second;      // found specific collection grant
-      } else if (cname == "*") {  // skip special rules for wildcard
+        return pair->second; // found specific collection grant
+      } else if (cname == "*") {
+        // skip special rules for wildcard
         return auth::Level::NONE;
       }
 
@@ -594,15 +787,13 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
   auto it = _dbAccess.find("*");
   if (it != _dbAccess.end()) {
     lvl = std::max(it->second._databaseAuthLevel, lvl);
-    if (!isSystem) {
-      CollLevelMap::const_iterator pair =
-          it->second._collectionAccess.find("*");
-      if (pair != it->second._collectionAccess.end()) {
-        // found wildcard collection grant, take better default
-        lvl = std::max(pair->second, lvl);
-      }
+    // this is always a non-system collection
+    auto pair =
+        it->second._collectionAccess.find("*");
+    if (pair != it->second._collectionAccess.end()) {
+      // found wildcard collection grant, take better default
+      lvl = std::max(pair->second, lvl);
     }
-    // nothing found
   }
 
   return lvl;
