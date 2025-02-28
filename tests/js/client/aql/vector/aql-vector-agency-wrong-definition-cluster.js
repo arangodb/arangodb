@@ -101,7 +101,9 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
 
-            assertTrue(afterVersion - beforeVersion < 10);
+          // If the index is created we do not expect too much version change
+          // Unfortunately this is the only indicator that we have not entered
+          assertTrue(afterVersion - beforeVersion < 10);
         },
     };
 }
@@ -142,6 +144,7 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
             db._dropDatabase(dbName);
         },
 
+        // The missing field here is defaultNProbe
         testVectorIndexCreationWithMissingField: function() {
             let indexRequestWithoutNProbes = [{
                 "id": "1214",
@@ -178,6 +181,14 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
 
+            // The failure that we are testing against is entering loop:
+            // 1. Agency sends incorrect version of vector index
+            // 2. The index gets created on dbServer
+            // 3. Comparions of index definition on dbServer and agency fails
+            // 4. Index gets dropped
+            // 5. Back to step 1.
+            // The only way  to detect something went wrong here if the version
+            // changed drastically in short period
             assertTrue(afterVersion - beforeVersion < 10);
         },
     };
