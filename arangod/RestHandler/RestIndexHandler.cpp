@@ -227,6 +227,15 @@ RestStatus RestIndexHandler::getIndexes() {
 
       auto [plannedIndexes, idx] = ac.get(ap);
 
+      // Let's wait until the ClusterInfo has processed at least this
+      // Raft index. This means that if an index is no longer `isBuilding`
+      // in the agency Plan, then ClusterInfo should know it.
+      _vocbase.server()
+          .getFeature<ClusterFeature>()
+          .clusterInfo()
+          .waitForPlan(idx)
+          .wait();
+
       // now fetch list of ready indexes
       VPackBuilder indexes;
       Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes);
@@ -238,22 +247,43 @@ RestStatus RestIndexHandler::getIndexes() {
 
       TRI_ASSERT(indexes.slice().isArray());
 
-      // all indexes we already reported
+      // ATTENTION: In the agency, the ID of the index is stored as a string
+      // without a prefix for the collection name. However, in the velocypack
+      // which is reported from `getAll` above, the ID is a string with the
+      // collection name and a slash as a prefix, like it is reported in the
+      // external API. Since we now must compare IDs between the two sources,
+      // we must be careful!
+
+      // Our task is now the following: We first take the indexes reported by
+      // `getAll`. However, this misses indexes which are still being built.
+      // Therefore, we then add those indexes from the agency plan, which have
+      // the `isBuilding` attribute still set to `true` (unless they are already
+      // actually present locally, which can happen, if our agency snapshot is
+      // a bit older, note that above we **first** get the indexes from the
+      // agency cache, then we wait until `ClusterInfo` has processed the
+      // raft index, and then we get the indexes
+      // from the local `LogicalCollection`!).
+
+      // all indexes we already reported:
       containers::FlatHashSet<std::string> covered;
 
       tmp.add(VPackValue("indexes"));
 
       {
         VPackArrayBuilder guard(&tmp);
-        // first return all ready indexes
+        // first return all ready indexes from the `LogicalCollection` object.
         for (auto pi : VPackArrayIterator(indexes.slice())) {
           std::string_view iid = pi.get("id").stringView();
           tmp.add(pi);
 
           // note this index as already covered
+          auto pos = iid.find('/');
+          if (pos != std::string::npos) {
+            iid = iid.substr(pos + 1);
+          }
           covered.emplace(iid);
         }
-        // now return all in-progress indexes, if any
+        // now return all indexes which are currently being built:
         for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
           std::string_view iid = pi.get("id").stringView();
           // avoid reporting an index twice
@@ -265,9 +295,16 @@ RestStatus RestIndexHandler::getIndexes() {
           VPackObjectBuilder o(&tmp);
           for (auto source :
                VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
-            tmp.add(source.key.stringView(), source.value);
+            if (source.key.stringView() == StaticStrings::IndexId) {
+              tmp.add(StaticStrings::IndexId,
+                      VPackValue(
+                          absl::StrCat(cName, "/", source.key.stringView())));
+            } else {
+              tmp.add(source.key.stringView(), source.value);
+            }
           }
 
+          // In this case we have to ask the shards about how far they are:
           double progress = 0;
           auto const shards = coll->shardIds();
           auto const body = VPackBuffer<uint8_t>();
@@ -352,8 +389,7 @@ RestStatus RestIndexHandler::getIndexes() {
       // value. this attribute should be deprecated and removed
       tmp.add("identifiers", VPackValue(VPackValueType::Object));
       for (auto pi : VPackArrayIterator(indexes.slice())) {
-        std::string_view iid = pi.get("id").stringView();
-        tmp.add(iid, pi);
+        tmp.add(pi.get(StaticStrings::IndexId).stringView(), pi);
       }
       for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
         std::string_view iid = pi.get("id").stringView();
@@ -362,7 +398,17 @@ RestStatus RestIndexHandler::getIndexes() {
             !pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
           continue;
         }
-        tmp.add(iid, pi);
+        std::string id_str = absl::StrCat(cName, "/", iid);
+        tmp.add(VPackValue(id_str));
+        VPackObjectBuilder o(&tmp);
+        for (auto source :
+             VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
+          if (source.key.stringView() == StaticStrings::IndexId) {
+            tmp.add(StaticStrings::IndexId, VPackValue(id_str));
+          } else {
+            tmp.add(source.key.stringView(), source.value);
+          }
+        }
       }
     }
 

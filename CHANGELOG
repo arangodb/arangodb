@@ -1,6 +1,12 @@
 v3.11.14 (XXXX-XX-XX)
 ---------------------
 
+* Fix a bug in the index API /_api/index?withHidden=true, which can lead to
+  two problems: (1) A newly created index is potentially not shown in the very
+  moment when it is finished. (2) A newly created index is shown twice in
+  the result, once with `isBuilding: true` and once without.
+  This fixes BTS-2044.
+
 * Fix concurrency bug which can lead to lost threads. See BTS-2087.
 
 * The agency supervision is clearing "finished" jobs too quickly from
