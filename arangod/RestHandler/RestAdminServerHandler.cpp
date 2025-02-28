@@ -32,6 +32,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -317,17 +318,7 @@ void RestAdminServerHandler::handleApiCalls() {
 
       // Use doForApiCallRecords to iterate through records
       server().doForApiCallRecords([&builder](ApiCallRecord const& record) {
-        VPackObjectBuilder guard3(&builder);
-        builder.add(
-            "timestamp",
-            VPackValue(std::chrono::duration_cast<std::chrono::milliseconds>(
-                           record.timeStamp.time_since_epoch())
-                           .count()));
-        // Convert RequestType to string using static method
-        builder.add("requestType",
-                    VPackValue(rest::requestToString(record.requestType)));
-        builder.add("path", VPackValue(record.path));
-        builder.add("database", VPackValue(record.database));
+        arangodb::velocypack::serialize(builder, record);
       });
     }
   }

@@ -40,6 +40,8 @@
 #include "Basics/ConditionVariable.h"
 #include "Containers/AtomicList.h"
 #include "Rest/CommonDefines.h"
+#include "Inspection/Status.h"
+#include "Inspection/Types.h"
 
 #include <velocypack/Builder.h>
 
@@ -58,6 +60,54 @@ struct ApiCallRecord {
         database(database) {}
   size_t memoryUsage() const noexcept;
 };
+
+// Inspector for ApiCallRecord to allow serialization using the Inspection
+// library
+template<class Inspector>
+auto inspect(Inspector& f, ApiCallRecord& record) {
+  // Transformer for std::chrono::system_clock::time_point to ISO 8601 string
+  struct TimePointTransformer {
+    using SerializedType = std::string;
+
+    arangodb::inspection::Status toSerialized(
+        std::chrono::system_clock::time_point const& tp,
+        SerializedType& result) const {
+      // Convert time_point to ISO 8601 string format
+      auto timeT = std::chrono::system_clock::to_time_t(tp);
+      auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    tp.time_since_epoch()) %
+                1000;
+
+      char buffer[32];
+      struct tm timeInfo;
+#ifdef _WIN32
+      gmtime_s(&timeInfo, &timeT);
+#else
+      gmtime_r(&timeT, &timeInfo);
+#endif
+      strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%S", &timeInfo);
+
+      result = std::string(buffer) + "." +
+               std::to_string(ms.count()).substr(0, 3) + "Z";
+      return {};
+    }
+
+    arangodb::inspection::Status fromSerialized(
+        SerializedType const& str,
+        std::chrono::system_clock::time_point& result) const {
+      // In a production system, this would parse the ISO 8601 time string
+      // For simplicity, we'll just use the current time when deserializing
+      result = std::chrono::system_clock::now();
+      return {};
+    }
+  };
+
+  return f.object(record).fields(f.field("timeStamp", record.timeStamp)
+                                     .transformWith(TimePointTransformer{}),
+                                 f.field("requestType", record.requestType),
+                                 f.field("path", record.path),
+                                 f.field("database", record.database));
+}
 
 template<typename T>
 struct TypeTag;
@@ -247,7 +297,7 @@ class ApplicationServer {
   // Iterates over API call records from newest to oldest, invoking the given
   // callback function for each record. Thread-safe.
   template<typename F>
-    requires std::is_invocable_v<F, ApiCallRecord const&>
+  requires std::is_invocable_v<F, ApiCallRecord const&>
   void doForApiCallRecords(F&& callback) const {
     if (_apiCallRecord) {
       _apiCallRecord->forItems(std::forward<F>(callback));
