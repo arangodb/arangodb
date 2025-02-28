@@ -55,6 +55,8 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
     const seed = 12132390894;
+    const nLists = 1;
+    const metric = "l2";
 
     return {
         setUp: function() {
@@ -89,8 +91,32 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
                 "name": "test",
                 "params": {
                     "dimension": dimension,
-                    "metric": "l2",
-                    "nLists": 1,
+                    "metric": metric,
+                    "nLists": nLists,
+                },
+                "fields": ["vector"],
+                "type": "vector"
+            });
+
+            // wait for servers to pick up the changes
+            internal.sleep(5);
+
+            let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
+
+          // If the index is created we do not expect too much version change
+          // Unfortunately this is the only indicator that we have not entered
+          assertTrue(afterVersion - beforeVersion < 10);
+        },
+
+        testVectorIndexCreationCorrectWithFactory: function() {
+            let beforeVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
+            collection.ensureIndex({
+                "name": "test",
+                "params": {
+                    "dimension": dimension,
+                    "metric": metric,
+                    "nLists": nLists,
+                    "factory": `IVF${nLists},Flat`
                 },
                 "fields": ["vector"],
                 "type": "vector"
@@ -116,6 +142,8 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
     const seed = 12132390894;
+    const nLists = 1;
+    const metric = "l2";
 
     return {
         setUp: function() {
@@ -144,9 +172,8 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
             db._dropDatabase(dbName);
         },
 
-        // The missing field here is defaultNProbe
-        testVectorIndexCreationWithMissingField: function() {
-            let indexRequestWithoutNProbes = [{
+        testVectorIndexCreationWithMissingDefaultNProbe: function() {
+            const indexRequestWithoutNProbes = [{
                 "id": "1214",
                 "type": "primary",
                 "name": "primary",
@@ -165,8 +192,8 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
                 "name": "test",
                 "params": {
                     "dimension": dimension,
-                    "metric": "l2",
-                    "nLists": 1,
+                    "metric": metric,
+                    "nLists": nLists,
                     "trainingIterations": 25
                 },
                 "sparse": false,
@@ -189,6 +216,49 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
             // 5. Back to step 1.
             // The only way  to detect something went wrong here if the version
             // changed drastically in short period
+            print("Before: " + beforeVersion + ", after: " + afterVersion)
+            assertTrue(afterVersion - beforeVersion < 10);
+        },
+
+        testVectorIndexCreationWithMissingDefaultNProbeWithFactory: function() {
+            const indexRequestWithoutNProbes = [{
+                "id": "1214",
+                "type": "primary",
+                "name": "primary",
+                "fields": [
+                    "_key"
+                ],
+                "sparse": false,
+                "unique": true
+            }, {
+                "estimates": false,
+                "fields": [
+                    "vector"
+                ],
+                "id": "8020010",
+                "inBackground": false,
+                "name": "test",
+                "params": {
+                    "dimension": dimension,
+                    "metric": metric,
+                    "nLists": nLists,
+                    "factory": `IVF${nLists},Flat`,
+                    "trainingIterations": 25
+                },
+                "sparse": false,
+                "type": "vector"
+            }];
+      print(indexRequestWithoutNProbes);
+            let beforeVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
+            IM.agencyMgr.set(`Plan/Collections/${dbName}/${collection._id}/indexes`, indexRequestWithoutNProbes);
+            IM.agencyMgr.increaseVersion("Plan/Version");
+
+            // wait for servers to pick up the changes
+            internal.sleep(5);
+
+            let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
+
+            print("Before: " + beforeVersion + ", after: " + afterVersion)
             assertTrue(afterVersion - beforeVersion < 10);
         },
     };
