@@ -144,9 +144,7 @@
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
-      if (window.frontendConfig.isEnterprise === true) {
-        this.fetchServerTime();
-      }
+      this.fetchServerTime();
     },
 
     continueRender: function (readOnly) {
@@ -208,13 +206,34 @@
     fetchLicenseInfo: function (serverTime) {
       const self = this;
       const url = arangoHelper.databaseUrl('/_admin/license');
-
+      
       $.ajax({
         type: "GET",
         url: url,
         success: function (licenseData) {
-          if (licenseData.status && licenseData.features && licenseData.features.expires) {
-            self.renderLicenseInfo(licenseData.status, licenseData.features.expires, serverTime);
+          if (
+            licenseData.license !== "none" &&
+            licenseData.status &&
+            licenseData.features &&
+            licenseData.features.expires
+          ) {
+            self.renderLicenseInfo(
+              licenseData.status,
+              licenseData.features.expires,
+              serverTime
+            );
+          } else if (licenseData.hasOwnProperty("diskusage")) {
+            if (
+              licenseData.diskusage.status &&
+              licenseData.diskusage.secondsUntilReadOnly &&
+              licenseData.diskusage.secondsUntilShutDown &&
+              licenseData.diskusage.bytesUsed &&
+              licenseData.diskusage.bytesLimit
+            ) {
+              self.renderDiskUsageInfo(licenseData.diskusage);
+            } else {
+              self.showLicenseError();
+            }
           } else {
             self.showLicenseError();
           }
@@ -299,6 +318,48 @@
     appendLicenseInfoToUi: function(infotext, alertClasses) {
       var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
       $('#licenseInfoArea').append(infoElement);
+    },
+
+    renderDiskUsageInfo: function (diskusage) {
+      const currentTime = new Date();
+      let message = '';
+      let type = 'info';
+      switch (diskusage.status) {
+        case "limit-reached":
+          const readonlyDate = new Date(
+            currentTime.getTime() + 1000 * diskusage.secondsUntilReadOnly
+          );
+          message = "Your server has reached its disk usage limit. " +
+                    "Its operation will be restricted to read-only mode on " + readonlyDate + "! " + "\n"+
+                    "Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.";
+          type = 'warning';
+          break;
+        case "read-only":
+          const shutdownDate = new Date(
+            currentTime.getTime() + 1000 * diskusage.secondsUntilShutDown
+          );
+          message = "Your server has been restricted to read-only mode! " +
+                    "Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately. " +
+                    "The server will shutdown on " + shutdownDate + "!";
+          type = 'error';
+          break;
+        case "shutdown":
+          message = "The disk usage limit was reached, and the server will shutdown in 10 minutes. " +
+                    "Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.";
+          type = 'error';
+          break;
+        case "good":
+        default:
+          // No message needed for good status
+          return;
+      }
+      
+      if (message) {
+        this.appendLicenseInfoToUi(
+          message,
+          'alert alert-license alert-' + type
+        );
+      }
     },
 
     resize: function () {
