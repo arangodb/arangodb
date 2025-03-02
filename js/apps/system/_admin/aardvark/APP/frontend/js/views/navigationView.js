@@ -206,7 +206,7 @@
     fetchLicenseInfo: function (serverTime) {
       const self = this;
       const url = arangoHelper.databaseUrl('/_admin/license');
-      
+
       $.ajax({
         type: "GET",
         url: url,
