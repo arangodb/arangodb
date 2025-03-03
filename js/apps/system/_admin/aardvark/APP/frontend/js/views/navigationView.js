@@ -226,9 +226,7 @@
             if (
               licenseData.diskusage.status &&
               licenseData.diskusage.secondsUntilReadOnly &&
-              licenseData.diskusage.secondsUntilShutDown &&
-              licenseData.diskusage.bytesUsed &&
-              licenseData.diskusage.bytesLimit
+              licenseData.diskusage.secondsUntilShutDown
             ) {
               self.renderDiskUsageInfo(licenseData.diskusage);
             } else {
