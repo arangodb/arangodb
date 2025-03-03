@@ -138,6 +138,15 @@ function VectorIndexCorrectDefinitionInAgencyTest() {
 // vector index it will still not cause the loop of incorrect comparison between
 // indexes.
 // The relevant code for this is in IndexFactory::equal
+//
+// The failure that we are testing against is entering loop:
+// 1. Agency sends incorrect version of vector index
+// 2. The index gets created on dbServer
+// 3. Comparions of index definition on dbServer and agency fails
+// 4. Index gets dropped
+// 5. Back to step 1.
+// The only way  to detect something went wrong here if the version
+// changed drastically in short period
 function VectorIndexInvalidDefinitionInAgencyTest() {
     let collection;
     const dimension = 500;
@@ -208,15 +217,6 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
 
-            // The failure that we are testing against is entering loop:
-            // 1. Agency sends incorrect version of vector index
-            // 2. The index gets created on dbServer
-            // 3. Comparions of index definition on dbServer and agency fails
-            // 4. Index gets dropped
-            // 5. Back to step 1.
-            // The only way  to detect something went wrong here if the version
-            // changed drastically in short period
-            print("Before: " + beforeVersion + ", after: " + afterVersion)
             assertTrue(afterVersion - beforeVersion < 10);
         },
 
@@ -248,7 +248,6 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
                 "sparse": false,
                 "type": "vector"
             }];
-      print(indexRequestWithoutNProbes);
             let beforeVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
             IM.agencyMgr.set(`Plan/Collections/${dbName}/${collection._id}/indexes`, indexRequestWithoutNProbes);
             IM.agencyMgr.increaseVersion("Plan/Version");
@@ -258,7 +257,6 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
 
             let afterVersion = IM.agencyMgr.get("Current/Version").arango.Current.Version;
 
-            print("Before: " + beforeVersion + ", after: " + afterVersion)
             assertTrue(afterVersion - beforeVersion < 10);
         },
     };
