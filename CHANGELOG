@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-2090: Fixes double log-lines per log
+
 * Fix vector index comparison in maintenance, which causes loop with agency and
   dbservers.
 
