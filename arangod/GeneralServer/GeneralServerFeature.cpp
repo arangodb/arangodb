@@ -167,9 +167,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server,
       _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_requests_memory_usage{})),
       _telemetricsMaxRequestsPerInterval(3),
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _startedListening(false),
-#endif
       _allowEarlyConnections(false),
       _handleContentEncodingForUnauthenticatedRequests(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -468,19 +466,14 @@ void GeneralServerFeature::start() {
   hf->seal();
 
   std::atomic_store(&_handlerFactory, std::move(hf));
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_allowEarlyConnections || _startedListening);
-#endif
   if (!_allowEarlyConnections) {
     // if HTTP interface is not open yet, open it now
     startListening();
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(_startedListening);
-#endif
 
-  ServerState::instance()->setServerMode(ServerState::Mode::MAINTENANCE);
+  ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
 }
 
 void GeneralServerFeature::initiateSoftShutdown() {
@@ -596,9 +589,7 @@ void GeneralServerFeature::buildServers() {
 }
 
 void GeneralServerFeature::startListening() {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!_startedListening);
-#endif
 
   EndpointFeature& endpoint =
       server().getFeature<HttpEndpointProvider, EndpointFeature>();
@@ -607,10 +598,7 @@ void GeneralServerFeature::startListening() {
   for (auto& server : _servers) {
     server->startListening(endpointList);
   }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _startedListening = true;
-#endif
 }
 
 void GeneralServerFeature::defineInitialHandlers(rest::RestHandlerFactory& f) {
