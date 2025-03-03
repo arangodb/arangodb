@@ -134,6 +134,7 @@ class AtomicList {
 // positive value, but this is intentionally not enforced.
 template<typename T>
 class BoundedList {
+ public:  // just for debugging, remove this later!
   static_assert(std::is_object_v<T>, "T must be an object type");
   static_assert(
       std::is_same_v<decltype(std::declval<T>().memoryUsage()), size_t>,

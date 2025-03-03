@@ -175,6 +175,26 @@ TEST(BoundedListTests, testConcurrentOperation) {
   // Verify that we have fewer elements than prepended due to the memory limit
   ASSERT_LT(total_count, total_prepended.load());
 
+  if (current_memory > memoryThreshold * maxHistory * 1.1) {
+    // We need to diagnose this failure. Let's determine the number and sizes
+    // of the lists:
+    std::cout << "Ring buffer position: " << list._ringBufferPos;
+    for (size_t i = 0; i <= list._history.size(); ++i) {
+      uint64_t count = 0;
+      uint64_t size = 0;
+      arangodb::AtomicList<Entry>::Node* e =
+          (i < list._history.size()) ? list._history[i]->getSnapshot()
+                                     : list._current.load()->getSnapshot();
+      while (e != nullptr) {
+        count += 1;
+        size += e->_data.memoryUsage();
+        e = e->next();
+      }
+      std::cout << "List " << i << " has count " << count << " and size "
+                << size << "\n";
+    }
+  }
+
   // Verify memory usage is within expected bounds
   ASSERT_LE(current_memory,
             memoryThreshold * maxHistory * 1.1);  // Allow 10% overhead
