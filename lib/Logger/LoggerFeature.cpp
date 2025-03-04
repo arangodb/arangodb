@@ -726,10 +726,11 @@ void LoggerFeature::prepare() {
     }
   }
 
-  // if the user defines `--log.output=+`(stderr) explicitly in an environment with a terminal
-  // this code will add also an appender to stdout, leading to 2 logline per log
-  // this will ensure that its only logging once to std(err/out).
-  // If the double log line is still desired it is still possible to do it via chain arguments:
+  // if the user defines `--log.output=+`(stderr) explicitly in an environment
+  // with a terminal this code will add also an appender to stdout, leading to 2
+  // logline per log this will ensure that its only logging once to
+  // std(err/out). If the double log line is still desired it is still possible
+  // to do it via chain arguments:
   // `--log.output=+ --log.output=-`
   if (_foregroundTty && !shouldLogToStd) {
     Logger::addAppender(Logger::defaultLogGroup(), "-");
