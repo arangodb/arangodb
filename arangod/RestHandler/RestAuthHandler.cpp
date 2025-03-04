@@ -107,6 +107,8 @@ RestStatus RestAuthHandler::execute() {
   if (usernameSlice.isString() && passwordSlice.isString()) {
     username = usernameSlice.copyString();
     password = passwordSlice.copyString();
+  } else if (passwordSlice.isString()) {
+    password = passwordSlice.copyString();
   } else {
     return badRequest();
   }
