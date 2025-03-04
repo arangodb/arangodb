@@ -332,7 +332,8 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     if (s.isString()) {
       password = s.copyString();
     }
-    if (um->checkPassword(user, password)) {
+    std::string un;
+    if (um->checkCredentials(user, password, un)) {
       generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);

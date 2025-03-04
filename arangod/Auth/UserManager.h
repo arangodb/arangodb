@@ -114,8 +114,7 @@ class UserManager {
   Result removeAllUsers();
 
   // Convenience methods to check a password or access token
-  bool checkPassword(std::string const& username, std::string const& password);
-  bool checkAccessToken(std::string const& token, std::string& username);
+  bool checkCredentials(std::string const& username, std::string const& token, std::string& un);
 
   auth::Level databaseAuthLevel(std::string const& username,
                                 std::string const& dbname,
@@ -142,6 +141,9 @@ class UserManager {
 #endif
 
  private:
+  bool checkPassword(std::string const& username, std::string const& password);
+  bool checkAccessToken(std::string const& username, std::string const& token, std::string& un);
+
   // load users and permissions from local database
   void loadFromDB();
 

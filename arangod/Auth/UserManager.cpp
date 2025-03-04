@@ -28,7 +28,6 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
-#include "Auth/Handler.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
@@ -37,7 +36,6 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -808,18 +806,23 @@ Result auth::UserManager::extractUsername(std::string const& token,
   }
 }
 
-bool auth::UserManager::checkAccessToken(std::string const& token,
-                                         std::string& username) {
-  Result result = extractUsername(token, username);
+bool auth::UserManager::checkAccessToken(std::string const& username,
+                                         std::string const& token,
+                                         std::string& un) {
+  Result result = extractUsername(token, un);
 
   if (!result.ok()) {
+    return false;
+  }
+
+  if (!username.empty() && username != un) {
     return false;
   }
 
   loadFromDB();
 
   READ_LOCKER(readGuard, _userCacheLock);
-  UserMap::iterator it = _userCache.find(username);
+  UserMap::iterator it = _userCache.find(un);
 
   if (it != _userCache.end()) {
     auth::User const& user = it->second;
@@ -829,6 +832,21 @@ bool auth::UserManager::checkAccessToken(std::string const& token,
   }
 
   return false;
+}
+
+bool auth::UserManager::checkCredentials(std::string const& username,
+                                         std::string const& password,
+                                         std::string& un) {
+  un.clear();
+  bool authorized = !username.empty() && checkPassword(username, password);
+
+  if (authorized) {
+    un = username;
+  } else {
+    authorized = checkAccessToken(username, password, un);
+  }
+
+  return authorized;
 }
 
 auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
