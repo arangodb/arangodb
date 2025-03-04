@@ -51,7 +51,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 namespace {
-  UniformCharacter UCR(20);
+UniformCharacter UCR(20);
 }  // namespace
 
 // create a hash in _outHash_ given a method like "sha1" and an input string.
