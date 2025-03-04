@@ -77,7 +77,6 @@ class AtomicList {
   }
 
   void prepend(T&& value) noexcept {
-    // Note that this
     Node* new_node;
     try {
       new_node = new Node(std::move(value));
@@ -245,8 +244,6 @@ class BoundedList {
     // We expect that the delays for acquiring the locks do not hurt too much.
   }
 
-  // Make forItems signature more type-safe by requiring F to be callable with
-  // T&
   template<typename F>
   requires std::is_invocable_v<F, T const&>
   void forItems(F&& callback) const {
