@@ -560,7 +560,36 @@ exports.enterpriseLicenseVisibility = function() {
     default:
       return;
     }
-
+  } else if (license.hasOwnProperty("diskusage")) {
+    if (!license.diskusage.hasOwnProperty("status") ||
+        !license.diskusage.hasOwnProperty("secondsUntilReadOnly") ||
+        !license.diskusage.hasOwnProperty("secondsUntilShutDown") ||
+        !license.diskusage.hasOwnProperty("bytesUsed") ||
+        !license.diskusage.hasOwnProperty("bytesLimit")) {
+      return;
+    }
+    const currentTime = new Date();
+    switch (license.diskusage.status) {
+      case "limit-reached":
+        let readonly = new Date(currentTime.getTime() + 1000 * (license.diskusage.secondsUntilReadOnly));
+        console.warn("Your server reached it's diskusage limit.");
+        console.warn("Its operation will be restricted to read-only mode on " + readonly + "!");
+        console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+        return;
+      case "read-only":
+        let shutdown = new Date(currentTime.getTime() + 1000 * (license.diskusage.secondsUntilShutDown));
+        console.error("Your server has been restricted to read-only mode!");
+        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+        console.error("The server will shutdown on " + shutdown + "!");
+        return;
+      case "shutdown":
+        console.error("The diskusage limit was reached and the server will shutdown in 10 minutes.");
+        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.");
+        return;
+      case "good":
+      default:
+        return;
+    }
   }
 
 };
