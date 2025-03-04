@@ -178,37 +178,34 @@ class BoundedList {
 
     // We assume throughout that `size_t` is at least 64bits and over- or
     // underflow is not a problem.
-    size_t prev_usage =
-        _memoryUsage.fetch_add(mem_usage, std::memory_order_relaxed);
-    size_t newUsage = prev_usage + mem_usage;
-    while (prev_usage < _memoryThreshold && newUsage >= _memoryThreshold) {
-      // We are the chosen one which is supposed to rotate _current into
-      // _history! We might have to do this multiple times, therefore the
-      // loop, note that prev_usage will always stay less than
-      // _memoryThreshold here!
+    size_t newUsage =
+        _memoryUsage.fetch_add(mem_usage, std::memory_order_relaxed) +
+        mem_usage;
+    if (newUsage >= _memoryThreshold) {
+      // We stop everybody, once this happens to avoid overshooting.
       {
         std::lock_guard<std::mutex> guard(_mutex);
 
-        // We first store a new empty list in _current, so that any
-        // other thread will prepend to that one as soon as possible:
-        _current.store(std::make_shared<AtomicList<T>>(),
-                       std::memory_order_release);
-        // This synchronizes with the load above.
+        // Now we must ensure that only one does the work:
+        if (_memoryUsage.load(std::memory_order_relaxed) >= _memoryThreshold) {
+          // We first store a new empty list in _current, so that any
+          // other thread will prepend to that one as soon as possible:
+          _current.store(std::make_shared<AtomicList<T>>(),
+                         std::memory_order_release);
+          // This synchronizes with the load above.
 
-        auto toDelete = std::move(_history[_ringBufferPos]);
-        _history[_ringBufferPos] = std::move(current);
-        _ringBufferPos = (_ringBufferPos + 1) % _maxHistory;
-        if (toDelete != nullptr) {
-          _trash.emplace_back(std::move(toDelete));
+          _memoryUsage.store(0, std::memory_order_relaxed);
+
+          // And move the old current list into the ring buffer:
+          auto toDelete = std::move(_history[_ringBufferPos]);
+          _history[_ringBufferPos] = std::move(current);
+          _ringBufferPos = (_ringBufferPos + 1) % _maxHistory;
+          if (toDelete != nullptr) {
+            _trash.emplace_back(std::move(toDelete));
+          }
         }
       }
-      newUsage = _memoryUsage.fetch_sub(newUsage) - newUsage;
-      // If newUsage is still >= _memoryThreshold, we simply do this again!
     }
-    // If somebody prepended something to his copy of _current before
-    // we are completely done here, it will be prepended to the list,
-    // which is already or will be soon in _history.
-
     // Some comments about correctness are in order here: Only one thread
     // will be in this critical section here at a time. Here, we do the
     // following operations:
@@ -234,6 +231,18 @@ class BoundedList {
     // a different AtomicList. But this proof shows that even in the unlikely
     // event that both work on the same AtomicList, nothing is leaked or
     // crashes.
+    // Finally, let's talk about overshooting. If the current list runs over
+    // the memory limit, it is possible that multiple threads notice this,
+    // after they have prepended to the current list. But then they will
+    // all try to acquire the lock, and only one will succeed. This one will
+    // rotate the lists and create a new empty current list. Then
+    // mem_usage is decreased and because of the additional if check under
+    // the lock, the other threads which have tried to acquire the lock
+    // will not rotate the lists, unless the memory usage is again over
+    // the limit.
+    // Therefore, we only overshoot by one item for each thread in the system,
+    // which is tolerable.
+    // We expect that the delays for acquiring the locks do not hurt too much.
   }
 
   // Make forItems signature more type-safe by requiring F to be callable with
