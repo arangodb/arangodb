@@ -181,61 +181,65 @@ class BoundedList {
     size_t prev_usage =
         _memoryUsage.fetch_add(mem_usage, std::memory_order_relaxed);
     size_t newUsage = prev_usage + mem_usage;
-    if (prev_usage < _memoryThreshold && newUsage >= _memoryThreshold) {
+    while (prev_usage < _memoryThreshold && newUsage >= _memoryThreshold) {
       // We are the chosen one which is supposed to rotate _current into
-      // _history!
-      std::lock_guard<std::mutex> guard(_mutex);
-      if (_current.load(std::memory_order_relaxed) == current) {
-        // If somebody else came before us, we do not bother to rotate!
+      // _history! We might have to do this multiple times, therefore the
+      // loop, note that prev_usage will always stay less than
+      // _memoryThreshold here!
+      {
+        std::lock_guard<std::mutex> guard(_mutex);
+
+        // We first store a new empty list in _current, so that any
+        // other thread will prepend to that one as soon as possible:
         _current.store(std::make_shared<AtomicList<T>>(),
                        std::memory_order_release);
         // This synchronizes with the load above.
 
-        // We first store a new empty list in _current, so that any other thread
-        // will prepend to that one as soon as possible.
-        _memoryUsage.fetch_sub(newUsage);
         auto toDelete = std::move(_history[_ringBufferPos]);
         _history[_ringBufferPos] = std::move(current);
         _ringBufferPos = (_ringBufferPos + 1) % _maxHistory;
         if (toDelete != nullptr) {
           _trash.emplace_back(std::move(toDelete));
         }
-        // If somebody prepended something to his copy of _current before
-        // we are completely done here, it will be prepended to the list,
-        // which is already or will be soon in _history.
       }
-      // Some comments about correctness are in order here: Only one thread
-      // will be in this critical section here at a time. Here, we do the
-      // following operations:
-      //  - copy _current to the ring buffer
-      //  - free a potentially overwritten entry in the ring buffer
-      //  - set _current to a new empty AtomicList
-      // It can happen that another thread copies the shared_ptr in _current
-      // to prepend to the AtomicList, whilst this thread here copies the
-      // shared_ptr to the ring buffer. This is OK.
-      // That is, it is possible that another thread prepends to an AtomicList
-      // which is already in the ring buffer. We need to prove that it cannot
-      // happen that this other thread prepends to the AtomicList and this
-      // thread here destroys it at the same time. But this is guaranteed since
-      // we make a copy of the shared_ptr for each `prepend` call. Everybody
-      // will eventually destroy its shared_ptr and the atomic logic in
-      // shared_ptr will see to it that only one thread frees it. In most
-      // cases this will be the one in the critical section, but even if the
-      // critical section frees its shared_ptr first, then it won't destruct
-      // the AtomicList and the other thread which prepends to it will do it.
-      // This is very unlikely to happen, since `prepend` will probably not
-      // lose a lot of time between copying _current and then prepending
-      // to the AtomicList. Usually, the critical section here will delete
-      // a different AtomicList. But this proof shows that even in the unlikely
-      // event that both work on the same AtomicList, nothing is leaked or
-      // crashes.
+      newUsage = _memoryUsage.fetch_sub(newUsage) - newUsage;
+      // If newUsage is still >= _memoryThreshold, we simply do this again!
     }
+    // If somebody prepended something to his copy of _current before
+    // we are completely done here, it will be prepended to the list,
+    // which is already or will be soon in _history.
+
+    // Some comments about correctness are in order here: Only one thread
+    // will be in this critical section here at a time. Here, we do the
+    // following operations:
+    //  - copy _current to the ring buffer
+    //  - free a potentially overwritten entry in the ring buffer
+    //  - set _current to a new empty AtomicList
+    // It can happen that another thread copies the shared_ptr in _current
+    // to prepend to the AtomicList, whilst this thread here copies the
+    // shared_ptr to the ring buffer. This is OK.
+    // That is, it is possible that another thread prepends to an AtomicList
+    // which is already in the ring buffer. We need to prove that it cannot
+    // happen that this other thread prepends to the AtomicList and this
+    // thread here destroys it at the same time. But this is guaranteed since
+    // we make a copy of the shared_ptr for each `prepend` call. Everybody
+    // will eventually destroy its shared_ptr and the atomic logic in
+    // shared_ptr will see to it that only one thread frees it. In most
+    // cases this will be the one in the critical section, but even if the
+    // critical section frees its shared_ptr first, then it won't destruct
+    // the AtomicList and the other thread which prepends to it will do it.
+    // This is very unlikely to happen, since `prepend` will probably not
+    // lose a lot of time between copying _current and then prepending
+    // to the AtomicList. Usually, the critical section here will delete
+    // a different AtomicList. But this proof shows that even in the unlikely
+    // event that both work on the same AtomicList, nothing is leaked or
+    // crashes.
   }
 
   // Make forItems signature more type-safe by requiring F to be callable with
   // T&
   template<typename F>
-  requires std::is_invocable_v<F, T const&>
+    requires std::is_invocable_v<F, T const&>
   void forItems(F&& callback) const {
     // Get snapshots under lock
     std::vector<std::shared_ptr<AtomicList<T>>> snapshots;
