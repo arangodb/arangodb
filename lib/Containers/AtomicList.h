@@ -239,7 +239,7 @@ class BoundedList {
   // Make forItems signature more type-safe by requiring F to be callable with
   // T&
   template<typename F>
-    requires std::is_invocable_v<F, T const&>
+  requires std::is_invocable_v<F, T const&>
   void forItems(F&& callback) const {
     // Get snapshots under lock
     std::vector<std::shared_ptr<AtomicList<T>>> snapshots;
