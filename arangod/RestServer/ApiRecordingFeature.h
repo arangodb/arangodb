@@ -33,6 +33,7 @@
 #include "RestServer/arangod.h"
 #include "Containers/AtomicList.h"
 #include "Rest/CommonDefines.h"
+#include "Inspection/Transformers.h"
 #include "Inspection/Status.h"
 #include "Basics/TimeString.h"
 
@@ -58,31 +59,11 @@ struct ApiCallRecord {
 // library
 template<class Inspector>
 auto inspect(Inspector& f, ApiCallRecord& record) {
-  // Transformer for std::chrono::system_clock::time_point to ISO 8601 string
-  struct TimePointTransformer {
-    using SerializedType = std::string;
-
-    arangodb::inspection::Status toSerialized(
-        std::chrono::system_clock::time_point const& tp,
-        SerializedType& result) const {
-      // Convert time_point to ISO 8601 string format
-      result = timepointToString(tp);
-      return {};
-    }
-
-    arangodb::inspection::Status fromSerialized(
-        SerializedType const& str,
-        std::chrono::system_clock::time_point& result) const {
-      result = stringToTimepoint(str);
-      return {};
-    }
-  };
-
-  return f.object(record).fields(f.field("timeStamp", record.timeStamp)
-                                     .transformWith(TimePointTransformer{}),
-                                 f.field("requestType", record.requestType),
-                                 f.field("path", record.path),
-                                 f.field("database", record.database));
+  return f.object(record).fields(
+      f.field("timeStamp", record.timeStamp)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("requestType", record.requestType), f.field("path", record.path),
+      f.field("database", record.database));
 }
 
 class ApiRecordingFeature : public ArangodFeature {
