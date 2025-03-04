@@ -182,9 +182,14 @@ TEST(BoundedListTests, testConcurrentOperation) {
     for (size_t i = 0; i <= list._history.size(); ++i) {
       uint64_t count = 0;
       uint64_t size = 0;
-      arangodb::AtomicList<Entry>::Node* e =
-          (i < list._history.size()) ? list._history[i]->getSnapshot()
-                                     : list._current.load()->getSnapshot();
+      arangodb::AtomicList<Entry>::Node* e = nullptr;
+      if (i < list._history.size()) {
+        if (list._history[i] != nullptr) {
+          e = list._history[i]->getSnapshot();
+        }
+      } else {
+        e = list._current.load()->getSnapshot();
+      }
       while (e != nullptr) {
         count += 1;
         size += e->_data.memoryUsage();
