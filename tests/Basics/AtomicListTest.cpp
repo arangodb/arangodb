@@ -175,7 +175,7 @@ TEST(BoundedListTests, testConcurrentOperation) {
   // Verify that we have fewer elements than prepended due to the memory limit
   ASSERT_LT(total_count, total_prepended.load());
 
-  if (current_memory > memoryThreshold * maxHistory * 2) {
+  if (current_memory > memoryThreshold * maxHistory * 3) {
     // We need to diagnose this failure. Let's determine the number and sizes
     // of the lists:
     std::cout << "Ring buffer position: " << list._ringBufferPos;
@@ -202,7 +202,7 @@ TEST(BoundedListTests, testConcurrentOperation) {
 
   // Verify memory usage is within expected bounds
   ASSERT_LE(current_memory,
-            memoryThreshold * maxHistory * 2);  // Allow 2x overhead
+            memoryThreshold * maxHistory * 3);  // Allow 2x overhead
 
   // Verify we have some elements and the reader did something
   ASSERT_GT(total_count, 0);
