@@ -338,7 +338,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
-  auto task = task_registry::registry.create_task("Create collection");
+  auto taskscope = task_registry::registry.start_task("Create collection");
   task_registry::registry.log("tasks on coordinator");
 
   if (ServerState::instance()->isDBServer()) {
@@ -389,7 +389,7 @@ void RestCollectionHandler::handleCommandPost() {
       enforceReplicationFactor,  // replication factor flag
       /*isNewDatabase*/ false,   // here always false
       /*allowEnterpriseCollectionsOnSingleServer*/ false,
-      /*isRestore*/ false, task);
+      /*isRestore*/ false, std::move(taskscope));
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:

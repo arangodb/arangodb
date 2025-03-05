@@ -59,7 +59,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature,
                                    ActionDescription const& desc)
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
-      _task{task_registry::registry.create_task("Create collection")} {
+      _taskScope{task_registry::registry.start_task("Create collection")} {
   task_registry::registry.log("tasks on dbserver");
 
   std::stringstream error;

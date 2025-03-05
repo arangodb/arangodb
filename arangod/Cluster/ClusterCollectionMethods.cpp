@@ -188,8 +188,7 @@ auto waitForCurrentToCatchUp(
 
 Result impl(ClusterInfo& ci, ArangodServer& server,
             std::string_view databaseName, PlanCollectionToAgencyWriter& writer,
-            bool waitForSyncReplication,
-            std::shared_ptr<task_registry::Task> task) {
+            bool waitForSyncReplication, task_registry::TaskScope taskScope) {
   AgencyComm ac(server);
   double pollInterval = ci.getPollInterval();
   AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
@@ -246,9 +245,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
     // Then send the transaction
     auto res = ac.sendTransactionWithFailover(buildingTransaction.get());
-    if (task) {
-      task->update_state("wait for dbservers to create collection");
-    }
+    taskScope.update_state("wait for dbservers to create collection");
 
     if (res.successful()) {
       // Collections ordered
@@ -314,9 +311,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
             r.fail()) {
           return r;
         }
-        if (task) {
-          task->update_state("dbservers created collection");
-        }
+        taskScope.update_state("dbservers created collection");
 
         TRI_IF_FAILURE("ClusterInfo::createCollectionsCoordinator") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -354,9 +349,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
             // it, too.
             auto removeBuildingResult =
                 ac.sendTransactionWithFailover(removeIsBuilding);
-            if (task) {
-              task->update_state("wait for dbservers to remove building flag");
-            }
+            taskScope.update_state(
+                "wait for dbservers to remove building flag");
 
             LOG_TOPIC("98bcc", DEBUG, Logger::CLUSTER)
                 << "createCollectionCoordinator, isBuilding removed, waiting "
@@ -384,9 +378,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                     r.fail()) {
                   return r;
                 }
-                if (task) {
-                  task->update_state("dbservers removed building flag");
-                }
+                taskScope.update_state("dbservers removed building flag");
 
                 // get current raft index; this is at least as high as the one
                 // we just waited for in waitForPlan
@@ -464,8 +456,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
 Result impl(ClusterInfo& ci, ArangodServer& server,
             std::string_view databaseName, TargetCollectionAgencyWriter& writer,
-            bool waitForSyncReplication,
-            std::shared_ptr<task_registry::Task> task) {
+            bool waitForSyncReplication, task_registry::TaskScope taskScope) {
   std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
   // TODO Timeout?
@@ -549,7 +540,7 @@ createCollectionsOnCoordinatorImpl(
     TRI_vocbase_t& vocbase, std::vector<CreateCollectionBody> collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor, bool isNewDatabase,
-    std::shared_ptr<task_registry::Task> task) {
+    task_registry::TaskScope taskScope) {
   using EntryType =
       typename std::conditional<ReplicationVersion == replication::Version::TWO,
                                 PlanCollectionEntryReplication2,
@@ -635,7 +626,7 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
   });
   auto res = ::impl(feature.clusterInfo(), vocbase.server(),
                     std::string_view{vocbase.name()}, writer,
-                    waitForSyncReplication, task);
+                    waitForSyncReplication, std::move(taskScope));
   if (res.fail()) {
     // Something went wrong, let's report
     return res;
@@ -824,7 +815,7 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     TRI_vocbase_t& vocbase, std::vector<CreateCollectionBody> collections,
     bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
     bool enforceReplicationFactor, bool isNewDatabase,
-    std::shared_ptr<task_registry::Task> task) {
+    task_registry::TaskScope taskScope) {
   TRI_IF_FAILURE("ClusterInfo::requiresWaitForReplication") {
     if (waitForSyncReplication) {
       return {TRI_ERROR_DEBUG};
@@ -844,11 +835,13 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
   if (vocbase.replicationVersion() == replication::Version::TWO) {
     return createCollectionsOnCoordinatorImpl<replication::Version::TWO>(
         vocbase, std::move(collections), ignoreDistributeShardsLikeErrors,
-        waitForSyncReplication, enforceReplicationFactor, isNewDatabase, task);
+        waitForSyncReplication, enforceReplicationFactor, isNewDatabase,
+        std::move(taskScope));
   } else {
     return createCollectionsOnCoordinatorImpl<replication::Version::ONE>(
         vocbase, std::move(collections), ignoreDistributeShardsLikeErrors,
-        waitForSyncReplication, enforceReplicationFactor, isNewDatabase, task);
+        waitForSyncReplication, enforceReplicationFactor, isNewDatabase,
+        std::move(taskScope));
   }
 }
 ////////////////////////////////////////////////////////////////////////////////

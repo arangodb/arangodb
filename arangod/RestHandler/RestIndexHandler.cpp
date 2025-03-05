@@ -483,8 +483,8 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
 }
 
 RestStatus RestIndexHandler::createIndex() {
-  auto task = task_registry::registry.create_task(
-      "Index creation via RestIndexHandler");
+  auto taskScope =
+      task_registry::registry.start_task("Index creation via RestIndexHandler");
   task_registry::registry.log("tasks after starting");
 
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
@@ -545,21 +545,20 @@ RestStatus RestIndexHandler::createIndex() {
   // the following callback is executed in a background thread
   auto cb = [this, self = shared_from_this(),
              execContext = std::move(execContext), collection = std::move(coll),
-             body = std::move(indexInfo), task = task] {
-    auto subtask =
-        task_registry::registry.create_subtask(task, "Background thread");
-    auto taskScope = task_registry::TaskScope{subtask};
+             body = std::move(indexInfo), task = taskScope.task()] {
+    auto taskScope =
+        task_registry::registry.start_subtask(task, "Background thread");
     ExecContextScope scope(std::move(execContext));
     {
       std::unique_lock<std::mutex> locker(_mutex);
 
-      subtask->update_state("start index creation");
+      taskScope.update_state("start index creation");
       try {
         _createInBackgroundData.result =
             methods::Indexes::ensureIndex(*collection, body.slice(), true,
                                           _createInBackgroundData.response)
                 .waitAndGet();
-        subtask->update_state("finished index creation");
+        taskScope.update_state("finished index creation");
 
         if (_createInBackgroundData.result.ok()) {
           VPackSlice created =
@@ -582,16 +581,16 @@ RestStatus RestIndexHandler::createIndex() {
         _createInBackgroundData.result = Result(TRI_ERROR_INTERNAL, ex.what());
       }
     }
-    subtask->update_state("got index results");
+    taskScope.update_state("got index results");
 
     // notify REST handler
     SchedulerFeature::SCHEDULER->queue(
         RequestLane::INTERNAL_LOW,
-        [self, subtask = task_registry::registry.create_subtask(
-                   task, "scheduled wakeup call", false)]() {
+        [self, subtask = task_registry::registry.schedule_subtask(
+                   task, "scheduled wakeup call")]() {
           auto scope = subtask->start();
           self->wakeupHandler();
-          subtask->update_state("Handler woken up");
+          scope.update_state("Handler woken up");
           task_registry::registry.log("tasks when running scheduled");
         });
 

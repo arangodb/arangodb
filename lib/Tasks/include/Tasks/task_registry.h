@@ -75,21 +75,31 @@ struct ParentTask : std::variant<RootTask, std::shared_ptr<Task>> {};
 
 struct TaskRegistry;
 struct TaskScope;
+
+// this class can at some point be split into ThreadTask (with thread directly
+// set) and ScheduledTask (with no initial thread, is only set when task is
+// started)
 struct Task : std::enable_shared_from_this<Task> {
   static auto make(ParentTask parent, std::string name, bool is_running,
                    TaskRegistry* registry) -> std::shared_ptr<Task>;
   ~Task();
   /**
-     can only be called on creating thread
+     Update the state
+
+     Can only be called on its own running thread, throws otherwise.
    */
-  auto update_state(std::string state) -> void;
-  auto start() -> TaskScope;
+  auto start() -> TaskScope;  // should only be called once
   auto id() -> void* { return this; }
   auto snapshot() -> TaskSnapshot;
+
+  friend TaskScope;
 
  private:
   Task(ParentTask parent, std::string name, bool is_running,
        TaskRegistry* registry);
+  auto update_state(std::string_view state)
+      -> void;  // should only be called from scope
+
   std::string const _name;
   std::string _state =
       "created";  // has to probably be atomic (for reading and writing
@@ -104,33 +114,70 @@ struct Task : std::enable_shared_from_this<Task> {
   // std::source_location
 };
 
-// make update_state only callable from here
+/**
+   A task in scope in a running task.
+
+   The TaskScope sets the state of the corresponding task.
+ */
 struct TaskScope {
   TaskScope(std::shared_ptr<Task> task) : _task{task} {
     if (task) {
       _task->update_state("running");
     }
   }
+  TaskScope() : _task{nullptr} {}
+  TaskScope(TaskScope const&) = delete;
+  TaskScope(TaskScope&&) = default;
   ~TaskScope() {
     if (_task) {
       _task->update_state("done");
     }
   }
+  auto update_state(std::string_view state) -> void {
+    if (_task) {
+      _task->update_state(std::move(state));
+    }
+  }
+  auto task() -> std::shared_ptr<Task> { return _task; }
   std::shared_ptr<Task> _task;
 };
 
 struct TaskRegistry {
-  auto create_task(std::string name) -> std::shared_ptr<Task> {
+  /**
+     Create an overall task and its corresponding entry point thread task
+
+     Returns a scope for the task: the task is already running and is done when
+     scope is deleted.
+   */
+  auto start_task(std::string name) -> TaskScope {
     auto task = Task::make(ParentTask{RootTask{.name = std::move(name)}},
                            "entry point", true, this);
     auto guard = std::lock_guard(_mutex);
     _tasks.emplace_back(task);
-    return task;
+    return task->start();
   }
-  auto create_subtask(std::shared_ptr<Task> parent, std::string name,
-                      bool is_running = true) -> std::shared_ptr<Task> {
-    auto task =
-        Task::make(ParentTask{parent}, std::move(name), is_running, this);
+  /**
+     Create a subtask that directly starts running
+
+     Returns a scope for the task: the task is already running and is done when
+     scope is deleted.
+  */
+  auto start_subtask(std::shared_ptr<Task> parent, std::string name)
+      -> TaskScope {
+    auto task = Task::make(ParentTask{parent}, std::move(name), true, this);
+    auto guard = std::lock_guard(_mutex);
+    _tasks.emplace_back(task);
+    return task->start();
+  }
+  /**
+     Create a scheduled subtask that is not yet running
+
+     The user has to call task->start() to start the task and get a scope for
+     this running task. Only a call to start will set the task thread
+  */
+  auto schedule_subtask(std::shared_ptr<Task> parent, std::string name)
+      -> std::shared_ptr<Task> {
+    auto task = Task::make(ParentTask{parent}, std::move(name), false, this);
     auto guard = std::lock_guard(_mutex);
     _tasks.emplace_back(task);
     return task;

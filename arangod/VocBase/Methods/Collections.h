@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Tasks/task_registry.h"
 #include "Transaction/Hints.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
@@ -116,7 +117,7 @@ struct Collections {
       bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
       bool isRestore = false,  // whether this is being called during restore
-      std::shared_ptr<task_registry::Task> task = nullptr);
+      task_registry::TaskScope taskScope = task_registry::TaskScope{nullptr});
 
   /// Create shard, can only be used on DBServers.
   /// Should only be called by Maintenance.

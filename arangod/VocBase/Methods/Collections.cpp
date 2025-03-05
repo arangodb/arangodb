@@ -584,7 +584,7 @@ Collections::create(         // create collection
     bool createWaitsForSyncReplication,             // replication wait flag
     bool enforceReplicationFactor,                  // replication factor flag
     bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer,
-    bool isRestore, std::shared_ptr<task_registry::Task> task) {
+    bool isRestore, task_registry::TaskScope taskScope) {
   // Let's first check if we are allowed to create the collections
   ExecContext const& exec = options.context();
   if (!exec.canUseDatabase(vocbase.name(), auth::Level::RW)) {
@@ -651,7 +651,7 @@ Collections::create(         // create collection
     // collections in one go (batch-wise).
     results = ClusterCollectionMethods::createCollectionsOnCoordinator(
         vocbase, collections, false, createWaitsForSyncReplication,
-        enforceReplicationFactor, isNewDatabase, task);
+        enforceReplicationFactor, isNewDatabase, std::move(taskScope));
     if (results.fail()) {
       for (auto const& info : collections) {
         events::CreateCollection(vocbase.name(), info.name,

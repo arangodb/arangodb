@@ -35,55 +35,74 @@ auto get_all_tasks(TaskRegistry& registry) -> std::vector<TaskSnapshot> {
 }
 }  // namespace
 
-TEST(
-    TaskRegistryTest,
-    creating_a_root_task_registers_an_entry_point_task_with_the_root_task_as_parent) {
+TEST(TaskRegistryTest,
+     a_root_task_is_saves_as_a_parent_of_an_entry_point_task) {
   auto registry = TaskRegistry{};
 
-  auto base_task = registry.create_task("Task");
+  auto base_scope = registry.start_task("Task");
 
   ASSERT_EQ(get_all_tasks(registry),
             std::vector<TaskSnapshot>{(TaskSnapshot{
                 .name = "entry point",
-                .state = "created",
-                .id = base_task->id(),
+                .state = "running",
+                .id = base_scope.task()->id(),
                 .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
                 .thread = ThreadId::current()})});
+}
+
+TEST(TaskRegistryTest, scope_ends_a_task) {
+  auto registry = TaskRegistry{};
+
+  std::shared_ptr<Task> base_task;
+  void* base_task_id;
+  {
+    auto base_scope = registry.start_task("Task");
+    base_task = base_scope.task();
+    base_task_id = base_task->id();
+  }  // task is not yet destroyed
+
+  ASSERT_EQ(get_all_tasks(registry),
+            (std::vector<TaskSnapshot>{(TaskSnapshot{
+                .name = "entry point",
+                .state = "done",
+                .id = base_task_id,
+                .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
+                .thread = ThreadId::current()})}));
 }
 
 TEST(TaskRegistryTest, a_subtask_knows_its_parent) {
   auto registry = TaskRegistry{};
 
-  auto base_task = registry.create_task("Task");
-  auto sub_task = registry.create_subtask(base_task, "Subtask");
+  auto base_scope = registry.start_task("Task");
+  auto sub_scope = registry.start_subtask(base_scope.task(), "Subtask");
 
   ASSERT_EQ(
       get_all_tasks(registry),
       (std::vector<TaskSnapshot>{
           (TaskSnapshot{.name = "entry point",
-                        .state = "created",
-                        .id = base_task->id(),
+                        .state = "running",
+                        .id = base_scope.task()->id(),
                         .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
                         .thread = ThreadId::current()}),
-          (TaskSnapshot{
-              .name = "Subtask",
-              .state = "created",
-              .id = sub_task->id(),
-              .parent = ParentTaskSnapshot{TaskIdWrapper{base_task->id()}},
-              .thread = ThreadId::current()})}));
+          (TaskSnapshot{.name = "Subtask",
+                        .state = "running",
+                        .id = sub_scope.task()->id(),
+                        .parent = ParentTaskSnapshot{TaskIdWrapper{
+                            base_scope.task()->id()}},
+                        .thread = ThreadId::current()})}));
 }
 
 TEST(TaskRegistryTest, deleted_tasks_are_removed_from_registry) {
   auto registry = TaskRegistry{};
 
   {
-    auto base_task = registry.create_task("Task");
+    auto base_scope = registry.start_task("Task");
 
     ASSERT_EQ(get_all_tasks(registry),
               (std::vector<TaskSnapshot>{(TaskSnapshot{
                   .name = "entry point",
-                  .state = "created",
-                  .id = base_task->id(),
+                  .state = "running",
+                  .id = base_scope.task()->id(),
                   .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
                   .thread = ThreadId::current()})}));
   }  // base_task is destroyed here
@@ -97,26 +116,27 @@ TEST(TaskRegistryTest, subtask_prevents_task_from_being_destroyed) {
   auto registry = TaskRegistry{};
 
   {
-    std::shared_ptr<Task> sub_task;
+    std::shared_ptr<Task> base_task;
     void* base_task_id;
     {
-      auto base_task = registry.create_task("Task");
+      auto base_scope = registry.start_task("Task");
+      base_task = base_scope.task();
       base_task_id = base_task->id();
-      sub_task = registry.create_subtask(base_task, "Subtask");
-    }
+    }  // task is not yet destroyed
+    auto sub_scope = registry.start_subtask(std::move(base_task), "Subtask");
 
     ASSERT_EQ(get_all_tasks(registry),
               (std::vector<TaskSnapshot>{
                   (TaskSnapshot{
                       .name = "entry point",
-                      .state = "created",
+                      .state = "done",
                       .id = base_task_id,
                       .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
                       .thread = ThreadId::current()}),
                   (TaskSnapshot{
                       .name = "Subtask",
-                      .state = "created",
-                      .id = sub_task->id(),
+                      .state = "running",
+                      .id = sub_scope.task()->id(),
                       .parent = ParentTaskSnapshot{TaskIdWrapper{base_task_id}},
                       .thread = ThreadId::current()})}));
   }  // base_task is destroyed here
@@ -126,109 +146,89 @@ TEST(TaskRegistryTest, subtask_prevents_task_from_being_destroyed) {
   ASSERT_EQ(get_all_tasks(registry), (std::vector<TaskSnapshot>{}));
 }
 
-TEST(TaskRegistryTest, scope_starts_and_ends_a_task) {
+TEST(TaskRegistryTest,
+     a_scheduled_task_needs_to_be_started_manually_on_a_thread) {
   auto registry = TaskRegistry{};
-  auto base_task = registry.create_task("Task");
+  auto base_scope = registry.start_task("Task");
+  auto sub_task = registry.schedule_subtask(base_scope.task(), "Subtask");
+  ASSERT_EQ(
+      get_all_tasks(registry),
+      (std::vector<TaskSnapshot>{
+          (TaskSnapshot{.name = "entry point",
+                        .state = "running",
+                        .id = base_scope.task()->id(),
+                        .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
+                        .thread = ThreadId::current()}),
+          (TaskSnapshot{.name = "Subtask",
+                        .state = "scheduled",
+                        .id = sub_task->id(),
+                        .parent = ParentTaskSnapshot{TaskIdWrapper{
+                            base_scope.task()->id()}},
+                        .thread = std::nullopt})}));
 
   {
-    auto scope = base_task->start();
+    auto sub_scope = sub_task->start();
 
     ASSERT_EQ(get_all_tasks(registry),
-              std::vector<TaskSnapshot>{(TaskSnapshot{
-                  .name = "entry point",
-                  .state = "running",
-                  .id = base_task->id(),
-                  .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                  .thread = ThreadId::current()})});
+              (std::vector<TaskSnapshot>{
+                  (TaskSnapshot{
+                      .name = "entry point",
+                      .state = "running",
+                      .id = base_scope.task()->id(),
+                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
+                      .thread = ThreadId::current()}),
+                  (TaskSnapshot{.name = "Subtask",
+                                .state = "running",
+                                .id = sub_task->id(),
+                                .parent = ParentTaskSnapshot{TaskIdWrapper{
+                                    base_scope.task()->id()}},
+                                .thread = ThreadId::current()})}));
   }
 
-  ASSERT_EQ(get_all_tasks(registry),
-            std::vector<TaskSnapshot>{(TaskSnapshot{
-                .name = "entry point",
-                .state = "done",
-                .id = base_task->id(),
-                .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                .thread = ThreadId::current()})});
+  ASSERT_EQ(
+      get_all_tasks(registry),
+      (std::vector<TaskSnapshot>{
+          (TaskSnapshot{.name = "entry point",
+                        .state = "running",
+                        .id = base_scope.task()->id(),
+                        .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
+                        .thread = ThreadId::current()}),
+          (TaskSnapshot{.name = "Subtask",
+                        .state = "done",
+                        .id = sub_task->id(),
+                        .parent = ParentTaskSnapshot{TaskIdWrapper{
+                            base_scope.task()->id()}},
+                        .thread = ThreadId::current()})}));
 }
 
-TEST(TaskRegistryTest, scope_makes_sure_that_task_thread_is_current_thread) {
+TEST(TaskRegistryTest, task_scope_can_update_task_state) {
   auto registry = TaskRegistry{};
-  auto base_task = registry.create_task("Task");
-  auto sub_task = registry.create_subtask(base_task, "Subtask", false);
-  ASSERT_EQ(
-      get_all_tasks(registry),
-      (std::vector<TaskSnapshot>{
-          (TaskSnapshot{.name = "entry point",
-                        .state = "created",
-                        .id = base_task->id(),
-                        .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                        .thread = ThreadId::current()}),
-          (TaskSnapshot{
-              .name = "Subtask",
-              .state = "scheduled",
-              .id = sub_task->id(),
-              .parent = ParentTaskSnapshot{TaskIdWrapper{base_task->id()}},
-              .thread = std::nullopt})}));
+  auto base_scope = registry.start_task("Task");
+  auto sub_task = registry.schedule_subtask(base_scope.task(), "Subtask");
 
-  {
-    auto scope = sub_task->start();
+  base_scope.update_state("Some other base state");
 
-    ASSERT_EQ(
-        get_all_tasks(registry),
-        (std::vector<TaskSnapshot>{
-            (TaskSnapshot{
-                .name = "entry point",
-                .state = "created",
-                .id = base_task->id(),
-                .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                .thread = ThreadId::current()}),
-            (TaskSnapshot{
-                .name = "Subtask",
-                .state = "running",
-                .id = sub_task->id(),
-                .parent = ParentTaskSnapshot{TaskIdWrapper{base_task->id()}},
-                .thread = ThreadId::current()})}));
-  }
+  auto sub_scope = sub_task->start();
+  sub_scope.update_state("Some other sub state");
 
   ASSERT_EQ(
       get_all_tasks(registry),
       (std::vector<TaskSnapshot>{
           (TaskSnapshot{.name = "entry point",
-                        .state = "created",
-                        .id = base_task->id(),
+                        .state = "Some other base state",
+                        .id = base_scope.task()->id(),
                         .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
                         .thread = ThreadId::current()}),
-          (TaskSnapshot{
-              .name = "Subtask",
-              .state = "done",
-              .id = sub_task->id(),
-              .parent = ParentTaskSnapshot{TaskIdWrapper{base_task->id()}},
-              .thread = ThreadId::current()})}));
+          (TaskSnapshot{.name = "Subtask",
+                        .state = "Some other sub state",
+                        .id = sub_task->id(),
+                        .parent = ParentTaskSnapshot{TaskIdWrapper{
+                            base_scope.task()->id()}},
+                        .thread = ThreadId::current()})}));
 }
-
-// TEST(TaskRegistryTest, task_can_update_its_state) {
-//   auto registry = TaskRegistry{};
-//   auto base_task = registry.create_task("Task");
-//   auto sub_task = registry.create_subtask(base_task, "Subtask");
-
-//   sub_task->update_state("running");
-
-//   ASSERT_EQ(get_all_tasks(registry),
-//             (std::vector<TaskSnapshot>{
-//                 (TaskSnapshot{.name = "Task",
-//                               .state = "created",
-//                               .id = base_task->id(),
-//                               .parent = nullptr,
-//                               .thread = ThreadId::current()}),
-//                 (TaskSnapshot{.name = "Subtask",
-//                               .state = "running",
-//                               .id = sub_task->id(),
-//                               .parent = base_task->id(),
-//                               .thread = ThreadId::current()})}));
-// }
 
 // TODO make this a death test
-// TEST(TaskRegistryTest, a_non_running_subtask_cannot_update_its_state) {}
+// TEST(TaskRegistryDeathTest, a_non_running_subtask_cannot_update_its_state) {}
 
 // TODO make this a death test
 // TEST(TaskRegistryTest,

@@ -54,7 +54,7 @@ Task::~Task() {
   }
 }
 
-auto Task::update_state(std::string state) -> void {
+auto Task::update_state(std::string_view state) -> void {
   auto current_thread = ThreadId::current();
   ADB_PROD_ASSERT(current_thread == _running_thread)
       << "TaskRegistry::update_state was called from thread "

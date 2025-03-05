@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Tasks/task_registry.h"
 #include <vector>
 #include <memory>
 
@@ -71,7 +72,7 @@ struct ClusterCollectionMethods {
       std::vector<CreateCollectionBody> parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
       bool enforceReplicationFactor, bool isNewDatabase,
-      std::shared_ptr<task_registry::Task> task = nullptr)
+      task_registry::TaskScope taskScope = task_registry::TaskScope{nullptr})
       -> arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>;
 
   [[nodiscard]] static auto toPlanEntry(
