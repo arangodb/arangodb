@@ -186,8 +186,12 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
     // check if the parameters are the same
-    if (!basics::VelocyPackHelper::equal(lhs.get("params"), rhs.get("params"),
-                                         false)) {
+    UserVectorIndexDefinition leftDefinition;
+    UserVectorIndexDefinition rightDefinition;
+    velocypack::deserialize(lhs.get("params"), leftDefinition);
+    velocypack::deserialize(rhs.get("params"), rightDefinition);
+
+    if (leftDefinition != rightDefinition) {
       return false;
     }
   }
