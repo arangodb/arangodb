@@ -212,7 +212,6 @@
         url: url,
         success: function (licenseData) {
           if (
-            licenseData.license !== "none" &&
             licenseData.status &&
             licenseData.features &&
             licenseData.features.expires
