@@ -31,6 +31,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogTopic.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "RestServer/VocbaseContext.h"
@@ -217,24 +218,39 @@ RestStatus RestIndexHandler::getIndexes() {
 
       // first fetch list of planned indexes. this includes all indexes,
       // even the in-progress indexes
-      std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
-                                    coll->planId().id(), "/indexes");
+      std::string const ap = absl::StrCat("Plan/Collections/", _vocbase.name(),
+                                          "/", coll->planId().id(), "/indexes");
       auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
       // we need to wait for the latest commit index here, because otherwise
       // we may not see all indexes that were declared ready by the
       // supervision.
       ac.waitForLatestCommitIndex().get();
 
-      auto [plannedIndexes, idx] = ac.get(ap);
+      auto [plannedIndexes, idx1] = ac.get(ap);
+      auto [planVersion, idx2] = ac.get("Plan/Version");
 
-      // Let's wait until the ClusterInfo has processed at least this
-      // Raft index. This means that if an index is no longer `isBuilding`
-      // in the agency Plan, then ClusterInfo should know it.
-      _vocbase.server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .waitForPlan(idx)
-          .wait();
+      uint64_t planVersionInt = 0;
+      try {
+        if (planVersion->slice().isNumber()) {
+          planVersionInt = planVersion->slice().getNumber<uint64_t>();
+        }
+      } catch (std::exception const&) {
+      }
+
+      if (planVersionInt > 0) {
+        // Let's wait until the ClusterInfo has processed at least this
+        // Raft index. This means that if an index is no longer `isBuilding`
+        // in the agency Plan, then ClusterInfo should know it.
+        _vocbase.server()
+            .getFeature<ClusterFeature>()
+            .clusterInfo()
+            .waitForPlanVersion(planVersionInt)
+            .wait();
+      } else {
+        LOG_TOPIC("12536", WARN, Logger::CLUSTER)
+            << "Expected numberin /arango/Plan/Version, instead found: "
+            << planVersion->slice().toJson();
+      }
 
       // now fetch list of ready indexes
       VPackBuilder indexes;
