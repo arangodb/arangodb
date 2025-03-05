@@ -483,15 +483,9 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
 }
 
 RestStatus RestIndexHandler::createIndex() {
-  _task = task_registry::registry.create_task(
-      "Create an index via RestIndexHandler");
-  auto main_thread_task =
-      task_registry::registry.create_task("Index creation main thread", _task);
-  std::vector<task_registry::TaskSnapshot> tasks;
-  task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
-    tasks.emplace_back(std::move(task));
-  });
-  LOG_DEVEL << fmt::format("tasks after starting: {}", inspection::json(tasks));
+  auto task = task_registry::registry.create_task(
+      "Index creation via RestIndexHandler");
+  task_registry::registry.log("tasks after starting");
 
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
@@ -551,20 +545,21 @@ RestStatus RestIndexHandler::createIndex() {
   // the following callback is executed in a background thread
   auto cb = [this, self = shared_from_this(),
              execContext = std::move(execContext), collection = std::move(coll),
-             body = std::move(indexInfo)] {
-    auto task = task_registry::registry.create_task("Background thread", _task);
-    auto taskScope = task_registry::TaskScope{task};
+             body = std::move(indexInfo), task = task] {
+    auto subtask =
+        task_registry::registry.create_subtask(task, "Background thread");
+    auto taskScope = task_registry::TaskScope{subtask};
     ExecContextScope scope(std::move(execContext));
     {
       std::unique_lock<std::mutex> locker(_mutex);
 
-      task->update_state("start index creation");
+      subtask->update_state("start index creation");
       try {
         _createInBackgroundData.result =
             methods::Indexes::ensureIndex(*collection, body.slice(), true,
                                           _createInBackgroundData.response)
                 .waitAndGet();
-        task->update_state("finished index creation");
+        subtask->update_state("finished index creation");
 
         if (_createInBackgroundData.result.ok()) {
           VPackSlice created =
@@ -587,30 +582,20 @@ RestStatus RestIndexHandler::createIndex() {
         _createInBackgroundData.result = Result(TRI_ERROR_INTERNAL, ex.what());
       }
     }
-    task->update_state("got index results");
+    subtask->update_state("got index results");
 
     // notify REST handler
     SchedulerFeature::SCHEDULER->queue(
-        RequestLane::INTERNAL_LOW, [self, parent_task = task]() {
-          auto task = task_registry::registry.create_task(
-              "scheduled wakeup call", parent_task);
+        RequestLane::INTERNAL_LOW,
+        [self, subtask = task_registry::registry.create_subtask(
+                   task, "scheduled wakeup call", false)]() {
+          auto scope = subtask->start();
           self->wakeupHandler();
-          task->update_state("Handler woken up");
-          std::vector<task_registry::TaskSnapshot> tasks;
-          task_registry::registry.for_task(
-              [&](task_registry::TaskSnapshot task) {
-                tasks.emplace_back(std::move(task));
-              });
-          LOG_DEVEL << fmt::format("tasks when running scheduled: {}",
-                                   inspection::json(tasks));
+          subtask->update_state("Handler woken up");
+          task_registry::registry.log("tasks when running scheduled");
         });
 
-    std::vector<task_registry::TaskSnapshot> tasks;
-    task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
-      tasks.emplace_back(std::move(task));
-    });
-    LOG_DEVEL << fmt::format("tasks after scheduled: {}",
-                             inspection::json(tasks));
+    task_registry::registry.log("tasks after scheduled");
   };
 
   // start background thread

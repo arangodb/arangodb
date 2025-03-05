@@ -339,11 +339,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
   auto task = task_registry::registry.create_task("Create collection");
-  std::vector<task_registry::TaskSnapshot> tasks;
-  task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
-    tasks.emplace_back(std::move(task));
-  });
-  LOG_DEVEL << fmt::format("tasks on coordinator: {}", inspection::json(tasks));
+  task_registry::registry.log("tasks on coordinator");
 
   if (ServerState::instance()->isDBServer()) {
     generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
@@ -416,12 +412,7 @@ void RestCollectionHandler::handleCommandPost() {
     generateError(res);
   }
 
-  std::vector<task_registry::TaskSnapshot> tasks_at_end;
-  task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
-    tasks_at_end.emplace_back(std::move(task));
-  });
-  LOG_DEVEL << fmt::format("tasks on coordinator: {}",
-                           inspection::json(tasks_at_end));
+  task_registry::registry.log("tasks on coordinator");
 }
 
 futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {

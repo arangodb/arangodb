@@ -60,11 +60,7 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature,
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
       _task{task_registry::registry.create_task("Create collection")} {
-  std::vector<task_registry::TaskSnapshot> tasks;
-  task_registry::registry.for_task([&](task_registry::TaskSnapshot task) {
-    tasks.emplace_back(std::move(task));
-  });
-  LOG_DEVEL << fmt::format("tasks on dbserver: {}", inspection::json(tasks));
+  task_registry::registry.log("tasks on dbserver");
 
   std::stringstream error;
 
