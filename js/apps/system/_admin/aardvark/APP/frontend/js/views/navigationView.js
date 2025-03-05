@@ -228,10 +228,8 @@
               licenseData.diskusage.secondsUntilShutDown
             ) {
               self.renderDiskUsageInfo(licenseData.diskusage);
-            } else {
-              self.showLicenseError();
             }
-          } else {
+          } else if (window.frontendConfig.isEnterprise === true) {
             self.showLicenseError();
           }
         }
