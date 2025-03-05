@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-528: adds diskusage license info to UI.
+
 * Introduces first changes for the new diskusage based license.
 
 * BTS-2089: Fix a crash when query logging and query cache were enabled.
