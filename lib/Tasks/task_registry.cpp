@@ -57,13 +57,16 @@ Task::~Task() {
   }
 }
 
-  auto Task::update_state(std::string_view state, std::source_location loc) -> void {
+auto Task::update_state(std::string_view state, std::source_location loc)
+    -> void {
   auto current_thread = ThreadId::current();
-  ADB_PROD_ASSERT(current_thread == _running_thread)
-    << fmt::format("TaskRegistry::update_state was called from thread {} but needs to be called from its owning thread {}. Called at {}. Task: {} ({}), {}", 
-                   fmt::format("{}", inspection::json(current_thread)),
-                   fmt::format("{}", inspection::json(_running_thread)),
-                   inspection::json(SourceLocation::from(loc)), _name, _state, inspection::json(SourceLocation::from(_source_location)));
+  ADB_PROD_ASSERT(current_thread == _running_thread) << fmt::format(
+      "TaskRegistry::update_state was called from thread {} but needs to be "
+      "called from its owning thread {}. Called at {}. Task: {} ({}), {}",
+      fmt::format("{}", inspection::json(current_thread)),
+      fmt::format("{}", inspection::json(_running_thread)),
+      inspection::json(SourceLocation::from(loc)), _name, _state,
+      inspection::json(SourceLocation::from(_source_location)));
   _state = state;
 }
 

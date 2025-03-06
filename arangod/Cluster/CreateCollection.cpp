@@ -45,6 +45,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "Tasks/task_registry_variable.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -58,10 +59,7 @@ using namespace arangodb::methods;
 CreateCollection::CreateCollection(MaintenanceFeature& feature,
                                    ActionDescription const& desc)
     : ActionBase(feature, desc),
-      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
-      _taskScope{task_registry::registry.start_task("Create collection")} {
-  task_registry::registry.log("tasks on dbserver");
-
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -110,6 +108,9 @@ CreateCollection::CreateCollection(MaintenanceFeature& feature,
 CreateCollection::~CreateCollection() = default;
 
 bool CreateCollection::first() {
+  auto taskScope = task_registry::registry.start_task("Create collection");
+  task_registry::registry.log("tasks on dbserver");
+
   auto const& database = getDatabase();
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = getShard();

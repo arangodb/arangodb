@@ -28,7 +28,6 @@
 #include "ActionDescription.h"
 #include "Cluster/ClusterTypes.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Tasks/task_registry.h"
 #include "VocBase/voc-types.h"
 
 #include <chrono>
@@ -62,7 +61,6 @@ class CreateCollection : public ActionBase, public ShardDefinition {
  private:
   bool _doNotIncrement =
       false;  // indicate that `setState` shall not increment the version
-  task_registry::TaskScope _taskScope;
 
   static Result createCollectionReplication2(
       TRI_vocbase_t& vocbase, replication2::LogId logId, ShardID const& shard,
