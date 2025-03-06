@@ -28,6 +28,23 @@ auto inspect(Inspector& f, ThreadId& x) {
   return f.object(x).fields(f.field("LWPID", x.kernel_id),
                             f.field("name", x.name()));
 }
+struct SourceLocation {
+  std::string_view file_name;
+  std::string_view function_name;
+  std::uint_least32_t line;
+  bool operator==(SourceLocation const&) const = default;
+  auto static from(std::source_location loc) -> SourceLocation {
+    return SourceLocation{.file_name = loc.file_name(),
+                          .function_name = loc.function_name(),
+                          .line = loc.line()};
+  }
+};
+template<typename Inspector>
+auto inspect(Inspector& f, SourceLocation& x) {
+  return f.object(x).fields(f.field("file_name", x.file_name),
+                            f.field("line", x.line),
+                            f.field("function_name", x.function_name));
+}
 
 struct RootTask {
   std::string name;
@@ -60,6 +77,7 @@ struct TaskSnapshot {
   void* id;
   ParentTaskSnapshot parent;
   std::optional<ThreadId> thread;
+  SourceLocation source_location;
   bool operator==(TaskSnapshot const&) const = default;
 };
 template<typename Inspector>
@@ -67,7 +85,8 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
   return f.object(x).fields(f.field("id", fmt::format("{}", x.id)),
                             f.field("name", x.name), f.field("state", x.state),
                             f.field("parent", x.parent),
-                            f.field("thread", x.thread));
+                            f.field("thread", x.thread),
+                            f.field("source_location", x.source_location));
 }
 
 struct Task;
@@ -81,7 +100,8 @@ struct TaskScope;
 // started)
 struct Task : std::enable_shared_from_this<Task> {
   static auto make(ParentTask parent, std::string name, bool is_running,
-                   TaskRegistry* registry) -> std::shared_ptr<Task>;
+                   std::source_location loc, TaskRegistry* registry)
+      -> std::shared_ptr<Task>;
   ~Task();
   /**
      Update the state
@@ -96,8 +116,9 @@ struct Task : std::enable_shared_from_this<Task> {
 
  private:
   Task(ParentTask parent, std::string name, bool is_running,
-       TaskRegistry* registry);
-  auto update_state(std::string_view state)
+       std::source_location loc, TaskRegistry* registry);
+  auto update_state(std::string_view state,
+                    std::source_location loc)
       -> void;  // should only be called from scope
 
   std::string const _name;
@@ -108,10 +129,10 @@ struct Task : std::enable_shared_from_this<Task> {
   std::optional<ThreadId>
       _running_thread;  // proably has to also be atomic because
                         // changes for scheduled task
+  std::source_location const _source_location;
   TaskRegistry* const _registry;
   // possibly interesting other properties:
   // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
-  // std::source_location
 };
 
 /**
@@ -122,7 +143,7 @@ struct Task : std::enable_shared_from_this<Task> {
 struct TaskScope {
   TaskScope(std::shared_ptr<Task> task) : _task{task} {
     if (task) {
-      _task->update_state("running");
+      _task->update_state("running", std::source_location::current());
     }
   }
   TaskScope() : _task{nullptr} {}
@@ -130,12 +151,14 @@ struct TaskScope {
   TaskScope(TaskScope&&) = default;
   ~TaskScope() {
     if (_task) {
-      _task->update_state("done");
+      _task->update_state("done", std::source_location::current());
     }
   }
-  auto update_state(std::string_view state) -> void {
+  auto update_state(std::string_view state,
+                    std::source_location loc = std::source_location::current())
+      -> void {
     if (_task) {
-      _task->update_state(std::move(state));
+      _task->update_state(std::move(state), std::move(loc));
     }
   }
   auto task() -> std::shared_ptr<Task> { return _task; }
@@ -149,9 +172,11 @@ struct TaskRegistry {
      Returns a scope for the task: the task is already running and is done when
      scope is deleted.
    */
-  auto start_task(std::string name) -> TaskScope {
+  auto start_task(std::string name,
+                  std::source_location loc = std::source_location::current())
+      -> TaskScope {
     auto task = Task::make(ParentTask{RootTask{.name = std::move(name)}},
-                           "entry point", true, this);
+                           "entry point", true, std::move(loc), this);
     auto guard = std::lock_guard(_mutex);
     _tasks.emplace_back(task);
     return task->start();
@@ -162,9 +187,11 @@ struct TaskRegistry {
      Returns a scope for the task: the task is already running and is done when
      scope is deleted.
   */
-  auto start_subtask(std::shared_ptr<Task> parent, std::string name)
+  auto start_subtask(std::shared_ptr<Task> parent, std::string name,
+                     std::source_location loc = std::source_location::current())
       -> TaskScope {
-    auto task = Task::make(ParentTask{parent}, std::move(name), true, this);
+    auto task = Task::make(ParentTask{parent}, std::move(name), true,
+                           std::move(loc), this);
     auto guard = std::lock_guard(_mutex);
     _tasks.emplace_back(task);
     return task->start();
@@ -175,9 +202,12 @@ struct TaskRegistry {
      The user has to call task->start() to start the task and get a scope for
      this running task. Only a call to start will set the task thread
   */
-  auto schedule_subtask(std::shared_ptr<Task> parent, std::string name)
+  auto schedule_subtask(
+      std::shared_ptr<Task> parent, std::string name,
+      std::source_location loc = std::source_location::current())
       -> std::shared_ptr<Task> {
-    auto task = Task::make(ParentTask{parent}, std::move(name), false, this);
+    auto task = Task::make(ParentTask{parent}, std::move(name), false,
+                           std::move(loc), this);
     auto guard = std::lock_guard(_mutex);
     _tasks.emplace_back(task);
     return task;

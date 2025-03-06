@@ -1,4 +1,5 @@
 #include "Tasks/task_registry.h"
+#include <source_location>
 
 #include "fmt/format.h"
 #include "Basics/Thread.h"
@@ -26,22 +27,24 @@ auto ThreadId::name() -> std::string {
 }
 
 auto Task::make(ParentTask parent, std::string name, bool is_running,
-                TaskRegistry* registry) -> std::shared_ptr<Task> {
+                std::source_location loc, TaskRegistry* registry)
+    -> std::shared_ptr<Task> {
   struct MakeSharedTask : Task {
     MakeSharedTask(ParentTask parent, std::string name, bool is_running,
-                   TaskRegistry* registry)
-        : Task(parent, std::move(name), is_running, registry) {}
+                   std::source_location loc, TaskRegistry* registry)
+        : Task(parent, std::move(name), is_running, std::move(loc), registry) {}
   };
   return std::make_shared<MakeSharedTask>(parent, std::move(name), is_running,
-                                          registry);
+                                          std::move(loc), registry);
 }
 
 Task::Task(ParentTask parent, std::string name, bool is_running,
-           TaskRegistry* registry)
+           std::source_location loc, TaskRegistry* registry)
     : _name{std::move(name)},
       _parent{std::move(parent)},
       _running_thread{is_running ? std::optional<ThreadId>{ThreadId::current()}
                                  : std::nullopt},
+      _source_location{std::move(loc)},
       _registry{registry} {
   if (!is_running) {
     _state = "scheduled";
@@ -54,14 +57,13 @@ Task::~Task() {
   }
 }
 
-auto Task::update_state(std::string_view state) -> void {
+  auto Task::update_state(std::string_view state, std::source_location loc) -> void {
   auto current_thread = ThreadId::current();
   ADB_PROD_ASSERT(current_thread == _running_thread)
-      << "TaskRegistry::update_state was called from thread "
-      << fmt::format("{}", inspection::json(current_thread))
-      << " but needs to be called from its owning thread "
-      << fmt::format("{}", inspection::json(_running_thread))
-      << ". Task: " << _name << " (" << _state << ")";
+    << fmt::format("TaskRegistry::update_state was called from thread {} but needs to be called from its owning thread {}. Called at {}. Task: {} ({}), {}", 
+                   fmt::format("{}", inspection::json(current_thread)),
+                   fmt::format("{}", inspection::json(_running_thread)),
+                   inspection::json(SourceLocation::from(loc)), _name, _state, inspection::json(SourceLocation::from(_source_location)));
   _state = state;
 }
 
@@ -83,7 +85,11 @@ auto Task::snapshot() -> TaskSnapshot {
                        return ParentTaskSnapshot{TaskIdWrapper{parent.get()}};
                      }},
           _parent),
-      .thread = _running_thread};
+      .thread = _running_thread,
+      .source_location =
+          SourceLocation{.file_name = _source_location.file_name(),
+                         .function_name = _source_location.function_name(),
+                         .line = _source_location.line()}};
 }
 
 }  // namespace arangodb::task_registry
