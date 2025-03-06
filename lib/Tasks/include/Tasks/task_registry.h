@@ -232,8 +232,8 @@ struct TaskRegistry {
     for_task([&](task_registry::TaskSnapshot task) {
       tasks.emplace_back(std::move(task));
     });
-    LOG_DEVEL << fmt::format("{}: {}", message,
-                             arangodb::inspection::json(tasks));
+    // LOG_DEVEL << fmt::format("{}: {}", message,
+    //                          arangodb::inspection::json(tasks));
   }
 
  private:
