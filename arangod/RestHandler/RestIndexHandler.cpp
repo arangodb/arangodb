@@ -248,7 +248,7 @@ RestStatus RestIndexHandler::getIndexes() {
             .wait();
       } else {
         LOG_TOPIC("12536", WARN, Logger::CLUSTER)
-            << "Expected numberin /arango/Plan/Version, instead found: "
+            << "Expected number in /arango/Plan/Version, instead found: "
             << planVersion->slice().toJson();
       }
 
