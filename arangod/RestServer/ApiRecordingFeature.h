@@ -94,7 +94,7 @@ class ApiRecordingFeature : public ArangodFeature {
   // Iterates over API call records from newest to oldest, invoking the given
   // callback function for each record. Thread-safe.
   template<typename F>
-    requires std::is_invocable_v<F, ApiCallRecord const&>
+  requires std::is_invocable_v<F, ApiCallRecord const&>
   void doForApiCallRecords(F&& callback) const {
     if (_apiCallRecord) {
       _apiCallRecord->forItems(std::forward<F>(callback));
