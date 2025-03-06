@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-535: fix set cached query when bind params are equal.
+
 * FE-528: adds diskusage license info to UI.
 
 * BTS-2090: Fixes double log-lines per log
