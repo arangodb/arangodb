@@ -41,9 +41,7 @@ size_t ApiCallRecord::memoryUsage() const noexcept {
 ApiRecordingFeature::ApiRecordingFeature(Server& server)
     : ArangodFeature{server, *this},
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_api_recording_call_time{})),
-      _totalRecordApiCallTime(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_api_recording_total_time_msec_total{})) {
+          arangodb_api_recording_call_time{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -128,9 +126,6 @@ void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
 
   // Record in histogram (seconds)
   _recordApiCallTimes.count(static_cast<double>(elapsed));
-
-  // Record in counter (nanoseconds)
-  _totalRecordApiCallTime += elapsed;
 }
 
 void ApiRecordingFeature::cleanupLoop() {

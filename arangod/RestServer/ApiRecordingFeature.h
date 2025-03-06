@@ -48,8 +48,6 @@ struct ApiCallTimeScale {
 // Declare metrics
 DECLARE_HISTOGRAM(arangodb_api_recording_call_time, ApiCallTimeScale,
                   "Execution time histogram for API recording calls [ns]");
-DECLARE_COUNTER(arangodb_api_recording_total_time_msec_total,
-                "Total execution time of all API recording calls [ms]");
 
 struct ApiCallRecord {
   std::chrono::system_clock::time_point timeStamp;
@@ -96,7 +94,7 @@ class ApiRecordingFeature : public ArangodFeature {
   // Iterates over API call records from newest to oldest, invoking the given
   // callback function for each record. Thread-safe.
   template<typename F>
-  requires std::is_invocable_v<F, ApiCallRecord const&>
+    requires std::is_invocable_v<F, ApiCallRecord const&>
   void doForApiCallRecords(F&& callback) const {
     if (_apiCallRecord) {
       _apiCallRecord->forItems(std::forward<F>(callback));
@@ -127,7 +125,6 @@ class ApiRecordingFeature : public ArangodFeature {
 
   // Metrics for measuring recordAPICall performance
   metrics::Histogram<metrics::LogScale<double>>& _recordApiCallTimes;
-  metrics::Counter& _totalRecordApiCallTime;
 };
 
 }  // namespace arangodb
