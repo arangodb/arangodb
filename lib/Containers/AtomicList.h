@@ -140,6 +140,8 @@ class BoundedList {
       "T must have a memoryUsage() method returning size_t");
   std::atomic<std::shared_ptr<AtomicList<T>>> _current;
   std::atomic<std::size_t> _memoryUsage;
+  char padding[64];  // Put subsequent entries on a different cache line
+  std::atomic<bool> _isRotating{false};  // Flag to coordinate rotation
   std::vector<std::shared_ptr<AtomicList<T>>> _history;
   std::vector<std::shared_ptr<AtomicList<T>>> _trash;
   size_t _ringBufferPos;
@@ -180,68 +182,76 @@ class BoundedList {
     size_t newUsage =
         _memoryUsage.fetch_add(mem_usage, std::memory_order_relaxed) +
         mem_usage;
+
     if (newUsage >= _memoryThreshold) {
-      // We stop everybody, once this happens to avoid overshooting.
-      {
-        std::lock_guard<std::mutex> guard(_mutex);
+      tryRotateLists(current);
+    }
+  }
 
-        // Now we must ensure that only one does the work:
-        if (_memoryUsage.load(std::memory_order_relaxed) >= _memoryThreshold) {
-          // We first store a new empty list in _current, so that any
-          // other thread will prepend to that one as soon as possible:
-          _current.store(std::make_shared<AtomicList<T>>(),
-                         std::memory_order_release);
-          // This synchronizes with the load above.
+  // Try to rotate lists without blocking. Returns true if rotation was
+  // performed.
+  void tryRotateLists(std::shared_ptr<AtomicList<T>>& expectedCurrent) {
+    // For a specific value of _current, we want that only one thread actually
+    // does the rotation. So, when the threshold is reached, we race on the
+    // _isRotating flag, which is only reset by the winner, once _current is
+    // changed.
+    bool expected = false;
+    if (!_isRotating.compare_exchange_strong(expected, true,
+                                             std::memory_order_relaxed,
+                                             std::memory_order_relaxed)) {
+      // Another thread is already handling rotation
+      return;
+    }
 
-          _memoryUsage.store(0, std::memory_order_relaxed);
+    // Verify that the current list is still the one we expect
+    // This prevents a race condition where another thread might have
+    // already rotated the current list and we still have the old one.
+    // We might have been delayed for whatever reason and now only want
+    // to rotate if our current list is still the one we expect. This
+    // ensures that for a given instance of the current list, only one
+    // thread will do the rotation.
+    if (_current.load(std::memory_order_relaxed) != expectedCurrent) {
+      // The current list has already been rotated by another thread
+      _isRotating.store(false, std::memory_order_release);
+      return;
+    }
 
-          // And move the old current list into the ring buffer:
-          auto toDelete = std::move(_history[_ringBufferPos]);
-          _history[_ringBufferPos] = std::move(current);
-          _ringBufferPos = (_ringBufferPos + 1) % _maxHistory;
-          if (toDelete != nullptr) {
-            _trash.emplace_back(std::move(toDelete));
-          }
-        }
+    // First reset the memory usage counter to prevent other threads from
+    // triggering additional rotations
+    _memoryUsage.store(0, std::memory_order_relaxed);
+
+    // Create a new empty list that will become the current list
+    auto newList = std::make_shared<AtomicList<T>>();
+
+    // Then replace the current list
+    _current.store(newList, std::memory_order_release);
+    // From now on, new threads entering `prepend` will see the new list
+    // and append there. Note that it is possible that some threads have
+    // still prepended to the old current list, but have already accounted
+    // for the memory usage in _memoryUsage, which is already counted towards
+    // the new list. We tolerate this because it is harmless and we want to
+    // reduce contention on _isRotating.
+
+    // Now update the ring buffer:
+    {
+      // This mutex is needed to protect the ring buffer from being read
+      // by some other thread in the forItems method. Writing threads cannot
+      // reach this place because of the _isRotating flag.
+      std::lock_guard<std::mutex> guard(_mutex);
+
+      // Move the old current list into the ring buffer
+      auto toDelete = std::move(_history[_ringBufferPos]);
+      _history[_ringBufferPos] = std::move(expectedCurrent);
+      _ringBufferPos = (_ringBufferPos + 1) % _maxHistory;
+
+      // Schedule the old list for deletion
+      if (toDelete != nullptr) {
+        _trash.emplace_back(std::move(toDelete));
       }
     }
-    // Some comments about correctness are in order here: Only one thread
-    // will be in this critical section here at a time. Here, we do the
-    // following operations:
-    //  - copy _current to the ring buffer
-    //  - free a potentially overwritten entry in the ring buffer
-    //  - set _current to a new empty AtomicList
-    // It can happen that another thread copies the shared_ptr in _current
-    // to prepend to the AtomicList, whilst this thread here copies the
-    // shared_ptr to the ring buffer. This is OK.
-    // That is, it is possible that another thread prepends to an AtomicList
-    // which is already in the ring buffer. We need to prove that it cannot
-    // happen that this other thread prepends to the AtomicList and this
-    // thread here destroys it at the same time. But this is guaranteed since
-    // we make a copy of the shared_ptr for each `prepend` call. Everybody
-    // will eventually destroy its shared_ptr and the atomic logic in
-    // shared_ptr will see to it that only one thread frees it. In most
-    // cases this will be the one in the critical section, but even if the
-    // critical section frees its shared_ptr first, then it won't destruct
-    // the AtomicList and the other thread which prepends to it will do it.
-    // This is very unlikely to happen, since `prepend` will probably not
-    // lose a lot of time between copying _current and then prepending
-    // to the AtomicList. Usually, the critical section here will delete
-    // a different AtomicList. But this proof shows that even in the unlikely
-    // event that both work on the same AtomicList, nothing is leaked or
-    // crashes.
-    // Finally, let's talk about overshooting. If the current list runs over
-    // the memory limit, it is possible that multiple threads notice this,
-    // after they have prepended to the current list. But then they will
-    // all try to acquire the lock, and only one will succeed. This one will
-    // rotate the lists and create a new empty current list. Then
-    // mem_usage is decreased and because of the additional if check under
-    // the lock, the other threads which have tried to acquire the lock
-    // will not rotate the lists, unless the memory usage is again over
-    // the limit.
-    // Therefore, we only overshoot by one item for each thread in the system,
-    // which is tolerable.
-    // We expect that the delays for acquiring the locks do not hurt too much.
+
+    // Release the rotation lock
+    _isRotating.store(false, std::memory_order_release);
   }
 
   template<typename F>

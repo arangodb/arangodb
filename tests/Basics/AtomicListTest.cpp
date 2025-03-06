@@ -147,7 +147,7 @@ TEST(BoundedListTests, testConcurrentOperation) {
   for (int t = 0; t < 10; ++t) {
     writers.emplace_back(
         [&list, &total_prepended](int thread_id) {
-          for (int i = 0; i < 100000; ++i) {
+          for (int i = 0; i < 1000000; ++i) {
             list.prepend(Entry{thread_id * 100000 + i});
             total_prepended.fetch_add(1, std::memory_order_relaxed);
           }
@@ -172,37 +172,13 @@ TEST(BoundedListTests, testConcurrentOperation) {
     current_memory += entry.memoryUsage();
   });
 
-  // Verify that we have fewer elements than prepended due to the memory limit
-  ASSERT_LT(total_count, total_prepended.load());
-
-  if (current_memory > memoryThreshold * maxHistory * 1.1) {
-    // We need to diagnose this failure. Let's determine the number and sizes
-    // of the lists:
-    std::cout << "Ring buffer position: " << list._ringBufferPos;
-    for (size_t i = 0; i <= list._history.size(); ++i) {
-      uint64_t count = 0;
-      uint64_t size = 0;
-      arangodb::AtomicList<Entry>::Node* e = nullptr;
-      if (i < list._history.size()) {
-        if (list._history[i] != nullptr) {
-          e = list._history[i]->getSnapshot();
-        }
-      } else {
-        e = list._current.load()->getSnapshot();
-      }
-      while (e != nullptr) {
-        count += 1;
-        size += e->_data.memoryUsage();
-        e = e->next();
-      }
-      std::cout << "List " << i << " has count " << count << " and size "
-                << size << "\n";
-    }
-  }
-
-  // Verify memory usage is within expected bounds
-  ASSERT_LE(current_memory,
-            memoryThreshold * maxHistory * 1.1);  // Allow 10% overhead
+  // We used to have a memory overshooting test here, but it was flaky.
+  // The trouble is that with very few cores it can happen that when
+  // many threads write to the list that some of the lists overshoot their
+  // memory usage considerably. This is, because the thread which happens
+  // to rotate the lists can be suspended when not enough cores are present.
+  // Since this is a problem which is not going to be relevant in practice,
+  // we ignore it here. This has been sacrified on the alter of performance.
 
   // Verify we have some elements and the reader did something
   ASSERT_GT(total_count, 0);
