@@ -106,7 +106,7 @@ class ApiRecordingFeature : public ArangodFeature {
   void cleanupLoop();
 
   // Whether or not to record recent API calls
-  bool _enabled{false};
+  bool _enabled{true};
 
   // Memory limit for one list of ApiCallRecords:
   size_t _memoryPerApiRecordList{100000};
