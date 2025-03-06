@@ -3,6 +3,13 @@ devel
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
+* FE-528: adds diskusage license info to UI.
+
+* BTS-2090: Fixes double log-lines per log
+
+* Fix vector index comparison in maintenance, which causes loop with agency and
+  dbservers.
+
 * Fix a bug in the index API /_api/index?withHidden=true, which can lead to
   two problems: (1) A newly created index is potentially not shown in
   the very moment when it is finished. (2) A newly created index is

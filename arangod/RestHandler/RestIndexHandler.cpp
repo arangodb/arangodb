@@ -299,7 +299,7 @@ RestStatus RestIndexHandler::getIndexes() {
             if (source.key.stringView() == StaticStrings::IndexId) {
               tmp.add(StaticStrings::IndexId,
                       VPackValue(
-                          absl::StrCat(cName, "/", source.key.stringView())));
+                          absl::StrCat(cName, "/", source.value.stringView())));
             } else {
               tmp.add(source.key.stringView(), source.value);
             }
