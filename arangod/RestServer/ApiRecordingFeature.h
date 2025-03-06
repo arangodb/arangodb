@@ -34,10 +34,22 @@
 #include "Containers/AtomicList.h"
 #include "Rest/CommonDefines.h"
 #include "Inspection/Transformers.h"
-#include "Inspection/Status.h"
-#include "Basics/TimeString.h"
+#include "Metrics/LogScale.h"
+#include "Metrics/HistogramBuilder.h"
+#include "Metrics/CounterBuilder.h"
 
 namespace arangodb {
+
+// Define a struct for the LogScale used in the histogram
+struct ApiCallTimeScale {
+  static metrics::LogScale<double> scale() { return {2, 0, 16000.0, 9}; }
+};
+
+// Declare metrics
+DECLARE_HISTOGRAM(arangodb_api_recording_call_time, ApiCallTimeScale,
+                  "Execution time histogram for API recording calls [ns]");
+DECLARE_COUNTER(arangodb_api_recording_total_time_msec_total,
+                "Total execution time of all API recording calls [ms]");
 
 struct ApiCallRecord {
   std::chrono::system_clock::time_point timeStamp;
@@ -71,7 +83,7 @@ class ApiRecordingFeature : public ArangodFeature {
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
 
   explicit ApiRecordingFeature(Server& server);
-  ~ApiRecordingFeature();
+  ~ApiRecordingFeature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
@@ -112,6 +124,10 @@ class ApiRecordingFeature : public ArangodFeature {
 
   // The cleanup thread itself
   std::jthread _cleanupThread;
+
+  // Metrics for measuring recordAPICall performance
+  metrics::Histogram<metrics::LogScale<double>>& _recordApiCallTimes;
+  metrics::Counter& _totalRecordApiCallTime;
 };
 
 }  // namespace arangodb

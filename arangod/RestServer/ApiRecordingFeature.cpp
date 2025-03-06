@@ -28,6 +28,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/MetricsFeature.h"
 
 using namespace arangodb::options;
 
@@ -38,7 +39,11 @@ size_t ApiCallRecord::memoryUsage() const noexcept {
 }
 
 ApiRecordingFeature::ApiRecordingFeature(Server& server)
-    : ArangodFeature{server, *this} {
+    : ArangodFeature{server, *this},
+      _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_api_recording_call_time{})),
+      _totalRecordApiCallTime(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_api_recording_total_time_msec_total{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -106,9 +111,26 @@ void ApiRecordingFeature::stop() {
 void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
                                         std::string_view path,
                                         std::string_view database) {
-  if (_enabled && _apiCallRecord != nullptr) {
-    _apiCallRecord->prepend(ApiCallRecord(requestType, path, database));
+  if (!_enabled || !_apiCallRecord) {
+    return;
   }
+
+  // Start timing
+  auto start = std::chrono::steady_clock::now();
+
+  // Existing implementation
+  _apiCallRecord->prepend(ApiCallRecord(requestType, path, database));
+
+  // End timing and record metrics
+  auto end = std::chrono::steady_clock::now();
+  int64_t elapsed =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+  // Record in histogram (seconds)
+  _recordApiCallTimes.count(static_cast<double>(elapsed));
+
+  // Record in counter (nanoseconds)
+  _totalRecordApiCallTime += elapsed;
 }
 
 void ApiRecordingFeature::cleanupLoop() {
