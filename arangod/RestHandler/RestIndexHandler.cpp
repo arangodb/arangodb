@@ -538,9 +538,10 @@ RestStatus RestIndexHandler::createIndex() {
   std::unique_lock<std::mutex> locker(_mutex);
 
   // the following callback is executed in a background thread
-  auto cb = [this, self = shared_from_this(),
-             execContext = std::move(execContext), collection = std::move(coll),
-             body = std::move(indexInfo)] {
+  auto cb = withLogContext([this, self = shared_from_this(),
+                            execContext = std::move(execContext),
+                            collection = std::move(coll),
+                            body = std::move(indexInfo)] {
     ExecContextScope scope(std::move(execContext));
     {
       std::unique_lock<std::mutex> locker(_mutex);
@@ -576,7 +577,7 @@ RestStatus RestIndexHandler::createIndex() {
     // notify REST handler
     SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
                                        [self]() { self->wakeupHandler(); });
-  };
+  });
 
   // start background thread
   _createInBackgroundData.thread = std::make_unique<std::thread>(std::move(cb));
