@@ -27,20 +27,32 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         return my_env
 
     def get_memory_limit_arg(self):
-        if os.path.isfile("/sys/fs/cgroup/memory/memory.limit_in_bytes"):
-            with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as limit:
-                memory = int(limit.read())
-                san_mode = os.environ.get("SAN_MODE")
-                if san_mode is not None:
-                    # sanitizer builds need more resources, but the sanitizer
-                    # allocations are not considered in the memory accounting,
-                    # so we reduce the memory assigned to all the instances
-                    if san_mode == "tsan":
-                        # tsan is even more memory hungry
-                        memory //= 3
-                    else:
-                        memory //= 2
-                return ["--memory", str(memory)]
+        limit = 0
+        for path in [
+                "/sys/fs/cgroup/memory/memory.limit_in_bytes",  # cgroups v1 hard limit
+                "/sys/fs/cgroup/memory/memory.soft_limit_in_bytes",  # cgroups v1 soft limit
+                "/sys/fs/cgroup/memory.max",  # cgroups v2 hard limit
+                "/sys/fs/cgroup/memory.high",  # cgroups v2 soft limit
+        ]:
+            try:
+                with open(path) as f:
+                    cgroups_limit = int(f.read())
+                if cgroups_limit > 0:
+                    limit = min(limit, cgroups_limit)
+            except Exception:
+                pass
+        if limit > 0:
+            san_mode = os.environ.get("SAN_MODE")
+            if san_mode is not None:
+                # sanitizer builds need more resources, but the sanitizer
+                # allocations are not considered in the memory accounting,
+                # so we reduce the memory assigned to all the instances
+                if san_mode == "tsan":
+                    # tsan is even more memory hungry
+                    limit //= 3
+                else:
+                    limit //= 2
+            return ["--memory", str(limit)]
         return []
 
     def run_testing(
