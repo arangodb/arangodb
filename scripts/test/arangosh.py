@@ -41,8 +41,8 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         for path in [
                 "/sys/fs/cgroup/memory/memory.limit_in_bytes",  # cgroups v1 hard limit
                 "/sys/fs/cgroup/memory/memory.soft_limit_in_bytes",  # cgroups v1 soft limit
-                memory_path + "memory.max",  # cgroups v2 hard limit
-                memory_path + "memory.high",  # cgroups v2 soft limit
+                os.path.join(memory_path, "memory.max"),  # cgroups v2 hard limit
+                os.path.join(memory_path, "memory.high"),  # cgroups v2 soft limit
         ]:
             try:
                 with open(path) as f:
