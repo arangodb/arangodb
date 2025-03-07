@@ -815,9 +815,6 @@ auto RestCursorHandler::runHandlerStateMachineAsync()
 
   TRI_ASSERT(_state == HandlerState::PREPARE);
   auto logContextValues = prepareEngine();
-  // TODO If I understand correctly, this only works on the same thread.
-  //      async<T> should pass on the LogContext to the next thread, so this can
-  //      work here as well.
   auto const logScopeGuard =
       LogContext::Accessor::ScopedValue(std::move(logContextValues));
   if (_state == HandlerState::FAILED) {
