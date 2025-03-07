@@ -28,17 +28,28 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
 
     def get_memory_limit_arg(self):
         limit = 0
+        cgroup_path = "/"
+        try:
+            with open('/proc/self/cgroup', 'r') as f:
+                cgroup_path = f.read().strip().split(':')[-1]
+        except Exception:
+            pass
+
+        # Construct the path to the memory controller
+        memory_path = f'/sys/fs/cgroup{cgroup_path}'
+
         for path in [
                 "/sys/fs/cgroup/memory/memory.limit_in_bytes",  # cgroups v1 hard limit
                 "/sys/fs/cgroup/memory/memory.soft_limit_in_bytes",  # cgroups v1 soft limit
-                "/sys/fs/cgroup/memory.max",  # cgroups v2 hard limit
-                "/sys/fs/cgroup/memory.high",  # cgroups v2 soft limit
+                memory_path + "memory.max",  # cgroups v2 hard limit
+                memory_path + "memory.high",  # cgroups v2 soft limit
         ]:
             try:
                 with open(path) as f:
                     cgroups_limit = int(f.read())
                 if cgroups_limit > 0:
-                    limit = min(limit, cgroups_limit)
+                    limit = cgroups_limit
+                    break
             except Exception:
                 pass
         if limit > 0:
