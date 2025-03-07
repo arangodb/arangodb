@@ -423,9 +423,9 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   };
 
   TRI_ASSERT(_state == HandlerState::PREPARE);
-  auto logScope = prepareEngine();
-  // TODO put logScope into scopeGuard
-  std::vector<LogContext::Accessor::ScopedValue> scopeGuard;
+  auto logContextValues = prepareEngine();
+  auto const logScopeGuard =
+      LogContext::Accessor::ScopedValue(std::move(logContextValues));
   if (_state == HandlerState::FAILED) {
     co_return fail();
   }

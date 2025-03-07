@@ -35,6 +35,7 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "Basics/debugging.h"
 
@@ -568,6 +569,12 @@ struct LogContext::ThreadControlBlock {
 struct LogContext::Accessor::ScopedValue {
   explicit ScopedValue(std::shared_ptr<LogContext::Values> v) {
     appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
+  }
+  explicit ScopedValue(std::vector<std::shared_ptr<LogContext::Values>>&& vs) {
+    for (auto&& v : vs) {
+      appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
+    }
+    vs.clear();
   }
 
   template<class KV, class Base, std::size_t Depth>
