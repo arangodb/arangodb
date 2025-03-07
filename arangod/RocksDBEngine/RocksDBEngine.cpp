@@ -84,6 +84,7 @@
 #include "Replication2/Storage/WAL/WalManager.h"
 #include "RocksDBEngine/Listeners/RocksDBBackgroundErrorListener.h"
 #include "RocksDBEngine/Listeners/RocksDBMetricsListener.h"
+#include "RocksDBEngine/Listeners/RocksDBThrottle.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBChecksumEnv.h"
@@ -101,7 +102,6 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
-#include "RocksDBEngine/RocksDBRateLimiterThread.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -125,7 +125,6 @@
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/ticks.h"
 
-#include <rocksdb/advanced_cache.h>
 #include <rocksdb/convenience.h>
 #include <rocksdb/db.h>
 #include <rocksdb/env.h>
@@ -291,7 +290,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _syncDelayThreshold(5000),
       _requiredDiskFreePercentage(0.01),
       _requiredDiskFreeBytes(16 * 1024 * 1024),
-      _useRateLimiter(true),
+      _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
       _verifySst(false),
@@ -365,10 +364,9 @@ void RocksDBEngine::shutdownRocksDBInstance() noexcept {
     return;
   }
 
-  // stop rate limiter
-  if (_rateLimiter != nullptr) {
-    _rateLimiter->beginShutdown();
-    _rateLimiter.reset();
+  // turn off RocksDBThrottle, and release our pointers to it
+  if (_throttleListener != nullptr) {
+    _throttleListener->stopThread();
   }
 
   for (rocksdb::ColumnFamilyHandle* h :
@@ -558,9 +556,8 @@ testing environments that are space-restricted and do not require keeping much
 WAL file data at all.)");
 
   options
-      ->addOption("--rocksdb.throttle",
-                  "Enable rate-limiting for RocksDB write operations.",
-                  new BooleanParameter(&_useRateLimiter),
+      ->addOption("--rocksdb.throttle", "Enable write-throttling.",
+                  new BooleanParameter(&_useThrottle),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -574,7 +571,7 @@ and blocking incoming writes.)");
           "--rocksdb.throttle-slots",
           "The number of historic metrics to use for throttle value "
           "calculation.",
-          new UInt64Parameter(&_rateLimiterSlots, /*base*/ 1, /*minValue*/ 8),
+          new UInt64Parameter(&_throttleSlots, /*base*/ 1, /*minValue*/ 1),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -588,8 +585,7 @@ the number of previous intervals to use for throttle value calculation.)");
       ->addOption(
           "--rocksdb.throttle-frequency",
           "The frequency for write-throttle calculations (in milliseconds).",
-          new UInt64Parameter(&_rateLimiterFrequency, /*base*/ 1,
-                              /*minValue*/ 100),
+          new UInt64Parameter(&_throttleFrequency),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -603,8 +599,7 @@ new maximum ingestion rate with this frequency.)");
       ->addOption(
           "--rocksdb.throttle-scaling-factor",
           "The adaptiveness scaling factor for write-throttle calculations.",
-          new UInt64Parameter(&_rateLimiterScalingFactor, /*base*/ 1,
-                              /*minValue*/ 1),
+          new UInt64Parameter(&_throttleScalingFactor),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer,
@@ -614,27 +609,10 @@ new maximum ingestion rate with this frequency.)");
       .setLongDescription(R"(There is normally no need to change this value.)");
 
   options
-      ->addOption("--rocksdb.throttle-min-write-rate",
-                  "The lower bound for the rate limiter's write bandwidth "
-                  "(in bytes per second).",
-                  new UInt64Parameter(&_rateLimiterMinWriteRate),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30805);
-
-  // --rocksdb.throttle-lower-bound-bps was renamed to
-  // --rocksdb.throttle-min-write-rate in ArangoDB 3.12.1
-  options->addOldOption("rocksdb.throttle-lower-bound-bps",
-                        "rocksdb.throttle-min-write-rate");
-
-  options
       ->addOption("--rocksdb.throttle-max-write-rate",
-                  "The upper bound for the rate limiter's write bandwidth "
-                  "(in bytes per second, 0 = unlimited).",
-                  new UInt64Parameter(&_rateLimiterMaxWriteRate),
+                  "The maximum write rate enforced by throttle (in bytes per "
+                  "second, 0 = unlimited).",
+                  new UInt64Parameter(&_throttleMaxWriteRate),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer,
@@ -646,13 +624,31 @@ throttling is the minimum of this value and the value that the regular throttle
 calculation produces, i.e. this option can be used to set a fixed upper bound
 on the write rate.)");
 
-  // not used since version 3.12.1.
-  options->addObsoleteOption(
-      "--rocksdb.throttle-slow-down-writes-trigger",
-      "The number of level 0 files whose payload "
-      "is not considered in throttle calculations when penalizing "
-      "the presence of L0 files.",
-      true);
+  options
+      ->addOption("--rocksdb.throttle-slow-down-writes-trigger",
+                  "The number of level 0 files whose payload "
+                  "is not considered in throttle calculations when penalizing "
+                  "the presence of L0 files.",
+                  new UInt64Parameter(&_throttleSlowdownWritesTrigger),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30805)
+      .setLongDescription(R"(There is normally no need to change this value.)");
+
+  options
+      ->addOption("--rocksdb.throttle-lower-bound-bps",
+                  "The lower bound for throttle's write bandwidth "
+                  "(in bytes per second).",
+                  new UInt64Parameter(&_throttleLowerBoundBps),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle,
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(30805);
 
 #ifdef USE_ENTERPRISE
   options->addOption("--rocksdb.create-sha-files",
@@ -824,6 +820,14 @@ void RocksDBEngine::validateOptions(
 #ifdef USE_ENTERPRISE
   validateEnterpriseOptions(options);
 #endif
+
+  if (_throttleScalingFactor == 0) {
+    _throttleScalingFactor = 1;
+  }
+
+  if (_throttleSlots < 8) {
+    _throttleSlots = 8;
+  }
 
   if (_syncInterval > 0) {
     if (_syncInterval < minSyncInterval) {
@@ -1118,12 +1122,12 @@ void RocksDBEngine::start() {
     }
   }
 
-  if (_useRateLimiter) {
-    _rateLimiter = std::make_shared<RocksDBRateLimiterThread>(
-        *this, _rateLimiterSlots, _rateLimiterFrequency,
-        _rateLimiterScalingFactor, _rateLimiterMinWriteRate,
-        _rateLimiterMaxWriteRate);
-    _dbOptions.listeners.push_back(_rateLimiter);
+  if (_useThrottle) {
+    _throttleListener = std::make_shared<RocksDBThrottle>(
+        _throttleSlots, _throttleFrequency, _throttleScalingFactor,
+        _throttleMaxWriteRate, _throttleSlowdownWritesTrigger,
+        _throttleLowerBoundBps);
+    _dbOptions.listeners.push_back(_throttleListener);
   }
 
   _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
@@ -1194,9 +1198,9 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 
-  if (_rateLimiter != nullptr) {
-    // give rate limiter access to all available column families
-    _rateLimiter->setFamilies(cfHandles);
+  // give throttle access to families
+  if (_useThrottle) {
+    _throttleListener->setFamilies(cfHandles);
   }
 
   TRI_ASSERT(_db != nullptr);
@@ -1272,11 +1276,6 @@ void RocksDBEngine::start() {
           << "could not start rocksdb sync thread";
       FATAL_ERROR_EXIT();
     }
-  }
-
-  if (_rateLimiter != nullptr && !_rateLimiter->start()) {
-    LOG_TOPIC("f0bba", ERR, Logger::ENGINES)
-        << "could not start rocksdb rate limiter thread";
   }
 
   TRI_ASSERT(_db != nullptr);
@@ -3385,10 +3384,12 @@ DECLARE_GAUGE(rocksdb_block_cache_capacity, uint64_t,
 DECLARE_GAUGE(rocksdb_block_cache_pinned_usage, uint64_t,
               "rocksdb_block_cache_pinned_usage");
 DECLARE_GAUGE(rocksdb_block_cache_usage, uint64_t, "rocksdb_block_cache_usage");
-DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
-              "rocksdb_block_cache_entries");
-DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
-              "rocksdb_block_cache_charge_per_entry");
+#ifdef ARANGODB_ROCKSDB8
+// DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
+//                    "rocksdb_block_cache_entries");
+// DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
+//                    "rocksdb_block_cache_charge_per_entry");
+#endif
 DECLARE_GAUGE(rocksdb_compaction_pending, uint64_t,
               "rocksdb_compaction_pending");
 DECLARE_GAUGE(rocksdb_compression_ratio_at_level0, uint64_t,
@@ -3471,11 +3472,6 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
-DECLARE_GAUGE(rocksdb_live_blob_file_size, uint64_t,
-              "rocksdb_live_blob_file_size");
-DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
-              "rocksdb_live_blob_file_garbage_size");
-DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
 void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   // get generic capabilities
@@ -3617,9 +3613,6 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kMinLogNumberToKeep);
   addIntAllCf(rocksdb::DB::Properties::kEstimateLiveDataSize);
   addIntAllCf(rocksdb::DB::Properties::kLiveSstFilesSize);
-  addIntAllCf(rocksdb::DB::Properties::kLiveBlobFileSize);
-  addIntAllCf(rocksdb::DB::Properties::kLiveBlobFileGarbageSize);
-  addIntAllCf(rocksdb::DB::Properties::kNumBlobFiles);
   addStr(rocksdb::DB::Properties::kDBStats);
   addStr(rocksdb::DB::Properties::kSSTables);
   addInt(rocksdb::DB::Properties::kNumRunningCompactions);
@@ -3631,6 +3624,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kBlockCacheUsage);
   addInt(rocksdb::DB::Properties::kBlockCachePinnedUsage);
 
+#ifdef ARANGODB_ROCKSDB8
   auto const& tableOptions = _optionsProvider.getTableOptions();
   if (tableOptions.block_cache != nullptr) {
     auto const& cache = tableOptions.block_cache;
@@ -3647,6 +3641,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
     builder.add("rocksdb.block-cache-entries", VPackValue(0));
     builder.add("rocksdb.block-cache-charge-per-entry", VPackValue(0));
   }
+#endif
 
   addIntAllCf(rocksdb::DB::Properties::kTotalSstFilesSize);
   addInt(rocksdb::DB::Properties::kActualDelayedWriteRate);
@@ -3745,9 +3740,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   }
   builder.close();
 
-  if (_rateLimiter != nullptr) {
+  if (_throttleListener) {
     builder.add("rocksdb_engine.throttle.bps",
-                VPackValue(_rateLimiter->currentRate()));
+                VPackValue(_throttleListener->getThrottle()));
   }
 
   {
