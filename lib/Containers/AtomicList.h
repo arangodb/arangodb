@@ -188,8 +188,7 @@ class BoundedList {
     }
   }
 
-  // Try to rotate lists without blocking. Returns true if rotation was
-  // performed.
+  // Try to rotate lists without blocking.
   void tryRotateLists(std::shared_ptr<AtomicList<T>>& expectedCurrent) {
     // For a specific value of _current, we want that only one thread actually
     // does the rotation. So, when the threshold is reached, we race on the
