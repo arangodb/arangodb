@@ -250,6 +250,7 @@ set(ARANGODB_TESTS_SOURCES
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/MemoryUsageTest.cpp
   RocksDBEngine/TransactionManagerTest.cpp
+  Scheduler/EventCountTest.cpp
   Sharding/ShardDistributionReporterTest.cpp
   SimpleHttpClient/ConnectionCacheTest.cpp
   SimpleHttpClient/HttpResponseCheckerTest.cpp
@@ -299,6 +300,15 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}"
 
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
+
+add_executable(arangodbtests_scheduler
+   Scheduler/EventCountTest.cpp
+   Scheduler/ThreadPoolTest.cpp
+   Scheduler/ThreadPoolPerfTest.cpp)
+target_link_libraries(arangodbtests_scheduler
+   arangoserver
+   arango_tests_basics
+   gtest_main)
 
 add_subdirectory(Basics)
 add_subdirectory(Inspection)
