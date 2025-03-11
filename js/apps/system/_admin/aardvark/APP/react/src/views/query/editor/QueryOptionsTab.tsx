@@ -202,6 +202,20 @@ const QueryOptionForm = () => {
   );
 };
 
+const parseInputValue = (
+  value: string,
+  type: string
+): string | number | undefined => {
+  if (type === "number") {
+    // for number inputs, convert empty string to undefined to avoid defaulting to 0
+    if (value === "") {
+      return undefined;
+    }
+    return Number(value);
+  }
+  return value;
+};
+
 const QueryOptionRow = ({
   queryOptionKey,
   options
@@ -243,7 +257,7 @@ const QueryOptionRow = ({
         }}
         type={option.type}
         onChange={e => {
-          const updatedValue = e.target.value;
+          const updatedValue = parseInputValue(e.target.value, option.type);
           setQueryOptions(prev => {
             return { ...prev, [queryOptionKey]: updatedValue };
           });

@@ -215,6 +215,17 @@ diff --git a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt b/3rdParty/snappy/snapp
 index 672561e62fc..d6341fd1d7a 100644
 --- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
 +++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+@@ -26,7 +26,7 @@
+ # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ 
+-cmake_minimum_required(VERSION 3.1)
++cmake_minimum_required(VERSION 3.21)
+ project(Snappy VERSION 1.1.9 LANGUAGES C CXX)
+ 
+ # C++ standard can be overridden when this is used as a sub-project.
+--- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
++++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
 @@ -160,6 +160,7 @@ int main() {
    return zero();
  }" HAVE_ATTRIBUTE_ALWAYS_INLINE)
@@ -407,7 +418,8 @@ Upstream is: https://chromium.googlesource.com/v8/v8.git
 
 ## velocypack
 
-our fast and compact format for serialization and storage
+2dd3644585fe4cf56f6f3caad4810e3a225a8fe7
+Our fast and compact format for serialization and storage
 
 Maintained at:
 https://github.com/arangodb/velocypack/
