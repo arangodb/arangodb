@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -59,39 +59,43 @@ class RestBaseHandler : public rest::RestHandler {
   void generateResult(rest::ResponseCode, Payload&&,
                       std::shared_ptr<transaction::Context> context);
 
-  /// convenience function akin to generateError,
-  /// renders payload in 'result' field
-  /// adds proper `error`, `code` fields
+  // convenience function akin to generateError,
+  // renders payload in 'result' field
+  // adds proper `error`, `code` fields
   void generateOk(rest::ResponseCode, velocypack::Slice,
                   VPackOptions const& = VPackOptions::Defaults);
 
-  /// Add `error` and `code` fields into your response
+  // Add `error` and `code` fields into your response
   void generateOk(rest::ResponseCode, velocypack::Builder const&);
 
   // generates a canceled message
   void generateCanceled();
 
-  /// @brief generates not implemented
+  // generates not implemented
   void generateNotImplemented(std::string const& path);
 
-  /// @brief generates forbidden
+  // generates forbidden
   void generateForbidden();
 
  protected:
-  /// @brief parses the request body as VelocyPack, generates body
+  bool isAdminUser() const;
+  bool isSelfUser(std::string const& user) const;
+  bool canAccessUser(std::string const& user) const;
+
+  // parses the request body as VelocyPack, generates body
   velocypack::Slice parseVPackBody(bool& success);
 
   template<typename Payload>
   void writeResult(Payload&&, velocypack::Options const& options);
 
-  /// @brief configure if outgoing responses will have the potential
-  /// dirty reads header set:
+  // configure if outgoing responses will have the potential
+  // dirty reads header set:
   void setOutgoingDirtyReadsHeader(bool flag) noexcept {
     _potentialDirtyReads = flag;
   }
 
-  /// @brief Flag, if the outgoing response should have an HTTP header
-  /// indicating potential dirty reads:
+  // Flag, if the outgoing response should have an HTTP header
+  // indicating potential dirty reads:
   bool _potentialDirtyReads;
 };
 }  // namespace arangodb
