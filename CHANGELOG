@@ -1,6 +1,8 @@
 devel
 -----
 
+* Activates 100GB limit
+
 * Updated ArangoDB Starter to v0.19.9-preview-4.
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
