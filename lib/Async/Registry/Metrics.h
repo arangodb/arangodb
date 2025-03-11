@@ -35,27 +35,26 @@ namespace arangodb::async_registry {
 
 struct Metrics {
   Metrics() = default;
-  Metrics(std::shared_ptr<metrics::Counter> promises_total,
-          std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_promises,
-          std::shared_ptr<metrics::Gauge<std::uint64_t>>
-              ready_for_deletion_promises,
-          std::shared_ptr<metrics::Counter> threads_total,
-          std::shared_ptr<metrics::Gauge<std::uint64_t>> running_threads,
-          std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_threads)
+  Metrics(
+      std::shared_ptr<metrics::Counter> promises_total,
+      std::shared_ptr<metrics::Gauge<std::uint64_t>> existing_promises,
+      std::shared_ptr<metrics::Gauge<std::uint64_t>>
+          ready_for_deletion_promises,
+      std::shared_ptr<metrics::Counter> thread_registries_total,
+      std::shared_ptr<metrics::Gauge<std::uint64_t>> existing_thread_registries)
       : promises_total{promises_total},
-        registered_promises{registered_promises},
+        existing_promises{existing_promises},
         ready_for_deletion_promises{ready_for_deletion_promises},
-        threads_total{threads_total},
-        running_threads{running_threads},
-        registered_threads{registered_threads} {}
+        thread_registries_total{thread_registries_total},
+        existing_thread_registries{existing_thread_registries} {}
 
   std::shared_ptr<metrics::Counter> promises_total = nullptr;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_promises = nullptr;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> existing_promises = nullptr;
   std::shared_ptr<metrics::Gauge<std::uint64_t>> ready_for_deletion_promises =
       nullptr;
-  std::shared_ptr<metrics::Counter> threads_total = nullptr;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> running_threads = nullptr;
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> registered_threads = nullptr;
+  std::shared_ptr<metrics::Counter> thread_registries_total = nullptr;
+  std::shared_ptr<metrics::Gauge<std::uint64_t>> existing_thread_registries =
+      nullptr;
 };
 
 }  // namespace arangodb::async_registry

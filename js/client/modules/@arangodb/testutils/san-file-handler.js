@@ -150,7 +150,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'sanOptions': {},
     'isInstrumented': isInstrumented,
     'haveFailAt': haveFailAt, // silent option - automatically set only.
-    'oneTestTimeout': (isInstrumented? 30 : 15) * 60,
+    'oneTestTimeout': (isInstrumented? 40 : 15) * 60,
   });
 
   tu.CopyIntoList(optionsDocumentation, [
