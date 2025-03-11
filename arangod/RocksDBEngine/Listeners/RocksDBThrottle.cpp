@@ -437,6 +437,7 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
 
     // start at level 0 and then continue digging deeper until we find
     // _some_ file.
+    // TODO(jbajic) this can be done differently
     for (int i = 0; i <= numLevels; ++i) {
       propertyName.push_back('0' + i);
       bool ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
@@ -451,6 +452,7 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
         break;
       }
     }
+    LOG_DEVEL << "TEMP NUMBER OF FILES: " << temp;
 
     if (static_cast<int>(_slowdownWritesTrigger) <= temp) {
       temp -= (static_cast<int>(_slowdownWritesTrigger) - 1);
@@ -479,6 +481,7 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
     compactionBacklog += (immBacklog - immTrigger);
   }
 
+  LOG_DEVEL << "compactionBacklog: " << compactionBacklog << ", pendingCompactionBytes: " << pendingCompactionBytes;
   return {compactionBacklog, pendingCompactionBytes};
 }
 
