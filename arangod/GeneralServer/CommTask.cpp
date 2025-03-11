@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -64,6 +64,7 @@ namespace {
 // some static URL path prefixes
 constexpr std::string_view pathPrefixApi("/_api/");
 constexpr std::string_view pathPrefixApiUser("/_api/user/");
+constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
@@ -840,6 +841,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         vc->forceReadOnly();
       } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
+        result = Flow::Continue;
+      } else if (userAuthenticated && path.starts_with(::pathPrefixApiToken)) {
         result = Flow::Continue;
       }
     }

@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -46,79 +46,82 @@ class Methods;
 
 class VocbaseContext;
 
-/// @brief abstract base request handler
+// abstract base request handler
 class RestVocbaseBaseHandler : public RestBaseHandler {
   RestVocbaseBaseHandler(RestVocbaseBaseHandler const&) = delete;
   RestVocbaseBaseHandler& operator=(RestVocbaseBaseHandler const&) = delete;
 
  public:
-  /// @brief agency public path
+  // access token path
+  static std::string const ACCESS_TOKEN_PATH;
+
+  // agency public path
   static std::string const AGENCY_PATH;
 
-  /// @brief agency private path
+  // agency private path
   static std::string const AGENCY_PRIV_PATH;
 
-  /// @brief analyzer path
+  // analyzer path
   static std::string const ANALYZER_PATH;
 
-  /// @brief collection path
+  // collection path
   static std::string const COLLECTION_PATH;
 
-  /// @brief cursor path
+  // cursor path
   static std::string const CURSOR_PATH;
 
-  /// @brief database path
+  // database path
   static std::string const DATABASE_PATH;
 
-  /// @brief document path
+  // document path
   static std::string const DOCUMENT_PATH;
 
-  /// @brief edges path
+  // edges path
   static std::string const EDGES_PATH;
 
-  /// @brief gharial graph api path
+  // gharial graph api path
   static std::string const GHARIAL_PATH;
 
-  /// @brief endpoint path
+  // endpoint path
   static std::string const ENDPOINT_PATH;
 
-  /// @brief document import path
+  // document import path
   static std::string const IMPORT_PATH;
 
-  /// @brief index path
+  // index path
   static std::string const INDEX_PATH;
 
-  /// @brief replication path
+  // replication path
   static std::string const REPLICATION_PATH;
 
-  /// @brief simple query all path
+  // simple query all path
   static std::string const SIMPLE_QUERY_ALL_PATH;
 
-  /// @brief simple query all keys path
+  // simple query all keys path
   static std::string const SIMPLE_QUERY_ALL_KEYS_PATH;
 
-  /// @brief simple query by example path
+  // simple query by example path
   static std::string const SIMPLE_QUERY_BY_EXAMPLE;
 
-  /// @brief simple batch document lookup path
+  // simple batch document lookup path
   static std::string const SIMPLE_LOOKUP_PATH;
 
-  /// @brief simple batch document removal path
+  // simple batch document removal path
   static std::string const SIMPLE_REMOVE_PATH;
 
-  /// @brief tasks path
+  // tasks path
   static std::string const TASKS_PATH;
 
-  /// @brief upload path
+  // upload path
   static std::string const UPLOAD_PATH;
 
-  /// @brief users path
+  // users path
   static std::string const USERS_PATH;
 
-  /// @brief view path
+  // view path
   static std::string const VIEW_PATH;
 
-  /// @brief Internal Traverser path
+  // Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 
   RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
@@ -134,74 +137,73 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   void shutdownExecute(bool isFinalized) noexcept override;
 
  protected:
-  /// @brief returns the short id of the server which should handle this request
+  // returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
 
-  /// @brief assemble a document id from a string and a string
+  // assemble a document id from a string and a string
   /// optionally url-encodes
   std::string assembleDocumentId(std::string_view collectionName,
                                  std::string_view key, bool urlEncode) const;
 
-  /// @brief generates a HTTP 201 or 202 response
+  // generates a HTTP 201 or 202 response
   void generate20x(arangodb::OperationResult const& result,
                    std::string_view collectionName, TRI_col_type_e type,
                    arangodb::velocypack::Options const* options,
                    bool isMultiple, bool silent,
                    rest::ResponseCode waitForSyncResponseCode);
 
-  /// @brief generates conflict error
+  // generates conflict error
   void generateConflictError(arangodb::OperationResult const&,
                              bool precFailed = false);
 
-  /// @brief generates not modified
+  // generates not modified
   void generateNotModified(RevisionId);
 
-  /// @brief generates first entry from a result set
+  // generates first entry from a result set
   void generateDocument(velocypack::Slice input, bool generateBody,
                         velocypack::Options const* options = nullptr);
 
-  /// @brief generate an error message for a transaction error, this method
+  // generate an error message for a transaction error, this method
   /// is used by the others.
   void generateTransactionError(std::string_view collectionName,
                                 OperationResult const& result,
                                 std::string_view key = "",
                                 RevisionId rid = RevisionId::none());
 
-  /// @brief extracts the revision. "header" must be lowercase.
+  // extracts the revision. "header" must be lowercase.
   RevisionId extractRevision(char const* header, bool& isValid) const;
 
-  /// @brief extracts a string parameter value
+  // extracts a string parameter value
   void extractStringParameter(std::string const& name, std::string& ret) const;
 
-  /**
-   * @brief Helper to create a new Transaction for a single collection. The
-   * helper method will will lock the collection accordingly. It will
-   * additionally check if there is a transaction-id header and will make use of
-   * an existing transaction if a transaction id is specified. it can also start
-   * a new transaction lazily if requested.
-   *
-   * @param collectionName Name of the collection to be locked
-   * @param mode The access mode (READ / WRITE / EXCLUSIVE)
-   *
-   * @return A freshly created transaction for the given collection with proper
-   * locking or a leased transaction.
-   */
+  // Helper to create a new Transaction for a single collection. The
+  // helper method will will lock the collection accordingly. It will
+  // additionally check if there is a transaction-id header and will make use of
+  // an existing transaction if a transaction id is specified. it can also start
+  // a new transaction lazily if requested.
+  //
+  // collectionName: Name of the collection to be locked
+  // mode: The access mode (READ / WRITE / EXCLUSIVE)
+  //
+  // Returns a freshly created transaction for the given collection with proper
+  // locking or a leased transaction.
+
   futures::Future<std::unique_ptr<transaction::Methods>> createTransaction(
       std::string const& cname, AccessMode::Type mode,
       OperationOptions const& opOptions,
       transaction::OperationOrigin operationOrigin,
       transaction::Options&& trxOpts = transaction::Options()) const;
 
-  /// @brief create proper transaction context, including the proper IDs
+  // create proper transaction context, including the proper IDs
   futures::Future<std::shared_ptr<transaction::Context>>
   createTransactionContext(AccessMode::Type mode,
                            transaction::OperationOrigin operationOrigin) const;
 
  protected:
-  /// @brief request context
+  // request context
   VocbaseContext& _context;
 
-  /// @brief the vocbase, managed by VocbaseContext
+  // the vocbase, managed by VocbaseContext
   TRI_vocbase_t& _vocbase;
 
  private:

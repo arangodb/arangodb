@@ -9,7 +9,6 @@ if (USE_ENTERPRISE)
   target_include_directories(${BIN_ARANGOBACKUP} PRIVATE ${PROJECT_SOURCE_DIR}/arangod)
 
   target_link_libraries(${BIN_ARANGOBACKUP}
-    arango
     ${SYSTEM_LIBRARIES}
     boost_system
     boost_boost

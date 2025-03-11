@@ -1,7 +1,35 @@
 devel
 -----
 
-* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL 
+* FE-503: fix losing bind params when resizing query editor.
+
+* FE-535: fix set cached query when bind params are equal.
+
+* FE-528: adds diskusage license info to UI.
+
+* BTS-2090: Fixes double log-lines per log
+
+* Fix vector index comparison in maintenance, which causes loop with agency and
+  dbservers.
+
+* Added support for access tokens. Access token can be used instead of
+  a password. However, the recommended way is to generate a JWT token
+  using /_open/auth.
+
+* Fix a bug in the index API /_api/index?withHidden=true, which can lead to
+  two problems: (1) A newly created index is potentially not shown in
+  the very moment when it is finished. (2) A newly created index is
+  shown twice in the result, once with `isBuilding: true` and once
+  without. This fixes BTS-2044.
+
+* Introduces first changes for the new diskusage based license.
+
+* BTS-2089: Fix a crash when query logging and query cache were enabled.
+
+* Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
+  reference.
+
+* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL
   query to hang and block a thread.
 
 * The agency supervision is clearing "finished" jobs too quickly from
