@@ -49,17 +49,17 @@ auto ThreadRegistry::make(std::shared_ptr<const Metrics> metrics,
 ThreadRegistry::ThreadRegistry(std::shared_ptr<const Metrics> metrics,
                                Registry* registry)
     : thread{ThreadId::current()}, registry{registry}, metrics{metrics} {
-  if (metrics->threads_total != nullptr) {
-    metrics->threads_total->count();
+  if (metrics->thread_registries_total != nullptr) {
+    metrics->thread_registries_total->count();
   }
-  if (metrics->running_threads != nullptr) {
-    metrics->running_threads->fetch_add(1);
+  if (metrics->existing_thread_registries != nullptr) {
+    metrics->existing_thread_registries->fetch_add(1);
   }
 }
 
 ThreadRegistry::~ThreadRegistry() noexcept {
-  if (metrics->running_threads != nullptr) {
-    metrics->running_threads->fetch_sub(1);
+  if (metrics->existing_thread_registries != nullptr) {
+    metrics->existing_thread_registries->fetch_sub(1);
   }
   if (registry != nullptr) {
     registry->remove_thread(this);
@@ -88,8 +88,8 @@ auto ThreadRegistry::add_promise(Requester requester,
   }
   // (1) - this store synchronizes with load in (2)
   promise_head.store(promise, std::memory_order_release);
-  if (metrics->registered_promises != nullptr) {
-    metrics->registered_promises->fetch_add(1);
+  if (metrics->existing_promises != nullptr) {
+    metrics->existing_promises->fetch_add(1);
   }
   return promise;
 }
@@ -114,8 +114,8 @@ auto ThreadRegistry::mark_for_deletion(Promise* promise) noexcept -> void {
   // DO NOT access promise after this line. The owner thread might already
   // be running a cleanup and promise might be deleted.
 
-  if (metrics->registered_promises != nullptr) {
-    metrics->registered_promises->fetch_sub(1);
+  if (metrics->existing_promises != nullptr) {
+    metrics->existing_promises->fetch_sub(1);
   }
   if (metrics->ready_for_deletion_promises != nullptr) {
     metrics->ready_for_deletion_promises->fetch_add(1);
