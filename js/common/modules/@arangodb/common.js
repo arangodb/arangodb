@@ -572,19 +572,19 @@ exports.enterpriseLicenseVisibility = function() {
     switch (license.diskusage.status) {
       case "limit-reached":
         let readonly = new Date(currentTime.getTime() + 1000 * (license.diskusage.secondsUntilReadOnly));
-        console.warn("Your server reached it's diskusage limit.");
-        console.warn("Its operation will be restricted to read-only mode on " + readonly + "!");
-        console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
+        console.warn("Your server has reached its disk usage limit of 100GB.");
+        console.warn("If you don't decrease the data size, the server will be restricted to read-only mode on " + readonly + ".");
+        console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license and continue using ArangoDB without limitations.");
         return;
       case "read-only":
         let shutdown = new Date(currentTime.getTime() + 1000 * (license.diskusage.secondsUntilShutDown));
-        console.error("Your server has been restricted to read-only mode!");
-        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.");
-        console.error("The server will shutdown on " + shutdown + "!");
+        console.error("Your server has been restricted to read-only mode due to violation of the 100GB data size limit.");
+        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible.");
+        console.error("Without a valid license the server will be shut down on " + shutdown + ".");
         return;
       case "shutdown":
-        console.error("The diskusage limit was reached and the server will shutdown in 10 minutes.");
-        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.");
+        console.error("The 100 GB disk usage limit was reached and the server was put into the read-only mode after a grace period.");
+        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license.");
         return;
       case "good":
       default:
