@@ -26,33 +26,17 @@ export const ArangoSearchJSONEditor = () => {
       <ControlledJSONEditor
         value={values}
         onValidationError={errors => {
+          const hasErrors = errors?.length > 0;
+          setIsFormDisabled(hasErrors);
           setErrors(errors);
         }}
         mode={"code"}
         ajv={ajv}
         history
         schema={schema}
-        onChangeText={jsonString => {
-          try {
-            const json = JSON.parse(jsonString);
-            setIsFormDisabled(false);
-            if (JSON.stringify(json) !== JSON.stringify(values)) {
-              setValues(json);
-            }
-          } catch (e) {
-            setIsFormDisabled(true);
-          }
-        }}
         onChange={json => {
-          try {
-            const jsonString = JSON.stringify(json);
-            const jsonParsed = JSON.parse(jsonString);
-            setIsFormDisabled(false);
-            if (JSON.stringify(jsonParsed) !== JSON.stringify(values)) {
-              setValues(json);
-            }
-          } catch (e) {
-            setIsFormDisabled(true);
+          if (JSON.stringify(json) !== JSON.stringify(values)) {
+            setValues(json);
           }
         }}
         htmlElementProps={{
