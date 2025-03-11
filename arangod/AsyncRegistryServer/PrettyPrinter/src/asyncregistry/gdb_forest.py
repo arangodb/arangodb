@@ -1,5 +1,5 @@
 from typing import Iterable, Any
-from asyncregistry.data import Promise, PromiseId, Thread
+from asyncregistry.gdb_data import Promise, PromiseId, Thread
 
 Id = str
 class Forest:

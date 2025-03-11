@@ -1,9 +1,10 @@
 from __future__ import annotations
 from typing import Iterable
+from dataclasses import dataclass
 
+@dataclass
 class State:
-    def __init__(self, name: str):
-        self.name = name
+    name: str
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
@@ -18,11 +19,11 @@ class State:
         else:
             return self.name
     
+@dataclass
 class Thread:
-    def __init__(self, posix_id, lwpid):
-        # TODO is there a way to get the thread name?
-        self.posix_id = posix_id
-        self.lwpid = lwpid
+    posix_id: gdb.Value
+    lwpid: gdb.Value
+    # TODO is there a way to get the thread name?
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
@@ -31,11 +32,11 @@ class Thread:
     def __str__(self):
         return "thread " + str(self.lwpid)
 
+@dataclass
 class SourceLocation:
-    def __init__(self, file_name, function_name, line):
-        self.file_name = file_name
-        self.function_name = function_name
-        self.line = line
+    file_name: gdb.Value
+    function_name: gdb.Value
+    line: gdb.Value
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
@@ -44,9 +45,9 @@ class SourceLocation:
     def __str__(self):
         return str(self.function_name) + " (" +  str(self.file_name) + ":" + str(self.line) + ")"
 
+@dataclass
 class Requester:
-    def __init__(self, content: Thread | PromiseId):
-        self.content = content
+    content: Thread | PromiseId
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
@@ -62,7 +63,10 @@ class Requester:
     def __str__(self):
         return str(self.content)
 
+@dataclass
 class PromiseId:
+    id: gdb.Value
+    
     def __init__(self, id):
         self.id = id
 
@@ -72,14 +76,13 @@ class PromiseId:
     def __str__(self):
         return str(self.id)
 
+@dataclass
 class Promise:
-    def __init__(self, id: PromiseId, thread: Thread, source_location: SourceLocation, requester: Requester, state: State):
-        self.id = id
-        self.thread = thread
-        self.source_location = source_location
-        self.requester = requester
-        self.state = state
-
+    id: PromiseId
+    thread: Thread
+    source_location: SourceLocation
+    requester: Requester
+    state: State
 
     @classmethod
     def from_gdb(cls, value_ptr: gdb.Value):
@@ -98,9 +101,9 @@ class Promise:
     def __str__(self):
         return str(self.source_location) + ", " + str(self.thread) + ", " + str(self.state)
 
+@dataclass
 class GdbAtomicList:
-    def __init__(self, begin):
-        self._head_ptr = begin
+    _head_ptr: gdb.Value
 
     def __iter__(self):
         current = self._head_ptr
@@ -110,16 +113,16 @@ class GdbAtomicList:
             next = current.dereference()["next"]
             yield current
 
+@dataclass
 class ThreadRegistry:
-    def __init__(self, promises: Iterable[MyTest]):
-       self.promises = promises
+    promises: Iterable[Promise]
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
         return cls(Promise.from_gdb(promise) for promise in GdbAtomicList(value["promise_head"]["_M_b"]["_M_p"]))
 
 class GdbVector:
-    def __init__(self, value):
+    def __init__(self, value: gdb.Value):
         self._begin = value["_M_start"]
         self._end = value["_M_finish"]
         
@@ -130,9 +133,9 @@ class GdbVector:
             current += 1
             yield registry
 
+@dataclass
 class AsyncRegistry:
-    def __init__(self, registries: Iterable[ThreadRegistry]):
-        self.thread_registries = registries
+    thread_registries: Iterable[ThreadRegistry]
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):

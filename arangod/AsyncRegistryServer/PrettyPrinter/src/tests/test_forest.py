@@ -1,13 +1,13 @@
 import unittest
 
-from asyncregistry.forest import Forest, Id
-from asyncregistry.data import PromiseId, Thread
+from asyncregistry.gdb_forest import Forest, Id
+from asyncregistry.gdb_data import PromiseId, Thread
 from typing import Iterable
 
 class ForestIsIndexedByChildren(unittest.TestCase):
     def test_empty_forest(self):
         forest = Forest.from_promises([])
-        self.assertEqual([a for a in forest.children(PromiseId(0))], [])
+        self.assertEqual([a for a in forest.children("0")], [])
 
     def test_one_root(self):
         forest = Forest.from_promises([
