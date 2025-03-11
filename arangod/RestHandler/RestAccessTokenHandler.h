@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2025 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,39 +17,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 namespace auth {
 class UserManager;
 }
 
-class RestUsersHandler : public arangodb::RestBaseHandler {
+class RestAccessTokenHandler : public RestVocbaseBaseHandler {
  public:
-  RestUsersHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  RestAccessTokenHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  virtual char const* name() const override { return "RestUsersHandler"; }
+  char const* name() const override final { return "RestAccessTokenHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
 
  private:
-  // helper to generate a compliant response for individual user requests
-  void generateUserResult(rest::ResponseCode code,
-                          velocypack::Builder const& doc);
-
-  void generateDatabaseResult(auth::UserManager*, std::string const& user,
-                              bool full);
-
-  RestStatus getRequest(auth::UserManager*);
-  RestStatus postRequest(auth::UserManager*);
-  RestStatus putRequest(auth::UserManager*);
-  RestStatus patchRequest(auth::UserManager*);
-  RestStatus deleteRequest(auth::UserManager*);
+  RestStatus createAccessToken(auth::UserManager*, std::string const& user);
+  RestStatus deleteAccessToken(auth::UserManager*, std::string const& user);
+  RestStatus showAccessTokens(auth::UserManager*, std::string const& user);
 };
 }  // namespace arangodb

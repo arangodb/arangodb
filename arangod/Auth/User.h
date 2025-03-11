@@ -36,11 +36,11 @@
 namespace arangodb {
 namespace auth {
 
-/// @brief Represents a 'user' entry.
-/// It contains structures to store the access
-/// levels for databases and collections.  The user
-/// object must be serialized via `toVPackBuilder()` and
-/// written to the _users collection after modifying it.
+// This class represents a 'user' entry.  It contains structures to
+// store the access levels for databases and collections.  The user
+// object must be serialized via `toVPackBuilder()` and written to the
+// `_users` collection after modifying it.
+
 class User {
   friend class UserManager;
 
@@ -56,7 +56,7 @@ class User {
  public:
   std::string const& key() const { return _key; }
   RevisionId rev() const { return _rev; }
-  // updates the user's _loaded attribute
+  // updates the user's `_loaded` attribute
   void touch();
 
   std::string const& username() const { return _username; }
@@ -67,25 +67,26 @@ class User {
 
   bool checkPassword(std::string const& password) const;
   void updatePassword(std::string const& password);
+  bool checkAccessToken(std::string const& token) const;
 
   velocypack::Builder toVPackBuilder() const;
 
   void setActive(bool active) { _active = active; }
 
-  /// grant specific access rights for db. The default "*" is also a
-  /// valid database name
+  // Grant specific access rights for db. The default "*" is also a
+  // valid database name
   void grantDatabase(std::string const& dbname, auth::Level level);
 
-  /// Removes the entry, returns true if entry existed
+  // Removes the entry, returns true if entry existed
   bool removeDatabase(std::string const& dbname);
 
-  /// Grant collection rights, "*" is a valid parameter for dbname and
-  /// collection.  The combination of "*"/"*" is automatically used for
-  /// the root
+  // Grant collection rights, "*" is a valid parameter for dbname and
+  // collection.  The combination of "*"/"*" is automatically used for
+  // the root
   void grantCollection(std::string const& dbname, std::string const& cname,
                        auth::Level level);
 
-  /// Removes the collection right, returns true if entry existed
+  // Removes the collection right, returns true if entry existed
   bool removeCollection(std::string const& dbname,
                         std::string const& collection);
 
@@ -105,19 +106,29 @@ class User {
   auth::Level collectionAuthLevel(std::string const& dbname,
                                   std::string_view cname) const;
 
-  /// Content of `userData` or `extra` fields
+  // Content of `userData` fields
   velocypack::Slice userData() const { return _userData.slice(); }
 
-  /// Set content of `userData` or `extra` fields
+  // Set content of `userData` fields
   void setUserData(velocypack::Builder&& b) { _userData = std::move(b); }
 
-  /// Content of internal `configData` field, used by the WebUI
+  // Content of internal `configData` field, used by the WebUI
   velocypack::Slice configData() const { return _configData.slice(); }
 
-  /// Set content of internal `configData` field, used by the WebUI
+  // Set content of internal `configData` field, used by the WebUI
   void setConfigData(velocypack::Builder&& b) { _configData = std::move(b); }
 
-  /// Time in seconds (since epoch) when user was loaded
+  // Get all access tokens
+  Result getAccessTokens(velocypack::Builder& builder) const;
+
+  // Create an access token
+  Result createAccessToken(std::string const& name, double validUntil,
+                           velocypack::Builder& b);
+
+  // Delete an access token
+  Result deleteAccessToken(uint64_t id);
+
+  // Time in seconds (since epoch) when user was loaded
   double loaded() const { return _loaded; }
 
 #ifdef USE_ENTERPRISE
@@ -157,12 +168,13 @@ class User {
 
   velocypack::Builder _userData;
   velocypack::Builder _configData;
+  velocypack::Builder _accessTokens;
 
-  /// Time when user was loaded from DB
+  // Time when user was loaded from DB
   double _loaded;
 
 #ifdef USE_ENTERPRISE
-  /// @brief roles this user has
+  // @brief roles this user has
   std::set<std::string> _roles;
 #endif
 };
