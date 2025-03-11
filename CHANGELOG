@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-503: fix losing bind params when resizing query editor.
+
 * FE-535: fix set cached query when bind params are equal.
 
 * FE-528: adds diskusage license info to UI.
