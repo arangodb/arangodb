@@ -16,11 +16,13 @@ const ajv = new Ajv({
 
 export const ArangoSearchJSONEditor = () => {
   const { values, setValues } = useFormikContext();
-  const { initialView, setErrors, errors, setIsFormDisabled } = useEditViewContext();
+  const { initialView, setErrors, errors, setIsFormDisabled } =
+    useEditViewContext();
   const { schema } = useArangoSearchJSONSchema({ view: initialView });
 
   return (
-    <Box height="100%" backgroundColor="#ebebeb" position="relative" minWidth={0}>
+    <Box height="100%" backgroundColor="white" position="relative" minWidth={0}>
+      <JSONErrors errors={errors} />
       <ControlledJSONEditor
         value={values}
         onValidationError={errors => {
@@ -55,18 +57,10 @@ export const ArangoSearchJSONEditor = () => {
         }}
         htmlElementProps={{
           style: {
-            height: "calc(100% - 28px)",
+            height: "100%",
             width: "100%"
           }
         }}
-      />
-      <JSONErrors
-        position="absolute"
-        bottom={0}
-        left={0}
-        right={0}
-        zIndex={10}
-        errors={errors}
       />
     </Box>
   );
