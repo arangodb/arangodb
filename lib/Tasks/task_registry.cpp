@@ -26,20 +26,49 @@ auto ThreadId::name() -> std::string {
   return std::string{ThreadNameFetcher{posix_id}.get()};
 }
 
-auto Task::make(ParentTask parent, std::string name, std::source_location loc,
-                TaskRegistry* registry) -> std::shared_ptr<Task> {
+auto Task::create(std::string name, std::source_location loc,
+                  TaskRegistry* registry) -> std::shared_ptr<Task> {
   struct MakeSharedTask : Task {
-    MakeSharedTask(ParentTask parent, std::string name,
+    MakeSharedTask(ParentTask parent, std::string name, std::string state,
                    std::source_location loc, TaskRegistry* registry)
-        : Task(parent, std::move(name), std::move(loc), registry) {}
+        : Task(parent, std::move(name), std::move(state), std::move(loc),
+               registry) {}
   };
-  return std::make_shared<MakeSharedTask>(parent, std::move(name),
+  return std::make_shared<MakeSharedTask>(
+      ParentTask{RootTask{.name = std::move(name)}}, "entry point", "created",
+      std::move(loc), registry);
+}
+auto Task::subtask(TaskScope& parent, std::string name,
+                   std::source_location loc, TaskRegistry* registry)
+    -> std::shared_ptr<Task> {
+  struct MakeSharedTask : Task {
+    MakeSharedTask(ParentTask parent, std::string name, std::string state,
+                   std::source_location loc, TaskRegistry* registry)
+        : Task(parent, std::move(name), std::move(state), std::move(loc),
+               registry) {}
+  };
+  return std::make_shared<MakeSharedTask>(ParentTask{parent.task()},
+                                          std::move(name), "created",
+                                          std::move(loc), registry);
+}
+auto Task::scheduled(TaskScope& parent, std::string name,
+                     std::source_location loc, TaskRegistry* registry)
+    -> std::shared_ptr<Task> {
+  struct MakeSharedTask : Task {
+    MakeSharedTask(ParentTask parent, std::string name, std::string state,
+                   std::source_location loc, TaskRegistry* registry)
+        : Task(parent, std::move(name), std::move(state), std::move(loc),
+               registry) {}
+  };
+  return std::make_shared<MakeSharedTask>(ParentTask{parent.task()},
+                                          std::move(name), "scheduled",
                                           std::move(loc), registry);
 }
 
-Task::Task(ParentTask parent, std::string name, std::source_location loc,
-           TaskRegistry* registry)
+Task::Task(ParentTask parent, std::string name, std::string state,
+           std::source_location loc, TaskRegistry* registry)
     : _name{std::move(name)},
+      _state{std::move(state)},
       _parent{std::move(parent)},
       _source_location{std::move(loc)},
       _registry{registry} {}
@@ -83,17 +112,15 @@ auto Task::snapshot() -> TaskSnapshot {
 
 auto TaskRegistry::start_task(std::string name, std::source_location loc)
     -> TaskScope {
-  auto task = Task::make(ParentTask{RootTask{.name = std::move(name)}},
-                         "entry point", std::move(loc), this);
+  auto task = Task::create(std::move(name), std::move(loc), this);
   auto guard = std::lock_guard(_mutex);
   _tasks.emplace_back(task);
   return TaskScope{task};
 }
 
-auto TaskRegistry::start_subtask(std::shared_ptr<Task> parent, std::string name,
+auto TaskRegistry::start_subtask(TaskScope& parent, std::string name,
                                  std::source_location loc) -> TaskScope {
-  auto task =
-      Task::make(ParentTask{parent}, std::move(name), std::move(loc), this);
+  auto task = Task::subtask(parent, std::move(name), std::move(loc), this);
   auto guard = std::lock_guard(_mutex);
   _tasks.emplace_back(task);
   return TaskScope{task};
@@ -102,8 +129,7 @@ auto TaskRegistry::start_subtask(std::shared_ptr<Task> parent, std::string name,
 auto TaskRegistry::schedule_subtask(TaskScope& parent, std::string name,
                                     std::source_location loc)
     -> ScheduledTaskScope {
-  auto task = Task::make(ParentTask{parent.task()}, std::move(name),
-                         std::move(loc), this);
+  auto task = Task::scheduled(parent, std::move(name), std::move(loc), this);
   auto guard = std::lock_guard(_mutex);
   _tasks.emplace_back(task);
   return ScheduledTaskScope{task};

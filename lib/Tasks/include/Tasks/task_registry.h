@@ -99,8 +99,12 @@ struct ScheduledTaskScope;
 // set) and ScheduledTask (with no initial thread, is only set when task is
 // started)
 struct Task {
-  static auto make(ParentTask parent, std::string name,
-                   std::source_location loc, TaskRegistry* registry)
+  static auto create(std::string name, std::source_location loc,
+                     TaskRegistry* registry) -> std::shared_ptr<Task>;
+  static auto subtask(TaskScope& parent, std::string name, std::source_location,
+                      TaskRegistry* registry) -> std::shared_ptr<Task>;
+  static auto scheduled(TaskScope& parent, std::string name,
+                        std::source_location, TaskRegistry* registry)
       -> std::shared_ptr<Task>;
   ~Task();
   auto id() -> void* { return this; }
@@ -110,8 +114,8 @@ struct Task {
   friend ScheduledTaskScope;
 
  private:
-  Task(ParentTask parent, std::string name, std::source_location loc,
-       TaskRegistry* registry);
+  Task(ParentTask parent, std::string name, std::string state,
+       std::source_location loc, TaskRegistry* registry);
   /**
      Update the state
 
@@ -122,9 +126,8 @@ struct Task {
       -> void;  // should only be called from scope
 
   std::string const _name;
-  std::string _state =
-      "created";  // has to probably be atomic (for reading and writing
-                  // concurrently on different threads), but is string...
+  std::string _state;  // has to probably be atomic (for reading and writing
+                       // concurrently on different threads), but is string...
   ParentTask _parent;
   std::optional<ThreadId>
       _running_thread;  // proably has to also be atomic because
@@ -150,6 +153,7 @@ struct TaskScope {
   TaskScope() : _task{nullptr} {}
   TaskScope(TaskScope const&) = delete;
   TaskScope(TaskScope&&) = default;
+  TaskScope& operator=(TaskScope&& other) = default;
   ~TaskScope() {
     if (_task) {
       _task->update_state("done");
@@ -162,19 +166,21 @@ struct TaskScope {
       _task->update_state(std::move(state), std::move(loc));
     }
   }
+
+  friend Task;
+
+ private:
   auto task() -> std::shared_ptr<Task> { return _task; }
   std::shared_ptr<Task> _task;
 };
 
 struct ScheduledTaskScope {
-  ScheduledTaskScope(std::shared_ptr<Task> task) : _task{task} {
-    if (task) {
-      _task->_state = "scheduled";
-    }
-  }
+  ScheduledTaskScope(std::shared_ptr<Task> task) : _task{task} {}
   ScheduledTaskScope(ScheduledTaskScope&&) = default;
   ScheduledTaskScope(ScheduledTaskScope const&) = delete;
   auto start() && -> TaskScope { return TaskScope{std::move(_task)}; }
+
+ private:
   std::shared_ptr<Task> _task;
 };
 
@@ -195,7 +201,7 @@ struct TaskRegistry {
      Returns a scope for the task: the task is already running and is done when
      scope is deleted.
   */
-  auto start_subtask(std::shared_ptr<Task> parent, std::string name,
+  auto start_subtask(TaskScope& parent, std::string name,
                      std::source_location loc = std::source_location::current())
       -> TaskScope;
 
