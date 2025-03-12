@@ -1,6 +1,5 @@
 #pragma once
 
-#include <boost/smart_ptr/enable_shared_from_this.hpp>
 #include <vector>
 #include <source_location>
 #include <string>
@@ -94,31 +93,32 @@ struct ParentTask : std::variant<RootTask, std::shared_ptr<Task>> {};
 
 struct TaskRegistry;
 struct TaskScope;
+struct ScheduledTaskScope;
 
 // this class can at some point be split into ThreadTask (with thread directly
 // set) and ScheduledTask (with no initial thread, is only set when task is
 // started)
-struct Task : std::enable_shared_from_this<Task> {
-  static auto make(ParentTask parent, std::string name, bool is_running,
+struct Task {
+  static auto make(ParentTask parent, std::string name,
                    std::source_location loc, TaskRegistry* registry)
       -> std::shared_ptr<Task>;
   ~Task();
+  auto id() -> void* { return this; }
+  auto snapshot() -> TaskSnapshot;
+
+  friend TaskScope;
+  friend ScheduledTaskScope;
+
+ private:
+  Task(ParentTask parent, std::string name, std::source_location loc,
+       TaskRegistry* registry);
   /**
      Update the state
 
      Can only be called on its own running thread, throws otherwise.
    */
-  auto start() -> TaskScope;  // should only be called once
-  auto id() -> void* { return this; }
-  auto snapshot() -> TaskSnapshot;
-
-  friend TaskScope;
-
- private:
-  Task(ParentTask parent, std::string name, bool is_running,
-       std::source_location loc, TaskRegistry* registry);
   auto update_state(std::string_view state,
-                    std::source_location loc)
+                    std::source_location loc = std::source_location::current())
       -> void;  // should only be called from scope
 
   std::string const _name;
@@ -143,7 +143,8 @@ struct Task : std::enable_shared_from_this<Task> {
 struct TaskScope {
   TaskScope(std::shared_ptr<Task> task) : _task{task} {
     if (task) {
-      _task->update_state("running", std::source_location::current());
+      _task->_running_thread = ThreadId::current();
+      _task->update_state("running");
     }
   }
   TaskScope() : _task{nullptr} {}
@@ -151,7 +152,7 @@ struct TaskScope {
   TaskScope(TaskScope&&) = default;
   ~TaskScope() {
     if (_task) {
-      _task->update_state("done", std::source_location::current());
+      _task->update_state("done");
     }
   }
   auto update_state(std::string_view state,
@@ -165,6 +166,18 @@ struct TaskScope {
   std::shared_ptr<Task> _task;
 };
 
+struct ScheduledTaskScope {
+  ScheduledTaskScope(std::shared_ptr<Task> task) : _task{task} {
+    if (task) {
+      _task->_state = "scheduled";
+    }
+  }
+  ScheduledTaskScope(ScheduledTaskScope&&) = default;
+  ScheduledTaskScope(ScheduledTaskScope const&) = delete;
+  auto start() && -> TaskScope { return TaskScope{std::move(_task)}; }
+  std::shared_ptr<Task> _task;
+};
+
 struct TaskRegistry {
   /**
      Create an overall task and its corresponding entry point thread task
@@ -174,13 +187,8 @@ struct TaskRegistry {
    */
   auto start_task(std::string name,
                   std::source_location loc = std::source_location::current())
-      -> TaskScope {
-    auto task = Task::make(ParentTask{RootTask{.name = std::move(name)}},
-                           "entry point", true, std::move(loc), this);
-    auto guard = std::lock_guard(_mutex);
-    _tasks.emplace_back(task);
-    return task->start();
-  }
+      -> TaskScope;
+
   /**
      Create a subtask that directly starts running
 
@@ -189,13 +197,8 @@ struct TaskRegistry {
   */
   auto start_subtask(std::shared_ptr<Task> parent, std::string name,
                      std::source_location loc = std::source_location::current())
-      -> TaskScope {
-    auto task = Task::make(ParentTask{parent}, std::move(name), true,
-                           std::move(loc), this);
-    auto guard = std::lock_guard(_mutex);
-    _tasks.emplace_back(task);
-    return task->start();
-  }
+      -> TaskScope;
+
   /**
      Create a scheduled subtask that is not yet running
 
@@ -203,15 +206,10 @@ struct TaskRegistry {
      this running task. Only a call to start will set the task thread
   */
   auto schedule_subtask(
-      std::shared_ptr<Task> parent, std::string name,
+      TaskScope& parent, std::string name,
       std::source_location loc = std::source_location::current())
-      -> std::shared_ptr<Task> {
-    auto task = Task::make(ParentTask{parent}, std::move(name), false,
-                           std::move(loc), this);
-    auto guard = std::lock_guard(_mutex);
-    _tasks.emplace_back(task);
-    return task;
-  }
+      -> ScheduledTaskScope;
+
   auto garbage_collect() {
     auto guard = std::lock_guard(_mutex);
     std::erase_if(_tasks, [&](auto const& weak) { return weak.expired(); });
@@ -232,8 +230,8 @@ struct TaskRegistry {
     for_task([&](task_registry::TaskSnapshot task) {
       tasks.emplace_back(std::move(task));
     });
-    // LOG_DEVEL << fmt::format("{}: {}", message,
-    //                          arangodb::inspection::json(tasks));
+    LOG_DEVEL << fmt::format("{}: {}", message,
+                             arangodb::inspection::json(tasks));
   }
 
  private:
