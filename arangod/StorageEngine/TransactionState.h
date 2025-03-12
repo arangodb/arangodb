@@ -35,6 +35,7 @@
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
 #include "Metrics/MetricsFeature.h"
+#include "Tasks/task_registry.h"
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
@@ -104,9 +105,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                   transaction::Options const& options,
-                   transaction::OperationOrigin operationOrigin);
+  TransactionState(
+      TRI_vocbase_t& vocbase, TransactionId tid,
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin,
+      task_registry::TaskScope taskScope = task_registry::TaskScope{});
   virtual ~TransactionState();
 
   /// @return a cookie associated with the specified key, nullptr if none
@@ -512,6 +515,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   // number of times the metrics have been increased since the metrics
   // were last published
   size_t _shardBytesUnpublishedEvents = 0;
+  std::shared_ptr<task_registry::Task> _task;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;

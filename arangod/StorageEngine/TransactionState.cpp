@@ -41,6 +41,8 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Tasks/task_registry.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Context.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
@@ -103,7 +105,8 @@ T getMetric(std::string_view database, std::string_view collection,
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options,
-                                   transaction::OperationOrigin operationOrigin)
+                                   transaction::OperationOrigin operationOrigin,
+                                   task_registry::TaskScope taskScope)
     : _vocbase(vocbase),
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
@@ -111,8 +114,9 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _operationOrigin(operationOrigin),
       // set usage tracking mode to disabled initially. this may be overriden
       // below
-      _usageTrackingMode(
-          metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+      _usageTrackingMode(metrics::MetricsFeature::UsageTrackingMode::kDisabled),
+      _task{task_registry::registry.schedule_subtask(taskScope.task(),
+                                                     "transaction")} {
 // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
