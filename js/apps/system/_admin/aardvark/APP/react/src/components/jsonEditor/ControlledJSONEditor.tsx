@@ -128,12 +128,15 @@ const useSetupValueUpdate = ({
 }) => {
   useEffect(() => {
     const editor = jsonEditorRef?.current?.jsonEditor;
-    if (
-      editor &&
-      value &&
-      JSON.stringify(value) !== JSON.stringify(editor.get())
-    ) {
-      editor.update(value);
+    if (editor && value) {
+      try {
+        const currentValue = editor.get();
+        if (JSON.stringify(value) !== JSON.stringify(currentValue)) {
+          editor.update(value);
+        }
+      } catch (error) {
+        console.error(error);
+      }
     }
   }, [jsonEditorRef, value]);
 };
