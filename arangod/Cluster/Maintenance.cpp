@@ -2747,6 +2747,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                 << shardName << " again: " << exc.what();
           }
         } else {
+          // Need to revisit this database soon:
+          makeDirty.emplace(dbname);
           LOG_TOPIC("25342", DEBUG, Logger::MAINTENANCE)
               << "Not scheduling necessary SynchronizeShard actions because "
                  "too many are already in flight.";
