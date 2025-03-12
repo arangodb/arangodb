@@ -28,6 +28,11 @@ namespace arangodb::async_registry {
 
 Registry registry;
 
+/**
+   Gives the thread registry of the current thread.
+
+   Creates the thread registry when called for the first time.
+ */
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
     ThreadRegistryGuard() : _registry{registry.add_thread()} {}
@@ -38,9 +43,13 @@ auto get_thread_registry() noexcept -> ThreadRegistry& {
   return *registry_guard._registry;
 }
 
-// get_current_coroutine_or_thread_id
+/**
+   Gives a ptr to the currently running coroutine on the thread or to the
+   current thread if no coroutine is running at the moment.
+ */
 auto get_current_coroutine() noexcept -> Requester* {
   struct Guard {
+    // initialized with current thread
     Guard() : _identifier{Requester::current_thread()} {}
 
     Requester _identifier;
@@ -48,4 +57,5 @@ auto get_current_coroutine() noexcept -> Requester* {
   static thread_local auto guard = Guard{};
   return &guard._identifier;
 }
+
 }  // namespace arangodb::async_registry

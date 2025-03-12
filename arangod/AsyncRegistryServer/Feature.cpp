@@ -32,25 +32,22 @@ using namespace arangodb::async_registry;
 
 DECLARE_COUNTER(
     arangodb_async_promises_total,
-    "Total number of registered asynchronous promises since database creation");
+    "Total number of created asynchronous promises since database creation");
 
-DECLARE_GAUGE(arangodb_async_registered_promises, std::uint64_t,
-              "Number of currently registered asynchronous promises");
+DECLARE_GAUGE(arangodb_async_existing_promises, std::uint64_t,
+              "Number of currently existing asynchronous promises");
+
 DECLARE_GAUGE(arangodb_async_ready_for_deletion_promises, std::uint64_t,
-              "Number of currently registered asynchronous promises that wait "
-              "for their garbage "
-              "collection");
+              "Number of currently existing asynchronous promises that wait "
+              "for their garbage collection");
 
-DECLARE_COUNTER(arangodb_async_threads_total,
-                "Total number of threads that registered asynchronous promises "
+DECLARE_COUNTER(arangodb_async_thread_registries_total,
+                "Total number of threads that started asynchronous operations "
                 "since database creation");
 
-DECLARE_GAUGE(arangodb_async_running_threads, std::uint64_t,
-              "Number of currently running threads that registered "
-              "asynchronous promises");
-DECLARE_GAUGE(arangodb_async_registered_threads, std::uint64_t,
-              "Number of threads the asynchronous registry iterates over to "
-              "list all asynchronous promises");
+DECLARE_GAUGE(
+    arangodb_async_existing_thread_registries, std::uint64_t,
+    "Number of threads that started currently existing asyncronous operations");
 
 Feature::Feature(Server& server)
     : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
@@ -62,11 +59,10 @@ auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<const Metrics> {
   return std::make_shared<Metrics>(
       metrics_feature.addShared(arangodb_async_promises_total{}),
-      metrics_feature.addShared(arangodb_async_registered_promises{}),
+      metrics_feature.addShared(arangodb_async_existing_promises{}),
       metrics_feature.addShared(arangodb_async_ready_for_deletion_promises{}),
-      metrics_feature.addShared(arangodb_async_threads_total{}),
-      metrics_feature.addShared(arangodb_async_running_threads{}),
-      metrics_feature.addShared(arangodb_async_registered_threads{}));
+      metrics_feature.addShared(arangodb_async_thread_registries_total{}),
+      metrics_feature.addShared(arangodb_async_existing_thread_registries{}));
 }
 auto Feature::asyncLock()
     -> futures::Future<futures::FutureSharedLock<SchedulerWrapper>::LockGuard> {

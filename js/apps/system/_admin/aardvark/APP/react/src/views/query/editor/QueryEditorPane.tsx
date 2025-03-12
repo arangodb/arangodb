@@ -10,13 +10,8 @@ import { QueryResults } from "../queryResults/QueryResults";
 import { SavedQueryView } from "./SavedQueryView";
 
 export const QueryEditorPane = () => {
-  const {
-    currentView,
-    queryValue,
-    onQueryValueChange,
-    resetEditor,
-    setResetEditor
-  } = useQueryContext();
+  const { currentView, queryValue, onQueryValueChange, resetEditor } =
+    useQueryContext();
   if (currentView === "saved") {
     return (
       <>
@@ -34,9 +29,6 @@ export const QueryEditorPane = () => {
         enable={{ bottom: true }}
         handleStyles={{ bottom: { zIndex: 1 } }}
         handleComponent={{ bottom: <HandleComponent /> }}
-        onResizeStop={() => {
-          setResetEditor(!resetEditor);
-        }}
       >
         <Flex height="100%" direction="column">
           <QueryEditorTopBar />

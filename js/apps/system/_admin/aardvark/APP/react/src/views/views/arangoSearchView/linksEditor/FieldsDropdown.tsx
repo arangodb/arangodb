@@ -23,6 +23,7 @@ const MultiValueLabelFields = (props: MultiValueGenericProps<OptionType>) => {
   );
 };
 export const FieldsDropdown = () => {
+  const { isFormDisabled } = useEditViewContext();
   const { getCurrentLinkValue, setCurrentLinkValue } = useLinkModifiers();
   const fieldsValue = getCurrentLinkValue(["fields"]);
   const fields = fieldsValue
@@ -59,6 +60,7 @@ export const FieldsDropdown = () => {
         <InfoTooltip label="Add field names that you want to be indexed here. Click on a field name to set field details." />
       </Stack>
       <CreatableMultiSelect
+        isDisabled={isFormDisabled}
         inputId="fields"
         openMenuOnFocus={false}
         openMenuOnClick={false}
