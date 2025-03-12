@@ -545,9 +545,8 @@ RestStatus RestIndexHandler::createIndex() {
   // the following callback is executed in a background thread
   auto cb = [this, self = shared_from_this(),
              execContext = std::move(execContext), collection = std::move(coll),
-             body = std::move(indexInfo), task = taskScope.task()] {
-    auto subTaskScope =
-        task_registry::registry.start_subtask(task, "Background thread");
+             body =
+                 std::move(indexInfo)](task_registry::TaskScope subTaskScope) {
     ExecContextScope scope(std::move(execContext));
     {
       std::unique_lock<std::mutex> locker(_mutex);
@@ -586,11 +585,11 @@ RestStatus RestIndexHandler::createIndex() {
     // notify REST handler
     SchedulerFeature::SCHEDULER->queue(
         RequestLane::INTERNAL_LOW,
-        [self, scheduledScope = task_registry::registry.schedule_subtask(
-                   subTaskScope, "scheduled wakeup call")]() mutable {
-          auto scope = std::move(scheduledScope).start();
+        [self, scheduledScope{task_registry::registry.schedule_subtask(
+                   subTaskScope, "scheduled wakeup call")}]() mutable {
+          // auto scope = std::move(scheduledScope).start();
           self->wakeupHandler();
-          scope.update_state("Handler woken up");
+          // scope.update_state("Handler woken up");
           task_registry::registry.log("tasks when running scheduled");
         });
 
@@ -598,7 +597,9 @@ RestStatus RestIndexHandler::createIndex() {
   };
 
   // start background thread
-  _createInBackgroundData.thread = std::make_unique<std::thread>(std::move(cb));
+  _createInBackgroundData.thread = std::make_unique<std::thread>(
+      std::move(cb),
+      task_registry::registry.start_subtask(taskScope, "Background thread"));
 
   return RestStatus::WAITING;
 }

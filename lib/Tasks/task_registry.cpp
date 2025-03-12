@@ -90,10 +90,10 @@ auto TaskRegistry::start_task(std::string name, std::source_location loc)
   return TaskScope{task};
 }
 
-auto TaskRegistry::start_subtask(std::shared_ptr<Task> parent, std::string name,
+auto TaskRegistry::start_subtask(TaskScope& parent, std::string name,
                                  std::source_location loc) -> TaskScope {
-  auto task =
-      Task::make(ParentTask{parent}, std::move(name), std::move(loc), this);
+  auto task = Task::make(ParentTask{parent.task()}, std::move(name),
+                         std::move(loc), this);
   auto guard = std::lock_guard(_mutex);
   _tasks.emplace_back(task);
   return TaskScope{task};

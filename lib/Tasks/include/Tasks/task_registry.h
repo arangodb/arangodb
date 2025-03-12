@@ -172,6 +172,9 @@ struct ScheduledTaskScope {
       _task->_state = "scheduled";
     }
   }
+  ScheduledTaskScope(ScheduledTaskScope const&) = delete;
+  // TODO what about a destructor that changes state to "non-resolved"
+  // should never be called because task should have been moved away before
   auto start() && -> TaskScope { return TaskScope{std::move(_task)}; }
   std::shared_ptr<Task> _task;
 };
@@ -193,7 +196,7 @@ struct TaskRegistry {
      Returns a scope for the task: the task is already running and is done when
      scope is deleted.
   */
-  auto start_subtask(std::shared_ptr<Task> parent, std::string name,
+  auto start_subtask(TaskScope& parent, std::string name,
                      std::source_location loc = std::source_location::current())
       -> TaskScope;
 
