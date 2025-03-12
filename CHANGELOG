@@ -1,7 +1,9 @@
 devel
 -----
 
-* Activates 100GB limit
+* Implement license changes: The community edition without a license now has a
+  100GB disk usage limit. Exceeding it will put ArangoDB in read-only mode after
+  a grace period, and shutdown after an additional grace period.
 
 * Updated ArangoDB Starter to v0.19.9-preview-4.
 

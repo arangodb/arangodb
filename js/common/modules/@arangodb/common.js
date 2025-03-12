@@ -584,6 +584,7 @@ exports.enterpriseLicenseVisibility = function() {
         return;
       case "shutdown":
         console.error("The 100 GB disk usage limit was reached and the server was put into the read-only mode after a grace period.");
+        console.error("The server will be shut down in 10 minutes.");
         console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license.");
         return;
       case "good":
