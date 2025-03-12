@@ -2729,15 +2729,12 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                     {SYNC_BY_REVISION, syncByRevision},
                     {SHARD_VERSION, std::to_string(feature.shardVersion(
                                         std::string(shname)))}},
-                SYNCHRONIZE_PRIORITY, false);
-#if 0
+                SYNCHRONIZE_PRIORITY, true);
         ShardID shardName{description->get(SHARD)};
         bool ok = feature.lockShard(shardName, description);
         TRI_ASSERT(ok);
         try {
-#endif
-        std::ignore = feature.addAction(description, false);
-#if 0
+          Result res = feature.addAction(description, false);
           if (res.fail()) {
             feature.unlockShard(shardName);
           }
@@ -2748,7 +2745,6 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                  "unlocking shard "
               << shardName << " again: " << exc.what();
         }
-#endif
       }
     }
   }
