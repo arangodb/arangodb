@@ -204,6 +204,18 @@ void MaintenanceFeature::collectOptions(
           arangodb::options::Flags::Dynamic));
 
   options
+      ->addOption(
+          "--server.maximal-number-sync-shard-actions",
+          "The maximum number of SynchronizeShard actions which may be queued "
+          "at any given time. In flight means either ongoing or scheduled.",
+          new UInt64Parameter(&_maximalNumberOfSyncShardActionsQueued),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31205);
+
+  options
       ->addOption("--server.maintenance-slow-threads",
                   "The maximum number of threads available for slow "
                   "maintenance actions (long SynchronizeShard and long "
@@ -278,6 +290,17 @@ void MaintenanceFeature::validateOptions(
     _maintenanceThreadsSlowMax = 1;
     LOG_TOPIC("54252", WARN, Logger::MAINTENANCE)
         << "maintenance-slow-threads raised to " << _maintenanceThreadsSlowMax;
+  }
+  if (_maximalNumberOfSyncShardActionsQueued > 10 * _maintenanceThreadsMax) {
+    _maximalNumberOfSyncShardActionsQueued = 10 * _maintenanceThreadsMax;
+    LOG_TOPIC("12454", WARN, Logger::MAINTENANCE)
+        << "maximal-number-of-sync-shard-actions reduced to "
+        << _maximalNumberOfSyncShardActionsQueued;
+  }
+  if (_maximalNumberOfSyncShardActionsQueued < 16) {
+    _maximalNumberOfSyncShardActionsQueued = 16;
+    LOG_TOPIC("12455", WARN, Logger::MAINTENANCE)
+        << "maximal-number-of-sync-shard-actions raised to 16.";
   }
 }
 

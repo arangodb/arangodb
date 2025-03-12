@@ -738,6 +738,8 @@ bool SynchronizeShard::first() {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 
+  feature().decreaseNumberOfSyncShardActionsQueued();
+
   std::string const& database = getDatabase();
   std::string const& planId = _description.get(COLLECTION);
   auto shard = getShard();
