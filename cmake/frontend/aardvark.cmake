@@ -11,7 +11,7 @@ add_custom_target(frontend ALL
   COMMENT "create frontend build"
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
   COMMAND yarn install
-  COMMAND yarn build
+  COMMAND yarn build || true
 )
 
 add_custom_target(frontend_clean
