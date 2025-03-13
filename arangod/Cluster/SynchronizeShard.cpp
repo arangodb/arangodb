@@ -27,6 +27,7 @@
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
+#include "Basics/FileUtils.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -731,6 +732,8 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 bool SynchronizeShard::first() {
+  feature().decreaseNumberOfSyncShardActionsQueued();
+
   TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
   TRI_IF_FAILURE("SynchronizeShard::delay") {
     // Increase the race timeout before we try to get back into sync as a
@@ -738,7 +741,12 @@ bool SynchronizeShard::first() {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 
-  feature().decreaseNumberOfSyncShardActionsQueued();
+  if (FileUtils::exists("/tmp/handbrake")) {
+    LOG_DEVEL << "Sleeping artificially for testing for 1s for shard "
+              << getShard() << " ...";
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    LOG_DEVEL << "Waking up.";
+  }
 
   std::string const& database = getDatabase();
   std::string const& planId = _description.get(COLLECTION);
