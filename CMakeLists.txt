@@ -1004,23 +1004,6 @@ endif()
 ################################################################################
 
 # ------------------------------------------------------------------------------
-# Boost
-# ------------------------------------------------------------------------------
-
-add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
-add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
-add_subdirectory(3rdParty EXCLUDE_FROM_ALL) # TODO: specific includes
-
-add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
-
-# ------------------------------------------------------------------------------
-# ZLIB
-# ------------------------------------------------------------------------------
-
-add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
-link_directories("${PROJECT_BINARY_DIR}/bin")
-
-# ------------------------------------------------------------------------------
 # FAISS
 # ------------------------------------------------------------------------------
 
@@ -1080,6 +1063,23 @@ set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
+
+# ------------------------------------------------------------------------------
+# Boost
+# ------------------------------------------------------------------------------
+
+add_definitions(-DBOOST_UUID_RANDOM_PROVIDER_FORCE_POSIX=1)  # fix random provider
+add_definitions(-DBOOST_ALL_NO_LIB=1)  # disable boost autolink on windows
+add_subdirectory(3rdParty EXCLUDE_FROM_ALL) # TODO: specific includes
+
+add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
+
+# ------------------------------------------------------------------------------
+# ZLIB
+# ------------------------------------------------------------------------------
+
+add_definitions("-DARANGODB_ZLIB_VERSION=\"${ZLIB_VERSION}\"")
+link_directories("${PROJECT_BINARY_DIR}/bin")
 
 # ------------------------------------------------------------------------------
 # RocksDB
