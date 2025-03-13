@@ -2751,12 +2751,13 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
         TRI_ASSERT(ok);
         try {
           Result res = feature.addAction(description, false);
-          if (res.fail()) {
+          if (res.ok()) {
+            scopeGuard.cancel();  // Here we can be sure that the action is
+                                  // queued and will eventually be executed,
+                                  // then we decrease the counter again!
+          } else {
             feature.unlockShard(shardName);
           }
-          scopeGuard.cancel();  // Here we can be sure that the action is queued
-                                // and will eventually be executed, then we
-                                // decrease the counter again!
         } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
           LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
