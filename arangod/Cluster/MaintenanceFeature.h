@@ -25,10 +25,8 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
-#include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -176,7 +174,7 @@ class MaintenanceFeature : public ArangodFeature {
   /// increased.
   bool increaseNumberOfSyncShardActionsQueued() {
     uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
-    if (n > _maximalNumberOfSyncShardActionsQueued) {
+    if (n + 1 > _maximalNumberOfSyncShardActionsQueued) {
       _numberOfSyncShardActionsQueued.fetch_sub(1);
       return false;
     }
