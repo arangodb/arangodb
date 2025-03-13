@@ -172,7 +172,7 @@ class MaintenanceFeature : public ArangodFeature {
   /// @brief Count a SynchronizeShard actions in flight, returns `false`
   /// if there are two many already, in which case the number is not
   /// increased.
-  bool increaseNumberOfSyncShardActionsQueued() {
+  bool increaseNumberOfSyncShardActionsQueued() noexcept {
     uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
     if (n + 1 > _maximalNumberOfSyncShardActionsQueued) {
       _numberOfSyncShardActionsQueued.fetch_sub(1);
@@ -181,7 +181,7 @@ class MaintenanceFeature : public ArangodFeature {
     return true;
   }
 
-  void decreaseNumberOfSyncShardActionsQueued() {
+  void decreaseNumberOfSyncShardActionsQueued() noexcept {
     _numberOfSyncShardActionsQueued.fetch_sub(1);
   }
 
