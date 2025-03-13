@@ -2719,6 +2719,14 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                  "too many are already in flight.";
           continue;
         }
+        // From here on, we must be very careful, if we do not manage to
+        // schedule the action below, we must decrease the number of sync shard
+        // actions queued again! Otherwise we lose counter values and
+        // eventually, we no longer schedule SynchronizeShard actions at all!
+        ScopeGuard scopeGuard([&feature]() noexcept {
+          feature.decreaseNumberOfSyncShardActionsQueued();
+        });
+
         std::string leader = pservers[0].copyString();
         std::string forcedResync =
             needsResyncBecauseOfRestart ? "true" : "false";
@@ -2745,11 +2753,12 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           Result res = feature.addAction(description, false);
           if (res.fail()) {
             feature.unlockShard(shardName);
-            feature.decreaseNumberOfSyncShardActionsQueued();
           }
+          scopeGuard.cancel();  // Here we can be sure that the action is queued
+                                // and will eventually be executed, then we
+                                // decrease the counter again!
         } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
-          feature.decreaseNumberOfSyncShardActionsQueued();
           LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
               << "Exception caught when adding synchronize shard action, "
                  "unlocking shard "
