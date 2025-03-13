@@ -2711,47 +2711,47 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
             << " current servers = " << cservers.toJson()
             << " local theLeader = " << theLeader.toJson();
 
-        if (feature.increaseNumberOfSyncShardActionsQueued()) {
-          std::string leader = pservers[0].copyString();
-          std::string forcedResync =
-              needsResyncBecauseOfRestart ? "true" : "false";
-          std::string syncByRevision =
-              pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
-                                                                     : "false";
-          std::shared_ptr<ActionDescription> description =
-              std::make_shared<ActionDescription>(
-                  std::map<std::string, std::string>{
-                      {NAME, SYNCHRONIZE_SHARD},
-                      {DATABASE, dbname},
-                      {COLLECTION, std::string(colname)},
-                      {SHARD, std::string(shname)},
-                      {THE_LEADER, std::move(leader)},
-                      {FORCED_RESYNC, std::move(forcedResync)},
-                      {SYNC_BY_REVISION, syncByRevision},
-                      {SHARD_VERSION, std::to_string(feature.shardVersion(
-                                          std::string(shname)))}},
-                  SYNCHRONIZE_PRIORITY, true);
-          ShardID shardName{description->get(SHARD)};
-          bool ok = feature.lockShard(shardName, description);
-          TRI_ASSERT(ok);
-          try {
-            Result res = feature.addAction(description, false);
-            if (res.fail()) {
-              feature.unlockShard(shardName);
-            }
-          } catch (std::exception const& exc) {
-            feature.unlockShard(shardName);
-            LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
-                << "Exception caught when adding synchronize shard action, "
-                   "unlocking shard "
-                << shardName << " again: " << exc.what();
-          }
-        } else {
+        if (!feature.increaseNumberOfSyncShardActionsQueued()) {
           // Need to revisit this database soon:
           makeDirty.emplace(dbname);
           LOG_TOPIC("25342", DEBUG, Logger::MAINTENANCE)
               << "Not scheduling necessary SynchronizeShard actions because "
                  "too many are already in flight.";
+          continue;
+        }
+        std::string leader = pservers[0].copyString();
+        std::string forcedResync =
+            needsResyncBecauseOfRestart ? "true" : "false";
+        std::string syncByRevision =
+            pcol.value.get(StaticStrings::SyncByRevision).isTrue() ? "true"
+                                                                   : "false";
+        std::shared_ptr<ActionDescription> description =
+            std::make_shared<ActionDescription>(
+                std::map<std::string, std::string>{
+                    {NAME, SYNCHRONIZE_SHARD},
+                    {DATABASE, dbname},
+                    {COLLECTION, std::string(colname)},
+                    {SHARD, std::string(shname)},
+                    {THE_LEADER, std::move(leader)},
+                    {FORCED_RESYNC, std::move(forcedResync)},
+                    {SYNC_BY_REVISION, syncByRevision},
+                    {SHARD_VERSION, std::to_string(feature.shardVersion(
+                                        std::string(shname)))}},
+                SYNCHRONIZE_PRIORITY, true);
+        ShardID shardName{description->get(SHARD)};
+        bool ok = feature.lockShard(shardName, description);
+        TRI_ASSERT(ok);
+        try {
+          Result res = feature.addAction(description, false);
+          if (res.fail()) {
+            feature.unlockShard(shardName);
+          }
+        } catch (std::exception const& exc) {
+          feature.unlockShard(shardName);
+          LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
+              << "Exception caught when adding synchronize shard action, "
+                 "unlocking shard "
+              << shardName << " again: " << exc.what();
         }
       }
     }
