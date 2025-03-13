@@ -1050,6 +1050,7 @@ if(STATIC_EXECUTABLES)
 
   # TODO avoid hard coded paths
   set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+  set(FAISS_EXE_WARN_FLAGS "-W0")
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
