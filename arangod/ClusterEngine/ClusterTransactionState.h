@@ -24,6 +24,7 @@
 #pragma once
 
 #include "StorageEngine/TransactionState.h"
+#include "Tasks/task_registry.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 struct TRI_vocbase_t;
@@ -40,7 +41,8 @@ class ClusterTransactionState final : public TransactionState {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options,
-                          transaction::OperationOrigin operationOrigin);
+                          transaction::OperationOrigin operationOrigin,
+                          task_registry::TaskScope taskScope);
   ~ClusterTransactionState();
 
   [[nodiscard]] bool ensureSnapshot() override { return false; }

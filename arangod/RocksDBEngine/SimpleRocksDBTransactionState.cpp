@@ -31,6 +31,7 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Tasks/task_registry.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
@@ -40,8 +41,10 @@ using namespace arangodb;
 SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
+    transaction::OperationOrigin operationOrigin,
+    task_registry::TaskScope taskScope)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin,
+                              std::move(taskScope)) {}
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 

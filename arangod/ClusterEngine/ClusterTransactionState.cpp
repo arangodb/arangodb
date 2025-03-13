@@ -38,6 +38,8 @@
 #include "Metrics/MetricsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Tasks/task_registry.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
 #include "Transaction/Methods.h"
@@ -50,8 +52,10 @@ using namespace arangodb;
 ClusterTransactionState::ClusterTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : TransactionState(vocbase, tid, options, operationOrigin),
+    transaction::OperationOrigin operationOrigin,
+    task_registry::TaskScope taskScope)
+    : TransactionState(vocbase, tid, options, operationOrigin,
+                       std::move(taskScope)),
       _numIntermediateCommits(0) {
   // cppcheck-suppress ignoredReturnValue
   TRI_ASSERT(isCoordinator());
@@ -146,6 +150,9 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
 /// @brief commit a transaction
 futures::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  auto scope = std::move(_taskScope).start();
+  task_registry::registry.log(
+      fmt::format("commiting transaction {}", id().id()));
   TRI_ASSERT(_beforeCommitCallbacks.empty());
   TRI_ASSERT(_afterCommitCallbacks.empty());
   LOG_TRX("927c0", TRACE, this)

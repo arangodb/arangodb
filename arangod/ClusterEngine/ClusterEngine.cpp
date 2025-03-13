@@ -34,6 +34,7 @@
 #include "ClusterEngine/ClusterIndexFactory.h"
 #include "ClusterEngine/ClusterRestHandlers.h"
 #include "ClusterEngine/ClusterTransactionState.h"
+#include "Tasks/task_registry.h"
 #ifdef USE_V8
 #include "ClusterEngine/ClusterV8Functions.h"
 #endif
@@ -123,9 +124,10 @@ std::unique_ptr<transaction::Manager> ClusterEngine::createTransactionManager(
 std::shared_ptr<TransactionState> ClusterEngine::createTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin) {
-  return std::make_shared<ClusterTransactionState>(vocbase, tid, options,
-                                                   operationOrigin);
+    transaction::OperationOrigin operationOrigin,
+    task_registry::TaskScope taskScope) {
+  return std::make_shared<ClusterTransactionState>(
+      vocbase, tid, options, operationOrigin, std::move(taskScope));
 }
 
 void ClusterEngine::addParametersForNewCollection(VPackBuilder& builder,

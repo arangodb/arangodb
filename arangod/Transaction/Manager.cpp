@@ -49,6 +49,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Tasks/task_registry.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/vocbase.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -360,7 +361,8 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 
 futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
-    OperationOrigin operationOrigin, bool allowDirtyReads) {
+    OperationOrigin operationOrigin, bool allowDirtyReads,
+    task_registry::TaskScope taskScope) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     co_return {TRI_ERROR_SHUTTING_DOWN};
   }
@@ -385,7 +387,8 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
   }
 
   co_return co_await createManagedTrx(vocbase, reads, writes, exclusives,
-                                      std::move(options), operationOrigin);
+                                      std::move(options), operationOrigin,
+                                      std::move(taskScope));
 }
 
 futures::Future<Result> Manager::ensureManagedTrx(
@@ -595,7 +598,7 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
     std::vector<std::string> const& writeCollections,
     std::vector<std::string> const& exclusiveCollections, Options options,
-    OperationOrigin operationOrigin) {
+    OperationOrigin operationOrigin, task_registry::TaskScope taskScope) {
   // We cannot run this on FollowerTransactions.
   // They need to get injected the TransactionIds.
   TRI_ASSERT(!isFollowerTransactionOnDBServer(options));
@@ -618,8 +621,8 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
 
   auto maybeState = basics::catchToResultT([&] {
     // now start our own transaction
-    return vocbase.engine().createTransactionState(vocbase, tid, options,
-                                                   operationOrigin);
+    return vocbase.engine().createTransactionState(
+        vocbase, tid, options, operationOrigin, std::move(taskScope));
   });
   if (!maybeState.ok()) {
     co_return std::move(maybeState).result();

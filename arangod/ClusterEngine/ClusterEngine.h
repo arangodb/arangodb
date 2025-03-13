@@ -26,6 +26,7 @@
 #include "Basics/StaticStrings.h"
 #include "ClusterEngine/Common.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Tasks/task_registry.h"
 #include "VocBase/AccessMode.h"
 
 #include <velocypack/Builder.h>
@@ -69,7 +70,8 @@ class ClusterEngine final : public StorageEngine {
   std::shared_ptr<TransactionState> createTransactionState(
       TRI_vocbase_t& vocbase, TransactionId tid,
       transaction::Options const& options,
-      transaction::OperationOrigin operationOrigin) override;
+      transaction::OperationOrigin operationOrigin,
+      task_registry::TaskScope taskScope) override;
 
   // create storage-engine specific collection
   std::unique_ptr<PhysicalCollection> createPhysicalCollection(

@@ -32,6 +32,7 @@
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/Fwd.h"
+#include "Tasks/task_registry.h"
 #include "Transaction/ManagedContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
@@ -165,7 +166,8 @@ class Manager final : public IManager {
   /// @brief create managed transaction, also generate a tranactionId
   futures::Future<ResultT<TransactionId>> createManagedTrx(
       TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
-      OperationOrigin operationOrigin, bool allowDirtyReads);
+      OperationOrigin operationOrigin, bool allowDirtyReads,
+      task_registry::TaskScope taskScope);
 
   /// @brief ensure managed transaction, either use the one on the given tid
   ///        or create a new one with the given tid
@@ -267,7 +269,7 @@ class Manager final : public IManager {
       TRI_vocbase_t& vocbase, std::vector<std::string> const& readCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& exclusiveCollections, Options options,
-      OperationOrigin operationOrigin);
+      OperationOrigin operationOrigin, task_registry::TaskScope taskScope);
 
   Result prepareOptions(transaction::Options& options);
 

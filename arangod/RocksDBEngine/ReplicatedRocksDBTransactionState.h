@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Tasks/task_registry.h"
 
 namespace arangodb {
 class RocksDBTransactionMethods;
@@ -33,7 +34,8 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
   ReplicatedRocksDBTransactionState(
       TRI_vocbase_t& vocbase, TransactionId tid,
       transaction::Options const& options,
-      transaction::OperationOrigin operationOrigin);
+      transaction::OperationOrigin operationOrigin,
+      task_registry::TaskScope taskScope);
 
   ~ReplicatedRocksDBTransactionState() override;
 

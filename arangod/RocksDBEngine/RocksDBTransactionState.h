@@ -33,6 +33,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
+#include "Tasks/task_registry.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
@@ -63,7 +64,8 @@ class RocksDBTransactionState : public TransactionState {
  public:
   RocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                           transaction::Options const& options,
-                          transaction::OperationOrigin operationOrigin);
+                          transaction::OperationOrigin operationOrigin,
+                          task_registry::TaskScope taskScope);
   ~RocksDBTransactionState() override;
 
   /// @brief begin a transaction

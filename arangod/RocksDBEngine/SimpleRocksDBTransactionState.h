@@ -25,6 +25,7 @@
 
 #include "RocksDBEngine/Methods/RocksDBTrxBaseMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "Tasks/task_registry.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 
 namespace arangodb {
@@ -33,9 +34,11 @@ class RocksDBTransactionMethods;
 class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
                                             public IRocksDBTransactionCallback {
  public:
-  SimpleRocksDBTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                                transaction::Options const& options,
-                                transaction::OperationOrigin operationOrigin);
+  SimpleRocksDBTransactionState(
+      TRI_vocbase_t& vocbase, TransactionId tid,
+      transaction::Options const& options,
+      transaction::OperationOrigin operationOrigin,
+      task_registry::TaskScope taskScope = task_registry::TaskScope{});
 
   ~SimpleRocksDBTransactionState() override;
 

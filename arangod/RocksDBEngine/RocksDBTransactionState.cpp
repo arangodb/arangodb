@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBTransactionState.h"
+#include <string>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
@@ -45,6 +46,8 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionCollection.h"
+#include "Tasks/task_registry.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Context.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
@@ -67,8 +70,9 @@ using namespace arangodb;
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
-    transaction::Options const& options, transaction::OperationOrigin trxType)
-    : TransactionState(vocbase, tid, options, trxType) {}
+    transaction::Options const& options, transaction::OperationOrigin trxType,
+    task_registry::TaskScope taskScope)
+    : TransactionState(vocbase, tid, options, trxType, std::move(taskScope)) {}
 
 /// @brief free a transaction container
 RocksDBTransactionState::~RocksDBTransactionState() {
@@ -175,6 +179,9 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 /// @brief commit a transaction
 futures::Future<Result> RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
+  auto scope = std::move(_taskScope).start();
+  task_registry::registry.log(
+      fmt::format("commiting transaction {}", id().id()));
   LOG_TRX("5cb03", TRACE, this)
       << "committing " << AccessMode::typeString(_type) << " transaction";
 

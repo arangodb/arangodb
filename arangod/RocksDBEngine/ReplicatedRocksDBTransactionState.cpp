@@ -30,6 +30,7 @@
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "Tasks/task_registry.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <rocksdb/types.h>
@@ -43,8 +44,10 @@ using namespace arangodb;
 ReplicatedRocksDBTransactionState::ReplicatedRocksDBTransactionState(
     TRI_vocbase_t& vocbase, TransactionId tid,
     transaction::Options const& options,
-    transaction::OperationOrigin operationOrigin)
-    : RocksDBTransactionState(vocbase, tid, options, operationOrigin) {}
+    transaction::OperationOrigin operationOrigin,
+    task_registry::TaskScope taskScope)
+    : RocksDBTransactionState(vocbase, tid, options, operationOrigin,
+                              std::move(taskScope)) {}
 
 ReplicatedRocksDBTransactionState::~ReplicatedRocksDBTransactionState() {}
 

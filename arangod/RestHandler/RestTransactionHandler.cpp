@@ -33,6 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Helpers.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
@@ -205,6 +206,7 @@ void RestTransactionHandler::executeGetState() {
 }
 
 futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
+  auto taskScope = task_registry::registry.start_task("Steaming Transaction");
   TRI_ASSERT(_request->suffixes().size() == 1 &&
              _request->suffixes()[0] == "begin");
 
@@ -276,7 +278,7 @@ futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
 
     // start
     ResultT<TransactionId> res = co_await mgr->createManagedTrx(
-        _vocbase, slice, origin, allowDirtyReads);
+        _vocbase, slice, origin, allowDirtyReads, std::move(taskScope));
     if (res.fail()) {
       generateError(res.result());
     } else {
