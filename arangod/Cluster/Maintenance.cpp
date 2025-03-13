@@ -2745,9 +2745,11 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
           Result res = feature.addAction(description, false);
           if (res.fail()) {
             feature.unlockShard(shardName);
+            feature.decreaseNumberOfSyncShardActionsQueued();
           }
         } catch (std::exception const& exc) {
           feature.unlockShard(shardName);
+          feature.decreaseNumberOfSyncShardActionsQueued();
           LOG_TOPIC("86763", INFO, Logger::MAINTENANCE)
               << "Exception caught when adding synchronize shard action, "
                  "unlocking shard "
