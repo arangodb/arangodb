@@ -33,7 +33,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 
 # enable frontend build
-option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" ON)
+option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" OFF)
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
