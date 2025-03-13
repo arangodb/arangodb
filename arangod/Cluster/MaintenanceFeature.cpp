@@ -291,16 +291,10 @@ void MaintenanceFeature::validateOptions(
     LOG_TOPIC("54252", WARN, Logger::MAINTENANCE)
         << "maintenance-slow-threads raised to " << _maintenanceThreadsSlowMax;
   }
-  if (_maximalNumberOfSyncShardActionsQueued > 10 * _maintenanceThreadsMax) {
-    _maximalNumberOfSyncShardActionsQueued = 10 * _maintenanceThreadsMax;
-    LOG_TOPIC("12454", WARN, Logger::MAINTENANCE)
-        << "maximal-number-of-sync-shard-actions reduced to "
-        << _maximalNumberOfSyncShardActionsQueued;
-  }
-  if (_maximalNumberOfSyncShardActionsQueued < 16) {
-    _maximalNumberOfSyncShardActionsQueued = 16;
+  if (_maximalNumberOfSyncShardActionsQueued < 10) {
+    _maximalNumberOfSyncShardActionsQueued = 10;
     LOG_TOPIC("12455", WARN, Logger::MAINTENANCE)
-        << "maximal-number-of-sync-shard-actions raised to 16.";
+        << "maximal-number-of-sync-shard-actions raised to 10.";
   }
 }
 
