@@ -1329,9 +1329,6 @@ Result MaintenanceFeature::requeueAction(
              action->getState() == ActionState::FAILED);
   if (action->describe().get(NAME) == SYNCHRONIZE_SHARD) {
     increaseNumberOfSyncShardActionsQueued();
-    LOG_DEVEL
-        << "Requeue: increasing counter for SynchronizeShard action for shard "
-        << action->describe().get(SHARD);
   }
   auto newAction =
       std::make_shared<maintenance::Action>(*this, action->describe());
