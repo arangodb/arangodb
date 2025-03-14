@@ -25,9 +25,7 @@
 #include "SynchronizeShard.h"
 
 #include "Agency/AgencyStrings.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
-#include "Basics/FileUtils.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -59,7 +57,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
