@@ -1,6 +1,11 @@
 v3.11.14 (XXXX-XX-XX)
 ---------------------
 
+* Fix BTS-2100: Due to a priority inversion it was possible that a lot of
+  scheduled SynchronizeShard actions blocked higher priority 
+  TakeoverShardLeadership actions in the cluster Maintenance. This
+  could lead to service interruption during upgrades and after failovers.
+
 * Fix a bug in the index API /_api/index?withHidden=true, which can lead to
   two problems: (1) A newly created index is potentially not shown in the very
   moment when it is finished. (2) A newly created index is shown twice in
