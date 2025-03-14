@@ -29,7 +29,6 @@
 #include "Cluster/Action.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
-#include "Logger/LogMacros.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 
@@ -175,18 +174,15 @@ class MaintenanceFeature : public ArangodFeature {
   /// increased.
   bool increaseNumberOfSyncShardActionsQueued() noexcept {
     uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
-    LOG_DEVEL << "_numberOfShardActionsQueued inc to: " << n + 1;
     if (n + 1 > _maximalNumberOfSyncShardActionsQueued) {
-      n = _numberOfSyncShardActionsQueued.fetch_sub(1) - 1;
-      LOG_DEVEL << "_numberOfShardActionsQueued bumped: " << n;
+      _numberOfSyncShardActionsQueued.fetch_sub(1);
       return false;
     }
     return true;
   }
 
   void decreaseNumberOfSyncShardActionsQueued() noexcept {
-    uint64_t n = _numberOfSyncShardActionsQueued.fetch_sub(1) - 1;
-    LOG_DEVEL << "_numberOfShardActionsQueued dec to: " << n;
+    _numberOfSyncShardActionsQueued.fetch_sub(1);
   }
 
   /// @brief check if a database is dirty
