@@ -47,7 +47,6 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -747,13 +746,6 @@ bool SynchronizeShard::first() {
     // Increase the race timeout before we try to get back into sync as a
     // follower
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  }
-
-  if (FileUtils::exists("/tmp/handbrake")) {
-    LOG_DEVEL << "Sleeping artificially for testing for 1s for shard "
-              << getShard() << " ...";
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    LOG_DEVEL << "Waking up.";
   }
 
   std::string const& database = getDatabase();
