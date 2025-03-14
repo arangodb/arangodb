@@ -28,6 +28,7 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
+#include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
