@@ -2719,6 +2719,7 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
                  "too many are already in flight.";
           continue;
         }
+
         // From here on, we must be very careful, if we do not manage to
         // schedule the action below, we must decrease the number of sync shard
         // actions queued again! Otherwise we lose counter values and
