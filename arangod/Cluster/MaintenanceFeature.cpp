@@ -621,24 +621,6 @@ Result MaintenanceFeature::addAction(
 
 }  // MaintenanceFeature::addAction
 
-std::shared_ptr<Action> MaintenanceFeature::preAction(
-    std::shared_ptr<ActionDescription> const& description) {
-  return createAndRegisterAction(description);
-
-}  // MaintenanceFeature::preAction
-
-std::shared_ptr<Action> MaintenanceFeature::postAction(
-    std::shared_ptr<ActionDescription> const& description) {
-  auto action = createAction(description);
-
-  if (action->ok()) {
-    action->setState(WAITINGPOST);
-    registerAction(action);
-  }
-
-  return action;
-}  // MaintenanceFeature::postAction
-
 void MaintenanceFeature::registerAction(std::shared_ptr<Action> action) {
   // Assumes write lock on _actionRegistryLock
 

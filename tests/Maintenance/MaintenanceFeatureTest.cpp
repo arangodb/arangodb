@@ -110,9 +110,7 @@ class TestActionBasic : public ActionBase {
 
   bool first() override {
     // a pre action needs to push before setting _result
-    if (_preDesc) {
-      createPreAction(_preDesc);
-    } else if (0 == _iteration) {
+    if (0 == _iteration) {
       // time to set result?
       result(_resultCode);
     }  // if
@@ -146,11 +144,6 @@ class TestActionBasic : public ActionBase {
     //
     if (result().ok()) {
       more = 0 < _iteration--;
-
-      // if going to stop, see if a postAction is needed
-      if (!more && _postDesc) {
-        createPostAction(_postDesc);
-      }  // if
     } else {
       // !ok() ... always stop iteration
       more = false;
@@ -165,8 +158,6 @@ class TestActionBasic : public ActionBase {
  public:
   int _iteration;
   ErrorCode _resultCode;
-  std::shared_ptr<ActionDescription> _preDesc;
-  std::shared_ptr<ActionDescription> _postDesc;
   bool _reschedule;
 
 };  // TestActionBasic

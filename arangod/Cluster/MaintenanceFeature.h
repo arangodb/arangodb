@@ -136,20 +136,6 @@ class MaintenanceFeature : public ArangodFeature {
   ///  ActionDescription parameter will be MOVED to new object.
   virtual Result addAction(std::shared_ptr<maintenance::Action> action);
 
-  /// @brief Internal API that allows existing actions to create pre actions
-  /// FIXDOC: Please explain how this works in a lot more detail, for example,
-  /// say if this can be called in the code of an Action and if the already
-  /// running action is postponed in this case. Explain semantics such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> preAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
-
-  /// @brief Internal API that allows existing actions to create post actions
-  /// FIXDOC: Please explain how this works in a lot more detail, such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> postAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
-
   /// returns whether or not the shard has an action of the specified type
   /// (equivalent to NAME) that has the specified state
   bool hasAction(maintenance::ActionState state, ShardID const& shardId,
