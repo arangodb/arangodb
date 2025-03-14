@@ -1327,6 +1327,12 @@ Result MaintenanceFeature::requeueAction(
     std::shared_ptr<maintenance::Action>& action, int newPriority) {
   TRI_ASSERT(action->getState() == ActionState::COMPLETE ||
              action->getState() == ActionState::FAILED);
+  if (action->describe().get(NAME) == SYNCHRONIZE_SHARD) {
+    increaseNumberOfSyncShardActionsQueued();
+    LOG_DEVEL
+        << "Requeue: increasing counter for SynchronizeShard action for shard "
+        << action->describe().get(SHARD);
+  }
   auto newAction =
       std::make_shared<maintenance::Action>(*this, action->describe());
   newAction->setPriority(newPriority);
