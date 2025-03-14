@@ -737,8 +737,6 @@ bool SynchronizeShard::first() {
   // actions correct, we decrement only once in the lifetime of this object.
   std::call_once(_decrementOnce, [this]() {
     feature().decreaseNumberOfSyncShardActionsQueued();
-    LOG_DEVEL << "SynchronizeShard::first: Have decreased number for shard "
-              << getShard();
   });
 
   TRI_IF_FAILURE("SynchronizeShard::disable") {
