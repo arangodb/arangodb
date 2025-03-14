@@ -817,3 +817,34 @@ TEST_F(MaintenanceFeatureTestThreaded,
   std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
 }
+
+// temporarily disabled since it may hang
+TEST_F(MaintenanceFeatureTestThreaded, test_synchronize_shard_abort) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
+
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  std::shared_ptr<ActionDescription> description =
+      std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{{NAME, SYNCHRONIZE_SHARD},
+                                             {DATABASE, "_system"},
+                                             {COLLECTION, "tmp"},
+                                             {SHARD, "s1"},
+                                             {THE_LEADER, "PRMR-1"},
+                                             {SHARD_VERSION, "1"},
+                                             {FORCED_RESYNC, "false"}},
+          SYNCHRONIZE_PRIORITY, true);
+
+  // The following will execute the action right away:
+  auto res = tf.addAction(description);
+  ASSERT_TRUE(res.ok());  // well added
+  tf.waitRegistryComplete();
+
+  ASSERT_FALSE(tf._recentAction->result().ok());  // must have been aborted
+}
