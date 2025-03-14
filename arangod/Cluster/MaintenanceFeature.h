@@ -126,17 +126,15 @@ class MaintenanceFeature : public ArangodFeature {
   //
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
   virtual Result addAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow = false);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
-  virtual Result addAction(std::shared_ptr<maintenance::Action> action,
-                           bool executeNow = false);
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
+  virtual Result addAction(std::shared_ptr<maintenance::Action> action);
 
   /// @brief Internal API that allows existing actions to create pre actions
   /// FIXDOC: Please explain how this works in a lot more detail, for example,
@@ -185,12 +183,10 @@ class MaintenanceFeature : public ArangodFeature {
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  void registerAction(std::shared_ptr<maintenance::Action> action,
-                      bool executeNow);
+  void registerAction(std::shared_ptr<maintenance::Action> action);
 
   std::shared_ptr<maintenance::Action> createAndRegisterAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
  public:
   /// @brief This API will attempt to fail an existing Action that is waiting
