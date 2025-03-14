@@ -732,9 +732,19 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 bool SynchronizeShard::first() {
-  feature().decreaseNumberOfSyncShardActionsQueued();
+  // Note that this can be called multiple times during the existence of the
+  // object. This happens when requeues happen. To keep the counter of queued
+  // actions correct, we decrement only once in the lifetime of this object.
+  std::call_once(_decrementOnce, [this]() {
+    feature().decreaseNumberOfSyncShardActionsQueued();
+    LOG_DEVEL << "SynchronizeShard::first: Have decreased number for shard "
+              << getShard();
+  });
 
-  TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
+  TRI_IF_FAILURE("SynchronizeShard::disable") {
+    result(TRI_ERROR_FAILED);
+    return false;
+  }
   TRI_IF_FAILURE("SynchronizeShard::delay") {
     // Increase the race timeout before we try to get back into sync as a
     // follower
