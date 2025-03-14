@@ -38,6 +38,7 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -181,43 +182,46 @@ class MaintenanceFeatureTestDBServer
   }
 };
 
-//
-//
-// Unit Tests start here
-//
-//
-class MaintenanceFeatureTestUnthreaded : public ::testing::Test {
+struct MaintenanceFeatureTestThreaded : ::testing::Test {
  protected:
   std::chrono::system_clock::time_point baseTime;
   std::chrono::system_clock::time_point noTime;
-  MaintenanceFeatureTestUnthreaded()
+  MaintenanceFeatureTestThreaded()
       : baseTime(std::chrono::system_clock::now()) {}
 
-  void SetUp() override {
-    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-        std::true_type{});
-    as.addFeature<arangodb::metrics::MetricsFeature>(
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::QueryRegistryFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-            nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::EngineSelectorFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::metrics::ClusterMetricsFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-            nullptr));
-  }
-
+ public:
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
   arangodb::ArangodServer as{po, nullptr};
+
+  void SetUp() override {
+    using namespace arangodb;
+    as.addFeature<application_features::GreetingsFeaturePhase>(
+        std::false_type{});
+    as.addFeature<metrics::MetricsFeature>(
+        LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+        LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+            nullptr),
+        LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+  }
 };
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_0_times_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -244,9 +248,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   ASSERT_LE(tf._recentAction->getStartTime(), tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_0_times_fail) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -259,7 +273,7 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
       tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
   tf.waitRegistryComplete();
 
-  ASSERT_FALSE(result.ok());  // well added
+  ASSERT_TRUE(result.ok());  // well added
   ASSERT_FALSE(tf._recentAction->result().ok());
   ASSERT_EQ(0, tf._recentAction->getProgress());
   ASSERT_EQ(tf._recentAction->getState(), FAILED);
@@ -276,9 +290,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_1_time_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -307,9 +331,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_1_time_fail) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -341,9 +375,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_2_times_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -374,9 +418,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_100_times_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
+
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -407,9 +461,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_100_times_fail) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
+
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -439,26 +503,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
   ASSERT_TRUE(tf._recentAction->getLastStatTime() <=
               tf._recentAction->getDoneTime());
 }
-
-struct MaintenanceFeatureTestThreaded : ::testing::Test {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as{po, nullptr};
-
-  void SetUp() override {
-    using namespace arangodb;
-    as.addFeature<application_features::GreetingsFeaturePhase>(
-        std::false_type{});
-    as.addFeature<metrics::MetricsFeature>(
-        LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-        LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
-        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
-            nullptr),
-        LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  }
-};
 
 TEST_F(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   TestMaintenanceFeature& tf =
@@ -816,35 +860,4 @@ TEST_F(MaintenanceFeatureTestThreaded,
 #if 0  // for debugging
   std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
-}
-
-// temporarily disabled since it may hang
-TEST_F(MaintenanceFeatureTestThreaded, test_synchronize_shard_abort) {
-  TestMaintenanceFeature& tf =
-      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
-
-  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
-
-  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
-    as.beginShutdown();
-    th.join();
-  });
-
-  std::shared_ptr<ActionDescription> description =
-      std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{{NAME, SYNCHRONIZE_SHARD},
-                                             {DATABASE, "_system"},
-                                             {COLLECTION, "tmp"},
-                                             {SHARD, "s1"},
-                                             {THE_LEADER, "PRMR-1"},
-                                             {SHARD_VERSION, "1"},
-                                             {FORCED_RESYNC, "false"}},
-          SYNCHRONIZE_PRIORITY, true);
-
-  // The following will execute the action right away:
-  auto res = tf.addAction(description);
-  ASSERT_TRUE(res.ok());  // well added
-  tf.waitRegistryComplete();
-
-  ASSERT_FALSE(tf._recentAction->result().ok());  // must have been aborted
 }
