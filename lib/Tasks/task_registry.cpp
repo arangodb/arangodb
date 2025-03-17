@@ -26,30 +26,34 @@ auto ThreadId::name() -> std::string {
   return std::string{ThreadNameFetcher{posix_id}.get()};
 }
 
+// TODO get rid of "entry point" and use name directy, get rid of name in root
+// task
 auto Task::create(std::string name, std::source_location loc,
                   TaskRegistry* registry) -> std::shared_ptr<Task> {
   struct MakeSharedTask : Task {
     MakeSharedTask(ParentTask parent, std::string name, std::string state,
                    std::source_location loc, TaskRegistry* registry)
-        : Task(parent, std::move(name), std::move(state), std::move(loc),
-               registry) {}
+        : Task(parent, std::move(name), std::move(state), std::nullopt,
+               std::move(loc), registry) {}
   };
   return std::make_shared<MakeSharedTask>(
       ParentTask{RootTask{.name = std::move(name)}}, "entry point", "created",
       std::move(loc), registry);
 }
 auto Task::subtask(TaskScope& parent, std::string name,
+                   std::optional<TransactionId> transaction,
                    std::source_location loc, TaskRegistry* registry)
     -> std::shared_ptr<Task> {
   struct MakeSharedTask : Task {
     MakeSharedTask(ParentTask parent, std::string name, std::string state,
+                   std::optional<TransactionId> transaction,
                    std::source_location loc, TaskRegistry* registry)
-        : Task(parent, std::move(name), std::move(state), std::move(loc),
-               registry) {}
+        : Task(parent, std::move(name), std::move(state),
+               std::move(transaction), std::move(loc), registry) {}
   };
-  return std::make_shared<MakeSharedTask>(ParentTask{parent.task()},
-                                          std::move(name), "created",
-                                          std::move(loc), registry);
+  return std::make_shared<MakeSharedTask>(
+      ParentTask{parent.task()}, std::move(name), "created",
+      std::move(transaction), std::move(loc), registry);
 }
 auto Task::scheduled(TaskScope& parent, std::string name,
                      std::source_location loc, TaskRegistry* registry)
@@ -57,19 +61,35 @@ auto Task::scheduled(TaskScope& parent, std::string name,
   struct MakeSharedTask : Task {
     MakeSharedTask(ParentTask parent, std::string name, std::string state,
                    std::source_location loc, TaskRegistry* registry)
-        : Task(parent, std::move(name), std::move(state), std::move(loc),
-               registry) {}
+        : Task(parent, std::move(name), std::move(state), std::nullopt,
+               std::move(loc), registry) {}
   };
   return std::make_shared<MakeSharedTask>(ParentTask{parent.task()},
                                           std::move(name), "scheduled",
                                           std::move(loc), registry);
 }
 
+auto Task::transaction_task(TransactionId transaction, std::string name,
+                            std::source_location loc, TaskRegistry* registry)
+    -> std::shared_ptr<Task> {
+  struct MakeSharedTask : Task {
+    MakeSharedTask(ParentTask parent, std::string name, std::string state,
+                   std::source_location loc, TaskRegistry* registry)
+        : Task(parent, std::move(name), std::move(state), std::nullopt,
+               std::move(loc), registry) {}
+  };
+  return std::make_shared<MakeSharedTask>(ParentTask{std::move(transaction)},
+                                          std::move(name), "created",
+                                          std::move(loc), registry);
+}
+
 Task::Task(ParentTask parent, std::string name, std::string state,
-           std::source_location loc, TaskRegistry* registry)
+           std::optional<TransactionId> transaction, std::source_location loc,
+           TaskRegistry* registry)
     : _name{std::move(name)},
       _state{std::move(state)},
       _parent{std::move(parent)},
+      _transaction{std::move(transaction)},
       _source_location{std::move(loc)},
       _registry{registry} {}
 
@@ -101,8 +121,12 @@ auto Task::snapshot() -> TaskSnapshot {
           overloaded{[&](RootTask root) { return ParentTaskSnapshot{root}; },
                      [&](std::shared_ptr<Task> parent) {
                        return ParentTaskSnapshot{TaskIdWrapper{parent.get()}};
+                     },
+                     [&](TransactionId transaction) {
+                       return ParentTaskSnapshot{transaction};
                      }},
           _parent),
+      .transaction = _transaction,
       .thread = _running_thread,
       .source_location =
           SourceLocation{.file_name = _source_location.file_name(),
@@ -119,8 +143,10 @@ auto TaskRegistry::start_task(std::string name, std::source_location loc)
 }
 
 auto TaskRegistry::start_subtask(TaskScope& parent, std::string name,
+                                 std::optional<TransactionId> transactionId,
                                  std::source_location loc) -> TaskScope {
-  auto task = Task::subtask(parent, std::move(name), std::move(loc), this);
+  auto task = Task::subtask(parent, std::move(name), std::move(transactionId),
+                            std::move(loc), this);
   auto guard = std::lock_guard(_mutex);
   _tasks.emplace_back(task);
   return TaskScope{task};
@@ -133,6 +159,17 @@ auto TaskRegistry::schedule_subtask(TaskScope& parent, std::string name,
   auto guard = std::lock_guard(_mutex);
   _tasks.emplace_back(task);
   return ScheduledTaskScope{task};
+}
+
+auto TaskRegistry::start_transaction_task(TransactionId transaction,
+                                          std::string name,
+                                          std::source_location loc)
+    -> TaskScope {
+  auto task = Task::transaction_task(std::move(transaction), std::move(name),
+                                     std::move(loc), this);
+  auto guard = std::lock_guard(_mutex);
+  _tasks.emplace_back(task);
+  return TaskScope{task};
 }
 
 }  // namespace arangodb::task_registry

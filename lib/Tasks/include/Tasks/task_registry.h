@@ -53,6 +53,26 @@ template<typename Inspector>
 auto inspect(Inspector& f, RootTask& x) {
   return f.object(x).fields(f.field("name", x.name));
 }
+
+struct TransactionId {
+  std::uint64_t id;
+  bool operator==(TransactionId const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, TransactionId& x) {
+  return f.object(x).fields(f.field("tid", x.id));
+}
+
+struct TransactionTask {
+  std::string name;
+  TransactionId tid;
+  bool operator==(TransactionTask const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, TransactionTask& x) {
+  return f.object(x).fields(f.field("name", x.name), f.embedFields(x.tid));
+}
+
 struct TaskIdWrapper {
   void* id;
   bool operator==(TaskIdWrapper const&) const = default;
@@ -62,12 +82,14 @@ auto inspect(Inspector& f, TaskIdWrapper& x) {
   return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
 }
 
-struct ParentTaskSnapshot : std::variant<RootTask, TaskIdWrapper> {};
+struct ParentTaskSnapshot
+    : std::variant<RootTask, TaskIdWrapper, TransactionId> {};
 template<typename Inspector>
 auto inspect(Inspector& f, ParentTaskSnapshot& x) {
   return f.variant(x).unqualified().alternatives(
       inspection::inlineType<RootTask>(),
-      inspection::inlineType<TaskIdWrapper>());
+      inspection::inlineType<TaskIdWrapper>(),
+      inspection::inlineType<TransactionId>());
 }
 
 struct TaskSnapshot {
@@ -75,36 +97,40 @@ struct TaskSnapshot {
   std::string state;
   void* id;
   ParentTaskSnapshot parent;
+  std::optional<TransactionId> transaction;
   std::optional<ThreadId> thread;
   SourceLocation source_location;
   bool operator==(TaskSnapshot const&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, TaskSnapshot& x) {
-  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)),
-                            f.field("name", x.name), f.field("state", x.state),
-                            f.field("parent", x.parent),
-                            f.field("thread", x.thread),
-                            f.field("source_location", x.source_location));
+  return f.object(x).fields(
+      f.field("id", fmt::format("{}", x.id)), f.field("name", x.name),
+      f.field("state", x.state), f.field("parent", x.parent),
+      f.field("transaction", x.transaction), f.field("thread", x.thread),
+      f.field("source_location", x.source_location));
 }
 
 struct Task;
-struct ParentTask : std::variant<RootTask, std::shared_ptr<Task>> {};
+struct ParentTask
+    : std::variant<RootTask, std::shared_ptr<Task>, TransactionId> {};
 
 struct TaskRegistry;
 struct TaskScope;
 struct ScheduledTaskScope;
 
-// this class can at some point be split into ThreadTask (with thread directly
-// set) and ScheduledTask (with no initial thread, is only set when task is
-// started)
 struct Task {
   static auto create(std::string name, std::source_location loc,
                      TaskRegistry* registry) -> std::shared_ptr<Task>;
-  static auto subtask(TaskScope& parent, std::string name, std::source_location,
-                      TaskRegistry* registry) -> std::shared_ptr<Task>;
+  static auto subtask(TaskScope& parent, std::string name,
+                      std::optional<TransactionId> transaction,
+                      std::source_location loc, TaskRegistry* registry)
+      -> std::shared_ptr<Task>;
   static auto scheduled(TaskScope& parent, std::string name,
                         std::source_location, TaskRegistry* registry)
+      -> std::shared_ptr<Task>;
+  static auto transaction_task(TransactionId transaction, std::string name,
+                               std::source_location loc, TaskRegistry* registry)
       -> std::shared_ptr<Task>;
   ~Task();
   auto id() -> void* { return this; }
@@ -115,7 +141,8 @@ struct Task {
 
  private:
   Task(ParentTask parent, std::string name, std::string state,
-       std::source_location loc, TaskRegistry* registry);
+       std::optional<TransactionId> transaction, std::source_location loc,
+       TaskRegistry* registry);
   /**
      Update the state
 
@@ -129,6 +156,7 @@ struct Task {
   std::string _state;  // has to probably be atomic (for reading and writing
                        // concurrently on different threads), but is string...
   ParentTask _parent;
+  std::optional<TransactionId> _transaction;  // stays constant
   std::optional<ThreadId>
       _running_thread;  // proably has to also be atomic because
                         // changes for scheduled task
@@ -144,6 +172,7 @@ struct Task {
    The TaskScope sets the state of the corresponding task.
  */
 struct TaskScope {
+  // TODO possibly update source location of task in this constructor,
   TaskScope(std::shared_ptr<Task> task) : _task{task} {
     if (task) {
       _task->_running_thread = ThreadId::current();
@@ -202,6 +231,7 @@ struct TaskRegistry {
      scope is deleted.
   */
   auto start_subtask(TaskScope& parent, std::string name,
+                     std::optional<TransactionId> transactionId = std::nullopt,
                      std::source_location loc = std::source_location::current())
       -> TaskScope;
 
@@ -215,6 +245,13 @@ struct TaskRegistry {
       TaskScope& parent, std::string name,
       std::source_location loc = std::source_location::current())
       -> ScheduledTaskScope;
+
+  /**
+     Create a task that belongs to a currently open transaction
+   */
+  auto start_transaction_task(
+      TransactionId transaction, std::string name,
+      std::source_location loc = std::source_location::current()) -> TaskScope;
 
   auto garbage_collect() {
     auto guard = std::lock_guard(_mutex);

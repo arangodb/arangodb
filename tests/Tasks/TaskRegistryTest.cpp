@@ -40,6 +40,7 @@ struct TestTask {
   std::string state;
   ParentTaskSnapshot parent;
   std::optional<ThreadId> thread = ThreadId::current();
+  // std::optional<TransactionId> transaction = std::nullopt;
   bool operator==(TaskSnapshot const& snapshot) const {
     return name == snapshot.name;
   }
@@ -297,4 +298,28 @@ TEST(TaskRegistryTest, a_scheduled_task_can_update_its_state_when_running) {
       (TestTask{.name = "Subtask",
                 .state = "Some other sub state",
                 .parent = ParentTaskSnapshot{TaskIdWrapper{all_tasks[0].id}}}));
+}
+
+TEST(TaskRegistryTest,
+     can_start_a_task_that_refers_to_a_transaction_via_tid_as_its_parent) {
+  auto registry = TaskRegistry{};
+
+  auto base_scope = registry.start_transaction_task(TransactionId{12}, "Task");
+
+  auto all_tasks = get_all_tasks(registry);
+  ASSERT_EQ(all_tasks.size(), 1);
+  ASSERT_EQ(all_tasks[0].parent, ParentTaskSnapshot{TransactionId{12}});
+}
+
+TEST(TaskRegistryTest, a_task_can_directly_belong_to_a_transaction) {
+  auto registry = TaskRegistry{};
+  auto base_scope = registry.start_task("Task");
+
+  auto sub_scope =
+      registry.start_subtask(base_scope, "Subtask", TransactionId{4});
+
+  auto all_tasks = get_all_tasks(registry);
+  ASSERT_EQ(all_tasks.size(), 2);
+  ASSERT_EQ(all_tasks[1].name, "Subtask");
+  ASSERT_EQ(all_tasks[1].transaction, TransactionId{4});
 }
