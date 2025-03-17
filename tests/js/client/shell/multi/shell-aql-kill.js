@@ -77,7 +77,6 @@ function aqlKillSuite () {
       if (res.code === 410) {
         return res;
       } else {
-        print(res)
         return undefined;
       }
     };
