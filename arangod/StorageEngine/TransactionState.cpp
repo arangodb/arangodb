@@ -115,8 +115,8 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       // set usage tracking mode to disabled initially. this may be overriden
       // below
       _usageTrackingMode(metrics::MetricsFeature::UsageTrackingMode::kDisabled),
-      _taskScope{
-          task_registry::registry.schedule_subtask(taskScope, "transaction")} {
+      _taskScope{task_registry::registry.start_subtask(
+          taskScope, "transaction", task_registry::TransactionId{tid.id()})} {
   task_registry::registry.log(fmt::format("created transaction {}", tid.id()));
 // patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

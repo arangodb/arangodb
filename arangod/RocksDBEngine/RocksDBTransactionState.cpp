@@ -179,7 +179,6 @@ void RocksDBTransactionState::cleanupTransaction() noexcept {
 /// @brief commit a transaction
 futures::Future<Result> RocksDBTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
-  auto scope = std::move(_taskScope).start();
   task_registry::registry.log(
       fmt::format("commiting transaction {}", id().id()));
   LOG_TRX("5cb03", TRACE, this)

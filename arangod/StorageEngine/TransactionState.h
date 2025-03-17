@@ -521,7 +521,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;
 #endif
  protected:
-  task_registry::ScheduledTaskScope _taskScope;
+  task_registry::TaskScope _taskScope;
 };
 
 }  // namespace arangodb

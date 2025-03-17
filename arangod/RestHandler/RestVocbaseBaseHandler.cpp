@@ -39,6 +39,8 @@
 #include "Meta/conversion.h"
 #include "Rest/CommonDefines.h"
 #include "StorageEngine/TransactionState.h"
+#include "Tasks/task_registry.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
@@ -558,6 +560,29 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
   if (found) {
     ret = value;
   }
+}
+
+auto RestVocbaseBaseHandler::registerTask(std::string name)
+    -> task_registry::TaskScope {
+  bool found = false;
+  std::string const& value =
+      _request->header(StaticStrings::TransactionId, found);
+  if (!found) {
+    return task_registry::registry.start_task(std::move(name));
+  }
+  TransactionId tid = TransactionId::none();
+  std::size_t pos = 0;
+  try {
+    tid = TransactionId{std::stoull(value, &pos, 10)};
+  } catch (...) {
+  }
+  if (!tid.isSet() || (tid.isLegacyTransactionId() &&
+                       ServerState::instance()->isRunningInCluster())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid transaction ID");
+  }
+  return task_registry::registry.start_transaction_task(
+      task_registry::TransactionId{tid.id()}, std::move(name));
 }
 
 futures::Future<std::unique_ptr<transaction::Methods>>

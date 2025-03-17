@@ -27,6 +27,7 @@
 
 #include "Rest/GeneralResponse.h"
 #include "RestServer/VocbaseContext.h"
+#include "Tasks/task_registry.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Utils/OperationResult.h"
@@ -173,6 +174,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief extracts a string parameter value
   void extractStringParameter(std::string const& name, std::string& ret) const;
 
+  auto registerTask(std::string name) -> task_registry::TaskScope;
   /**
    * @brief Helper to create a new Transaction for a single collection. The
    * helper method will will lock the collection accordingly. It will

@@ -34,6 +34,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
@@ -154,6 +155,8 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
 }
 
 futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
+  auto task_scope = registerTask("Insert document");
+  task_registry::registry.log("Inserted document");
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {

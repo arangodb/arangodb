@@ -150,7 +150,6 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
 /// @brief commit a transaction
 futures::Future<Result> ClusterTransactionState::commitTransaction(
     transaction::Methods* activeTrx) {
-  auto scope = std::move(_taskScope).start();
   task_registry::registry.log(
       fmt::format("commiting transaction {}", id().id()));
   TRI_ASSERT(_beforeCommitCallbacks.empty());
