@@ -11,8 +11,8 @@ add_custom_target(frontend ALL
   COMMENT "create frontend build"
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
   
-  COMMAND -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn install
-  COMMAND -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn build
+  COMMAND ${CMAKE_COMMAND} -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn install
+  COMMAND ${CMAKE_COMMAND} -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn build
 )
 
 add_custom_target(frontend_clean
