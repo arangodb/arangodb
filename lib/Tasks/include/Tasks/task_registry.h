@@ -46,12 +46,11 @@ auto inspect(Inspector& f, SourceLocation& x) {
 }
 
 struct RootTask {
-  std::string name;
   bool operator==(RootTask const&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, RootTask& x) {
-  return f.object(x).fields(f.field("name", x.name));
+  return f.object(x).fields();
 }
 
 struct TransactionId {

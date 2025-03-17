@@ -55,10 +55,9 @@ TEST(TaskRegistryTest,
 
   auto all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 1);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "running",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}}}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "running",
+                                    .parent = ParentTaskSnapshot{RootTask{}}}));
 }
 
 TEST(TaskRegistryTest, a_subtask_knows_its_parent) {
@@ -69,10 +68,9 @@ TEST(TaskRegistryTest, a_subtask_knows_its_parent) {
 
   auto all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 2);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "running",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}}}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "running",
+                                    .parent = ParentTaskSnapshot{RootTask{}}}));
   ASSERT_EQ(
       all_tasks[1],
       (TestTask{.name = "Subtask",
@@ -108,11 +106,10 @@ TEST(TaskRegistryTest, subtask_prevents_task_from_being_destroyed) {
 
     auto all_tasks = get_all_tasks(registry);
     ASSERT_EQ(all_tasks.size(), 2);
-    ASSERT_EQ(all_tasks[0],
-              (TestTask{.name = "entry point",
-                        .state = "done",
-                        .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                        .thread = ThreadId::current()}));
+    ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                      .state = "done",
+                                      .parent = ParentTaskSnapshot{RootTask{}},
+                                      .thread = ThreadId::current()}));
     ASSERT_EQ(all_tasks[1], (TestTask{.name = "Subtask",
                                       .state = "running",
                                       .parent = ParentTaskSnapshot{
@@ -132,10 +129,9 @@ TEST(TaskRegistryTest, task_scope_can_update_task_state) {
 
   auto all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 2);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "Some other base state",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}}}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "Some other base state",
+                                    .parent = ParentTaskSnapshot{RootTask{}}}));
   ASSERT_EQ(
       all_tasks[1],
       (TestTask{.name = "Subtask",
@@ -162,11 +158,10 @@ TEST(TaskRegistryTest,
 
   auto all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 2);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "running",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                      .thread = ThreadId::current()}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "running",
+                                    .parent = ParentTaskSnapshot{RootTask{}},
+                                    .thread = ThreadId::current()}));
   ASSERT_EQ(
       all_tasks[1],
       (TestTask{.name = "Subtask",
@@ -179,11 +174,10 @@ TEST(TaskRegistryTest,
 
     all_tasks = get_all_tasks(registry);
     ASSERT_EQ(all_tasks.size(), 2);
-    ASSERT_EQ(all_tasks[0],
-              (TestTask{.name = "entry point",
-                        .state = "running",
-                        .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                        .thread = ThreadId::current()}));
+    ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                      .state = "running",
+                                      .parent = ParentTaskSnapshot{RootTask{}},
+                                      .thread = ThreadId::current()}));
     ASSERT_EQ(
         all_tasks[1],
         (TestTask{.name = "Subtask",
@@ -194,11 +188,10 @@ TEST(TaskRegistryTest,
 
   all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 1);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "running",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                      .thread = ThreadId::current()}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "running",
+                                    .parent = ParentTaskSnapshot{RootTask{}},
+                                    .thread = ThreadId::current()}));
 }
 
 TEST(TaskRegistryTest, a_scheduled_task_can_start_tasks_when_running) {
@@ -208,11 +201,10 @@ TEST(TaskRegistryTest, a_scheduled_task_can_start_tasks_when_running) {
 
   auto all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 2);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "running",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                      .thread = ThreadId::current()}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "running",
+                                    .parent = ParentTaskSnapshot{RootTask{}},
+                                    .thread = ThreadId::current()}));
   ASSERT_EQ(
       all_tasks[1],
       (TestTask{.name = "Subtask",
@@ -228,12 +220,11 @@ TEST(TaskRegistryTest, a_scheduled_task_can_start_tasks_when_running) {
 
       all_tasks = get_all_tasks(registry);
       ASSERT_EQ(all_tasks.size(), 3);
-      ASSERT_EQ(
-          all_tasks[0],
-          (TestTask{.name = "entry point",
-                    .state = "running",
-                    .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                    .thread = ThreadId::current()}));
+      ASSERT_EQ(all_tasks[0],
+                (TestTask{.name = "Task",
+                          .state = "running",
+                          .parent = ParentTaskSnapshot{RootTask{}},
+                          .thread = ThreadId::current()}));
       ASSERT_EQ(
           all_tasks[1],
           (TestTask{
@@ -252,11 +243,10 @@ TEST(TaskRegistryTest, a_scheduled_task_can_start_tasks_when_running) {
 
     all_tasks = get_all_tasks(registry);
     ASSERT_EQ(all_tasks.size(), 3);
-    ASSERT_EQ(all_tasks[0],
-              (TestTask{.name = "entry point",
-                        .state = "running",
-                        .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                        .thread = ThreadId::current()}));
+    ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                      .state = "running",
+                                      .parent = ParentTaskSnapshot{RootTask{}},
+                                      .thread = ThreadId::current()}));
     ASSERT_EQ(
         all_tasks[1],
         (TestTask{.name = "Subtask",
@@ -272,11 +262,10 @@ TEST(TaskRegistryTest, a_scheduled_task_can_start_tasks_when_running) {
   }
   all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 1);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "running",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}},
-                      .thread = ThreadId::current()}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "running",
+                                    .parent = ParentTaskSnapshot{RootTask{}},
+                                    .thread = ThreadId::current()}));
 }
 
 TEST(TaskRegistryTest, a_scheduled_task_can_update_its_state_when_running) {
@@ -289,10 +278,9 @@ TEST(TaskRegistryTest, a_scheduled_task_can_update_its_state_when_running) {
 
   auto all_tasks = get_all_tasks(registry);
   ASSERT_EQ(all_tasks.size(), 2);
-  ASSERT_EQ(all_tasks[0],
-            (TestTask{.name = "entry point",
-                      .state = "running",
-                      .parent = ParentTaskSnapshot{RootTask{.name = "Task"}}}));
+  ASSERT_EQ(all_tasks[0], (TestTask{.name = "Task",
+                                    .state = "running",
+                                    .parent = ParentTaskSnapshot{RootTask{}}}));
   ASSERT_EQ(
       all_tasks[1],
       (TestTask{.name = "Subtask",

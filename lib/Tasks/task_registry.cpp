@@ -26,8 +26,6 @@ auto ThreadId::name() -> std::string {
   return std::string{ThreadNameFetcher{posix_id}.get()};
 }
 
-// TODO get rid of "entry point" and use name directy, get rid of name in root
-// task
 auto Task::create(std::string name, std::source_location loc,
                   TaskRegistry* registry) -> std::shared_ptr<Task> {
   struct MakeSharedTask : Task {
@@ -36,9 +34,9 @@ auto Task::create(std::string name, std::source_location loc,
         : Task(parent, std::move(name), std::move(state), std::nullopt,
                std::move(loc), registry) {}
   };
-  return std::make_shared<MakeSharedTask>(
-      ParentTask{RootTask{.name = std::move(name)}}, "entry point", "created",
-      std::move(loc), registry);
+  return std::make_shared<MakeSharedTask>(ParentTask{RootTask{}},
+                                          std::move(name), "created",
+                                          std::move(loc), registry);
 }
 auto Task::subtask(TaskScope& parent, std::string name,
                    std::optional<TransactionId> transaction,
