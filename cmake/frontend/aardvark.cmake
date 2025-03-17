@@ -10,9 +10,9 @@ set(FRONTEND_DESTINATION ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/AP
 add_custom_target(frontend ALL
   COMMENT "create frontend build"
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
-  ENV NODE_OPTIONS=--max_old_space_size=7168
-  COMMAND nice -10 yarn install
-  COMMAND nice -10 yarn build
+  
+  COMMAND -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn install
+  COMMAND -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn build
 )
 
 add_custom_target(frontend_clean
