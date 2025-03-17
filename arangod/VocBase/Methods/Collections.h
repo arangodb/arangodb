@@ -25,6 +25,7 @@
 
 #include "Basics/Result.h"
 #include "Futures/Future.h"
+#include "Tasks/task_registry.h"
 #include "Transaction/Hints.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/AccessMode.h"
@@ -46,6 +47,10 @@ struct ShardID;
 
 namespace transaction {
 class Methods;
+}
+
+namespace task_registry {
+struct Task;
 }
 
 struct CollectionDropOptions {
@@ -111,8 +116,8 @@ struct Collections {
       bool createWaitsForSyncReplication,             // replication wait flag
       bool enforceReplicationFactor,                  // replication factor flag
       bool isNewDatabase, bool allowEnterpriseCollectionsOnSingleServer = false,
-      bool isRestore = false);  // whether this is being called
-                                // during restore
+      bool isRestore = false,  // whether this is being called during restore
+      task_registry::TaskScope taskScope = task_registry::TaskScope{nullptr});
 
   /// Create shard, can only be used on DBServers.
   /// Should only be called by Maintenance.

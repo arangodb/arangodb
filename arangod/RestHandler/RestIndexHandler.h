@@ -36,6 +36,10 @@
 namespace arangodb {
 class LogicalCollection;
 
+namespace task_registry {
+struct Task;
+}
+
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestIndexHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);

@@ -46,6 +46,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
+#include "Tasks/task_registry_variable.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -527,6 +528,10 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
 }
 
 RestStatus RestIndexHandler::createIndex() {
+  auto taskScope =
+      task_registry::registry.start_task("Index creation via RestIndexHandler");
+  task_registry::registry.log("tasks after starting");
+
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
@@ -585,16 +590,19 @@ RestStatus RestIndexHandler::createIndex() {
   // the following callback is executed in a background thread
   auto cb = [this, self = shared_from_this(),
              execContext = std::move(execContext), collection = std::move(coll),
-             body = std::move(indexInfo)] {
+             body =
+                 std::move(indexInfo)](task_registry::TaskScope subTaskScope) {
     ExecContextScope scope(std::move(execContext));
     {
       std::unique_lock<std::mutex> locker(_mutex);
 
+      subTaskScope.update_state("start index creation");
       try {
         _createInBackgroundData.result =
             methods::Indexes::ensureIndex(*collection, body.slice(), true,
                                           _createInBackgroundData.response)
                 .waitAndGet();
+        subTaskScope.update_state("finished index creation");
 
         if (_createInBackgroundData.result.ok()) {
           VPackSlice created =
@@ -617,14 +625,26 @@ RestStatus RestIndexHandler::createIndex() {
         _createInBackgroundData.result = Result(TRI_ERROR_INTERNAL, ex.what());
       }
     }
+    subTaskScope.update_state("got index results");
 
     // notify REST handler
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       [self]() { self->wakeupHandler(); });
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::INTERNAL_LOW,
+        [self, scheduledScope{task_registry::registry.schedule_subtask(
+                   subTaskScope, "scheduled wakeup call")}]() mutable {
+          // auto scope = std::move(scheduledScope).start();
+          self->wakeupHandler();
+          // scope.update_state("Handler woken up");
+          task_registry::registry.log("tasks when running scheduled");
+        });
+
+    task_registry::registry.log("tasks after scheduled");
   };
 
   // start background thread
-  _createInBackgroundData.thread = std::make_unique<std::thread>(std::move(cb));
+  _createInBackgroundData.thread = std::make_unique<std::thread>(
+      std::move(cb),
+      task_registry::registry.start_subtask(taskScope, "Background thread"));
 
   return RestStatus::WAITING;
 }

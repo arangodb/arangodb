@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Cluster/ClusterTypes.h"
+#include "Tasks/task_registry.h"
 #include <vector>
 #include <memory>
 
@@ -47,6 +48,10 @@ namespace replication2 {
 struct CollectionGroupUpdates;
 }
 
+namespace task_registry {
+struct Task;
+}
+
 struct ClusterCollectionMethods {
   // static only class, never initialize
   ClusterCollectionMethods() = delete;
@@ -66,7 +71,8 @@ struct ClusterCollectionMethods {
       TRI_vocbase_t& vocbase,
       std::vector<CreateCollectionBody> parametersOfCollections,
       bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
-      bool enforceReplicationFactor, bool isNewDatabase)
+      bool enforceReplicationFactor, bool isNewDatabase,
+      task_registry::TaskScope taskScope = task_registry::TaskScope{nullptr})
       -> arangodb::ResultT<std::vector<std::shared_ptr<LogicalCollection>>>;
 
   [[nodiscard]] static auto toPlanEntry(

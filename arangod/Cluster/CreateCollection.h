@@ -38,6 +38,10 @@ namespace arangodb {
 
 struct ShardID;
 
+namespace task_registry {
+struct Task;
+}
+
 namespace replication2::agency {
 struct CollectionGroupPlanSpecification;
 }  // namespace replication2::agency

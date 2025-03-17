@@ -3,8 +3,8 @@ add_library(arango_async_registry STATIC
   registry.cpp
   registry_variable.cpp
   thread_registry.cpp)
-target_include_directories(arango_async_registry PRIVATE
-  ${PROJECT_SOURCE_DIR}/arangod)
+target_include_directories(arango_async_registry PUBLIC
+  ${PROJECT_SOURCE_DIR}/lib)
 target_link_libraries(arango_async_registry
   PRIVATE
   arango_assertions

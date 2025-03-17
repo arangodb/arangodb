@@ -360,7 +360,8 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
 
 futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
     TRI_vocbase_t& vocbase, velocypack::Slice trxOpts,
-    OperationOrigin operationOrigin, bool allowDirtyReads) {
+    OperationOrigin operationOrigin, bool allowDirtyReads,
+    task_registry::TaskScope taskScope) {
   if (_softShutdownOngoing.load(std::memory_order_relaxed)) {
     co_return {TRI_ERROR_SHUTTING_DOWN};
   }

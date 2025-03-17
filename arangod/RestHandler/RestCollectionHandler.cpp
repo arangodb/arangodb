@@ -38,6 +38,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Tasks/task_registry_variable.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -337,6 +338,9 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
 
 // create a collection
 void RestCollectionHandler::handleCommandPost() {
+  auto taskscope = task_registry::registry.start_task("Create collection");
+  task_registry::registry.log("tasks on coordinator");
+
   if (ServerState::instance()->isDBServer()) {
     generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
     return;
@@ -383,8 +387,9 @@ void RestCollectionHandler::handleCommandPost() {
       options, collections,
       waitForSyncReplication,    // replication wait flag
       enforceReplicationFactor,  // replication factor flag
-      /*isNewDatabase*/ false    // here always false
-  );
+      /*isNewDatabase*/ false,   // here always false
+      /*allowEnterpriseCollectionsOnSingleServer*/ false,
+      /*isRestore*/ false, std::move(taskscope));
 
   std::shared_ptr<LogicalCollection> coll;
   // backwards compatibility transformation:
@@ -406,6 +411,8 @@ void RestCollectionHandler::handleCommandPost() {
   } else {
     generateError(res);
   }
+
+  task_registry::registry.log("tasks on coordinator");
 }
 
 futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
