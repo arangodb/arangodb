@@ -461,7 +461,8 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
         break;
       }
     }
-    LOG_DEVEL << "TEMP NUMBER OF FILES: " << temp;
+    LOG_TOPIC("93b70", TRACE, Logger::ENGINES)
+        << "TEMP NUMBER OF FILES: " << temp;
 
     if (static_cast<int>(_slowdownWritesTrigger) <= temp) {
       temp -= (static_cast<int>(_slowdownWritesTrigger) - 1);
@@ -490,8 +491,9 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
     compactionBacklog += (immBacklog - immTrigger);
   }
 
-  LOG_DEVEL << "compactionBacklog: " << compactionBacklog
-            << ", pendingCompactionBytes: " << pendingCompactionBytes;
+  LOG_TOPIC("194c6", TRACE, Logger::ENGINES)
+      << "compactionBacklog: " << compactionBacklog
+      << ", pendingCompactionBytes: " << pendingCompactionBytes;
   return {compactionBacklog, pendingCompactionBytes};
 }
 
