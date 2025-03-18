@@ -369,7 +369,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
     stats.virtualSize  < 310000000 &&
     stats.residentSize < 140000000
   ) || stats.virtualSize === 0);
-  if (options.test !== undefined) {
+  if (options.coreAbort || options.test !== undefined) {
     print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
   } else {

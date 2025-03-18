@@ -1,0 +1,13 @@
+name: arangodb_async_existing_thread_registries
+introducedIn: "3.12.4"
+help: |
+  Number of threads that started currently existing asyncronous operations.
+unit: number
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - coordinator
+description: |
+  Number of threads that started currently existing asyncronous operations. The thread itself does not need to exist any more. This number also includes still running threads that have started asyncronous operations which do not exist any more.

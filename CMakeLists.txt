@@ -1081,7 +1081,6 @@ add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
 
-
 # ------------------------------------------------------------------------------
 # RocksDB
 # ------------------------------------------------------------------------------

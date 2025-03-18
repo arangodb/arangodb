@@ -150,15 +150,16 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'sanOptions': {},
     'isInstrumented': isInstrumented,
     'haveFailAt': haveFailAt, // silent option - automatically set only.
-    'oneTestTimeout': (isInstrumented? 30 : 15) * 60,
+    'oneTestTimeout': (isInstrumented? 40 : 15) * 60,
   });
 
   tu.CopyIntoList(optionsDocumentation, [
-    'SUT instrumented binaries',
+    ' SUT instrumented binaries',
     '   - `sanitizer`: if set the programs are run with enabled sanitizer',
     '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
     '     and need longer timeouts',
     '   - `isCov`: doubles oneTestTimeot value if set to true',
+    ''
   ]);
   optionHandlers.push(function(options) {
     // fiddle in suppressions for sanitizers if not already set from an

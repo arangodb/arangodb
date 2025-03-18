@@ -26,62 +26,10 @@
 #include <optional>
 #include <stack>
 #include <vector>
-#include <unordered_map>
 
 namespace arangodb::async_registry {
 
 using Id = void*;
-
-template<typename Data>
-struct IndexedForest;
-
-template<typename Data>
-struct WaiterForest {
-  auto insert(Id id, Id waiter, Data data) {
-    size_t position = _waiter.size();
-    auto [_iter, was_inserted] = _position.emplace(id, position);
-    if (was_inserted) {
-      _waiter.push_back(waiter);
-      _data.push_back(data);
-    }
-  }
-  auto data(Id id) -> std::optional<Data> {
-    auto position = _position.find(id);
-    if (position == _position.end()) {
-      return std::nullopt;
-    }
-    return _data[position->second];
-  }
-  auto index_by_awaitee() -> IndexedForest<Data> {
-    std::vector<std::vector<Id>> children{_waiter.size(), std::vector<Id>{}};
-    for (auto const& [id, position] : _position) {
-      auto waiter_position = _position.find(_waiter[position]);
-      if (waiter_position != _position.end()) {
-        children[waiter_position->second].push_back(id);
-      }
-    }
-    return IndexedForest<Data>{
-        {std::move(_position), std::move(_waiter), std::move(_data)}, children};
-  }
-
-  bool operator==(WaiterForest<Data> const&) const = default;
-
-  std::unordered_map<Id, size_t> _position;
-  std::vector<Id> _waiter;
-  std::vector<Data> _data;
-};
-template<typename Data>
-struct IndexedForest : WaiterForest<Data> {
-  auto children(Id id) const -> std::vector<Id> {
-    auto position = WaiterForest<Data>::_position.find(id);
-    if (position == WaiterForest<Data>::_position.end()) {
-      return std::vector<Id>{};
-    }
-    return _children[position->second];
-  }
-  std::vector<std::vector<Id>> _children;
-};
-
 using TreeHierarchy = size_t;
 
 template<typename T>
@@ -89,6 +37,10 @@ concept HasChildren = requires(T t, Id id) {
   { t.children(id) } -> std::convertible_to<std::vector<Id>>;
 };
 
+/**
+   Iterator for traversing an outgoing edge indexed forest depth first in post
+   order, starting from node start.
+ */
 template<HasChildren Forest>
 struct DFS_PostOrder {
   DFS_PostOrder(Forest& forest, Id start) : _forest{forest}, _start{start} {
@@ -116,8 +68,8 @@ struct DFS_PostOrder {
     return next();
   }
 
-  Forest& _forest;
-  Id _start;
+  Forest const& _forest;
+  const Id _start;
   std::stack<std::tuple<Id, TreeHierarchy, bool>> _stack;
 };
 

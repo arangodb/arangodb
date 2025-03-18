@@ -3,6 +3,21 @@ devel
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
+* Simplify Maintenance by removing unused features.
+
+* Fix BTS-2100: Due to a priority inversion it was possible that a lot of
+  scheduled SynchronizeShard actions blocked higher priority 
+  TakeoverShardLeadership actions in the cluster Maintenance. This
+  could lead to service interruption during upgrades and after failovers.
+
+* Updated ArangoDB Starter to v0.19.9-preview-3.
+
+* FE-538: fix frontend build warnings.
+
+* FE-482: fix multiple issues with search view UI.
+
+* FE-503: fix losing bind params when resizing query editor.
+
 * FE-535: fix set cached query when bind params are equal.
 
 * FE-528: adds diskusage license info to UI.
@@ -11,6 +26,10 @@ devel
 
 * Fix vector index comparison in maintenance, which causes loop with agency and
   dbservers.
+
+* Added support for access tokens. Access token can be used instead of
+  a password. However, the recommended way is to generate a JWT token
+  using /_open/auth.
 
 * Fix a bug in the index API /_api/index?withHidden=true, which can lead to
   two problems: (1) A newly created index is potentially not shown in
