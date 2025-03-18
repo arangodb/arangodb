@@ -204,6 +204,19 @@ void MaintenanceFeature::collectOptions(
           arangodb::options::Flags::Dynamic));
 
   options
+      ->addOption(
+          "--server.maximal-number-sync-shard-actions",
+          "The maximum number of SynchronizeShard actions which may be queued "
+          "at any given time.",
+          new UInt64Parameter(&_maximalNumberOfSyncShardActionsQueued, 1, 1,
+                              std::numeric_limits<uint64_t>::max()),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31205);
+
+  options
       ->addOption("--server.maintenance-slow-threads",
                   "The maximum number of threads available for slow "
                   "maintenance actions (long SynchronizeShard and long "
@@ -1275,6 +1288,9 @@ Result MaintenanceFeature::requeueAction(
     std::shared_ptr<maintenance::Action>& action, int newPriority) {
   TRI_ASSERT(action->getState() == ActionState::COMPLETE ||
              action->getState() == ActionState::FAILED);
+  if (action->describe().get(NAME) == SYNCHRONIZE_SHARD) {
+    increaseNumberOfSyncShardActionsQueued();
+  }
   auto newAction =
       std::make_shared<maintenance::Action>(*this, action->describe());
   newAction->setPriority(newPriority);

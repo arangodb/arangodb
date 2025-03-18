@@ -25,10 +25,8 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
-#include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -154,6 +152,22 @@ class MaintenanceFeature : public ArangodFeature {
 
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;
+
+  /// @brief Count a SynchronizeShard actions in flight, returns `false`
+  /// if there are two many already, in which case the number is not
+  /// increased.
+  bool increaseNumberOfSyncShardActionsQueued() noexcept {
+    uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
+    if (n + 1 > _maximalNumberOfSyncShardActionsQueued) {
+      _numberOfSyncShardActionsQueued.fetch_sub(1);
+      return false;
+    }
+    return true;
+  }
+
+  void decreaseNumberOfSyncShardActionsQueued() noexcept {
+    _numberOfSyncShardActionsQueued.fetch_sub(1);
+  }
 
   /// @brief check if a database is dirty
   bool isDirty(std::string const& dbName) const;
@@ -571,6 +585,17 @@ class MaintenanceFeature : public ArangodFeature {
 
   std::vector<std::string> _databasesToCheck;
   size_t _lastNumberOfDatabases;
+
+  // Here we count how many SynchronizeShard actions are either queued
+  // or currently executing. We use this number to avoid scheduling too
+  // many of them, since each one of then holds the shard lock and prevents
+  // other - potentially higher priority actions - from being scheduled.
+  // This is in particular important for TakeoverShardLeadership actions,
+  // which can become necessary when a dbserver should be come a leader but
+  // still has a SynchronizeShard action queued from its previous life as
+  // a shard follower for the shard.
+  std::atomic<uint64_t> _numberOfSyncShardActionsQueued = 0;
+  uint64_t _maximalNumberOfSyncShardActionsQueued = 32;
 
  public:
   metrics::Histogram<metrics::LogScale<uint64_t>>* _phase1_runtime_msec =
