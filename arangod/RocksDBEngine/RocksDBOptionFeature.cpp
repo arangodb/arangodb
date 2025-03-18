@@ -231,7 +231,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _maxWriteBufferNumber(RocksDBColumnFamilyManager::numberOfColumnFamilies +
                             2),  // number of column families plus 2
       _maxWriteBufferSizeToMaintain(0),
-      _maxTotalWalSize(256 << 20),
+      _maxTotalWalSize(80 << 20),
+      //_maxTotalWalSize(256 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(defaultMinWriteBufferNumberToMerge(
           _totalWriteBufferSize, _writeBufferSize, _maxWriteBufferNumber)),
@@ -263,14 +264,18 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
           rocksDBTableOptionsDefaults.block_size,
           static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 *
                                                                         1024))),
-      _compactionReadaheadSize(8 * 1024 * 1024),
+      //_compactionReadaheadSize(8 * 1024 * 1024),
+      _compactionReadaheadSize(2 * 1024 * 1024),
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(16),
       _level0StopTrigger(256),
-      // pending compactions slowdown trigger is set to 1GB
-      _pendingCompactionBytesSlowdownTrigger(1024ULL * 1024ULL * 1024ULL),
-      // pending compactions stop trigger is set to 32GB
-      _pendingCompactionBytesStopTrigger(32ULL * 1024ULL * 1024ULL * 1024ULL),
+      _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
+      _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
+      /*      // pending compactions slowdown trigger is set to 1GB*/
+      /*_pendingCompactionBytesSlowdownTrigger(1024ULL * 1024ULL * 1024ULL),*/
+      /*// pending compactions stop trigger is set to 32GB*/
+      /*_pendingCompactionBytesStopTrigger(32ULL * 1024ULL * 1024ULL *
+         1024ULL),*/
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(24 * 60 * 60),  // once per day by default
