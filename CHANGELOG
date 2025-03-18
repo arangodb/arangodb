@@ -6,6 +6,10 @@ devel
   TakeoverShardLeadership actions in the cluster Maintenance. This
   could lead to service interruption during upgrades and after failovers.
 
+* Updated ArangoDB Starter to v0.19.9-preview-3.
+
+* FE-538: fix frontend build warnings.
+
 * FE-482: fix multiple issues with search view UI.
 
 * FE-503: fix losing bind params when resizing query editor.
