@@ -136,9 +136,14 @@ void RocksDBThrottle::OnFlushCompleted(
                        flush_job_info.table_properties.index_size +
                        flush_job_info.table_properties.filter_size;
 
+  for (auto const& blob : flush_job_info.blob_file_addition_infos) {
+    flushSize += blob.total_blob_bytes;
+  }
+
   LOG_TOPIC("09fd4", TRACE, Logger::ENGINES)
       << "rocksdb flush completed. flush size: " << flushSize
       << ", micros: " << flushTime.count();
+
   setThrottleWriteRate(flushTime, flush_job_info.table_properties.num_entries,
                        flushSize, true);
 
@@ -167,7 +172,7 @@ void RocksDBThrottle::OnCompactionCompleted(
 void RocksDBThrottle::startup(rocksdb::DB* db) {
   std::unique_lock guard{_threadCondvar.mutex};
 
-  _internalRocksDB = (rocksdb::DBImpl*)db;
+  _internalRocksDB = dynamic_cast<rocksdb::DBImpl*>(db);
 
   TRI_ASSERT(_throttleState.load() == ThrottleState::Starting);
 
@@ -264,7 +269,7 @@ void RocksDBThrottle::recalculateThrottle() {
   auto& throttleData = *_throttleData;
 
   uint64_t totalBytes = 0;
-  bool noData;
+  bool noData{false};
   {
     std::lock_guard mutexLocker{_threadMutex};
 
@@ -456,7 +461,8 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
         break;
       }
     }
-    LOG_DEVEL << "TEMP NUMBER OF FILES: " << temp;
+    LOG_TOPIC("93b70", TRACE, Logger::ENGINES)
+        << "TEMP NUMBER OF FILES: " << temp;
 
     if (static_cast<int>(_slowdownWritesTrigger) <= temp) {
       temp -= (static_cast<int>(_slowdownWritesTrigger) - 1);
@@ -485,8 +491,9 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
     compactionBacklog += (immBacklog - immTrigger);
   }
 
-  LOG_DEVEL << "compactionBacklog: " << compactionBacklog
-            << ", pendingCompactionBytes: " << pendingCompactionBytes;
+  LOG_TOPIC("194c6", TRACE, Logger::ENGINES)
+      << "compactionBacklog: " << compactionBacklog
+      << ", pendingCompactionBytes: " << pendingCompactionBytes;
   return {compactionBacklog, pendingCompactionBytes};
 }
 
