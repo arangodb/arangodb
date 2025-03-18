@@ -31,12 +31,11 @@
 #include <thread>
 
 #include "RestServer/arangod.h"
-#include "Containers/AtomicList.h"
+#include "Containers/BoundedList.h"
 #include "Rest/CommonDefines.h"
 #include "Inspection/Transformers.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/HistogramBuilder.h"
-#include "Metrics/CounterBuilder.h"
 
 namespace arangodb {
 
