@@ -324,23 +324,23 @@
           const readonlyDate = new Date(
             currentTime.getTime() + 1000 * diskusage.secondsUntilReadOnly
           );
-          message = "Your server has reached its disk usage limit. " +
-                    "Its operation will be restricted to read-only mode on " + readonlyDate + "! " + "\n"+
-                    "Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately.";
+          message =
+            "Your server has reached its disk usage limit of 100GB. If you don't decrease the data size, the server will be restricted to read-only mode on " +
+            readonlyDate +
+            ". Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license and continue using ArangoDB without limitations";
           type = 'warning';
           break;
         case "read-only":
           const shutdownDate = new Date(
             currentTime.getTime() + 1000 * diskusage.secondsUntilShutDown
           );
-          message = "Your server has been restricted to read-only mode! " +
-                    "Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license immediately. " +
-                    "The server will shutdown on " + shutdownDate + "!";
+          message = 
+            "Your server has been restricted to read-only mode due to violation of the 100GB data size limit. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible. Without a valid license the server will be shut down on " + shutdownDate + "."
           type = 'error';
           break;
         case "shutdown":
-          message = "The disk usage limit was reached, and the server will shutdown in 10 minutes. " +
-                    "Please contact your ArangoDB sales representative or sales@arangodb.com to renew your license.";
+          message =
+            "The 100 GB disk usage limit was reached and the server was put into the read-only mode after a grace period. The server will be shut down in 10 minutes. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license.";
           type = 'error';
           break;
         case "good":
