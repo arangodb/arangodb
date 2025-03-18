@@ -335,7 +335,7 @@
             currentTime.getTime() + 1000 * diskusage.secondsUntilShutDown
           );
           message = 
-            "Your server has been restricted to read-only mode due to violation of the 100GB data size limit. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible. Without a valid license the server will be shut down on " + shutdownDate + "."
+            "Your server has been restricted to read-only mode due to violation of the 100GB data size limit. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible. Without a valid license the server will be shut down on " + shutdownDate + ".";
           type = 'error';
           break;
         case "shutdown":
