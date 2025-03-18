@@ -123,6 +123,7 @@ void RocksDBThrottle::stopThread() {
 void RocksDBThrottle::OnFlushBegin(
     rocksdb::DB* db, rocksdb::FlushJobInfo const& flush_job_info) {
   // save start time in thread local storage
+  LOG_TOPIC("db370", TRACE, Logger::ENGINES) << "beggining flush";
   flushStart = std::chrono::steady_clock::now();
 }
 
@@ -135,6 +136,9 @@ void RocksDBThrottle::OnFlushCompleted(
                        flush_job_info.table_properties.index_size +
                        flush_job_info.table_properties.filter_size;
 
+  LOG_TOPIC("09fd4", TRACE, Logger::ENGINES)
+      << "rocksdb flush completed. flush size: " << flushSize
+      << ", micros: " << flushTime.count();
   setThrottleWriteRate(flushTime, flush_job_info.table_properties.num_entries,
                        flushSize, true);
 
@@ -481,7 +485,8 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
     compactionBacklog += (immBacklog - immTrigger);
   }
 
-  LOG_DEVEL << "compactionBacklog: " << compactionBacklog << ", pendingCompactionBytes: " << pendingCompactionBytes;
+  LOG_DEVEL << "compactionBacklog: " << compactionBacklog
+            << ", pendingCompactionBytes: " << pendingCompactionBytes;
   return {compactionBacklog, pendingCompactionBytes};
 }
 
