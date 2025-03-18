@@ -23,15 +23,13 @@
 
 #pragma once
 
-#include "Basics/operating-system.h"
+#include "Basics/cpu-relax.h"
 
 #include <atomic>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <random>
-#include <thread>
 #include <type_traits>
 #include <vector>
 
@@ -67,7 +65,6 @@ class ResourceManager {
       std::mt19937 gen(rd());
       std::uniform_int_distribution<size_t> dist(0, EPOCH_SLOTS - 1);
       thread_slot_index = dist(gen);
-      std::cout << "Using slot " << thread_slot_index.value() << "\n";
     }
     return *thread_slot_index;
   }

@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Containers/AtomicList.h"
+#include "Containers/BoundedList.h"
 #include <thread>
 
 #include "gtest/gtest.h"
