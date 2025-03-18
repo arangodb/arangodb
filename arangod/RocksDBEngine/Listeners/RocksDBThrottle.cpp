@@ -123,6 +123,7 @@ void RocksDBThrottle::stopThread() {
 void RocksDBThrottle::OnFlushBegin(
     rocksdb::DB* db, rocksdb::FlushJobInfo const& flush_job_info) {
   // save start time in thread local storage
+  LOG_TOPIC("db370", TRACE, Logger::ENGINES) << "beggining flush";
   flushStart = std::chrono::steady_clock::now();
 }
 
