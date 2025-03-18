@@ -3,6 +3,10 @@ devel
 
 * Simplify Maintenance by removing unused features.
 
+* Updated ArangoDB Starter to v0.19.9-preview-3.
+
+* FE-538: fix frontend build warnings.
+
 * FE-482: fix multiple issues with search view UI.
 
 * FE-503: fix losing bind params when resizing query editor.
