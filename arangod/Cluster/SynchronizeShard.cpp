@@ -25,7 +25,6 @@
 #include "SynchronizeShard.h"
 
 #include "Agency/AgencyStrings.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
@@ -46,7 +45,6 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -59,7 +57,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/OperationOrigin.h"
@@ -731,7 +728,17 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
 }
 
 bool SynchronizeShard::first() {
-  TRI_IF_FAILURE("SynchronizeShard::disable") { return false; }
+  // Note that this can be called multiple times during the existence of the
+  // object. This happens when requeues happen. To keep the counter of queued
+  // actions correct, we decrement only once in the lifetime of this object.
+  std::call_once(_decrementOnce, [this]() {
+    feature().decreaseNumberOfSyncShardActionsQueued();
+  });
+
+  TRI_IF_FAILURE("SynchronizeShard::disable") {
+    result(TRI_ERROR_FAILED);
+    return false;
+  }
   TRI_IF_FAILURE("SynchronizeShard::delay") {
     // Increase the race timeout before we try to get back into sync as a
     // follower
