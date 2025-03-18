@@ -124,31 +124,15 @@ class MaintenanceFeature : public ArangodFeature {
   //
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
   virtual Result addAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow = false);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
-  virtual Result addAction(std::shared_ptr<maintenance::Action> action,
-                           bool executeNow = false);
-
-  /// @brief Internal API that allows existing actions to create pre actions
-  /// FIXDOC: Please explain how this works in a lot more detail, for example,
-  /// say if this can be called in the code of an Action and if the already
-  /// running action is postponed in this case. Explain semantics such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> preAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
-
-  /// @brief Internal API that allows existing actions to create post actions
-  /// FIXDOC: Please explain how this works in a lot more detail, such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> postAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
+  virtual Result addAction(std::shared_ptr<maintenance::Action> action);
 
   /// returns whether or not the shard has an action of the specified type
   /// (equivalent to NAME) that has the specified state
@@ -199,12 +183,10 @@ class MaintenanceFeature : public ArangodFeature {
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  void registerAction(std::shared_ptr<maintenance::Action> action,
-                      bool executeNow);
+  void registerAction(std::shared_ptr<maintenance::Action> action);
 
   std::shared_ptr<maintenance::Action> createAndRegisterAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
  public:
   /// @brief This API will attempt to fail an existing Action that is waiting
