@@ -139,6 +139,16 @@ class LogicalCollection : public LogicalDataSource {
       ShardID const& shardId);
 
   // SECTION: Meta Information
+  std::string const& name() const noexcept {
+    TRI_ASSERT(_statusLock.isLocked());
+    return LogicalDataSource::name();
+  }
+
+  void name(std::string&& name) noexcept {
+    TRI_ASSERT(_statusLock.isLocked());
+    LogicalDataSource::name(std::move(name));
+  }
+
   Version version() const noexcept { return _version; }
 
   void setVersion(Version version) noexcept { _version = version; }

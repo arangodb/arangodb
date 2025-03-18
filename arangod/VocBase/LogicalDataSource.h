@@ -128,6 +128,7 @@ class LogicalDataSource {
     return {};
   }
 
+ protected:
   void name(std::string&& name) noexcept { _name = std::move(name); }
 
  private:
