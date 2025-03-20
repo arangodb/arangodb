@@ -3,6 +3,10 @@ devel
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
+* Fix TSAN issue in LogicalCollection.
+
+* FE-541: update disk usage message.
+
 * Simplify Maintenance by removing unused features.
 
 * Fix BTS-2100: Due to a priority inversion it was possible that a lot of
