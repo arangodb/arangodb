@@ -744,6 +744,9 @@ void TRI_vocbase_t::persistCollection(
 
 Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
                                      bool checkPermissions) {
+  // read lock, we already need the read lock to read the name
+  READ_LOCKER_EVENTUAL(locker, collection.statusLock());
+
   TRI_ASSERT(collection.id().isSet());
 
   if (checkPermissions) {
@@ -754,9 +757,6 @@ Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
                                        collection.name() + "'"};
     }
   }
-
-  // read lock
-  READ_LOCKER_EVENTUAL(locker, collection.statusLock());
 
   if (collection.deleted()) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
