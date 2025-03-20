@@ -1432,6 +1432,10 @@ static void ClientConnection_httpFuzzRequests(
 
   for (uint64_t i = 0; i < numReqs; ++i) {
     uint32_t returnCode = v8connection->sendFuzzRequest(fuzzer);
+    if (returnCode == kFuzzNotConnected) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
+                                     "connection lost during fuzzing tests");
+    }
     fuzzReturnCodesCount[returnCode]++;
   }
 
