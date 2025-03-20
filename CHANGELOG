@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix TSAN issue in LogicalCollection.
+
 * FE-541: update disk usage message.
 
 * Simplify Maintenance by removing unused features.
