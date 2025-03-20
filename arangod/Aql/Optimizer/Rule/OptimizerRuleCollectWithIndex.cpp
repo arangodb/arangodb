@@ -157,7 +157,7 @@ bool selectivityIsLowEnough(IndexNode const& in) {
   // k / n < 1 / log n.
   // We cannot easily know the number of distinct features k, but we know the
   // index selectivity estimate k_index / n, which is an upper bound for k / n
-  // because the distinct fields for the collect need to be a prefex of the
+  // because the distinct fields for the collect need to be a prefix of the
   // index fields.
   double index_selectivity = index->selectivityEstimate();
   auto numberOfItems = in.estimateCost().estimatedNrItems;
