@@ -78,7 +78,7 @@ class GeneralServer {
   bool const _allowEarlyConnections;
 
   std::recursive_mutex _tasksLock;
-  std::vector<std::unique_ptr<Acceptor>> _acceptors;
+  std::vector<std::shared_ptr<Acceptor>> _acceptors;
   std::map<void*, std::shared_ptr<rest::CommTask>> _commTasks;
 
   /// protect ssl context creation

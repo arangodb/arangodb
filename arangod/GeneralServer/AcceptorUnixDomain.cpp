@@ -70,27 +70,30 @@ void AcceptorUnixDomain::asyncAccept() {
   auto asioSocket = std::make_shared<AsioSocket<SocketType::Unix>>(context);
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
-  auto handler = [this, asioSocket = std::move(asioSocket)](
+  auto handler = [self_ptr = weak_from_this(),
+                  asioSocket = std::move(asioSocket)](
                      asio_ns::error_code const& ec) mutable {
-    if (ec) {
-      handleError(ec);
-      return;
+    if (auto self = self_ptr.lock(); self != nullptr) {
+      if (ec) {
+        self->handleError(ec);
+        return;
+      }
+
+      // set the endpoint
+      ConnectionInfo info;
+      info.endpoint = self->_endpoint->specification();
+      info.endpointType = self->_endpoint->domainType();
+      info.encryptionType = self->_endpoint->encryption();
+      info.serverAddress = self->_endpoint->host();
+      info.serverPort = self->_endpoint->port();
+      info.clientAddress = "local";
+      info.clientPort = 0;
+
+      auto commTask = std::make_shared<HttpCommTask<SocketType::Unix>>(
+          self->_server, std::move(info), std::move(asioSocket));
+      self->_server.registerTask(std::move(commTask));
+      self->asyncAccept();
     }
-
-    // set the endpoint
-    ConnectionInfo info;
-    info.endpoint = _endpoint->specification();
-    info.endpointType = _endpoint->domainType();
-    info.encryptionType = _endpoint->encryption();
-    info.serverAddress = _endpoint->host();
-    info.serverPort = _endpoint->port();
-    info.clientAddress = "local";
-    info.clientPort = 0;
-
-    auto commTask = std::make_shared<HttpCommTask<SocketType::Unix>>(
-        _server, std::move(info), std::move(asioSocket));
-    _server.registerTask(std::move(commTask));
-    this->asyncAccept();
   };
 
   // cppcheck-suppress accessMoved
