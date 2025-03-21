@@ -276,7 +276,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
         return;
       }
 
-      performHandshake(std::move(asioSocket));
+      self->performHandshake(std::move(asioSocket));
       self->asyncAccept();
     }
   };
