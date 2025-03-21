@@ -1,4 +1,4 @@
-// Version: swagger-ui 5.4.1
+// Version: swagger-ui 5.20.1
 window.onload = function() {
   //<editor-fold desc="Changeable Configuration Block">
 

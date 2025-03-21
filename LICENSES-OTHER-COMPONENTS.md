@@ -874,7 +874,7 @@ License Id: -
 #### Swagger UI
 
 * Name: swagger-ui
-* Version: 5.4.1
+* Version: 5.20.1
 * Project Home: http://swagger.io
 * GitHub: https://github.com/swagger-api/swagger-ui
 * License: https://raw.githubusercontent.com/swagger-api/swagger-ui/master/LICENSE

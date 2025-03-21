@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded Swagger UI to 5.20.1.
+
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
 * Fix TSAN issue in LogicalCollection.
