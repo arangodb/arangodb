@@ -22,6 +22,7 @@ window.onload = function() {
     //#region ArangoDB-specific changes
     validatorUrl: null,
     docExpansion: new URL(location).searchParams.has("collapsed") ? "none" : "list",
+    defaultModelRendering: "model",
     requestInterceptor: function (request) {
       // Remove fragment identifier from URL, which is between the path and the
       // query parameters if present. It is merely used to disambiguate
