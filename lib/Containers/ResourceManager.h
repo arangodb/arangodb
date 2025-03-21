@@ -66,6 +66,9 @@ class ResourceManager {
 
   // Get the thread's slot index, initializing if needed
   size_t get_thread_slot() {
+    // Choose randomly at first call to ensure nice distribution of
+    // threads amongst slots. Then store in a thread-local variable
+    // to avoid expensive random operations for every read.
     if (!thread_slot_index) {
       // Random initialization to distribute threads across slots
       std::random_device rd;
