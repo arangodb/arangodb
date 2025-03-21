@@ -78,6 +78,7 @@ auto inspect(Inspector& f, ApiCallRecord& record) {
 class ApiRecordingFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
+  static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
 
   explicit ApiRecordingFeature(Server& server);
   ~ApiRecordingFeature() override;
@@ -107,11 +108,11 @@ class ApiRecordingFeature : public ArangodFeature {
   // Whether or not to record recent API calls
   bool _enabled{true};
 
-  // Memory limit for one list of ApiCallRecords:
-  size_t _memoryPerApiRecordList{100000};
+  // Total memory limit for all ApiCallRecord lists combined
+  size_t _totalMemoryLimit{25600000};  // Default: ~25MB
 
-  // Number of ApiCallRecord lists in ring buffer:
-  size_t _numberOfApiRecordLists{256};
+  // Memory limit for one list of ApiCallRecords (calculated as _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
+  size_t _memoryPerApiRecordList{100000};
 
   /// record of recent api calls:
   std::unique_ptr<arangodb::BoundedList<ApiCallRecord>> _apiCallRecord;

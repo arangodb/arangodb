@@ -64,26 +64,20 @@ void ApiRecordingFeature::collectOptions(
                                           arangodb::options::Flags::Command));
 
   options->addOption(
-      "--server.memory-per-api-call-list",
-      "Memory limit for a list of ApiCallRecords. Exceeding this limit results "
-      "in a new list beeing created.",
-      new UInt64Parameter(&_memoryPerApiRecordList, 1, 1000, 1000000000),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
-
-  options->addOption(
-      "--server.number-of-api-call-lists",
-      "Number of lists of api call records in ring buffer.",
-      new UInt64Parameter(&_numberOfApiRecordLists, 1, 3, 1000),
+      "--server.api-recording-memory-limit",
+      "Memory limit for the list of ApiCallRecords.",
+      new UInt64Parameter(&_totalMemoryLimit, 1, 256000, 256000000000),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
 }
 
 void ApiRecordingFeature::prepare() {
-  // Initialize the API call record list if enabled
+  // Calculate per-list memory limit
+  _memoryPerApiRecordList = _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS;
+
   if (_enabled) {
     _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
-        _memoryPerApiRecordList, _numberOfApiRecordLists);
+        _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
   }
 }
 
@@ -129,6 +123,11 @@ void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
 }
 
 void ApiRecordingFeature::cleanupLoop() {
+  // Initialize delay values
+  constexpr std::chrono::milliseconds MIN_DELAY{1};
+  constexpr std::chrono::milliseconds MAX_DELAY{256};
+  auto currentDelay = MIN_DELAY;
+
   while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
     // Get the trash and measure the time
     auto start = std::chrono::steady_clock::now();
@@ -142,10 +141,15 @@ void ApiRecordingFeature::cleanupLoop() {
       LOG_TOPIC("53626", TRACE, Logger::MEMORY)
           << "Cleaned up " << count << " API call record lists in "
           << nanoseconds.count() << " nanoseconds";
+      // Reset delay to minimum when trash was found
+      currentDelay = MIN_DELAY;
+    } else {
+      // Double the delay if no trash was found, up to MAX_DELAY
+      currentDelay = std::min(currentDelay * 2, MAX_DELAY);
     }
 
-    // Sleep for 100ms
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Sleep using the calculated delay
+    std::this_thread::sleep_for(currentDelay);
   }
 }
 
