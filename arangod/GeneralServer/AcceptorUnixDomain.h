@@ -31,7 +31,7 @@
 
 namespace arangodb::rest {
 
-class AcceptorUnixDomain final
+class AcceptorUnixDomain
     : public Acceptor,
       public std::enable_shared_from_this<AcceptorUnixDomain> {
  public:

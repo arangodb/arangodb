@@ -31,8 +31,8 @@
 namespace arangodb::rest {
 
 template<SocketType T>
-class AcceptorTcp final : public Acceptor,
-                          public std::enable_shared_from_this<AcceptorTcp<T>> {
+class AcceptorTcp : public Acceptor,
+                    public std::enable_shared_from_this<AcceptorTcp<T>> {
  public:
   static std::shared_ptr<AcceptorTcp> make(rest::GeneralServer& server,
                                            rest::IoContext& ctx,
