@@ -32,6 +32,15 @@
 #include "Containers/AtomicList.h"
 #include "Containers/ResourceManager.h"
 
+// In this file we implement a high performance append-only bounded
+// list. The list is bounded in that one can specify a limit on the used
+// memory and older entries are automatically freed. Appending is fast
+// in nearly all cases (two atomic operations). If an older chunk has
+// to be freed, deallocation of the old list entries must be performed.
+// With the exception of this relatively rare operation, the class is
+// lock-free. This is used to keep the most recent API calls and to be
+// able to deliver them via some API.
+
 namespace arangodb {
 
 // The class BoundedList implements a high-performance bounded list using
@@ -46,11 +55,6 @@ namespace arangodb {
 // The total upper limit for the memory usage (which can occasionally
 // overshoot a bit) is thus
 //   _memoryThreshold * _maxHistory.
-// The forItems method provides a convenient way to iterate over all items
-// in the list from newest to oldest, executing a callback function for each
-// item. Note that it internally takes a snapshot of the current list and of
-// all historic lists, so it is safe to call this method from multiple threads
-// concurrently.
 // The type T must be an object which has a move constructor and has
 // a method called `memoryUsage` which estimates the memory usage
 // (including all substructures) in bytes. It should always return a
@@ -171,6 +175,11 @@ class BoundedList {
     _isRotating.store(false, std::memory_order_release);
   }
 
+  // The forItems method provides a convenient way to iterate over all items
+  // in the list from newest to oldest, executing a callback function for each
+  // item. Note that it internally takes a snapshot of the current list and of
+  // all historic lists, so it is safe to call this method from multiple threads
+  // concurrently.
   template<typename F>
   requires std::is_invocable_v<F, T const&>
   void forItems(F&& callback) {

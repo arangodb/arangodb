@@ -35,6 +35,13 @@
 
 namespace arangodb {
 
+// ResourceManager provides safe concurrent access to a shared resource
+// using epoch-based reclamation (EBR). It allows multiple readers
+// to access the current version of a resource while writers can
+// safely update it. The EBR technique ensures that resources are
+// only reclaimed when no readers are accessing them, preventing
+// use-after-free issues in lock-free code.
+
 template<typename T>
 class ResourceManager {
  private:

@@ -27,15 +27,6 @@
 
 namespace arangodb {
 
-// In this file we implement a high performance append-only bounded
-// list. The list is bounded in that one can specify a limit on the used
-// memory and older entries are automatically freed. Appending is fast
-// in nearly all cases (two atomic operations). If an older chunk has
-// to be freed, deallocation of the old list entries must be performed.
-// With the exception of this relatively rare operation, the class is
-// lock-free. This is used to keep the most recent API calls and to be
-// able to deliver them via some API.
-
 // The class AtomicList is a simple lock-free implementation of a singly
 // linked list. One can only prepend new items and get a snapshot in form
 // of a raw pointer to a Node. With this one can traverse the list but
