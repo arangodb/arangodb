@@ -26,7 +26,6 @@
 #pragma once
 
 #include "Basics/Result.h"
-#include "Basics/Thread.h"
 #include "GeneralServer/IoContext.h"
 #include "GeneralServer/SslServerFeature.h"
 

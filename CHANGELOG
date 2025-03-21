@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add visibility for recent api calls via a new API /_admin/server/api-calls.
+
 * Fix TSAN issue in LogicalCollection.
 
 * FE-541: update disk usage message.
