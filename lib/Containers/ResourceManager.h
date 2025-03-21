@@ -131,7 +131,7 @@ class ResourceManager {
     while (true) {
       // Try to announce reading at this epoch using compare_exchange
       uint64_t expected = 0;  // expected: 0 (not in use)
-      if (epoch_slots[slot].epoch.compare_exchange_strong(
+      if (epoch_slots[slot].epoch.compare_exchange_weak(
               expected, current_epoch, std::memory_order_acquire,
               std::memory_order_relaxed)) {
         // We use acquire here, since we want to avoid that the subsequent
