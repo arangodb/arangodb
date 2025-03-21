@@ -111,7 +111,8 @@ class ApiRecordingFeature : public ArangodFeature {
   // Total memory limit for all ApiCallRecord lists combined
   size_t _totalMemoryLimit{25600000};  // Default: ~25MB
 
-  // Memory limit for one list of ApiCallRecords (calculated as _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
+  // Memory limit for one list of ApiCallRecords (calculated as
+  // _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
   size_t _memoryPerApiRecordList{100000};
 
   /// record of recent api calls:
