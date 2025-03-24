@@ -474,9 +474,10 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
 
     propertyName = rocksdb::DB::Properties::kNumImmutableMemTable;
     bool ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
-
+    LOG_TOPIC("ffef0", TRACE, Logger::ENGINES)
+        << "NumberImmutable memory tables: " << retString;
     if (ok) {
-      immBacklog += std::stoi(retString);
+      immBacklog = std::stoi(retString);
     }
 
     ok = _internalRocksDB->GetProperty(
