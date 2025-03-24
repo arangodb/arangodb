@@ -464,6 +464,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   runReTests(file, database) {
     this.print('revalidating modifications - ' + file);
     this.addArgs = {'server.database': database};
+    db._useDatabase(database);
     this.results.test = this.runOneTest(file);
     this.addArgs = undefined;
     return this.validate(this.results.test);
@@ -1211,6 +1212,7 @@ function hotBackup (options) {
         !helper.isAlive() ||
         !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
         !helper.isAlive() ||
+        print('aaaaaaaaaaaaaaa') ||
         !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
         !helper.isAlive() ||
         !helper.restoreHotBackup() ||
