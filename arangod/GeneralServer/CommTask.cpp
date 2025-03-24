@@ -41,6 +41,7 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -148,6 +149,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
 CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
+      _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(acquireConnectionStatistics()),
       _auth(AuthenticationFeature::instance()),
@@ -441,6 +443,12 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
+
+  // Record the request here in the ApplicationServer:
+  _apiRecordingFeature.recordAPICall(
+      request->requestType(), request->requestPath(), request->databaseName());
+
+  // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
   auto handler =
       factory->createHandler(server, std::move(request), std::move(response));

@@ -23,17 +23,26 @@
 
 #pragma once
 
+#include <memory>
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
 
 namespace arangodb::rest {
 
 template<SocketType T>
-class AcceptorTcp final : public Acceptor {
+class AcceptorTcp : public Acceptor,
+                    public std::enable_shared_from_this<AcceptorTcp<T>> {
  public:
-  AcceptorTcp(rest::GeneralServer& server, rest::IoContext& ctx,
-              Endpoint* endpoint)
-      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
+  static std::shared_ptr<AcceptorTcp> make(rest::GeneralServer& server,
+                                           rest::IoContext& ctx,
+                                           Endpoint* endpoint) {
+    struct MakeShared : AcceptorTcp {
+      MakeShared(rest::GeneralServer& server, rest::IoContext& ctx,
+                 Endpoint* endpoint)
+          : AcceptorTcp(server, ctx, endpoint) {}
+    };
+    return std::make_shared<MakeShared>(server, ctx, endpoint);
+  }
 
  public:
   void open() override;
@@ -42,6 +51,9 @@ class AcceptorTcp final : public Acceptor {
   void asyncAccept() override;
 
  private:
+  AcceptorTcp(rest::GeneralServer& server, rest::IoContext& ctx,
+              Endpoint* endpoint)
+      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
   void performHandshake(std::shared_ptr<AsioSocket<T>>);
 
  private:
