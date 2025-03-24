@@ -47,7 +47,7 @@ class Acceptor {
   virtual void asyncAccept() = 0;
 
  public:
-  static std::unique_ptr<Acceptor> factory(rest::GeneralServer& server,
+  static std::shared_ptr<Acceptor> factory(rest::GeneralServer& server,
                                            rest::IoContext& context, Endpoint*);
 
  protected:
