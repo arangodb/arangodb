@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Containers/Concurrent/snapshot.h"
+#include "Containers/Concurrent/metrics.h"
 
 #include <memory>
 #include <vector>
@@ -37,17 +38,24 @@ template<typename List, typename Item, typename F>
 concept IteratorOverSnapshots =
     IteratorOverNodes<List, F> && std::invocable<F, typename Item::Snapshot>;
 
-template<typename List, HasSnapshot Item>
+template<UpdatesMetrics List, HasSnapshot Item>
 struct ListOfLists {
+  std::shared_ptr<Metrics> metrics;
+
  private:
   std::vector<std::weak_ptr<List>> _lists;
   std::mutex _mutex;
-  // std::shared_ptr<const Metrics> _metrics; // TODO
 
  public:
   // ListOfLists();
   auto add(std::shared_ptr<List> list) -> void {
     auto guard = std::lock_guard(_mutex);
+    // make sure that list uses our metrics
+    list->set_metrics(metrics);
+    if (metrics) {
+      metrics->increment_total_lists();
+      metrics->increment_existing_lists();
+    }
     // make sure that expired nodes are deleted
     std::erase_if(_lists, [&](auto const& list) { return list.expired(); });
     _lists.emplace_back(list);
@@ -67,7 +75,11 @@ struct ListOfLists {
       }
     }
   }
-  // auto set_metrics(std::shared_ptr<const Metrics> metrics) -> void; // TODO
+
+  auto set_metrics(std::shared_ptr<Metrics> new_metrics) -> void {
+    auto guard = std::lock_guard(_mutex);
+    metrics = new_metrics;
+  }
   // void run_external_cleanup() noexcept;
 };
 

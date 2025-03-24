@@ -39,15 +39,36 @@ struct MyData {
   auto snapshot() const -> Snapshot { return Snapshot{.number = number}; }
 };
 
+struct MyMetrics : Metrics {
+  size_t lists = 0;
+  auto increment_existing_lists() -> void override { lists++; }
+  auto decrement_existing_lists() -> void override { lists--; }
+};
+
 struct MyNodeList {
   std::vector<MyData> data;
+  std::shared_ptr<Metrics> metrics;
 
+  MyNodeList(std::vector<MyData> data) : data{std::move(data)} {
+    if (metrics) {
+      metrics->increment_existing_lists();
+    }
+  }
+  ~MyNodeList() {
+    if (metrics) {
+      metrics->decrement_existing_lists();
+    }
+  }
   template<typename F>
   requires std::invocable<F, MyData::Snapshot>
   auto for_node(F&& function) -> void {
     for (auto const& item : data) {
       function(item.snapshot());
     }
+  }
+
+  auto set_metrics(std::shared_ptr<Metrics> new_metrics) -> void {
+    metrics = new_metrics;
   }
 };
 
@@ -89,4 +110,28 @@ TEST(ListOfListsTest, iterates_over_list_items) {
 
   EXPECT_EQ(nodes_in_list(list),
             (std::vector<MyData::Snapshot>{{1}, {2}, {3}, {4}, {5}, {6}}));
+}
+
+TEST(ListOfListsTest, uses_list_of_lists_metrics_for_all_lists) {
+  MyList list;
+  auto inner_list = std::make_shared<MyNodeList>(std::vector<MyData>{1, 3, 4});
+  list.add(inner_list);
+
+  EXPECT_EQ(dynamic_cast<Metrics*>(list.metrics.get()),
+            nullptr);  // uses default empty metrics
+
+  auto newMetrics = std::make_shared<MyMetrics>();
+  list.set_metrics(newMetrics);
+  EXPECT_NE(dynamic_cast<MyMetrics*>(list.metrics.get()), nullptr);
+
+  auto first_inner_list =
+      std::make_shared<MyNodeList>(std::vector<MyData>{1, 2, 3});
+  auto second_inner_list =
+      std::make_shared<MyNodeList>(std::vector<MyData>{4, 5, 6});
+  list.add(first_inner_list);
+  list.add(second_inner_list);
+
+  EXPECT_NE(dynamic_cast<MyMetrics*>(list.metrics.get()), nullptr);
+  EXPECT_EQ(newMetrics->lists, 2);
+  EXPECT_EQ(dynamic_cast<MyMetrics*>(list.metrics.get())->lists, 2);
 }

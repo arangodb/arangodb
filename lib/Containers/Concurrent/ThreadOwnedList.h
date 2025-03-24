@@ -24,6 +24,7 @@
 
 #include "Containers/Concurrent/thread.h"
 #include "Containers/Concurrent/snapshot.h"
+#include "Containers/Concurrent/metrics.h"
 #include "Inspection/Format.h"
 #include "fmt/core.h"
 
@@ -31,15 +32,6 @@
 #include <memory>
 
 namespace arangodb::containers {
-
-template<typename M>
-concept DefinesMetrics = requires(M m) {
-  m.increment_total_nodes();
-  m.increment_registered_nodes();
-  m.decrement_registered_nodes();
-  m.increment_ready_for_deletion_nodes();
-  m.decrement_ready_for_deletion_nodes();
-};
 
 /**
    This list is owned by one thread: nodes can only be added on this thread but
@@ -50,9 +42,9 @@ concept DefinesMetrics = requires(M m) {
    shared_ptr to this list. Garbage collection can run either on the owning
    thread or on another thread (there are two distinct functions for gc).
  */
-template<HasSnapshot T, DefinesMetrics M>  // T requires a Snapshot type
+template<HasSnapshot T>
 struct ThreadOwnedList
-    : public std::enable_shared_from_this<ThreadOwnedList<T, M>> {
+    : public std::enable_shared_from_this<ThreadOwnedList<T>> {
   basics::ThreadId const thread;
 
   struct Node {
@@ -61,7 +53,7 @@ struct ThreadOwnedList
     std::atomic<Node*> previous =
         nullptr;  // needs to be atomic for gc from different thread
     Node* next_to_free = nullptr;
-    std::shared_ptr<ThreadOwnedList<T, M>>
+    std::shared_ptr<ThreadOwnedList<T>>
         list;  // to be able to mark for deletion
   };
 
@@ -70,17 +62,25 @@ struct ThreadOwnedList
   std::atomic<Node*> _free_head = nullptr;
   std::mutex _mutex;  // gc and reading cannot happen at same time (perhaps I
                       // can get rid of this with epoch based reclamation)
-  M metrics;
+  std::shared_ptr<Metrics> _metrics;
 
  public:
-  static auto make() noexcept -> std::shared_ptr<ThreadOwnedList> {
+  static auto make(
+      std::shared_ptr<Metrics> metrics = std::make_shared<Metrics>()) noexcept
+      -> std::shared_ptr<ThreadOwnedList> {
     struct MakeShared : ThreadOwnedList {
-      MakeShared() : ThreadOwnedList() {}
+      MakeShared(std::shared_ptr<Metrics> shared_metrics)
+          : ThreadOwnedList(shared_metrics) {}
     };
-    return std::make_shared<MakeShared>();
+    return std::make_shared<MakeShared>(metrics);
   }
 
-  ~ThreadOwnedList() noexcept { cleanup(); }
+  ~ThreadOwnedList() noexcept {
+    if (_metrics) {
+      _metrics->decrement_existing_lists();
+    }
+    cleanup();
+  }
 
   template<typename F>
   requires std::invocable<F, typename T::Snapshot>
@@ -110,8 +110,10 @@ struct ThreadOwnedList
     }
     // (1) - this store synchronizes with load in (2)
     _head.store(node, std::memory_order_release);
-    metrics.increment_registered_nodes();
-    metrics.increment_total_nodes();
+    if (_metrics) {
+      _metrics->increment_registered_nodes();
+      _metrics->increment_total_nodes();
+    }
     return node;
   }
 
@@ -136,8 +138,10 @@ struct ThreadOwnedList
     // DO NOT access promise after this line. The owner thread might already
     // be running a cleanup and promise might be deleted.
 
-    metrics.decrement_registered_nodes();
-    metrics.increment_ready_for_deletion_nodes();
+    if (_metrics) {
+      _metrics->decrement_registered_nodes();
+      _metrics->increment_ready_for_deletion_nodes();
+    }
 
     // self destroyed here. registry might be destroyed here as well.
   }
@@ -172,7 +176,9 @@ struct ThreadOwnedList
       current = next;
       next = next->next_to_free;
       if (current->previous != nullptr) {  // TODO memory order
-        metrics.decrement_ready_for_deletion_nodes();
+        if (_metrics) {
+          _metrics->decrement_ready_for_deletion_nodes();
+        }
         remove(current);
         delete current;
       } else {
@@ -198,8 +204,19 @@ struct ThreadOwnedList
     }
   }
 
+  auto set_metrics(std::shared_ptr<Metrics> metrics) -> void {
+    _metrics = metrics;
+  }
+
  private:
-  ThreadOwnedList() noexcept : thread{basics::ThreadId::current()} {}
+  ThreadOwnedList(std::shared_ptr<Metrics> metrics) noexcept
+      : thread{basics::ThreadId::current()}, _metrics{metrics} {
+    // is now done in ListOfLists
+    // if (_metrics) {
+    //   _metrics->increment_total_lists();
+    //   _metrics->increment_existing_lists();
+    // }
+  }
 
   auto cleanup() noexcept -> void {
     // (5) - this exchange synchronizes with compare_exchange_weak in (4)
@@ -208,7 +225,9 @@ struct ThreadOwnedList
     while (next != nullptr) {
       current = next;
       next = next->next_to_free;
-      metrics.decrement_ready_for_deletion_nodes();
+      if (_metrics) {
+        _metrics->decrement_ready_for_deletion_nodes();
+      }
       remove(current);
       delete current;
     }

@@ -59,15 +59,8 @@ struct NodeData : InstanceCounterValue {
   };
   auto snapshot() -> Snapshot { return Snapshot{.number = number}; }
 };
-struct Metrics {
-  auto increment_total_nodes() -> void{};
-  auto increment_registered_nodes() -> void{};
-  auto decrement_registered_nodes() -> void{};
-  auto increment_ready_for_deletion_nodes() -> void{};
-  auto decrement_ready_for_deletion_nodes() -> void{};
-};
 
-using MyList = ThreadOwnedList<NodeData, Metrics>;
+using MyList = ThreadOwnedList<NodeData>;
 
 auto nodes_in_registry(std::shared_ptr<MyList> registry)
     -> std::vector<NodeData::Snapshot> {
