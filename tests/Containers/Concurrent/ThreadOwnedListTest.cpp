@@ -72,7 +72,7 @@ using MyList = ThreadOwnedList<NodeData, Metrics>;
 auto nodes_in_registry(std::shared_ptr<MyList> registry)
     -> std::vector<NodeData::Snapshot> {
   std::vector<NodeData::Snapshot> promises;
-  registry->for_promise(
+  registry->for_node(
       [&](NodeData::Snapshot promise) { promises.push_back(promise); });
   return promises;
 }

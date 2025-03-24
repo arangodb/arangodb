@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Containers/Concurrent/thread.h"
+#include "Containers/Concurrent/snapshot.h"
 #include "Inspection/Format.h"
 #include "fmt/core.h"
 
@@ -31,10 +32,6 @@
 
 namespace arangodb::containers {
 
-template<typename T>
-concept HasSnapshot = requires(T t) {
-  { t.snapshot() } -> std::convertible_to<typename T::Snapshot>;
-};
 template<typename M>
 concept DefinesMetrics = requires(M m) {
   m.increment_total_nodes();
@@ -42,20 +39,6 @@ concept DefinesMetrics = requires(M m) {
   m.decrement_registered_nodes();
   m.increment_ready_for_deletion_nodes();
   m.decrement_ready_for_deletion_nodes();
-};
-
-template<HasSnapshot T, DefinesMetrics M>
-struct ThreadOwnedList;
-
-template<HasSnapshot T, DefinesMetrics M>
-struct Node {
-  T data;
-  Node* next = nullptr;
-  std::atomic<Node*> previous =
-      nullptr;  // needs to be atomic for gc from different thread
-  Node* next_to_free = nullptr;
-  std::shared_ptr<ThreadOwnedList<T, M>>
-      list;  // to be able to mark for deletion
 };
 
 /**
@@ -72,9 +55,19 @@ struct ThreadOwnedList
     : public std::enable_shared_from_this<ThreadOwnedList<T, M>> {
   basics::ThreadId const thread;
 
+  struct Node {
+    T data;
+    Node* next = nullptr;
+    std::atomic<Node*> previous =
+        nullptr;  // needs to be atomic for gc from different thread
+    Node* next_to_free = nullptr;
+    std::shared_ptr<ThreadOwnedList<T, M>>
+        list;  // to be able to mark for deletion
+  };
+
  private:
-  std::atomic<Node<T, M>*> _head = nullptr;
-  std::atomic<Node<T, M>*> _free_head = nullptr;
+  std::atomic<Node*> _head = nullptr;
+  std::atomic<Node*> _free_head = nullptr;
   std::mutex _mutex;  // gc and reading cannot happen at same time (perhaps I
                       // can get rid of this with epoch based reclamation)
   M metrics;
@@ -88,9 +81,10 @@ struct ThreadOwnedList
   }
 
   ~ThreadOwnedList() noexcept { cleanup(); }
+
   template<typename F>
   requires std::invocable<F, typename T::Snapshot>
-  auto for_promise(F&& function) noexcept -> void {
+  auto for_node(F&& function) noexcept -> void {
     auto guard = std::lock_guard(_mutex);
     // (2) - this load synchronizes with store in (1) and (3)
     for (auto current = _head.load(std::memory_order_acquire);
@@ -99,7 +93,7 @@ struct ThreadOwnedList
     }
   }
 
-  auto add(T data) noexcept -> Node<T, M>* {
+  auto add(T data) noexcept -> Node* {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread) << fmt::format(
         "ThreadOwnedList::add_promise was called from thread {} but needs to "
@@ -108,9 +102,9 @@ struct ThreadOwnedList
         inspection::json(current_thread), inspection::json(thread),
         (void*)this);
     auto current_head = _head.load(std::memory_order_relaxed);
-    auto node = new Node<T, M>{.data = std::move(data),
-                               .next = current_head,
-                               .list = this->shared_from_this()};
+    auto node = new Node{.data = std::move(data),
+                         .next = current_head,
+                         .list = this->shared_from_this()};
     if (current_head != nullptr) {
       current_head->previous.store(node);  // TODO memory order
     }
@@ -121,7 +115,7 @@ struct ThreadOwnedList
     return node;
   }
 
-  auto mark_for_deletion(Node<T, M>* node) noexcept -> void {
+  auto mark_for_deletion(Node* node) noexcept -> void {
     // makes sure that promise is really in this list
     ADB_PROD_ASSERT(node->list.get() == this);
 
@@ -170,8 +164,8 @@ struct ThreadOwnedList
     // current head element. Also, Promises are only removed, after the mutex
     // has been acquired. This implies that we can clean up all promises, that
     // are not in head position right now.
-    Node<T, M>* maybe_head_ptr = nullptr;
-    Node<T, M>*current,
+    Node* maybe_head_ptr = nullptr;
+    Node *current,
         *next = _free_head.exchange(
             nullptr, std::memory_order_acquire);  // TODO check memory order
     while (next != nullptr) {
@@ -209,7 +203,7 @@ struct ThreadOwnedList
 
   auto cleanup() noexcept -> void {
     // (5) - this exchange synchronizes with compare_exchange_weak in (4)
-    Node<T, M>*current,
+    Node *current,
         *next = _free_head.exchange(nullptr, std::memory_order_acquire);
     while (next != nullptr) {
       current = next;
@@ -220,7 +214,7 @@ struct ThreadOwnedList
     }
   }
 
-  auto remove(Node<T, M>* node) -> void {
+  auto remove(Node* node) -> void {
     auto* next = node->next;
     auto* previous = node->previous.load();  // TODO memory order
     if (previous == nullptr) {               // promise is current head
