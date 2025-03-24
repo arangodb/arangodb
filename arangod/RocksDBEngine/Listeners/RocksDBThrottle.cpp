@@ -34,6 +34,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBThrottle.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 #include <sys/resource.h>
 
@@ -474,10 +475,18 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
 
     propertyName = rocksdb::DB::Properties::kNumImmutableMemTable;
     bool ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
-
+    LOG_TOPIC("ffef0", TRACE, Logger::ENGINES)
+        << "NumberImmutable memory tables: " << retString;
     if (ok) {
-      immBacklog += std::stoi(retString);
+      immBacklog = std::stoi(retString);
     }
+
+    propertyName = rocksdb::DB::Properties::kCFWriteStallStats;
+    ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
+    TRI_ASSERT(ok);
+    LOG_TOPIC("574f5", TRACE, Logger::ENGINES)
+        << "WriteStallStats for " << RocksDBColumnFamilyManager::name(cf)
+        << " is: " << retString;
 
     ok = _internalRocksDB->GetProperty(
         cf, rocksdb::DB::Properties::kEstimatePendingCompactionBytes,
@@ -486,6 +495,11 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
       pendingCompactionBytes += std::stoll(retString);
     }
   }
+  propertyName = rocksdb::DB::Properties::kDBWriteStallStats;
+  auto ok = _internalRocksDB->GetProperty(propertyName, &retString);
+  TRI_ASSERT(ok);
+  LOG_TOPIC("574f5", TRACE, Logger::ENGINES)
+      << "WriteStallStats: " << retString;
 
   if (immTrigger < immBacklog) {
     compactionBacklog += (immBacklog - immTrigger);
