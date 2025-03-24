@@ -1,4 +1,3 @@
-
 /* jshint globalstrict:false, strict:false, maxlen : 4000 */
 /* global assertEqual, arango */
 
