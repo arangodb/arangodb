@@ -37,7 +37,7 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  const instanceInfo = GLOBAL.instanceManger;
   var db = internal.db;
   const getNoShards = function (defaultNo) {
     if (db._properties().sharding === "single") {
