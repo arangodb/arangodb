@@ -1,14 +1,15 @@
 v3.11.14 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.13-preview-2 and arangosync to
+  v2.19.13-preview-1.
+
 * Fix TSAN issue in LogicalCollection.
 
 * Fix BTS-2100: Due to a priority inversion it was possible that a lot of
   scheduled SynchronizeShard actions blocked higher priority 
   TakeoverShardLeadership actions in the cluster Maintenance. This
   could lead to service interruption during upgrades and after failovers.
-
-* Updated ArangoDB Starter to v0.18.13-preview-1.
 
 * Fix a bug in the index API /_api/index?withHidden=true, which can lead to
   two problems: (1) A newly created index is potentially not shown in the very
