@@ -1212,7 +1212,6 @@ function hotBackup (options) {
         !helper.isAlive() ||
         !helper.runTests(dumpMoveShard,'UnitTestsDumpDst') ||
         !helper.isAlive() ||
-        print('aaaaaaaaaaaaaaa') ||
         !helper.runReTests(dumpRecheck,'UnitTestsDumpDst') ||
         !helper.isAlive() ||
         !helper.restoreHotBackup() ||
