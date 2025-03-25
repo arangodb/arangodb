@@ -49,6 +49,7 @@ auto inspect(Inspector& f, Index& x) {
       f.field("objectId", x.objectId).fallback(""),
       f.field("sparse", x.sparse).fallback(false), f.field("type", x.type_),
       f.field("unique", x.unique).fallback(false),
+      f.field("inBackground", x.inBackground).fallback(false),
       f.field("cacheEnabled", x.cacheEnabled),
       f.field("deduplicate", x.deduplicate), f.field("estimates", x.estimates),
       f.field("analyzerDefinitions", x.analyzerDefinitions),
@@ -90,12 +91,14 @@ auto inspect(Inspector& f, ServerInfo& x) {
       f.field("timestamp", x.timestamp));
 }
 
+#if 0
 // ServersRegistered Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, ServersRegistered& x) {
   return f.object(x).fields(f.field("Version", x.Version).fallback(uint64_t{0}),
                             f.field("servers", x.servers));
 }
+#endif
 
 // ServerKnown Inspect Function
 template<class Inspector>

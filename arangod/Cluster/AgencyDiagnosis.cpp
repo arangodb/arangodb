@@ -115,7 +115,7 @@ std::string diagnoseAgency(arangodb::ArangodServer& server) {
   // Now parse the complete agency dump into a typed structure:
   AgencyData agency;
   try {
-    arangodb::velocypack::deserialize(agency_vpack->slice(), agency);
+    arangodb::velocypack::deserialize(agency_vpack->slice().at(0), agency);
   } catch (std::exception const& e) {
     LOG_DEVEL << "Caught exception when parsing agency data: " << e.what();
     return "Could not parse agency data!";

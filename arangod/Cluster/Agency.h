@@ -56,6 +56,7 @@ struct Index {
   bool sparse = false;
   std::string type_;
   bool unique = false;
+  std::optional<bool> inBackground;
   std::optional<bool> cacheEnabled;
   std::optional<bool> deduplicate;
   std::optional<bool> estimates;
@@ -103,12 +104,14 @@ struct ServerInfo {
   ServerInfo() = default;
 };
 
+#if 0
 struct ServersRegistered {
   uint64_t Version = 0;
   std::unordered_map<std::string, ServerInfo> servers;
 
   ServersRegistered() = default;
 };
+#endif
 
 struct ServerKnown {
   uint64_t rebootId = 0;
@@ -299,7 +302,7 @@ struct Current {
   std::string Lock;
   std::unordered_map<std::string, std::string> DBServers;
   std::unordered_map<std::string, velocypack::SharedSlice> Singles;
-  ServersRegistered ServersRegistered;
+  velocypack::SharedSlice ServersRegistered;
   std::unordered_map<std::string, std::unordered_map<std::string, DatabaseInfo>>
       Databases;
   std::unordered_map<std::string, ServerKnown> ServersKnown;
