@@ -70,7 +70,7 @@ auto inspect(Inspector& f, Shard& x) {
   return f.object(x).fields(
       f.field("error", x.error).fallback(false),
       f.field("errorMessage", x.errorMessage).fallback(""),
-      f.field("errorNum", x.errorNum).fallback(0),
+      f.field("errorNum", x.errorNum).fallback(uint64_t{0}),
       f.field("indexes", x.indexes), f.field("servers", x.servers),
       f.field("failoverCandidates", x.failoverCandidates));
 }
@@ -82,9 +82,9 @@ auto inspect(Inspector& f, ServerInfo& x) {
       f.field("endpoint", x.endpoint),
       f.field("advertisedEndpoint", x.advertisedEndpoint),
       f.field("host", x.host),
-      f.field("physicalMemory", x.physicalMemory).fallback(0),
-      f.field("numberOfCores", x.numberOfCores).fallback(0),
-      f.field("version", x.version).fallback(0),
+      f.field("physicalMemory", x.physicalMemory).fallback(uint64_t{0}),
+      f.field("numberOfCores", x.numberOfCores).fallback(uint64_t{0}),
+      f.field("version", x.version).fallback(uint64_t{0}),
       f.field("versionString", x.versionString), f.field("engine", x.engine),
       f.field("extendedNamesDatabases", x.extendedNamesDatabases),
       f.field("timestamp", x.timestamp));
@@ -93,14 +93,15 @@ auto inspect(Inspector& f, ServerInfo& x) {
 // ServersRegistered Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, ServersRegistered& x) {
-  return f.object(x).fields(f.field("Version", x.Version).fallback(0),
+  return f.object(x).fields(f.field("Version", x.Version).fallback(uint64_t{0}),
                             f.field("servers", x.servers));
 }
 
 // ServerKnown Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, ServerKnown& x) {
-  return f.object(x).fields(f.field("rebootId", x.rebootId).fallback(0));
+  return f.object(x).fields(
+      f.field("rebootId", x.rebootId).fallback(uint64_t{0}));
 }
 
 // DatabaseInfo Inspect Function
@@ -108,7 +109,7 @@ template<class Inspector>
 auto inspect(Inspector& f, DatabaseInfo& x) {
   return f.object(x).fields(
       f.field("error", x.error).fallback(false),
-      f.field("errorNum", x.errorNum).fallback(0),
+      f.field("errorNum", x.errorNum).fallback(uint64_t{0}),
       f.field("errorMessage", x.errorMessage).fallback(""), f.field("id", x.id),
       f.field("name", x.name));
 }
@@ -179,18 +180,19 @@ auto inspect(Inspector& f, Collection& x) {
       f.field("isSmartChild", x.isSmartChild),
       f.field("isSystem", x.isSystem).fallback(false),
       f.field("keyOptions", x.keyOptions),
-      f.field("minReplicationFactor", x.minReplicationFactor).fallback(0),
+      f.field("minReplicationFactor", x.minReplicationFactor)
+          .fallback(uint64_t{0}),
       f.field("name", x.name),
-      f.field("numberOfShards", x.numberOfShards).fallback(0),
+      f.field("numberOfShards", x.numberOfShards).fallback(uint64_t{0}),
       f.field("replicationFactor", x.replicationFactor),
       f.field("schema", x.schema), f.field("shardKeys", x.shardKeys),
       f.field("shardingStrategy", x.shardingStrategy),
       f.field("shardsR2", x.shardsR2),
       f.field("syncByRevision", x.syncByRevision),
-      f.field("type", x.type_).fallback(0),
+      f.field("type", x.type_).fallback(uint64_t{0}),
       f.field("usesRevisionsAsDocumentIds", x.usesRevisionsAsDocumentIds),
       f.field("waitForSync", x.waitForSync).fallback(false),
-      f.field("writeConcern", x.writeConcern).fallback(0),
+      f.field("writeConcern", x.writeConcern).fallback(uint64_t{0}),
       f.field("indexes", x.indexes), f.field("shards", x.shards));
 }
 
@@ -198,36 +200,38 @@ auto inspect(Inspector& f, Collection& x) {
 template<class Inspector>
 auto inspect(Inspector& f, AnalyzerInfo& x) {
   return f.object(x).fields(
-      f.field("revision", x.revision).fallback(0),
-      f.field("buildingRevision", x.buildingRevision).fallback(0));
+      f.field("revision", x.revision).fallback(uint64_t{0}),
+      f.field("buildingRevision", x.buildingRevision).fallback(uint64_t{0}));
 }
 
 // Metrics Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, Metrics& x) {
-  return f.object(x).fields(f.field("RebootId", x.RebootId).fallback(0),
-                            f.field("ServerId", x.ServerId));
+  return f.object(x).fields(
+      f.field("RebootId", x.RebootId).fallback(uint64_t{0}),
+      f.field("ServerId", x.ServerId));
 }
 
 // MapUniqueToShortID Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, MapUniqueToShortID& x) {
   return f.object(x).fields(
-      f.field("TransactionID", x.TransactionID).fallback(0),
+      f.field("TransactionID", x.TransactionID).fallback(uint64_t{0}),
       f.field("ShortName", x.ShortName));
 }
 
 // Features Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, Features& x) {
-  return f.object(x).fields(f.field("expires", x.expires).fallback(0));
+  return f.object(x).fields(
+      f.field("expires", x.expires).fallback(uint64_t{0}));
 }
 
 // License Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, License& x) {
   return f.object(x).fields(f.field("features", x.features),
-                            f.field("version", x.version).fallback(0),
+                            f.field("version", x.version).fallback(uint64_t{0}),
                             f.field("hash", x.hash),
                             f.field("license", x.license));
 }
@@ -254,7 +258,8 @@ auto inspect(Inspector& f, State& x) {
 // ArangoAgency Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, ArangoAgency& x) {
-  return f.object(x).fields(f.field("Definition", x.Definition).fallback(0));
+  return f.object(x).fields(
+      f.field("Definition", x.Definition).fallback(uint64_t{0}));
 }
 
 // Arango Inspect Function
@@ -267,7 +272,8 @@ auto inspect(Inspector& f, Arango& x) {
       f.field("Sync", x.Sync), f.field("Supervision", x.Supervision),
       f.field("Target", x.Target), f.field(".license", x.license),
       f.field("Bootstrap", x.Bootstrap),
-      f.field("ClusterUpgradeVersion", x.ClusterUpgradeVersion).fallback(0),
+      f.field("ClusterUpgradeVersion", x.ClusterUpgradeVersion)
+          .fallback(uint32_t{0}),
       f.field("SystemCollectionsCreated", x.SystemCollectionsCreated)
           .fallback(false));
 }
@@ -284,7 +290,7 @@ auto inspect(Inspector& f, Current& x) {
   return f.object(x).fields(
       f.field("AsyncReplication", x.AsyncReplication),
       f.field("Collections", x.Collections),
-      f.field("Version", x.Version).fallback(0),
+      f.field("Version", x.Version).fallback(uint64_t{0}),
       f.field("ShardsCopied", x.ShardsCopied),
       f.field("NewServers", x.NewServers),
       f.field("Coordinators", x.Coordinators), f.field("Lock", x.Lock),
@@ -305,7 +311,7 @@ auto inspect(Inspector& f, Plan& x) {
       f.field("Coordinators", x.Coordinators),
       f.field("Databases", x.Databases), f.field("Lock", x.Lock),
       f.field("DBServers", x.DBServers), f.field("Singles", x.Singles),
-      f.field("Version", x.Version).fallback(0),
+      f.field("Version", x.Version).fallback(uint64_t{0}),
       f.field("Collections", x.Collections), f.field("Views", x.Views),
       f.field("Analyzers", x.Analyzers), f.field("Metrics", x.Metrics));
 }
@@ -314,11 +320,12 @@ auto inspect(Inspector& f, Plan& x) {
 template<class Inspector>
 auto inspect(Inspector& f, Sync& x) {
   return f.object(x).fields(
-      f.field("LatestID", x.LatestID).fallback(0),
+      f.field("LatestID", x.LatestID).fallback(uint64_t{0}),
       f.field("Problems", x.Problems),
-      f.field("UserVersion", x.UserVersion).fallback(0),
+      f.field("UserVersion", x.UserVersion).fallback(uint64_t{0}),
       f.field("ServerStates", x.ServerStates),
-      f.field("HeartbeatIntervalMs", x.HeartbeatIntervalMs).fallback(0));
+      f.field("HeartbeatIntervalMs", x.HeartbeatIntervalMs)
+          .fallback(uint64_t{0}));
 }
 
 // Supervision Inspect Function
@@ -340,10 +347,11 @@ auto inspect(Inspector& f, Target& x) {
       f.field("FailedServers", x.FailedServers), f.field("Lock", x.Lock),
       f.field("Failed", x.Failed), f.field("Finished", x.Finished),
       f.field("Pending", x.Pending), f.field("ToDo", x.ToDo),
-      f.field("Version", x.Version).fallback(0),
-      f.field("LatestDBServerId", x.LatestDBServerId).fallback(0),
+      f.field("Version", x.Version).fallback(uint64_t{0}),
+      f.field("LatestDBServerId", x.LatestDBServerId).fallback(uint64_t{0}),
       f.field("MapUniqueToShortID", x.MapUniqueToShortID),
-      f.field("LatestCoordinatorId", x.LatestCoordinatorId).fallback(0));
+      f.field("LatestCoordinatorId", x.LatestCoordinatorId)
+          .fallback(uint64_t{0}));
 }
 
 }  // namespace arangodb::agency

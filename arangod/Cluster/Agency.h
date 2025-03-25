@@ -279,13 +279,6 @@ struct State {
   State() = default;
 };
 
-// Forward declarations to resolve circular dependencies
-struct Current;
-struct Plan;
-struct Sync;
-struct Supervision;
-struct Target;
-
 struct ArangoAgency {
   uint64_t Definition = 0;
 
