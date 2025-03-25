@@ -70,6 +70,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const VPackSortMigrationCheck;
   static std::string const VPackSortMigrationMigrate;
   static std::string const VPackSortMigrationStatus;
+  static std::string const AgencyDiagnosis;
 
   RestStatus handleHealth();
   RestStatus handleNumberOfServers();
@@ -110,6 +111,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   RestStatus handleRebalanceGet();
   RestStatus handleRebalanceExecute();
   RestStatus handleRebalancePlan();
+
+  RestStatus handleAgencyDiagnosis();
 
   typedef futures::Future<futures::Unit> FutureVoid;
 

@@ -43,6 +43,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyDiagnosis.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
@@ -354,6 +355,7 @@ std::string const RestAdminClusterHandler::VPackSortMigrationCheck = "check";
 std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
     "migrate";
 std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
+std::string const RestAdminClusterHandler::AgencyDiagnosis = "agencyDiagnosis";
 
 RestStatus RestAdminClusterHandler::execute() {
   // here we first do a glboal check, which is based on the setting in startup
@@ -429,6 +431,8 @@ RestStatus RestAdminClusterHandler::execute() {
       return handleRebalance();
     } else if (command == ShardStatistics) {
       return handleShardStatistics();
+    } else if (command == AgencyDiagnosis) {
+      return handleAgencyDiagnosis();
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
@@ -2967,4 +2971,33 @@ RestAdminClusterHandler::handleVPackSortMigration(
     generateOk(rest::ResponseCode::OK, result.slice());
   }
   co_return;
+}
+
+RestStatus RestAdminClusterHandler::handleAgencyDiagnosis() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    return RestStatus::DONE;
+  }
+
+  if (!ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+
+  if (request()->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  std::string diag = arangodb::agency::diagnoseAgency(_server);
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add("error", VPackValue(false));
+    builder.add("diagnosis", VPackValue(diag));
+  }
+  generateOk(rest::ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
 }
