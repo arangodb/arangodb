@@ -531,10 +531,11 @@ class TestingRunner:
                 self.append_report_txt("Failed to create binaries zip: " + str(ex))
 
             self.cleanup_unneeded_binary_files()
-            binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
-                f"binaries-{self.cfg.datetime_format}"
-            )
-            logging.info(
+            shutil.rmtree(str(core_zip_dir), ignore_errors=True)
+        binary_report_file = get_workspace() / datetime.now(tz=None).strftime(
+            f"binaries-{self.cfg.datetime_format}"
+        )
+        logging.info(
             "creating crashreport binary support zip: %s", str(binary_report_file)
         )
         sys.stdout.flush()
@@ -549,7 +550,6 @@ class TestingRunner:
         except Exception as ex:
             logging.info("Failed to create crashdump zip: %s", str(ex))
             self.append_report_txt("Failed to create crashdump zip: " + str(ex))
-        shutil.rmtree(str(core_zip_dir), ignore_errors=True)
 
     def generate_test_report(self):
         """regular testresults zip"""
