@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.9-preview-4.
+
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
 * Fix TSAN issue in LogicalCollection.
@@ -13,8 +15,6 @@ devel
   scheduled SynchronizeShard actions blocked higher priority 
   TakeoverShardLeadership actions in the cluster Maintenance. This
   could lead to service interruption during upgrades and after failovers.
-
-* Updated ArangoDB Starter to v0.19.9-preview-3.
 
 * FE-538: fix frontend build warnings.
 
