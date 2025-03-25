@@ -90,7 +90,7 @@ const testPaths = {
   'hot_backup': [tu.pathForTesting('server/dump')]
 };
 
-class DumpRestoreHelper extends trs.runInArangoshRunner {
+class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
     super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
     this.serverOptions = serverOptions;
@@ -462,6 +462,7 @@ class DumpRestoreHelper extends trs.runInArangoshRunner {
   runReTests(file, database) {
     this.print('revalidating modifications - ' + file);
     this.addArgs = {'server.database': database};
+    db._useDatabase(database);
     this.results.test = this.runOneTest(file);
     this.addArgs = undefined;
     return this.validate(this.results.test);
@@ -664,6 +665,7 @@ class DumpRestoreHelper extends trs.runInArangoshRunner {
   dumpFromRta() {
     let success = true;
     const otherDBs = ['_system', 'UnitTestsDumpSrc', 'UnitTestsDumpDst', 'UnitTestsDumpFoxxComplete'];
+    db._useDatabase('_system');
     db._databases().forEach(db => { if (!otherDBs.find(x => x === db)) {this.allDatabases.push(db);}});
     if (!this.dumpConfig.haveSetAllDatabases()) {
       this.allDatabases.forEach(db => {
