@@ -19,16 +19,12 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Max Neunhoeffer
-/// @author Jan Steemann
-/// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "Cluster/Agency.h"
-// #include "Inspection/InspectorBase.h"
-// #include "Inspection/VPack.h"
-// #include "Inspection/Format.h"
+#include "Inspection/Transformers.h"
 
 namespace arangodb::agency {
 
@@ -44,11 +40,11 @@ auto inspect(Inspector& f, AnalyzerDefinition& x) {
 template<class Inspector>
 auto inspect(Inspector& f, Index& x) {
   return f.object(x).fields(
-      f.field("fields", x.fields), f.field("id", x.id),
-      f.field("name", x.name).fallback(""),
+      f.field("fields", x.fields), f.field("id", x.id), f.field("name", x.name),
       f.field("objectId", x.objectId).fallback(""),
       f.field("sparse", x.sparse).fallback(false), f.field("type", x.type_),
       f.field("unique", x.unique).fallback(false),
+      f.field("cache", x.cache).fallback(false),
       f.field("inBackground", x.inBackground).fallback(false),
       f.field("cacheEnabled", x.cacheEnabled),
       f.field("deduplicate", x.deduplicate), f.field("estimates", x.estimates),
@@ -59,10 +55,27 @@ auto inspect(Inspector& f, Index& x) {
       f.field("optimizeTopK", x.optimizeTopK),
       f.field("primarySort", x.primarySort),
       f.field("primarySortCompression", x.primarySortCompression),
+      f.field("primaryKeyCache", x.primaryKeyCache),
       f.field("storeValues", x.storeValues),
       f.field("storedValues", x.storedValues),
       f.field("trackListPositions", x.trackListPositions),
-      f.field("version", x.version), f.field("view", x.view));
+      f.field("version", x.version), f.field("view", x.view),
+      f.field("expireAfter", x.expireAfter),
+      f.field("writebufferActive", x.writebufferActive),
+      f.field("writebufferIdle", x.writebufferIdle),
+      f.field("writebufferSizeMax", x.writebufferSizeMax),
+      f.field("worstIndexedLevel", x.worstIndexedLevel),
+      f.field("minLength", x.minLength),
+      f.field("legacyPolygons", x.legacyPolygons).fallback(false),
+      f.field("searchField", x.searchField), f.field("analyzer", x.analyzer),
+      f.field("maxNumCoverCells", x.maxNumCoverCells),
+      f.field("cleanupIntervalStep", x.cleanupIntervalStep),
+      f.field("commitIntervalMsec", x.commitIntervalMsec),
+      f.field("consolidationIntervalMsec", x.consolidationIntervalMsec),
+      f.field("consolidationPolicy", x.consolidationPolicy),
+      f.field("features", x.features), f.field("geoJson", x.geoJson),
+      f.field("bestIndexedLevel", x.bestIndexedLevel),
+      f.field("error", x.error));
 }
 
 // Shard Inspect Function
@@ -120,21 +133,32 @@ auto inspect(Inspector& f, DatabaseInfo& x) {
 // KeyOptions Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, KeyOptions& x) {
-  return f.object(x).fields(
-      f.field("type", x.type_),
-      f.field("allowUserKeys", x.allowUserKeys).fallback(false),
-      f.field("lastValue", x.lastValue));
+  return f.object(x)
+      .fields(f.field("type", x.type_),
+              f.field("allowUserKeys", x.allowUserKeys).fallback(false),
+              f.field("lastValue", x.lastValue), f.field("offset", x.offset),
+              f.field("increment", x.increment))
+      .invariant([](KeyOptions& ko) {
+        return ko.type_ != "autoincrement" ||
+               (ko.offset.has_value() && ko.increment.has_value());
+      });
 }
 
 // ConsolidationPolicy Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, ConsolidationPolicy& x) {
-  return f.object(x).fields(f.field("type", x.type_),
-                            f.field("segmentsBytesFloor", x.segmentsBytesFloor),
-                            f.field("segmentsBytesMax", x.segmentsBytesMax),
-                            f.field("segmentsMax", x.segmentsMax),
-                            f.field("segmentsMin", x.segmentsMin),
-                            f.field("minScore", x.minScore));
+  return f.object(x)
+      .fields(f.field("type", x.type_),
+              f.field("segmentsBytesFloor", x.segmentsBytesFloor),
+              f.field("segmentsBytesMax", x.segmentsBytesMax),
+              f.field("segmentsMax", x.segmentsMax),
+              f.field("segmentsMin", x.segmentsMin),
+              f.field("minScore", x.minScore),
+              f.field("threshold", x.threshold))
+      .invariant([](ConsolidationPolicy& c) {
+        // TODO
+        return true;
+      });
 }
 
 // View Inspect Function
@@ -152,10 +176,12 @@ auto inspect(Inspector& f, View& x) {
       f.field("optimizeTopK", x.optimizeTopK),
       f.field("primarySort", x.primarySort),
       f.field("primarySortCompression", x.primarySortCompression),
+      f.field("primaryKeyCache", x.primaryKeyCache),
       f.field("storedValues", x.storedValues), f.field("version", x.version),
       f.field("writebufferActive", x.writebufferActive),
       f.field("writebufferIdle", x.writebufferIdle),
-      f.field("writebufferSizeMax", x.writebufferSizeMax));
+      f.field("writebufferSizeMax", x.writebufferSizeMax),
+      f.field("indexes", x.indexes));
 }
 
 // Database Inspect Function
@@ -196,15 +222,29 @@ auto inspect(Inspector& f, Collection& x) {
       f.field("usesRevisionsAsDocumentIds", x.usesRevisionsAsDocumentIds),
       f.field("waitForSync", x.waitForSync).fallback(false),
       f.field("writeConcern", x.writeConcern).fallback(uint64_t{0}),
-      f.field("indexes", x.indexes), f.field("shards", x.shards));
+      f.field("indexes", x.indexes), f.field("shards", x.shards),
+      f.field("status", x.status), f.field("deleted", x.deleted),
+      f.field("statusString", x.statusString),
+      f.field("shadowCollections", x.shadowCollections),
+      f.field("isBuilding", x.isBuilding),
+      f.field("coordinator", x.coordinator),
+      f.field("coordinatorRebootId", x.coordinatorRebootId),
+      f.field("smartGraphAttribute", x.smartGraphAttribute));
 }
 
 // AnalyzerInfo Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, AnalyzerInfo& x) {
-  return f.object(x).fields(
-      f.field("revision", x.revision).fallback(uint64_t{0}),
-      f.field("buildingRevision", x.buildingRevision).fallback(uint64_t{0}));
+  return f.object(x)
+      .fields(
+          f.field("revision", x.revision).fallback(uint64_t{0}),
+          f.field("buildingRevision", x.buildingRevision).fallback(uint64_t{0}),
+          f.field("coordinator", x.coordinator),
+          f.field("coordinatorRebootId", x.coordinatorRebootId))
+      .invariant([](AnalyzerInfo& c) {
+        // Both present or none:
+        return !(c.coordinator.has_value() ^ c.coordinatorRebootId.has_value());
+      });
 }
 
 // Metrics Inspect Function
@@ -254,8 +294,10 @@ auto inspect(Inspector& f, Health& x) {
 // State Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, State& x) {
-  return f.object(x).fields(f.field("Mode", x.Mode),
-                            f.field("Timestamp", x.Timestamp));
+  return f.object(x).fields(
+      f.field("Mode", x.Mode),
+      f.field("Timestamp", x.Timestamp)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}));
 }
 
 // ArangoAgency Inspect Function
@@ -272,9 +314,9 @@ auto inspect(Inspector& f, Arango& x) {
       f.field("Cluster", x.Cluster), f.field("Agency", x.Agency),
       f.field("Current", x.Current),
       f.field("InitDone", x.InitDone).fallback(false), f.field("Plan", x.Plan),
-      f.field("Sync", x.Sync), f.field("Supervision", x.Supervision),
-      f.field("Target", x.Target), f.field(".license", x.license),
-      f.field("Bootstrap", x.Bootstrap),
+      f.field("Readonly", x.Readonly).fallback(false), f.field("Sync", x.Sync),
+      f.field("Supervision", x.Supervision), f.field("Target", x.Target),
+      f.field(".license", x.license), f.field("Bootstrap", x.Bootstrap),
       f.field("ClusterUpgradeVersion", x.ClusterUpgradeVersion)
           .fallback(uint32_t{0}),
       f.field("SystemCollectionsCreated", x.SystemCollectionsCreated)
@@ -284,7 +326,14 @@ auto inspect(Inspector& f, Arango& x) {
 // AgencyData Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, AgencyData& x) {
-  return f.object(x).fields(f.field("arango", x.arango));
+  return f.object(x).fields(f.field("arango", x.arango),
+                            f.field(".agency", x.dotAgency));
+}
+
+// DBServerMaintenance
+template<class Inspector>
+auto inspect(Inspector& f, DBServerMaintenance& x) {
+  return f.object(x).fields(f.field("Mode", x.Mode), f.field("Until", x.Until));
 }
 
 // Current Inspect Function
@@ -302,8 +351,10 @@ auto inspect(Inspector& f, Current& x) {
       f.field("Databases", x.Databases),
       f.field("ServersKnown", x.ServersKnown),
       f.field("Foxxmaster", x.Foxxmaster),
-      f.field("FoxxmasterQueueupdate", x.FoxxmasterQueueupdate)
-          .fallback(false));
+      f.field("FoxxmasterQueueupdate", x.FoxxmasterQueueupdate).fallback(false),
+      f.field("MaintenanceDBServers", x.MaintenanceDBServers),
+      f.field("CollectionGroups", x.CollectionGroups),
+      f.field("Views", x.Views), f.field("ReplicatedLogs", x.ReplicatedLogs));
 }
 
 // Plan Inspect Function
@@ -328,7 +379,9 @@ auto inspect(Inspector& f, Sync& x) {
       f.field("UserVersion", x.UserVersion).fallback(uint64_t{0}),
       f.field("ServerStates", x.ServerStates),
       f.field("HeartbeatIntervalMs", x.HeartbeatIntervalMs)
-          .fallback(uint64_t{0}));
+          .fallback(uint64_t{0}),
+      f.field("HotBackupRestoreDone", x.HotBackupRestoreDone),
+      f.field("FoxxQueueVersion", x.FoxxQueueVersion));
 }
 
 // Supervision Inspect Function
@@ -337,6 +390,39 @@ auto inspect(Inspector& f, Supervision& x) {
   return f.object(x).fields(
       f.field("Health", x.Health), f.field("Shards", x.Shards),
       f.field("DBServers", x.DBServers), f.field("State", x.State));
+}
+
+// MoveShard Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, MoveShard& x) {
+  return f.object(x).fields(
+      f.field("fromServer", x.fromServer), f.field("toServer", x.toServer),
+      f.field("database", x.database), f.field("collection", x.collection));
+}
+
+// ReconfigureReplicatedLog Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, ReconfigureReplicatedLog& x) {
+  return f.object(x).fields(f.field("database", x.database),
+                            f.field("server", x.server));
+}
+
+// ReturnLeadershipEntry Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, ReturnLeadershipEntry& x) {
+  return f.object(x)
+      .fields(f.field("removeIfNotStartedBy", x.removeIfNotStartedBy)
+                  .transformWith(arangodb::inspection::TimeStampTransformer{}),
+              f.field("started", x.started)
+                  .transformWith(arangodb::inspection::TimeStampTransformer{}),
+              f.field("jobId", x.jobId), f.field("rebootId", x.rebootId),
+              f.field("moveShard", x.moveShard),
+              f.field("reconfigureReplicatedLog", x.reconfigureReplicatedLog))
+      .invariant([](ReturnLeadershipEntry& e) {
+        // Either one of the two:
+        return !(e.moveShard.has_value() ^
+                 e.reconfigureReplicatedLog.has_value());
+      });
 }
 
 // Target Inspect Function
@@ -354,7 +440,48 @@ auto inspect(Inspector& f, Target& x) {
       f.field("LatestDBServerId", x.LatestDBServerId).fallback(uint64_t{0}),
       f.field("MapUniqueToShortID", x.MapUniqueToShortID),
       f.field("LatestCoordinatorId", x.LatestCoordinatorId)
-          .fallback(uint64_t{0}));
+          .fallback(uint64_t{0}),
+      f.field("MaintenanceDBServers", x.MaintenanceDBServers),
+      f.field("ReturnLeadership", x.ReturnLeadership),
+      f.field("HotBackup", x.HotBackup), f.field("Hotbackup", x.Hotbackup),
+      f.field("RemovedServers", x.RemovedServers),
+      f.field("MapLocalToID", x.MapLocalToID));
+}
+
+// HotBackupProgress Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, HotBackupProgress& x) {
+  return f.object(x).fields(
+      f.field("Time", x.Time)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("Done", x.Done), f.field("Total", x.Total));
+}
+
+// HotBackupDBServer Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, HotBackupDBServer& x) {
+  return f.object(x).fields(
+      f.field("Progress", x.Progress), f.field("lockLocation", x.lockLocation),
+      f.field("rebootId", x.rebootId).fallback(uint64_t{0}),
+      f.field("Status", x.Status), f.field("Error", x.Error),
+      f.field("ErrorMessage", x.ErrorMessage));
+}
+
+// HotBackupJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, HotBackupJob& x) {
+  return f.object(x).fields(
+      f.field("BackupId", x.BackupId), f.field("DBServers", x.DBServers),
+      f.field("Timestamp", x.Timestamp)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("Cancelled", x.Cancelled));
+}
+
+// HotBackup Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, HotBackup& x) {
+  return f.object(x).fields(f.field("TransferJobs", x.TransferJobs),
+                            f.field("Transfers", x.Transfers));
 }
 
 }  // namespace arangodb::agency

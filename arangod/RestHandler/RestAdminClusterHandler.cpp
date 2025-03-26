@@ -2985,13 +2985,26 @@ RestStatus RestAdminClusterHandler::handleAgencyDiagnosis() {
     return RestStatus::DONE;
   }
 
-  if (request()->requestType() != rest::RequestType::GET) {
+  if (request()->requestType() != rest::RequestType::GET &&
+      request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
   }
 
-  std::string diag = arangodb::agency::diagnoseAgency(_server);
+  std::string diag;
+  if (request()->requestType() == rest::RequestType::GET) {
+    diag = arangodb::agency::diagnoseAgency(_server);
+  } else if (request()->requestType() == rest::RequestType::POST) {
+    // Accept an agency dump to diagnose as body
+    bool parseSuccess;
+    VPackSlice body = parseVPackBody(parseSuccess);
+    if (!parseSuccess) {
+      return RestStatus::DONE;
+    }
+    diag = arangodb::agency::diagnoseAgency(body);
+  }
+
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);

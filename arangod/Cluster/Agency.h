@@ -23,10 +23,13 @@
 
 #pragma once
 
+#include "Cluster/Utils/ShardID.h"
+
 #include <velocypack/Buffer.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 
+#include <chrono>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -48,10 +51,23 @@ struct AnalyzerDefinition {
       : name(name), type_(type_), properties(properties), features(features) {}
 };
 
+struct ConsolidationPolicy {
+  std::string type_;
+  std::optional<uint64_t> segmentsBytesFloor;
+  std::optional<uint64_t> segmentsBytesMax;
+  std::optional<uint64_t> segmentsMax;
+  std::optional<uint64_t> segmentsMin;
+  std::optional<uint64_t> minScore;
+  std::optional<uint64_t> threshold;
+
+  ConsolidationPolicy() = default;
+  ConsolidationPolicy(const std::string& type_) : type_(type_) {}
+};
+
 struct Index {
   velocypack::SharedSlice fields;
   std::string id;
-  std::string name;
+  std::optional<std::string> name;
   std::string objectId;
   bool sparse = false;
   std::string type_;
@@ -60,6 +76,7 @@ struct Index {
   std::optional<bool> cacheEnabled;
   std::optional<bool> deduplicate;
   std::optional<bool> estimates;
+  std::optional<bool> cache;
   std::optional<std::vector<AnalyzerDefinition>> analyzerDefinitions;
   std::optional<std::vector<std::string>> analyzers;
   std::optional<std::string> collectionName;
@@ -67,11 +84,30 @@ struct Index {
   std::optional<std::vector<velocypack::SharedSlice>> optimizeTopK;
   std::optional<velocypack::SharedSlice> primarySort;
   std::optional<std::string> primarySortCompression;
+  std::optional<bool> primaryKeyCache;
   std::optional<std::string> storeValues;
   std::optional<std::vector<velocypack::SharedSlice>> storedValues;
   std::optional<bool> trackListPositions;
   std::optional<uint64_t> version;
   std::optional<std::string> view;
+  std::optional<uint64_t> expireAfter;
+  std::optional<uint64_t> writebufferActive;
+  std::optional<uint64_t> writebufferIdle;
+  std::optional<uint64_t> writebufferSizeMax;
+  std::optional<uint64_t> worstIndexedLevel;
+  std::optional<uint64_t> minLength;
+  bool legacyPolygons = false;
+  std::optional<bool> searchField;
+  std::optional<velocypack::SharedSlice> analyzer;
+  std::optional<uint64_t> maxNumCoverCells;
+  std::optional<uint64_t> cleanupIntervalStep;
+  std::optional<uint64_t> commitIntervalMsec;
+  std::optional<uint64_t> consolidationIntervalMsec;
+  std::optional<ConsolidationPolicy> consolidationPolicy;
+  std::optional<std::vector<std::string>> features;
+  std::optional<bool> geoJson;
+  std::optional<uint64_t> bestIndexedLevel;
+  std::optional<std::string> error;
 
   Index() = default;
   Index(const std::string& id, const std::string& type_)
@@ -133,22 +169,12 @@ struct KeyOptions {
   std::string type_;
   bool allowUserKeys = false;
   std::optional<uint64_t> lastValue;
+  std::optional<uint64_t> offset;
+  std::optional<uint64_t> increment;
 
   KeyOptions() = default;
   KeyOptions(const std::string& type_, bool allowUserKeys = false)
       : type_(type_), allowUserKeys(allowUserKeys) {}
-};
-
-struct ConsolidationPolicy {
-  std::string type_;
-  std::optional<uint64_t> segmentsBytesFloor;
-  std::optional<uint64_t> segmentsBytesMax;
-  std::optional<uint64_t> segmentsMax;
-  std::optional<uint64_t> segmentsMin;
-  std::optional<uint64_t> minScore;
-
-  ConsolidationPolicy() = default;
-  ConsolidationPolicy(const std::string& type_) : type_(type_) {}
 };
 
 struct View {
@@ -166,11 +192,14 @@ struct View {
   std::optional<std::vector<velocypack::SharedSlice>> optimizeTopK;
   std::optional<velocypack::SharedSlice> primarySort;
   std::optional<std::string> primarySortCompression;
+  std::optional<bool> primaryKeyCache;
   std::optional<std::vector<velocypack::SharedSlice>> storedValues;
   std::optional<uint64_t> version;
   std::optional<uint64_t> writebufferActive;
   std::optional<uint64_t> writebufferIdle;
   std::optional<uint64_t> writebufferSizeMax;
+  std::optional<std::vector<velocypack::SharedSlice>>
+      indexes;  // for search aliases
 
   View() = default;
   View(const std::string& id, const std::string& name, const std::string& type_)
@@ -217,6 +246,14 @@ struct Collection {
   uint64_t writeConcern = 0;
   std::vector<Index> indexes;
   std::unordered_map<std::string, std::vector<std::string>> shards;
+  std::optional<uint64_t> status;
+  std::optional<bool> deleted;
+  std::optional<std::string> statusString;
+  std::optional<std::vector<uint64_t>> shadowCollections;
+  std::optional<bool> isBuilding;
+  std::optional<std::string> coordinator;
+  std::optional<uint64_t> coordinatorRebootId;
+  std::optional<std::string> smartGraphAttribute;
 
   Collection() = default;
   Collection(const std::string& id, const std::string& name,
@@ -227,6 +264,8 @@ struct Collection {
 struct AnalyzerInfo {
   uint64_t revision = 0;
   uint64_t buildingRevision = 0;
+  std::optional<std::string> coordinator;
+  std::optional<uint64_t> coordinatorRebootId;
 
   AnalyzerInfo() = default;
 };
@@ -277,7 +316,7 @@ struct Health {
 
 struct State {
   std::string Mode;
-  std::string Timestamp;
+  std::chrono::system_clock::time_point Timestamp;
 
   State() = default;
 };
@@ -288,6 +327,11 @@ struct ArangoAgency {
   ArangoAgency() = default;
 };
 
+struct DBServerMaintenance {
+  std::string Mode;
+  std::string Until;
+};
+
 // More complex structs due to nested collections
 struct Current {
   std::unordered_map<std::string, velocypack::SharedSlice> AsyncReplication;
@@ -295,6 +339,7 @@ struct Current {
       std::string,
       std::unordered_map<std::string, std::unordered_map<std::string, Shard>>>
       Collections;
+  std::optional<std::unordered_map<std::string, velocypack::SharedSlice>> Views;
   uint64_t Version = 0;
   std::unordered_map<std::string, velocypack::SharedSlice> ShardsCopied;
   std::unordered_map<std::string, velocypack::SharedSlice> NewServers;
@@ -308,6 +353,12 @@ struct Current {
   std::unordered_map<std::string, ServerKnown> ServersKnown;
   std::string Foxxmaster;
   bool FoxxmasterQueueupdate = false;
+  std::optional<std::unordered_map<std::string, DBServerMaintenance>>
+      MaintenanceDBServers;
+  std::optional<std::unordered_map<std::string, velocypack::SharedSlice>>
+      CollectionGroups;
+  std::optional<std::unordered_map<std::string, velocypack::SharedSlice>>
+      ReplicatedLogs;
 
   Current() = default;
 };
@@ -335,7 +386,8 @@ struct Sync {
   uint64_t UserVersion = 0;
   std::unordered_map<std::string, velocypack::SharedSlice> ServerStates;
   uint64_t HeartbeatIntervalMs = 0;
-
+  std::optional<uint64_t> HotBackupRestoreDone;
+  std::optional<uint64_t> FoxxQueueVersion;
   Sync() = default;
 };
 
@@ -346,6 +398,63 @@ struct Supervision {
   State State;
 
   Supervision() = default;
+};
+
+struct MoveShard {
+  std::string fromServer;
+  std::string toServer;
+  std::string database;
+  std::string collection;
+};
+
+struct ReconfigureReplicatedLog {
+  std::string database;
+  std::string server;
+};
+
+struct ReturnLeadershipEntry {
+  std::chrono::system_clock::time_point removeIfNotStartedBy;
+  std::optional<std::chrono::system_clock::time_point> started;
+  std::string jobId;
+  std::optional<uint64_t> rebootId;
+  std::optional<MoveShard> moveShard;
+  std::optional<ReconfigureReplicatedLog> reconfigureReplicatedLog;
+};
+
+struct HotBackupProgress {
+  std::chrono::system_clock::time_point Time;
+  uint64_t Done = 0;
+  uint64_t Total = 0;
+
+  HotBackupProgress() = default;
+};
+
+struct HotBackupDBServer {
+  std::optional<HotBackupProgress> Progress;
+  std::optional<std::string> lockLocation;
+  std::optional<uint64_t> rebootId = 0;
+  std::string Status;
+  std::optional<uint64_t> Error;
+  std::optional<std::string> ErrorMessage;
+
+  HotBackupDBServer() = default;
+};
+
+struct HotBackupJob {
+  std::string BackupId;
+  std::unordered_map<std::string, HotBackupDBServer> DBServers;
+  std::chrono::system_clock::time_point Timestamp;
+  std::optional<bool> Cancelled;
+
+  HotBackupJob() = default;
+};
+
+struct HotBackup {
+  std::optional<std::unordered_map<std::string, HotBackupJob>> TransferJobs;
+  std::optional<std::unordered_map<std::string, velocypack::SharedSlice>>
+      Transfers;
+
+  HotBackup() = default;
 };
 
 struct Target {
@@ -363,6 +472,15 @@ struct Target {
   uint64_t LatestDBServerId = 0;
   std::unordered_map<std::string, MapUniqueToShortID> MapUniqueToShortID;
   uint64_t LatestCoordinatorId = 0;
+  std::optional<std::unordered_map<std::string, DBServerMaintenance>>
+      MaintenanceDBServers;
+  std::optional<std::unordered_map<std::string, ReturnLeadershipEntry>>
+      ReturnLeadership;
+  std::optional<HotBackup> HotBackup;
+  std::optional<velocypack::SharedSlice> Hotbackup;  // FIXME: define format!
+  std::optional<std::unordered_map<std::string, std::string>> RemovedServers;
+  std::optional<std::unordered_map<std::string, velocypack::SharedSlice>>
+      MapLocalToID;
 
   Target() = default;
 };
@@ -372,6 +490,7 @@ struct Arango {
   ArangoAgency Agency;
   Current Current;
   bool InitDone = false;
+  bool Readonly = false;
   Plan Plan;
   Sync Sync;
   Supervision Supervision;
@@ -386,6 +505,7 @@ struct Arango {
 
 struct AgencyData {
   Arango arango;
+  std::optional<velocypack::SharedSlice> dotAgency;
 
   AgencyData() = default;
 };
