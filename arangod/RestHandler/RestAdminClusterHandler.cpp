@@ -3002,7 +3002,17 @@ RestStatus RestAdminClusterHandler::handleAgencyDiagnosis() {
     if (!parseSuccess) {
       return RestStatus::DONE;
     }
-    diag = arangodb::agency::diagnoseAgency(body);
+    if (!body.isObject()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "Expecting object as body.");
+      return RestStatus::DONE;
+    }
+    // Handle case of agency history, simply take "agency" attribute:
+    if (body.hasKey("index") && body.hasKey("term") && body.hasKey("agency")) {
+      diag = arangodb::agency::diagnoseAgency(body.get("agency"));
+    } else {
+      diag = arangodb::agency::diagnoseAgency(body);
+    }
   }
 
   VPackBuilder builder;
