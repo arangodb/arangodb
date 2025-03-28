@@ -127,15 +127,36 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack) {
     return builder;
   }
 
-  std::stringstream out;
-  auto duplicates = findDuplicateCollectionNames(agency);
-  printDuplicateCollections(duplicates, out);
-
   {
     VPackObjectBuilder guard(&builder);
+    builder.add(VPackValue("diagnosis"));
+    {
+      VPackObjectBuilder guard2(&builder);
+
+      std::vector<std::string> goodTests;
+      std::vector<std::string> badTests;
+
+      std::string testName;
+
+      testName = "DuplicateCollectionNames";
+
+      auto duplicates = findDuplicateCollectionNames(agency);
+      if (duplicates.empty()) {
+        goodTests.emplace_back(testName);
+      } else {
+        badTests.emplace_back(testName);
+        std::stringstream out;
+        printDuplicateCollections(duplicates, out);
+        builder.add("duplicateCollectionNames", VPackValue(out.str()));
+      }
+
+      builder.add(VPackValue("goodTests"));
+      arangodb::velocypack::serialize(builder, goodTests);
+      builder.add(VPackValue("badTests"));
+      arangodb::velocypack::serialize(builder, badTests);
+    }
     builder.add("error", VPackValue(false));
     builder.add("errorMessage", VPackValue(""));
-    builder.add("diagnosis", VPackValue(out.str()));
   }
   return builder;
 }

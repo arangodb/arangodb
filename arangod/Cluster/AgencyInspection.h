@@ -248,6 +248,32 @@ auto inspect(Inspector& f, AnalyzerInfo& x) {
       });
 }
 
+// DiskUsageDBServer Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, DiskUsageDBServer& x) {
+  return f.object(x).fields(
+      f.field("Usage", x.Usage).fallback(uint64_t{0}));
+}
+
+// DiskUsageLimit Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, DiskUsageLimit& x) {
+  return f.object(x).fields(
+      f.field("Version", x.Version).fallback(uint64_t{0}),
+      f.field("TotalUsageBytes", x.TotalUsageBytes).fallback(uint64_t{0}),
+      f.field("TotalUsageBytesLastUpdate", x.TotalUsageBytesLastUpdate).fallback(uint64_t{0}),
+      f.field("LimitReached", x.LimitReached).fallback(false),
+      f.field("LimitReachedLastUpdate", x.LimitReachedLastUpdate).fallback(uint64_t{0}));
+}
+
+// DiskUsage Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, DiskUsage& x) {
+  return f.object(x).fields(
+      f.field("Servers", x.Servers),
+      f.field("Limit", x.Limit));
+}
+
 // Metrics Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, Metrics& x) {
@@ -463,7 +489,8 @@ auto inspect(Inspector& f, Target& x) {
       f.field("ReturnLeadership", x.ReturnLeadership),
       f.field("HotBackup", x.HotBackup), f.field("Hotbackup", x.Hotbackup),
       f.field("RemovedServers", x.RemovedServers),
-      f.field("MapLocalToID", x.MapLocalToID));
+      f.field("MapLocalToID", x.MapLocalToID),
+      f.field("DiskUsage", x.DiskUsage));
 }
 
 // HotBackupProgress Inspect Function

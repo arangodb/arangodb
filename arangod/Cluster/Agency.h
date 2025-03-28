@@ -483,6 +483,29 @@ struct HotBackup {
   HotBackup() = default;
 };
 
+struct DiskUsageDBServer {
+  uint64_t Usage = 0;
+
+  DiskUsageDBServer() = default;
+};
+
+struct DiskUsageLimit {
+  uint64_t Version = 0;
+  uint64_t TotalUsageBytes = 0;
+  uint64_t TotalUsageBytesLastUpdate = 0;
+  bool LimitReached = false;
+  uint64_t LimitReachedLastUpdate = 0;
+
+  DiskUsageLimit() = default;
+};
+
+struct DiskUsage {
+  std::unordered_map<std::string, DiskUsageDBServer> Servers;
+  DiskUsageLimit Limit;
+
+  DiskUsage() = default;
+};
+
 struct Target {
   std::optional<velocypack::SharedSlice> NumberOfCoordinators;
   std::optional<velocypack::SharedSlice> NumberOfDBServers;
@@ -507,6 +530,7 @@ struct Target {
   std::optional<std::unordered_map<std::string, std::string>> RemovedServers;
   std::optional<std::unordered_map<std::string, velocypack::SharedSlice>>
       MapLocalToID;
+  std::optional<DiskUsage> DiskUsage;
 
   Target() = default;
 };
