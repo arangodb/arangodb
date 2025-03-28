@@ -75,7 +75,13 @@ auto inspect(Inspector& f, Index& x) {
       f.field("consolidationPolicy", x.consolidationPolicy),
       f.field("features", x.features), f.field("geoJson", x.geoJson),
       f.field("bestIndexedLevel", x.bestIndexedLevel),
-      f.field("error", x.error));
+      f.field("error", x.error), f.field("tempObjectId", x.tempObjectId),
+      f.field("isBuilding", x.isBuilding),
+      f.field("coordinator", x.coordinator),
+      f.field("coordinatorRebootId", x.coordinatorRebootId),
+      f.field("prefixFields", x.prefixFields),
+      f.field("fieldValueTypes", x.fieldValueTypes),
+      f.field("isNewlyCreated", x.isNewlyCreated));
 }
 
 // Shard Inspect Function
@@ -103,15 +109,6 @@ auto inspect(Inspector& f, ServerInfo& x) {
       f.field("extendedNamesDatabases", x.extendedNamesDatabases),
       f.field("timestamp", x.timestamp));
 }
-
-#if 0
-// ServersRegistered Inspect Function
-template<class Inspector>
-auto inspect(Inspector& f, ServersRegistered& x) {
-  return f.object(x).fields(f.field("Version", x.Version).fallback(uint64_t{0}),
-                            f.field("servers", x.servers));
-}
-#endif
 
 // ServerKnown Inspect Function
 template<class Inspector>
@@ -192,7 +189,10 @@ auto inspect(Inspector& f, Database& x) {
       f.field("isSystem", x.isSystem), f.field("sharding", x.sharding),
       f.field("replicationFactor", x.replicationFactor),
       f.field("writeConcern", x.writeConcern),
-      f.field("replicationVersion", x.replicationVersion));
+      f.field("replicationVersion", x.replicationVersion),
+      f.field("options", x.options), f.field("coordinator", x.coordinator),
+      f.field("coordinatorRebootId", x.coordinatorRebootId),
+      f.field("isBuilding", x.isBuilding));
 }
 
 // Collection Inspect Function
@@ -229,7 +229,8 @@ auto inspect(Inspector& f, Collection& x) {
       f.field("isBuilding", x.isBuilding),
       f.field("coordinator", x.coordinator),
       f.field("coordinatorRebootId", x.coordinatorRebootId),
-      f.field("smartGraphAttribute", x.smartGraphAttribute));
+      f.field("smartGraphAttribute", x.smartGraphAttribute),
+      f.field("smartJoinAttribute", x.smartJoinAttribute));
 }
 
 // AnalyzerInfo Inspect Function
@@ -288,7 +289,8 @@ auto inspect(Inspector& f, Health& x) {
       f.field("Status", x.Status), f.field("Version", x.Version),
       f.field("Engine", x.Engine), f.field("Timestamp", x.Timestamp),
       f.field("SyncTime", x.SyncTime),
-      f.field("LastAckedTime", x.LastAckedTime));
+      f.field("LastAckedTime", x.LastAckedTime),
+      f.field("AdvertisedEndpoint", x.AdvertisedEndpoint));
 }
 
 // State Inspect Function
@@ -327,7 +329,9 @@ auto inspect(Inspector& f, Arango& x) {
 template<class Inspector>
 auto inspect(Inspector& f, AgencyData& x) {
   return f.object(x).fields(f.field("arango", x.arango),
-                            f.field(".agency", x.dotAgency));
+                            f.field(".agency", x.dotAgency),
+                            f.field("arangodb-helper", x.arangodbHelper),
+                            f.field("arangodb", x.arangodb));
 }
 
 // DBServerMaintenance
@@ -389,7 +393,9 @@ template<class Inspector>
 auto inspect(Inspector& f, Supervision& x) {
   return f.object(x).fields(
       f.field("Health", x.Health), f.field("Shards", x.Shards),
-      f.field("DBServers", x.DBServers), f.field("State", x.State));
+      f.field("DBServers", x.DBServers), f.field("State", x.State),
+      f.field("Maintenance", x.Maintenance)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}));
 }
 
 // MoveShard Inspect Function
@@ -397,7 +403,16 @@ template<class Inspector>
 auto inspect(Inspector& f, MoveShard& x) {
   return f.object(x).fields(
       f.field("fromServer", x.fromServer), f.field("toServer", x.toServer),
-      f.field("database", x.database), f.field("collection", x.collection));
+      f.field("database", x.database), f.field("collection", x.collection),
+      f.field("type", x.type), f.field("creator", x.creator),
+      f.field("remainsFollower", x.remainsFollower),
+      f.field("isLeader", x.isLeader), f.field("jobId", x.jobId),
+      f.field("parentJob", x.parentJob), f.field("shard", x.shard),
+      f.field("tryUndo", x.tryUndo),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}));
 }
 
 // ReconfigureReplicatedLog Inspect Function
@@ -415,13 +430,16 @@ auto inspect(Inspector& f, ReturnLeadershipEntry& x) {
                   .transformWith(arangodb::inspection::TimeStampTransformer{}),
               f.field("started", x.started)
                   .transformWith(arangodb::inspection::TimeStampTransformer{}),
-              f.field("jobId", x.jobId), f.field("rebootId", x.rebootId),
+              f.field("jobId", x.jobId),
+              f.field("timeStamp", x.timeStamp)
+                  .transformWith(arangodb::inspection::TimeStampTransformer{}),
+              f.field("rebootId", x.rebootId),
               f.field("moveShard", x.moveShard),
               f.field("reconfigureReplicatedLog", x.reconfigureReplicatedLog))
       .invariant([](ReturnLeadershipEntry& e) {
         // Either one of the two:
-        return !(e.moveShard.has_value() ^
-                 e.reconfigureReplicatedLog.has_value());
+        return (e.moveShard.has_value() ^
+                e.reconfigureReplicatedLog.has_value()) != 0;
       });
 }
 
@@ -481,7 +499,8 @@ auto inspect(Inspector& f, HotBackupJob& x) {
 template<class Inspector>
 auto inspect(Inspector& f, HotBackup& x) {
   return f.object(x).fields(f.field("TransferJobs", x.TransferJobs),
-                            f.field("Transfers", x.Transfers));
+                            f.field("Transfers", x.Transfers),
+                            f.field("Create", x.Create));
 }
 
 }  // namespace arangodb::agency

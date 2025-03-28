@@ -108,6 +108,13 @@ struct Index {
   std::optional<bool> geoJson;
   std::optional<uint64_t> bestIndexedLevel;
   std::optional<std::string> error;
+  std::optional<std::string> tempObjectId;
+  std::optional<std::vector<std::string>> prefixFields;
+  std::optional<bool> isBuilding;
+  std::optional<std::string> coordinator;
+  std::optional<uint64_t> coordinatorRebootId;
+  std::optional<std::string> fieldValueTypes;
+  std::optional<bool> isNewlyCreated;
 
   Index() = default;
   Index(const std::string& id, const std::string& type_)
@@ -159,8 +166,8 @@ struct DatabaseInfo {
   bool error = false;
   uint64_t errorNum = 0;
   std::string errorMessage;
-  std::string id;
-  std::string name;
+  std::optional<std::string> id;
+  std::optional<std::string> name;
 
   DatabaseInfo() = default;
 };
@@ -214,6 +221,10 @@ struct Database {
   std::optional<uint64_t> replicationFactor;
   std::optional<uint64_t> writeConcern;
   std::optional<std::string> replicationVersion;
+  std::optional<velocypack::SharedSlice> options;
+  std::optional<std::string> coordinator;
+  std::optional<uint64_t> coordinatorRebootId;
+  std::optional<bool> isBuilding;
 
   Database() = default;
   Database(const std::string& name, const std::string& id)
@@ -254,6 +265,7 @@ struct Collection {
   std::optional<std::string> coordinator;
   std::optional<uint64_t> coordinatorRebootId;
   std::optional<std::string> smartGraphAttribute;
+  std::optional<std::string> smartJoinAttribute;
 
   Collection() = default;
   Collection(const std::string& id, const std::string& name,
@@ -293,7 +305,7 @@ struct Features {
 struct License {
   Features features;
   uint64_t version = 0;
-  std::string hash;
+  std::optional<std::string> hash;
   std::string license;
 
   License() = default;
@@ -310,6 +322,7 @@ struct Health {
   std::string Timestamp;
   std::string SyncTime;
   std::string LastAckedTime;
+  std::optional<std::string> AdvertisedEndpoint;  // legacy
 
   Health() = default;
 };
@@ -375,7 +388,7 @@ struct Plan {
       Collections;
   std::unordered_map<std::string, std::unordered_map<std::string, View>> Views;
   std::optional<std::unordered_map<std::string, AnalyzerInfo>> Analyzers;
-  Metrics Metrics;
+  std::optional<Metrics> Metrics;
 
   Plan() = default;
 };
@@ -396,6 +409,7 @@ struct Supervision {
   std::unordered_map<std::string, velocypack::SharedSlice> Shards;
   std::unordered_map<std::string, velocypack::SharedSlice> DBServers;
   State State;
+  std::optional<std::chrono::system_clock::time_point> Maintenance;
 
   Supervision() = default;
 };
@@ -405,6 +419,16 @@ struct MoveShard {
   std::string toServer;
   std::string database;
   std::string collection;
+  std::optional<std::string> type;
+  std::optional<std::string> creator;
+  std::optional<bool> remainsFollower;
+  std::optional<bool> isLeader;
+  std::optional<std::string> jobId;
+  std::optional<std::string> parentJob;
+  std::optional<std::chrono::system_clock::time_point> timeStarted;
+  std::optional<std::chrono::system_clock::time_point> timeCreated;
+  std::optional<std::string> shard;
+  std::optional<bool> tryUndo;
 };
 
 struct ReconfigureReplicatedLog {
@@ -415,7 +439,8 @@ struct ReconfigureReplicatedLog {
 struct ReturnLeadershipEntry {
   std::chrono::system_clock::time_point removeIfNotStartedBy;
   std::optional<std::chrono::system_clock::time_point> started;
-  std::string jobId;
+  std::optional<std::string> jobId;
+  std::optional<std::chrono::system_clock::time_point> timeStamp;
   std::optional<uint64_t> rebootId;
   std::optional<MoveShard> moveShard;
   std::optional<ReconfigureReplicatedLog> reconfigureReplicatedLog;
@@ -433,7 +458,7 @@ struct HotBackupDBServer {
   std::optional<HotBackupProgress> Progress;
   std::optional<std::string> lockLocation;
   std::optional<uint64_t> rebootId = 0;
-  std::string Status;
+  std::optional<std::string> Status;
   std::optional<uint64_t> Error;
   std::optional<std::string> ErrorMessage;
 
@@ -453,6 +478,7 @@ struct HotBackup {
   std::optional<std::unordered_map<std::string, HotBackupJob>> TransferJobs;
   std::optional<std::unordered_map<std::string, velocypack::SharedSlice>>
       Transfers;
+  std::optional<std::string> Create;  // probably obsolete
 
   HotBackup() = default;
 };
@@ -506,6 +532,8 @@ struct Arango {
 struct AgencyData {
   Arango arango;
   std::optional<velocypack::SharedSlice> dotAgency;
+  std::optional<velocypack::SharedSlice> arangodbHelper;  // for starter
+  std::optional<velocypack::SharedSlice> arangodb;        // for arangosync
 
   AgencyData() = default;
 };

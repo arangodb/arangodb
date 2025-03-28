@@ -113,7 +113,8 @@ std::string diagnoseAgency(VPackSlice agency_vpack) {
   try {
     arangodb::velocypack::deserialize(agency_vpack, agency);
   } catch (std::exception const& e) {
-    LOG_DEVEL << "Caught exception when parsing agency data: " << e.what();
+    LOG_TOPIC("76252", WARN, Logger::AGENCY)
+        << "Caught exception when parsing agency data: " << e.what();
     return absl::StrCat("Could not parse agency data: ", e.what());
   }
 
