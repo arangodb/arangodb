@@ -107,25 +107,40 @@ void printDuplicateCollections(
   }
 }
 
-std::string diagnoseAgency(VPackSlice agency_vpack) {
+VPackBuilder diagnoseAgency(VPackSlice agency_vpack) {
   // Now parse the complete agency dump into a typed structure:
+  VPackBuilder builder;
   AgencyData agency;
   try {
     arangodb::velocypack::deserialize(agency_vpack, agency);
   } catch (std::exception const& e) {
     LOG_TOPIC("76252", WARN, Logger::AGENCY)
         << "Caught exception when parsing agency data: " << e.what();
-    return absl::StrCat("Could not parse agency data: ", e.what());
+    {
+      VPackObjectBuilder guard(&builder);
+      builder.add("error", VPackValue(true));
+      builder.add(
+          "errorMessage",
+          VPackValue(absl::StrCat("Could not parse agency data: ", e.what())));
+      builder.add("diagnosis", VPackSlice::nullSlice());
+    }
+    return builder;
   }
 
-  auto duplicates = findDuplicateCollectionNames(agency);
   std::stringstream out;
+  auto duplicates = findDuplicateCollectionNames(agency);
   printDuplicateCollections(duplicates, out);
 
-  return out.str();
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add("error", VPackValue(false));
+    builder.add("errorMessage", VPackValue(""));
+    builder.add("diagnosis", VPackValue(out.str()));
+  }
+  return builder;
 }
 
-std::string diagnoseAgency(arangodb::ArangodServer& server) {
+VPackBuilder diagnoseAgency(arangodb::ArangodServer& server) {
   AgencyCache& ac = server.getFeature<ClusterFeature>().agencyCache();
   auto [agency_vpack, index] = ac.read(std::vector<std::string>({"/"}));
   TRI_ASSERT(agency_vpack->slice().isArray() &&

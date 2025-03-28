@@ -1752,7 +1752,9 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
                       serverId](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
               VPackBuilder builder;
-              { VPackObjectBuilder obj(&builder); }
+              {
+                VPackObjectBuilder obj(&builder);
+              }
               generateOk(rest::ResponseCode::OK, builder);
               return waitForDBServerMaintenance(serverId, isMaintenanceMode);
             } else {
@@ -2992,7 +2994,7 @@ RestStatus RestAdminClusterHandler::handleAgencyDiagnosis() {
     return RestStatus::DONE;
   }
 
-  std::string diag;
+  VPackBuilder diag;
   if (request()->requestType() == rest::RequestType::GET) {
     diag = arangodb::agency::diagnoseAgency(_server);
   } else if (request()->requestType() == rest::RequestType::POST) {
@@ -3015,12 +3017,6 @@ RestStatus RestAdminClusterHandler::handleAgencyDiagnosis() {
     }
   }
 
-  VPackBuilder builder;
-  {
-    VPackObjectBuilder guard(&builder);
-    builder.add("error", VPackValue(false));
-    builder.add("diagnosis", VPackValue(diag));
-  }
-  generateOk(rest::ResponseCode::OK, builder.slice());
+  generateOk(rest::ResponseCode::OK, diag.slice());
   return RestStatus::DONE;
 }

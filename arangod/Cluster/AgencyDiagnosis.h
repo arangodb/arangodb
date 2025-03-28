@@ -28,7 +28,7 @@
 
 namespace arangodb::agency {
 
-std::string diagnoseAgency(VPackSlice agency);
-std::string diagnoseAgency(arangodb::ArangodServer& server);
+VPackBuilder diagnoseAgency(VPackSlice agency);
+VPackBuilder diagnoseAgency(arangodb::ArangodServer& server);
 
 }  // namespace arangodb::agency
