@@ -21,8 +21,6 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <string>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "RestServer/arangod.h"
 
