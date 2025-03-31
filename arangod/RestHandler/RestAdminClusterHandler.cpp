@@ -1752,9 +1752,7 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
                       serverId](AsyncAgencyCommResult&& result) {
             if (result.ok() && result.statusCode() == 200) {
               VPackBuilder builder;
-              {
-                VPackObjectBuilder obj(&builder);
-              }
+              { VPackObjectBuilder obj(&builder); }
               generateOk(rest::ResponseCode::OK, builder);
               return waitForDBServerMaintenance(serverId, isMaintenanceMode);
             } else {
@@ -2994,9 +2992,15 @@ RestStatus RestAdminClusterHandler::handleAgencyDiagnosis() {
     return RestStatus::DONE;
   }
 
+  bool strict = true;
+  std::string strictStr = request()->value("strict");
+  if (strictStr == "false") {
+    strict = false;
+  }
+
   VPackBuilder diag;
   if (request()->requestType() == rest::RequestType::GET) {
-    diag = arangodb::agency::diagnoseAgency(_server);
+    diag = arangodb::agency::diagnoseAgency(_server, strict);
   } else if (request()->requestType() == rest::RequestType::POST) {
     // Accept an agency dump to diagnose as body
     bool parseSuccess;
@@ -3011,9 +3015,9 @@ RestStatus RestAdminClusterHandler::handleAgencyDiagnosis() {
     }
     // Handle case of agency history, simply take "agency" attribute:
     if (body.hasKey("index") && body.hasKey("term") && body.hasKey("agency")) {
-      diag = arangodb::agency::diagnoseAgency(body.get("agency"));
+      diag = arangodb::agency::diagnoseAgency(body.get("agency"), strict);
     } else {
-      diag = arangodb::agency::diagnoseAgency(body);
+      diag = arangodb::agency::diagnoseAgency(body, strict);
     }
   }
 
