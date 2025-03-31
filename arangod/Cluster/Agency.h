@@ -132,30 +132,6 @@ struct Shard {
   Shard() = default;
 };
 
-struct ServerInfo {
-  std::string endpoint;
-  std::string advertisedEndpoint;
-  std::string host;
-  uint64_t physicalMemory = 0;
-  uint64_t numberOfCores = 0;
-  uint64_t version = 0;
-  std::string versionString;
-  std::string engine;
-  std::optional<bool> extendedNamesDatabases;
-  std::string timestamp;
-
-  ServerInfo() = default;
-};
-
-#if 0
-struct ServersRegistered {
-  uint64_t Version = 0;
-  std::unordered_map<std::string, ServerInfo> servers;
-
-  ServersRegistered() = default;
-};
-#endif
-
 struct ServerKnown {
   uint64_t rebootId = 0;
 
@@ -360,6 +336,10 @@ struct Current {
   std::string Lock;
   std::unordered_map<std::string, std::string> DBServers;
   std::unordered_map<std::string, velocypack::SharedSlice> Singles;
+  // We do the following as a Slice, since it has a `Version` attribute
+  // with only a number and apart from this for each server a record
+  // of type ServerInfo. This is difficult to achieve with the inspector,
+  // so for now we simply use a Slice.
   velocypack::SharedSlice ServersRegistered;
   std::unordered_map<std::string, std::unordered_map<std::string, DatabaseInfo>>
       Databases;

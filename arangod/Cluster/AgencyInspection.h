@@ -24,7 +24,9 @@
 #pragma once
 
 #include "Cluster/Agency.h"
+#include "Inspection/Access.h"
 #include "Inspection/Transformers.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb::agency {
 
@@ -93,21 +95,6 @@ auto inspect(Inspector& f, Shard& x) {
       f.field("errorNum", x.errorNum).fallback(uint64_t{0}),
       f.field("indexes", x.indexes), f.field("servers", x.servers),
       f.field("failoverCandidates", x.failoverCandidates));
-}
-
-// ServerInfo Inspect Function
-template<class Inspector>
-auto inspect(Inspector& f, ServerInfo& x) {
-  return f.object(x).fields(
-      f.field("endpoint", x.endpoint),
-      f.field("advertisedEndpoint", x.advertisedEndpoint),
-      f.field("host", x.host),
-      f.field("physicalMemory", x.physicalMemory).fallback(uint64_t{0}),
-      f.field("numberOfCores", x.numberOfCores).fallback(uint64_t{0}),
-      f.field("version", x.version).fallback(uint64_t{0}),
-      f.field("versionString", x.versionString), f.field("engine", x.engine),
-      f.field("extendedNamesDatabases", x.extendedNamesDatabases),
-      f.field("timestamp", x.timestamp));
 }
 
 // ServerKnown Inspect Function
@@ -251,8 +238,7 @@ auto inspect(Inspector& f, AnalyzerInfo& x) {
 // DiskUsageDBServer Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, DiskUsageDBServer& x) {
-  return f.object(x).fields(
-      f.field("Usage", x.Usage).fallback(uint64_t{0}));
+  return f.object(x).fields(f.field("Usage", x.Usage).fallback(uint64_t{0}));
 }
 
 // DiskUsageLimit Inspect Function
@@ -261,17 +247,18 @@ auto inspect(Inspector& f, DiskUsageLimit& x) {
   return f.object(x).fields(
       f.field("Version", x.Version).fallback(uint64_t{0}),
       f.field("TotalUsageBytes", x.TotalUsageBytes).fallback(uint64_t{0}),
-      f.field("TotalUsageBytesLastUpdate", x.TotalUsageBytesLastUpdate).fallback(uint64_t{0}),
+      f.field("TotalUsageBytesLastUpdate", x.TotalUsageBytesLastUpdate)
+          .fallback(uint64_t{0}),
       f.field("LimitReached", x.LimitReached).fallback(false),
-      f.field("LimitReachedLastUpdate", x.LimitReachedLastUpdate).fallback(uint64_t{0}));
+      f.field("LimitReachedLastUpdate", x.LimitReachedLastUpdate)
+          .fallback(uint64_t{0}));
 }
 
 // DiskUsage Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, DiskUsage& x) {
-  return f.object(x).fields(
-      f.field("Servers", x.Servers),
-      f.field("Limit", x.Limit));
+  return f.object(x).fields(f.field("Servers", x.Servers),
+                            f.field("Limit", x.Limit));
 }
 
 // Metrics Inspect Function
