@@ -216,6 +216,10 @@ class ClusterInfo final {
       std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
       KeyEqual,
       ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
+  template<typename K>
+  using FlatSet = containers::FlatHashSet<
+      K, std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
+      KeyEqual, ClusterInfoResourceAllocator<K const>>;
 
   template<typename K, typename V>
   using AssocMultiMap =
@@ -228,6 +232,9 @@ class ClusterInfo final {
   using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
   using AllCollections =
       FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
+  enum DatasourceType { COLLECTION, VIEW };
+  using AllCollectionNameBlockers =
+      FlatMapShared<pmr::DatabaseID, FlatSet<pmr::CollectionID>>;
 
   using DatabaseCollectionsCurrent =
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;
@@ -1173,6 +1180,12 @@ class ClusterInfo final {
   // The Plan state:
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
+  // We need to track names of isBuilding data sources, because we must
+  // forbid the creation of data sources with names which do already exist.
+  // This is per database.
+  AllCollectionNameBlockers _collectionNameBlockers;
+  AllCollectionNameBlockers _newCollectionNameBlockers;
+
   // TODO is it ok to don't account value for _shards?
   FlatMapShared<pmr::CollectionID, std::vector<ShardID> const>
       _shards;  // from Plan/Collections/
