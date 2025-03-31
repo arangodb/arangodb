@@ -45,6 +45,7 @@ namespace arangodb::containers {
 template<HasSnapshot T>
 struct ThreadOwnedList
     : public std::enable_shared_from_this<ThreadOwnedList<T>> {
+  using Item = T;
   basics::ThreadId const thread;
 
   struct Node {

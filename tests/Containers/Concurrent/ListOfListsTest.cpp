@@ -46,6 +46,7 @@ struct MyMetrics : Metrics {
 };
 
 struct MyNodeList {
+  using Item = MyData;
   std::vector<MyData> data;
   std::shared_ptr<Metrics> metrics;
   bool isGarbageCollected = false;
@@ -75,7 +76,7 @@ struct MyNodeList {
   auto garbage_collect_external() -> void { isGarbageCollected = true; }
 };
 
-using MyList = ListOfLists<MyNodeList, MyData>;
+using MyList = ListOfLists<MyNodeList>;
 
 auto nodes_in_list(MyList& registry) -> std::vector<MyData::Snapshot> {
   std::vector<MyData::Snapshot> nodes;
@@ -121,7 +122,7 @@ TEST(ListOfListsTest, uses_list_of_lists_metrics_for_all_lists) {
   list.add(inner_list);
 
   EXPECT_EQ(dynamic_cast<Metrics*>(list.metrics.get()),
-            nullptr);  // uses default empty metrics
+            nullptr);  // uses default empty
 
   auto newMetrics = std::make_shared<MyMetrics>();
   list.set_metrics(newMetrics);

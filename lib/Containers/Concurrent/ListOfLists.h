@@ -30,20 +30,25 @@
 
 namespace arangodb::containers {
 
+template<typename List>
+concept HasItemType = requires(List l) {
+  typename List::Item;
+};
 template<typename List, typename F>
 concept IteratorOverNodes = requires(List l, F f) {
   l.for_node(f);
 };
-template<typename List, typename Item, typename F>
-concept IteratorOverSnapshots =
-    IteratorOverNodes<List, F> && std::invocable<F, typename Item::Snapshot>;
+template<typename List, typename F>
+concept IteratorOverSnapshots = IteratorOverNodes<List, F> &&
+    std::invocable<F, typename List::Item::Snapshot>;
 template<typename T>
 concept HasExernalGarbageCollection = requires(T t) {
   t.garbage_collect_external();
 };
 
-template<UpdatesMetrics List, HasSnapshot Item>
-requires HasExernalGarbageCollection<List>
+template<typename List>
+requires HasItemType<List> && UpdatesMetrics<List> &&
+    HasExernalGarbageCollection<List>
 struct ListOfLists {
   std::shared_ptr<Metrics> metrics;
 
@@ -52,7 +57,6 @@ struct ListOfLists {
   std::mutex _mutex;
 
  public:
-  // ListOfLists();
   auto add(std::shared_ptr<List> list) -> void {
     auto guard = std::lock_guard(_mutex);
     // make sure that list uses our metrics
@@ -67,7 +71,7 @@ struct ListOfLists {
   }
 
   template<typename F>
-  requires IteratorOverSnapshots<List, Item, F>
+  requires IteratorOverSnapshots<List, F>
   auto for_node(F&& function) -> void {
     auto lists = [&] {
       auto guard = std::lock_guard(_mutex);
