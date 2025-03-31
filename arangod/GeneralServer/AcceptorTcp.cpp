@@ -212,12 +212,16 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(
   // io_context is single-threaded, no sync needed
   auto* ptr = proto.get();
   proto->timer.expires_from_now(std::chrono::seconds(60));
-  proto->timer.async_wait([ptr](asio_ns::error_code const& ec) {
-    if (ec) {  // canceled
-      return;
-    }
-    ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
-  });
+  proto->timer.async_wait(
+      [weak_ptr = std::weak_ptr<AsioSocket<SocketType::Ssl>>(proto)](
+          asio_ns::error_code const& ec) {
+        if (auto ptr = weak_ptr.lock(); ptr != nullptr) {
+          if (ec) {  // canceled
+            return;
+          }
+          ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
+        }
+      });
 
   auto cb = [self_ptr = weak_from_this(),
              as = std::move(proto)](asio_ns::error_code const& ec) mutable {
