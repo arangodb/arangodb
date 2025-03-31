@@ -396,12 +396,19 @@ void printDistributeShardsLikeInconsistencies(
   }
 }
 
-VPackBuilder diagnoseAgency(VPackSlice agency_vpack) {
+VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
   // Now parse the complete agency dump into a typed structure:
   VPackBuilder builder;
   AgencyData agency;
+  // First try strict:
+  inspection::ParseOptions options = {.ignoreUnknownFields = false,
+                                      .ignoreMissingFields = false};
+  if (!strict) {
+    options.ignoreUnknownFields = true;
+    options.ignoreMissingFields = true;
+  }
   try {
-    arangodb::velocypack::deserialize(agency_vpack, agency);
+    arangodb::velocypack::deserialize(agency_vpack, agency, options);
   } catch (std::exception const& e) {
     LOG_TOPIC("76252", WARN, Logger::AGENCY)
         << "Caught exception when parsing agency data: " << e.what();
@@ -477,12 +484,12 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack) {
   return builder;
 }
 
-VPackBuilder diagnoseAgency(arangodb::ArangodServer& server) {
+VPackBuilder diagnoseAgency(arangodb::ArangodServer& server, bool strict) {
   AgencyCache& ac = server.getFeature<ClusterFeature>().agencyCache();
   auto [agency_vpack, index] = ac.read(std::vector<std::string>({"/"}));
   TRI_ASSERT(agency_vpack->slice().isArray() &&
              agency_vpack->slice().length() == 1);
-  return diagnoseAgency(agency_vpack->slice().at(0));
+  return diagnoseAgency(agency_vpack->slice().at(0), strict);
 }
 
 }  // namespace arangodb::agency

@@ -26,7 +26,7 @@
 
 namespace arangodb::agency {
 
-VPackBuilder diagnoseAgency(VPackSlice agency);
-VPackBuilder diagnoseAgency(arangodb::ArangodServer& server);
+VPackBuilder diagnoseAgency(VPackSlice agency, bool strict);
+VPackBuilder diagnoseAgency(arangodb::ArangodServer& server, bool strict);
 
 }  // namespace arangodb::agency

@@ -506,7 +506,7 @@ struct Target {
   std::optional<std::unordered_map<std::string, ReturnLeadershipEntry>>
       ReturnLeadership;
   std::optional<HotBackup> HotBackup;
-  std::optional<velocypack::SharedSlice> Hotbackup;  // FIXME: define format!
+  std::optional<velocypack::SharedSlice> Hotbackup;  // define format later!
   std::optional<std::unordered_map<std::string, std::string>> RemovedServers;
   std::optional<std::unordered_map<std::string, velocypack::SharedSlice>>
       MapLocalToID;
