@@ -37,8 +37,13 @@ concept IteratorOverNodes = requires(List l, F f) {
 template<typename List, typename Item, typename F>
 concept IteratorOverSnapshots =
     IteratorOverNodes<List, F> && std::invocable<F, typename Item::Snapshot>;
+template<typename T>
+concept HasExernalGarbageCollection = requires(T t) {
+  t.garbage_collect_external();
+};
 
 template<UpdatesMetrics List, HasSnapshot Item>
+requires HasExernalGarbageCollection<List>
 struct ListOfLists {
   std::shared_ptr<Metrics> metrics;
 
@@ -80,7 +85,22 @@ struct ListOfLists {
     auto guard = std::lock_guard(_mutex);
     metrics = new_metrics;
   }
-  // void run_external_cleanup() noexcept;
+
+  /**
+     Runs an external clean up.
+   */
+  void run_external_cleanup() noexcept {
+    auto lists = [&] {
+      auto guard = std::lock_guard(_mutex);
+      return _lists;
+    }();
+
+    for (auto& weak_list : lists) {
+      if (auto list = weak_list.lock()) {
+        list->garbage_collect_external();
+      }
+    }
+  }
 };
 
 }  // namespace arangodb::containers

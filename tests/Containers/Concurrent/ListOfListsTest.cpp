@@ -20,7 +20,7 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Containers/Concurrent/ListOfThreadOwnedLists.h"
+#include "Containers/Concurrent/ListOfLists.h"
 
 #include <gtest/gtest.h>
 #include <memory>
@@ -48,6 +48,7 @@ struct MyMetrics : Metrics {
 struct MyNodeList {
   std::vector<MyData> data;
   std::shared_ptr<Metrics> metrics;
+  bool isGarbageCollected = false;
 
   MyNodeList(std::vector<MyData> data) : data{std::move(data)} {
     if (metrics) {
@@ -70,6 +71,8 @@ struct MyNodeList {
   auto set_metrics(std::shared_ptr<Metrics> new_metrics) -> void {
     metrics = new_metrics;
   }
+
+  auto garbage_collect_external() -> void { isGarbageCollected = true; }
 };
 
 using MyList = ListOfLists<MyNodeList, MyData>;
@@ -134,4 +137,19 @@ TEST(ListOfListsTest, uses_list_of_lists_metrics_for_all_lists) {
   EXPECT_NE(dynamic_cast<MyMetrics*>(list.metrics.get()), nullptr);
   EXPECT_EQ(newMetrics->lists, 2);
   EXPECT_EQ(dynamic_cast<MyMetrics*>(list.metrics.get())->lists, 2);
+}
+
+TEST(ListOfListsTest, executes_garbage_collection_on_each_list) {
+  MyList list;
+  auto first_inner_list =
+      std::make_shared<MyNodeList>(std::vector<MyData>{1, 2, 3});
+  auto second_inner_list =
+      std::make_shared<MyNodeList>(std::vector<MyData>{4, 5, 6});
+  list.add(first_inner_list);
+  list.add(second_inner_list);
+
+  list.run_external_cleanup();
+
+  EXPECT_TRUE(first_inner_list->isGarbageCollected);
+  EXPECT_TRUE(second_inner_list->isGarbageCollected);
 }
