@@ -2452,14 +2452,11 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
   auto blockedCollList = _collectionNameBlockers.find(databaseName);
 
   auto viewList = _plannedViews.find(databaseName);
-  auto blockedViewList = _viewNameBlockers.find(databaseName);
   for (auto const& name : names) {
     if (colList->second->contains(name) ||
         (viewList != _plannedViews.end() && viewList->second.contains(name)) ||
         (blockedCollList != _collectionNameBlockers.end() &&
-         blockedCollList->second->contains(name)) ||
-        (blockedViewList != _viewNameBlockers.end() &&
-         blockedViewList->second->contains(name))) {
+         blockedCollList->second->contains(name))) {
       // Either a Collection or a view is known with this name. Disallow it.
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     absl::StrCat("duplicate collection name '", name, "'"));
