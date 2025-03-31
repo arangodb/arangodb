@@ -50,6 +50,7 @@ std::size_t InstanceCounterValue::instanceCounter = 0;
 
 struct NodeData : InstanceCounterValue {
   int number;
+  bool isDeleted = false;
 
   NodeData(int number) : number{number} {}
 
@@ -58,6 +59,7 @@ struct NodeData : InstanceCounterValue {
     bool operator==(Snapshot const&) const = default;
   };
   auto snapshot() -> Snapshot { return Snapshot{.number = number}; }
+  auto set_to_deleted() -> void { isDeleted = true; };
 };
 
 using MyList = ThreadOwnedList<NodeData>;
@@ -145,6 +147,8 @@ TEST_F(ThreadOwnedListTest, marked_promises_are_deleted_in_garbage_collection) {
   EXPECT_EQ(nodes_in_registry(registry),
             (std::vector<NodeData::Snapshot>{another_node->data.snapshot(),
                                              node_to_delete->data.snapshot()}));
+  EXPECT_TRUE(node_to_delete->data.isDeleted);
+  EXPECT_FALSE(another_node->data.isDeleted);
 
   registry->garbage_collect();
   EXPECT_EQ(nodes_in_registry(registry),

@@ -33,6 +33,10 @@
 
 namespace arangodb::containers {
 
+template<typename T>
+concept CanBeSetToDeleted = requires(T t) {
+  t.set_to_deleted();
+};
 /**
    This list is owned by one thread: nodes can only be added on this thread but
    other threads can read the list and mark nodes for deletion.
@@ -42,7 +46,8 @@ namespace arangodb::containers {
    shared_ptr to this list. Garbage collection can run either on the owning
    thread or on another thread (there are two distinct functions for gc).
  */
-template<HasSnapshot T>
+template<typename T>
+requires HasSnapshot<T> && CanBeSetToDeleted<T>
 struct ThreadOwnedList
     : public std::enable_shared_from_this<ThreadOwnedList<T>> {
   using Item = T;
@@ -51,11 +56,18 @@ struct ThreadOwnedList
   struct Node {
     T data;
     Node* next = nullptr;
-    std::atomic<Node*> previous =
-        nullptr;  // needs to be atomic for gc from different thread
+    // this needs to be an atomic because it is accessed during garbage
+    // collection which can happen in a different thread. This thread will
+    // load the value. Since there is only one transition, i.e. from nullptr
+    // to non-null ptr, any missed update will result in a pessimistic
+    // execution and not an error. More precise, the item might not be
+    // deleted, although it is not in head position and can be deleted. It
+    // will be deleted next round.
+    std::atomic<Node*> previous = nullptr;
     Node* next_to_free = nullptr;
-    std::shared_ptr<ThreadOwnedList<T>>
-        list;  // to be able to mark for deletion
+    // identifies the promise list it belongs to, to be able to mark for
+    // deletion
+    std::shared_ptr<ThreadOwnedList<T>> list;
   };
 
  private:
@@ -122,8 +134,7 @@ struct ThreadOwnedList
     // makes sure that promise is really in this list
     ADB_PROD_ASSERT(node->list.get() == this);
 
-    // TODO needs to be done in Promise::mark_for_deletion instead
-    // promise->state.store(State::Deleted);
+    node->data.set_to_deleted();
 
     // keep a local copy of the shared pointer. This promise might be the
     // last of the registry.
