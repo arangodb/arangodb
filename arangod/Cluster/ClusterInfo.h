@@ -225,18 +225,20 @@ class ClusterInfo final {
   template<typename T>
   using ManagedVector = std::vector<T, ClusterInfoResourceAllocator<T>>;
 
+#if 0
   template<typename K>
   using HashSet =
       containers::FlatHashSet<K, typename containers::FlatHashSet<K>::hasher,
                               typename containers::FlatHashSet<K>::key_equal,
                               ClusterInfoResourceAllocator<K>>;
+#endif
 
   using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
   using AllCollections =
       FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
-  using DatabaseBlockers = HashSet<pmr::CollectionID>;
+  using DatabaseBlockers = std::unordered_set<CollectionID>;
   using AllCollectionNameBlockers =
-      FlatMapShared<pmr::DatabaseID, DatabaseBlockers const>;
+      std::unordered_map<DatabaseID, std::shared_ptr<DatabaseBlockers const>>;
 
   using DatabaseCollectionsCurrent =
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;

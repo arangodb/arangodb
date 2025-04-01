@@ -1510,7 +1510,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     }
 
     auto databaseCollections = allocateShared<DatabaseCollections>();
-    auto blockedCollectionNames = allocateShared<DatabaseBlockers>();
+    auto blockedCollectionNames = std::make_shared<DatabaseBlockers>();
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -2449,11 +2449,11 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     // We will protect against deleted database with Preconditions
     return {_planVersion};
   }
-  auto blockedCollList = _collectionNameBlockers.find(databaseName);
+  auto blockedCollList =
+      _collectionNameBlockers.find(std::string(databaseName));
 
   auto viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
-    auto& x = colList->second;
     if (colList->second->contains(name) ||
         (viewList != _plannedViews.end() && viewList->second.contains(name)) ||
         (blockedCollList != _collectionNameBlockers.end() &&
