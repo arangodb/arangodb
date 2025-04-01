@@ -26,7 +26,6 @@
 #include "Cluster/Agency.h"
 #include "Inspection/Access.h"
 #include "Inspection/Transformers.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Iterator.h>
 
@@ -577,7 +576,7 @@ struct Access<arangodb::agency::ServersRegistered>
       // During serialization (saving)
 
       // Start building the object
-      auto status = f.beginObject();
+      inspection::Status status = f.beginObject();
       if (!status.ok()) {
         return status;
       }
