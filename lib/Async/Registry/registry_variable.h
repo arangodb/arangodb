@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "registry.h"
+#include "Async/Registry/promise.h"
+#include "Containers/Concurrent/ListOfLists.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
 
 namespace arangodb::async_registry {
 
@@ -30,12 +32,13 @@ namespace arangodb::async_registry {
 /**
    Global variable that holds all coroutines.
  */
-extern Registry registry;
+extern containers::ListOfLists<containers::ThreadOwnedList<Promise>> registry;
 
 /**
    Get registry of all active coroutine promises on this thread.
  */
-auto get_thread_registry() noexcept -> ThreadRegistry&;
+auto get_thread_registry() noexcept -> containers::ThreadOwnedList<Promise>&;
 
 auto get_current_coroutine() noexcept -> Requester*;
+
 }  // namespace arangodb::async_registry

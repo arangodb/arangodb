@@ -22,15 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include <atomic>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <source_location>
 #include <string>
 #include <thread>
-#include "Basics/threads-posix.h"
-#include "Inspection/Format.h"
-#include "Inspection/Types.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
+#include "Containers/Concurrent/thread.h"
 #include "fmt/format.h"
 #include "fmt/std.h"
 
@@ -43,28 +43,19 @@ struct overloaded : Ts... {
 template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
+
 namespace arangodb::async_registry {
 
 struct ThreadRegistry;
-
-struct ThreadId {
-  static auto current() noexcept -> ThreadId;
-  auto name() -> std::string;
-  TRI_tid_t posix_id;
-  pid_t kernel_id;
-  bool operator==(ThreadId const&) const = default;
-};
-template<typename Inspector>
-auto inspect(Inspector& f, ThreadId& x) {
-  return f.object(x).fields(f.field("LWPID", x.kernel_id),
-                            f.field("name", x.name()));
-}
 
 struct SourceLocationSnapshot {
   std::string_view file_name;
   std::string_view function_name;
   std::uint_least32_t line;
   bool operator==(SourceLocationSnapshot const&) const = default;
+  static auto from(std::source_location loc) -> SourceLocationSnapshot {
+    return SourceLocationSnapshot{.file_name=loc.file_name(), .function_name=loc.function_name(), .line=loc.line()};
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, SourceLocationSnapshot& x) {
@@ -101,7 +92,7 @@ auto inspect(Inspector& f, PromiseIdWrapper& x) {
   return f.object(x).fields(f.field("promise", fmt::format("{}", x.item)));
 }
 struct ThreadIdWrapper {
-  ThreadId item;
+  basics::ThreadId item;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, ThreadIdWrapper& x) {
@@ -114,8 +105,10 @@ auto inspect(Inspector& f, RequesterWrapper& x) {
       inspection::inlineType<PromiseIdWrapper>(),
       inspection::inlineType<ThreadIdWrapper>());
 }
-struct Requester : std::variant<ThreadId, PromiseId> {
-  static auto current_thread() -> Requester;
+struct Requester : std::variant<basics::ThreadId, PromiseId> {
+  static auto current_thread() -> Requester {
+    return {basics::ThreadId::current()};
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Requester& x) {
@@ -125,7 +118,7 @@ auto inspect(Inspector& f, Requester& x) {
                        [&](PromiseId waiter) {
                          return RequesterWrapper{PromiseIdWrapper{waiter}};
                        },
-                       [&](ThreadId waiter) {
+                         [&](basics::ThreadId waiter) {
                          return RequesterWrapper{ThreadIdWrapper{waiter}};
                        },
                    },
@@ -136,7 +129,7 @@ auto inspect(Inspector& f, Requester& x) {
 
 struct PromiseSnapshot {
   void* id;
-  ThreadId thread;
+  basics::ThreadId thread;
   SourceLocationSnapshot source_location;
   Requester requester;
   State state;
@@ -150,39 +143,29 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
                             f.field("requester", x.requester),
                             f.field("state", x.state));
 }
+
 struct Promise {
-  Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-          Requester requester, std::source_location location);
+  using Snapshot = PromiseSnapshot;
+  Promise(Requester requester, std::source_location location);
   ~Promise() = default;
 
-  auto mark_for_deletion() noexcept -> void;
   auto id() -> void* { return this; }
-  auto snapshot() -> PromiseSnapshot {
+  auto snapshot() -> Snapshot {
     return PromiseSnapshot{.id = id(),
                            .thread = thread,
                            .source_location = source_location.snapshot(),
                            .requester = requester.load(),
                            .state = state.load()};
   }
+  auto set_to_deleted() -> void {
+    state.store(State::Deleted, std::memory_order_relaxed);
+  }
 
-  ThreadId thread;
+  basics::ThreadId thread;
 
   SourceLocation source_location;
   std::atomic<Requester> requester;
   std::atomic<State> state = State::Running;
-  // identifies the promise list it belongs to
-  std::shared_ptr<ThreadRegistry> registry;
-  Promise* next = nullptr;
-  // this needs to be an atomic because it is accessed during garbage
-  // collection which can happen in a different thread. This thread will
-  // load the value. Since there is only one transition, i.e. from nullptr
-  // to non-null ptr, any missed update will result in a pessimistic
-  // execution and not an error. More precise, the item might not be
-  // deleted, although it is not in head position and can be deleted. It
-  // will be deleted next round.
-  std::atomic<Promise*> previous = nullptr;
-  // only needed to garbage collect promises
-  Promise* next_to_free = nullptr;
 };
 
 struct AddToAsyncRegistry {
@@ -203,13 +186,9 @@ struct AddToAsyncRegistry {
   struct noop {
     void operator()(void*) {}
   };
-
- public:
-  std::unique_ptr<Promise, noop> promise_in_registry = nullptr;
+  std::unique_ptr<containers::ThreadOwnedList<Promise>::Node, noop>
+      node_in_registry = nullptr;
 };
 
 }  // namespace arangodb::async_registry
 
-template<>
-struct fmt::formatter<arangodb::async_registry::ThreadId>
-    : arangodb::inspection::inspection_formatter {};

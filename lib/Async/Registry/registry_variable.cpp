@@ -21,23 +21,28 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "registry_variable.h"
-#include <thread>
+
 #include "Async/Registry/promise.h"
+
+#include <thread>
 
 namespace arangodb::async_registry {
 
-Registry registry;
+containers::ListOfLists<containers::ThreadOwnedList<Promise>> registry;
 
 /**
    Gives the thread registry of the current thread.
 
    Creates the thread registry when called for the first time.
  */
-auto get_thread_registry() noexcept -> ThreadRegistry& {
+auto get_thread_registry() noexcept -> containers::ThreadOwnedList<Promise>& {
   struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{registry.add_thread()} {}
+    ThreadRegistryGuard()
+        : _registry{containers::ThreadOwnedList<Promise>::make()} {
+      registry.add(_registry);
+    }
 
-    std::shared_ptr<ThreadRegistry> _registry;
+    std::shared_ptr<containers::ThreadOwnedList<Promise>> _registry;
   };
   static thread_local auto registry_guard = ThreadRegistryGuard{};
   return *registry_guard._registry;

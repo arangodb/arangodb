@@ -106,7 +106,8 @@ struct ThreadOwnedList
     }
   }
 
-  auto add(T data) noexcept -> Node* {
+  template<typename F>
+  auto add(F&& create_data) noexcept -> Node* {
     auto current_thread = basics::ThreadId::current();
     ADB_PROD_ASSERT(current_thread == thread) << fmt::format(
         "ThreadOwnedList::add_promise was called from thread {} but needs to "
@@ -115,7 +116,7 @@ struct ThreadOwnedList
         inspection::json(current_thread), inspection::json(thread),
         (void*)this);
     auto current_head = _head.load(std::memory_order_relaxed);
-    auto node = new Node{.data = std::move(data),
+    auto node = new Node{.data = create_data(),
                          .next = current_head,
                          .list = this->shared_from_this()};
     if (current_head != nullptr) {

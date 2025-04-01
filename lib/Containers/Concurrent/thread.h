@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/threads-posix.h"
+#include "Inspection/Format.h"
 
 namespace arangodb::basics {
 
@@ -40,3 +41,7 @@ auto inspect(Inspector& f, ThreadId& x) {
 }
 
 }  // namespace arangodb::basics
+
+template<>
+struct fmt::formatter<arangodb::basics::ThreadId>
+    : arangodb::inspection::inspection_formatter {};

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Async/Registry/promise.h"
-#include "Async/Registry/registry.h"
 #include "Async/Registry/registry_variable.h"
 #include "Async/coro-utils.h"
 #include "Async/expected.h"
@@ -34,7 +33,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   }
 
   std::suspend_never initial_suspend() noexcept {
-    promise_in_registry->state.store(async_registry::State::Running);
+    node_in_registry->data.state.store(async_registry::State::Running);
     return {};
   }
   auto final_suspend() noexcept {
