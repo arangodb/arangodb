@@ -232,11 +232,14 @@ class ClusterInfo final {
                               typename containers::FlatHashSet<K>::key_equal,
                               ClusterInfoResourceAllocator<K>>;
 #endif
+  template<typename K>
+  using MyHashSet = containers::FlatHashSet<K, Hasher, KeyEqual,
+                                            ClusterInfoResourceAllocator<K>>;
 
   using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
   using AllCollections =
       FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
-  using DatabaseBlockers = std::unordered_set<CollectionID>;
+  using DatabaseBlockers = MyHashSet<pmr::CollectionID>;
   using AllCollectionNameBlockers =
       std::unordered_map<DatabaseID, std::shared_ptr<DatabaseBlockers const>>;
 

@@ -1510,7 +1510,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     }
 
     auto databaseCollections = allocateShared<DatabaseCollections>();
-    auto blockedCollectionNames = std::make_shared<DatabaseBlockers>();
+    auto blockedCollectionNames = allocateShared<DatabaseBlockers>();
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -2458,6 +2458,7 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
         (viewList != _plannedViews.end() && viewList->second.contains(name)) ||
         (blockedCollList != _collectionNameBlockers.end() &&
          blockedCollList->second->contains(name))) {
+      // pmr::CollectionID(name, _resourceMonitor)))) {
       // Either a Collection or a view is known with this name. Disallow it.
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     absl::StrCat("duplicate collection name '", name, "'"));
