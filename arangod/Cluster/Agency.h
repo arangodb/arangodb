@@ -321,6 +321,25 @@ struct DBServerMaintenance {
   std::string Until;
 };
 
+// Your existing structures
+struct ServerInfo {
+  uint32_t numberOfCores;
+  std::string timestamp;
+  std::string host;
+  uint32_t version;
+  uint64_t physicalMemory;
+  std::string versionString;
+  std::string engine;
+  std::string endpoint;
+  std::string advertisedEndpoint;
+  bool extendedNamesDatabases;
+};
+
+struct ServersRegistered {
+  std::unordered_map<std::string, ServerInfo> servers;
+  uint64_t Version;
+};
+
 // More complex structs due to nested collections
 struct Current {
   std::unordered_map<std::string, velocypack::SharedSlice> AsyncReplication;
@@ -336,11 +355,7 @@ struct Current {
   std::string Lock;
   std::unordered_map<std::string, std::string> DBServers;
   std::unordered_map<std::string, velocypack::SharedSlice> Singles;
-  // We do the following as a Slice, since it has a `Version` attribute
-  // with only a number and apart from this for each server a record
-  // of type ServerInfo. This is difficult to achieve with the inspector,
-  // so for now we simply use a Slice.
-  velocypack::SharedSlice ServersRegistered;
+  ServersRegistered ServersRegistered;
   std::unordered_map<std::string, std::unordered_map<std::string, DatabaseInfo>>
       Databases;
   std::unordered_map<std::string, ServerKnown> ServersKnown;

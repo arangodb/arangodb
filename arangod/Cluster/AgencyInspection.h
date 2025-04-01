@@ -28,6 +28,8 @@
 #include "Inspection/Transformers.h"
 #include "Logger/LogMacros.h"
 
+#include <velocypack/Iterator.h>
+
 namespace arangodb::agency {
 
 // AnalyzerDefinition Inspect Function
@@ -517,4 +519,89 @@ auto inspect(Inspector& f, HotBackup& x) {
                             f.field("Create", x.Create));
 }
 
+// Define inspection for ServerInfo with regular approach
+template<class Inspector>
+auto inspect(Inspector& f, ServerInfo& info) {
+  return f.object(info).fields(
+      f.field("numberOfCores", info.numberOfCores),
+      f.field("timestamp", info.timestamp), f.field("host", info.host),
+      f.field("version", info.version),
+      f.field("physicalMemory", info.physicalMemory),
+      f.field("versionString", info.versionString),
+      f.field("engine", info.engine), f.field("endpoint", info.endpoint),
+      f.field("advertisedEndpoint", info.advertisedEndpoint),
+      f.field("extendedNamesDatabases", info.extendedNamesDatabases));
+}
+
 }  // namespace arangodb::agency
+
+namespace arangodb::inspection {
+
+template<>
+struct Access<arangodb::agency::ServersRegistered>
+    : AccessBase<arangodb::agency::ServersRegistered> {
+  template<class Inspector>
+  static Status apply(Inspector& f, arangodb::agency::ServersRegistered& x) {
+    if constexpr (Inspector::isLoading) {
+      // During deserialization (loading)
+
+      // Start with an empty object
+      auto status = f.beginObject();
+      if (!status.ok()) {
+        return status;
+      }
+
+      VPackSlice slice = f.slice();
+      for (auto const& p : VPackObjectIterator(slice)) {
+        auto fieldName = p.key.copyString();
+        Inspector ff(p.value, f.options());
+        //  "Version" field is special and goes directly into our structure
+        if (fieldName == "Version") {
+          status = ff.apply(x.Version);
+        } else {
+          // All other fields are keys in our map
+          arangodb::agency::ServerInfo serverInfo;
+          status = ff.apply(serverInfo);
+          if (status.ok()) {
+            x.servers[std::string(fieldName)] = std::move(serverInfo);
+          } else {
+            return status;
+          }
+        }
+      }
+      if (!status.ok()) {
+        return status;
+      }
+      return f.endObject();
+    } else {
+      // During serialization (saving)
+
+      // Start building the object
+      auto status = f.beginObject();
+      if (!status.ok()) {
+        return status;
+      }
+
+      // Add Version field first
+      status = f.beginField("Version") | [&]() { return f.apply(x.Version); } |
+               [&]() { return f.endField(); };
+      if (!status.ok()) {
+        return status;
+      }
+
+      // Add all server entries as top-level fields
+      for (const auto& [serverId, serverInfo] : x.servers) {
+        status = f.beginField(serverId) | [&]() {
+          return f.apply(serverInfo);
+        } | [&]() { return f.endField(); };
+        if (!status.ok()) {
+          return status;
+        }
+      }
+
+      return f.endObject();
+    }
+  }
+};
+
+}  // namespace arangodb::inspection
