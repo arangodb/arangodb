@@ -323,16 +323,16 @@ struct DBServerMaintenance {
 
 // Your existing structures
 struct ServerInfo {
-  uint32_t numberOfCores;
+  std::optional<uint32_t> numberOfCores;
   std::string timestamp;
   std::string host;
   uint32_t version;
-  uint64_t physicalMemory;
+  std::optional<uint64_t> physicalMemory;
   std::string versionString;
   std::string engine;
   std::string endpoint;
-  std::string advertisedEndpoint;
-  bool extendedNamesDatabases;
+  std::optional<std::string> advertisedEndpoint;
+  std::optional<bool> extendedNamesDatabases;
 };
 
 struct ServersRegistered {
