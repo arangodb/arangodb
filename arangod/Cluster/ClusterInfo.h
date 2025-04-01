@@ -216,10 +216,6 @@ class ClusterInfo final {
       std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
       KeyEqual,
       ClusterInfoResourceAllocator<std::pair<K const, std::shared_ptr<V>>>>;
-  template<typename K>
-  using FlatSet = containers::FlatHashSet<
-      K, std::conditional_t<std::is_same_v<K, ShardID>, absl::Hash<K>, Hasher>,
-      KeyEqual, ClusterInfoResourceAllocator<K const>>;
 
   template<typename K, typename V>
   using AssocMultiMap =
@@ -229,12 +225,18 @@ class ClusterInfo final {
   template<typename T>
   using ManagedVector = std::vector<T, ClusterInfoResourceAllocator<T>>;
 
+  template<typename K>
+  using HashSet =
+      containers::FlatHashSet<K, typename containers::FlatHashSet<K>::hasher,
+                              typename containers::FlatHashSet<K>::key_equal,
+                              ClusterInfoResourceAllocator<K>>;
+
   using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
   using AllCollections =
       FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
-  enum DatasourceType { COLLECTION, VIEW };
+  using DatabaseBlockers = HashSet<pmr::CollectionID>;
   using AllCollectionNameBlockers =
-      FlatMapShared<pmr::DatabaseID, FlatSet<pmr::CollectionID>>;
+      FlatMapShared<pmr::DatabaseID, DatabaseBlockers const>;
 
   using DatabaseCollectionsCurrent =
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;
