@@ -48,19 +48,28 @@ function createDuplicateCollectionNameSuite() {
       // We use a direct POST request here, since one of the two will fail,
       // with a normal `db._create(cn);` we would run the risk of an exception.
       let rr = arango.POST("/_api/collection", {name:cn});
+      let count = 0;
       while (true) {
         let s = arango.PUT(`/_api/job/${r.headers["x-arango-async-id"]}`,{});
         if (s.status !== 204) {
           break;
         }
+        internal.wait(1);
+        if (++count > 10) {
+          assertTrue(false, "Async job did not finish quickly enough!");
+        }
       }
       let c;
+      count = 0;
       while (true) {
         // Reconnect to clear collection cache in arangosh:
         arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "");
         c = db._collection(cn);
         if (c !== null) {
           break;
+        }
+        if (++count > 10) {
+          assertTrue(false, "Collection did not appear quickly enough!");
         }
       }
       c.drop();  // this will drop one copy (should be the only one)
