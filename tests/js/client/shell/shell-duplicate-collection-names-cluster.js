@@ -45,15 +45,35 @@ function createDuplicateCollectionNameSuite() {
     testCreateTwoCollectionsWithTheSameName: function () {
       // This should not work!
       let r = arango.POST_RAW("/_api/collection",{name:cn},{"x-arango-async":"store"});
-      let c = db._create(cn);
+      // We use a direct POST request here, since one of the two will fail,
+      // with a normal `db._create(cn);` we would run the risk of an exception.
+      let rr = arango.POST("/_api/collection", {name:cn});
       while (true) {
         let s = arango.PUT(`/_api/job/${r.headers["x-arango-async-id"]}`,{});
         if (s.status !== 204) {
           break;
         }
       }
-      c.drop();
-      c = db._collection(cn);
+      let c;
+      while (true) {
+        // Reconnect to clear collection cache in arangosh:
+        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "");
+        c = db._collection(cn);
+        if (c !== null) {
+          break;
+        }
+      }
+      c.drop();  // this will drop one copy (should be the only one)
+      // Give `arangosh` some tries to see the duplicate collection:
+      for (let i = 0; i < 10; ++i) {
+        // Reconnect to clear collection cache in arangosh:
+        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "");
+        c = db._collection(cn);
+        if (c !== null) {
+          break;   // This is going badly!
+        }
+        internal.wait(1);
+      }
       assertTrue(c === null, "Duplicate collection detected!");
     },
     
