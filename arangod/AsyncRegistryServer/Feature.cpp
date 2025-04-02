@@ -49,31 +49,6 @@ DECLARE_GAUGE(
     arangodb_async_existing_thread_registries, std::uint64_t,
     "Number of threads that started currently existing asyncronous operations");
 
-auto Feature::RegistryMetrics::increment_total_nodes() -> void {
-  promises_total->count();
-}
-auto Feature::RegistryMetrics::increment_registered_nodes() -> void {
-  existing_promises->fetch_add(1);
-}
-auto Feature::RegistryMetrics::decrement_registered_nodes() -> void {
-  existing_promises->fetch_sub(1);
-}
-auto Feature::RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  existing_promises->fetch_add(1);
-}
-auto Feature::RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  existing_promises->fetch_sub(1);
-}
-auto Feature::RegistryMetrics::increment_total_lists() -> void {
-  thread_registries_total->count();
-}
-auto Feature::RegistryMetrics::increment_existing_lists() -> void {
-  existing_thread_registries->fetch_add(1);
-}
-auto Feature::RegistryMetrics::decrement_existing_lists() -> void {
-  existing_thread_registries->fetch_sub(1);
-}
-
 Feature::Feature(Server& server)
     : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
   startsAfter<metrics::MetricsFeature>();
@@ -139,6 +114,4 @@ void Feature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
           R"(Each thread that is involved in the async-registry needs to garbage collect its finished async function calls regularly. This option controls how often this is done in seconds. This can possibly be performance relevant because each involved thread aquires a lock.)");
 }
 
-Feature::~Feature() {
-  registry.set_metrics(std::make_shared<arangodb::containers::Metrics>());
-}
+Feature::~Feature() { registry.set_metrics(nullptr); }

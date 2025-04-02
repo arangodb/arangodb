@@ -33,7 +33,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   }
 
   std::suspend_never initial_suspend() noexcept {
-    node_in_registry->data.state.store(async_registry::State::Running);
+    update_state(async_registry::State::Running);
     return {};
   }
   auto final_suspend() noexcept {

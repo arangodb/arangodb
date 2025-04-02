@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Async/Registry/registry_variable.h"
-#include "Metrics/Fwd.h"
+#include "AsyncRegistryServer/Metrics.h"
 #include "Basics/FutureSharedLock.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -32,40 +32,6 @@ namespace arangodb::async_registry {
 
 class Feature final : public ArangodFeature {
  private:
-  struct RegistryMetrics : arangodb::containers::Metrics {
-    RegistryMetrics(
-        std::shared_ptr<metrics::Counter> promises_total,
-        std::shared_ptr<metrics::Gauge<std::uint64_t>> existing_promises,
-        std::shared_ptr<metrics::Gauge<std::uint64_t>>
-            ready_for_deletion_promises,
-        std::shared_ptr<metrics::Counter> thread_registries_total,
-        std::shared_ptr<metrics::Gauge<std::uint64_t>>
-            existing_thread_registries)
-        : promises_total{promises_total},
-          existing_promises{existing_promises},
-          ready_for_deletion_promises{ready_for_deletion_promises},
-          thread_registries_total{thread_registries_total},
-          existing_thread_registries{existing_thread_registries} {}
-    ~RegistryMetrics() = default;
-    auto increment_total_nodes() -> void override;
-    auto increment_registered_nodes() -> void override;
-    auto decrement_registered_nodes() -> void override;
-    auto increment_ready_for_deletion_nodes() -> void override;
-    auto decrement_ready_for_deletion_nodes() -> void override;
-    auto increment_total_lists() -> void override;
-    auto increment_existing_lists() -> void override;
-    auto decrement_existing_lists() -> void override;
-
-   private:
-    std::shared_ptr<metrics::Counter> promises_total = nullptr;
-    std::shared_ptr<metrics::Gauge<std::uint64_t>> existing_promises = nullptr;
-    std::shared_ptr<metrics::Gauge<std::uint64_t>> ready_for_deletion_promises =
-        nullptr;
-    std::shared_ptr<metrics::Counter> thread_registries_total = nullptr;
-    std::shared_ptr<metrics::Gauge<std::uint64_t>> existing_thread_registries =
-        nullptr;
-  };
-
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
       -> std::shared_ptr<RegistryMetrics>;
   struct SchedulerWrapper {

@@ -23,7 +23,6 @@
 #pragma once
 
 #include "Containers/Concurrent/snapshot.h"
-#include "Containers/Concurrent/metrics.h"
 
 #include <memory>
 #include <vector>
@@ -46,30 +45,40 @@ concept HasExernalGarbageCollection = requires(T t) {
   t.garbage_collect_external();
 };
 
-template<typename List>
-requires HasItemType<List> && UpdatesMetrics<List> &&
-    HasExernalGarbageCollection<List>
-struct ListOfLists {
-  std::shared_ptr<Metrics> metrics;
+/**
+   List of non-owned lists.
 
+   Does not own the inner lists, and therefore an inner list can expire at any
+   point. Can iterate over all elements in all lists.
+ */
+template<typename List>
+requires HasItemType<List> && HasExernalGarbageCollection<List>
+struct ListOfNonOwnedLists {
  private:
   std::vector<std::weak_ptr<List>> _lists;
+
+ protected:
   std::mutex _mutex;
 
  public:
+  /**
+     Adds a list to this list of lists.
+
+     Removes expired inner lists.
+   */
   auto add(std::shared_ptr<List> list) -> void {
-    auto guard = std::lock_guard(_mutex);
-    // make sure that list uses our metrics
-    list->set_metrics(metrics);
-    if (metrics) {
-      metrics->increment_total_lists();
-      metrics->increment_existing_lists();
+    if (!list) {
+      return;
     }
+    auto guard = std::lock_guard(_mutex);
     // make sure that expired nodes are deleted
     std::erase_if(_lists, [&](auto const& list) { return list.expired(); });
     _lists.emplace_back(list);
   }
 
+  /**
+     Executes a function on each item in each list.
+   */
   template<typename F>
   requires IteratorOverSnapshots<List, F>
   auto for_node(F&& function) -> void {
@@ -85,13 +94,8 @@ struct ListOfLists {
     }
   }
 
-  auto set_metrics(std::shared_ptr<Metrics> new_metrics) -> void {
-    auto guard = std::lock_guard(_mutex);
-    metrics = new_metrics;
-  }
-
   /**
-     Runs an external clean up.
+     Executes the external garbage collection on each inner list.
    */
   void run_external_cleanup() noexcept {
     auto lists = [&] {

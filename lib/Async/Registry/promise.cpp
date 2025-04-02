@@ -34,6 +34,17 @@ Promise::Promise(Requester requester, std::source_location entry_point)
                       entry_point.line()},
       requester{requester} {}
 
+auto arangodb::async_registry::get_current_coroutine() noexcept -> Requester* {
+  struct Guard {
+    // initialized with current thread
+    Guard() : _identifier{Requester::current_thread()} {}
+
+    Requester _identifier;
+  };
+  static thread_local auto guard = Guard{};
+  return &guard._identifier;
+}
+
 AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
     : node_in_registry{get_thread_registry().add([&]() {
         return Promise{*get_current_coroutine(), std::move(loc)};

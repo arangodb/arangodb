@@ -46,15 +46,15 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 namespace arangodb::async_registry {
 
-struct ThreadRegistry;
-
 struct SourceLocationSnapshot {
   std::string_view file_name;
   std::string_view function_name;
   std::uint_least32_t line;
   bool operator==(SourceLocationSnapshot const&) const = default;
   static auto from(std::source_location loc) -> SourceLocationSnapshot {
-    return SourceLocationSnapshot{.file_name=loc.file_name(), .function_name=loc.function_name(), .line=loc.line()};
+    return SourceLocationSnapshot{.file_name = loc.file_name(),
+                                  .function_name = loc.function_name(),
+                                  .line = loc.line()};
   }
 };
 template<typename Inspector>
@@ -118,7 +118,7 @@ auto inspect(Inspector& f, Requester& x) {
                        [&](PromiseId waiter) {
                          return RequesterWrapper{PromiseIdWrapper{waiter}};
                        },
-                         [&](basics::ThreadId waiter) {
+                       [&](basics::ThreadId waiter) {
                          return RequesterWrapper{ThreadIdWrapper{waiter}};
                        },
                    },
@@ -168,6 +168,12 @@ struct Promise {
   std::atomic<State> state = State::Running;
 };
 
+/**
+   Gives a ptr to the currently running coroutine on the thread or to the
+   current thread if no coroutine is running at the moment.
+ */
+auto get_current_coroutine() noexcept -> Requester*;
+
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
   AddToAsyncRegistry(std::source_location loc);
@@ -191,4 +197,3 @@ struct AddToAsyncRegistry {
 };
 
 }  // namespace arangodb::async_registry
-

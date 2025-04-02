@@ -28,39 +28,18 @@
 
 namespace arangodb::async_registry {
 
-containers::ListOfLists<containers::ThreadOwnedList<Promise>> registry;
+Registry registry;
 
-/**
-   Gives the thread registry of the current thread.
-
-   Creates the thread registry when called for the first time.
- */
-auto get_thread_registry() noexcept -> containers::ThreadOwnedList<Promise>& {
+auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
-    ThreadRegistryGuard()
-        : _registry{containers::ThreadOwnedList<Promise>::make()} {
+    ThreadRegistryGuard() : _registry{ThreadRegistry::make(registry.metrics)} {
       registry.add(_registry);
     }
 
-    std::shared_ptr<containers::ThreadOwnedList<Promise>> _registry;
+    std::shared_ptr<ThreadRegistry> _registry;
   };
   static thread_local auto registry_guard = ThreadRegistryGuard{};
   return *registry_guard._registry;
-}
-
-/**
-   Gives a ptr to the currently running coroutine on the thread or to the
-   current thread if no coroutine is running at the moment.
- */
-auto get_current_coroutine() noexcept -> Requester* {
-  struct Guard {
-    // initialized with current thread
-    Guard() : _identifier{Requester::current_thread()} {}
-
-    Requester _identifier;
-  };
-  static thread_local auto guard = Guard{};
-  return &guard._identifier;
 }
 
 }  // namespace arangodb::async_registry

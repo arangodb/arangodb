@@ -218,11 +218,14 @@ TEST_F(ThreadOwnedListDeathTest,
        unrelated_promise_cannot_be_marked_for_deletion) {
   GTEST_FLAG_SET(death_test_style, "threadsafe");
   auto registry = MyList::make();
+  auto* promise = registry->add([]() { return NodeData{33}; });
+
   auto some_other_registry = MyList::make();
+  EXPECT_DEATH(some_other_registry->mark_for_deletion(promise),
+               "Assertion failed");
 
-  auto* promise = some_other_registry->add([]() { return NodeData{33}; });
-
-  EXPECT_DEATH(registry->mark_for_deletion(promise), "Assertion failed");
+  // correct clean up
+  registry->mark_for_deletion(promise);
 }
 
 TEST_F(ThreadOwnedListTest, another_thread_can_mark_a_promise_for_deletion) {

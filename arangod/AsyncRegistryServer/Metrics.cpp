@@ -20,22 +20,32 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
+#include "Metrics.h"
 
-#include <memory>
+#include "Metrics/Counter.h"
+#include "Metrics/Gauge.h"
 
-namespace arangodb::containers {
-
-struct Metrics {
-  virtual ~Metrics() = default;
-  virtual auto increment_total_nodes() -> void {}
-  virtual auto increment_registered_nodes() -> void {}
-  virtual auto decrement_registered_nodes() -> void {}
-  virtual auto increment_ready_for_deletion_nodes() -> void {}
-  virtual auto decrement_ready_for_deletion_nodes() -> void {}
-  virtual auto increment_total_lists() -> void {}
-  virtual auto increment_existing_lists() -> void {}
-  virtual auto decrement_existing_lists() -> void {}
-};
-
-}  // namespace arangodb::containers
+auto RegistryMetrics::increment_total_nodes() -> void {
+  promises_total->count();
+}
+auto RegistryMetrics::increment_registered_nodes() -> void {
+  existing_promises->fetch_add(1);
+}
+auto RegistryMetrics::decrement_registered_nodes() -> void {
+  existing_promises->fetch_sub(1);
+}
+auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
+  existing_promises->fetch_add(1);
+}
+auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
+  existing_promises->fetch_sub(1);
+}
+auto RegistryMetrics::increment_total_lists() -> void {
+  thread_registries_total->count();
+}
+auto RegistryMetrics::increment_existing_lists() -> void {
+  existing_thread_registries->fetch_add(1);
+}
+auto RegistryMetrics::decrement_existing_lists() -> void {
+  existing_thread_registries->fetch_sub(1);
+}
