@@ -1474,7 +1474,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         }
         _newPlannedCollections.erase(it);
       }
-      if (auto it = _newCollectionNameBlockers.find(databaseName);
+      if (auto it = _newCollectionNameBlockers.find(
+              pmr::DatabaseID(databaseName, _resourceMonitor));
           it != _newCollectionNameBlockers.end()) {
         _newCollectionNameBlockers.erase(it);
       }
@@ -1782,7 +1783,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _newPlannedCollections.insert_or_assign(databaseName,
                                             std::move(databaseCollections));
     _newCollectionNameBlockers.insert_or_assign(
-        databaseName, std::move(blockedCollectionNames));
+        pmr::DatabaseID(databaseName, _resourceMonitor),
+        std::move(blockedCollectionNames));
   }
 
   // Ensure "search-alias" views are being created AFTER collections
@@ -2449,8 +2451,8 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     // We will protect against deleted database with Preconditions
     return {_planVersion};
   }
-  auto blockedCollList =
-      _collectionNameBlockers.find(std::string(databaseName));
+  auto blockedCollList = _collectionNameBlockers.find(
+      pmr::DatabaseID(databaseName, _resourceMonitor));
 
   auto viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
