@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
+  coordinator in two different threads) creates two collections with the same
+  name in the same database (different collection ID).
+
 * Implement license changes: The Community Edition without a license now has a
   100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode after
   a grace period, and shutdown after an additional grace period.
