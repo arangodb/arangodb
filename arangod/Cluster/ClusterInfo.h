@@ -233,13 +233,8 @@ class ClusterInfo final {
   using AllCollections =
       FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
   using DatabaseBlockers = FlatHashSet<pmr::CollectionID>;
-  // Note that we use a std::unordered_map here for now, which does
-  // not track some of the memory usage. This is because the
-  // FlatHashSet seems to have certain properties which prevents
-  // the usage of FlatMapShared for AllCollectionNameBlockers.
   using AllCollectionNameBlockers =
-      std::unordered_map<pmr::DatabaseID,
-                         std::shared_ptr<DatabaseBlockers const>>;
+      FlatMapShared<pmr::DatabaseID, DatabaseBlockers const>;
 
   using DatabaseCollectionsCurrent =
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;

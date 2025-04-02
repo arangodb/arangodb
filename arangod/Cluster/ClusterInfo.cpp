@@ -469,6 +469,8 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _currentMemoryUsage(0),
       _plannedCollections(_resourceMonitor),
       _newPlannedCollections(_resourceMonitor),
+      _collectionNameBlockers(_resourceMonitor),
+      _newCollectionNameBlockers(_resourceMonitor),
       _shards(_resourceMonitor),
       _shardsToPlanServers(_resourceMonitor),
       _shardToName(_resourceMonitor),
@@ -1783,8 +1785,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _newPlannedCollections.insert_or_assign(databaseName,
                                             std::move(databaseCollections));
     _newCollectionNameBlockers.insert_or_assign(
-        pmr::DatabaseID(databaseName, _resourceMonitor),
-        std::move(blockedCollectionNames));
+        databaseName, std::move(blockedCollectionNames));
   }
 
   // Ensure "search-alias" views are being created AFTER collections
@@ -2451,8 +2452,7 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     // We will protect against deleted database with Preconditions
     return {_planVersion};
   }
-  auto blockedCollList = _collectionNameBlockers.find(
-      pmr::DatabaseID(databaseName, _resourceMonitor));
+  auto blockedCollList = _collectionNameBlockers.find(databaseName);
 
   auto viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
@@ -2460,7 +2460,6 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
         (viewList != _plannedViews.end() && viewList->second.contains(name)) ||
         (blockedCollList != _collectionNameBlockers.end() &&
          blockedCollList->second->contains(name))) {
-      // pmr::CollectionID(name, _resourceMonitor)))) {
       // Either a Collection or a view is known with this name. Disallow it.
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     absl::StrCat("duplicate collection name '", name, "'"));
