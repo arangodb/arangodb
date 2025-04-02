@@ -819,7 +819,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
       _queryRegistry->finishQuery(qid, errorCode)
           .thenValue([self = shared_from_this(), this,
                       errorCode](std::shared_ptr<ClusterQuery> query) mutable
-                         -> futures::Future<futures::Unit> {
+                     -> futures::Future<futures::Unit> {
             if (query == nullptr) {
               // this may be a race between query garbage collection and
               // the client  shutting down the query. it is debatable
