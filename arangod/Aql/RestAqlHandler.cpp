@@ -819,7 +819,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
       _queryRegistry->finishQuery(qid, errorCode)
           .thenValue([self = shared_from_this(), this,
                       errorCode](std::shared_ptr<ClusterQuery> query) mutable
-                     -> futures::Future<futures::Unit> {
+                         -> futures::Future<futures::Unit> {
             if (query == nullptr) {
               // this may be a race between query garbage collection and
               // the client  shutting down the query. it is debatable
@@ -858,8 +858,6 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 }
 
 RequestLane RestAqlHandler::lane() const {
-  TRI_ASSERT(!ServerState::instance()->isSingleServer());
-
   if (ServerState::instance()->isCoordinator()) {
     // continuation requests on coordinators will get medium priority,
     // so that they don't block query parts elsewhere
