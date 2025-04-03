@@ -486,6 +486,7 @@ struct JobBase {
       notBefore;  // can be empty, so we do not parse it as timestamp
   std::optional<std::string> parentJob;
   std::optional<std::string> reason;  // for errors, only in error case
+  std::optional<bool> abort;          // only when job is aborted or shall abort
 
   JobBase() = default;
   JobBase(const std::string& type, const std::string& jobId,
@@ -507,6 +508,7 @@ struct AddFollowerJob : JobBase {
 // ResignLeadership job type
 struct ResignLeadershipJob : JobBase {
   std::string server;
+  std::optional<bool> undoMoves;
 
   ResignLeadershipJob() : JobBase("resignLeadership", "", "") {}
   ResignLeadershipJob(const std::string& jobId, const std::string& creator)

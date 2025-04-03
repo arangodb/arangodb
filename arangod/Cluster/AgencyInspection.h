@@ -453,7 +453,7 @@ auto inspect(Inspector& f, JobBase& x) {
       f.field("timeFinished", x.timeFinished)
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
-      f.field("reason", x.reason));
+      f.field("abort", x.abort), f.field("reason", x.reason));
 }
 
 // AddFollowerJob Inspect Function
@@ -469,8 +469,9 @@ auto inspect(Inspector& f, AddFollowerJob& x) {
       f.field("timeFinished", x.timeFinished)
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("notBefore", x.notBefore), f.field("reason", x.reason),
-      f.field("database", x.database), f.field("parentJob", x.parentJob),
-      f.field("collection", x.collection), f.field("shard", x.shard));
+      f.field("abort", x.abort), f.field("database", x.database),
+      f.field("parentJob", x.parentJob), f.field("collection", x.collection),
+      f.field("shard", x.shard));
 }
 
 // ResignLeadershipJob Inspect Function
@@ -486,7 +487,8 @@ auto inspect(Inspector& f, ResignLeadershipJob& x) {
       f.field("timeFinished", x.timeFinished)
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
-      f.field("reason", x.reason), f.field("server", x.server));
+      f.field("undoMoves", x.undoMoves), f.field("reason", x.reason),
+      f.field("abort", x.abort), f.field("server", x.server));
 }
 
 // MoveShardJob Inspect Function
@@ -507,7 +509,7 @@ auto inspect(Inspector& f, MoveShardJob& x) {
       f.field("toServer", x.toServer),
       f.field("remainsFollower", x.remainsFollower),
       f.field("parentJob", x.parentJob), f.field("isLeader", x.isLeader),
-      f.field("tryUndo", x.tryUndo));
+      f.field("abort", x.abort), f.field("tryUndo", x.tryUndo));
 }
 
 // CleanUpLostCollectionJob Inspect Function
@@ -523,7 +525,8 @@ auto inspect(Inspector& f, CleanUpLostCollectionJob& x) {
       f.field("timeFinished", x.timeFinished)
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
-      f.field("reason", x.reason), f.field("server", x.server));
+      f.field("abort", x.abort), f.field("reason", x.reason),
+      f.field("server", x.server));
 }
 
 // CleanOutServerJob Inspect Function
@@ -539,7 +542,8 @@ auto inspect(Inspector& f, CleanOutServerJob& x) {
       f.field("timeFinished", x.timeFinished)
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
-      f.field("reason", x.reason), f.field("server", x.server));
+      f.field("abort", x.abort), f.field("reason", x.reason),
+      f.field("server", x.server));
 }
 
 // FailedFollowerJob Inspect Function
@@ -557,7 +561,8 @@ auto inspect(Inspector& f, FailedFollowerJob& x) {
       f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
       f.field("reason", x.reason), f.field("database", x.database),
       f.field("collection", x.collection), f.field("shard", x.shard),
-      f.field("fromServer", x.fromServer), f.field("toServer", x.toServer));
+      f.field("abort", x.abort), f.field("fromServer", x.fromServer),
+      f.field("toServer", x.toServer));
 }
 
 // FailedLeaderJob Inspect Function
@@ -576,7 +581,7 @@ auto inspect(Inspector& f, FailedLeaderJob& x) {
       f.field("reason", x.reason), f.field("database", x.database),
       f.field("collection", x.collection), f.field("shard", x.shard),
       f.field("fromServer", x.fromServer), f.field("toServer", x.toServer),
-      f.field("addsFollower", x.addsFollower));
+      f.field("abort", x.abort), f.field("addsFollower", x.addsFollower));
 }
 
 // FailedServerJob Inspect Function
@@ -593,6 +598,7 @@ auto inspect(Inspector& f, FailedServerJob& x) {
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
       f.field("reason", x.reason), f.field("server", x.server),
+      f.field("abort", x.abort),
       f.field("failedLeaderAddsFollower", x.failedLeaderAddsFollower));
 }
 
@@ -608,9 +614,10 @@ auto inspect(Inspector& f, RemoveFollowerJob& x) {
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("timeFinished", x.timeFinished)
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
-      f.field("notBefore", x.notBefore), f.field("reason", x.reason),
-      f.field("database", x.database), f.field("parentJob", x.parentJob),
-      f.field("collection", x.collection), f.field("shard", x.shard));
+      f.field("abort", x.abort), f.field("notBefore", x.notBefore),
+      f.field("reason", x.reason), f.field("database", x.database),
+      f.field("parentJob", x.parentJob), f.field("collection", x.collection),
+      f.field("shard", x.shard));
 }
 
 template<class Inspector>
