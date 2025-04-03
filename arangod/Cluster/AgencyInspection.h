@@ -301,9 +301,13 @@ auto inspect(Inspector& f, Health& x) {
       f.field("ShortName", x.ShortName), f.field("Endpoint", x.Endpoint),
       f.field("Host", x.Host), f.field("SyncStatus", x.SyncStatus),
       f.field("Status", x.Status), f.field("Version", x.Version),
-      f.field("Engine", x.Engine), f.field("Timestamp", x.Timestamp),
-      f.field("SyncTime", x.SyncTime),
-      f.field("LastAckedTime", x.LastAckedTime),
+      f.field("Engine", x.Engine),
+      f.field("Timestamp", x.Timestamp)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("SyncTime", x.SyncTime)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("LastAckedTime", x.LastAckedTime)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
       f.field("AdvertisedEndpoint", x.AdvertisedEndpoint));
 }
 
@@ -700,8 +704,9 @@ template<class Inspector>
 auto inspect(Inspector& f, ServerInfo& info) {
   return f.object(info).fields(
       f.field("numberOfCores", info.numberOfCores),
-      f.field("timestamp", info.timestamp), f.field("host", info.host),
-      f.field("version", info.version),
+      f.field("timestamp", info.timestamp)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("host", info.host), f.field("version", info.version),
       f.field("physicalMemory", info.physicalMemory),
       f.field("versionString", info.versionString),
       f.field("engine", info.engine), f.field("endpoint", info.endpoint),

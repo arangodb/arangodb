@@ -295,9 +295,9 @@ struct Health {
   std::string Status;
   std::string Version;
   std::string Engine;
-  std::string Timestamp;
-  std::string SyncTime;
-  std::string LastAckedTime;
+  std::chrono::system_clock::time_point Timestamp;
+  std::chrono::system_clock::time_point SyncTime;
+  std::chrono::system_clock::time_point LastAckedTime;
   std::optional<std::string> AdvertisedEndpoint;  // legacy
 
   Health() = default;
@@ -324,7 +324,7 @@ struct DBServerMaintenance {
 // Your existing structures
 struct ServerInfo {
   std::optional<uint32_t> numberOfCores;
-  std::string timestamp;
+  std::chrono::system_clock::time_point timestamp;
   std::string host;
   uint32_t version;
   std::optional<uint64_t> physicalMemory;
@@ -597,6 +597,12 @@ struct RemoveFollowerJob : JobBase {
       : JobBase("removeFollower", jobId, creator) {}
 };
 
+// Define the AgencyJob variant type that combines all job types
+using AgencyJob =
+    std::variant<AddFollowerJob, ResignLeadershipJob, MoveShardJob,
+                 CleanUpLostCollectionJob, CleanOutServerJob, FailedFollowerJob,
+                 FailedLeaderJob, FailedServerJob, RemoveFollowerJob>;
+
 struct ReturnLeadershipEntry {
   std::chrono::system_clock::time_point removeIfNotStartedBy;
   std::optional<std::chrono::system_clock::time_point> started;
@@ -606,12 +612,6 @@ struct ReturnLeadershipEntry {
   std::optional<MoveShardJob> moveShard;
   std::optional<ReconfigureReplicatedLog> reconfigureReplicatedLog;
 };
-
-// Define the AgencyJob variant type that combines all job types
-using AgencyJob =
-    std::variant<AddFollowerJob, ResignLeadershipJob, MoveShardJob,
-                 CleanUpLostCollectionJob, CleanOutServerJob, FailedFollowerJob,
-                 FailedLeaderJob, FailedServerJob, RemoveFollowerJob>;
 
 struct Target {
   std::optional<velocypack::SharedSlice> NumberOfCoordinators;
