@@ -412,23 +412,6 @@ auto inspect(Inspector& f, Supervision& x) {
           .transformWith(arangodb::inspection::TimeStampTransformer{}));
 }
 
-// MoveShard Inspect Function
-template<class Inspector>
-auto inspect(Inspector& f, MoveShard& x) {
-  return f.object(x).fields(
-      f.field("fromServer", x.fromServer), f.field("toServer", x.toServer),
-      f.field("database", x.database), f.field("collection", x.collection),
-      f.field("type", x.type), f.field("creator", x.creator),
-      f.field("remainsFollower", x.remainsFollower),
-      f.field("isLeader", x.isLeader), f.field("jobId", x.jobId),
-      f.field("parentJob", x.parentJob), f.field("shard", x.shard),
-      f.field("tryUndo", x.tryUndo),
-      f.field("timeStarted", x.timeStarted)
-          .transformWith(arangodb::inspection::TimeStampTransformer{}),
-      f.field("timeCreated", x.timeCreated)
-          .transformWith(arangodb::inspection::TimeStampTransformer{}));
-}
-
 // ReconfigureReplicatedLog Inspect Function
 template<class Inspector>
 auto inspect(Inspector& f, ReconfigureReplicatedLog& x) {
@@ -455,6 +438,193 @@ auto inspect(Inspector& f, ReturnLeadershipEntry& x) {
         return (e.moveShard.has_value() ^
                 e.reconfigureReplicatedLog.has_value()) != 0;
       });
+}
+
+// JobBase Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, JobBase& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
+      f.field("reason", x.reason));
+}
+
+// AddFollowerJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, AddFollowerJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("reason", x.reason),
+      f.field("database", x.database), f.field("parentJob", x.parentJob),
+      f.field("collection", x.collection), f.field("shard", x.shard));
+}
+
+// ResignLeadershipJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, ResignLeadershipJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
+      f.field("reason", x.reason), f.field("server", x.server));
+}
+
+// MoveShardJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, MoveShardJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("reason", x.reason),
+      f.field("database", x.database), f.field("collection", x.collection),
+      f.field("shard", x.shard), f.field("fromServer", x.fromServer),
+      f.field("toServer", x.toServer),
+      f.field("remainsFollower", x.remainsFollower),
+      f.field("parentJob", x.parentJob), f.field("isLeader", x.isLeader),
+      f.field("tryUndo", x.tryUndo));
+}
+
+// CleanUpLostCollectionJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, CleanUpLostCollectionJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
+      f.field("reason", x.reason), f.field("server", x.server));
+}
+
+// CleanOutServerJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, CleanOutServerJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
+      f.field("reason", x.reason), f.field("server", x.server));
+}
+
+// FailedFollowerJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, FailedFollowerJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
+      f.field("reason", x.reason), f.field("database", x.database),
+      f.field("collection", x.collection), f.field("shard", x.shard),
+      f.field("fromServer", x.fromServer), f.field("toServer", x.toServer));
+}
+
+// FailedLeaderJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, FailedLeaderJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
+      f.field("reason", x.reason), f.field("database", x.database),
+      f.field("collection", x.collection), f.field("shard", x.shard),
+      f.field("fromServer", x.fromServer), f.field("toServer", x.toServer),
+      f.field("addsFollower", x.addsFollower));
+}
+
+// FailedServerJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, FailedServerJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("parentJob", x.parentJob),
+      f.field("reason", x.reason), f.field("server", x.server),
+      f.field("failedLeaderAddsFollower", x.failedLeaderAddsFollower));
+}
+
+// RemoveFollowerJob Inspect Function
+template<class Inspector>
+auto inspect(Inspector& f, RemoveFollowerJob& x) {
+  return f.object(x).fields(
+      f.field("type", x.type), f.field("jobId", x.jobId),
+      f.field("creator", x.creator),
+      f.field("timeCreated", x.timeCreated)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeStarted", x.timeStarted)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("timeFinished", x.timeFinished)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("notBefore", x.notBefore), f.field("reason", x.reason),
+      f.field("database", x.database), f.field("parentJob", x.parentJob),
+      f.field("collection", x.collection), f.field("shard", x.shard));
+}
+
+template<class Inspector>
+auto inspect(Inspector& f, AgencyJob& x) {
+  return f.variant(x).embedded("type").alternatives(
+      inspection::type<AddFollowerJob>("addFollower"),
+      inspection::type<ResignLeadershipJob>("resignLeadership"),
+      inspection::type<MoveShardJob>("moveShard"),
+      inspection::type<CleanUpLostCollectionJob>("cleanUpLostCollection"),
+      inspection::type<CleanOutServerJob>("cleanOutServer"),
+      inspection::type<FailedFollowerJob>("failedFollower"),
+      inspection::type<FailedLeaderJob>("failedLeader"),
+      inspection::type<FailedServerJob>("failedServer"),
+      inspection::type<RemoveFollowerJob>("removeFollower"));
 }
 
 // Target Inspect Function

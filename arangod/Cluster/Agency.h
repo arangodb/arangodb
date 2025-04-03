@@ -409,36 +409,9 @@ struct Supervision {
   Supervision() = default;
 };
 
-struct MoveShard {
-  std::string fromServer;
-  std::string toServer;
-  std::string database;
-  std::string collection;
-  std::optional<std::string> type;
-  std::optional<std::string> creator;
-  std::optional<bool> remainsFollower;
-  std::optional<bool> isLeader;
-  std::optional<std::string> jobId;
-  std::optional<std::string> parentJob;
-  std::optional<std::chrono::system_clock::time_point> timeStarted;
-  std::optional<std::chrono::system_clock::time_point> timeCreated;
-  std::optional<std::string> shard;
-  std::optional<bool> tryUndo;
-};
-
 struct ReconfigureReplicatedLog {
   std::string database;
   std::string server;
-};
-
-struct ReturnLeadershipEntry {
-  std::chrono::system_clock::time_point removeIfNotStartedBy;
-  std::optional<std::chrono::system_clock::time_point> started;
-  std::optional<std::string> jobId;
-  std::optional<std::chrono::system_clock::time_point> timeStamp;
-  std::optional<uint64_t> rebootId;
-  std::optional<MoveShard> moveShard;
-  std::optional<ReconfigureReplicatedLog> reconfigureReplicatedLog;
 };
 
 struct HotBackupProgress {
@@ -501,6 +474,143 @@ struct DiskUsage {
   DiskUsage() = default;
 };
 
+// Base struct for common job fields
+struct JobBase {
+  std::string type;
+  std::string jobId;
+  std::string creator;
+  std::optional<std::chrono::system_clock::time_point> timeCreated;
+  std::optional<std::chrono::system_clock::time_point> timeStarted;
+  std::optional<std::chrono::system_clock::time_point> timeFinished;
+  std::optional<std::string>
+      notBefore;  // can be empty, so we do not parse it as timestamp
+  std::optional<std::string> parentJob;
+  std::optional<std::string> reason;  // for errors, only in error case
+
+  JobBase() = default;
+  JobBase(const std::string& type, const std::string& jobId,
+          const std::string& creator)
+      : type(type), jobId(jobId), creator(creator) {}
+};
+
+// AddFollower job type
+struct AddFollowerJob : JobBase {
+  std::string database;
+  std::string collection;
+  std::string shard;
+
+  AddFollowerJob() : JobBase("addFollower", "", "") {}
+  AddFollowerJob(const std::string& jobId, const std::string& creator)
+      : JobBase("addFollower", jobId, creator) {}
+};
+
+// ResignLeadership job type
+struct ResignLeadershipJob : JobBase {
+  std::string server;
+
+  ResignLeadershipJob() : JobBase("resignLeadership", "", "") {}
+  ResignLeadershipJob(const std::string& jobId, const std::string& creator)
+      : JobBase("resignLeadership", jobId, creator) {}
+};
+
+// MoveShard job type
+struct MoveShardJob : JobBase {
+  std::string database;
+  std::string collection;
+  std::string shard;
+  std::string fromServer;
+  std::string toServer;
+  std::optional<bool> remainsFollower;
+  std::optional<bool> isLeader;
+  std::optional<bool> tryUndo;
+
+  MoveShardJob() : JobBase("moveShard", "", "") {}
+  MoveShardJob(const std::string& jobId, const std::string& creator)
+      : JobBase("moveShard", jobId, creator) {}
+};
+
+// CleanUpLostCollection job type
+struct CleanUpLostCollectionJob : JobBase {
+  std::string server;
+
+  CleanUpLostCollectionJob() : JobBase("cleanUpLostCollection", "", "") {}
+  CleanUpLostCollectionJob(const std::string& jobId, const std::string& creator)
+      : JobBase("cleanUpLostCollection", jobId, creator) {}
+};
+
+// CleanOutServer job type
+struct CleanOutServerJob : JobBase {
+  std::string server;
+
+  CleanOutServerJob() : JobBase("cleanOutServer", "", "") {}
+  CleanOutServerJob(const std::string& jobId, const std::string& creator)
+      : JobBase("cleanOutServer", jobId, creator) {}
+};
+
+// FailedFollower job type
+struct FailedFollowerJob : JobBase {
+  std::string database;
+  std::string collection;
+  std::string shard;
+  std::string fromServer;
+  std::optional<std::string> toServer;
+
+  FailedFollowerJob() : JobBase("failedFollower", "", "") {}
+  FailedFollowerJob(const std::string& jobId, const std::string& creator)
+      : JobBase("failedFollower", jobId, creator) {}
+};
+
+// FailedLeader job type
+struct FailedLeaderJob : JobBase {
+  std::string database;
+  std::string collection;
+  std::string shard;
+  std::string fromServer;
+  std::optional<std::string> toServer;
+  std::optional<bool> addsFollower;
+
+  FailedLeaderJob() : JobBase("failedLeader", "", "") {}
+  FailedLeaderJob(const std::string& jobId, const std::string& creator)
+      : JobBase("failedLeader", jobId, creator) {}
+};
+
+// FailedServer job type
+struct FailedServerJob : JobBase {
+  std::string server;
+  std::optional<bool> failedLeaderAddsFollower;
+
+  FailedServerJob() : JobBase("failedServer", "", "") {}
+  FailedServerJob(const std::string& jobId, const std::string& creator)
+      : JobBase("failedServer", jobId, creator) {}
+};
+
+// RemoveFollower job type
+struct RemoveFollowerJob : JobBase {
+  std::string database;
+  std::string collection;
+  std::string shard;
+
+  RemoveFollowerJob() : JobBase("removeFollower", "", "") {}
+  RemoveFollowerJob(const std::string& jobId, const std::string& creator)
+      : JobBase("removeFollower", jobId, creator) {}
+};
+
+struct ReturnLeadershipEntry {
+  std::chrono::system_clock::time_point removeIfNotStartedBy;
+  std::optional<std::chrono::system_clock::time_point> started;
+  std::optional<std::string> jobId;
+  std::optional<std::chrono::system_clock::time_point> timeStamp;
+  std::optional<uint64_t> rebootId;
+  std::optional<MoveShardJob> moveShard;
+  std::optional<ReconfigureReplicatedLog> reconfigureReplicatedLog;
+};
+
+// Define the AgencyJob variant type that combines all job types
+using AgencyJob =
+    std::variant<AddFollowerJob, ResignLeadershipJob, MoveShardJob,
+                 CleanUpLostCollectionJob, CleanOutServerJob, FailedFollowerJob,
+                 FailedLeaderJob, FailedServerJob, RemoveFollowerJob>;
+
 struct Target {
   std::optional<velocypack::SharedSlice> NumberOfCoordinators;
   std::optional<velocypack::SharedSlice> NumberOfDBServers;
@@ -508,10 +618,10 @@ struct Target {
   std::vector<velocypack::SharedSlice> ToBeCleanedServers;
   std::unordered_map<std::string, velocypack::SharedSlice> FailedServers;
   std::string Lock;
-  std::unordered_map<std::string, velocypack::SharedSlice> Failed;
-  std::unordered_map<std::string, velocypack::SharedSlice> Finished;
-  std::unordered_map<std::string, velocypack::SharedSlice> Pending;
-  std::unordered_map<std::string, velocypack::SharedSlice> ToDo;
+  std::unordered_map<std::string, AgencyJob> Failed;
+  std::unordered_map<std::string, AgencyJob> Finished;
+  std::unordered_map<std::string, AgencyJob> Pending;
+  std::unordered_map<std::string, AgencyJob> ToDo;
   uint64_t Version = 0;
   uint64_t LatestDBServerId = 0;
   std::unordered_map<std::string, MapUniqueToShortID> MapUniqueToShortID;
