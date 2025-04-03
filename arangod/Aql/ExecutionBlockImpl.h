@@ -42,6 +42,12 @@
 
 namespace arangodb {
 class ExecContext;
+namespace futures {
+template<typename T>
+class Future;
+
+struct Unit;
+}  // namespace futures
 }  // namespace arangodb
 
 namespace arangodb::aql {
@@ -235,6 +241,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   auto testInjectInputRange(DataRange range, SkipResult skipped) -> void;
 #endif
 
+  void stopAsyncTasks() override;
+
  private:
   struct ExecutionContext {
     ExecutionContext(ExecutionBlockImpl& block, AqlCallStack const& callstack);
@@ -374,6 +382,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     explicit PrefetchTask(ExecutionBlockImpl& block, AqlCallStack const& stack)
         : _block(block), _stack(stack) {}
 
+    ~PrefetchTask();
+
     bool isConsumed() const noexcept;
     bool tryClaim() noexcept;
     bool tryClaimOrAbandon() noexcept;
@@ -387,6 +397,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     void setFailure(Result&& result);
 
     void execute();
+    int _identifier = rand();
 
    private:
     void updateStatus(Status status, std::memory_order memoryOrder) noexcept;
