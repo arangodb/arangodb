@@ -1,10 +1,10 @@
 v3.11.14 (XXXX-XX-XX)
 ---------------------
 
-* Remove overeager assert, only relevant for testing.
+* Updated ArangoDB Starter to v0.18.14-preview-1 and arangosync to
+  v2.19.13.
 
-* Updated ArangoDB Starter to v0.18.13-preview-2 and arangosync to
-  v2.19.13-preview-1.
+* Remove overeager assert, only relevant for testing.
 
 * Fix TSAN issue in LogicalCollection.
 
