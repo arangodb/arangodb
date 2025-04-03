@@ -40,6 +40,13 @@ namespace transaction {
 class Methods;
 }
 
+namespace futures {
+template<typename T>
+class Future;
+
+struct Unit;
+}  // namespace futures
+
 namespace aql {
 class AqlCallStack;
 class InputAqlItemRow;
@@ -124,6 +131,8 @@ class ExecutionBlock {
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
+
+  virtual auto stopAsyncTasks() -> void;
 
  protected:
   // Trace the start of a execute call

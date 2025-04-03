@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "Basics/Exceptions.h"
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AqlCallStack.h"
@@ -348,6 +349,11 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
+  stopAsyncTasks();
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
   if (_prefetchTask && !_prefetchTask->isConsumed() &&
       !_prefetchTask->tryClaim()) {
     // some thread is still working on our prefetch task
@@ -1034,12 +1040,18 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // At the moment we may spawn one task per execution node
 
       if (shouldSchedule) {
-        bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+        bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
             [block = this, task = _prefetchTask]() mutable {
               if (!task->tryClaimOrAbandon()) {
                 return;
               }
+
+              TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(100ms);
+              }
+
               // task is a copy of the PrefetchTask shared_ptr, and we will only
               // attempt to execute the task if we successfully claimed the
               // task. i.e., it does not matter if this task lingers around in
