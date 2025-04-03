@@ -35,6 +35,7 @@
 #include <velocypack/Slice.h>
 
 #include <utility>
+#include <chrono>
 
 namespace arangodb::agency {
 
@@ -396,6 +397,94 @@ void printDistributeShardsLikeInconsistencies(
   }
 }
 
+struct StalePendingJob {
+  std::string jobId;
+  std::string type;
+  std::optional<std::chrono::system_clock::time_point> timeCreated;
+  std::optional<std::chrono::system_clock::time_point> timeStarted;
+  std::string details;
+
+  StalePendingJob(std::string id, std::string jobType,
+                  std::optional<std::chrono::system_clock::time_point> created,
+                  std::optional<std::chrono::system_clock::time_point> started,
+                  std::string jobDetails)
+      : jobId(std::move(id)),
+        type(std::move(jobType)),
+        timeCreated(created),
+        timeStarted(started),
+        details(std::move(jobDetails)) {}
+};
+
+// Find pending jobs that are older than 24 hours
+std::vector<StalePendingJob> findStalePendingJobs(
+    const AgencyData& agencyData) {
+  std::vector<StalePendingJob> result;
+
+  // Get current time as time_point
+  auto currentTime = std::chrono::system_clock::now();
+  // Define 24 hour threshold
+  auto timeThreshold = std::chrono::hours(24);
+
+  // Access the Pending jobs
+  const auto& pending = agencyData.arango.Target.Pending;
+
+  // Iterate through each pending job
+  for (const auto& [jobId, job] : pending) {
+    auto [timeCreated, timeStarted, type] = std::visit(
+        [](auto&& job) {
+          JobBase const& jobbase = static_cast<JobBase const&>(job);
+          return std::tuple(jobbase.timeCreated, jobbase.timeStarted,
+                            jobbase.type);
+        },
+        job);
+
+    if (timeCreated.has_value()) {
+      if ((currentTime - timeCreated.value()) > timeThreshold) {
+        result.emplace_back(
+            jobId, type, timeCreated, timeStarted,
+            "Job in Pending created but not completed for over 24 hours");
+        continue;
+      }
+    }
+
+    // Check TimeStarted if it exists
+    if (timeStarted.has_value()) {
+      if ((currentTime - timeStarted.value()) > timeThreshold) {
+        result.emplace_back(
+            jobId, type, timeCreated, timeStarted,
+            "Job in Pending started but not completed for over 24 hours");
+      }
+    }
+  }
+
+  return result;
+}
+
+void printStalePendingJobs(const std::vector<StalePendingJob>& staleJobs,
+                           std::ostream& out) {
+  if (staleJobs.empty()) {
+    out << "No stale pending jobs found." << std::endl;
+    return;
+  }
+
+  out << "Found " << staleJobs.size() << " stale pending jobs:" << std::endl;
+
+  for (const auto& job : staleJobs) {
+    out << "Job ID: " << job.jobId << std::endl;
+    out << "  Type: " << job.type << std::endl;
+    if (job.timeCreated.has_value()) {
+      out << "  Time Created: " << std::fixed << job.timeCreated.value()
+          << std::endl;
+    }
+    if (job.timeStarted.has_value()) {
+      out << "  Time Started: " << std::fixed << job.timeStarted.value()
+          << std::endl;
+    }
+    out << "  Details: " << job.details << std::endl;
+    out << std::endl;
+  }
+}
+
 VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
   // Now parse the complete agency dump into a typed structure:
   VPackBuilder builder;
@@ -471,6 +560,19 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
         printDistributeShardsLikeInconsistencies(inconsistencies, out);
         builder.add("distributeShardsLikeInconsistencies",
                     VPackValue(out.str()));
+      }
+
+      // Add the new test for stale pending jobs
+      testName = "StalePendingJobs";
+
+      auto staleJobs = findStalePendingJobs(agency);
+      if (staleJobs.empty()) {
+        goodTests.emplace_back(testName);
+      } else {
+        badTests.emplace_back(testName);
+        std::stringstream out;
+        printStalePendingJobs(staleJobs, out);
+        builder.add("stalePendingJobs", VPackValue(out.str()));
       }
 
       builder.add(VPackValue("goodTests"));
