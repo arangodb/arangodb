@@ -23,10 +23,10 @@
 
 #pragma once
 
-#include "Basics/Guarded.h"
-#include "Containers/FlatHashMap.h"
+// #include "Basics/Guarded.h"
+// #include "Containers/FlatHashMap.h"
 
-#include <functional>
+// #include <functional>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -69,6 +69,11 @@ struct PlanCollectionToAgencyWriter {
       std::string_view databaseName);
 
   [[nodiscard]] std::vector<std::string> collectionNames() const;
+
+  [[nodiscard]] std::vector<arangodb::PlanCollectionEntry> const&
+  collectionsToCreate() const {
+    return _collectionPlanEntries;
+  }
 
  private:
   // Information required for the collections to write

@@ -195,6 +195,75 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   // TODO Timeout?
   std::vector<std::string> collectionNames = writer.collectionNames();
   while (true) {
+    // Now check if any of the to-be-created collections has
+    // `distributeShardsLike` set to a collection, which already exists. If so,
+    // we need to check if any of its shards are currently locked:
+    std::unordered_set<std::string> distributeShardsLikeColls;
+    auto const& colls = writer.collectionsToCreate();
+    for (auto const& c : colls) {
+      if (c.properties().distributeShardsLike.has_value()) {
+        distributeShardsLikeColls.insert(
+            c.properties().distributeShardsLike.value());
+      }
+    }
+    // If we have some, let's see if they are about to be generated or not:
+    if (!distributeShardsLikeColls.empty()) {
+      LOG_DEVEL << "DistributeShardsLikeCollections1:";
+      for (auto const& d : distributeShardsLikeColls) {
+        LOG_DEVEL << "  DistributeShardsLikeCollections1: " << d;
+      }
+      for (auto const& c : colls) {
+        auto const& name = c.getName();
+        distributeShardsLikeColls.erase(name);
+      }
+    }
+    // If we still have some, they must be existing collections and we must
+    // check that their shards are not locked:
+    if (!distributeShardsLikeColls.empty()) {
+      LOG_DEVEL << "DistributeShardsLikeCollections2:";
+      for (auto const& d : distributeShardsLikeColls) {
+        LOG_DEVEL << "  DistributeShardsLikeCollections2: " << d;
+      }
+      std::vector<std::string> shards;
+      for (auto const& c : distributeShardsLikeColls) {
+        auto coll = ci.getCollection(databaseName, c);
+        for (auto const& s : *coll->shardIds()) {
+          shards.push_back(std::string(s.first));
+        }
+      }
+      LOG_DEVEL << "DistributeShardsLikeShards:";
+      for (auto const& s : shards) {
+        LOG_DEVEL << "  DistributeShardsLikeShards: " << s;
+      }
+      AgencyCache& agencyCache =
+          server.getFeature<ClusterFeature>().agencyCache();
+      auto [locks, index] = agencyCache.get("Supervision/Shards");
+      LOG_DEVEL << "Locks of shards in Agency: " << locks->toJson();
+      VPackSlice locksSlice = locks->slice();
+
+      // Check if any of the shards of your distributeShardsLike collections
+      // are locked:
+      std::string someLocked = "";
+      if (locksSlice.isObject()) {
+        for (auto const& s : shards) {
+          if (!locksSlice.get(s).isNone()) {
+            someLocked.append(s + " ");
+            break;
+          }
+        }
+      }
+      if (!someLocked.empty()) {
+        LOG_TOPIC("25162", INFO, Logger::CLUSTER)
+            << "Collection creation must pause, since shards " << someLocked
+            << "of the target of a distributeShardsLike entry are currently "
+               "locked. Waiting for 1s...";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        continue;
+      }
+      // TODO: In this case, we need to add the precondition that the shard
+      // locks are not changed.
+    }
+
     // TODO: Is this necessary?
     ci.loadCurrentDBServers();
     auto planVersion =
@@ -202,8 +271,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     if (planVersion.fail()) {
       return planVersion.result();
     }
-    std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
+    std::vector<ServerID> availableServers = ci.getCurrentDBServers();
     auto buildingTransaction = writer.prepareStartBuildingTransaction(
         databaseName, planVersion.get(), availableServers);
     if (buildingTransaction.fail()) {
@@ -361,8 +430,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
               // We do not want to undo from here, cancel the guard
               undoCreationGuard.cancel();
 
-              // Wait for ClusterInfo to catch up, so the Collection is actually
-              // visible after creation.
+              // Wait for ClusterInfo to catch up, so the Collection is
+              // actually visible after creation.
               if (resultsSlice = removeBuildingResult.slice().get("results");
                   resultsSlice.length() > 0) {
                 // wait for plan first
@@ -511,8 +580,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       r.fail()) {
     return r;
   }
-  // get current raft index; this is at least as high as the one we just waited
-  // for in waitForCurrentToCatchUp
+  // get current raft index; this is at least as high as the one we just
+  // waited for in waitForCurrentToCatchUp
   auto const index = agencyCache.index();
   // wait for cluster info to catch up
   auto futCurrent = ci.waitForCurrent(index);
@@ -543,8 +612,9 @@ createCollectionsOnCoordinatorImpl(
 
   auto& feature = vocbase.server().getFeature<ClusterFeature>();
   // List of all sharding prototypes.
-  // We retain a reference here ourselfs in case we need to retry due to server
-  // failure, this way we can just to create the shards on other servers.
+  // We retain a reference here ourselfs in case we need to retry due to
+  // server failure, this way we can just to create the shards on other
+  // servers.
   std::unordered_map<std::string, std::shared_ptr<IShardDistributionFactory>>
       shardDistributionList;
 
@@ -631,8 +701,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
 
   auto& ci = feature.clusterInfo();
   if (isNewDatabase) {
-    // Call dangerous method on ClusterInfo to generate only collection stubs to
-    // use here.
+    // Call dangerous method on ClusterInfo to generate only collection stubs
+    // to use here.
     auto lookupList = ci.generateCollectionStubs(vocbase);
     for (auto const& name : collectionNamesToLoad) {
       try {
@@ -643,8 +713,8 @@ LOG_TOPIC("e16ec", WARN, Logger::CLUSTER)
             << "For now we do not have SmartGraphs during database creation, "
                "if that ever changes remove this assertion.";
 
-        // NOTE: The if is not strictly necessary now, see above assertion, just
-        // future proof.
+        // NOTE: The if is not strictly necessary now, see above assertion,
+        // just future proof.
         if (!c->isSmartChild()) {
           // Smart Child collections should not be visible after create.
           results.emplace_back(std::move(c));
