@@ -9,6 +9,7 @@ set(FRONTEND_DESTINATION ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/AP
 
 add_custom_target(frontend ALL
   COMMENT "create frontend build"
+  DEPENDS arango_basic_utils
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
   
   COMMAND ${CMAKE_COMMAND} -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn install
