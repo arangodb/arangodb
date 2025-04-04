@@ -485,6 +485,122 @@ void printStalePendingJobs(const std::vector<StalePendingJob>& staleJobs,
   }
 }
 
+struct SchemaValidationError {
+  std::string database;
+  std::string collectionId;
+  std::string collectionName;
+  std::string errorType;
+  std::string details;
+
+  SchemaValidationError(std::string db, std::string colId, std::string colName,
+                        std::string errType, std::string dtls)
+      : database(std::move(db)),
+        collectionId(std::move(colId)),
+        collectionName(std::move(colName)),
+        errorType(std::move(errType)),
+        details(std::move(dtls)) {}
+};
+
+// Find collections with invalid schema configurations
+std::vector<SchemaValidationError> findInvalidSchemas(
+    const AgencyData& agencyData) {
+  std::vector<SchemaValidationError> result;
+
+  // Access the Plan and its Collections
+  const auto& plan = agencyData.arango.Plan;
+  const auto& collectionsMap = plan.Collections;
+
+  // Iterate through each database
+  for (const auto& [dbName, dbCollections] : collectionsMap) {
+    // Check each collection
+    for (const auto& [collectionId, collection] : dbCollections) {
+      // Skip if schema is not set
+      if (!collection.schema.has_value()) {
+        continue;
+      }
+
+      const auto& schema = collection.schema.value();
+
+      // If schema is null, that's valid
+      if (schema.isNull()) {
+        continue;
+      }
+
+      // Schema must be an object if not null
+      if (!schema.isObject()) {
+        result.emplace_back(dbName, collectionId, collection.name,
+                            "InvalidSchemaType",
+                            "Schema must be either null or an object");
+        continue;
+      }
+
+      // Check required string attributes
+      for (const auto& attr : {"message", "level"}) {
+        if (!schema.hasKey(attr)) {
+          result.emplace_back(
+              dbName, collectionId, collection.name, "MissingAttribute",
+              std::string("Schema is missing required attribute '") + attr +
+                  "'");
+          continue;
+        }
+
+        auto slice = schema.get(attr);
+        if (!slice.isString()) {
+          result.emplace_back(
+              dbName, collectionId, collection.name, "InvalidAttributeType",
+              std::string("Schema attribute '") + attr + "' must be a string");
+        }
+      }
+
+      // Check non-required string attributes
+      if (schema.hasKey("type")) {
+        auto slice = schema.get("type");
+        if (!slice.isString()) {
+          result.emplace_back(
+              dbName, collectionId, collection.name, "InvalidAttributeType",
+              std::string("Schema attribute 'type' must be a string"));
+        }
+      }
+
+      // Check rule attribute
+      if (!schema.hasKey("rule")) {
+        result.emplace_back(dbName, collectionId, collection.name,
+                            "MissingAttribute",
+                            "Schema is missing required attribute 'rule'");
+      } else {
+        auto ruleSlice = schema.get("rule");
+        if (!ruleSlice.isObject()) {
+          result.emplace_back(dbName, collectionId, collection.name,
+                              "InvalidRuleType",
+                              "Schema 'rule' attribute must be an object");
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+void printInvalidSchemas(const std::vector<SchemaValidationError>& errors,
+                         std::ostream& out) {
+  if (errors.empty()) {
+    out << "No invalid schema configurations found." << std::endl;
+    return;
+  }
+
+  out << "Found " << errors.size()
+      << " collections with invalid schema configurations:" << std::endl;
+
+  for (const auto& error : errors) {
+    out << "Database: " << error.database << std::endl;
+    out << "  Collection: " << error.collectionName
+        << " (ID: " << error.collectionId << ")" << std::endl;
+    out << "  Error Type: " << error.errorType << std::endl;
+    out << "  Details: " << error.details << std::endl;
+    out << std::endl;
+  }
+}
+
 VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
   // Now parse the complete agency dump into a typed structure:
   VPackBuilder builder;
@@ -573,6 +689,19 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
         std::stringstream out;
         printStalePendingJobs(staleJobs, out);
         builder.add("stalePendingJobs", VPackValue(out.str()));
+      }
+
+      // Add the new test for invalid schemas
+      testName = "InvalidSchemas";
+
+      auto invalidSchemas = findInvalidSchemas(agency);
+      if (invalidSchemas.empty()) {
+        goodTests.emplace_back(testName);
+      } else {
+        badTests.emplace_back(testName);
+        std::stringstream out;
+        printInvalidSchemas(invalidSchemas, out);
+        builder.add("invalidSchemas", VPackValue(out.str()));
       }
 
       builder.add(VPackValue("goodTests"));
