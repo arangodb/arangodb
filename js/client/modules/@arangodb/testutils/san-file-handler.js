@@ -186,12 +186,12 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
               options.sanOptions[sanOpt][pair[0]] = pair[1];
             }
           });
+          if (fs.exists(fileName)) {
+            options.sanOptions[sanOpt]['suppressions'] = fullNameSup;
+          }
         }
         else {
           options.sanOptions[sanOpt] = {};
-        }
-        if (fs.exists(fileName)) {
-          options.sanOptions[sanOpt]['suppressions'] = fullNameSup;
         }
       });
     }
