@@ -257,8 +257,7 @@ void ModificationExecutorHelpers::waitAndDetach(
       std::chrono::steady_clock::time_point now;
       while (!future.isReady() &&
              (now = std::chrono::steady_clock::now()) < end) {
-        std::this_thread::sleep_for(sleep);
-        sleep = (now - start) / 100;
+        std::this_thread::sleep_for(sleep = (now - start) / 100);
       }
     }
     if (!future.isReady()) {
