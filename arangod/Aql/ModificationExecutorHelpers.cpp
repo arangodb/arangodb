@@ -249,11 +249,15 @@ void ModificationExecutorHelpers::waitAndDetach(
     futures::Future<OperationResult>& future) {
   if (!future.isReady()) {
     {
-      auto const spinTime = std::chrono::milliseconds(10);
+      using namespace std::literals::chrono_literals;
       auto const start = std::chrono::steady_clock::now();
+      auto const max = 100ms;
+      auto const end = start + max;
+      std::chrono::steady_clock::duration sleep = 0ms;
+      std::chrono::steady_clock::time_point now;
       while (!future.isReady() &&
-             std::chrono::steady_clock::now() - start < spinTime) {
-        basics::cpu_relax();
+             (now = std::chrono::steady_clock::now()) < end) {
+        std::this_thread::sleep_for(sleep = (now - start) / 100);
       }
     }
     if (!future.isReady()) {
