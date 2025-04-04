@@ -543,10 +543,10 @@ jobs:
               export PROMTOOL_PATH=`command -v promtool`
             fi
             # Fix arm failing in faiss https://github.com/llvm/llvm-project/issues/49923
-            export KMP_AFFINITY=verbose,disabled
-            export LIBOMP_USE_AFFINITY=false
+            export KMP_AFFINITY=verbose
+            export LIBOMP_USE_AFFINITY=true
             export OMP_NUM_THREADS=1
-            export KMP_ALL_THREADS=1
+            export KMP_DEVICE_THREAD_LIMIT=1
             lscpu
             lscpu -e
             echo "CPUINFO"
@@ -593,10 +593,10 @@ jobs:
           name: Run HotBackup tests
           command: |
             # Fix arm failing in faiss https://github.com/llvm/llvm-project/issues/49923
-            export KMP_AFFINITY=verbose,disabled
-            export LIBOMP_USE_AFFINITY=false
+            export KMP_AFFINITY=verbose
+            export LIBOMP_USE_AFFINITY=true
             export OMP_NUM_THREADS=1
-            export KMP_ALL_THREADS=1
+            export KMP_DEVICE_THREAD_LIMIT=1
             lscpu
             lscpu -e
             echo "CPUINFO"
@@ -654,10 +654,10 @@ jobs:
           command: |
             pwd
             # Fix arm failing in faiss https://github.com/llvm/llvm-project/issues/49923
-            export KMP_AFFINITY=verbose,disabled
-            export LIBOMP_USE_AFFINITY=false
+            export KMP_AFFINITY=verbose
+            export LIBOMP_USE_AFFINITY=true
             export OMP_NUM_THREADS=1
-            export KMP_ALL_THREADS=1
+            export KMP_DEVICE_THREAD_LIMIT=1
             lscpu
             lscpu -e
             echo "CPUINFO"
