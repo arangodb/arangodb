@@ -247,13 +247,20 @@ AqlValue ModificationExecutorHelpers::getDocumentOrNull(
 // while to avoid delays:
 void ModificationExecutorHelpers::waitAndDetach(
     futures::Future<OperationResult>& future) {
+
+    using namespace std::literals::chrono_literals;
+
+
   if (!future.isReady()) {
     {
-      auto const spinTime = std::chrono::milliseconds(10);
       auto const start = std::chrono::steady_clock::now();
-      while (!future.isReady() &&
-             std::chrono::steady_clock::now() - start < spinTime) {
-        basics::cpu_relax();
+      auto const max = 100ms;
+      auto const end = start + max;
+      std::chrono::steady_clock::duration sleep = 0ms;
+      std::chrono::steady_clock::time_point now;
+      while (!future.isReady() && (now = std::chrono::steady_clock::now()) < end) {
+        std::this_thread::sleep_for(sleep);
+        sleep = (now - start) / 100;
       }
     }
     if (!future.isReady()) {
