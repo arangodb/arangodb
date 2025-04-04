@@ -172,9 +172,9 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     // scripts/unittest as well. according to @dothebart it must be
     // present in both code locations.
     if (options.isSan) {
-      let sans = ['asan', 'lsan', 'ubsan']
-      if (versionHas('tsan') {
-        sans = ['tsan'].
+      let sans = ['asan', 'lsan', 'ubsan'];
+      if (versionHas('tsan')) {
+        sans = ['tsan'];
       }
       sans.forEach(whichSan => {
         let fileName = whichSan + "_arangodb_suppressions.txt";
