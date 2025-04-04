@@ -65,13 +65,21 @@ struct ConsolidationPolicy {
 };
 
 struct Index {
-  velocypack::SharedSlice fields;
+  // Note that most fields here must be optional for the following reason:
+  // First of all, some Index entry in the Plan are in fact inverted indexes
+  // and thus can have most attributes that a view can have. For other indexes,
+  // these are simply not present. Secondly, this object is also used for
+  // Current, but there it is possible that there is no index data whatsoever
+  // but only an error message. In the good case, all the index fields can
+  // be there, though. For a few fields (mostly bools) we have fallbacks,
+  // and so we do not need the std::optional.
+  std::optional<velocypack::SharedSlice> fields;
   std::string id;
   std::optional<std::string> name;
-  std::string objectId;
-  bool sparse = false;
-  std::string type_;
-  bool unique = false;
+  std::optional<std::string> objectId;
+  bool sparse = false;  // fallback false
+  std::string type_;    // empty fallback
+  bool unique = false;  // fallback false
   std::optional<bool> inBackground;
   std::optional<bool> cacheEnabled;
   std::optional<bool> deduplicate;
@@ -107,7 +115,11 @@ struct Index {
   std::optional<std::vector<std::string>> features;
   std::optional<bool> geoJson;
   std::optional<uint64_t> bestIndexedLevel;
-  std::optional<std::string> error;
+  // Usually, the following is not present in Current but, if present, is
+  // a bool. Unfortunately, for inverted indexes it can be a string.
+  std::optional<velocypack::SharedSlice> error;
+  std::optional<std::string> errorMessage;
+  std::optional<uint64_t> errorNum;
   std::optional<std::string> tempObjectId;
   std::optional<std::vector<std::string>> prefixFields;
   std::optional<bool> isBuilding;

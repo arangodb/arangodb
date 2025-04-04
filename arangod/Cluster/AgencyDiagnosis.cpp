@@ -295,6 +295,11 @@ findDistributeShardsLikeInconsistencies(const AgencyData& agencyData) {
       if (!collection.distributeShardsLike.has_value()) {
         continue;
       }
+      if (collection.shadowCollections.has_value()) {
+        // This is the visible collection of a smart edge collection, it
+        // does not have any shards, so let's ignore it.
+        continue;
+      }
 
       const std::string& targetId = collection.distributeShardsLike.value();
       // Skip if the distributeShardsLike value is empty
@@ -643,9 +648,9 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
 
       auto duplicates = findDuplicateCollectionNames(agency);
       if (duplicates.empty()) {
-        goodTests.emplace_back(testName);
+        goodTests.emplace_back(testName + "_GOOD");
       } else {
-        badTests.emplace_back(testName);
+        badTests.emplace_back(testName + "_BAD");
         std::stringstream out;
         printDuplicateCollections(duplicates, out);
         builder.add("duplicateCollectionNames", VPackValue(out.str()));
@@ -656,9 +661,9 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
 
       auto unhealthyLeaders = findShardsWithUnhealthyLeaders(agency);
       if (unhealthyLeaders.empty()) {
-        goodTests.emplace_back(testName);
+        goodTests.emplace_back(testName + "_GOOD");
       } else {
-        badTests.emplace_back(testName);
+        badTests.emplace_back(testName + "_BAD");
         std::stringstream out;
         printShardsWithUnhealthyLeaders(unhealthyLeaders, out);
         builder.add("unhealthyShardLeaders", VPackValue(out.str()));
@@ -669,9 +674,9 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
 
       auto inconsistencies = findDistributeShardsLikeInconsistencies(agency);
       if (inconsistencies.empty()) {
-        goodTests.emplace_back(testName);
+        goodTests.emplace_back(testName + "_GOOD");
       } else {
-        badTests.emplace_back(testName);
+        badTests.emplace_back(testName + "_BAD");
         std::stringstream out;
         printDistributeShardsLikeInconsistencies(inconsistencies, out);
         builder.add("distributeShardsLikeInconsistencies",
@@ -683,9 +688,9 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
 
       auto staleJobs = findStalePendingJobs(agency);
       if (staleJobs.empty()) {
-        goodTests.emplace_back(testName);
+        goodTests.emplace_back(testName + "_GOOD");
       } else {
-        badTests.emplace_back(testName);
+        badTests.emplace_back(testName + "_BAD");
         std::stringstream out;
         printStalePendingJobs(staleJobs, out);
         builder.add("stalePendingJobs", VPackValue(out.str()));
@@ -696,9 +701,9 @@ VPackBuilder diagnoseAgency(VPackSlice agency_vpack, bool strict) {
 
       auto invalidSchemas = findInvalidSchemas(agency);
       if (invalidSchemas.empty()) {
-        goodTests.emplace_back(testName);
+        goodTests.emplace_back(testName + "_GOOD");
       } else {
-        badTests.emplace_back(testName);
+        badTests.emplace_back(testName + "_BAD");
         std::stringstream out;
         printInvalidSchemas(invalidSchemas, out);
         builder.add("invalidSchemas", VPackValue(out.str()));
