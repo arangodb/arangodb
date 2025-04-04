@@ -545,6 +545,7 @@ jobs:
             # Fix arm failing in faiss https://github.com/llvm/llvm-project/issues/49923
             export KMP_AFFINITY=disabled
             export LIBOMP_USE_AFFINITY=false
+            export OMP_NUM_THREADS=1
 
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -589,6 +590,7 @@ jobs:
             # Fix arm failing in faiss https://github.com/llvm/llvm-project/issues/49923
             export KMP_AFFINITY=disabled
             export LIBOMP_USE_AFFINITY=false
+            export OMP_NUM_THREADS=1
 
             python3 scripts/toolbox/HotBackupConsistencyTest.py \
               --arangod $PWD/build/bin/arangod \
@@ -644,6 +646,7 @@ jobs:
             # Fix arm failing in faiss https://github.com/llvm/llvm-project/issues/49923
             export KMP_AFFINITY=disabled
             export LIBOMP_USE_AFFINITY=false
+            export OMP_NUM_THREADS=1
 
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
