@@ -1,7 +1,13 @@
 devel
 -----
 
-* Updated ArangoDB Starter to v0.19.9-preview-4.
+* Updated ArangoDB Starter to v0.19.10-preview-1.
+
+* Remove overeager assert, only relevant for testing.
+
+* Implement license changes: The Community Edition without a license now has a
+  100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode after
+  a grace period, and shutdown after an additional grace period.
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
