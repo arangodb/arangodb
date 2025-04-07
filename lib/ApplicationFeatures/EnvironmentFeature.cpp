@@ -51,10 +51,10 @@ void EnvironmentFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 
 void EnvironmentFeature::prepare() {
   if (_dumpEnv) {
-    int size = 0;
-    while (environ[size]) {
+    int i = 0;
+    while (environ[i]) {
       LOG_TOPIC("a7777", INFO, arangodb::Logger::FIXME) << environ[i];
-      size++;
+      i++;
     }
   }
 }
