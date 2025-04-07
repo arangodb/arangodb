@@ -2636,13 +2636,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute() {
     TRI_ASSERT(_state.load().status == Status::InProgress);
     TRI_ASSERT(!_result);
 
-    try {
-      _result = _block.fetcher().execute(_stack);
-    } catch (...) {
-      _result.reset();
-      wakeupWaiter();
-      throw;
-    }
+    _result = _block.fetcher().execute(_stack);
 
     TRI_ASSERT(_result.has_value());
 
