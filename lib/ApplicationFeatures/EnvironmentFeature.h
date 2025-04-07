@@ -36,7 +36,7 @@ class EnvironmentFeature final : public application_features::ApplicationFeature
 
   template<typename Server>
   EnvironmentFeature(Server& server, std::string const& appname)
-      : ApplicationFeature{server, *this}, _path(), _appname(appname) {
+      : ApplicationFeature{server, *this}, _dumpEnv(false) {
     setOptional(false);
     startsAfter<application_features::GreetingsFeaturePhase, Server>();
   }
