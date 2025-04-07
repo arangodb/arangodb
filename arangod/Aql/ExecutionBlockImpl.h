@@ -382,8 +382,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     explicit PrefetchTask(ExecutionBlockImpl& block, AqlCallStack const& stack)
         : _block(block), _stack(stack) {}
 
-    ~PrefetchTask();
-
     bool isConsumed() const noexcept;
     bool tryClaim() noexcept;
     bool tryClaimOrAbandon() noexcept;
@@ -397,7 +395,6 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     void setFailure(Result&& result);
 
     void execute();
-    int _identifier = rand();
 
    private:
     void updateStatus(Status status, std::memory_order memoryOrder) noexcept;

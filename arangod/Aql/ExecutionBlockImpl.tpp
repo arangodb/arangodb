@@ -52,7 +52,6 @@
 
 #include <absl/strings/str_cat.h>
 
-#include <exception>
 #include <type_traits>
 
 namespace arangodb {
@@ -351,12 +350,7 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if (_prefetchTask && !_prefetchTask->isConsumed() &&
-      !_prefetchTask->tryClaim()) {
-    // some thread is still working on our prefetch task
-    // -> we need to wait for that task to finish first!
-    _prefetchTask->waitFor();
-  }
+  stopAsyncTasks();
 }
 
 template<class Executor>
@@ -2528,9 +2522,6 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
 }
 
 template<class Executor>
-ExecutionBlockImpl<Executor>::PrefetchTask::~PrefetchTask() {}
-
-template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
   auto state = _state.load(std::memory_order_relaxed);
   while (true) {
@@ -2585,7 +2576,6 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
   auto old =
       _state.exchange({Status::Pending, false}, std::memory_order_release);
   TRI_ASSERT(old.status == Status::Consumed);
-
   // if the task was abandoned, we want to reschedule it!
   return old.abandoned;
 }
@@ -2608,7 +2598,6 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
     Status status, std::memory_order memoryOrder) noexcept {
   auto state = _state.load(std::memory_order_relaxed);
-
   while (not _state.compare_exchange_weak(
       state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
     ;
@@ -2656,6 +2645,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute() {
     }
 
     TRI_ASSERT(_result.has_value());
+
     wakeupWaiter();
   }
 }
