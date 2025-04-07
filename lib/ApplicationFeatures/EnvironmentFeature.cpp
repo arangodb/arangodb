@@ -53,7 +53,7 @@ void EnvironmentFeature::prepare() {
   if (_dumpEnv) {
     int size = 0;
     while (environ[size]) {
-      LOG_TOPIC("a7777", INFO, arangodb::Logger::FIXME) environ[i];
+      LOG_TOPIC("a7777", INFO, arangodb::Logger::FIXME) << environ[i];
       size++;
     }
   }
