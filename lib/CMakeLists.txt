@@ -193,7 +193,7 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
         ApplicationFeatures/VersionFeature.cpp
-
+        ApplicationFeatures/EnvironmentFeature.cpp
 )
 target_link_libraries(arango_basic_features
   PUBLIC velocypack
