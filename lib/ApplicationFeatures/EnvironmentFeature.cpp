@@ -28,7 +28,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/files.h"
+#include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -44,7 +46,7 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--temp.dumpenv", "Dump the full environment to the logs.",
                   new boolParameter(&_dumpEnv))
-      .setLongDescription(R"will dump the full environment to the logfiles");
+      .setLongDescription("will dump the full environment to the logfiles");
 }
 
 void TempFeature::prepare() {
