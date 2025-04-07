@@ -45,7 +45,7 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options
       ->addOption("--temp.dumpenv", "Dump the full environment to the logs.",
-                  new boolParameter(&_dumpEnv))
+                  new BooleanParameter(&_dumpEnv))
       .setLongDescription("will dump the full environment to the logfiles");
 }
 
