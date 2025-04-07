@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/TempFeature.h"
+#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "CrashHandler/CrashHandler.h"
 #include "Basics/FileUtils.h"
