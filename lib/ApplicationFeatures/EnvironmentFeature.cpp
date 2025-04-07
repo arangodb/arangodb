@@ -40,7 +40,7 @@ extern char** environ;
 
 namespace arangodb {
 
-void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void EnvironmentFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("temp", "temporary files");
 
   options
@@ -49,7 +49,7 @@ void TempFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       .setLongDescription("will dump the full environment to the logfiles");
 }
 
-void TempFeature::prepare() {
+void EnvironmentFeature::prepare() {
   if (_dumpEnv) {
     int size = 0;
     while (environ[size]) {
