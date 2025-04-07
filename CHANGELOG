@@ -2,7 +2,7 @@ v3.11.14 (XXXX-XX-XX)
 ---------------------
 
 * Updated ArangoDB Starter to v0.18.14-preview-1 and arangosync to
-  v2.19.14-preview-1.
+  v2.19.14-preview-4.
 
 * Remove overeager assert, only relevant for testing.
 
