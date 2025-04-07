@@ -30,7 +30,8 @@ namespace application_features {
 class GreetingsFeaturePhase;
 }
 
-class EnvironmentFeature final : public application_features::ApplicationFeature {
+class EnvironmentFeature final
+    : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Temp"; }
 
@@ -43,7 +44,6 @@ class EnvironmentFeature final : public application_features::ApplicationFeature
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-
 
  private:
   bool _dumpEnv;
