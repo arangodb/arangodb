@@ -355,23 +355,16 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
       !_prefetchTask->tryClaim()) {
     // some thread is still working on our prefetch task
     // -> we need to wait for that task to finish first!
-    LOG_DEVEL << __PRETTY_FUNCTION__ << " " << getPlanNode()->id()
-              << " for async task " << _prefetchTask->_identifier;
     _prefetchTask->waitFor();
   }
 }
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
-  LOG_DEVEL << __PRETTY_FUNCTION__ << " " << getPlanNode()->id()
-            << " is async enabled: " << _exeNode->isAsyncPrefetchEnabled();
   if (_prefetchTask && !_prefetchTask->isConsumed() &&
       !_prefetchTask->tryClaim()) {
     // some thread is still working on our prefetch task
     // -> we need to wait for that task to finish first!
-    LOG_DEVEL << ADB_HERE
-              << " Waiting for async task to finish up and discarding "
-              << _prefetchTask->_identifier;
     _prefetchTask->waitFor();
   }
 }
@@ -1034,9 +1027,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       return fetcher().execute(ctx.stack);
     });
 
-    /*    LOG_DEVEL << "_exeNode->isAsyncPrefetchEnabled(): "*/
-    /*<< _exeNode->isAsyncPrefetchEnabled()*/
-    /*<< " block info: " << printBlockInfo();*/
     // note: SCHEDULER is a nullptr in unit tests
     if (SchedulerFeature::SCHEDULER != nullptr &&
         std::get<ExecutionState>(result) == ExecutionState::HASMORE &&
@@ -1065,9 +1055,11 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                 return;
               }
 
-              using namespace std::chrono_literals;
-              LOG_DEVEL << "Executing async prefetch";
-              std::this_thread::sleep_for(100ms);
+              TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(100ms);
+              }
+
               // task is a copy of the PrefetchTask shared_ptr, and we will only
               // attempt to execute the task if we successfully claimed the
               // task. i.e., it does not matter if this task lingers around in
@@ -1075,7 +1067,6 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
               // destroyed, because in this case we will not be able to claim
               // the task and simply return early without accessing the block.
               try {
-                LOG_DEVEL << "START TASK";
                 task->execute();
               } catch (basics::Exception const& ex) {
                 task->setFailure(
@@ -1090,9 +1081,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                   block->getPlanNode()->id().id(), ": ",
                                   block->getPlanNode()->getTypeString(), "]")});
               }
-              LOG_DEVEL << "TASK COMPLETED";
             });
-        LOG_DEVEL << ADB_HERE << " queued: " << std::boolalpha << queued;
 
         if (!queued) {
           // clear prefetch task
@@ -2539,9 +2528,7 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
 }
 
 template<class Executor>
-ExecutionBlockImpl<Executor>::PrefetchTask::~PrefetchTask() {
-  LOG_DEVEL << __PRETTY_FUNCTION__ << " destroying " << _identifier;
-}
+ExecutionBlockImpl<Executor>::PrefetchTask::~PrefetchTask() {}
 
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
@@ -2599,24 +2586,6 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
       _state.exchange({Status::Pending, false}, std::memory_order_release);
   TRI_ASSERT(old.status == Status::Consumed);
 
-  const auto stateToEnum = [](PrefetchTask::Status s) -> std::string {
-    switch (s) {
-      case Status::Finished:
-        return "Finished";
-      case Status::Consumed:
-        return "Consumed";
-      case Status::Pending:
-        return "Pending";
-      case Status::InProgress:
-        return "InProgress";
-      default:
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  };
-  LOG_DEVEL << ADB_HERE << "Status old: " << stateToEnum(old.status)
-            << " Status new: "
-            << " Pending";
-
   // if the task was abandoned, we want to reschedule it!
   return old.abandoned;
 }
@@ -2629,24 +2598,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
     return;
   }
 
-  const auto stateToEnum = [](PrefetchTask::Status s) -> std::string {
-    switch (s) {
-      case Status::Finished:
-        return "Finished";
-      case Status::Consumed:
-        return "Consumed";
-      case Status::Pending:
-        return "Pending";
-      case Status::InProgress:
-        return "InProgress";
-      default:
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  };
-  LOG_DEVEL << ADB_HERE << "Status: "
-            << stateToEnum(_state.load(std::memory_order_acquire).status) << " "
-            << _identifier;
-
   _bell.wait(guard, [this]() {
     // (2) - this acquire-load synchronizes with the release-store (3)
     return _state.load(std::memory_order_acquire).status == Status::Finished;
@@ -2657,22 +2608,6 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
     Status status, std::memory_order memoryOrder) noexcept {
   auto state = _state.load(std::memory_order_relaxed);
-  const auto stateToEnum = [](PrefetchTask::Status s) -> std::string {
-    switch (s) {
-      case Status::Finished:
-        return "Finished";
-      case Status::Consumed:
-        return "Consumed";
-      case Status::Pending:
-        return "Pending";
-      case Status::InProgress:
-        return "InProgress";
-      default:
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  };
-  LOG_DEVEL << ADB_HERE << "Status: " << stateToEnum(state.status) << " "
-            << _identifier;
 
   while (not _state.compare_exchange_weak(
       state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
@@ -2712,7 +2647,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute() {
     TRI_ASSERT(_state.load().status == Status::InProgress);
     TRI_ASSERT(!_result);
 
-    LOG_DEVEL << ADB_HERE << " BEFORE EXECUTE " << _identifier;
     try {
       _result = _block.fetcher().execute(_stack);
     } catch (...) {
@@ -2720,7 +2654,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute() {
       wakeupWaiter();
       throw;
     }
-    LOG_DEVEL << ADB_HERE << " AFTER EXECUTE " << _identifier;
 
     TRI_ASSERT(_result.has_value());
     wakeupWaiter();

@@ -262,11 +262,11 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
 
 /// @brief destroy the engine, frees all assigned blocks
 ExecutionEngine::~ExecutionEngine() {
-  LOG_DEVEL << __PRETTY_FUNCTION__ << " Destroying blocks";
-  using namespace std::chrono_literals;
-  std::this_thread::sleep_for(10ms);
+  TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+  }
 
-  LOG_DEVEL << "There are " << _blocks.size() << " execution block";
   // We need to stop prefetch tasks in topological order so
   // that after stopping tasks on a certain node there is no prefetch
   // tasks running on any dependent which could start another on the
@@ -274,7 +274,6 @@ ExecutionEngine::~ExecutionEngine() {
   // The blocks are pushed in a reversed topological order.
   for (auto it = _blocks.rbegin(); it != _blocks.rend(); ++it) {
     (*it)->stopAsyncTasks();
-    LOG_DEVEL << " STOPPED";
   }
 
   if (_sharedState) {  // ensure no async task is working anymore
