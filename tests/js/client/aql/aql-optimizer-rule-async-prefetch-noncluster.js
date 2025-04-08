@@ -32,7 +32,7 @@ const helper = require("@arangodb/aql-helper");
 const errors = internal.errors;
 const assertQueryError = helper.assertQueryError;
 let IM = global.instanceManager;
-
+ const {aql} = require('@arangodb');
 function optimizerRuleTestSuite () {
   const ruleName = "async-prefetch";
 
