@@ -26,7 +26,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const db = require('internal').db;
+const internal = require('internal');
+const db = internal.db;
 const helper = require("@arangodb/aql-helper");
 const errors = internal.errors;
 const assertQueryError = helper.assertQueryError;
