@@ -6,10 +6,10 @@ devel
   started was resolved. This causes access to the ExecutionBlock
   object which was already released. 
 
+* Updated ArangoDB Starter to v0.19.10.
+
 * Rebuilt included rclone v1.65.5 with go1.22.12 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.19.10-preview-1.
 
 * Remove overeager assert, only relevant for testing.
 
