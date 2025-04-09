@@ -1,3 +1,10 @@
+3.12.4.2 (2025-04-09)
+---------------------
+
+* Fix BTS-2119: The optimization rule `async-prefetch` could cause
+  crashes when a query aborts early, e.g. due to a runtime error,
+  the query being killed, or the memory limit being reached. 
+
 3.12.4.1 (2025-02-19)
 ---------------------
 
