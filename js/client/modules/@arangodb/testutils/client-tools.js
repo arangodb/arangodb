@@ -547,7 +547,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   }
   // TODO: vector index broken on circleci-ARM
   if (versionHas("arm")) {
-    skipOffset = moreargv.findIndex(i => {return i === '--skip'});
+    let skipOffset = moreargv.findIndex(i => {return i === '--skip';});
     if (skipOffset >= 0) {
       moreargv[skipOffset + 1] += ',107';
     } else {
