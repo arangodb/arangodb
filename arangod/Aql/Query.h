@@ -514,6 +514,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief was this query killed (can only be set once)
   std::atomic<bool> _queryKilled;
 
+  // If the query object was constructed from cache
+  // the consequence is that _ast is nullptr
+  bool _isCached{false};
+
   // This holds a possible exception of prepareQuery, so it can be re-thrown at
   // the right moment.
   futures::Try<futures::Unit> _prepareResult;

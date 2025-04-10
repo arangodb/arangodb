@@ -27,7 +27,7 @@ const MultiValueLabelLinks = (props: MultiValueGenericProps<OptionType>) => {
 export const LinksDropdown = () => {
   const [options, setOptions] = useState<{ label: string; value: string }[]>();
   const [linksField, , helpers] = useField("links");
-  const { isAdminUser } = useEditViewContext();
+  const { isAdminUser, isFormDisabled } = useEditViewContext();
   useEffect(() => {
     const db = getCurrentDB();
     const setCollections = async () => {
@@ -68,7 +68,7 @@ export const LinksDropdown = () => {
       openMenuOnClick={false}
       placeholder="Enter a collection name"
       noOptionsMessage={() => "No collections found"}
-      isDisabled={!isAdminUser}
+      isDisabled={!isAdminUser || isFormDisabled}
       components={{
         MultiValueLabel: MultiValueLabelLinks
       }}

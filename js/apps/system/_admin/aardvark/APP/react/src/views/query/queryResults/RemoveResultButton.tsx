@@ -3,7 +3,7 @@ import { IconButton } from "@chakra-ui/react";
 import React from "react";
 import { useQueryContext } from "../QueryContextProvider";
 
-export const RemoveResultButton = ({ index }: { index: number }) => {
+export const RemoveResultButton = ({ asyncJobId }: { asyncJobId: string }) => {
   const { onRemoveResult } = useQueryContext();
   return (
     <IconButton
@@ -11,7 +11,7 @@ export const RemoveResultButton = ({ index }: { index: number }) => {
       variant="ghost"
       aria-label="Close"
       icon={<CloseIcon />}
-      onClick={() => onRemoveResult(index)}
+      onClick={() => onRemoveResult(asyncJobId)}
     />
   );
 };

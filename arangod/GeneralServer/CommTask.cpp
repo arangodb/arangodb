@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -40,6 +40,7 @@
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -63,6 +64,7 @@ namespace {
 // some static URL path prefixes
 constexpr std::string_view pathPrefixApi("/_api/");
 constexpr std::string_view pathPrefixApiUser("/_api/user/");
+constexpr std::string_view pathPrefixApiToken("/_api/token/");
 constexpr std::string_view pathPrefixAdmin("/_admin/");
 constexpr std::string_view pathPrefixAdminAardvark("/_admin/aardvark/");
 constexpr std::string_view pathPrefixOpen("/_open/");
@@ -146,6 +148,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
 CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
+      _apiRecordingFeature(server.server().getFeature<ApiRecordingFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(acquireConnectionStatistics()),
       _auth(AuthenticationFeature::instance()),
@@ -439,6 +442,12 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
+
+  // Record the request here in the ApplicationServer:
+  _apiRecordingFeature.recordAPICall(
+      request->requestType(), request->requestPath(), request->databaseName());
+
+  // And find a request handler:
   auto factory = _generalServerFeature.handlerFactory();
   auto handler =
       factory->createHandler(server, std::move(request), std::move(response));
@@ -839,6 +848,8 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
         result = Flow::Continue;
         vc->forceReadOnly();
       } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
+        result = Flow::Continue;
+      } else if (userAuthenticated && path.starts_with(::pathPrefixApiToken)) {
         result = Flow::Continue;
       }
     }

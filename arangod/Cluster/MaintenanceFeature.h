@@ -25,10 +25,8 @@
 #pragma once
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Cluster/Action.h"
-#include "Cluster/ClusterTypes.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -126,31 +124,15 @@ class MaintenanceFeature : public ArangodFeature {
   //
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
   virtual Result addAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow = false);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
   /// @brief This is the  API for creating an Action and executing it.
-  ///  Execution can be immediate by calling thread, or asynchronous via thread
-  ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
-  virtual Result addAction(std::shared_ptr<maintenance::Action> action,
-                           bool executeNow = false);
-
-  /// @brief Internal API that allows existing actions to create pre actions
-  /// FIXDOC: Please explain how this works in a lot more detail, for example,
-  /// say if this can be called in the code of an Action and if the already
-  /// running action is postponed in this case. Explain semantics such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> preAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
-
-  /// @brief Internal API that allows existing actions to create post actions
-  /// FIXDOC: Please explain how this works in a lot more detail, such that
-  /// somebody not knowing the code can use it.
-  std::shared_ptr<maintenance::Action> postAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description);
+  ///  Execution is asynchronous via thread pool. not yet:
+  ///  ActionDescription parameter will be MOVED to new object.
+  virtual Result addAction(std::shared_ptr<maintenance::Action> action);
 
   /// returns whether or not the shard has an action of the specified type
   /// (equivalent to NAME) that has the specified state
@@ -171,6 +153,22 @@ class MaintenanceFeature : public ArangodFeature {
   /// @brief Get shard locks, this copies the whole map of shard locks.
   ShardActionMap getShardLocks() const;
 
+  /// @brief Count a SynchronizeShard actions in flight, returns `false`
+  /// if there are two many already, in which case the number is not
+  /// increased.
+  bool increaseNumberOfSyncShardActionsQueued() noexcept {
+    uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
+    if (n + 1 > _maximalNumberOfSyncShardActionsQueued) {
+      _numberOfSyncShardActionsQueued.fetch_sub(1);
+      return false;
+    }
+    return true;
+  }
+
+  void decreaseNumberOfSyncShardActionsQueued() noexcept {
+    _numberOfSyncShardActionsQueued.fetch_sub(1);
+  }
+
   /// @brief check if a database is dirty
   bool isDirty(std::string const& dbName) const;
 
@@ -185,12 +183,10 @@ class MaintenanceFeature : public ArangodFeature {
   std::shared_ptr<maintenance::Action> createAction(
       std::shared_ptr<maintenance::ActionDescription> const& description);
 
-  void registerAction(std::shared_ptr<maintenance::Action> action,
-                      bool executeNow);
+  void registerAction(std::shared_ptr<maintenance::Action> action);
 
   std::shared_ptr<maintenance::Action> createAndRegisterAction(
-      std::shared_ptr<maintenance::ActionDescription> const& description,
-      bool executeNow);
+      std::shared_ptr<maintenance::ActionDescription> const& description);
 
  public:
   /// @brief This API will attempt to fail an existing Action that is waiting
@@ -589,6 +585,17 @@ class MaintenanceFeature : public ArangodFeature {
 
   std::vector<std::string> _databasesToCheck;
   size_t _lastNumberOfDatabases;
+
+  // Here we count how many SynchronizeShard actions are either queued
+  // or currently executing. We use this number to avoid scheduling too
+  // many of them, since each one of then holds the shard lock and prevents
+  // other - potentially higher priority actions - from being scheduled.
+  // This is in particular important for TakeoverShardLeadership actions,
+  // which can become necessary when a dbserver should be come a leader but
+  // still has a SynchronizeShard action queued from its previous life as
+  // a shard follower for the shard.
+  std::atomic<uint64_t> _numberOfSyncShardActionsQueued = 0;
+  uint64_t _maximalNumberOfSyncShardActionsQueued = 32;
 
  public:
   metrics::Histogram<metrics::LogScale<uint64_t>>* _phase1_runtime_msec =

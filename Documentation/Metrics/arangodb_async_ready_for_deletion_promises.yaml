@@ -1,12 +1,13 @@
 name: arangodb_async_ready_for_deletion_promises
 introducedIn: "3.12.4"
 help: |
-  Number of currently registered asynchronous promises that wait for their garbage collection.
+  Number of currently existing asynchronous promises that wait for their garbage collection.
 unit: number
 type: gauge
 category: Statistics
 complexity: advanced
 exposedBy:
   - dbserver
+  - coordinator
 description: |
-  Number of currently registered asynchronous promises that wait for their garbage collection.
+  Number of currently existing asynchronous promises that wait for their garbage collection.

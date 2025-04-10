@@ -594,19 +594,23 @@ struct DistributedQueryInstanciator final
 
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
         TRI_ASSERT(!server.starts_with("server:"));
-        std::function<void(void)> f = [srvr = server, id = _query.id(),
-                                       vn = _query.vocbase().name(), &df]() {
-          LOG_TOPIC("d2554", INFO, Logger::QUERIES)
-              << "killing query " << id << " because participating DB server "
-              << srvr << " is unavailable";
-          try {
-            methods::Queries::kill(df, vn, id);
-          } catch (...) {
-            // it does not really matter if this fails.
-            // if the coordinator contacts the failed DB server next time, it
-            // will realize it has failed.
-          }
-        };
+        std::function<void(void)> f =
+            [srvr = server, id = _query.id(), vn = _query.vocbase().name(), &df,
+             qs = _query.queryString(),
+             bp = _query.bindParametersAsBuilder()]() {
+              LOG_TOPIC("d2554", INFO, Logger::QUERIES)
+                  << "killing query " << id
+                  << " because participating DB server " << srvr
+                  << " is unavailable, query string:" << qs
+                  << ", bind parameters: " << bp->slice().toJson();
+              try {
+                methods::Queries::kill(df, vn, id);
+              } catch (...) {
+                // it does not really matter if this fails.
+                // if the coordinator contacts the failed DB server next time,
+                // it will realize it has failed.
+              }
+            };
 
         engine->rebootTrackers().emplace_back(ci.rebootTracker().callMeOnChange(
             {server, rebootId}, std::move(f),

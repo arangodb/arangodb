@@ -392,6 +392,7 @@ bool Query::tryLoadPlanFromCache() {
       _resourceMonitor->increaseMemoryUsage(
           cacheEntry->serializedPlan.byteSize());
       _planSliceCopy = cacheEntry->serializedPlan;
+      _isCached = true;
 
       return true;
     }
@@ -746,6 +747,7 @@ auto Query::executeInternal(QueryResult& queryResult) -> ExecutionState {
               queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
+              _isCached = true;
               // Note: cached queries were never done with dirty reads,
               // so we can always hand out the result here without extra
               // HTTP header.
@@ -1002,6 +1004,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           queryResult.v8Data = v8::Handle<v8::Array>::Cast(values);
           queryResult.extra = cacheEntry->_stats;
           queryResult.cached = true;
+          _isCached = true;
           return queryResult;
         }
         // if no permissions, fall through to regular querying
@@ -2685,7 +2688,10 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   builder.add("stream", VPackValue(queryOptions().stream));
 
   // modification query yes/no?
-  builder.add("modificationQuery", VPackValue(isModificationQuery()));
+  // if the query is cached there is no _ast
+  if (!_isCached) {
+    builder.add("modificationQuery", VPackValue(isModificationQuery()));
+  }
 
 #if 0
   // TODO: currently does not work in cluster, as stats in cluster are only 

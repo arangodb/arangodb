@@ -144,9 +144,7 @@
         currentDB: this.currentDB.toJSON()
       }));
       arangoHelper.checkDatabasePermissions(this.continueRender.bind(this), this.continueRender.bind(this));
-      if (window.frontendConfig.isEnterprise === true) {
-        this.fetchServerTime();
-      }
+      this.fetchServerTime();
     },
 
     continueRender: function (readOnly) {
@@ -213,9 +211,25 @@
         type: "GET",
         url: url,
         success: function (licenseData) {
-          if (licenseData.status && licenseData.features && licenseData.features.expires) {
-            self.renderLicenseInfo(licenseData.status, licenseData.features.expires, serverTime);
-          } else {
+          if (
+            licenseData.status &&
+            licenseData.features &&
+            licenseData.features.expires
+          ) {
+            self.renderLicenseInfo(
+              licenseData.status,
+              licenseData.features.expires,
+              serverTime
+            );
+          } else if (licenseData.hasOwnProperty("diskUsage")) {
+            if (
+              licenseData.diskUsage.status &&
+              licenseData.diskUsage.secondsUntilReadOnly &&
+              licenseData.diskUsage.secondsUntilShutDown
+            ) {
+              self.renderDiskUsageInfo(licenseData.diskUsage);
+            }
+          } else if (window.frontendConfig.isEnterprise === true) {
             self.showLicenseError();
           }
         }
@@ -299,6 +313,48 @@
     appendLicenseInfoToUi: function(infotext, alertClasses) {
       var infoElement = '<div id="subNavLicenseInfo" class="' + alertClasses + '"><span><i class="fa fa-exclamation-triangle"></i></span> <span id="licenseInfoText">' + infotext + '</span></div>';
       $('#licenseInfoArea').append(infoElement);
+    },
+
+    renderDiskUsageInfo: function (diskUsage) {
+      const currentTime = new Date();
+      let message = '';
+      let type = 'info';
+      switch (diskUsage.status) {
+        case "limit-reached":
+          const readonlyDate = new Date(
+            currentTime.getTime() + 1000 * diskUsage.secondsUntilReadOnly
+          );
+          message =
+            "Your server has reached its disk usage limit of 100GB. If you don't decrease the data size, the server will be restricted to read-only mode on " +
+            readonlyDate +
+            ". Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license and continue using ArangoDB without limitations";
+          type = 'warning';
+          break;
+        case "read-only":
+          const shutdownDate = new Date(
+            currentTime.getTime() + 1000 * diskUsage.secondsUntilShutDown
+          );
+          message = 
+            "Your server has been restricted to read-only mode due to violation of the 100GB data size limit. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible. Without a valid license the server will be shut down on " + shutdownDate + ".";
+          type = 'error';
+          break;
+        case "shutdown":
+          message =
+            "The 100 GB disk usage limit was reached and the server was put into the read-only mode after a grace period. The server will be shut down in 10 minutes. Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license.";
+          type = 'error';
+          break;
+        case "good":
+        default:
+          // No message needed for good status
+          return;
+      }
+      
+      if (message) {
+        this.appendLicenseInfoToUi(
+          message,
+          'alert alert-license alert-' + type
+        );
+      }
     },
 
     resize: function () {

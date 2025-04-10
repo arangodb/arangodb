@@ -1,13 +1,89 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.10.
 
-* During AQL setup, the Coordinator will no longer block threads while waiting
-  for DBServers to finish the query instantiation.
+* Rebuilt included rclone v1.65.5 with go1.22.12 and non-vulnerable
+  dependencies.
+
+* Remove overeager assert, only relevant for testing.
+
+* Implement license changes: The Community Edition without a license now has a
+  100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode after
+  a grace period, and shutdown after an additional grace period.
+
+* Add visibility for recent api calls via a new API /_admin/server/api-calls.
+
+* Fix TSAN issue in LogicalCollection.
+
+* FE-541: update disk usage message.
+
+* Simplify Maintenance by removing unused features.
+
+* Fix BTS-2100: Due to a priority inversion it was possible that a lot of
+  scheduled SynchronizeShard actions blocked higher priority 
+  TakeoverShardLeadership actions in the cluster Maintenance. This
+  could lead to service interruption during upgrades and after failovers.
+
+* FE-538: fix frontend build warnings.
+
+* FE-482: fix multiple issues with search view UI.
+
+* FE-503: fix losing bind params when resizing query editor.
+
+* FE-535: fix set cached query when bind params are equal.
+
+* FE-528: adds disk usage license info to UI.
+
+* BTS-2090: Fixes double log-lines per log
+
+* Fix vector index comparison in maintenance, which causes loop with agency and
+  dbservers.
+
+* Added support for access tokens. Access token can be used instead of
+  a password. However, the recommended way is to generate a JWT token
+  using /_open/auth.
+
+* Fix a bug in the index API /_api/index?withHidden=true, which can lead to
+  two problems: (1) A newly created index is potentially not shown in
+  the very moment when it is finished. (2) A newly created index is
+  shown twice in the result, once with `isBuilding: true` and once
+  without. This fixes BTS-2044.
+
+* Introduces first changes for the new disk usage-based license.
+
+* BTS-2089: Fix a crash when query logging and query cache were enabled.
+
+* Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
+  reference.
+
+* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL
+  query to hang and block a thread.
+
+* The agency supervision is clearing "finished" jobs too quickly from
+  Target/Finished and Failed. They will be forthwith be kept for at least 1h.
+
+* Change default for --rocksdb.periodic-compaction-ttl from 30 days to 24 hours.
+  Note that certain deleted keys ranges in RocksDB might only be compacted away
+  through periodic background compactions. Note that this can potentially lead
+  to spikes in CPU, memory and I/O usage once every 24 hours, which might so far
+  only have happened once per month!
+
+* FE-497: fix query options input parsing (Query Editor UI > Options tab).
+
+* Upgraded OpenSSL to 3.4.1.
+
+* Disable creating a vector index with zero nLists.
+
+* FE-515: fix to ensure unique keys to prevent incorrect react reconciliation
+  (Query Editor UI > Query results).
+
+* Fixed some cmake warnings and output, added a gettid in case the library does
+  not define the function use the system call instead.
 
 * Disable cluster overwhelm protection on agents. This fixes a bug which happens
-  if the number of dbservers and coordinators grows beyond 4x the number
-  of threads in the agency leader.
+  if the number of dbservers and coordinators grows beyond 4x the number of
+  threads in the agency leader.
 
 * Make an unstable test stable again for the NetworkConnectionPool.
 

@@ -108,26 +108,6 @@ class Action {
   /// @brief return progress statistic
   double getProgress() const { return _action->getProgress(); }
 
-  /// @brief Once PreAction completes, remove its pointer
-  void clearPreAction() { _action->clearPreAction(); }
-
-  /// @brief Retrieve pointer to action that should run before this one
-  std::shared_ptr<Action> getPreAction() { return _action->getPreAction(); }
-
-  /// @brief Initiate a pre action
-  void createPreAction(ActionDescription const& description);
-
-  /// @brief Initiate a post action
-  void createPostAction(ActionDescription const& description);
-
-  /// @brief Retrieve pointer to action that should run directly after this one
-  std::shared_ptr<Action> getPostAction() { return _action->getPostAction(); }
-
-  /// @brief Save pointer to successor action
-  void setPostAction(std::shared_ptr<ActionDescription> post) {
-    _action->setPostAction(post);
-  }
-
   /// @brief hash value of ActionDescription
   /// @return uint64_t hash
   uint64_t hash() const { return _action->hash(); }

@@ -494,6 +494,8 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           if (status === 'RUNNING') {
             debug(`forcefully killing test client with pid ${client.pid}`);
             internal.killExternal(client.pid, 9 /*SIGKILL*/);
+            let status = internal.statusExternal(client.pid).status;
+            debug(`killed test client with pid ${client.pid}: ${status}`);            
           }
         } catch (err) { }
       }
