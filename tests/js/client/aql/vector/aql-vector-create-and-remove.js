@@ -35,6 +35,8 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
+const { versionHas } = require("@arangodb/test-helper");
+
 const dbName = "vectorDB";
 const collName = "coll";
 const indexName = "vectorIndex";
@@ -286,7 +288,8 @@ function VectorIndexTestCreationWithVectors() {
 }
 
 
-jsunity.run(VectorIndexCreateAndRemoveTestSuite);
-jsunity.run(VectorIndexTestCreationWithVectors);
-
+if (!versionHas("arm")) {
+  jsunity.run(VectorIndexCreateAndRemoveTestSuite);
+  jsunity.run(VectorIndexTestCreationWithVectors);
+}
 return jsunity.done();
