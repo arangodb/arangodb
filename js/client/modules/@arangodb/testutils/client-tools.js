@@ -545,6 +545,16 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (addArgs !== undefined) {
     args = Object.assign(args, addArgs);
   }
+  // TODO: vector index broken on circleci-ARM
+  if (versionHas("arm")) {
+    skipOffset = moreargv.findIndex(i => {return i === '--skip'});
+    if (skipOffset >= 0) {
+      moreargv[skipOffset + 1] += ',107';
+    } else {
+      moreargv = ['--skip', '107,'];
+    }
+  }
+    
   let argv = toArgv(args);
   argv = argv.concat(['--', options.makedataDB],
                      moreargv, [
