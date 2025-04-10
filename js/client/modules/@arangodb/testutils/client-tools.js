@@ -551,7 +551,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     if (skipOffset >= 0) {
       moreargv[skipOffset + 1] += ',107';
     } else {
-      moreargv = ['--skip', '107,'];
+      moreargv = ['--skip', '107_'];
     }
   }
     
