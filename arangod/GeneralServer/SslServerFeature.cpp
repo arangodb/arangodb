@@ -98,12 +98,15 @@ you want clients to be able to connect without specific certificates.
 The certificates in the file must be PEM-formatted.)");
 
   options
-      ->addOption("--ssl.keyfile", "The keyfile used for secure connections.",
+      ->addOption("--ssl.keyfile",
+                  "The path to a PEM file (server certificate + private key) "
+                  "to use for secure connections.",
                   new StringParameter(&_keyfile))
-      .setLongDescription(R"(If you use SSL-encryption by binding the server to
-an SSL endpoint (e.g. `--server.endpoint ssl://127.0.0.1:8529`), you must use
-this option to specify the filename of the server's private key. The file must
-be PEM-formatted and contain both, the certificate and the server's private key.
+      .setLongDescription(R"(If you use TLS/SSL encryption by binding the
+server to an `ssl://` endpoint (e.g. `--server.endpoint ssl://127.0.0.1:8529`),
+you must use this option to specify the filename of the server's private key.
+The file must be PEM-formatted and contain both, the certificate and the
+server's private key.
 
 You can generate a keyfile using OpenSSL as follows:
 
@@ -130,7 +133,7 @@ cat server.crt server.key > server.pem
 You may use certificates issued by a Certificate Authority or self-signed
 certificates. Self-signed certificates can be created by a tool of your
 choice. When using OpenSSL for creating the self-signed certificate, the
-following commands should create a valid keyfile:
+above commands should create a valid keyfile with a structure like this:
 
 ```
 -----BEGIN CERTIFICATE-----

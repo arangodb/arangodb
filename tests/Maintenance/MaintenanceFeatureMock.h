@@ -127,17 +127,15 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
   }  // setMaintenanceThreadsMax
 
   virtual arangodb::Result addAction(
-      std::shared_ptr<arangodb::maintenance::Action> action,
-      bool executeNow = false) override {
+      std::shared_ptr<arangodb::maintenance::Action> action) override {
     _recentAction = action;
-    return MaintenanceFeature::addAction(action, executeNow);
+    return MaintenanceFeature::addAction(action);
   }
 
   virtual arangodb::Result addAction(
       std::shared_ptr<arangodb::maintenance::ActionDescription> const&
-          description,
-      bool executeNow = false) override {
-    return MaintenanceFeature::addAction(description, executeNow);
+          description) override {
+    return MaintenanceFeature::addAction(description);
   }
 
   bool verifyRegistryState(ExpectedVec_t& expected) {

@@ -37,7 +37,7 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
-  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
+  let IM = global.instanceManager;
   var db = internal.db;
   const getNoShards = function (defaultNo) {
     if (db._properties().sharding === "single") {
@@ -47,7 +47,7 @@
   };
 
   const getDumpDir = () => {
-    let dumpDir = instanceInfo.rootDir;
+    let dumpDir = IM.rootDir;
     if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
       // when dumping multiple database the database name is one layer added:
       dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");

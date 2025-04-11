@@ -244,6 +244,7 @@ start() {
       --http.trusted-origin all
       --database.check-version false
       --database.upgrade-check false
+      --experimental-vector-index true
       $REPLICATION_VERSION_PARAM
 EOM
 
@@ -303,10 +304,6 @@ done
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
-
-if [[ -d "$PWD/enterprise" ]]; then
-    "${BUILD}"/bin/arangosh --server.endpoint "$TRANSPORT://$ADDRESS:$CO_BASE" --javascript.execute "enterprise/scripts/startLocalCluster.js"
-fi
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do

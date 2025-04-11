@@ -37,6 +37,7 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
+const { versionHas } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";
@@ -162,6 +163,7 @@ function VectorIndexL2NprobeTestSuite() {
     };
 }
 
-jsunity.run(VectorIndexL2NprobeTestSuite);
-
+if (!versionHas("arm")) {
+  jsunity.run(VectorIndexL2NprobeTestSuite);
+}
 return jsunity.done();

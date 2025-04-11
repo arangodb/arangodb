@@ -27,20 +27,43 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         return my_env
 
     def get_memory_limit_arg(self):
-        if os.path.isfile("/sys/fs/cgroup/memory/memory.limit_in_bytes"):
-            with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as limit:
-                memory = int(limit.read())
-                san_mode = os.environ.get("SAN_MODE")
-                if san_mode is not None:
-                    # sanitizer builds need more resources, but the sanitizer
-                    # allocations are not considered in the memory accounting,
-                    # so we reduce the memory assigned to all the instances
-                    if san_mode == "tsan":
-                        # tsan is even more memory hungry
-                        memory //= 3
-                    else:
-                        memory //= 2
-                return ["--memory", str(memory)]
+        limit = 0
+        cgroup_path = "/"
+        try:
+            with open('/proc/self/cgroup', 'r') as f:
+                cgroup_path = f.read().strip().split(':')[-1]
+        except Exception:
+            pass
+
+        # Construct the path to the memory controller
+        memory_path = f'/sys/fs/cgroup{cgroup_path}'
+
+        for path in [
+                "/sys/fs/cgroup/memory/memory.limit_in_bytes",  # cgroups v1 hard limit
+                "/sys/fs/cgroup/memory/memory.soft_limit_in_bytes",  # cgroups v1 soft limit
+                os.path.join(memory_path, "memory.max"),  # cgroups v2 hard limit
+                os.path.join(memory_path, "memory.high"),  # cgroups v2 soft limit
+        ]:
+            try:
+                with open(path) as f:
+                    cgroups_limit = int(f.read())
+                if cgroups_limit > 0:
+                    limit = cgroups_limit
+                    break
+            except Exception:
+                pass
+        if limit > 0:
+            san_mode = os.environ.get("SAN_MODE")
+            if san_mode is not None:
+                # sanitizer builds need more resources, but the sanitizer
+                # allocations are not considered in the memory accounting,
+                # so we reduce the memory assigned to all the instances
+                if san_mode == "tsan":
+                    # tsan is even more memory hungry
+                    limit //= 3
+                else:
+                    limit //= 2
+            return ["--memory", str(limit)]
         return []
 
     def run_testing(

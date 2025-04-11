@@ -100,7 +100,7 @@ function IndexSuite() {
         idxs = arango.GET(`/_api/index?collection=${cn}&withHidden=true`);
         assertTrue(idxs.hasOwnProperty("indexes"), idxs);
         idxs = idxs.indexes;
-        assertEqual(2, idxs.length, idxs);
+        assertEqual(2, idxs.length, {idxs, count});
         let idx = idxs[1];
         assertEqual(idx.name, "progress", idx); // Check we have the right one!
         if (idx.hasOwnProperty("progress")) {

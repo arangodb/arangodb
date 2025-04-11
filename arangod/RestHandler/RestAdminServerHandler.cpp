@@ -32,8 +32,10 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -67,6 +69,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleJWTSecretsReload();
   } else if (suffixes.size() == 1 && suffixes[0] == "encryption") {
     handleEncryptionKeyRotation();
+  } else if (suffixes.size() == 1 && suffixes[0] == "api-calls") {
+    handleApiCalls();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -298,3 +302,29 @@ void RestAdminServerHandler::handleEncryptionKeyRotation() {
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
 }
 #endif
+
+void RestAdminServerHandler::handleApiCalls() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+
+  auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(VPackValue("calls"));
+    {
+      VPackArrayBuilder guard2(&builder);
+
+      // Use doForApiCallRecords to iterate through records
+      apiRecordingFeature.doForApiCallRecords(
+          [&builder](ApiCallRecord const& record) {
+            arangodb::velocypack::serialize(builder, record);
+          });
+    }
+  }
+  generateOk(rest::ResponseCode::OK, builder.slice());
+}
