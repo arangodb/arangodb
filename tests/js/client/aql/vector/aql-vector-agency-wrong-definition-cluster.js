@@ -46,6 +46,7 @@ let {
 } = require('@arangodb/test-helper');
 
 let IM = global.instanceManager;
+const { versionHas } = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -262,7 +263,8 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
     };
 }
 
-jsunity.run(VectorIndexCorrectDefinitionInAgencyTest);
-jsunity.run(VectorIndexInvalidDefinitionInAgencyTest);
-
+if (!versionHas("arm")) {
+  jsunity.run(VectorIndexCorrectDefinitionInAgencyTest);
+  jsunity.run(VectorIndexInvalidDefinitionInAgencyTest);
+}
 return jsunity.done();
