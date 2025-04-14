@@ -18,6 +18,7 @@ target_link_libraries(${BIN_ARANGORESTORE}
   boost_system
   boost_boost
   arango_shell
+  arango_rocksdb
   clienttools_utils
 )
 
