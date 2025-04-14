@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
         },
-        [](ArangoVPackServer& server, TypeTag<EnvironmentFeature>) {
+        [&](ArangoVPackServer& server, TypeTag<EnvironmentFeature>) {
           return std::make_unique<EnvironmentFeature>(server,
                                                       context.binaryName());
         },

@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
         },
-        [&](ArangoshServer& server, TypeTag < EnvironmentFeature) {
+        [&](ArangoshServer& server, TypeTag<EnvironmentFeature>) {
           return std::make_unique<EnvironmentFeature>(server,
                                                       context.binaryName());
         },

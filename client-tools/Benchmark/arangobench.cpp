@@ -78,9 +78,9 @@ int main(int argc, char* argv[]) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
         },
-        [](ArangoBenchServer& server, TypeTag<EnvironmentFeature>) {
-          return std::make_unique<EnvironmentFeature>(
-              server, std::array{ArangoBenchServer::id<VPackFeature>()});
+        [&](ArangoBenchServer& server, TypeTag<EnvironmentFeature>) {
+          return std::make_unique<EnvironmentFeature>(server,
+                                                      context.binaryName());
         },
         [&](ArangoBenchServer& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, context.binaryName());
