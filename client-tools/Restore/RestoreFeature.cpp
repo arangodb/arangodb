@@ -1341,18 +1341,23 @@ Result RestoreFeature::RestoreMainJob::run(
   std::string env;
   TRI_GETENV("KMP_TOPOLOGY_METHOD", env);
   LOG_DEVEL << "KMP_TOPOLOGY_METHOD: " << env;
+  env.clear();
 
   TRI_GETENV("KMP_CPUINFO_FILE", env);
   LOG_DEVEL << "KMP_CPUINFO_FILE: " << env;
+  env.clear();
 
   TRI_GETENV("KMP_AFFINITY", env);
   LOG_DEVEL << "KMP_AFFINITY: " << env;
+  env.clear();
 
   TRI_GETENV("LIBOMP_NUM_HIDDEN_HELPER_THREADS", env);
   LOG_DEVEL << "LIBOMP_NUM_HIDDEN_HELPER_THREADS: " << env;
+  env.clear();
 
   TRI_GETENV("KMP_HW_SUBSET", env);
   LOG_DEVEL << "KMP_HW_SUBSET: " << env;
+  env.clear();
 
   arangodb::Result res = restoreIndexes(client, false);
   if (res.ok() && options.importData) {
