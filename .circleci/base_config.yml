@@ -622,9 +622,6 @@ jobs:
       arangosh_args:
         type: string
         default: ""
-      args:
-        type: string
-        default: ""
     steps:
       - add_ssh_keys:
           fingerprints:
