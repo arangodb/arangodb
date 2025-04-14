@@ -537,6 +537,7 @@ def add_frontend_build_job(workflow, build_config, overrides=None):
 def add_workflow(workflows, tests, build_config, args):
     arangosh_args = args.arangosh_args
     extra_args = args.extra_args
+    del args.extra_args
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
