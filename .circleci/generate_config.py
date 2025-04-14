@@ -86,7 +86,7 @@ def parse_arguments():
         "--rta-branch", type=str, help="which branch for the ui tests to check out"
     )
     parser.add_argument(
-        "--arangosh-args", type=str, help="which branch for the ui tests to check out"
+        "--arangosh-args", type=str, help="additional arguments to append to all testing.js"
     )
     parser.add_argument(
         "--validate-only",
