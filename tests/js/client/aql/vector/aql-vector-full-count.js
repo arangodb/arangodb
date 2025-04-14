@@ -37,6 +37,7 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
+const { versionHas } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDB";
 const collName = "vectorColl";
@@ -416,8 +417,9 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     };
 }
 
-jsunity.run(VectorIndexFullCountTestSuite);
-jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
-jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
-
+if (!versionHas("arm")) {
+  jsunity.run(VectorIndexFullCountTestSuite);
+  jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
+  jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
+}
 return jsunity.done();

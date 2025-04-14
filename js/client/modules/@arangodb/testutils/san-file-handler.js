@@ -172,7 +172,11 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     // scripts/unittest as well. according to @dothebart it must be
     // present in both code locations.
     if (options.isSan) {
-      ['asan', 'lsan', 'ubsan', 'tsan'].forEach(whichSan => {
+      let sans = ['asan', 'lsan', 'ubsan'];
+      if (versionHas('tsan')) {
+        sans = ['tsan'];
+      }
+      sans.forEach(whichSan => {
         let fileName = whichSan + "_arangodb_suppressions.txt";
         let fullNameSup = `${fs.join(fs.makeAbsolute(''), fileName)}`;
         let sanOpt = `${whichSan.toUpperCase()}_OPTIONS`;
@@ -186,12 +190,12 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
               options.sanOptions[sanOpt][pair[0]] = pair[1];
             }
           });
+          if (fs.exists(fileName)) {
+            options.sanOptions[sanOpt]['suppressions'] = fullNameSup;
+          }
         }
         else {
           options.sanOptions[sanOpt] = {};
-        }
-        if (fs.exists(fileName)) {
-          options.sanOptions[sanOpt]['suppressions'] = fullNameSup;
         }
       });
     }
