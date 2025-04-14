@@ -627,6 +627,11 @@ def main():
             raise Exception(
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
+        arangosh_args = args.arangosh_args
+        if arangosh_args == "A" or arangosh_args == "":
+            args.arangosh_args = []
+        else:
+            args.arangosh_args = arangosh_args[1:].split(' ')
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = read_definitions(args.definitions)
