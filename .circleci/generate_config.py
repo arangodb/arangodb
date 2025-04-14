@@ -534,10 +534,8 @@ def add_frontend_build_job(workflow, build_config, overrides=None):
     return name
 
 
-def add_workflow(workflows, tests, build_config, args):
+def add_workflow(workflows, tests, build_config, args, extra_args):
     arangosh_args = args.arangosh_args
-    extra_args = args.extra_args
-    del args.extra_args
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
@@ -569,7 +567,7 @@ def add_workflow(workflows, tests, build_config, args):
     return workflow
 
 
-def add_x64_community_workflow(workflows, tests, args):
+def add_x64_community_workflow(workflows, tests, args, extra_args):
     if args.sanitizer != "" and args.nightly:
         # for nightly sanitizer runs we skip community and only test enterprise
         return
@@ -578,12 +576,13 @@ def add_x64_community_workflow(workflows, tests, args):
         tests,
         BuildConfig("x64", False, args.sanitizer, args.nightly),
         args,
+        extra_args,
     )
 
 
-def add_x64_enterprise_workflow(workflows, tests, args):
+def add_x64_enterprise_workflow(workflows, tests, args, extra_args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
-    workflow = add_workflow(workflows, tests, build_config, args)
+    workflow = add_workflow(workflows, tests, build_config, args, extra_args)
     if args.sanitizer == "" and (args.ui == "off" or args.ui == ""):
         add_build_job(
             workflow,
@@ -597,35 +596,37 @@ def add_x64_enterprise_workflow(workflows, tests, args):
         )
 
 
-def add_aarch64_community_workflow(workflows, tests, args):
+def add_aarch64_community_workflow(workflows, tests, args, extra_args):
     if args.ui != "only":
         add_workflow(
             workflows,
             tests,
             BuildConfig("aarch64", False, args.sanitizer, args.nightly),
             args,
+            extra_args,
         )
 
 
-def add_aarch64_enterprise_workflow(workflows, tests, args):
+def add_aarch64_enterprise_workflow(workflows, tests, args, extra_args):
     if args.ui != "only":
         add_workflow(
             workflows,
             tests,
             BuildConfig("aarch64", True, args.sanitizer, args.nightly),
             args,
+            extra_args,
         )
 
 
-def generate_jobs(config, args, tests):
+def generate_jobs(config, args, extra_args, tests):
     """generate job definitions"""
     workflows = config["workflows"]
-    add_x64_community_workflow(workflows, tests, args)
-    add_x64_enterprise_workflow(workflows, tests, args)
+    add_x64_community_workflow(workflows, tests, args, extra_args)
+    add_x64_enterprise_workflow(workflows, tests, args, extra_args)
     if args.sanitizer == "":
         # ATM we run ARM only without sanitizer
-        add_aarch64_community_workflow(workflows, tests, args)
-        add_aarch64_enterprise_workflow(workflows, tests, args)
+        add_aarch64_community_workflow(workflows, tests, args, extra_args)
+        add_aarch64_enterprise_workflow(workflows, tests, args, extra_args)
 
 
 def main():
@@ -646,12 +647,13 @@ def main():
             print(args.arangosh_args)
             args.arangosh_args = arangosh_args[1:].split(' ')
         extra_args = args.extra_args
+        del args.extra_args
         if extra_args == "A" or extra_args == "":
-            args.extra_args = []
+            extra_args = []
         else:
             print('elseA')
             print(args.extra_args)
-            args.extra_args = extra_args[1:].split(' ')
+            extra_args = extra_args[1:].split(' ')
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = read_definitions(args.definitions)
@@ -660,7 +662,7 @@ def main():
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
-                generate_jobs(config, args, tests)
+                generate_jobs(config, args, extra_args, tests)
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
