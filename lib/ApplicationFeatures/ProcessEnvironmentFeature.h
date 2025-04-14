@@ -30,13 +30,13 @@ namespace application_features {
 class GreetingsFeaturePhase;
 }
 
-class EnvironmentFeature final
+class ProcessEnvironmentFeature final
     : public application_features::ApplicationFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Temp"; }
 
   template<typename Server>
-  EnvironmentFeature(Server& server, std::string const& appname)
+  ProcessEnvironmentFeature(Server& server, std::string const& appname)
       : ApplicationFeature{server, *this}, _dumpEnv(false) {
     setOptional(false);
     startsAfter<application_features::GreetingsFeaturePhase, Server>();

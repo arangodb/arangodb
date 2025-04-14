@@ -31,7 +31,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
+#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "ApplicationFeatures/OptionsCheckFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/ShutdownFeature.h"
@@ -79,9 +79,9 @@ int main(int argc, char* argv[]) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
         },
-        [&](ArangoImportServer& server, TypeTag<EnvironmentFeature>) {
-          return std::make_unique<EnvironmentFeature>(server,
-                                                      context.binaryName());
+        [&](ArangoImportServer& server, TypeTag<ProcessEnvironmentFeature>) {
+          return std::make_unique<ProcessEnvironmentFeature>(
+              server, context.binaryName());
         },
         [&](ArangoImportServer& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, context.binaryName());

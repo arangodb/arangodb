@@ -47,7 +47,7 @@ class SslFeature;
 class VersionFeature;
 class HttpEndpointProvider;
 class ArangoGlobalContext;
-class EnvironmentFeature;
+class ProcessEnvironmentFeature;
 
 using namespace application_features;
 
@@ -59,6 +59,6 @@ using ArangoClientFeaturesList = TypeList<
     VersionFeature,  // VersionFeature must go first
     HttpEndpointProvider, ConfigFeature, FileSystemFeature, LoggerFeature,
     OptionsCheckFeature, RandomFeature, ShellColorsFeature, ShutdownFeature,
-    EnvironmentFeature, SslFeature, T...>;
+    ProcessEnvironmentFeature, SslFeature, T...>;
 
 }  // namespace arangodb

@@ -37,7 +37,7 @@
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "ApplicationFeatures/EnvironmentFeature.h"
+#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "ApplicationFeatures/OptionsCheckFeature.h"

@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/EnvironmentFeature.h"
+#include "ApplicationFeatures/ProcessEnvironmentFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "CrashHandler/CrashHandler.h"
 #include "Basics/FileUtils.h"
@@ -40,7 +40,7 @@ extern char** environ;
 
 namespace arangodb {
 
-void EnvironmentFeature::collectOptions(
+void ProcessEnvironmentFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("temp", "temporary files");
 
@@ -50,7 +50,7 @@ void EnvironmentFeature::collectOptions(
       .setLongDescription("will dump the full environment to the logfiles");
 }
 
-void EnvironmentFeature::prepare() {
+void ProcessEnvironmentFeature::prepare() {
   if (_dumpEnv) {
     int i = 0;
     while (environ[i]) {
