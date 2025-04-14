@@ -40,7 +40,8 @@ extern char** environ;
 
 namespace arangodb {
 
-void EnvironmentFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+void EnvironmentFeature::collectOptions(
+    std::shared_ptr<ProgramOptions> options) {
   options->addSection("temp", "temporary files");
 
   options
