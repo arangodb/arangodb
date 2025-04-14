@@ -334,6 +334,10 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
+    if (this.options.extremeVerbosity) {
+      this.args['temp.dumpenv'] = true;
+    }
+
     if (this.options.forceOneShard) {
       this.args['cluster.force-one-shard'] = true;
     }
