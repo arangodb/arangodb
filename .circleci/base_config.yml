@@ -543,14 +543,9 @@ jobs:
               export PROMTOOL_PATH=`command -v promtool`
             fi
             # Fix arm failing when using OpenMP
-            export KMP_AFFINITY=verbose
-            export LIBOMP_USE_AFFINITY=true
-            export OMP_NUM_THREADS=1
-            export OMP_THREAD_LIMIT=1
-            # export KMP_DEVICE_THREAD_LIMIT=1
-            # export LIBOMP_NUM_HIDDEN_HELPER_THREADS=1
-            # export LIBOMP_USE_HIDDEN_HELPER_TASK=1
+            export KMP_AFFINITY=verbose,disabled
             export OMP_DISPLAY_ENV=VERBOSE
+            export KMP_CPUINFO_FILE=/proc/cpuinfo
             lscpu -e
             echo "CPUINFO"
             cat /proc/cpuinfo
