@@ -189,7 +189,7 @@ jobs:
             else
               pip install pyyaml
               python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
-                --arangosh-args 'A<< pipeline.parameters.arangosh_args >>' \              
+                --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --ui "<< pipeline.parameters.ui >>" \
                 --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
