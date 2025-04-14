@@ -303,7 +303,7 @@ def get_test_size(size, build_config, cluster):
     return get_size(size, build_config.arch)
 
 
-def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, exra_args, replication_version=1):
+def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, extra_args, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
     params = test["params"]
@@ -386,21 +386,21 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
 
 
 def add_test_definition_jobs_to_workflow(
-    workflow, tests, build_config, build_jobs, arangosh_args, exra_args, repl2
+    workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2
 ):
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, exra_args))
+            jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args))
             if repl2:
                 jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test, False, build_config, build_jobs, arangosh_args, exra_args))
+            jobs.append(create_test_job(test, False, build_config, build_jobs, arangosh_args, extra_args))
         else:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, exra_args))
+            jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args))
             if repl2:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, exra_args, 2))
-            jobs.append(create_test_job(test, False, build_config, build_jobs, arangosh_args, exra_args))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args, 2))
+            jobs.append(create_test_job(test, False, build_config, build_jobs, arangosh_args, extra_args))
 
 
 def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
@@ -434,7 +434,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
             )
 
 
-def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, arangosh_args, exra_args, repl2):
+def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2):
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs)
     if args.ui == "only":
@@ -450,7 +450,7 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, a
             }
         )
     add_test_definition_jobs_to_workflow(
-        workflow, tests, build_config, build_jobs, arangosh_args, exra_args, repl2
+        workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2
     )
 
 
@@ -536,7 +536,7 @@ def add_frontend_build_job(workflow, build_config, overrides=None):
 
 def add_workflow(workflows, tests, build_config, args):
     arangosh_args = args.arangosh_args
-    exra_args = args.exra_args
+    extra_args = args.extra_args
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
@@ -564,7 +564,7 @@ def add_workflow(workflows, tests, build_config, args):
     add_create_docker_image_job(workflow, build_config, build_jobs, args)
 
     tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
-    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, arangosh_args, exra_args, repl2)
+    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2)
     return workflow
 
 
