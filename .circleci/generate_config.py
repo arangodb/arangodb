@@ -316,6 +316,8 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, repl
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
     )
+    print(arangosh_args)
+    print(type(arangosh_args))
     sub_arangosh_args = arangosh_args
     if 'arangosh_args' in test:
         # Yaml workaround: prepend an A to stop bad things from happening.
@@ -632,6 +634,8 @@ def main():
         if arangosh_args == "A" or arangosh_args == "":
             args.arangosh_args = []
         else:
+            print('else')
+            print(args.arangosh_args)
             args.arangosh_args = arangosh_args[1:].split(' ')
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
