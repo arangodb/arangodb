@@ -316,10 +316,10 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, repl
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
     )
-    arangosh_args = ""
+    sub_arangosh_args = arangosh_args
     if 'arangosh_args' in test:
         # Yaml workaround: prepend an A to stop bad things from happening.
-        arangosh_args = "A " + json.dumps(test["arangosh_args"] + arangosh_args)
+        sub_arangosh_args = "A " + json.dumps(test["arangosh_args"] + arangosh_args)
         del(test["arangosh_args"])
     job = {
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
@@ -329,7 +329,7 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, repl
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
         "requires": build_jobs,
-        "arangosh-args": arangosh_args,
+        "arangosh_args": sub_arangosh_args,
     }
     if suite_name == "chaos" and build_config.isNightly:
         # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
