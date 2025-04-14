@@ -652,7 +652,7 @@ def main():
             extra_args = []
         else:
             print('elseA')
-            print(args.extra_args)
+            print(extra_args)
             extra_args = extra_args[1:].split(' ')
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
