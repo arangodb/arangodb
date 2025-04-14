@@ -1337,6 +1337,23 @@ Result RestoreFeature::RestoreMainJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
   // restore indexes first, but skip vector indexes, since
   // they cannot be created without data:
+  LOG_DEVEL << "ARANGORESTORE";
+  std::string env;
+  TRI_GETENV("KMP_TOPOLOGY_METHOD", env);
+  LOG_DEVEL << "KMP_TOPOLOGY_METHOD: " << env;
+
+  TRI_GETENV("KMP_CPUINFO_FILE", env);
+  LOG_DEVEL << "KMP_CPUINFO_FILE: " << env;
+
+  TRI_GETENV("KMP_AFFINITY", env);
+  LOG_DEVEL << "KMP_AFFINITY: " << env;
+
+  TRI_GETENV("LIBOMP_NUM_HIDDEN_HELPER_THREADS", env);
+  LOG_DEVEL << "LIBOMP_NUM_HIDDEN_HELPER_THREADS: " << env;
+
+  TRI_GETENV("KMP_HW_SUBSET", env);
+  LOG_DEVEL << "KMP_HW_SUBSET: " << env;
+
   arangodb::Result res = restoreIndexes(client, false);
   if (res.ok() && options.importData) {
     res = restoreData(client, useVPack);
