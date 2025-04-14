@@ -47,6 +47,7 @@ constexpr auto kNonServerFeatures =
 #endif
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
+               ArangodServer::id<EnvironmentFeature>(),
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
                ArangodServer::id<ServerFeature>(),
@@ -93,6 +94,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
+        },
+        [](auto& server, TypeTag<EnvironmentFeature>) {
+          return std::make_unique<EnvironmentFeature>(server, &ret,
+                                                      kNonServerFeatures);
         },
         [&ret](auto& server, TypeTag<CheckVersionFeature>) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
@@ -173,9 +178,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ShutdownFeature>(
               server,
 #ifdef USE_V8
-              std::array { ArangodServer::id<ScriptFeature>() }
+              std::array{ArangodServer::id<ScriptFeature>()}
 #else
-              std::array { ArangodServer::id<AgencyFeaturePhase>() }
+              std::array{ArangodServer::id<AgencyFeaturePhase>()}
 #endif
           );
         },

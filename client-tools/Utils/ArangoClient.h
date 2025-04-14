@@ -47,6 +47,7 @@ class SslFeature;
 class VersionFeature;
 class HttpEndpointProvider;
 class ArangoGlobalContext;
+class EnvironmentFeature;
 
 using namespace application_features;
 

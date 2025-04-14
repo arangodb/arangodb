@@ -31,6 +31,7 @@
 #include "ApplicationFeatures/ConfigFeature.h"
 #include "ApplicationFeatures/FileSystemFeature.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
+#include "ApplicationFeatures/EnvironmentFeature.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "ApplicationFeatures/OptionsCheckFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
@@ -88,6 +89,10 @@ int main(int argc, char* argv[]) {
         [](ArangoshServer& server, TypeTag<GreetingsFeaturePhase>) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
+        },
+        [&](ArangoshServer& server, TypeTag < EnvironmentFeature) {
+          return std::make_unique<EnvironmentFeature>(server,
+                                                      context.binaryName());
         },
         [&](ArangoshServer& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, context.binaryName());

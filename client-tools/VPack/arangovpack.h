@@ -36,7 +36,7 @@ using ArangoVPackFeaturesList =
     TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
              ConfigFeature, LoggerFeature, OptionsCheckFeature,
              FileSystemFeature, RandomFeature, ShellColorsFeature,
-             ShutdownFeature, VPackFeature>;
+             ShutdownFeature, EnvironmentFeature, VPackFeature>;
 struct ArangoVPackFeatures : ArangoVPackFeaturesList {};
 using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
 using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;
