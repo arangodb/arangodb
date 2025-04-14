@@ -323,7 +323,7 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, repl
     sub_arangosh_args = arangosh_args
     if 'arangosh_args' in test:
         # Yaml workaround: prepend an A to stop bad things from happening.
-        if test["arangosh_args"] !== "":
+        if test["arangosh_args"] != "":
             sub_arangosh_args = test["arangosh_args"] + arangosh_args
         del(test["arangosh_args"])
     job = {
