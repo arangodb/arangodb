@@ -95,9 +95,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
         },
-        [&ret](auto& server, TypeTag<ProcessEnvironmentFeature>) {
-          return std::make_unique<ProcessEnvironmentFeature>(
-              server, &ret, kNonServerFeatures);
+        [&name](auto& server, TypeTag<ProcessEnvironmentFeature>) {
+          return std::make_unique<ProcessEnvironmentFeature>(server, name);
         },
         [&ret](auto& server, TypeTag<CheckVersionFeature>) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
@@ -178,9 +177,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ShutdownFeature>(
               server,
 #ifdef USE_V8
-              std::array{ArangodServer::id<ScriptFeature>()}
+              std::array { ArangodServer::id<ScriptFeature>() }
 #else
-              std::array{ArangodServer::id<AgencyFeaturePhase>()}
+              std::array { ArangodServer::id<AgencyFeaturePhase>() }
 #endif
           );
         },
