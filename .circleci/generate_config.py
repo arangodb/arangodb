@@ -318,10 +318,10 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, repl
     )
     print(arangosh_args)
     print(type(arangosh_args))
-    print(test["arangosh_args"])
-    print(type(test["arangosh_args"]))
     sub_arangosh_args = arangosh_args
     if 'arangosh_args' in test:
+        print(test["arangosh_args"])
+        print(type(test["arangosh_args"]))
         # Yaml workaround: prepend an A to stop bad things from happening.
         if test["arangosh_args"] != "":
             sub_arangosh_args = test["arangosh_args"] + arangosh_args
