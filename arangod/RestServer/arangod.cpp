@@ -95,7 +95,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
         },
-        [](auto& server, TypeTag<EnvironmentFeature>) {
+        [&ret](auto& server, TypeTag<EnvironmentFeature>) {
           return std::make_unique<EnvironmentFeature>(server, &ret,
                                                       kNonServerFeatures);
         },
