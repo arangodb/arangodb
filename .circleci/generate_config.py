@@ -354,7 +354,7 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, extr
     if build_config.isNightly:
         sub_extra_args.append(f"--skipNightly false")
     if sub_extra_args != []:
-        job["extraArgs"] = " ".join(sub_extra_args)
+        job["args"] = " ".join(sub_extra_args)
 
     buckets = params.get("buckets", 1)
     if suite_name == "replication_sync":
