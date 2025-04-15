@@ -545,9 +545,11 @@ jobs:
               export PROMTOOL_PATH=`command -v promtool`
             fi
             # Fix arm failing when using OpenMP
-            export KMP_AFFINITY=verbose,disabled
-            export OMP_DISPLAY_ENV=VERBOSE
-            export KMP_CPUINFO_FILE=/proc/cpuinfo
+            if test "$arch" == "aarch64"; then
+              export KMP_AFFINITY=verbose,disabled
+              export OMP_DISPLAY_ENV=VERBOSE
+              export KMP_CPUINFO_FILE=/proc/cpuinfo
+            fi
             lscpu -e
             echo "CPUINFO"
             cat /proc/cpuinfo
@@ -593,14 +595,11 @@ jobs:
           name: Run HotBackup tests
           command: |
             # Fix arm failing when using OpenMP
-            export KMP_AFFINITY=verbose
-            export LIBOMP_USE_AFFINITY=true
-            export OMP_NUM_THREADS=1
-            export OMP_THREAD_LIMIT=1
-            # export KMP_DEVICE_THREAD_LIMIT=1
-            # export LIBOMP_NUM_HIDDEN_HELPER_THREADS=1
-            # export LIBOMP_USE_HIDDEN_HELPER_TASK=1
-            export OMP_DISPLAY_ENV=VERBOSE
+            if test "$arch" == "aarch64"; then
+              export KMP_AFFINITY=verbose,disabled
+              export OMP_DISPLAY_ENV=VERBOSE
+              export KMP_CPUINFO_FILE=/proc/cpuinfo
+            fi
             lscpu -e
             echo "CPUINFO"
             cat /proc/cpuinfo
@@ -657,14 +656,11 @@ jobs:
           command: |
             pwd
             # Fix arm failing when using OpenMP
-            export KMP_AFFINITY=verbose
-            export LIBOMP_USE_AFFINITY=true
-            export OMP_NUM_THREADS=1
-            export OMP_THREAD_LIMIT=1
-            # export KMP_DEVICE_THREAD_LIMIT=1
-            # export LIBOMP_NUM_HIDDEN_HELPER_THREADS=1
-            # export LIBOMP_USE_HIDDEN_HELPER_TASK=1
-            export OMP_DISPLAY_ENV=VERBOSE
+            if test "$arch" == "aarch64"; then
+              export KMP_AFFINITY=verbose,disabled
+              export OMP_DISPLAY_ENV=VERBOSE
+              export KMP_CPUINFO_FILE=/proc/cpuinfo
+            fi
             lscpu -e
             echo "CPUINFO"
             cat /proc/cpuinfo
