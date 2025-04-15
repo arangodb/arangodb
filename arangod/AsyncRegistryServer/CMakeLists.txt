@@ -6,3 +6,4 @@ target_link_libraries(arangoserver
   arango_async_registry_stacktrace)
 
 add_subdirectory(Stacktrace)
+add_subdirectory(PrettyPrinter)

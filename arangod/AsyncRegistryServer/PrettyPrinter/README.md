@@ -16,20 +16,26 @@ This ensures that the pretty-printer is loaded to gdb. You can check if it is lo
 
 ### Run tests
 
+Run all tests via
+```
+cmake --build --target async_registry_pretty_printer_test
+```
+
 #### Unit tests
 
 Inside src-folder run unittests via
 ```
 python3 -m unittest discover
 ```
+or use cmake via `cmake --build --target async_registry_pretty_printer_python_test`.
 
 #### Integration tests using gdb
 
 ```
-cmake --build --preset my-edition --target gdb_pretty_printer
-ctest --build --preset my-edition -R test_registry_pretty_printer
+cmake --build --target async_registry_gdb_pretty_printer
+ctest --build -R async_registry_gdb_pretty_printer_test
 ```
-use `-V` option on `ctest` to see gdb output, e.g. printing
+use `-V` option on `ctest` to see gdb debug output
 
 ## Pretty printing the REST call
 
