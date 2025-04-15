@@ -545,7 +545,10 @@ jobs:
               export PROMTOOL_PATH=`command -v promtool`
             fi
             # Fix arm failing when using OpenMP
-            if test "$arch" == "aarch64"; then
+
+            ARCH=$(uname -m)
+            echo "Architecture is $ARCH"
+            if test "$ARCH" == "aarch64"; then
               export KMP_AFFINITY=verbose,disabled
               export OMP_DISPLAY_ENV=VERBOSE
               export KMP_CPUINFO_FILE=/proc/cpuinfo
@@ -595,7 +598,9 @@ jobs:
           name: Run HotBackup tests
           command: |
             # Fix arm failing when using OpenMP
-            if test "$arch" == "aarch64"; then
+            ARCH=$(uname -m)
+            echo "Architecture is $ARCH"
+            if test "$ARCH" == "aarch64"; then
               export KMP_AFFINITY=verbose,disabled
               export OMP_DISPLAY_ENV=VERBOSE
               export KMP_CPUINFO_FILE=/proc/cpuinfo
@@ -656,7 +661,9 @@ jobs:
           command: |
             pwd
             # Fix arm failing when using OpenMP
-            if test "$arch" == "aarch64"; then
+            ARCH=$(uname -m)
+            echo "Architecture is $ARCH"
+            if test "$ARCH" == "aarch64"; then
               export KMP_AFFINITY=verbose,disabled
               export OMP_DISPLAY_ENV=VERBOSE
               export KMP_CPUINFO_FILE=/proc/cpuinfo
