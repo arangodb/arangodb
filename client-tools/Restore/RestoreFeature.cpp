@@ -1338,33 +1338,36 @@ Result RestoreFeature::RestoreMainJob::run(
     arangodb::httpclient::SimpleHttpClient& client) {
   // restore indexes first, but skip vector indexes, since
   // they cannot be created without data:
-  LOG_DEVEL << "ARANGORESTORE";
-  std::string env;
-  TRI_GETENV("KMP_TOPOLOGY_METHOD", env);
-  LOG_DEVEL << "KMP_TOPOLOGY_METHOD: " << env;
-  env.clear();
 
-  TRI_GETENV("KMP_CPUINFO_FILE", env);
-  LOG_DEVEL << "KMP_CPUINFO_FILE: " << env;
-  env.clear();
+  {
+    LOG_DEVEL << "ARANGORESTORE";
+    std::string env;
+    TRI_GETENV("KMP_TOPOLOGY_METHOD", env);
+    LOG_DEVEL << "KMP_TOPOLOGY_METHOD: " << env;
+    env.clear();
 
-  TRI_GETENV("KMP_AFFINITY", env);
-  LOG_DEVEL << "KMP_AFFINITY: " << env;
-  env.clear();
+    TRI_GETENV("KMP_CPUINFO_FILE", env);
+    LOG_DEVEL << "KMP_CPUINFO_FILE: " << env;
+    env.clear();
 
-  TRI_GETENV("LIBOMP_NUM_HIDDEN_HELPER_THREADS", env);
-  LOG_DEVEL << "LIBOMP_NUM_HIDDEN_HELPER_THREADS: " << env;
-  env.clear();
+    TRI_GETENV("KMP_AFFINITY", env);
+    LOG_DEVEL << "KMP_AFFINITY: " << env;
+    env.clear();
 
-  TRI_GETENV("KMP_HW_SUBSET", env);
-  LOG_DEVEL << "KMP_HW_SUBSET: " << env;
-  env.clear();
+    TRI_GETENV("LIBOMP_NUM_HIDDEN_HELPER_THREADS", env);
+    LOG_DEVEL << "LIBOMP_NUM_HIDDEN_HELPER_THREADS: " << env;
+    env.clear();
 
-  LOG_DEVEL << "PROCESSOR COUNT: " << std::thread::hardware_concurrency();
-  LOG_DEVEL << "OMP NUM PROCS: " << omp_get_num_procs();
-  LOG_DEVEL << "OMP NUM THREADS: " << omp_get_num_threads();
-  LOG_DEVEL << "OMP MAX NUM THREADS: " << omp_get_max_threads();
-  LOG_DEVEL << "KMP AFFINITY MAX: " << kmp_get_affinity_max_proc();
+    TRI_GETENV("KMP_HW_SUBSET", env);
+    LOG_DEVEL << "KMP_HW_SUBSET: " << env;
+    env.clear();
+
+    LOG_DEVEL << "PROCESSOR COUNT: " << std::thread::hardware_concurrency();
+    LOG_DEVEL << "OMP NUM PROCS: " << omp_get_num_procs();
+    LOG_DEVEL << "OMP NUM THREADS: " << omp_get_num_threads();
+    LOG_DEVEL << "OMP MAX NUM THREADS: " << omp_get_max_threads();
+    LOG_DEVEL << "KMP AFFINITY MAX: " << kmp_get_affinity_max_proc();
+  }
 
   arangodb::Result res = restoreIndexes(client, false);
   if (res.ok() && options.importData) {
