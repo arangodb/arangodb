@@ -12,8 +12,8 @@ add_custom_target(frontend ALL
   DEPENDS arango_basic_utils
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
   
-  COMMAND ${CMAKE_COMMAND} -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn install
-  COMMAND ${CMAKE_COMMAND} -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn build
+  COMMAND ${CMAKE_COMMAND} -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn install --verbose
+  COMMAND ${CMAKE_COMMAND} -E env NODE_OPTIONS=--max_old_space_size=7168 nice -10 yarn build --verbose
 )
 
 add_custom_target(frontend_clean
