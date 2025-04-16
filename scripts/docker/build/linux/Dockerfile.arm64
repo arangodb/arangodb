@@ -14,7 +14,10 @@ RUN /static/rebuild_glibc.sh
 
 FROM ubuntu:24.04 as prepare
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y libgd3 linux-libc-dev libcrypt-dev libnsl-dev rpcsvc-proto libtirpc-dev
+RUN apt-get update && apt-get upgrade -y && apt-get install -y libgd3 linux-libc-dev libcrypt-dev libnsl-dev rpcsvc-proto libtirpc-dev curl && apt-get clean
+
+RUN curl -s https://deb.nodesource.com/gpgkey/nodesource.gpg.key | apt-key add -
+RUN echo deb https://deb.nodesource.com/node_20.x jammy main > /etc/apt/sources.list.d/nodesource.list
 
 COPY --from=glibcdebs /root/debs /debs
 RUN dpkg -i /debs/*.deb
@@ -40,7 +43,8 @@ ARG CLANG_FULL_VERSION
 
 RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
-    apt-get install -y software-properties-common net-tools wget gnupg lsb-release
+    apt-get install -y software-properties-common net-tools gnupg lsb-release && \
+    apt-get clean
 
 WORKDIR /
 
@@ -48,16 +52,17 @@ COPY static/llvm.sources ./
 
 RUN cat llvm.sources >> /etc/apt/sources.list.d/ubuntu.sources
 
-RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+RUN curl -s -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
 
-RUN apt-get update && apt-get install dpkg-dev -y
-
-RUN apt-get source llvm-${CLANG_VERSION}-dev -y && \
-  apt-get build-dep llvm-${CLANG_VERSION}-dev -y
+RUN apt-get update && apt-get install dpkg-dev -y && \
+    apt-get source llvm-${CLANG_VERSION}-dev -y && \
+    apt-get build-dep llvm-${CLANG_VERSION}-dev -y && \
+    apt-get clean
 
 RUN apt-get update --fix-missing && apt-get install -y \
   clang-${CLANG_VERSION} clang++-${CLANG_VERSION} \
-  cmake ninja-build git
+  cmake ninja-build git && \
+  apt-get clean
 
 COPY patches/diff_llvm.patch .
 
@@ -95,22 +100,23 @@ ENV COMPILER_VERSION=${COMPILER_VERSION}
 ENV CLANG_VERSION=${CLANG_VERSION}
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y software-properties-common net-tools gnupg2 wget && \
+    apt-get install -y software-properties-common net-tools gnupg2 && \
     apt-get update && \
-    apt-get upgrade -y
+    apt-get upgrade -y && \
+    apt-get clean
 
 COPY static/llvm.sources ./
 
 RUN cat llvm.sources >> /etc/apt/sources.list.d/ubuntu.sources
 
-RUN wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+RUN curl -s https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update --fix-missing && \
   apt-get install -y build-essential gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} \
   cmake make bison flex python3 ccache git libjemalloc-dev vim exuberant-ctags gdb fish \
-  psmisc sudo debhelper debconf jq wget libdb-dev curl gnupg2 gcovr prometheus bc tcpdump \
+  psmisc sudo debhelper debconf jq libdb-dev gnupg2 gcovr prometheus bc tcpdump \
   liburing-dev cppcheck clang-${CLANG_VERSION} lldb-${CLANG_VERSION} lld-${CLANG_VERSION} \
   libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev \
   libclang-rt-${CLANG_VERSION}-dev nodejs npm libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran \
@@ -150,6 +156,6 @@ RUN LC_ALL="C" update-ccache-symlinks
 
 RUN git config --global --add safe.directory '*'
 
-RUN apt-get install -y python3-pip && pip3 install py7zr psutil cppcheck-junit --break-system-packages
+RUN apt-get install -y python3-pip && pip3 install py7zr psutil cppcheck-junit --break-system-packages && apt-get clean
 
 CMD [ "/usr/bin/fish" ]
