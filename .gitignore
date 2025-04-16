@@ -98,7 +98,6 @@ test.cpp.txt
 
 js/apps/*
 !js/apps/system/
-js/apps/system/_admin/aardvark/APP/react/node_modules/
 js/apps/system/_admin/aardvark/APP/react/build/
 js/node/**/node_modules/.bin/
 js/node/node_modules/**/*.md
