@@ -723,54 +723,31 @@ jobs:
           path: /root/project/cppcheck-junit.xml
 
   run-openmp-example:
+    docker:
+      - image: << pipeline.parameters.test-docker-image >>
     parameters:
-      preset:
-        type: string
-      enterprise:
-        type: boolean
-      build-tests:
-        type: boolean
-        default: true
-      build-v8:
-        type: boolean
-        default: true
-      publish-artifacts:
-        type: boolean
-        default: true
       resource-class:
         type: string
-      s3-prefix:
-        type: string
-        default: ""
+        default: "small"
       arch:
-          type: string
+        type: string
+        default: "amd64"
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
-      SCCACHE_ERROR_LOG: /tmp/sccache.log
-      SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
-      SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
       CC: /tools/clang
       CXX: /tools/clang++
     steps:
       - checkout-arangodb:
           with-submodules: true
           destination: "/root/project"
-      - when:
-          condition: << parameters.enterprise >>
-          steps:
-            - checkout-enterprise:
-                destination: "/root/project/enterprise"
-      - run:
-          name: Print SCCache Settings
-          command: sccache -s
       - run:
           name: Build and Run
           command: |
             clang++-19 -fopenmp=libomp openmp.cpp -o openmp
-            ./openmp
+            ./openmpworkflows
 
 workflows:
   lint:
@@ -795,5 +772,7 @@ workflows:
           requires:
             - minimal-checkout
       - run-openmp-example:
-        name: openmp-example
+          name: run-openmp-example
+          requires:
+            - minimal-checkout
   # all other workflows are defined in generate_config.py
