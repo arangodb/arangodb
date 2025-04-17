@@ -196,10 +196,10 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(
   proto->timer.async_wait(
       [weak_ptr = std::weak_ptr<AsioSocket<SocketType::Ssl>>(proto)](
           asio_ns::error_code const& ec) {
+        if (ec) {  // canceled
+          return;
+        }
         if (auto ptr = weak_ptr.lock(); ptr != nullptr) {
-          if (ec) {  // canceled
-            return;
-          }
           ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
         }
       });
