@@ -1,6 +1,8 @@
 devel
 -----
 
+* Set Node v20.14.0 for core UI production (CI) compilation.
+
 * Updated ArangoDB Starter to v0.19.10.
 
 * Rebuilt included rclone v1.65.5 with go1.22.12 and non-vulnerable
