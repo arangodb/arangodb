@@ -35,3 +35,6 @@
 [submodule "3rdParty/faiss"]
 	path = 3rdParty/faiss
 	url = https://github.com/arangodb/faiss.git
+[submodule "js/apps/system/_admin/aardvark/APP/react/node_modules"]
+	path = js/apps/system/_admin/aardvark/APP/react/node_modules
+	url = git@github.com:arangodb/aardvark_node_modules.git
