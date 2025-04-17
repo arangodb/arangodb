@@ -100,7 +100,7 @@ commands:
                 command: |
                   cd << parameters.destination >>
                   git submodule init
-                  git submodule update --recursive --depth 1 --jobs 8
+                  git submodule update --recursive --depth 1 --jobs 8 --progress
 
   checkout-enterprise:
     description: "Checkout enterprise code"
