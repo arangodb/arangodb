@@ -601,7 +601,8 @@ struct DistributedQueryInstanciator final
                   << "killing query " << id
                   << " because participating DB server " << srvr
                   << " is unavailable, query string:" << qs
-                  << ", bind parameters: " << bp->slice().toJson();
+                  << ", bind parameters: "
+                  << ((bp != nullptr) ? bp->slice().toJson() : std::string());
               try {
                 methods::Queries::kill(df, vn, id);
               } catch (...) {

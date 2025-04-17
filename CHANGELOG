@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix a crash when bind parameters are not set and killing of a query
+  is logged (no version with this bug was ever released!).
+
 * Updated ArangoDB Starter to v0.19.10.
 
 * Rebuilt included rclone v1.65.5 with go1.22.12 and non-vulnerable
