@@ -97,6 +97,7 @@ commands:
           steps:
             - run:
                 name: "Checkout submodules"
+                no_output_timeout: 15m
                 command: |
                   cd << parameters.destination >>
                   git submodule init
