@@ -3,23 +3,30 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: ubuntu-2204:2024.11.1 
-    resource_class: arm.small
+      - image: cimg/base:2024.01
+    resource_class: arm.medium
     steps:
       - checkout
       - run:
           name: Install build tools
           command: |
-            apt-get update
-            apt-get install -y build-essential g++
+            sudo apt-get update
+            sudo apt-get install -y build-essential g++ wget             
+            wget https://apt.llvm.org/llvm.sh
+            chmod +x llvm.sh
+            sudo ./llvm.sh 19
+            sudo apt-get install -y libomp-19-dev liblapack-dev libopenblas-dev gfortran
       - run:
           name: Compile C++ program
           command: |
-            g++ -fopenmp openmp.cpp -openmp
-      - run:
-          name: Run C++ program
-          command: |
-            .openmp
+            echo "Build with gcc"
+            g++ -fopenmp openmp.cpp -o openmp-gcc
+            ./openmp-gcc
+
+            echo "Build with clang"
+            clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
+            ./openmp-clang
+
 
 workflows:
   build_and_run:
