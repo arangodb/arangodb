@@ -14,7 +14,7 @@ RUN /static/rebuild_glibc.sh
 
 FROM ubuntu:24.04 as prepare
 
-RUN apt-get update && apt-get upgrade -y && apt-get install -y libgd3 linux-libc-dev libcrypt-dev libnsl-dev rpcsvc-proto libtirpc-dev
+RUN apt-get update && apt-get upgrade -y && apt-get install -y libgd3 linux-libc-dev libcrypt-dev libnsl-dev rpcsvc-proto libtirpc-dev curl gnupg gnupg2
 
 COPY --from=glibcdebs /root/debs /debs
 RUN dpkg -i /debs/*.deb
@@ -39,7 +39,7 @@ ARG CLANG_VERSION
 
 RUN apt-get update --fix-missing && \
     apt-get upgrade -y && \
-    apt-get install -y software-properties-common net-tools wget gnupg lsb-release
+    apt-get install -y software-properties-common net-tools wget lsb-release
 
 WORKDIR /
 
@@ -94,7 +94,7 @@ ENV COMPILER_VERSION=${COMPILER_VERSION}
 ENV CLANG_VERSION=${CLANG_VERSION}
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y software-properties-common net-tools gnupg2 wget && \
+    apt-get install -y software-properties-common net-tools wget && \
     apt-get update && \
     apt-get upgrade -y
 
@@ -109,18 +109,30 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update --fix-missing && \
   apt-get install -y build-essential gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} \
   cmake make bison flex python3 ccache git libjemalloc-dev vim exuberant-ctags gdb fish \
-  psmisc sudo debhelper debconf jq wget libdb-dev curl gnupg2 gcovr prometheus bc tcpdump \
+  psmisc sudo debhelper debconf jq wget libdb-dev gcovr prometheus bc tcpdump \
   liburing-dev cppcheck clang-${CLANG_VERSION} lldb-${CLANG_VERSION} lld-${CLANG_VERSION} \
   libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev \
-  libclang-rt-${CLANG_VERSION}-dev nodejs npm libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran \
+  libclang-rt-${CLANG_VERSION}-dev libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran \
   && apt-get clean
 
-# yarn for UI build:
-RUN npm install -g yarn
 
 # sccache for cloud compiler cache:
 
 RUN curl -L https://github.com/mozilla/sccache/releases/download/v${SCCACHE_VERSION}/sccache-v${SCCACHE_VERSION}-${ARCH}-unknown-linux-musl.tar.gz | tar xvz -C /tmp && mv /tmp/sccache-v${SCCACHE_VERSION}-${ARCH}-unknown-linux-musl/sccache /usr/bin/sccache && chmod +x /usr/bin/sccache && rm -rf /tmp/sccache-v${SCCACHE_VERSION}-${ARCH}-unknown-linux-musl
+
+
+# yarn for UI build:
+ARG NODE_VERSION="20.14.0"
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash && \
+  export NVM_DIR="$HOME/.nvm" &&\
+  [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh" \
+  [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion" && \
+  nvm install ${NODE_VERSION} && \
+  nvm use ${NODE_VERSION} && \
+  node --version && \
+  npm install -g yarn && \
+  ln -s /root/.nvm/versions/node/v${NODE_VERSION}/bin/* /usr/local/bin/
+
 
 # Fetch V8:
 #COPY --from=v8 /opt/v8/lib /opt/v8/lib
@@ -135,7 +147,7 @@ COPY --from=openmp /opt/omp /opt/omp
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.4", "0" ]
+RUN [ "/tools/install.sh", "3.4", "1" ]
 
 COPY ./scripts /scripts
 
