@@ -16,18 +16,11 @@ This ensures that the pretty-printer is loaded to gdb. You can check if it is lo
 
 ### Run tests
 
-Run all tests via
-```
-cmake --build --target async_registry_pretty_printer_test
-```
-
 #### Unit tests
 
-Inside src-folder run unittests via
 ```
-python3 -m unittest discover
+ctest --build -R async_registry_python_pretty_printer_test
 ```
-or use cmake via `cmake --build --target async_registry_pretty_printer_python_test`.
 
 #### Integration tests using gdb
 
