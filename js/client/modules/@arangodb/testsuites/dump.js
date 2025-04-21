@@ -587,34 +587,38 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   }
 
   restoreHotBackup() {
-    this.print("restoring backup - start");
-    db._useDatabase('_system');
-    let list = this.listHotBackup();
-    let backupName;
-    Object.keys(list).forEach(function (name, i) {
-      if (name.search("testHotBackup") !== -1) {
-        backupName = name;
+    let first = true;
+    while (first || this.options.loopEternal) {
+      this.print("restoring backup - start");
+      first = false;
+      db._useDatabase('_system');
+      let list = this.listHotBackup();
+      let backupName;
+      Object.keys(list).forEach(function (name, i) {
+        if (name.search("testHotBackup") !== -1) {
+          backupName = name;
+        }
+      });
+      if (backupName === undefined) {
+        this.print("didn't find a backup matching our pattern!");
+        this.results.restoreHotBackup = { status: false };
+        return false;
       }
-    });
-    if (backupName === undefined) {
-      this.print("didn't find a backup matching our pattern!");
-      this.results.restoreHotBackup = { status: false };
-      return false;
+      if (!list[backupName].hasOwnProperty("keys") ||
+           list[backupName].keys[0].sha256 !== encryptionKeySha256) {
+        this.print("didn't find a backup having correct encryption keys!");
+        this.print(JSON.stringify(list));
+        this.results.restoreHotBackup = { status: false };
+        return false;
+      }
+      this.print("restoring backup");
+      let cmds = {
+        "identifier": backupName,
+        "max-wait-for-restart": 100.0
+      };
+      this.results.restoreHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
+      this.print("done restoring backup");
     }
-    if (!list[backupName].hasOwnProperty("keys") ||
-         list[backupName].keys[0].sha256 !== encryptionKeySha256) {
-      this.print("didn't find a backup having correct encryption keys!");
-      this.print(JSON.stringify(list));
-      this.results.restoreHotBackup = { status: false };
-      return false;
-    }
-    this.print("restoring backup");
-    let cmds = {
-      "identifier": backupName,
-      "max-wait-for-restart": 100.0
-    };
-    this.results.restoreHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
-    this.print("done restoring backup");
     return true;
   }
 

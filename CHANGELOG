@@ -1,10 +1,14 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.5.0.
+
+* Set Node v20.14.0 for core UI production (CI) compilation.
+
+* Updated ArangoDB Starter to v0.19.10.
+
 * Rebuilt included rclone v1.65.5 with go1.22.12 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.19.10-preview-1.
 
 * Remove overeager assert, only relevant for testing.
 
@@ -70,8 +74,6 @@ devel
   only have happened once per month!
 
 * FE-497: fix query options input parsing (Query Editor UI > Options tab).
-
-* Upgraded OpenSSL to 3.4.1.
 
 * Disable creating a vector index with zero nLists.
 
