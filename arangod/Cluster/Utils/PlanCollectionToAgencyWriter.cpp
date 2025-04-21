@@ -117,7 +117,8 @@ PlanCollectionToAgencyWriter::prepareCurrentWatcher(
 ResultT<AgencyWriteTransaction>
 PlanCollectionToAgencyWriter::prepareStartBuildingTransaction(
     std::string_view databaseName, uint64_t planVersion,
-    std::vector<std::string> serversAvailable) const {
+    std::vector<std::string> serversAvailable,
+    consensus::query_t shardLocks) const {
   // Distribute Shards onto servers
   std::unordered_set<ServerID> serversPlanned;
   for (auto& [_, dist] : _shardDistributionsUsed) {
@@ -132,8 +133,8 @@ PlanCollectionToAgencyWriter::prepareStartBuildingTransaction(
   // One per collection, and the update on plan version
   opers.reserve(_collectionPlanEntries.size() + 1);
 
-  // One per collection, the plan version, and the checks that servers
-  // are not to be cleaned.
+  // One per collection, the plan version, the checks that servers
+  // are not to be cleaned, and the shard locks.
   precs.reserve(_collectionPlanEntries.size() + 3);
 
   // General Preconditions
@@ -162,6 +163,9 @@ PlanCollectionToAgencyWriter::prepareStartBuildingTransaction(
       "Target/CleanedServers", AgencyPrecondition::Type::INTERSECTION_EMPTY,
       std::move(serversBuilder)));
 
+  // Shard locks still as before:
+  precs.emplace_back(AgencyPrecondition(
+      "Target/Shards", AgencyPrecondition::Type::VALUE, std::move(shardLocks)));
   // TODO: End of to beatuify
 
   opers.emplace_back(IncreaseVersion());

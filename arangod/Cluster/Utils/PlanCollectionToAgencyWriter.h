@@ -23,6 +23,8 @@
 
 #pragma once
 
+#include "Agency/AgencyCommon.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -59,7 +61,8 @@ struct PlanCollectionToAgencyWriter {
 
   [[nodiscard]] ResultT<AgencyWriteTransaction> prepareStartBuildingTransaction(
       std::string_view databaseName, uint64_t planVersion,
-      std::vector<std::string> serversAvailable) const;
+      std::vector<std::string> serversAvailable,
+      consensus::query_t shardLocks) const;
 
   [[nodiscard]] AgencyWriteTransaction prepareCompletedTransaction(
       std::string_view databaseName);
