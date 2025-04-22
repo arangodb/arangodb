@@ -117,6 +117,9 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
                             f.field("state", x.state));
 }
 
+/**
+   Promise in the registry
+ */
 struct Promise {
   using Snapshot = PromiseSnapshot;
   Promise(Requester requester, std::source_location location);
@@ -146,6 +149,14 @@ struct Promise {
  */
 auto get_current_coroutine() noexcept -> Requester*;
 
+/**
+   Wrapper promise for easier usage in the code
+
+   This is a wrapper around the promise: On construction, it creates a promise
+   and registers it in the global register. On destruction, it marks the promise
+   for deletion in the register. Therefore it has a shorter lifetime than the
+   promise itself.
+ */
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
   AddToAsyncRegistry(std::source_location loc);

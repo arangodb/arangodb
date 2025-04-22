@@ -98,6 +98,7 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
       f.field("transaction", x.transaction), f.field("thread", x.thread),
       f.field("source_location", x.source_location));
 }
+void PrintTo(const TaskSnapshot& task, std::ostream* os);
 
 struct TaskInRegistry;
 struct ParentTask
@@ -106,32 +107,15 @@ struct ParentTask
 struct TaskScope;
 struct ScheduledTaskScope;
 
+/**
+   The task object inside the registry
+ */
 struct TaskInRegistry {
   using Snapshot = TaskSnapshot;
-  static auto create(std::string name, std::source_location loc)
-      -> std::shared_ptr<TaskInRegistry>;
-  static auto subtask(TaskScope& parent, std::string name,
-                      std::optional<TransactionId> transaction,
-                      std::source_location loc)
-      -> std::shared_ptr<TaskInRegistry>;
-  static auto scheduled(TaskScope& parent, std::string name,
-                        std::source_location)
-      -> std::shared_ptr<TaskInRegistry>;
-  static auto transaction_task(TransactionId transaction, std::string name,
-                               std::source_location loc)
-      -> std::shared_ptr<TaskInRegistry>;
-  ~TaskInRegistry();
   auto id() -> void* { return this; }
   auto snapshot() -> TaskSnapshot;
   auto set_to_deleted() -> void {}
 
-  friend TaskScope;
-  friend ScheduledTaskScope;
-
- private:
-  TaskInRegistry(ParentTask parent, std::string name, std::string state,
-                 std::optional<TransactionId> transaction,
-                 std::source_location loc);
   /**
      Update the state
 
@@ -141,64 +125,49 @@ struct TaskInRegistry {
                     std::source_location loc = std::source_location::current())
       -> void;  // should only be called from scope
 
-  std::string const _name;
-  std::string _state;  // has to probably be atomic (for reading and writing
-                       // concurrently on different threads), but is string...
-  ParentTask _parent;
-  std::optional<TransactionId> _transaction;  // stays constant
+  std::string const name;
+  std::string state;  // has to probably be atomic (for reading and writing
+                      // concurrently on different threads), but is string...
+  ParentTask parent;
+  std::optional<TransactionId> transaction;  // stays constant
   std::optional<basics::ThreadId>
-      _running_thread;  // proably has to also be atomic because
-                        // changes for scheduled task
-  std::source_location const _source_location;
+      running_thread;  // proably has to also be atomic because
+                       // changes for scheduled task
+  std::source_location const source_location;
   // possibly interesting other properties:
   // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
 };
 
 /**
-   A task in scope in a running task.
-
-   The TaskScope sets the state of the corresponding task.
+   This task adds an entry to the task registry on construction and mark the
+   entry for deletion on destruction.
  */
-struct TaskScope {
-  // TODO possibly update source location of task in this constructor,
-  TaskScope(std::shared_ptr<TaskInRegistry> task) : _task{task} {
-    if (task) {
-      _task->_running_thread = basics::ThreadId::current();
-      _task->update_state("running");
-    }
-  }
-  TaskScope() : _task{nullptr} {}
-  TaskScope(TaskScope const&) = delete;
-  TaskScope(TaskScope&&) = default;
-  TaskScope& operator=(TaskScope&& other) = default;
-  ~TaskScope() {
-    if (_task) {
-      _task->update_state("done");
-    }
-  }
+struct Task {
+  Task(Task const&) = delete;
+  Task& operator=(Task const&) = delete;
+  Task(Task&&) = delete;
+  Task& operator=(Task&&) = delete;
+  ~Task();
+
+  Task(TaskInRegistry task_in_registry);
+
+  auto id() -> void*;
   auto update_state(std::string_view state,
                     std::source_location loc = std::source_location::current())
-      -> void {
-    if (_task) {
-      _task->update_state(std::move(state), std::move(loc));
-    }
-  }
-
-  friend TaskInRegistry;
+      -> void;
 
  private:
-  auto task() -> std::shared_ptr<TaskInRegistry> { return _task; }
-  std::shared_ptr<TaskInRegistry> _task;
+  struct noop {
+    void operator()(void*) {}
+  };
+  std::unique_ptr<containers::ThreadOwnedList<TaskInRegistry>::Node, noop>
+      _node_in_registry = nullptr;
 };
 
-struct ScheduledTaskScope {
-  ScheduledTaskScope(std::shared_ptr<TaskInRegistry> task) : _task{task} {}
-  ScheduledTaskScope(ScheduledTaskScope&&) = default;
-  ScheduledTaskScope(ScheduledTaskScope const&) = delete;
-  auto start() && -> TaskScope { return TaskScope{std::move(_task)}; }
-
- private:
-  std::shared_ptr<TaskInRegistry> _task;
+/** Helper type to create a basic task */
+struct BaseTask : public Task {
+  BaseTask(std::string name,
+           std::source_location = std::source_location::current());
 };
 
 }  // namespace arangodb::task_registry

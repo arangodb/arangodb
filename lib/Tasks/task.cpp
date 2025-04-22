@@ -24,7 +24,10 @@
 
 #include "Assertions/ProdAssert.h"
 #include "Containers/Concurrent/source_location.h"
+#include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
+#include "Tasks/task_registry_variable.h"
+#include <optional>
 #include <source_location>
 
 // helper type for the visitor
@@ -39,95 +42,14 @@ overloaded(Ts...) -> overloaded<Ts...>;
 
 namespace arangodb::task_registry {
 
-auto TaskInRegistry::create(std::string name, std::source_location loc)
-    -> std::shared_ptr<TaskInRegistry> {
-  struct MakeSharedTask : TaskInRegistry {
-    MakeSharedTask(ParentTask parent, std::string name, std::string state,
-                   std::source_location loc)
-        : TaskInRegistry(parent, std::move(name), std::move(state),
-                         std::nullopt, std::move(loc)) {}
-  };
-  return std::make_shared<MakeSharedTask>(
-      ParentTask{RootTask{}}, std::move(name), "created", std::move(loc));
-}
-auto TaskInRegistry::subtask(TaskScope& parent, std::string name,
-                             std::optional<TransactionId> transaction,
-                             std::source_location loc)
-    -> std::shared_ptr<TaskInRegistry> {
-  struct MakeSharedTask : TaskInRegistry {
-    MakeSharedTask(ParentTask parent, std::string name, std::string state,
-                   std::optional<TransactionId> transaction,
-                   std::source_location loc)
-        : TaskInRegistry(parent, std::move(name), std::move(state),
-                         std::move(transaction), std::move(loc)) {}
-  };
-  return std::make_shared<MakeSharedTask>(
-      ParentTask{parent.task()}, std::move(name), "created",
-      std::move(transaction), std::move(loc));
-}
-auto TaskInRegistry::scheduled(TaskScope& parent, std::string name,
-                               std::source_location loc)
-    -> std::shared_ptr<TaskInRegistry> {
-  struct MakeSharedTask : TaskInRegistry {
-    MakeSharedTask(ParentTask parent, std::string name, std::string state,
-                   std::source_location loc)
-        : TaskInRegistry(parent, std::move(name), std::move(state),
-                         std::nullopt, std::move(loc)) {}
-  };
-  return std::make_shared<MakeSharedTask>(
-      ParentTask{parent.task()}, std::move(name), "scheduled", std::move(loc));
-}
-
-auto TaskInRegistry::transaction_task(TransactionId transaction,
-                                      std::string name,
-                                      std::source_location loc)
-    -> std::shared_ptr<TaskInRegistry> {
-  struct MakeSharedTask : TaskInRegistry {
-    MakeSharedTask(ParentTask parent, std::string name, std::string state,
-                   std::source_location loc)
-        : TaskInRegistry(parent, std::move(name), std::move(state),
-                         std::nullopt, std::move(loc)) {}
-  };
-  return std::make_shared<MakeSharedTask>(ParentTask{std::move(transaction)},
-                                          std::move(name), "created",
-                                          std::move(loc));
-}
-
-TaskInRegistry::TaskInRegistry(ParentTask parent, std::string name,
-                               std::string state,
-                               std::optional<TransactionId> transaction,
-                               std::source_location loc)
-    : _name{std::move(name)},
-      _state{std::move(state)},
-      _parent{std::move(parent)},
-      _transaction{std::move(transaction)},
-      _source_location{std::move(loc)} {}
-
-// TODO
-// Task::~Task() {
-//   if (_registry) {
-//     _registry->garbage_collect();
-//   }
-// }
-
-auto TaskInRegistry::update_state(std::string_view state,
-                                  std::source_location loc) -> void {
-  auto current_thread = basics::ThreadId::current();
-  ADB_PROD_ASSERT(current_thread == _running_thread) << fmt::format(
-      "TaskRegistry::update_state was called from thread {} but needs to be "
-      "called from its owning thread {}. Called at {}. Task: {} ({}), {}",
-      fmt::format("{}", inspection::json(current_thread)),
-      fmt::format("{}", inspection::json(_running_thread)),
-      inspection::json(basics::SourceLocationSnapshot::from(loc)), _name,
-      _state,
-      inspection::json(basics::SourceLocationSnapshot::from(_source_location)));
-  _state = state;
+void PrintTo(const TaskSnapshot& task, std::ostream* os) {
+  *os << inspection::json(task);
 }
 
 auto TaskInRegistry::snapshot() -> TaskSnapshot {
   return TaskSnapshot{
-      .name = _name,
-      .state = _state,
+      .name = name,
+      .state = state,
       .id = id(),
       .parent = std::visit(
           overloaded{[&](RootTask root) { return ParentTaskSnapshot{root}; },
@@ -137,19 +59,56 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
                      [&](TransactionId transaction) {
                        return ParentTaskSnapshot{transaction};
                      }},
-          _parent),
-      .transaction = _transaction,
-      .thread = _running_thread,
+          parent),
+      .transaction = transaction,
+      .thread = running_thread,
       .source_location = basics::SourceLocationSnapshot{
-          .file_name = _source_location.file_name(),
-          .function_name = _source_location.function_name(),
-          .line = _source_location.line()}};
+          .file_name = source_location.file_name(),
+          .function_name = source_location.function_name(),
+          .line = source_location.line()}};
 }
+
+Task::Task(TaskInRegistry task_in_registry)
+    : _node_in_registry{get_thread_registry().add(
+          [&]() { return std::move(task_in_registry); })} {}
+
+Task::~Task() {
+  if (_node_in_registry != nullptr) {
+    _node_in_registry->list->mark_for_deletion(_node_in_registry.get());
+  }
+}
+
+auto Task::id() -> void* {
+  if (_node_in_registry != nullptr) {
+    return _node_in_registry->data.id();
+  } else {
+    return nullptr;
+  }
+}
+
+auto Task::update_state(std::string_view state, std::source_location loc)
+    -> void {
+  if (_node_in_registry) {
+    auto& task_data = _node_in_registry->data;
+    auto current_thread = basics::ThreadId::current();
+    ADB_PROD_ASSERT(current_thread == task_data.running_thread) << fmt::format(
+        "TaskRegistry::update_state was called from thread {} but needs to be "
+        "called from its owning thread {}. Called at {}. Task: {} ({}), {}",
+        fmt::format("{}", inspection::json(current_thread)),
+        fmt::format("{}", inspection::json(task_data.running_thread)),
+        inspection::json(basics::SourceLocationSnapshot::from(loc)),
+        task_data.name, state,
+        inspection::json(
+            basics::SourceLocationSnapshot::from(task_data.source_location)));
+    task_data.state = state;
+  }
+}
+
+BaseTask::BaseTask(std::string name, std::source_location loc)
+    : Task{TaskInRegistry{.name = std::move(name),
+                          .state = "created",
+                          .parent = {ParentTask{RootTask{}}},
+                          .running_thread = basics::ThreadId::current(),
+                          .source_location = std::move(loc)}} {}
 
 }  // namespace arangodb::task_registry
-
-std::ostream& operator<<(std::ostream& os,
-                         arangodb::task_registry::TaskSnapshot const& t) {
-  os << fmt::format("{}", arangodb::inspection::json(t));
-  return os;
-}
