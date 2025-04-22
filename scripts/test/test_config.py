@@ -79,6 +79,8 @@ class TestConfig:
         self.args += [
             "--coreCheck",
             "true",
+            "--coreAbort",
+            "true",
             "--disableMonitor",
             "true",
             "--writeXmlReport",

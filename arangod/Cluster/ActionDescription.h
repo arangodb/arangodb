@@ -43,14 +43,8 @@ namespace maintenance {
 enum ActionState {
   READY = 1,      // waiting for a worker on the deque
   EXECUTING = 2,  // user or worker thread currently executing
-  WAITING = 3,    // initiated a pre-task, waiting for its completion
-  WAITINGPRE =
-      4,  // parent task created, about to execute on parent's thread - not used
-  WAITINGPOST =
-      5,  // parent task created, will execute after parent's success - not used
-  PAUSED = 6,    // (not implemented) user paused task - not used
-  COMPLETE = 7,  // task completed successfully
-  FAILED = 8,    // task failed, no longer executing
+  COMPLETE = 3,   // task completed successfully
+  FAILED = 4,     // task failed, no longer executing
 };
 
 /**
