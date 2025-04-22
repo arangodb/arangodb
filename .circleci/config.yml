@@ -19,6 +19,8 @@ jobs:
       - run:
           name: Compile C++ program
           command: |
+            echo "Run checker"
+            ./cgroup_checker.sh || true
             echo "Build with gcc"
             g++ -fopenmp openmp.cpp -o openmp-gcc
             ./openmp-gcc
