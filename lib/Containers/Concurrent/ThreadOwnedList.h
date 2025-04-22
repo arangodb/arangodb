@@ -49,7 +49,7 @@ concept CanBeSetToDeleted = requires(T t) {
    thread (via garbage_collect()) or on another thread (via
    garbage_collect_external()).
 
-   A thread owned list contains an atomic list of nodes. If a nodes is marked
+   A thread owned list contains an atomic list of nodes. If a node is marked
    for deletion, it stays in this list, but is additionally added to the atomic
    free list. The garbage collection goes through this free list, removes each
    node in this free list from the node list (and from the free list as
