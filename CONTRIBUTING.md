@@ -319,6 +319,7 @@ Recommended for Debian-based Linux. First, install dependencies:
 - `libopenblas-dev`
 - `cmake` (at least 3.21)
 - `libssl-dev`
+- `libstdc++-14-dev`
 
 After installing, follow the general build steps above.
 
