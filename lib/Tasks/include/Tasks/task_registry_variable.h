@@ -34,4 +34,6 @@ struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {
 
 extern Registry registry;
 
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
 }  // namespace arangodb::task_registry
