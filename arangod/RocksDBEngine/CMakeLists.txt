@@ -34,7 +34,6 @@ add_library(arango_rocksdb STATIC
   RocksDBOptionFeature.cpp
   RocksDBOptionsProvider.cpp
   RocksDBPrimaryIndex.cpp
-  RocksDBRateLimiterThread.cpp
   RocksDBRecoveryManager.cpp
   RocksDBReplicationCommon.cpp
   RocksDBReplicationContext.cpp

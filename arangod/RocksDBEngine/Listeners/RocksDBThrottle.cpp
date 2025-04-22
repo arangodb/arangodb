@@ -124,7 +124,6 @@ void RocksDBThrottle::stopThread() {
 void RocksDBThrottle::OnFlushBegin(
     rocksdb::DB* db, rocksdb::FlushJobInfo const& flush_job_info) {
   // save start time in thread local storage
-  LOG_TOPIC("db370", TRACE, Logger::ENGINES) << "beggining flush";
   flushStart = std::chrono::steady_clock::now();
 }
 
@@ -447,7 +446,6 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
 
     // start at level 0 and then continue digging deeper until we find
     // _some_ file.
-    // TODO(jbajic) this can be done differently
     for (int i = 0; i <= numLevels; ++i) {
       propertyName.push_back('0' + i);
       bool ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
@@ -462,8 +460,6 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
         break;
       }
     }
-    LOG_TOPIC("93b70", TRACE, Logger::ENGINES)
-        << "TEMP NUMBER OF FILES: " << temp;
 
     if (static_cast<int>(_slowdownWritesTrigger) <= temp) {
       temp -= (static_cast<int>(_slowdownWritesTrigger) - 1);
@@ -481,13 +477,6 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
       immBacklog = std::stoi(retString);
     }
 
-    propertyName = rocksdb::DB::Properties::kCFWriteStallStats;
-    ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
-    TRI_ASSERT(ok);
-    LOG_TOPIC("574f5", TRACE, Logger::ENGINES)
-        << "WriteStallStats for " << RocksDBColumnFamilyManager::name(cf)
-        << " is: " << retString;
-
     ok = _internalRocksDB->GetProperty(
         cf, rocksdb::DB::Properties::kEstimatePendingCompactionBytes,
         &retString);
@@ -495,11 +484,6 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
       pendingCompactionBytes += std::stoll(retString);
     }
   }
-  propertyName = rocksdb::DB::Properties::kDBWriteStallStats;
-  auto ok = _internalRocksDB->GetProperty(propertyName, &retString);
-  TRI_ASSERT(ok);
-  LOG_TOPIC("574f5", TRACE, Logger::ENGINES)
-      << "WriteStallStats: " << retString;
 
   if (immTrigger < immBacklog) {
     compactionBacklog += (immBacklog - immTrigger);
