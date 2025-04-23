@@ -7,7 +7,7 @@ find_package(Yarn REQUIRED)
 
 set(FRONTEND_DESTINATION ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/react)
 
-set(NODE_MODULES_BUNDLE /node_modules.tar.xz)
+option(NODE_MODULES_BUNDLE "specify pre-downloaded node modules for aardvark" "")
 
 
 if (EXISTS "${NODE_MODULES_BUNDLE}")

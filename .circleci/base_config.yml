@@ -264,7 +264,7 @@ jobs:
           name: Build frontend
           command: |
             cd js/apps/system/_admin/aardvark/APP/react
-            yarn install
+            tar -xvJf /node_modules.tar.xz
             yarn build
       - persist_to_workspace:
           root: .
