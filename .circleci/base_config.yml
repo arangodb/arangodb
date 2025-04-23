@@ -265,6 +265,7 @@ jobs:
           command: |
             cd js/apps/system/_admin/aardvark/APP/react
             tar -xvJf /node_modules.tar.xz
+            yarn install
             yarn build
       - persist_to_workspace:
           root: .
