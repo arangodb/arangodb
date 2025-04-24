@@ -109,7 +109,7 @@ RUN cd / ; git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/ar
 
 # Finally, build the actual build image based on the above preparation:
 
-FROM prepare
+FROM nodejs
 
 MAINTAINER Max Neunhoeffer <max@arangodb.com>
 
