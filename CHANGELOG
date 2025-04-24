@@ -1,14 +1,18 @@
 devel
 -----
 
+* Switched to customized (instead of official) forked rclone v1.65.2 built with
+  go1.23.8 to avoid CVEs.
+
+* Fix BTS-2119: The optimization rule `async-prefetch` could cause
+  crashes when a query aborts early, e.g. due to a runtime error,
+  the query being killed, or the memory limit being reached. 
+
 * Upgraded OpenSSL to 3.5.0.
 
 * Set Node v20.14.0 for core UI production (CI) compilation.
 
 * Updated ArangoDB Starter to v0.19.10.
-
-* Rebuilt included rclone v1.65.5 with go1.22.12 and non-vulnerable
-  dependencies.
 
 * Remove overeager assert, only relevant for testing.
 
