@@ -26,10 +26,12 @@ jobs:
             echo "Run checker:"
             ./cgroup_checker.sh || true
             echo "Build with gcc"
+            g++ --version
             g++ -fopenmp openmp.cpp -o openmp-gcc
             ./openmp-gcc
 
             echo "Build with clang"
+            clang++-19 --version
             clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
             ./openmp-clang
 
