@@ -24,6 +24,9 @@ parameters:
   enterprise-branch:
     type: string
     default: ""
+  oskar-branch:
+    type: string
+    default: "master"
   dont-cancel-pipelines:
     type: boolean
     default: false
@@ -363,7 +366,8 @@ jobs:
                   curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
                   chmod a+x build/bin/arangodb
                   if [ << parameters.enterprise >> = true ]; then
-                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/v$RCLONE_VERSION/rclone-arangodb-linux-$arch"
+                    OSKAR_BRANCH=<< pipeline.parameters.oskar-branch >>
+                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/$OSKAR_BRANCH/rclone/v$RCLONE_VERSION/rclone-arangodb-linux-$arch"
                     chmod a+x build/bin/rclone-arangodb
                   fi
       - when:
