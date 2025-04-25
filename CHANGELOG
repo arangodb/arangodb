@@ -1,7 +1,8 @@
-3.12.4.3 (XXXX-XX-XX)
+3.12.4.3 (2025-04-25)
 ---------------------
 
 * Fix concurrency bug which can lead to lost threads. See BTS-2087.
+
 
 3.12.4.2 (2025-04-09)
 ---------------------
