@@ -152,10 +152,10 @@ struct ChildTask;
  */
 struct Task {
   friend ChildTask;
+  Task(Task&& other) = default;
+  Task& operator=(Task&& other) = default;
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
-  Task(Task&&) = delete;
-  Task& operator=(Task&&) = delete;
 
   Task(TaskInRegistry task_in_registry);
 
