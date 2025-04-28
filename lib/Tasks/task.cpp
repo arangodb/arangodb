@@ -56,12 +56,8 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
                      [&](ParentNode parent) {
                        return ParentTaskSnapshot{
                            TaskIdWrapper{parent.node->data.id()}};
-                     },
-                     [&](TransactionId transaction) {
-                       return ParentTaskSnapshot{transaction};
                      }},
           parent),
-      .transaction = transaction,
       .thread = running_thread,
       .source_location = basics::SourceLocationSnapshot{
           .file_name = source_location.file_name(),
@@ -82,24 +78,6 @@ auto Task::id() -> void* {
     return _node_in_registry->data.id();
   } else {
     return nullptr;
-  }
-}
-
-auto Task::update_state(std::string_view state, std::source_location loc)
-    -> void {
-  if (_node_in_registry) {
-    auto& task_data = _node_in_registry->data;
-    auto current_thread = basics::ThreadId::current();
-    ADB_PROD_ASSERT(current_thread == task_data.running_thread) << fmt::format(
-        "TaskRegistry::update_state was called from thread {} but needs to be "
-        "called from its owning thread {}. Called at {}. Task: {} ({}), {}",
-        fmt::format("{}", inspection::json(current_thread)),
-        fmt::format("{}", inspection::json(task_data.running_thread)),
-        inspection::json(basics::SourceLocationSnapshot::from(loc)),
-        task_data.name, state,
-        inspection::json(
-            basics::SourceLocationSnapshot::from(task_data.source_location)));
-    task_data.state = state;
   }
 }
 

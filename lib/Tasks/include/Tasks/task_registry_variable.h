@@ -25,22 +25,11 @@
 #include "Containers/Concurrent/ListOfNonOwnedLists.h"
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Tasks/task.h"
-#include "Logger/LogMacros.h"
 
 namespace arangodb::task_registry {
 
 using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
-struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {
-  // TODO just here for debugging purpose
-  auto log(std::string_view message) -> void {
-    std::vector<TaskSnapshot> tasks;
-    for_node([&](task_registry::TaskSnapshot task) {
-      tasks.emplace_back(std::move(task));
-    });
-    LOG_DEVEL << fmt::format("{}: {}", message,
-                             arangodb::inspection::json(tasks));
-  }
-};
+struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
 
 extern Registry registry;
 
