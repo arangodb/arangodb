@@ -53,8 +53,9 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
       .id = id(),
       .parent = std::visit(
           overloaded{[&](RootTask root) { return ParentTaskSnapshot{root}; },
-                     [&](std::shared_ptr<TaskInRegistry> parent) {
-                       return ParentTaskSnapshot{TaskIdWrapper{parent.get()}};
+                     [&](ParentNode parent) {
+                       return ParentTaskSnapshot{
+                           TaskIdWrapper{parent.node->data.id()}};
                      },
                      [&](TransactionId transaction) {
                        return ParentTaskSnapshot{transaction};
@@ -69,14 +70,12 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
 }
 
 Task::Task(TaskInRegistry task_in_registry)
-    : _node_in_registry{get_thread_registry().add(
-          [&]() { return std::move(task_in_registry); })} {}
-
-Task::~Task() {
-  if (_node_in_registry != nullptr) {
-    _node_in_registry->list->mark_for_deletion(_node_in_registry.get());
-  }
-}
+    : _node_in_registry{std::shared_ptr<Node>(
+          reinterpret_cast<Node*>(get_thread_registry().add(
+              [&]() { return std::move(task_in_registry); })),
+          [](containers::ThreadOwnedList<TaskInRegistry>::Node* ptr) {
+            ptr->list->mark_for_deletion(ptr);
+          })} {}
 
 auto Task::id() -> void* {
   if (_node_in_registry != nullptr) {
@@ -106,9 +105,17 @@ auto Task::update_state(std::string_view state, std::source_location loc)
 
 BaseTask::BaseTask(std::string name, std::source_location loc)
     : Task{TaskInRegistry{.name = std::move(name),
-                          .state = "created",
-                          .parent = {ParentTask{RootTask{}}},
+                          .state = "running",
+                          .parent = ParentTask{RootTask{}},
                           .running_thread = basics::ThreadId::current(),
                           .source_location = std::move(loc)}} {}
+
+ChildTask::ChildTask(std::string name, Task& parent, std::source_location loc)
+    : Task{TaskInRegistry{
+          .name = std::move(name),
+          .state = "running",
+          .parent = ParentTask{ParentNode{parent._node_in_registry}},
+          .running_thread = basics::ThreadId::current(),
+          .source_location = std::move(loc)}} {}
 
 }  // namespace arangodb::task_registry

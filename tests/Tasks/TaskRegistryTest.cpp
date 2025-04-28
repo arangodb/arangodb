@@ -33,7 +33,7 @@ using namespace arangodb;
 using namespace arangodb::task_registry;
 
 namespace {
-auto get_all_tasks(Registry& registry) -> std::vector<TaskSnapshot> {
+auto get_all_tasks() -> std::vector<TaskSnapshot> {
   std::vector<TaskSnapshot> tasks;
   registry.for_node(
       [&](TaskSnapshot task) { tasks.emplace_back(std::move(task)); });
@@ -47,18 +47,52 @@ struct MyBaseTask : public BaseTask {
       : BaseTask{std::move(name), loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))} {}
 };
+struct MyChildTask : public ChildTask {
+  basics::SourceLocationSnapshot source_location;
+  MyChildTask(std::string name, Task& task,
+              std::source_location loc = std::source_location::current())
+      : ChildTask{std::move(name), task, loc},
+        source_location{basics::SourceLocationSnapshot::from(std::move(loc))} {}
+};
 }  // namespace
 
-TEST(TaskRegistryTest,
-     a_root_task_is_saved_as_a_parent_of_an_entry_point_task) {
+struct TaskRegistryTest : ::testing::Test {
+  void TearDown() override {
+    // execute garbage collection on current thread
+    get_thread_registry().garbage_collect();
+  }
+};
+
+// TODO fix naming of base task vs root task
+TEST_F(TaskRegistryTest, a_base_task_creates_a_root_task) {
   auto task = MyBaseTask{"test task"};
 
-  auto all_tasks = get_all_tasks(registry);
-  EXPECT_EQ(all_tasks, (std::vector<TaskSnapshot>{(TaskSnapshot{
-                           .name = "test task",
-                           .state = "created",
-                           .id = task.id(),
-                           .parent = {RootTask{}},
-                           .thread = basics::ThreadId::current(),
-                           .source_location = task.source_location})}));
+  EXPECT_EQ(get_all_tasks(), (std::vector<TaskSnapshot>{(TaskSnapshot{
+                                 .name = "test task",
+                                 .state = "running",
+                                 .id = task.id(),
+                                 .parent = {RootTask{}},
+                                 .thread = basics::ThreadId::current(),
+                                 .source_location = task.source_location})}));
+}
+
+TEST_F(TaskRegistryTest, create_child_task) {
+  auto parent_task = MyBaseTask{"parent task"};
+  auto child_task = MyChildTask{"child task", parent_task};
+
+  EXPECT_EQ(
+      get_all_tasks(),
+      (std::vector<TaskSnapshot>{
+          (TaskSnapshot{.name = "child task",
+                        .state = "running",
+                        .id = child_task.id(),
+                        .parent = {TaskIdWrapper{parent_task.id()}},
+                        .thread = basics::ThreadId::current(),
+                        .source_location = child_task.source_location}),
+          (TaskSnapshot{.name = "parent task",
+                        .state = "running",
+                        .id = parent_task.id(),
+                        .parent = {RootTask{}},
+                        .thread = basics::ThreadId::current(),
+                        .source_location = parent_task.source_location})}));
 }

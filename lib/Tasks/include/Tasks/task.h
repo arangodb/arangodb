@@ -100,9 +100,11 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
 }
 void PrintTo(const TaskSnapshot& task, std::ostream* os);
 
-struct TaskInRegistry;
-struct ParentTask
-    : std::variant<RootTask, std::shared_ptr<TaskInRegistry>, TransactionId> {};
+struct Node;
+struct ParentNode {
+  std::shared_ptr<Node> node;
+};
+struct ParentTask : std::variant<RootTask, ParentNode, TransactionId> {};
 
 struct TaskScope;
 struct ScheduledTaskScope;
@@ -138,16 +140,22 @@ struct TaskInRegistry {
   // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
 };
 
+struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {
+  using containers::ThreadOwnedList<TaskInRegistry>::Node::Node;
+};
+
+struct ChildTask;
+
 /**
    This task adds an entry to the task registry on construction and mark the
    entry for deletion on destruction.
  */
 struct Task {
+  friend ChildTask;
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
   Task(Task&&) = delete;
   Task& operator=(Task&&) = delete;
-  ~Task();
 
   Task(TaskInRegistry task_in_registry);
 
@@ -157,17 +165,20 @@ struct Task {
       -> void;
 
  private:
-  struct noop {
-    void operator()(void*) {}
-  };
-  std::unique_ptr<containers::ThreadOwnedList<TaskInRegistry>::Node, noop>
-      _node_in_registry = nullptr;
+  std::shared_ptr<Node> _node_in_registry = nullptr;
 };
 
 /** Helper type to create a basic task */
+// TODO automatically detect current task create
+// - a base task if there is not current task on current thread
+// - a child task if there exists a current task
 struct BaseTask : public Task {
   BaseTask(std::string name,
            std::source_location = std::source_location::current());
+};
+struct ChildTask : public Task {
+  ChildTask(std::string name, Task& parent,
+            std::source_location = std::source_location::current());
 };
 
 }  // namespace arangodb::task_registry
