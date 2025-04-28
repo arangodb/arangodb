@@ -24,20 +24,25 @@
 
 #pragma once
 
+#include "Graph/Options/QueryContextObserver.h"
+// TODO HEIKO: do not include h file here, use forward declaration instead
+// TODO HEIKO: do not include h file here, use forward declaration instead
 #include <cstddef>
 
 namespace arangodb::graph {
 
 struct OneSidedEnumeratorOptions {
  public:
-  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth);
+  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth, aql::QueryContext& query);
   ~OneSidedEnumeratorOptions();
 
   [[nodiscard]] size_t getMinDepth() const noexcept;
   [[nodiscard]] size_t getMaxDepth() const noexcept;
+  [[nodiscard]] bool isKilled() const noexcept { return _observer.isKilled(); }
 
  private:
   size_t const _minDepth;
   size_t const _maxDepth;
+  QueryContextObserver _observer;
 };
 }  // namespace arangodb::graph

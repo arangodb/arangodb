@@ -818,7 +818,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
   TraverserOptions* opts = this->options();
 
   arangodb::graph::OneSidedEnumeratorOptions options{opts->minDepth,
-                                                     opts->maxDepth};
+                                                     opts->maxDepth,
+                                                     opts->query()};
   /*
    * PathValidator Disjoint Helper (TODO [GraphRefactor]: Copy from createBlock)
    * Clean this up as soon we clean up the whole TraversalNode as well.
@@ -915,7 +916,8 @@ ClusterBaseProviderOptions TraversalNode::getClusterBaseProviderOptions(
           opts->produceVertices(),
           &opts->getExpressionCtx(),
           filterConditionVariables,
-          std::move(availableDepthsSpecificConditions)};
+          std::move(availableDepthsSpecificConditions),
+          opts->query()};
 }
 
 SingleServerBaseProviderOptions
@@ -936,7 +938,8 @@ TraversalNode::getSingleServerBaseProviderOptions(
           opts->getVertexProjections(),
           opts->getEdgeProjections(),
           opts->produceVertices(),
-          opts->useCache()};
+          opts->useCache(),
+          opts->query()};
 }
 
 /// @brief creates corresponding ExecutionBlock

@@ -476,13 +476,15 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache(),
+        opts->query());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices(), opts->useCache());
+        opts->produceVertices(), opts->useCache(),
+        opts->query());
 
     using Provider = SingleServerProvider<SingleServerProviderStep>;
     if (opts->query().queryOptions().getTraversalProfileLevel() ==
@@ -679,10 +681,12 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
     ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
-                                                      opts->produceVertices());
+                                                      opts->produceVertices(),
+                                                      opts->query());
     forwardProviderOptions.setClearEdgeCacheOnClear(false);
     ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
-                                                       opts->produceVertices());
+                                                       opts->produceVertices(),
+                                                       opts->query());
     backwardProviderOptions.setClearEdgeCacheOnClear(false);
     // A comment is in order here: For all cases covered here
     // (k-shortest-paths, all shortest paths, k-paths) we do not need to

@@ -119,7 +119,7 @@ class SingleServerProviderTest : public ::testing::Test {
             std::move(usedIndexes),
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
         *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-        _edgeProjections, /*produceVertices*/ true, /*useCache*/ true);
+        _edgeProjections, /*produceVertices*/ true, /*useCache*/ true, *query);
     return {*query.get(), std::move(opts), _resourceMonitor};
   }
 

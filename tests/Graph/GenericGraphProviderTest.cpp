@@ -37,7 +37,9 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/TraverserOptions.h"
 
+#include <ios>
 #include <unordered_set>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::tests;
@@ -138,7 +140,8 @@ class GraphProviderTest : public ::testing::Test {
               std::move(usedIndexes),
               std::unordered_map<uint64_t, std::vector<IndexAccessor>>{}),
           *_expressionContext.get(), {}, _emptyShardMap, _vertexProjections,
-          _edgeProjections, /*produceVertices*/ true, /*useCache*/ true);
+          _edgeProjections, /*produceVertices*/ true, /*useCache*/ true,
+          *query);
       return SingleServerProvider<SingleServerProviderStep>(
           *query.get(), std::move(opts), resourceMonitor);
     }
@@ -241,7 +244,7 @@ class GraphProviderTest : public ::testing::Test {
           std::make_shared<RefactoredClusterTraverserCache>(resourceMonitor);
 
       ClusterBaseProviderOptions opts(clusterCache, clusterEngines.get(), false,
-                                      true);
+                                      true, *query);
       return ClusterProvider<ClusterProviderStep>(*query.get(), std::move(opts),
                                                   resourceMonitor);
     }
@@ -449,6 +452,53 @@ TYPED_TEST(GraphProviderTest, destroy_engines) {
     EXPECT_EQ(statsAfterSteal.getHttpRequests(),
               this->clusterEngines.get()->size());
   }
+}
+
+TYPED_TEST(GraphProviderTest, should_cancel_traversal_when_query_is_aborted) {
+  // Create a graph with 4 nodes in a circle (bidirectional edges)
+  MockGraph g{};
+  // Add edges in a circle (0->1->2->3->0) and back
+  g.addEdge(0, 1);
+  g.addEdge(1, 2);
+  g.addEdge(2, 3);
+  g.addEdge(3, 0);
+  // Add reverse edges
+  g.addEdge(1, 0);
+  g.addEdge(2, 1);
+  g.addEdge(3, 2);
+  g.addEdge(0, 3);
+
+  std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
+      expectedVerticesEdgesBundleToFetch = {{0, {}}};
+
+  auto testee = this->makeProvider(g, expectedVerticesEdgesBundleToFetch);
+  std::string startString = g.vertexToId(0);
+  VPackHashedStringRef startH{startString.c_str(),
+                              static_cast<uint32_t>(startString.length())};
+  auto start = testee.startVertex(startH);
+
+  if (start.isLooseEnd()) {
+    std::vector<decltype(start)*> looseEnds{};
+    looseEnds.emplace_back(&start);
+    auto futures = testee.fetch(looseEnds);
+    auto steps = futures.waitAndGet();
+  }
+
+  std::thread abortThread([this]() {
+    this->query->kill();
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  });
+
+  EXPECT_THROW(
+      {
+        while (true) {
+          testee.expand(start, 0,
+                        [](typename decltype(testee)::Step n) -> void {});
+        }
+      },
+      arangodb::basics::Exception);
+
+  abortThread.join();
 }
 
 }  // namespace generic_graph_provider_test

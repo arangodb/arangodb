@@ -28,8 +28,10 @@
 #include "Aql/InAndOutRowExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
+#include "Aql/QueryContext.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
+#include "Graph/Options/QueryContextObserver.h"
 #include "Transaction/Methods.h"
 
 #ifdef USE_ENTERPRISE
@@ -45,7 +47,6 @@
 namespace arangodb {
 
 namespace aql {
-class QueryContext;
 struct AstNode;
 class InputAqlItemRow;
 }  // namespace aql
@@ -99,10 +100,10 @@ struct SingleServerBaseProviderOptions {
       MonitoredCollectionToShardMap const& collectionToShardMap,
       aql::Projections const& vertexProjections,
       aql::Projections const& edgeProjections, bool produceVertices,
-      bool useCache);
+      bool useCache,
+      aql::QueryContext& query);
 
-  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
-      delete;
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) = delete;
   SingleServerBaseProviderOptions(SingleServerBaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
@@ -131,6 +132,10 @@ struct SingleServerBaseProviderOptions {
   aql::Projections const& getVertexProjections() const;
 
   aql::Projections const& getEdgeProjections() const;
+
+  bool isKilled() const noexcept {
+    return _queryObserver.isKilled();
+  }
 
  private:
   // The temporary Variable used in the Indexes
@@ -171,6 +176,8 @@ struct SingleServerBaseProviderOptions {
   bool const _produceVertices;
 
   bool const _useCache;
+
+  QueryContextObserver _queryObserver;
 };
 
 struct ClusterBaseProviderOptions {
@@ -181,7 +188,8 @@ struct ClusterBaseProviderOptions {
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
       std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
-      bool produceVertices);
+      bool produceVertices,
+      aql::QueryContext& query);
 
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
@@ -189,7 +197,8 @@ struct ClusterBaseProviderOptions {
       bool produceVertices, aql::FixedVarExpressionContext* expressionContext,
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
           filterConditionVariables,
-      std::unordered_set<uint64_t> availableDepthsSpecificConditions);
+      std::unordered_set<uint64_t> availableDepthsSpecificConditions,
+      aql::QueryContext& query);
 
   RefactoredClusterTraverserCache* getCache();
 
@@ -225,6 +234,10 @@ struct ClusterBaseProviderOptions {
 
   void setClearEdgeCacheOnClear(bool flag) noexcept {
     _clearEdgeCacheOnClear = flag;
+  }
+
+  bool isKilled() const noexcept {
+    return _queryObserver.isKilled();
   }
 
  private:
@@ -264,6 +277,8 @@ struct ClusterBaseProviderOptions {
   // not true and hurts performance. Therefore, for these cases it is possible
   // to set this flag to `false` to retain cached data across calls to `clear`.
   bool _clearEdgeCacheOnClear = true;
+
+  QueryContextObserver _queryObserver;
 };
 
 }  // namespace graph

@@ -22,19 +22,31 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OneSidedEnumeratorOptions.h"
+#pragma once
 
-using namespace arangodb;
-using namespace arangodb::graph;
+#include "Aql/QueryContext.h"
 
-OneSidedEnumeratorOptions::OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth, aql::QueryContext& query)
-    : _minDepth(minDepth), _maxDepth(maxDepth), _observer(query) {}
+// This class serves as a wrapper around QueryContext to explicitly track where query killing
+// is being used in the graph traversal code. It provides a single point of access to check
+// if a query has been killed, making it easier to maintain and modify the query killing
+// behavior if needed.
+//
+// While this adds a small layer of indirection, it helps with code clarity and maintainability.
+// If profiling shows this wrapper causes significant overhead, we can remove it and use
+// QueryContext directly.
+//
+// We can change this or discuss if this approach is not liked.
 
-OneSidedEnumeratorOptions::~OneSidedEnumeratorOptions() = default;
+namespace arangodb::graph {
 
-size_t OneSidedEnumeratorOptions::getMinDepth() const noexcept {
-  return _minDepth;
-}
-size_t OneSidedEnumeratorOptions::getMaxDepth() const noexcept {
-  return _maxDepth;
-}
+class QueryContextObserver {
+ public:
+  explicit QueryContextObserver(aql::QueryContext& query) : _query(query) {}
+  
+  [[nodiscard]] bool isKilled() const { return _query.killed(); }
+
+ private:
+  aql::QueryContext& _query;
+};
+
+}  // namespace arangodb::graph 

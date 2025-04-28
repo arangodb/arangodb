@@ -101,7 +101,8 @@ MockGraphProvider::MockGraphProvider(arangodb::aql::QueryContext& queryContext,
     : _trx(queryContext.newTrxContext()),
       _reverse(opts.reverse()),
       _looseEnds(opts.looseEnds()),
-      _stats{} {
+      _stats{},
+      _queryContext(queryContext) {
   for (auto const& it : opts.data().edges()) {
     _fromIndex[it._from].push_back(it);
     _toIndex[it._to].push_back(it);
@@ -159,9 +160,16 @@ auto MockGraphProvider::fetch(std::vector<Step*> const& looseEnds)
 
 auto MockGraphProvider::expand(Step const& step, size_t previous,
                                std::function<void(Step)> callback) -> void {
+  if (isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   std::vector<Step> results{};
   results = expand(step, previous);
   for (auto const& s : results) {
+    if (isKilled()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
     callback(s);
   }
 }

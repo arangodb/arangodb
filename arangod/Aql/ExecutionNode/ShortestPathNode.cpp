@@ -437,13 +437,14 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     SingleServerBaseProviderOptions forwardProviderOptions(
         opts->tmpVar(), std::move(usedIndexes), opts->getExpressionCtx(), {},
         opts->collectionToShard(), opts->getVertexProjections(),
-        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache());
+        opts->getEdgeProjections(), opts->produceVertices(), opts->useCache(),
+        opts->query());
 
     SingleServerBaseProviderOptions backwardProviderOptions(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices(), opts->useCache());
+        opts->produceVertices(), opts->useCache(), opts->query());
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);
@@ -511,9 +512,11 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
     ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
-                                                      opts->produceVertices());
+                                                      opts->produceVertices(),
+                                                      opts->query());
     ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
-                                                       opts->produceVertices());
+                                                       opts->produceVertices(),
+                                                       opts->query());
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);
