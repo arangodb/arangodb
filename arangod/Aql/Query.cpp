@@ -1852,6 +1852,11 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
   ensureExecutionTime();
+  // Before transaction is destroyed we should wait for all async tasks to
+  // finish so they don't use trx object
+  for (auto const& snippet : _snippets) {
+    snippet->stopAsyncTasks();
+  }
 
   {
     std::unique_lock<std::mutex> guard{_resultMutex};
