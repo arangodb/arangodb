@@ -284,7 +284,35 @@ http://snowball.tartarus.org/ stemming for IResearch. We use the latest provided
 
 ## swagger-ui
 
-https://github.com/swagger-api/swagger-ui/releases
+Unless the issue described in https://github.com/swagger-api/swagger-ui/pull/10399
+has been fixed, a custom build of Swagger-UI with a patch is required.
+
+In `src/core/components/response.jsx`, add the following line:
+
+```diff
+ 
+           { example || schema ? (
+             <ModelExample
++              key={ specPathWithPossibleSchema.join("\n") }
+               specPath={specPathWithPossibleSchema}
+               getComponent={ getComponent }
+               getConfigs={ getConfigs }
+```
+
+You can use a Node.js container for building, like the following:
+
+```sh
+docker run --rm -it -v "$PWD:/root" node:22-bookworm sh
+```
+
+```sh
+cd /root
+npm install
+npm run build
+```
+
+If the issue is in fact resolved, you can get a prebuilt Swagger-UI from here:
+<https://github.com/swagger-api/swagger-ui/releases>
 
 Our copy of swagger-ui resides at `js/server/assets/swagger`. The `index.css`
 and `swagger-initializer.js` files contain a few tweaks to make swagger-ui look

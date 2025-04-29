@@ -1,4 +1,5 @@
-// Version: swagger-ui 5.20.1
+// Version: swagger-ui 5.21.0
+// Custom build with patch: https://github.com/swagger-api/swagger-ui/pull/10399
 window.onload = function() {
   //<editor-fold desc="Changeable Configuration Block">
 
