@@ -84,8 +84,8 @@ auto operator<<(std::ostream&, SourceLocation const&) -> std::ostream&;
 #ifdef WIN32
 
 // #pragma message "Using _stripPrefix for Windows"
-// if pathStr is `/path/to/arangodb/lib/Basics/SourceLocation.h`,
-// then this will return `lib/Basics/SourceLocation.h`
+// if pathStr is `C:\path\to\arangodb\lib\Basics/SourceLocation.h`,
+// then this will return `lib\Basics/SourceLocation.h`
 consteval auto SourceLocation::_stripPrefix(const char* pathStr) -> const
     char* {
   // `/path/to/arangodb/lib/Basics/SourceLocation.h`

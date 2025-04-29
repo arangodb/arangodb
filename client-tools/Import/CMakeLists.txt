@@ -27,7 +27,7 @@ install(
   TARGETS ${BIN_ARANGOIMPORT}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(${BIN_ARANGOIMPORT})
+install_config(arangoimport)
 
 add_dependencies(${BIN_ARANGOIMPORT} zlibstatic)
 

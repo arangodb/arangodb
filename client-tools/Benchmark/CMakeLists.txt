@@ -20,7 +20,7 @@ install(
   TARGETS ${BIN_ARANGOBENCH}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(${BIN_ARANGOBENCH})
+install_config(arangobench)
 
 add_dependencies(${BIN_ARANGOBENCH} zlibstatic)
 

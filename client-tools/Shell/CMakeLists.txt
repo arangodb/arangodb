@@ -57,7 +57,7 @@ if (USE_V8)
     TARGETS ${BIN_ARANGOSH}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-  install_config(${BIN_ARANGOSH})
+  install_config(arangosh)
 
   add_dependencies(${BIN_ARANGOSH} zlibstatic)
   

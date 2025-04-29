@@ -18,7 +18,7 @@ install(
   TARGETS ${BIN_ARANGODUMP}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(${BIN_ARANGODUMP})
+install_config(arangodump)
 
 add_dependencies(${BIN_ARANGODUMP} zlibstatic)
 

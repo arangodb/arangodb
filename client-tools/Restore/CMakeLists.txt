@@ -26,7 +26,7 @@ install(
   TARGETS ${BIN_ARANGORESTORE}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(${BIN_ARANGORESTORE})
+install_config(arangorestore)
 
 add_dependencies(${BIN_ARANGORESTORE} zlibstatic)
 

@@ -22,7 +22,7 @@ if (USE_ENTERPRISE)
     TARGETS ${BIN_ARANGOBACKUP}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-  install_config(${BIN_ARANGOBACKUP})
+  install_config(arangobackup)
 
   add_dependencies(${BIN_ARANGOBACKUP} zlibstatic)
 

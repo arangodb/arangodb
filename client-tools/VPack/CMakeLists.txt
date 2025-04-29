@@ -18,7 +18,7 @@ install(
   TARGETS ${BIN_ARANGOVPACK}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install_config(${BIN_ARANGOVPACK})
+install_config(arangovpack)
 
 add_dependencies(${BIN_ARANGOVPACK} zlibstatic)
 
