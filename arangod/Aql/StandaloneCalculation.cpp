@@ -373,6 +373,7 @@ Result StandaloneCalculation::validateQuery(
             case arangodb::aql::NODE_TYPE_OBJECT:
             case arangodb::aql::NODE_TYPE_OBJECT_ELEMENT:
             case arangodb::aql::NODE_TYPE_REFERENCE:
+            case arangodb::aql::NODE_TYPE_INDEXED_ACCESS:
             case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS:
             case arangodb::aql::NODE_TYPE_BOUND_ATTRIBUTE_ACCESS:
             case arangodb::aql::NODE_TYPE_RANGE:
