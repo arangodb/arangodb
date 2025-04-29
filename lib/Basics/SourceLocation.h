@@ -81,8 +81,39 @@ struct SourceLocation {
 
 auto operator<<(std::ostream&, SourceLocation const&) -> std::ostream&;
 
+#ifdef WIN32
+
+// #pragma message "Using _stripPrefix for Windows"
 // if pathStr is `/path/to/arangodb/lib/Basics/SourceLocation.h`,
 // then this will return `lib/Basics/SourceLocation.h`
+consteval auto SourceLocation::_stripPrefix(const char* pathStr) -> const
+    char* {
+  // `/path/to/arangodb/lib/Basics/SourceLocation.h`
+  constexpr auto thisFile = std::string_view(__FILE__);
+  // `/path/to/arangodb/lib/Basics`
+  constexpr auto thisDir = thisFile.substr(0, thisFile.rfind('/'));
+  // `/path/to/arangodb/lib`
+  constexpr auto libDir = thisDir.substr(0, thisDir.rfind('\\'));
+  // `/path/to/arangodb`
+  constexpr auto srcDir = libDir.substr(0, libDir.rfind('\\'));
+  auto path = std::string_view{pathStr};
+  if (path.starts_with(srcDir)) {
+    // + 1 removes the slash
+    path.remove_prefix(srcDir.size() + 1);
+  }
+  return path.data();
+
+  // This is a compile-time check that the _stripPrefix function works as
+  // expected. It checks that the path returned by _stripPrefix is the same.
+  // FIXME: error C2131: expression did not evaluate to a constant ???
+  // static_assert(std::string_view(SourceLocation::_stripPrefix(__FILE__)).compare("lib\\Basics/SourceLocation.h") == 0);
+}
+
+#else
+
+// if pathStr is `/path/to/arangodb/lib/Basics/SourceLocation.h`,
+// then this will return `lib/Basics/SourceLocation.h`
+// #pragma message "Using _stripPrefix for non-Windows"
 consteval auto SourceLocation::_stripPrefix(const char* pathStr) -> const
     char* {
   // `/path/to/arangodb/lib/Basics/SourceLocation.h`
@@ -101,8 +132,12 @@ consteval auto SourceLocation::_stripPrefix(const char* pathStr) -> const
   return path.data();
 }
 
-static_assert(std::string_view{"lib/Basics/SourceLocation.h"}.compare(
-                  SourceLocation::_stripPrefix(__FILE__)) == 0);
+// This is a compile-time check that the _stripPrefix function works as
+// expected. It checks that the path returned by _stripPrefix is the same.
+static_assert(std::string_view(SourceLocation::_stripPrefix(__FILE__)).compare("lib/Basics/SourceLocation.h") == 0, __FILE__);
+
+#endif
+
 
 }  // namespace arangodb::basics
 

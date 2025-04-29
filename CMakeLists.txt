@@ -849,7 +849,7 @@ endif ()
 # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
 set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
-set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
+set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
 set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
 set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
 set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
@@ -860,7 +860,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-point
 # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
 set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
-set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
+set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
 set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
 set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
@@ -872,11 +872,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
 endif ()
 
-if(MSVC)
-  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -D_DEBUG=1")
-  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -D_DEBUG=1")
+if(NOT MSVC)
+  set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O0")
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0")
 endif()
-
 
 
 # put together the final flags

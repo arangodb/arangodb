@@ -22,6 +22,8 @@ if(MSVC)
   set(ICU64_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/windows-prebuilt/include" PARENT_SCOPE)
   set(ICU64_LIBRARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/windows-prebuilt/lib64" PARENT_SCOPE)
   set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
+
+  add_custom_target(iculegacy_build)
 else()
   # copy source files into build directory (icu has in source build system)
   file(COPY "${ICU64_SOURCE_DIR}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
