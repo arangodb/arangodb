@@ -39,3 +39,4 @@ dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgency
 dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 
+replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true --test replication-rta.js
