@@ -212,7 +212,8 @@ class QueryRegistry {
 
   auto lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
       -> QueryInfoMap::iterator;
-  void deleteQuery(QueryInfoMap::iterator queryMapIt);
+
+  std::unique_ptr<QueryInfo> deleteQuery(QueryInfoMap::iterator queryMapIt);
 
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries

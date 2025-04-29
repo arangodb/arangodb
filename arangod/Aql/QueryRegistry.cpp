@@ -220,6 +220,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   // so this must be done outside the lock
   futures::Promise<std::shared_ptr<ClusterQuery>> finishPromise;
   std::shared_ptr<ClusterQuery> queryToFinish;
+  std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
 
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -267,7 +268,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
       if (canDestroyQuery) {
         auto queryMapIt = _queries.find(ei._queryInfo->_query->id());
         TRI_ASSERT(queryMapIt != _queries.end());
-        deleteQuery(queryMapIt);
+        queryInfoLifetimeExtension = deleteQuery(queryMapIt);
       } else if (ei._queryInfo->_expires != 0) {
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
@@ -282,15 +283,19 @@ void QueryRegistry::closeEngine(EngineId engineId) {
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
 void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
-  WRITE_LOCKER(writeLocker, _lock);
+  std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
+  {
+    WRITE_LOCKER(writeLocker, _lock);
 
-  QueryInfoMap::iterator queryMapIt = lookupQueryForFinalization(id, errorCode);
-  if (queryMapIt == _queries.end()) {
-    return;
-  }
+    QueryInfoMap::iterator queryMapIt =
+        lookupQueryForFinalization(id, errorCode);
+    if (queryMapIt == _queries.end()) {
+      return;
+    }
 
-  if (queryMapIt->second->_numOpen == 0) {
-    deleteQuery(queryMapIt);
+    if (queryMapIt->second->_numOpen == 0) {
+      queryInfoLifetimeExtension = deleteQuery(queryMapIt);
+    }
   }
 }
 
@@ -365,7 +370,8 @@ auto QueryRegistry::lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
   return queryMapIt;
 }
 
-void QueryRegistry::deleteQuery(QueryInfoMap::iterator queryMapIt) {
+std::unique_ptr<QueryRegistry::QueryInfo> QueryRegistry::deleteQuery(
+    QueryInfoMap::iterator queryMapIt) {
   auto id = queryMapIt->first;
   // move query into our unique ptr, so we can process it outside
   // of the lock
@@ -396,6 +402,8 @@ void QueryRegistry::deleteQuery(QueryInfoMap::iterator queryMapIt) {
 
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
       << "query with id " << id << " is now destroyed";
+
+  return queryInfo;
 }
 
 /// used for a legacy shutdown
