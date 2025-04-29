@@ -1,7 +1,27 @@
 devel
 -----
 
-* Upgraded Swagger UI to 5.20.1.
+* Upgraded Swagger UI to 5.21.0 and adjusted the config to show the
+  Schema instead of the Example Value by default.
+
+* Switched to customized (instead of official) forked rclone v1.65.2 built with
+  go1.23.8 to avoid CVEs.
+
+* Fix BTS-2119: The optimization rule `async-prefetch` could cause
+  crashes when a query aborts early, e.g. due to a runtime error,
+  the query being killed, or the memory limit being reached. 
+
+* Upgraded OpenSSL to 3.5.0.
+
+* Set Node v20.14.0 for core UI production (CI) compilation.
+
+* Updated ArangoDB Starter to v0.19.10.
+
+* Remove overeager assert, only relevant for testing.
+
+* Implement license changes: The Community Edition without a license now has a
+  100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode after
+  a grace period, and shutdown after an additional grace period.
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
@@ -16,8 +36,6 @@ devel
   TakeoverShardLeadership actions in the cluster Maintenance. This
   could lead to service interruption during upgrades and after failovers.
 
-* Updated ArangoDB Starter to v0.19.9-preview-3.
-
 * FE-538: fix frontend build warnings.
 
 * FE-482: fix multiple issues with search view UI.
@@ -26,7 +44,7 @@ devel
 
 * FE-535: fix set cached query when bind params are equal.
 
-* FE-528: adds diskusage license info to UI.
+* FE-528: adds disk usage license info to UI.
 
 * BTS-2090: Fixes double log-lines per log
 
@@ -43,7 +61,7 @@ devel
   shown twice in the result, once with `isBuilding: true` and once
   without. This fixes BTS-2044.
 
-* Introduces first changes for the new diskusage based license.
+* Introduces first changes for the new disk usage-based license.
 
 * BTS-2089: Fix a crash when query logging and query cache were enabled.
 
@@ -63,8 +81,6 @@ devel
   only have happened once per month!
 
 * FE-497: fix query options input parsing (Query Editor UI > Options tab).
-
-* Upgraded OpenSSL to 3.4.1.
 
 * Disable creating a vector index with zero nLists.
 

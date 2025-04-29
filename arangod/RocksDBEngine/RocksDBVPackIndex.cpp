@@ -3298,6 +3298,7 @@ RocksDBVPackIndex::distinctScanFor(
   TRI_ASSERT(supportsDistinctScan(scanOptions));
 
   std::vector<std::size_t> inverseFieldMapping;
+  // distinct fields can only include a prefix of the index fields
   inverseFieldMapping.resize(scanOptions.distinctFields.size());
   for (size_t k = 0; k < scanOptions.distinctFields.size(); k++) {
     inverseFieldMapping[scanOptions.distinctFields[k]] = k;

@@ -440,6 +440,7 @@ endif()
 
 add_subdirectory(Actor)
 add_subdirectory(Async)
+add_subdirectory(Containers)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
 if (USE_V8)

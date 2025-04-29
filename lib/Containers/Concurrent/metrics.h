@@ -20,21 +20,22 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "registry.h"
+#pragma once
 
-#include "Async/Registry/Metrics.h"
-using namespace arangodb::async_registry;
+#include <memory>
 
-Registry::Registry() : _metrics{std::make_shared<Metrics>()} {}
+namespace arangodb::containers {
 
-auto Registry::add_thread() -> std::shared_ptr<ThreadRegistry> {
-  auto guard = std::lock_guard(mutex);
-  auto thread_registry = ThreadRegistry::make(_metrics, this);
-  registries.emplace_back(thread_registry);
-  return thread_registry;
-}
+struct Metrics {
+  virtual ~Metrics() = default;
+  virtual auto increment_total_nodes() -> void {}
+  virtual auto increment_registered_nodes() -> void {}
+  virtual auto decrement_registered_nodes() -> void {}
+  virtual auto increment_ready_for_deletion_nodes() -> void {}
+  virtual auto decrement_ready_for_deletion_nodes() -> void {}
+  virtual auto increment_total_lists() -> void {}
+  virtual auto increment_existing_lists() -> void {}
+  virtual auto decrement_existing_lists() -> void {}
+};
 
-auto Registry::remove_thread(ThreadRegistry* registry) -> void {
-  auto guard = std::lock_guard(mutex);
-  std::erase_if(registries, [&](auto const& weak) { return weak.expired(); });
-}
+}  // namespace arangodb::containers
