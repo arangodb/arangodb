@@ -28,7 +28,7 @@ Registry registry;
 
 auto get_thread_registry() noexcept -> ThreadRegistry& {
   struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
+    ThreadRegistryGuard() : _registry{ThreadRegistry::make(registry.metrics)} {
       registry.add(_registry);
     }
 
