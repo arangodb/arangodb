@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "AsyncRegistryServer/Feature.h"
+#include "SystemMonitor/AsyncRegistry/Feature.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb::async_registry {

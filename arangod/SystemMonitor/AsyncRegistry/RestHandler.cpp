@@ -25,8 +25,8 @@
 #include <variant>
 
 #include "Async/Registry/promise.h"
-#include "AsyncRegistryServer/Stacktrace/depth_first.h"
-#include "AsyncRegistryServer/Stacktrace/forest.h"
+#include "SystemMonitor/AsyncRegistry/Stacktrace/depth_first.h"
+#include "SystemMonitor/AsyncRegistry/Stacktrace/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
