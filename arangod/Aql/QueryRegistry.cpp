@@ -297,6 +297,26 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
       queryInfoLifetimeExtension = deleteQuery(queryMapIt);
     }
   }
+  {
+    auto const begin = std::chrono::steady_clock::now();
+    struct QueryDestructionContext {
+      // TODO put query information (and maybe even `begin`) here
+    };
+    auto queryDestructionContext = std::make_shared<QueryDestructionContext>();
+    using namespace std::chrono_literals;
+    auto const waitUntilLoggingFor = 1s;
+    SchedulerFeature::SCHEDULER->queueDelayed(
+    "query destruction timing", RequestLane::CLUSTER_INTERNAL, waitUntilLoggingFor, [begin, waitUntilLoggingFor, weakPtr = std::weak_ptr(queryDestructionContext)](bool canceled) noexcept {
+      if (canceled) {
+        return;
+      }
+      // TODO read information auf of the query destruction context (lock the weakPtr for this)
+      LOG_TOPIC_IF("", WARN, Logger::QUERIES, weakPtr.expired()) << "";// TODO
+      // reschedule with a backoff
+      auto const waitUntilLoggingFor = waitUntilLoggingFor * 4;
+    });
+    queryInfoLifetimeExtension.reset();
+  }
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
