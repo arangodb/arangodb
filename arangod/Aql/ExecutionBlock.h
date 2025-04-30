@@ -31,9 +31,11 @@
 
 #include <atomic>
 #include <cstdint>
-#include <string_view>
+#include <unordered_set>
 #include <utility>
+#include <string_view>
 #include <vector>
+
 
 namespace arangodb {
 namespace transaction {
@@ -131,8 +133,14 @@ class ExecutionBlock {
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
+  [[nodiscard]] auto printBlockAndDependenciesInfo() const noexcept
+      -> std::string const;
 
   virtual auto stopAsyncTasks() -> void;
+
+  [[nodiscard]] auto isDependencyInList(
+      std::unordered_set<ExecutionBlock*> const& seenBlocks) const noexcept
+      -> ExecutionBlock*;
 
  protected:
   // Trace the start of a execute call

@@ -210,3 +210,23 @@ auto ExecutionBlock::printBlockInfo() const -> std::string const {
 }
 
 auto ExecutionBlock::stopAsyncTasks() -> void {}
+
+auto ExecutionBlock::isDependencyInList(std::unordered_set<ExecutionBlock*> const& seenBlocks) const noexcept -> ExecutionBlock* {
+  for (auto const& dependency : _dependencies) {
+    if (seenBlocks.find(dependency) != seenBlocks.end()) {
+      return dependency;
+    }
+  }
+  return nullptr;
+}
+
+auto ExecutionBlock::printBlockAndDependenciesInfo() const noexcept -> std::string const {
+  std::stringstream ss;
+  ss << printBlockInfo();
+  ss << " calls: [";
+  for (auto const& dependency : _dependencies) {
+    ss << " " << dependency->printBlockInfo() << ",";
+  }
+  ss << " ]";
+  return ss.str();
+}
