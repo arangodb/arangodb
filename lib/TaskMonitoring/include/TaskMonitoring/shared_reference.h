@@ -42,19 +42,20 @@ struct Shared {
   }
   auto get_ref() const -> T& { return *_resource; }
   auto get() const -> T* { return _resource; }
-  auto increment() -> void { ref_count.fetch_add(1); }
+  auto increment() -> void { _count.fetch_add(1, std::memory_order_acq_rel); }
   auto decrement() -> void {
-    auto old = ref_count.fetch_sub(1);
+    auto old = _count.fetch_sub(1, std::memory_order_acq_rel);
     if (old == 1) {
       _cleanup(_resource);
       delete this;
     }
   }
+  auto ref_count() -> size_t { return _count.load(std::memory_order_release); }
 
  private:
   T* _resource;
   std::function<void(T*)> _cleanup;
-  std::atomic<size_t> ref_count = 0;
+  std::atomic<size_t> _count = 0;
   Shared(T* node, std::function<void(T*)> cleanup)
       : _resource{node}, _cleanup{cleanup} {}
 };
@@ -74,7 +75,18 @@ struct SharedReference {
     _shared_node = other._shared_node;
     _shared_node->increment();
   }
-  ~SharedReference() { _shared_node->decrement(); }
+  SharedReference(SharedReference&& other) : _shared_node{other._shared_node} {
+    other._shared_node = nullptr;
+  }
+  auto operator=(SharedReference&& other) -> SharedReference {
+    _shared_node = other._shared_node;
+    other._shared_node = nullptr;
+  }
+  ~SharedReference() {
+    if (_shared_node) {
+      _shared_node->decrement();
+    }
+  }
   static auto create(Shared<T>* node) -> SharedReference {
     if (node == nullptr) {
       std::abort();
@@ -87,6 +99,8 @@ struct SharedReference {
   }
   auto operator*() const -> T& { return _shared_node->get_ref(); }
   auto operator->() const -> T* { return _shared_node->get(); }
+  auto get() const -> T* { return _shared_node->get(); }
+  auto ref_count() -> size_t { return _shared_node->ref_count(); }
 
  private:
   Shared<T>* _shared_node;

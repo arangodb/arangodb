@@ -80,8 +80,8 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
 void PrintTo(const TaskSnapshot& task, std::ostream* os);
 
 struct Node;
-
-struct ParentTask : std::variant<RootTask, SharedReference<Node>> {};
+using NodeReference = SharedReference<Node>;
+struct ParentTask : std::variant<RootTask, NodeReference> {};
 
 struct TaskScope;
 struct ScheduledTaskScope;
@@ -93,11 +93,12 @@ struct TaskInRegistry {
   using Snapshot = TaskSnapshot;
   auto id() -> void* { return this; }
   auto snapshot() -> TaskSnapshot;
-  auto set_to_deleted() -> void {}
+  auto set_to_deleted() -> void { deleted = true; }
 
   std::string const name;
   std::string state;  // has to probably be atomic (for reading and writing
                       // concurrently on different threads), but is string...
+  bool deleted = false;
   ParentTask parent;
   std::optional<basics::ThreadId>
       running_thread;  // proably has to also be atomic because
@@ -129,7 +130,7 @@ struct Task {
   auto id() -> void*;
 
  private:
-  SharedReference<Node> _node_in_registry;
+  NodeReference _node_in_registry;
 };
 
 /** Helper type to create a basic task */
