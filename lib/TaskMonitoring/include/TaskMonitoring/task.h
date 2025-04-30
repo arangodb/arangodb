@@ -27,6 +27,7 @@
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
+#include "shared_reference.h"
 
 #include <cstdint>
 #include <optional>
@@ -79,10 +80,8 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
 void PrintTo(const TaskSnapshot& task, std::ostream* os);
 
 struct Node;
-struct ParentNode {
-  std::shared_ptr<Node> node;
-};
-struct ParentTask : std::variant<RootTask, ParentNode> {};
+
+struct ParentTask : std::variant<RootTask, SharedReference<Node>> {};
 
 struct TaskScope;
 struct ScheduledTaskScope;
@@ -108,12 +107,12 @@ struct TaskInRegistry {
   // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
 };
 
-struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {
-  using containers::ThreadOwnedList<TaskInRegistry>::Node::Node;
-};
+/**
+   Use inheritance to circumvent problems with non-satified constraints for Node
+ */
+struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
 
 struct ChildTask;
-
 /**
    This task adds an entry to the task registry on construction and mark the
    entry for deletion on destruction.
@@ -130,7 +129,7 @@ struct Task {
   auto id() -> void*;
 
  private:
-  std::shared_ptr<Node> _node_in_registry = nullptr;
+  SharedReference<Node> _node_in_registry;
 };
 
 /** Helper type to create a basic task */
