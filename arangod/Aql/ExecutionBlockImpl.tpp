@@ -2617,6 +2617,13 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
+  uint64_t count = _numberWaiters.fetch_add(1, std::memory_order_relaxed);
+  if (count > 0) {
+    LOG_TOPIC("62515", WARN, Logger::QUERIES)
+        << "Detected two waiters for a PrefetchTask, stacktrace:";
+    CrashHandler::logBacktrace();
+    _logStacktrace.store(true, std::memory_order_relaxed);
+  }
   std::unique_lock<std::mutex> guard(_lock);
   // (1) - this acquire-load synchronizes with the release-store (3)
   while (_state.load(std::memory_order_acquire).status != Status::Finished) {
@@ -2626,6 +2633,14 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
       LOG_TOPIC("62514", WARN, Logger::QUERIES)
           << "Have waited for a second on an async prefetch task, state is "
           << (int)state.status << " abandoned: " << state.abandoned;
+    }
+  }
+  count = _numberWaiters.fetch_sub(0);
+  if (_logStacktrace.load(std::memory_order_relaxed) == true) {
+    LOG_TOPIC("62516", WARN, Logger::QUERIES) << "Found logStacktrace:";
+    CrashHandler::logBacktrace();
+    if (count == 0) {
+      _logStacktrace.store(false, std::memory_order_relaxed);
     }
   }
 }
