@@ -349,6 +349,24 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
+  // Double use diagnostics:
+  uint64_t userCount = _numberOfUsers.fetch_add(1);
+  if (userCount > 0) {
+    LOG_TOPIC("52637", WARN, Logger::QUERIES)
+        << "Double use of ExecutionBlock detected, stacktrace:";
+    CrashHandler::logBacktrace();
+    _logStacktrace.store(true, std::memory_order_relaxed);
+  }
+  auto guard = scopeGuard([&]() noexcept {
+    uint64_t userCount = _numberOfUsers.fetch_sub(1);
+    if (_logStacktrace.load(std::memory_order_relaxed)) {
+      LOG_TOPIC("52638", WARN, Logger::QUERIES) << "Found _logStacktrace:";
+      CrashHandler::logBacktrace();
+      if (userCount == 0) {
+        _logStacktrace.store(false, std::memory_order_relaxed);
+      }
+    }
+  });
   stopAsyncTasks();
 }
 
@@ -495,6 +513,25 @@ void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
 template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
+  // Double use diagnostics:
+  uint64_t userCount = _numberOfUsers.fetch_add(1);
+  if (userCount > 0) {
+    LOG_TOPIC("52635", WARN, Logger::QUERIES)
+        << "Double use of ExecutionBlock detected, stacktrace:";
+    CrashHandler::logBacktrace();
+    _logStacktrace.store(true, std::memory_order_relaxed);
+  }
+  auto waechter = scopeGuard([&]() noexcept {
+    uint64_t userCount = _numberOfUsers.fetch_sub(1);
+    if (_logStacktrace.load(std::memory_order_relaxed)) {
+      LOG_TOPIC("52636", WARN, Logger::QUERIES) << "Found _logStacktrace:";
+      CrashHandler::logBacktrace();
+      if (userCount == 0) {
+        _logStacktrace.store(false, std::memory_order_relaxed);
+      }
+    }
+  });
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
   TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
@@ -2586,9 +2623,9 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
     std::cv_status s = _bell.wait_for(guard, std::chrono::milliseconds(1000));
     if (s == std::cv_status::timeout) {
       auto state = _state.load(std::memory_order_relaxed);
-      LOG_TOPIC("62514", INFO, Logger::QUERIES)
+      LOG_TOPIC("62514", WARN, Logger::QUERIES)
           << "Have waited for a second on an async prefetch task, state is "
-          << state.status << " abandoned: " << state.abandoned;
+          << (int)state.status << " abandoned: " << state.abandoned;
     }
   }
 }
