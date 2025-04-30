@@ -28,9 +28,8 @@ add_custom_target(frontend ALL
   COMMENT "create frontend build"
   DEPENDS arango_basic_utils
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
-  
-  COMMAND yarn install --verbose
-  COMMAND yarn build --verbose
+  COMMAND yarn install
+  COMMAND yarn build
 )
 
 add_custom_target(frontend_clean
