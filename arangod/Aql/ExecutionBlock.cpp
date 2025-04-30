@@ -211,7 +211,9 @@ auto ExecutionBlock::printBlockInfo() const -> std::string const {
 
 auto ExecutionBlock::stopAsyncTasks() -> void {}
 
-auto ExecutionBlock::isDependencyInList(std::unordered_set<ExecutionBlock*> const& seenBlocks) const noexcept -> ExecutionBlock* {
+auto ExecutionBlock::isDependencyInList(
+    std::unordered_set<ExecutionBlock*> const& seenBlocks) const noexcept
+    -> ExecutionBlock* {
   for (auto const& dependency : _dependencies) {
     if (seenBlocks.find(dependency) != seenBlocks.end()) {
       return dependency;
@@ -220,15 +222,20 @@ auto ExecutionBlock::isDependencyInList(std::unordered_set<ExecutionBlock*> cons
   return nullptr;
 }
 
-auto ExecutionBlock::printBlockAndDependenciesInfo() const noexcept -> std::string const {
-  
+auto ExecutionBlock::printBlockAndDependenciesInfo() const noexcept
+    -> std::string const {
   std::stringstream ss;
   ss << printBlockInfo();
-  ss << " async prefetching type: " <<(int) getPlanNode()->canUseAsyncPrefetching();
+  ss << " async prefetching type: "
+     << (int)getPlanNode()->canUseAsyncPrefetching();
   ss << " calls: [";
   for (auto const& dependency : _dependencies) {
     ss << " " << dependency->printBlockInfo() << ",";
   }
   ss << " ]";
   return ss.str();
+}
+
+auto ExecutionBlock::hasStoppedAsyncTasks() const noexcept -> bool {
+  return _stoppedAsyncTasks;
 }
