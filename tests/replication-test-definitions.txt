@@ -1,0 +1,14 @@
+replication_fuzz priority=500 parallelity=4 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_static priority=500 parallelity=3 size=small single buckets=2 -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true
+replication_sync priority=8000 buckets=9 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
+shell_replication parallelity=3 size=small single 
+http_replication priority=500 parallelity=3 size=small single
+#replication2_client size=small cluster
+#replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
+#shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
+replication_aql priority=1000 single full
+replication_random priority=1000 single full
