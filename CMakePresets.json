@@ -39,7 +39,7 @@
       "name": "x86_64",
       "cacheVariables": {
         "USE_LIBUNWIND": "On",
-        "TARGET_ARCHITECTURE": "sandy-bridge"
+        "TARGET_ARCHITECTURE": "haswell"
       }
     },
     {
