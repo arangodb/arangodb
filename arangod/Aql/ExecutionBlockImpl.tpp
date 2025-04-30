@@ -2582,14 +2582,15 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   std::unique_lock<std::mutex> guard(_lock);
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (_state.load(std::memory_order_acquire).status == Status::Finished) {
-    return;
+  while (_state.load(std::memory_order_acquire).status != Status::Finished) {
+    std::cv_status s = _bell.wait_for(guard, std::chrono::milliseconds(1000));
+    if (s == std::cv_status::timeout) {
+      auto state = _state.load(std::memory_order_relaxed);
+      LOG_TOPIC("62514", INFO, Logger::QUERIES)
+          << "Have waited for a second on an async prefetch task, state is "
+          << state.status << " abandoned: " << state.abandoned;
+    }
   }
-
-  _bell.wait(guard, [this]() {
-    // (2) - this acquire-load synchronizes with the release-store (3)
-    return _state.load(std::memory_order_acquire).status == Status::Finished;
-  });
 }
 
 template<class Executor>
