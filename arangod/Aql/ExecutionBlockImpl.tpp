@@ -352,7 +352,7 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
   // Double use diagnostics:
   uint64_t userCount = _numberOfUsers.fetch_add(1);
   if (userCount > 0) {
-    LOG_TOPIC("52637", WARN, Logger::QUERIES)
+    LOG_TOPIC("52637", WARN, Logger::AQL)
         << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
     CrashHandler::logBacktrace();
     _logStacktrace.store(true, std::memory_order_relaxed);
@@ -360,8 +360,7 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
   auto guard = scopeGuard([&]() noexcept {
     uint64_t userCount = _numberOfUsers.fetch_sub(1);
     if (_logStacktrace.load(std::memory_order_relaxed)) {
-      LOG_TOPIC("52638", WARN, Logger::QUERIES)
-          << "ALERT: Found _logStacktrace:";
+      LOG_TOPIC("52638", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
       CrashHandler::logBacktrace();
       if (userCount == 0) {
         _logStacktrace.store(false, std::memory_order_relaxed);
@@ -517,7 +516,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   // Double use diagnostics:
   uint64_t userCount = _numberOfUsers.fetch_add(1);
   if (userCount > 0) {
-    LOG_TOPIC("52635", WARN, Logger::QUERIES)
+    LOG_TOPIC("52635", WARN, Logger::AQL)
         << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
     CrashHandler::logBacktrace();
     _logStacktrace.store(true, std::memory_order_relaxed);
@@ -525,8 +524,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   auto waechter = scopeGuard([&]() noexcept {
     uint64_t userCount = _numberOfUsers.fetch_sub(1);
     if (_logStacktrace.load(std::memory_order_relaxed)) {
-      LOG_TOPIC("52636", WARN, Logger::QUERIES)
-          << "ALERT: Found _logStacktrace:";
+      LOG_TOPIC("52636", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
       CrashHandler::logBacktrace();
       if (userCount == 0) {
         _logStacktrace.store(false, std::memory_order_relaxed);
@@ -2621,7 +2619,7 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   uint64_t count = _numberWaiters.fetch_add(1, std::memory_order_relaxed);
   if (count > 0) {
-    LOG_TOPIC("62515", WARN, Logger::QUERIES)
+    LOG_TOPIC("62515", WARN, Logger::AQL)
         << "ALERT: Detected " << count + 1
         << " waiters for a PrefetchTask, stacktrace:";
     CrashHandler::logBacktrace();
@@ -2637,7 +2635,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
       // this is the only one we expect when a timeout occurs!
       std::string_view alerting =
           state.status == Status::InProgress ? "" : "ALERT: ";
-      LOG_TOPIC("62514", WARN, Logger::QUERIES)
+      LOG_TOPIC("62514", WARN, Logger::AQL)
           << alerting
           << "Have waited for a second on an async prefetch task, state "
              "is "
@@ -2646,7 +2644,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   }
   count = _numberWaiters.fetch_sub(1);
   if (_logStacktrace.load(std::memory_order_relaxed) == true) {
-    LOG_TOPIC("62516", WARN, Logger::QUERIES) << "ALERT: Found logStacktrace:";
+    LOG_TOPIC("62516", WARN, Logger::AQL) << "ALERT: Found logStacktrace:";
     CrashHandler::logBacktrace();
     if (count == 0) {
       _logStacktrace.store(false, std::memory_order_relaxed);
