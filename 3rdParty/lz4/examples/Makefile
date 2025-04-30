@@ -1,6 +1,6 @@
 # ##########################################################################
 # LZ4 examples - Makefile
-# Copyright (C) Yann Collet 2011-2014
+# Copyright (C) Yann Collet 2011-2020
 #
 # GPL v2 License
 #
@@ -27,77 +27,69 @@
 # kindly provided by Takayuki Matsuoka
 # ##########################################################################
 
-CPPFLAGS += -I../lib
-CFLAGS   ?= -O3
-CFLAGS   += -std=gnu99 -Wall -Wextra -Wundef -Wshadow -Wcast-align -Wstrict-prototypes
-FLAGS    := $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $(MOREFLAGS)
+LIBDIR    := ../lib
 
-TESTFILE  = Makefile
-LZ4DIR   := ../lib
-LZ4       = ../programs/lz4
+CPPFLAGS  += -I$(LIBDIR)
+USERCFLAGS:= $(CFLAGS)
+WFLAGS     = -std=gnu99 -Wall -Wextra -Wundef -Wshadow -Wcast-align -Wstrict-prototypes -Wc++-compat
+CFLAGS     = $(WFLAGS) -O2 $(USERCFLAGS)
 
-include ../Makefile.inc
+TESTFILE   = Makefile
+SLIBLZ4   := $(LIBDIR)/liblz4.a
+LZ4DIR     = ../programs
+LZ4        = $(LZ4DIR)/lz4
 
 default: all
 
-all: printVersion doubleBuffer dictionaryRandomAccess ringBuffer ringBufferHC \
-     lineCompress frameCompress simpleBuffer
+$(SLIBLZ4): $(LIBDIR)/lz4.c $(LIBDIR)/lz4hc.c $(LIBDIR)/lz4frame.c $(LIBDIR)/lz4.h $(LIBDIR)/lz4hc.h $(LIBDIR)/lz4frame.h $(LIBDIR)/lz4frame_static.h
+	$(MAKE) -j -C $(LIBDIR) liblz4.a
 
-$(LZ4DIR)/liblz4.a: $(LZ4DIR)/lz4.c $(LZ4DIR)/lz4hc.c $(LZ4DIR)/lz4frame.c $(LZ4DIR)/lz4.h $(LZ4DIR)/lz4hc.h $(LZ4DIR)/lz4frame.h $(LZ4DIR)/lz4frame_static.h
-	$(MAKE) -C $(LZ4DIR) liblz4.a
+ALL = print_version \
+	  simple_buffer \
+	  frameCompress \
+	  fileCompress \
+      blockStreaming_doubleBuffer \
+	  blockStreaming_ringBuffer \
+	  streamingHC_ringBuffer \
+      blockStreaming_lineByLine \
+	  dictionaryRandomAccess \
+	  bench_functions
 
-printVersion: printVersion.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
+.PHONY: all
+all: $(ALL)
 
-doubleBuffer: blockStreaming_doubleBuffer.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
+$(ALL): $(SLIBLZ4)
 
-dictionaryRandomAccess: dictionaryRandomAccess.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
-
-ringBuffer  : blockStreaming_ringBuffer.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
-
-ringBufferHC: HCStreaming_ringBuffer.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
-
-lineCompress: blockStreaming_lineByLine.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
-
-frameCompress: frameCompress.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
-
-compressFunctions: compress_functions.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT) -lrt
-
-simpleBuffer: simple_buffer.c $(LZ4DIR)/liblz4.a
-	$(CC) $(FLAGS) $^ -o $@$(EXT)
-
+.PHONY:$(LZ4)
 $(LZ4) :
-	$(MAKE) -C ../programs lz4
+	$(MAKE) -j -C $(LZ4DIR) lz4
 
+.PHONY: test
 test : all $(LZ4)
 	@echo "\n=== Print Version ==="
-	./printVersion$(EXT)
+	./print_version$(EXT)
 	@echo "\n=== Simple compression example ==="
-	./simpleBuffer$(EXT)
+	./simple_buffer$(EXT)
 	@echo "\n=== Double-buffer ==="
-	./doubleBuffer$(EXT) $(TESTFILE)
+	./blockStreaming_doubleBuffer$(EXT) $(TESTFILE)
 	@echo "\n=== Ring Buffer ==="
-	./ringBuffer$(EXT)   $(TESTFILE)
+	./blockStreaming_ringBuffer$(EXT)   $(TESTFILE)
 	@echo "\n=== Ring Buffer + LZ4 HC ==="
-	./ringBufferHC$(EXT) $(TESTFILE)
+	./streamingHC_ringBuffer$(EXT) $(TESTFILE)
 	@echo "\n=== Compress line by line ==="
-	./lineCompress$(EXT) $(TESTFILE)
+	./blockStreaming_lineByLine$(EXT) $(TESTFILE)
 	@echo "\n=== Dictionary Random Access ==="
 	./dictionaryRandomAccess$(EXT) $(TESTFILE) $(TESTFILE) 1100 1400
 	@echo "\n=== Frame compression ==="
 	./frameCompress$(EXT) $(TESTFILE)
 	$(LZ4) -vt $(TESTFILE).lz4
+	@echo "\n=== file compression ==="
+	./fileCompress$(EXT) $(TESTFILE)
+	$(LZ4) -vt $(TESTFILE).lz4
+	@echo "\n=== Q&D benchmark ==="
+	./bench_functions$(EXT) 10000
 
+.PHONY: clean
 clean:
-	@rm -f core *.o *.dec *-0 *-9 *-8192 *.lz4s *.lz4 \
-	 printVersion$(EXT) doubleBuffer$(EXT) dictionaryRandomAccess$(EXT) \
-	 ringBuffer$(EXT) ringBufferHC$(EXT) lineCompress$(EXT) frameCompress$(EXT) \
-	 compressFunctions$(EXT) simpleBuffer$(EXT)
+	@$(RM) core *.o *.dec *-0 *-9 *-8192 *.lz4s *.lz4 $(ALL)
 	@echo Cleaning completed

@@ -13,7 +13,7 @@ FILETYPE 1
             VALUE "FileDescription", "Extremely fast compression"
             VALUE "FileVersion", "@LIBVER_MAJOR@.@LIBVER_MINOR@.@LIBVER_PATCH@.0"
             VALUE "InternalName", "@PROGNAME@"
-            VALUE "LegalCopyright", "Copyright (C) 2013-2016, Yann Collet"
+            VALUE "LegalCopyright", "Copyright (C) 2013-2020, Yann Collet"
             VALUE "OriginalFilename", "@PROGNAME@.@EXT@"
             VALUE "ProductName", "LZ4"
             VALUE "ProductVersion", "@LIBVER_MAJOR@.@LIBVER_MINOR@.@LIBVER_PATCH@.0"
@@ -24,4 +24,3 @@ FILETYPE 1
         VALUE "Translation", 0x0409, 1200
     }
 }
-

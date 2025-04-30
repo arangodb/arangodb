@@ -33,7 +33,7 @@ int main(void)
   char outBuffer[BUFFER_SIZE];
   int cmpSize;
   int i;
-  
+
   cmpSize = LZ4_compress_default(source, cmpBuffer, srcLen, BUFFER_SIZE);
 
   for (i = cmpSize; i < cmpSize + 10; ++i) {
@@ -43,7 +43,7 @@ int main(void)
       return -1;
     }
   }
-  
+
   printf("test decompress-partial OK \n");
   return 0;
 }

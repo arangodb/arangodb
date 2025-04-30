@@ -22,7 +22,7 @@ BEGIN
             VALUE "FileDescription", "Extremely fast compression"
             VALUE "FileVersion", "@LIBVER_MAJOR@.@LIBVER_MINOR@.@LIBVER_PATCH@.0"
             VALUE "InternalName", "@LIBLZ4@"
-            VALUE "LegalCopyright", "Copyright (C) 2013-2016, Yann Collet"
+            VALUE "LegalCopyright", "Copyright (C) 2013-2020, Yann Collet"
             VALUE "OriginalFilename", "@LIBLZ4@.dll"
             VALUE "ProductName", "LZ4"
             VALUE "ProductVersion", "@LIBVER_MAJOR@.@LIBVER_MINOR@.@LIBVER_PATCH@.0"

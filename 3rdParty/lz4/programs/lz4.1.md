@@ -18,13 +18,11 @@ it is recommended to always use the name `lz4` with appropriate arguments
 DESCRIPTION
 -----------
 
-`lz4` is an extremely fast lossless compression algorithm,
-based on **byte-aligned LZ77** family of compression scheme.
-`lz4` offers compression speeds of 400 MB/s per core, linearly scalable with
-multi-core CPUs.
-It features an extremely fast decoder, with speed in multiple GB/s per core,
-typically reaching RAM speed limit on multi-core systems.
-The native file format is the `.lz4` format.
+`lz4` is a CLI based on `liblz4`, an extremely fast implementation of lossless compression algorithm.
+It provides a default compression speed of typically > 500 MB/s per core.
+Speed can traded for higher compression ratio, by increasing the compression level parameter.
+While decompression is single-threaded, it reaches multiple GB/s, generally fast enough to be I/O bound.
+`lz4` native file format is the `.lz4` format.
 
 ### Difference between lz4 and gzip
 
@@ -34,7 +32,7 @@ Differences are :
   * `lz4` compresses a single file by default (see `-m` for multiple files)
   * `lz4 file1 file2` means : compress file1 _into_ file2
   * `lz4 file.lz4` will default to decompression (use `-z` to force compression)
-  * `lz4` preserves original files
+  * `lz4` preserves original files (see `--rm` to erase source file on completion)
   * `lz4` shows real-time notification statistics
      during compression or decompression of a single file
      (use `-q` to silence them)
@@ -59,7 +57,7 @@ Default behaviors can be modified by opt-in commands, detailed below.
   * Similarly, `lz4 -m -d` can decompress multiple `*.lz4` files.
   * It's possible to opt-in to erase source files
     on successful compression or decompression, using `--rm` command.
-  * Consequently, `lz4 -m --rm` behaves the same as `gzip`.
+  * Consequently, `lz4 -m --rm` features a behavior closer to the `gzip` one.
 
 ### Concatenation of .lz4 files
 
@@ -115,7 +113,8 @@ only the latest one will be applied.
 
 * `--list`:
   List information about .lz4 files.
-  note : current implementation is limited to single-frame .lz4 files.
+  For detailed information on files with multiple frames, use `-v`.
+  `--list` automatically triggers `-m` modifier.
 
 ### Operation modifiers
 
@@ -137,6 +136,10 @@ only the latest one will be applied.
 
 * `--best`:
   Set highest compression level. Same as -12.
+
+* `-T#`, `--threads=#`:
+  Use `#` threads for compression.
+  When `0`, or none provided: automatically determined from nb of detected cores.
 
 * `--favor-decSpeed`:
   Generate compressed data optimized for decompression speed.
@@ -185,8 +188,14 @@ only the latest one will be applied.
 * `-BD`:
   Blocks depend on predecessors (improves compression ratio, more noticeable on small blocks)
 
+* `-BX`:
+  Generate block checksums (default:disabled)
+
 * `--[no-]frame-crc`:
   Select frame checksum (default:enabled)
+
+* `--no-crc`:
+  Disable both frame and block checksums
 
 * `--[no-]content-size`:
   Header includes original size (default:not present)<br/>
@@ -236,6 +245,20 @@ only the latest one will be applied.
 
 * `-i#`:
   Minimum evaluation time in seconds \[1-9\] (default : 3)
+
+
+### Environment Variables
+
+It's possible to pass some parameters to `lz4` via environment variables.
+This can be useful in situations where `lz4` is known to be invoked (from a script for example) but there is no way to pass `lz4` parameters to influence the compression session.
+The environment variable has higher priority than executable default, but lower priority than corresponding runtime command.
+When set as global environment variables, it can be a way to enforce personalized defaults different from the executable set ones.
+
+* `LZ4_CLEVEL`:
+  specify a default compression level that `lz4` employs for compression when no other compression level is specified on command line. Executable default is generally `1`.
+
+* `LZ4_NBWORKERS`:
+  specify a default number of threads that `lz4` will employ for compression. Executable default is generally `0`, which means auto-determined based on local cpu. This functionality is only relevant when `lz4` is compiled with multithreading support. The maximum number of workers is capped at `LZ4_NBWORKERS_MAX` (`200` by default).
 
 
 BUGS

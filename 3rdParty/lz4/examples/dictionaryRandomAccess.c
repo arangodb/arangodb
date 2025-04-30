@@ -78,7 +78,7 @@ void test_compress(FILE* outFp, FILE* inpFp, void *dict, int dictSize)
         }
 
         /* Forget previously compressed data and load the dictionary */
-        LZ4_loadDict(lz4Stream, dict, dictSize);
+        LZ4_loadDict(lz4Stream, (const char*) dict, dictSize);
         {
             char cmpBuf[LZ4_COMPRESSBOUND(BLOCK_BYTES)];
             const int cmpBytes = LZ4_compress_fast_continue(
@@ -97,7 +97,7 @@ void test_compress(FILE* outFp, FILE* inpFp, void *dict, int dictSize)
         while (ptr != offsetsEnd) {
             write_int(outFp, *ptr++);
         }
-        write_int(outFp, offsetsEnd - offsets);
+        write_int(outFp, (int) (offsetsEnd - offsets));
     }
 }
 
@@ -153,7 +153,7 @@ void test_decompress(FILE* outFp, FILE* inpFp, void *dict, int dictSize, int off
         }
 
         /* Load the dictionary */
-        LZ4_setStreamDecode(lz4StreamDecode, dict, dictSize);
+        LZ4_setStreamDecode(lz4StreamDecode, (const char*) dict, dictSize);
         {
             const int decBytes = LZ4_decompress_safe_continue(
                 lz4StreamDecode, cmpBuf, decBuf, cmpBytes, BLOCK_BYTES);

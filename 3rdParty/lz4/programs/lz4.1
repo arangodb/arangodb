@@ -1,5 +1,5 @@
 .
-.TH "LZ4" "1" "July 2019" "lz4 1.9.2" "User Commands"
+.TH "LZ4" "1" "July 2024" "lz4 1.10.0" "User Commands"
 .
 .SH "NAME"
 \fBlz4\fR \- lz4, unlz4, lz4cat \- Compress or decompress \.lz4 files
@@ -17,7 +17,7 @@
 When writing scripts that need to decompress files, it is recommended to always use the name \fBlz4\fR with appropriate arguments (\fBlz4 \-d\fR or \fBlz4 \-dc\fR) instead of the names \fBunlz4\fR and \fBlz4cat\fR\.
 .
 .SH "DESCRIPTION"
-\fBlz4\fR is an extremely fast lossless compression algorithm, based on \fBbyte\-aligned LZ77\fR family of compression scheme\. \fBlz4\fR offers compression speeds of 400 MB/s per core, linearly scalable with multi\-core CPUs\. It features an extremely fast decoder, with speed in multiple GB/s per core, typically reaching RAM speed limit on multi\-core systems\. The native file format is the \fB\.lz4\fR format\.
+\fBlz4\fR is a CLI based on \fBliblz4\fR, an extremely fast implementation of lossless compression algorithm\. It provides a default compression speed of typically > 500 MB/s per core\. Speed can traded for higher compression ratio, by increasing the compression level parameter\. While decompression is single\-threaded, it reaches multiple GB/s, generally fast enough to be I/O bound\. \fBlz4\fR native file format is the \fB\.lz4\fR format\.
 .
 .SS "Difference between lz4 and gzip"
 \fBlz4\fR supports a command line syntax similar \fIbut not identical\fR to \fBgzip(1)\fR\. Differences are :
@@ -32,7 +32,7 @@ When writing scripts that need to decompress files, it is recommended to always 
 \fBlz4 file\.lz4\fR will default to decompression (use \fB\-z\fR to force compression)
 .
 .IP "\(bu" 4
-\fBlz4\fR preserves original files
+\fBlz4\fR preserves original files (see \fB\-\-rm\fR to erase source file on completion)
 .
 .IP "\(bu" 4
 \fBlz4\fR shows real\-time notification statistics during compression or decompression of a single file (use \fB\-q\fR to silence them)
@@ -58,7 +58,7 @@ Similarly, \fBlz4 \-m \-d\fR can decompress multiple \fB*\.lz4\fR files\.
 It\'s possible to opt\-in to erase source files on successful compression or decompression, using \fB\-\-rm\fR command\.
 .
 .IP "\(bu" 4
-Consequently, \fBlz4 \-m \-\-rm\fR behaves the same as \fBgzip\fR\.
+Consequently, \fBlz4 \-m \-\-rm\fR features a behavior closer to the \fBgzip\fR one\.
 .
 .IP "" 0
 .
@@ -107,7 +107,7 @@ Benchmark mode, using \fB#\fR compression level\.
 .
 .TP
 \fB\-\-list\fR
-List information about \.lz4 files\. note : current implementation is limited to single\-frame \.lz4 files\.
+List information about \.lz4 files\. For detailed information on files with multiple frames, use \fB\-v\fR\. \fB\-\-list\fR automatically triggers \fB\-m\fR modifier\.
 .
 .SS "Operation modifiers"
 .
@@ -121,7 +121,11 @@ Switch to ultra\-fast compression levels\. The higher the value, the faster the 
 .
 .TP
 \fB\-\-best\fR
-Set highest compression level\. Same as -12\.
+Set highest compression level\. Same as \-12\.
+.
+.TP
+\fB\-T#\fR, \fB\-\-threads=#\fR
+Use \fB#\fR threads for compression\. When \fB0\fR, or none provided: automatically determined from nb of detected cores\.
 .
 .TP
 \fB\-\-favor\-decSpeed\fR
@@ -169,8 +173,16 @@ Produce independent blocks (default)
 Blocks depend on predecessors (improves compression ratio, more noticeable on small blocks)
 .
 .TP
+\fB\-BX\fR
+Generate block checksums (default:disabled)
+.
+.TP
 \fB\-\-[no\-]frame\-crc\fR
 Select frame checksum (default:enabled)
+.
+.TP
+\fB\-\-no\-crc\fR
+Disable both frame and block checksums
 .
 .TP
 \fB\-\-[no\-]content\-size\fR
@@ -233,6 +245,17 @@ Benchmark multiple compression levels, from b# to e# (included)
 .TP
 \fB\-i#\fR
 Minimum evaluation time in seconds [1\-9] (default : 3)
+.
+.SS "Environment Variables"
+It\'s possible to pass some parameters to \fBlz4\fR via environment variables\. This can be useful in situations where \fBlz4\fR is known to be invoked (from a script for example) but there is no way to pass \fBlz4\fR parameters to influence the compression session\. The environment variable has higher priority than executable default, but lower priority than corresponding runtime command\. When set as global environment variables, it can be a way to enforce personalized defaults different from the executable set ones\.
+.
+.TP
+\fBLZ4_CLEVEL\fR
+specify a default compression level that \fBlz4\fR employs for compression when no other compression level is specified on command line\. Executable default is generally \fB1\fR\.
+.
+.TP
+\fBLZ4_NBWORKERS\fR
+specify a default number of threads that \fBlz4\fR will employ for compression\. Executable default is generally \fB0\fR, which means auto\-determined based on local cpu\. This functionality is only relevant when \fBlz4\fR is compiled with multithreading support\. The maximum number of workers is capped at \fBLZ4_NBWORKERS_MAX\fR (\fB200\fR by default)\.
 .
 .SH "BUGS"
 Report bugs at: https://github\.com/lz4/lz4/issues

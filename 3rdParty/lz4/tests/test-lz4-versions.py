@@ -7,6 +7,7 @@
 # GPL v2 License
 #
 
+import argparse
 import glob
 import subprocess
 import filecmp
@@ -23,19 +24,45 @@ test_dat_src = 'README.md'
 test_dat = 'test_dat'
 head = 'v999'
 
-def proc(cmd_args, pipe=True, dummy=False):
-    if dummy:
-        return
-    if pipe:
-        subproc = subprocess.Popen(cmd_args,
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE)
-    else:
-        subproc = subprocess.Popen(cmd_args)
-    return subproc.communicate()
+parser = argparse.ArgumentParser()
+parser.add_argument("--verbose", action="store_true", help="increase output verbosity")
+args = parser.parse_args()
 
-def make(args, pipe=True):
-    return proc([make_cmd] + args, pipe)
+def debug_message(msg):
+    if args.verbose:
+        print(msg)
+
+def env_or_empty(env, key):
+    if key in env:
+        return " " + env[key]
+    return ""
+
+def proc(cmd_args, pipe=True, env=False):
+    if env == False:
+        env = os.environ.copy()
+    debug_message("Executing command {} with env {}".format(cmd_args, env))
+    if pipe:
+        s = subprocess.Popen(cmd_args,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
+                             env = env)
+    else:
+        s = subprocess.Popen(cmd_args, env = env)
+    stdout_data, stderr_data = s.communicate()
+    if s.poll() != 0:
+        print('Error Code:', s.poll())
+        print('Standard Error:', stderr_data.decode())
+        sys.exit(1)
+    return stdout_data, stderr_data
+
+def make(args, pipe=True, env=False):
+    if env == False:
+        env = os.environ.copy()
+    # favor compilation speed for faster total test time, actual runtime is very short
+    env["CFLAGS"] = env_or_empty(env, 'CFLAGS') + " -O0"
+    # old versions of lz4 may require MOREFLAGS
+    env["MOREFLAGS"] = env_or_empty(env, 'MOREFLAGS') + env_or_empty(env, 'CFLAGS') + env_or_empty(env, 'CPPFLAGS') + env_or_empty(env, 'LDFLAGS')
+    return proc([make_cmd] + args, pipe, env)
 
 def git(args, pipe=True):
     return proc([git_cmd] + args, pipe)
@@ -74,6 +101,7 @@ if __name__ == '__main__':
 
     # Build all release lz4c and lz4c32
     for tag in tags:
+        print("processing tag " + tag)
         os.chdir(base_dir)
         dst_lz4c   = '{}/lz4c.{}'  .format(tmp_dir, tag) # /path/to/lz4/test/lz4test/lz4c.<TAG>
         dst_lz4c32 = '{}/lz4c32.{}'.format(tmp_dir, tag) # /path/to/lz4/test/lz4test/lz4c32.<TAG>
@@ -86,9 +114,11 @@ if __name__ == '__main__':
                 os.chdir(r_dir + '/programs')  # /path/to/lz4/lz4test/<TAG>/programs
             else:
                 os.chdir(programs_dir)
-            make(['clean', 'lz4c'], False)
+            make(['clean'], False)
+            make(['lz4c'], False)
             shutil.copy2('lz4c',   dst_lz4c)
-            make(['clean', 'lz4c32'], False)
+            make(['clean'], False)
+            make(['lz4c32'], False)
             shutil.copy2('lz4c32', dst_lz4c32)
 
     # Compress test.dat by all released lz4c and lz4c32

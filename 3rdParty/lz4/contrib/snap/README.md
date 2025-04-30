@@ -6,7 +6,7 @@ of lz4. Snaps are universal Linux packages that allow you to easily
 build your application from any source and ship it to any Linux
 distribution by publishing it to https://snapcraft.io/. A key attribute
 of a snap package is that it is (ideally) confined such that it
-executes within a controlled environmenti with all its dependencies
+executes within a controlled environment with all its dependencies
 bundled with it and does not share dependencies with of from any other
 package on the system (with a couple of minor exceptions).
 

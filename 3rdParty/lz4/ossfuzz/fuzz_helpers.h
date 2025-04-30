@@ -4,7 +4,8 @@
  *
  * This source code is licensed under both the BSD-style license (found in the
  * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
+ * in the COPYING file in the root directory of this source tree),
+ * meaning you may select, at your option, one of the above-listed licenses.
  */
 
 /**
@@ -43,7 +44,7 @@ extern "C" {
           : (fprintf(stderr, "%s: %u: Assertion: `%s' failed. %s\n", __FILE__, \
                      __LINE__, FUZZ_QUOTE(cond), (msg)),                       \
              abort()))
-#define FUZZ_ASSERT(cond) FUZZ_ASSERT_MSG((cond), "");
+#define FUZZ_ASSERT(cond) FUZZ_ASSERT_MSG((cond), "")
 
 #if defined(__GNUC__)
 #define FUZZ_STATIC static __inline __attribute__((unused))
@@ -81,7 +82,7 @@ FUZZ_STATIC uint32_t FUZZ_rand(uint32_t *state) {
     return rand32 >> 5;
 }
 
-/* Returns a random numer in the range [min, max]. */
+/* Returns a random number in the range [min, max]. */
 FUZZ_STATIC uint32_t FUZZ_rand32(uint32_t *state, uint32_t min, uint32_t max) {
     uint32_t random = FUZZ_rand(state);
     return min + (random % (max - min + 1));

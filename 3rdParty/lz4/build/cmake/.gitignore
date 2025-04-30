@@ -1,4 +1,4 @@
-# cmake artefact
+# cmake build artefact
 
 CMakeCache.txt
 CMakeFiles
@@ -7,3 +7,4 @@ Makefile
 liblz4.pc
 lz4c
 install_manifest.txt
+build

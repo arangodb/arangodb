@@ -13,7 +13,7 @@ This directory contains the following programs and scripts:
 #### `test-lz4-versions.py` - script for testing lz4 interoperability between versions
 
 This script creates `versionsTest` directory to which lz4 repository is cloned.
-Then all taged (released) versions of lz4 are compiled.
+Then all tagged (released) versions of lz4 are compiled.
 In the following step interoperability between lz4 versions is checked.
 
 
@@ -25,7 +25,7 @@ After `sleepTime` (an optional parameter, default 300 seconds) seconds the scrip
 If a new commit is found it is compiled and a speed benchmark for this commit is performed.
 The results of the speed benchmark are compared to the previous results.
 If compression or decompression speed for one of lz4 levels is lower than `lowerLimit` (an optional parameter, default 0.98) the speed benchmark is restarted.
-If second results are also lower than `lowerLimit` the warning e-mail is send to recipients from the list (the `emails` parameter).
+If second results are also lower than `lowerLimit` the warning e-mail is sent to recipients from the list (the `emails` parameter).
 
 Additional remarks:
 - To be sure that speed results are accurate the script should be run on a "stable" target system with no other jobs running in parallel
@@ -37,7 +37,7 @@ Additional remarks:
 The example usage with two test files, one e-mail address, and with an additional message:
 ```
 ./test-lz4-speed.py "silesia.tar calgary.tar" "email@gmail.com" --message "tested on my laptop" --sleepTime 60
-``` 
+```
 
 To run the script in background please use:
 ```

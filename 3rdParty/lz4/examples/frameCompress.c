@@ -11,8 +11,9 @@
 #include <errno.h>
 #include <assert.h>
 
+#include <getopt.h>
 #include <lz4frame.h>
-
+#include <lz4frame_static.h>
 
 #define IN_CHUNK_SIZE  (16*1024)
 
@@ -57,10 +58,11 @@ static compressResult_t
 compress_file_internal(FILE* f_in, FILE* f_out,
                        LZ4F_compressionContext_t ctx,
                        void* inBuff,  size_t inChunkSize,
-                       void* outBuff, size_t outCapacity)
+                       void* outBuff, size_t outCapacity,
+                       FILE* f_unc, long uncOffset)
 {
     compressResult_t result = { 1, 0, 0 };  /* result for an error */
-    unsigned long long count_in = 0, count_out;
+    long long count_in = 0, count_out, bytesToOffset = -1;
 
     assert(f_in != NULL); assert(f_out != NULL);
     assert(ctx != NULL);
@@ -81,22 +83,48 @@ compress_file_internal(FILE* f_in, FILE* f_out,
 
     /* stream file */
     for (;;) {
-        size_t const readSize = fread(inBuff, 1, IN_CHUNK_SIZE, f_in);
+      size_t compressedSize;
+      long long inSize = IN_CHUNK_SIZE;
+      if (uncOffset >= 0) {
+        bytesToOffset = uncOffset - count_in;
+
+        /* read only remaining bytes to offset position */
+        if (bytesToOffset < IN_CHUNK_SIZE && bytesToOffset > 0) {
+          inSize = bytesToOffset;
+        }
+      }
+
+      /* input data is at uncompressed data offset */
+      if (bytesToOffset <= 0 && uncOffset >= 0 && f_unc) {
+        size_t const readSize = fread(inBuff, 1, inSize, f_unc);
+        if (readSize == 0) {
+          uncOffset = -1;
+          continue;
+        }
+        count_in += readSize;
+        compressedSize = LZ4F_uncompressedUpdate(ctx,
+                                             outBuff, outCapacity,
+                                             inBuff, readSize,
+                                             NULL);
+      } else {
+        size_t const readSize = fread(inBuff, 1, inSize, f_in);
         if (readSize == 0) break; /* nothing left to read from input file */
         count_in += readSize;
-
-        size_t const compressedSize = LZ4F_compressUpdate(ctx,
+        compressedSize = LZ4F_compressUpdate(ctx,
                                                 outBuff, outCapacity,
                                                 inBuff, readSize,
                                                 NULL);
-        if (LZ4F_isError(compressedSize)) {
-            printf("Compression failed: error %u \n", (unsigned)compressedSize);
-            return result;
-        }
 
-        printf("Writing %u bytes\n", (unsigned)compressedSize);
-        safe_fwrite(outBuff, 1, compressedSize, f_out);
-        count_out += compressedSize;
+      }
+
+      if (LZ4F_isError(compressedSize)) {
+        printf("Compression failed: error %u \n", (unsigned)compressedSize);
+        return result;
+      }
+
+      printf("Writing %u bytes\n", (unsigned)compressedSize);
+      safe_fwrite(outBuff, 1, compressedSize, f_out);
+      count_out += compressedSize;
     }
 
     /* flush whatever remains within internal buffers */
@@ -120,12 +148,13 @@ compress_file_internal(FILE* f_in, FILE* f_out,
 }
 
 static compressResult_t
-compress_file(FILE* f_in, FILE* f_out)
+compress_file(FILE* f_in, FILE* f_out,
+              FILE* f_unc, int uncOffset)
 {
     assert(f_in != NULL);
     assert(f_out != NULL);
 
-    /* ressource allocation */
+    /* resource allocation */
     LZ4F_compressionContext_t ctx;
     size_t const ctxCreation = LZ4F_createCompressionContext(&ctx, LZ4F_VERSION);
     void* const src = malloc(IN_CHUNK_SIZE);
@@ -137,9 +166,10 @@ compress_file(FILE* f_in, FILE* f_out)
         result = compress_file_internal(f_in, f_out,
                                         ctx,
                                         src, IN_CHUNK_SIZE,
-                                        outbuff, outbufCapacity);
+                                        outbuff, outbufCapacity,
+                                        f_unc, uncOffset);
     } else {
-        printf("error : ressource allocation failed \n");
+        printf("error : resource allocation failed \n");
     }
 
     LZ4F_freeCompressionContext(ctx);   /* supports free on NULL */
@@ -286,7 +316,7 @@ static int decompress_file(FILE* f_in, FILE* f_out)
 {
     assert(f_in != NULL); assert(f_out != NULL);
 
-    /* Ressource allocation */
+    /* Resource allocation */
     void* const src = malloc(IN_CHUNK_SIZE);
     if (!src) { perror("decompress_file(src)"); return 1; }
 
@@ -305,52 +335,106 @@ static int decompress_file(FILE* f_in, FILE* f_out)
 }
 
 
-int compareFiles(FILE* fp0, FILE* fp1)
+int compareFiles(FILE* fp0, FILE* fp1, FILE* fpUnc, long uncOffset)
 {
     int result = 0;
+    long bytesRead = 0;
+    long bytesToOffset = -1;
+    long b1Size = 1024;
 
     while (result==0) {
+        char b1[b1Size];
+        size_t r1;
+        size_t bytesToRead = sizeof b1;
+        if (uncOffset >= 0) {
+          bytesToOffset = uncOffset - bytesRead;
+
+          /* read remainder to offset */
+          if (bytesToOffset < b1Size) {
+            bytesToRead = bytesToOffset;
+          }
+        }
+
         char b0[1024];
-        char b1[1024];
-        size_t const r0 = fread(b0, 1, sizeof(b0), fp0);
-        size_t const r1 = fread(b1, 1, sizeof(b1), fp1);
+        size_t r0;
+        if (bytesToOffset <= 0 && fpUnc) {
+          bytesToRead = sizeof b1;
+          r0 = fread(b0, 1,bytesToRead, fpUnc);
+        } else {
+          r0 = fread(b0, 1, bytesToRead, fp0);
+        }
+
+        r1 = fread(b1, 1, r0, fp1);
 
         result = (r0 != r1);
         if (!r0 || !r1) break;
         if (!result) result = memcmp(b0, b1, r0);
+
+        bytesRead += r1;
     }
 
     return result;
 }
 
 
-int main(int argc, const char **argv) {
+int main(int argc, char **argv) {
     char inpFilename[256] = { 0 };
     char lz4Filename[256] = { 0 };
     char decFilename[256] = { 0 };
 
+    int uncOffset = -1;
+    char uncFilename[256] = { 0 };
+    int opt;
+
     if (argc < 2) {
         printf("Please specify input filename\n");
-        return 0;
+        return EXIT_FAILURE;
     }
 
     snprintf(inpFilename, 256, "%s", argv[1]);
     snprintf(lz4Filename, 256, "%s.lz4", argv[1]);
     snprintf(decFilename, 256, "%s.lz4.dec", argv[1]);
 
+    while ((opt = getopt(argc, argv, "o:d:")) != -1) {
+      switch (opt) {
+      case 'd':
+        snprintf(uncFilename, 256, "%s", optarg);
+        break;
+      case 'o':
+        uncOffset = atoi(optarg);
+        break;
+      default:
+        printf("usage: %s <input file> [-o <offset> -d <file>]\n", argv[0]);
+        printf("-o uncompressed data offset\n");
+        printf("   inject uncompressed data at this offset into the lz4 file\n");
+        printf("-d uncompressed file\n");
+        printf("   file to inject without compression into the lz4 file\n");
+        return EXIT_FAILURE;
+      }
+    }
+
     printf("inp = [%s]\n", inpFilename);
     printf("lz4 = [%s]\n", lz4Filename);
     printf("dec = [%s]\n", decFilename);
+    if (uncOffset > 0) {
+      printf("unc = [%s]\n", uncFilename);
+      printf("ofs = [%i]\n", uncOffset);
+    }
 
     /* compress */
     {   FILE* const inpFp = fopen(inpFilename, "rb");
         FILE* const outFp = fopen(lz4Filename, "wb");
+        FILE* const uncFp = fopen(uncFilename, "rb");
 
         printf("compress : %s -> %s\n", inpFilename, lz4Filename);
-        compressResult_t const ret = compress_file(inpFp, outFp);
+        compressResult_t const ret = compress_file(
+            inpFp, outFp,
+            uncFp, uncOffset);
 
         fclose(outFp);
         fclose(inpFp);
+        if (uncFp)
+          fclose(uncFp);
 
         if (ret.error) {
             printf("compress : failed with code %i\n", ret.error);
@@ -383,12 +467,16 @@ int main(int argc, const char **argv) {
     /* verify */
     {   FILE* const inpFp = fopen(inpFilename, "rb");
         FILE* const decFp = fopen(decFilename, "rb");
+        FILE* const uncFp = fopen(uncFilename, "rb");
 
         printf("verify : %s <-> %s\n", inpFilename, decFilename);
-        int const cmp = compareFiles(inpFp, decFp);
+        int const cmp = compareFiles(inpFp, decFp,
+                                     uncFp, uncOffset);
 
         fclose(decFp);
         fclose(inpFp);
+        if (uncFp)
+          fclose(uncFp);
 
         if (cmp) {
             printf("corruption detected : decompressed file differs from original\n");

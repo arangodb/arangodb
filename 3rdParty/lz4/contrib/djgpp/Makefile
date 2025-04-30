@@ -7,9 +7,9 @@ DESTDIR ?= /opt/local
 # Version numbers
 VERSION ?= 129
 RELEASE ?= r$(VERSION)
-LIBVER_MAJOR=$(shell sed -n '/define LZ4_VERSION_MAJOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < lib/lz4.h)
-LIBVER_MINOR=$(shell sed -n '/define LZ4_VERSION_MINOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < lib/lz4.h)
-LIBVER_PATCH=$(shell sed -n '/define LZ4_VERSION_RELEASE/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < lib/lz4.h)
+LIBVER_MAJOR=$(shell sed -n '/define[[:blank:]][[:blank:]]*LZ4_VERSION_MAJOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < lib/lz4.h)
+LIBVER_MINOR=$(shell sed -n '/define[[:blank:]][[:blank:]]*LZ4_VERSION_MINOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < lib/lz4.h)
+LIBVER_PATCH=$(shell sed -n '/define[[:blank:]][[:blank:]]*LZ4_VERSION_RELEASE/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < lib/lz4.h)
 LIBVER=$(LIBVER_MAJOR).$(LIBVER_MINOR).$(LIBVER_PATCH)
 
 ######################################################################
@@ -19,7 +19,7 @@ CC = $(CROSS)-gcc
 AR = $(CROSS)-ar
 LD = $(CROSS)-gcc
 
-CFLAGS ?= -O3 -std=gnu99 -Wall -Wextra -Wundef -Wshadow -Wcast-qual -Wcast-align -Wstrict-prototypes -pedantic -DLZ4_VERSION=\"$(RELEASE)\"
+CFLAGS ?= -O3 -std=gnu99 -Wall -Wextra -Wundef -Wshadow -Wcast-qual -Wcast-align -Wstrict-prototypes -Wpedantic -DLZ4_VERSION=\"$(RELEASE)\"
 LDFLAGS ?= -s
 SRC = programs/bench.c programs/lz4io.c programs/lz4cli.c
 OBJ = $(SRC:.c=.o)

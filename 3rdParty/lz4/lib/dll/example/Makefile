@@ -1,6 +1,6 @@
 # ##########################################################################
 # LZ4 programs - Makefile
-# Copyright (C) Yann Collet 2016
+# Copyright (C) Yann Collet 2016-2020
 #
 # GPL v2 License
 #

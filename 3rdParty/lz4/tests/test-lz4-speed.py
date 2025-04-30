@@ -1,7 +1,7 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python3
 
 #
-# Copyright (c) 2016-present, Przemyslaw Skibinski, Yann Collet, Facebook, Inc.
+# Copyright (c) 2016-2020, Przemyslaw Skibinski, Yann Collet, Facebook, Inc.
 # All rights reserved.
 #
 # This source code is licensed under the BSD-style license found in the
@@ -152,7 +152,7 @@ def benchmark_and_compare(branch, commit, last_commit, args, executableName, md5
             % (os.getloadavg()[0], args.maxLoadAvg, sleepTime))
         time.sleep(sleepTime)
     start_load = str(os.getloadavg())
-    result = execute('programs/%s -rqi5b1e%s %s' % (executableName, args.lastCLevel, testFilePath), print_output=True)   
+    result = execute('programs/%s -rqi5b1e%s %s' % (executableName, args.lastCLevel, testFilePath), print_output=True)
     end_load = str(os.getloadavg())
     linesExpected = args.lastCLevel + 1
     if len(result) != linesExpected:
@@ -204,9 +204,9 @@ def test_commit(branch, commit, last_commit, args, testFilePaths, have_mutt, hav
     local_branch = branch.split('/')[1]
     version = local_branch.rpartition('-')[2] + '_' + commit
     if not args.dry_run:
-        execute('make -C programs clean lz4 CC=clang MOREFLAGS="-Werror -Wconversion -Wno-sign-conversion -DLZ4_GIT_COMMIT=%s" && ' % version +
+        execute('make clean; CFLAGS="-Werror -Wconversion -Wno-sign-conversion" CPPFLAGS="-DLZ4_GIT_COMMIT=%s" make -C programs lz4 CC=clang && ' % version +
                 'mv programs/lz4 programs/lz4_clang && ' +
-                'make -C programs clean lz4 lz4c32 MOREFLAGS="-DLZ4_GIT_COMMIT=%s"' % version)
+                'make clean && CPPFLAGS="-DLZ4_GIT_COMMIT=%s" make -C programs lz4 lz4c32 ' % version)
     md5_lz4 = hashfile(hashlib.md5(), clone_path + '/programs/lz4')
     md5_lz4c32 = hashfile(hashlib.md5(), clone_path + '/programs/lz4c32')
     md5_lz4_clang = hashfile(hashlib.md5(), clone_path + '/programs/lz4_clang')

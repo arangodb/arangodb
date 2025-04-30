@@ -1,11 +1,11 @@
 /*
- * Copyright (c) 2016-present, Yann Collet, Facebook, Inc.
+ * Copyright (c) 2016-2020, Yann Collet, Facebook, Inc.
  * All rights reserved.
  *
  * This source code is licensed under both the BSD-style license (found in the
  * LICENSE file in the root directory of this source tree) and the GPLv2 (found
- * in the COPYING file in the root directory of this source tree).
- * You may select, at your option, one of the above-listed licenses.
+ * in the COPYING file in the root directory of this source tree),
+ * meaning you may select, at your option, one of the above-listed licenses.
  */
 
 /*
@@ -104,7 +104,7 @@ static void roundTripTest(void* resultBuff, size_t resultBuffCapacity,
                           int clevel)
 {
     int const proposed_clevel = clevel ? clevel : select_clevel(srcBuff, srcSize);
-    int const selected_clevel = proposed_clevel < 0 ? -proposed_clevel : proposed_clevel;   /* if level < 0, it becomes an accelearion value */
+    int const selected_clevel = proposed_clevel < 0 ? -proposed_clevel : proposed_clevel;   /* if level < 0, it becomes an acceleration value */
     compressFn compress = selected_clevel >= LZ4HC_CLEVEL_MIN ? LZ4_compress_HC : LZ4_compress_fast;
     int const cSize = compress((const char*)srcBuff, (char*)compressedBuff, (int)srcSize, (int)compressedBuffCapacity, selected_clevel);
     CONTROL_MSG(cSize == 0, "Compression error !");
@@ -126,7 +126,7 @@ static void roundTripTest(void* resultBuff, size_t resultBuffCapacity,
 
 static void roundTripCheck(const void* srcBuff, size_t srcSize, int clevel)
 {
-    size_t const cBuffSize = LZ4_compressBound((int)srcSize);
+    size_t const cBuffSize = LZ4_COMPRESSBOUND(srcSize);
     void* const cBuff = malloc(cBuffSize);
     void* const rBuff = malloc(cBuffSize);
 

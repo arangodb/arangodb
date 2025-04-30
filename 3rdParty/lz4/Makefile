@@ -1,6 +1,6 @@
 # ################################################################
 # LZ4 - Makefile
-# Copyright (C) Yann Collet 2011-present
+# Copyright (C) Yann Collet 2011-2023
 # All rights reserved.
 #
 # BSD license
@@ -38,8 +38,12 @@ FUZZDIR = ossfuzz
 
 include Makefile.inc
 
+
 .PHONY: default
 default: lib-release lz4-release
+
+# silent mode by default; verbose can be triggered by V=1 or VERBOSE=1
+$(V)$(VERBOSE).SILENT:
 
 .PHONY: all
 all: allmost examples manuals build_tests
@@ -50,14 +54,15 @@ allmost: lib lz4
 .PHONY: lib lib-release liblz4.a
 lib: liblz4.a
 lib lib-release liblz4.a:
-	@$(MAKE) -C $(LZ4DIR) $@
+	$(MAKE) -C $(LZ4DIR) $@
 
 .PHONY: lz4 lz4-release
 lz4 : liblz4.a
 lz4-release : lib-release
 lz4 lz4-release :
-	@$(MAKE) -C $(PRGDIR) $@
-	@cp $(PRGDIR)/lz4$(EXT) .
+	$(MAKE) -C $(PRGDIR) $@
+	$(LN_SF) $(PRGDIR)/lz4$(EXT) .
+	echo lz4 build completed
 
 .PHONY: examples
 examples: liblz4.a
@@ -65,58 +70,71 @@ examples: liblz4.a
 
 .PHONY: manuals
 manuals:
-	@$(MAKE) -C contrib/gen_manual $@
+	$(MAKE) -C contrib/gen_manual $@
 
 .PHONY: build_tests
 build_tests:
-	@$(MAKE) -C $(TESTDIR) all
+	$(MAKE) -C $(TESTDIR) all
 
 .PHONY: clean
 clean:
-	@$(MAKE) -C $(LZ4DIR) $@ > $(VOID)
-	@$(MAKE) -C $(PRGDIR) $@ > $(VOID)
-	@$(MAKE) -C $(TESTDIR) $@ > $(VOID)
-	@$(MAKE) -C $(EXDIR) $@ > $(VOID)
-	@$(MAKE) -C $(FUZZDIR) $@ > $(VOID)
-	@$(MAKE) -C contrib/gen_manual $@ > $(VOID)
-	@$(RM) lz4$(EXT)
+	$(MAKE) -C $(LZ4DIR) $@ > $(VOID)
+	$(MAKE) -C $(PRGDIR) $@ > $(VOID)
+	$(MAKE) -C $(TESTDIR) $@ > $(VOID)
+	$(MAKE) -C $(EXDIR) $@ > $(VOID)
+	$(MAKE) -C $(FUZZDIR) $@ > $(VOID)
+	$(MAKE) -C contrib/gen_manual $@ > $(VOID)
+	$(RM) lz4$(EXT)
+	$(RM) -r $(CMAKE_BUILD_DIR) $(MESON_BUILD_DIR)
 	@echo Cleaning completed
 
 
 #-----------------------------------------------------------------------------
-# make install is validated only for Linux, OSX, BSD, Hurd and Solaris targets
+# make install is validated only for Posix environments
 #-----------------------------------------------------------------------------
 ifeq ($(POSIX_ENV),Yes)
 HOST_OS = POSIX
 
 .PHONY: install uninstall
 install uninstall:
-	@$(MAKE) -C $(LZ4DIR) $@
-	@$(MAKE) -C $(PRGDIR) $@
+	$(MAKE) -C $(LZ4DIR) $@
+	$(MAKE) -C $(PRGDIR) $@
 
-travis-install:
+.PHONY: test-install
+test-install:
 	$(MAKE) -j1 install DESTDIR=~/install_test_dir
 
-cmake:
-	@cd build/cmake; cmake $(CMAKE_PARAMS) CMakeLists.txt; $(MAKE)
-
-endif
+endif   # POSIX_ENV
 
 
-ifneq (,$(filter MSYS%,$(shell uname)))
+CMAKE ?= cmake
+CMAKE_BUILD_DIR ?= build/cmake/build
+ifneq (,$(filter MSYS%,$(shell $(UNAME))))
 HOST_OS = MSYS
 CMAKE_PARAMS = -G"MSYS Makefiles"
 endif
 
+.PHONY: cmakebuild
+cmakebuild:
+	mkdir -p $(CMAKE_BUILD_DIR)
+	cd $(CMAKE_BUILD_DIR); $(CMAKE) $(CMAKE_PARAMS) ..; $(CMAKE) --build .
+
+MESON ?= meson
+MESON_BUILD_DIR ?= mesonBuildDir
+
+.PHONY: mesonbuild
+mesonbuild:
+	$(MESON) setup --fatal-meson-warnings --buildtype=debug -Db_lundef=false -Dauto_features=enabled -Dprograms=true -Dcontrib=true -Dtests=true -Dexamples=true build/meson $(MESON_BUILD_DIR)
+	$(MESON) test -C $(MESON_BUILD_DIR)
 
 #------------------------------------------------------------------------
-#make tests validated only for MSYS, Linux, OSX, kFreeBSD and Hurd targets
+# make tests validated only for MSYS and Posix environments
 #------------------------------------------------------------------------
 ifneq (,$(filter $(HOST_OS),MSYS POSIX))
 
 .PHONY: list
 list:
-	@$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$' | xargs
+	$(MAKE) -pRrq -f $(lastword $(MAKEFILE_LIST)) : 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | sort | egrep -v -e '^[^[:alnum:]]' -e '^$@$$' | xargs
 
 .PHONY: check
 check:
@@ -124,32 +142,21 @@ check:
 
 .PHONY: test
 test:
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" $(MAKE) -C $(TESTDIR) $@
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" $(MAKE) -C $(EXDIR) $@
+	$(MAKE) -C $(TESTDIR) $@
+	$(MAKE) -C $(EXDIR) $@
 
-clangtest: CFLAGS ?= -O3
-clangtest: CFLAGS += -Werror -Wconversion -Wno-sign-conversion
-clangtest: CC = clang
-clangtest: clean
-	$(CC) -v
-	@CFLAGS="$(CFLAGS)" $(MAKE) -C $(LZ4DIR)  all CC=$(CC)
-	@CFLAGS="$(CFLAGS)" $(MAKE) -C $(PRGDIR)  all CC=$(CC)
-	@CFLAGS="$(CFLAGS)" $(MAKE) -C $(TESTDIR) all CC=$(CC)
-
-clangtest-native: clean
-	clang -v
-	@CFLAGS="-O3 -Werror -Wconversion -Wno-sign-conversion" $(MAKE) -C $(LZ4DIR)  all    CC=clang
-	@CFLAGS="-O3 -Werror -Wconversion -Wno-sign-conversion" $(MAKE) -C $(PRGDIR)  native CC=clang
-	@CFLAGS="-O3 -Werror -Wconversion -Wno-sign-conversion" $(MAKE) -C $(TESTDIR) native CC=clang
-
+.PHONY: usan
 usan: CC      = clang
 usan: CFLAGS  = -O3 -g -fsanitize=undefined -fno-sanitize-recover=undefined -fsanitize-recover=pointer-overflow
 usan: LDFLAGS = $(CFLAGS)
 usan: clean
-	CFLAGS="$(CFLAGS)" LDFLAGS="$(LDFLAGS)" $(MAKE) test FUZZER_TIME="-T30s" NB_LOOPS=-i1
+	CC=$(CC) CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)' $(MAKE) test FUZZER_TIME="-T30s" NB_LOOPS=-i1
 
+.PHONY: usan32
+usan32: CFLAGS = -m32 -O3 -g -fsanitize=undefined -fno-sanitize-recover=undefined -fsanitize-recover=pointer-overflow
+usan32: LDFLAGS = $(CFLAGS)
 usan32: clean
-	CFLAGS="-m32 -O3 -g -fsanitize=undefined" $(MAKE) test FUZZER_TIME="-T30s" NB_LOOPS=-i1
+	CFLAGS='$(CFLAGS)' LDFLAGS='$(LDFLAGS)' $(MAKE) V=1 test FUZZER_TIME="-T30s" NB_LOOPS=-i1
 
 SCANBUILD ?= scan-build
 SCANBUILD_FLAGS += --status-bugs -v --force-analyze-debug-code
@@ -161,48 +168,107 @@ staticAnalyze: clean
 cppcheck:
 	cppcheck . --force --enable=warning,portability,performance,style --error-exitcode=1 > /dev/null
 
+.PHONY: platformTest
 platformTest: clean
 	@echo "\n ---- test lz4 with $(CC) compiler ----"
-	@$(CC) -v
-	CFLAGS="-O3 -Werror"         $(MAKE) -C $(LZ4DIR) all
-	CFLAGS="-O3 -Werror -static" $(MAKE) -C $(PRGDIR) all
-	CFLAGS="-O3 -Werror -static" $(MAKE) -C $(TESTDIR) all
+	$(CC) -v
+	CFLAGS="$(CFLAGS) -O3 -Werror"         $(MAKE) -C $(LZ4DIR) all
+	CFLAGS="$(CFLAGS) -O3 -Werror -static" $(MAKE) -C $(PRGDIR) all
+	CFLAGS="$(CFLAGS) -O3 -Werror -static" $(MAKE) -C $(TESTDIR) all
 	$(MAKE) -C $(TESTDIR) test-platform
 
 .PHONY: versionsTest
-versionsTest: clean
+versionsTest:
+	$(MAKE) -C $(TESTDIR) clean
 	$(MAKE) -C $(TESTDIR) $@
 
-gpptest gpptest32: CC = "$(CXX) -Wno-deprecated"
-gpptest gpptest32: CFLAGS = -O3 -Wall -Wextra -Wundef -Wshadow -Wcast-align -Werror
-gpptest32: CFLAGS += -m32
-gpptest gpptest32: clean
+.PHONY: test-freestanding
+test-freestanding:
+	$(MAKE) -C $(TESTDIR) clean
+	$(MAKE) -C $(TESTDIR) $@
+
+# test linking C libraries from C++ executables
+.PHONY: ctocxxtest
+ctocxxtest: LIBCC="$(CC)"
+ctocxxtest: EXECC="$(CXX) -Wno-deprecated"
+ctocxxtest: CFLAGS=-O0
+ctocxxtest:
+	CC=$(LIBCC) $(MAKE) -C $(LZ4DIR)  CFLAGS="$(CFLAGS)" all
+	CC=$(LIBCC) $(MAKE) -C $(TESTDIR) CFLAGS="$(CFLAGS)" lz4.o lz4hc.o lz4frame.o
+	CC=$(EXECC) $(MAKE) -C $(TESTDIR) CFLAGS="$(CFLAGS)" all
+
+.PHONY: cxxtest cxx32test
+cxx32test: CFLAGS += -m32
+cxxtest cxx32test: CC := "$(CXX) -Wno-deprecated"
+cxxtest cxx32test: CFLAGS = -O3 -Wall -Wextra -Wundef -Wshadow -Wcast-align -Werror
+cxxtest cxx32test:
 	$(CXX) -v
 	CC=$(CC) $(MAKE) -C $(LZ4DIR)  all CFLAGS="$(CFLAGS)"
 	CC=$(CC) $(MAKE) -C $(PRGDIR)  all CFLAGS="$(CFLAGS)"
 	CC=$(CC) $(MAKE) -C $(TESTDIR) all CFLAGS="$(CFLAGS)"
 
+.PHONY: cxx17build
 cxx17build : CC = "$(CXX) -Wno-deprecated"
-cxx17build : CFLAGS = -std=c++17 -Wall -Wextra -Wundef -Wshadow -Wcast-align -Werror -pedantic
+cxx17build : CFLAGS = -std=c++17 -Wall -Wextra -Wundef -Wshadow -Wcast-align -Werror -Wpedantic
 cxx17build : clean
 	$(CXX) -v
 	CC=$(CC) $(MAKE) -C $(LZ4DIR)  all CFLAGS="$(CFLAGS)"
 	CC=$(CC) $(MAKE) -C $(PRGDIR)  all CFLAGS="$(CFLAGS)"
 	CC=$(CC) $(MAKE) -C $(TESTDIR) all CFLAGS="$(CFLAGS)"
 
-ctocpptest: LIBCC="$(CC)"
-ctocpptest: TESTCC="$(CXX)"
-ctocpptest: CFLAGS=""
-ctocpptest: clean
-	CC=$(LIBCC)  $(MAKE) -C $(LZ4DIR)  CFLAGS="$(CFLAGS)" all
-	CC=$(LIBCC)  $(MAKE) -C $(TESTDIR) CFLAGS="$(CFLAGS)" lz4.o lz4hc.o lz4frame.o
-	CC=$(TESTCC) $(MAKE) -C $(TESTDIR) CFLAGS="$(CFLAGS)" all
+.PHONY: c_standards
+c_standards: clean c_standards_c11 c_standards_c99 c_standards_c90
 
-c_standards: clean
-	$(MAKE) clean; CFLAGS="-std=c90   -Werror -pedantic -Wno-long-long -Wno-variadic-macros" $(MAKE) allmost
-	$(MAKE) clean; CFLAGS="-std=gnu90 -Werror -pedantic -Wno-long-long -Wno-variadic-macros" $(MAKE) allmost
-	$(MAKE) clean; CFLAGS="-std=c99   -Werror -pedantic" $(MAKE) all
-	$(MAKE) clean; CFLAGS="-std=gnu99 -Werror -pedantic" $(MAKE) all
-	$(MAKE) clean; CFLAGS="-std=c11   -Werror" $(MAKE) all
+.PHONY: c_standards_c90
+c_standards_c90: clean
+	$(MAKE) clean; CFLAGS="-std=c90   -Werror -Wpedantic -Wno-long-long -Wno-variadic-macros" $(MAKE) allmost
+	$(MAKE) clean; CFLAGS="-std=gnu90 -Werror -Wpedantic -Wno-long-long -Wno-variadic-macros" $(MAKE) allmost
 
-endif
+.PHONY: c_standards_c99
+c_standards_c99: clean
+	$(MAKE) clean; CFLAGS="-std=c99   -Werror -Wpedantic" $(MAKE) all
+	$(MAKE) clean; CFLAGS="-std=gnu99 -Werror -Wpedantic" $(MAKE) all
+
+.PHONY: c_standards_c11
+c_standards_c11: clean
+	$(MAKE) clean; CFLAGS="-std=c11 -Werror" $(MAKE) all
+
+# The following test ensures that standard Makefile variables set through environment
+# are correctly transmitted at compilation stage.
+# This test is meant to detect issues like https://github.com/lz4/lz4/issues/958
+.PHONY: standard_variables
+standard_variables:
+	$(MAKE) clean
+	@echo =================
+	@echo Check support of Makefile Standard variables through environment
+	@echo note : this test requires V=1 to work properly
+	@echo =================
+	CC="cc -DCC_TEST" \
+	CFLAGS=-DCFLAGS_TEST \
+	CPPFLAGS=-DCPPFLAGS_TEST \
+	LDFLAGS=-DLDFLAGS_TEST \
+	LDLIBS=-DLDLIBS_TEST \
+	$(MAKE) V=1 > tmpsv
+	# Note: just checking the presence of custom flags
+	# would not detect situations where custom flags are
+	# supported in some part of the Makefile, and missed in others.
+	# So the test checks if they are present the _right nb of times_.
+	# However, checking static quantities makes this test brittle,
+	# because quantities (10, 2 and 1) can still evolve in future,
+	# for example when source directories or Makefile evolve.
+	if [ $$(grep CC_TEST tmpsv | wc -l) -ne 10 ]; then \
+		echo "CC environment variable missed" && False; fi
+	if [ $$(grep CFLAGS_TEST tmpsv | wc -l) -ne 10 ]; then \
+		echo "CFLAGS environment variable missed" && False; fi
+	if [ $$(grep CPPFLAGS_TEST tmpsv | wc -l) -ne 10 ]; then \
+		echo "CPPFLAGS environment variable missed" && False; fi
+	if [ $$(grep LDFLAGS_TEST tmpsv | wc -l) -ne 2 ]; then \
+		echo "LDFLAGS environment variable missed" && False; fi
+	if [ $$(grep LDLIBS_TEST tmpsv | wc -l) -ne 1 ]; then \
+		echo "LDLIBS environment variable missed" && False; fi
+	@echo =================
+	@echo all custom variables detected
+	@echo =================
+	$(RM) tmpsv
+
+endif   # MSYS POSIX

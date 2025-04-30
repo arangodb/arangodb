@@ -1,6 +1,6 @@
 # ################################################################
 # LZ4 library - Makefile
-# Copyright (C) Yann Collet 2011-2016
+# Copyright (C) Yann Collet 2011-2023
 # All rights reserved.
 #
 # This Makefile is validated for Linux, macOS, *BSD, Hurd, Solaris, MSYS2 targets
@@ -31,11 +31,12 @@
 #  - LZ4 source repository : https://github.com/lz4/lz4
 #  - LZ4 forum froup : https://groups.google.com/forum/#!forum/lz4c
 # ################################################################
+SED ?= sed
 
 # Version numbers
-LIBVER_MAJOR_SCRIPT:=`sed -n '/define LZ4_VERSION_MAJOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < ./lz4.h`
-LIBVER_MINOR_SCRIPT:=`sed -n '/define LZ4_VERSION_MINOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < ./lz4.h`
-LIBVER_PATCH_SCRIPT:=`sed -n '/define LZ4_VERSION_RELEASE/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < ./lz4.h`
+LIBVER_MAJOR_SCRIPT:=`$(SED) -n '/define[[:blank:]][[:blank:]]*LZ4_VERSION_MAJOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < ./lz4.h`
+LIBVER_MINOR_SCRIPT:=`$(SED) -n '/define[[:blank:]][[:blank:]]*LZ4_VERSION_MINOR/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < ./lz4.h`
+LIBVER_PATCH_SCRIPT:=`$(SED) -n '/define[[:blank:]][[:blank:]]*LZ4_VERSION_RELEASE/s/.*[[:blank:]]\([0-9][0-9]*\).*/\1/p' < ./lz4.h`
 LIBVER_SCRIPT:= $(LIBVER_MAJOR_SCRIPT).$(LIBVER_MINOR_SCRIPT).$(LIBVER_PATCH_SCRIPT)
 LIBVER_MAJOR := $(shell echo $(LIBVER_MAJOR_SCRIPT))
 LIBVER_MINOR := $(shell echo $(LIBVER_MINOR_SCRIPT))
@@ -46,12 +47,12 @@ BUILD_SHARED:=yes
 BUILD_STATIC:=yes
 
 CPPFLAGS+= -DXXH_NAMESPACE=LZ4_
-CFLAGS  ?= -O3
+USERCFLAGS:= -O3 $(CFLAGS)
 DEBUGFLAGS:= -Wall -Wextra -Wcast-qual -Wcast-align -Wshadow \
              -Wswitch-enum -Wdeclaration-after-statement -Wstrict-prototypes \
              -Wundef -Wpointer-arith -Wstrict-aliasing=1
-CFLAGS  += $(DEBUGFLAGS) $(MOREFLAGS)
-FLAGS    = $(CPPFLAGS) $(CFLAGS) $(LDFLAGS)
+CFLAGS   = $(DEBUGFLAGS) $(USERCFLAGS)
+ALLFLAGS = $(CFLAGS) $(CPPFLAGS) $(LDFLAGS)
 
 SRCFILES := $(sort $(wildcard *.c))
 
@@ -63,38 +64,53 @@ ifeq ($(TARGET_OS), Darwin)
 	SHARED_EXT = dylib
 	SHARED_EXT_MAJOR = $(LIBVER_MAJOR).$(SHARED_EXT)
 	SHARED_EXT_VER = $(LIBVER).$(SHARED_EXT)
-	SONAME_FLAGS = -install_name $(libdir)/liblz4.$(SHARED_EXT_MAJOR) -compatibility_version $(LIBVER_MAJOR) -current_version $(LIBVER)
+	SONAME_FLAGS = -install_name $(libdir)/liblz4.$(SHARED_EXT_MAJOR) -compatibility_version $(LIBVER_MAJOR) -current_version $(LIBVER) -dynamiclib
 else
-	SONAME_FLAGS = -Wl,-soname=liblz4.$(SHARED_EXT).$(LIBVER_MAJOR)
-	SHARED_EXT = so
-	SHARED_EXT_MAJOR = $(SHARED_EXT).$(LIBVER_MAJOR)
-	SHARED_EXT_VER = $(SHARED_EXT).$(LIBVER)
+	ifeq ($(WINBASED),yes)
+		SHARED_EXT = dll
+		SHARED_EXT_VER = $(SHARED_EXT)
+	else  # posix non-mac
+		SONAME_FLAGS = -Wl,-soname=liblz4.$(SHARED_EXT).$(LIBVER_MAJOR)
+		SHARED_EXT = so
+		SHARED_EXT_MAJOR = $(SHARED_EXT).$(LIBVER_MAJOR)
+		SHARED_EXT_VER = $(SHARED_EXT).$(LIBVER)
+	endif
 endif
 
 .PHONY: default
 default: lib-release
 
-lib-release: DEBUGFLAGS :=
-lib-release: lib
+# silent mode by default; verbose can be triggered by V=1 or VERBOSE=1
+$(V)$(VERBOSE).SILENT:
 
+.PHONY:lib-release
+lib-release: DEBUGFLAGS :=
+lib-release: lib liblz4.pc
+
+.PHONY: lib
 lib: liblz4.a liblz4
 
-all: lib
+.PHONY: all
+all: lib liblz4.pc
 
+.PHONY: all32
 all32: CFLAGS+=-m32
 all32: all
 
+CLEAN += liblz4.a
 liblz4.a: $(SRCFILES)
 ifeq ($(BUILD_STATIC),yes)  # can be disabled on command line
 	@echo compiling static library
-	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c $^
-	$(Q)$(AR) rcs $@ *.o
+	$(COMPILE.c) $^
+	$(AR) rcs $@ *.o
 endif
 
 ifeq ($(WINBASED),yes)
+
+CLEAN += $(liblz4-dll.rc)
 liblz4-dll.rc: liblz4-dll.rc.in
 	@echo creating library resource
-	$(Q)sed -e 's|@LIBLZ4@|$(LIBLZ4)|' \
+	$(SED) -e 's|@LIBLZ4@|$(LIBLZ4_NAME)|' \
          -e 's|@LIBVER_MAJOR@|$(LIBVER_MAJOR)|g' \
          -e 's|@LIBVER_MINOR@|$(LIBVER_MINOR)|g' \
          -e 's|@LIBVER_PATCH@|$(LIBVER_PATCH)|g' \
@@ -103,32 +119,47 @@ liblz4-dll.rc: liblz4-dll.rc.in
 liblz4-dll.o: liblz4-dll.rc
 	$(WINDRES) -i liblz4-dll.rc -o liblz4-dll.o
 
+CLEAN += $(LIBLZ4_EXP)
 $(LIBLZ4): $(SRCFILES) liblz4-dll.o
-else
-$(LIBLZ4): $(SRCFILES)
-endif
-ifeq ($(BUILD_SHARED),yes)  # can be disabled on command line
+  ifeq ($(BUILD_SHARED),yes)
 	@echo compiling dynamic library $(LIBVER)
-  ifeq ($(WINBASED),yes)
-	$(Q)$(CC) $(FLAGS) -DLZ4_DLL_EXPORT=1 -shared $^ -o dll/$@.dll -Wl,--out-implib,dll/$(LIBLZ4_EXP)
-  else
-	$(Q)$(CC) $(FLAGS) -shared $^ -fPIC -fvisibility=hidden $(SONAME_FLAGS) -o $@
-	@echo creating versioned links
-	$(Q)$(LN_SF) $@ liblz4.$(SHARED_EXT_MAJOR)
-	$(Q)$(LN_SF) $@ liblz4.$(SHARED_EXT)
+	$(CC) $(ALLFLAGS) -DLZ4_DLL_EXPORT=1 -shared $^ -o $@ -Wl,--out-implib,$(LIBLZ4_EXP)
   endif
-endif
 
-ifeq (,$(filter MINGW%,$(TARGET_OS)))
+else   # not windows
+
+$(LIBLZ4): $(SRCFILES)
+  ifeq ($(BUILD_SHARED),yes)
+	@echo compiling dynamic library $(LIBVER)
+	$(CC) $(ALLFLAGS) -shared $^ -fPIC -fvisibility=hidden $(SONAME_FLAGS) -o $@
+	@echo creating versioned links
+	$(LN_SF) $@ liblz4.$(SHARED_EXT_MAJOR)
+	$(LN_SF) $@ liblz4.$(SHARED_EXT)
+  endif
+
+endif
+CLEAN += $(LIBLZ4)
+
+.PHONY: liblz4
 liblz4: $(LIBLZ4)
-endif
 
+CLEAN += liblz4.pc
+liblz4.pc: liblz4.pc.in Makefile
+	@echo creating pkgconfig
+	$(SED) -e 's|@PREFIX@|$(prefix)|' \
+           -e 's|@LIBDIR@|$(libdir)|' \
+           -e 's|@INCLUDEDIR@|$(includedir)|' \
+           -e 's|@VERSION@|$(LIBVER)|' \
+           -e 's|=${prefix}/|=$${prefix}/|' \
+           $< >$@
+
+.PHONY: clean
 clean:
 ifeq ($(WINBASED),yes)
-	$(Q)$(RM) *.rc
+	$(RM) *.rc
 endif
-	$(Q)$(RM) core *.o liblz4.pc dll/$(LIBLZ4).dll dll/$(LIBLZ4_EXP)
-	$(Q)$(RM) *.a *.$(SHARED_EXT) *.$(SHARED_EXT_MAJOR) *.$(SHARED_EXT_VER)
+	$(RM) $(CLEAN) core *.o *.a
+	$(RM) *.$(SHARED_EXT) *.$(SHARED_EXT_MAJOR) *.$(SHARED_EXT_VER)
 	@echo Cleaning library completed
 
 #-----------------------------------------------------------------------------
@@ -162,56 +193,52 @@ PKGCONFIGDIR ?= $(libdir)/pkgconfig
   endif
 pkgconfigdir ?= $(PKGCONFIGDIR)
 
-liblz4.pc: liblz4.pc.in Makefile
-	@echo creating pkgconfig
-	$(Q)sed -e 's|@PREFIX@|$(prefix)|' \
-         -e 's|@LIBDIR@|$(libdir)|' \
-         -e 's|@INCLUDEDIR@|$(includedir)|' \
-         -e 's|@VERSION@|$(LIBVER)|' \
-          $< >$@
-
+.PHONY: install
 install: lib liblz4.pc
-	$(Q)$(INSTALL_DIR) $(DESTDIR)$(pkgconfigdir)/ $(DESTDIR)$(includedir)/ $(DESTDIR)$(libdir)/ $(DESTDIR)$(bindir)/
-	$(Q)$(INSTALL_DATA) liblz4.pc $(DESTDIR)$(pkgconfigdir)/
-	@echo Installing libraries
+	$(MAKE_DIR) $(DESTDIR)$(pkgconfigdir)/ $(DESTDIR)$(includedir)/ $(DESTDIR)$(libdir)/ $(DESTDIR)$(bindir)/
+	$(INSTALL_DATA) liblz4.pc $(DESTDIR)$(pkgconfigdir)/
+	@echo Installing libraries in $(DESTDIR)$(libdir)
   ifeq ($(BUILD_STATIC),yes)
-	$(Q)$(INSTALL_DATA) liblz4.a $(DESTDIR)$(libdir)/liblz4.a
-	$(Q)$(INSTALL_DATA) lz4frame_static.h $(DESTDIR)$(includedir)/lz4frame_static.h
+	$(INSTALL_DATA) liblz4.a $(DESTDIR)$(libdir)/liblz4.a
+	$(INSTALL_DATA) lz4frame_static.h $(DESTDIR)$(includedir)/lz4frame_static.h
+	$(INSTALL_DATA) lz4file.h $(DESTDIR)$(includedir)/lz4file.h
   endif
   ifeq ($(BUILD_SHARED),yes)
-# Traditionnally, one installs the DLLs in the bin directory as programs
+# Traditionally, one installs the DLLs in the bin directory as programs
 # search them first in their directory. This allows to not pollute system
 # directories (like c:/windows/system32), nor modify the PATH variable.
     ifeq ($(WINBASED),yes)
-	$(Q)$(INSTALL_PROGRAM) dll/$(LIBLZ4).dll $(DESTDIR)$(bindir)
-	$(Q)$(INSTALL_PROGRAM) dll/$(LIBLZ4_EXP) $(DESTDIR)$(libdir)
+	$(INSTALL_PROGRAM) $(LIBLZ4) $(DESTDIR)$(bindir)
+	$(INSTALL_PROGRAM) $(LIBLZ4_EXP) $(DESTDIR)$(libdir)
     else
-	$(Q)$(INSTALL_PROGRAM) liblz4.$(SHARED_EXT_VER) $(DESTDIR)$(libdir)
-	$(Q)$(LN_SF) liblz4.$(SHARED_EXT_VER) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT_MAJOR)
-	$(Q)$(LN_SF) liblz4.$(SHARED_EXT_VER) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT)
+	$(INSTALL_PROGRAM) liblz4.$(SHARED_EXT_VER) $(DESTDIR)$(libdir)
+	$(LN_SF) liblz4.$(SHARED_EXT_VER) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT_MAJOR)
+	$(LN_SF) liblz4.$(SHARED_EXT_VER) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT)
     endif
   endif
-	@echo Installing headers in $(includedir)
-	$(Q)$(INSTALL_DATA) lz4.h $(DESTDIR)$(includedir)/lz4.h
-	$(Q)$(INSTALL_DATA) lz4hc.h $(DESTDIR)$(includedir)/lz4hc.h
-	$(Q)$(INSTALL_DATA) lz4frame.h $(DESTDIR)$(includedir)/lz4frame.h
+	@echo Installing headers in $(DESTDIR)$(includedir)
+	$(INSTALL_DATA) lz4.h $(DESTDIR)$(includedir)/lz4.h
+	$(INSTALL_DATA) lz4hc.h $(DESTDIR)$(includedir)/lz4hc.h
+	$(INSTALL_DATA) lz4frame.h $(DESTDIR)$(includedir)/lz4frame.h
 	@echo lz4 libraries installed
 
+.PHONY: uninstall
 uninstall:
-	$(Q)$(RM) $(DESTDIR)$(pkgconfigdir)/liblz4.pc
-  ifeq (WINBASED,1)
-	$(Q)$(RM) $(DESTDIR)$(bindir)/$(LIBLZ4).dll
-	$(Q)$(RM) $(DESTDIR)$(libdir)/$(LIBLZ4_EXP)
+	$(RM) $(DESTDIR)$(pkgconfigdir)/liblz4.pc
+  ifeq (WINBASED,yes)
+	$(RM) $(DESTDIR)$(bindir)/$(LIBLZ4)
+	$(RM) $(DESTDIR)$(libdir)/$(LIBLZ4_EXP)
   else
-	$(Q)$(RM) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT)
-	$(Q)$(RM) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT_MAJOR)
-	$(Q)$(RM) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT_VER)
+	$(RM) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT)
+	$(RM) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT_MAJOR)
+	$(RM) $(DESTDIR)$(libdir)/liblz4.$(SHARED_EXT_VER)
   endif
-	$(Q)$(RM) $(DESTDIR)$(libdir)/liblz4.a
-	$(Q)$(RM) $(DESTDIR)$(includedir)/lz4.h
-	$(Q)$(RM) $(DESTDIR)$(includedir)/lz4hc.h
-	$(Q)$(RM) $(DESTDIR)$(includedir)/lz4frame.h
-	$(Q)$(RM) $(DESTDIR)$(includedir)/lz4frame_static.h
+	$(RM) $(DESTDIR)$(libdir)/liblz4.a
+	$(RM) $(DESTDIR)$(includedir)/lz4.h
+	$(RM) $(DESTDIR)$(includedir)/lz4hc.h
+	$(RM) $(DESTDIR)$(includedir)/lz4frame.h
+	$(RM) $(DESTDIR)$(includedir)/lz4frame_static.h
+	$(RM) $(DESTDIR)$(includedir)/lz4file.h
 	@echo lz4 libraries successfully uninstalled
 
 endif

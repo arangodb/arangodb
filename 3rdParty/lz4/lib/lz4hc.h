@@ -1,7 +1,7 @@
 /*
    LZ4 HC - High Compression Mode of LZ4
    Header File
-   Copyright (C) 2011-2017, Yann Collet.
+   Copyright (C) 2011-2020, Yann Collet.
    BSD 2-Clause License (http://www.opensource.org/licenses/bsd-license.php)
 
    Redistribution and use in source and binary forms, with or without
@@ -44,7 +44,7 @@ extern "C" {
 
 
 /* --- Useful constants --- */
-#define LZ4HC_CLEVEL_MIN         3
+#define LZ4HC_CLEVEL_MIN         2
 #define LZ4HC_CLEVEL_DEFAULT     9
 #define LZ4HC_CLEVEL_OPT_MIN    10
 #define LZ4HC_CLEVEL_MAX        12
@@ -126,6 +126,8 @@ LZ4LIB_API int             LZ4_freeStreamHC (LZ4_streamHC_t* streamHCPtr);
 
   After reset, a first "fictional block" can be designated as initial dictionary,
   using LZ4_loadDictHC() (Optional).
+  Note: In order for LZ4_loadDictHC() to create the correct data structure,
+  it is essential to set the compression level _before_ loading the dictionary.
 
   Invoke LZ4_compress_HC_continue() to compress each successive block.
   The number of blocks is unlimited.
@@ -135,12 +137,12 @@ LZ4LIB_API int             LZ4_freeStreamHC (LZ4_streamHC_t* streamHCPtr);
   It's allowed to update compression level anytime between blocks,
   using LZ4_setCompressionLevel() (experimental).
 
-  'dst' buffer should be sized to handle worst case scenarios
+ @dst buffer should be sized to handle worst case scenarios
   (see LZ4_compressBound(), it ensures compression success).
   In case of failure, the API does not guarantee recovery,
   so the state _must_ be reset.
   To ensure compression success
-  whenever `dst` buffer size cannot be made >= LZ4_compressBound(),
+  whenever @dst buffer size cannot be made >= LZ4_compressBound(),
   consider using LZ4_compress_HC_continue_destSize().
 
   Whenever previous input blocks can't be preserved unmodified in-place during compression of next blocks,
@@ -176,6 +178,34 @@ LZ4LIB_API int LZ4_compress_HC_continue_destSize(LZ4_streamHC_t* LZ4_streamHCPtr
 LZ4LIB_API int LZ4_saveDictHC (LZ4_streamHC_t* streamHCPtr, char* safeBuffer, int maxDictSize);
 
 
+/*! LZ4_attach_HC_dictionary() : stable since v1.10.0
+ *  This API allows for the efficient re-use of a static dictionary many times.
+ *
+ *  Rather than re-loading the dictionary buffer into a working context before
+ *  each compression, or copying a pre-loaded dictionary's LZ4_streamHC_t into a
+ *  working LZ4_streamHC_t, this function introduces a no-copy setup mechanism,
+ *  in which the working stream references the dictionary stream in-place.
+ *
+ *  Several assumptions are made about the state of the dictionary stream.
+ *  Currently, only streams which have been prepared by LZ4_loadDictHC() should
+ *  be expected to work.
+ *
+ *  Alternatively, the provided dictionary stream pointer may be NULL, in which
+ *  case any existing dictionary stream is unset.
+ *
+ *  A dictionary should only be attached to a stream without any history (i.e.,
+ *  a stream that has just been reset).
+ *
+ *  The dictionary will remain attached to the working stream only for the
+ *  current stream session. Calls to LZ4_resetStreamHC(_fast) will remove the
+ *  dictionary context association from the working stream. The dictionary
+ *  stream (and source buffer) must remain in-place / accessible / unchanged
+ *  through the lifetime of the stream session.
+ */
+LZ4LIB_API void
+LZ4_attach_HC_dictionary(LZ4_streamHC_t* working_stream,
+                   const LZ4_streamHC_t* dictionary_stream);
+
 
 /*^**********************************************
  * !!!!!!   STATIC LINKING ONLY   !!!!!!
@@ -198,38 +228,36 @@ LZ4LIB_API int LZ4_saveDictHC (LZ4_streamHC_t* streamHCPtr, char* safeBuffer, in
 #define LZ4HC_HASH_MASK (LZ4HC_HASHTABLESIZE - 1)
 
 
+/* Never ever use these definitions directly !
+ * Declare or allocate an LZ4_streamHC_t instead.
+**/
 typedef struct LZ4HC_CCtx_internal LZ4HC_CCtx_internal;
 struct LZ4HC_CCtx_internal
 {
-    LZ4_u32   hashTable[LZ4HC_HASHTABLESIZE];
-    LZ4_u16   chainTable[LZ4HC_MAXD];
-    const LZ4_byte* end;       /* next block here to continue on current prefix */
-    const LZ4_byte* base;      /* All index relative to this position */
-    const LZ4_byte* dictBase;  /* alternate base for extDict */
-    LZ4_u32   dictLimit;       /* below that point, need extDict */
-    LZ4_u32   lowLimit;        /* below that point, no more dict */
-    LZ4_u32   nextToUpdate;    /* index from which to continue dictionary update */
-    short     compressionLevel;
-    LZ4_i8    favorDecSpeed;   /* favor decompression speed if this flag set,
-                                  otherwise, favor compression ratio */
-    LZ4_i8    dirty;           /* stream has to be fully reset if this flag is set */
+    LZ4_u32 hashTable[LZ4HC_HASHTABLESIZE];
+    LZ4_u16 chainTable[LZ4HC_MAXD];
+    const LZ4_byte* end;     /* next block here to continue on current prefix */
+    const LZ4_byte* prefixStart;  /* Indexes relative to this position */
+    const LZ4_byte* dictStart; /* alternate reference for extDict */
+    LZ4_u32 dictLimit;       /* below that point, need extDict */
+    LZ4_u32 lowLimit;        /* below that point, no more history */
+    LZ4_u32 nextToUpdate;    /* index from which to continue dictionary update */
+    short   compressionLevel;
+    LZ4_i8  favorDecSpeed;   /* favor decompression speed if this flag set,
+                                otherwise, favor compression ratio */
+    LZ4_i8  dirty;           /* stream has to be fully reset if this flag is set */
     const LZ4HC_CCtx_internal* dictCtx;
 };
 
-
-/* Do not use these definitions directly !
- * Declare or allocate an LZ4_streamHC_t instead.
- */
-#define LZ4_STREAMHCSIZE       262200  /* static size, for inter-version compatibility */
-#define LZ4_STREAMHCSIZE_VOIDP (LZ4_STREAMHCSIZE / sizeof(void*))
+#define LZ4_STREAMHC_MINSIZE  262200  /* static size, for inter-version compatibility */
 union LZ4_streamHC_u {
-    void* table[LZ4_STREAMHCSIZE_VOIDP];
+    char minStateSize[LZ4_STREAMHC_MINSIZE];
     LZ4HC_CCtx_internal internal_donotuse;
 }; /* previously typedef'd to LZ4_streamHC_t */
 
 /* LZ4_streamHC_t :
  * This structure allows static allocation of LZ4 HC streaming state.
- * This can be used to allocate statically, on state, or as part of a larger structure.
+ * This can be used to allocate statically on stack, or as part of a larger structure.
  *
  * Such state **must** be initialized using LZ4_initStreamHC() before first use.
  *
@@ -244,7 +272,7 @@ union LZ4_streamHC_u {
  * Required before first use of a statically allocated LZ4_streamHC_t.
  * Before v1.9.0 : use LZ4_resetStreamHC() instead
  */
-LZ4LIB_API LZ4_streamHC_t* LZ4_initStreamHC (void* buffer, size_t size);
+LZ4LIB_API LZ4_streamHC_t* LZ4_initStreamHC(void* buffer, size_t size);
 
 
 /*-************************************
@@ -272,9 +300,11 @@ LZ4_DEPRECATED("use LZ4_compress_HC_continue() instead") LZ4LIB_API int LZ4_comp
  * LZ4_slideInputBufferHC() will truncate the history of the stream, rather
  * than preserve a window-sized chunk of history.
  */
+#if !defined(LZ4_STATIC_LINKING_ONLY_DISABLE_MEMORY_ALLOCATION)
 LZ4_DEPRECATED("use LZ4_createStreamHC() instead") LZ4LIB_API void* LZ4_createHC (const char* inputBuffer);
-LZ4_DEPRECATED("use LZ4_saveDictHC() instead") LZ4LIB_API     char* LZ4_slideInputBufferHC (void* LZ4HC_Data);
 LZ4_DEPRECATED("use LZ4_freeStreamHC() instead") LZ4LIB_API   int   LZ4_freeHC (void* LZ4HC_Data);
+#endif
+LZ4_DEPRECATED("use LZ4_saveDictHC() instead") LZ4LIB_API     char* LZ4_slideInputBufferHC (void* LZ4HC_Data);
 LZ4_DEPRECATED("use LZ4_compress_HC_continue() instead") LZ4LIB_API int LZ4_compressHC2_continue               (void* LZ4HC_Data, const char* source, char* dest, int inputSize, int compressionLevel);
 LZ4_DEPRECATED("use LZ4_compress_HC_continue() instead") LZ4LIB_API int LZ4_compressHC2_limitedOutput_continue (void* LZ4HC_Data, const char* source, char* dest, int inputSize, int maxOutputSize, int compressionLevel);
 LZ4_DEPRECATED("use LZ4_createStreamHC() instead") LZ4LIB_API int   LZ4_sizeofStreamStateHC(void);
@@ -305,7 +335,7 @@ LZ4LIB_API void LZ4_resetStreamHC (LZ4_streamHC_t* streamHCPtr, int compressionL
  * They should not be linked from DLL,
  * as there is no guarantee of API stability yet.
  * Prototypes will be promoted to "stable" status
- * after successfull usage in real-life scenarios.
+ * after successful usage in real-life scenarios.
  ***************************************************/
 #ifdef LZ4_HC_STATIC_LINKING_ONLY   /* protection macro */
 #ifndef LZ4_HC_SLO_098092834
@@ -375,35 +405,6 @@ LZ4LIB_STATIC_API int LZ4_compress_HC_extStateHC_fastReset (
     const char* src, char* dst,
     int srcSize, int dstCapacity,
     int compressionLevel);
-
-/*! LZ4_attach_HC_dictionary() :
- *  This is an experimental API that allows for the efficient use of a
- *  static dictionary many times.
- *
- *  Rather than re-loading the dictionary buffer into a working context before
- *  each compression, or copying a pre-loaded dictionary's LZ4_streamHC_t into a
- *  working LZ4_streamHC_t, this function introduces a no-copy setup mechanism,
- *  in which the working stream references the dictionary stream in-place.
- *
- *  Several assumptions are made about the state of the dictionary stream.
- *  Currently, only streams which have been prepared by LZ4_loadDictHC() should
- *  be expected to work.
- *
- *  Alternatively, the provided dictionary stream pointer may be NULL, in which
- *  case any existing dictionary stream is unset.
- *
- *  A dictionary should only be attached to a stream without any history (i.e.,
- *  a stream that has just been reset).
- *
- *  The dictionary will remain attached to the working stream only for the
- *  current stream session. Calls to LZ4_resetStreamHC(_fast) will remove the
- *  dictionary context association from the working stream. The dictionary
- *  stream (and source buffer) must remain in-place / accessible / unchanged
- *  through the lifetime of the stream session.
- */
-LZ4LIB_STATIC_API void LZ4_attach_HC_dictionary(
-          LZ4_streamHC_t *working_stream,
-    const LZ4_streamHC_t *dictionary_stream);
 
 #if defined (__cplusplus)
 }

@@ -3,11 +3,11 @@ LZ4 Frame Format Description
 
 ### Notices
 
-Copyright (c) 2013-2015 Yann Collet
+Copyright (c) 2013-2020 Yann Collet
 
 Permission is granted to copy and distribute this document
-for any  purpose and without charge,
-including translations into other  languages
+for any purpose and without charge,
+including translations into other languages
 and incorporation into compilations,
 provided that the copyright notice and this notice are preserved,
 and that any substantive changes or deletions from the original
@@ -16,7 +16,7 @@ Distribution of this document is unlimited.
 
 ### Version
 
-1.6.2 (12/08/2020)
+1.6.4 (28/12/2023)
 
 
 Introduction
@@ -47,7 +47,7 @@ at the level of bits and other primitive data representations.
 Unless otherwise indicated below,
 a compliant compressor must produce data sets
 that conform to the specifications presented here.
-It doesn’t need to support all options though.
+It doesn't need to support all options though.
 
 A compliant decompressor must be able to decompress
 at least one working set of parameters
@@ -61,9 +61,9 @@ and associated error message explaining which parameter is unsupported.
 General Structure of LZ4 Frame format
 -------------------------------------
 
-| MagicNb | F. Descriptor | Block | (...) | EndMark | C. Checksum |
-|:-------:|:-------------:| ----- | ----- | ------- | ----------- |
-| 4 bytes |  3-15 bytes   |       |       | 4 bytes | 0-4 bytes   |
+| MagicNb | F. Descriptor | Data Block | (...) | EndMark | C. Checksum |
+|:-------:|:-------------:| ---------- | ----- | ------- | ----------- |
+| 4 bytes |  3-15 bytes   |            |       | 4 bytes | 0-4 bytes   |
 
 __Magic Number__
 
@@ -219,24 +219,26 @@ It can be skipped by a decoder, or used to validate content correctness.
 
 __Dictionary ID__
 
+A dictionary is useful to compress short input sequences.
+When present, the compressor can take advantage of dictionary's content
+as a kind of “known prefix” to encode the input in a more compact manner.
+
+When the frame descriptor defines independent blocks,
+every block is initialized with the same dictionary.
+If the frame descriptor defines linked blocks,
+the dictionary is only used once, at the beginning of the frame.
+
+The compressor and the decompressor must employ exactly the same dictionary for the data to be decodable.
+
+The Dict-ID field is offered as a way to help the decoder determine
+which dictionary must be used to correctly decode the compressed frame.
 Dict-ID is only present if the associated flag is set.
 It's an unsigned 32-bits value, stored using little-endian convention.
-A dictionary is useful to compress short input sequences.
-The compressor can take advantage of the dictionary context
-to encode the input in a more compact manner.
-It works as a kind of “known prefix” which is used by
-both the compressor and the decompressor to “warm-up” reference tables.
+Within a single frame, only a single Dict-ID field can be defined.
 
-The decompressor can use Dict-ID identifier to determine
-which dictionary must be used to correctly decode data.
-The compressor and the decompressor must use exactly the same dictionary.
-It's presumed that the 32-bits dictID uniquely identifies a dictionary.
-
-Within a single frame, a single dictionary can be defined.
-When the frame descriptor defines independent blocks,
-each block will be initialized with the same dictionary.
-If the frame descriptor defines linked blocks,
-the dictionary will only be used once, at the beginning of the frame.
+Note that the Dict-ID field is optional.
+Knowledge of which dictionary to employ can also be passed off-band,
+for example, it could be implied by the context of the application.
 
 __Header Checksum__
 
@@ -244,8 +246,7 @@ One-byte checksum of combined descriptor fields, including optional ones.
 The value is the second byte of `xxh32()` : ` (xxh32()>>8) & 0xFF `
 using zero as a seed, and the full Frame Descriptor as an input
 (including optional fields when they are present).
-A wrong checksum indicates an error in the descriptor.
-Header checksum is informational and can be skipped.
+A wrong checksum indicates that the descriptor is erroneous.
 
 
 Data Blocks
@@ -270,7 +271,7 @@ The size does not include the block checksum if present.
 
 _Block_Size_ shall never be larger than _Block_Maximum_Size_.
 Such an outcome could potentially happen for non-compressible sources.
-In such a case, such data block must be passed using uncompressed format.
+In such a case, such data block **must** be passed using uncompressed format.
 
 A value of `0x00000000` is invalid, and signifies an _EndMark_ instead.
 Note that this is different from a value of `0x80000000` (highest bit set),
@@ -385,7 +386,7 @@ __EndMark__
 
 End of legacy frame is implicit only.
 It must be followed by a standard EOF (End Of File) signal,
-wether it is a file or a stream.
+whether it is a file or a stream.
 
 Alternatively, if the frame is followed by a valid Frame Magic Number,
 it is considered completed.
@@ -397,6 +398,10 @@ and trigger an error if it does not fit within acceptable range.
 
 Version changes
 ---------------
+
+1.6.4 : minor clarifications for Dictionaries
+
+1.6.3 : minor : clarify Data Block
 
 1.6.2 : clarifies specification of _EndMark_
 
@@ -428,6 +433,6 @@ Version changes
 
 0.6 : settled : stream size uses 8 bytes, endian convention is little endian
 
-0.5: added copyright notice
+0.5 : added copyright notice
 
 0.4 : changed format to Google Doc compatible OpenDocument

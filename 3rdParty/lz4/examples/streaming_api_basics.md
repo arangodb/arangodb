@@ -9,7 +9,7 @@ LZ4 has the following API sets :
    It guarantees interoperability with other LZ4 framing format compliant tools/libraries
    such as LZ4 command line utility, node-lz4, etc.
  - "Block" API : This is recommended for simple purpose.
-   It compress single raw memory block to LZ4 memory block and vice versa.
+   It compresses single raw memory block to LZ4 memory block and vice versa.
  - "Streaming" API : This is designed for complex things.
    For example, compress huge stream data in restricted memory environment.
 
@@ -22,7 +22,7 @@ But if you want to write advanced application, it's time to use Block or Streami
 Block API (de)compresses a single contiguous memory block.
 In other words, LZ4 library finds redundancy from a single contiguous memory block.
 Streaming API does same thing but (de)compresses multiple adjacent contiguous memory blocks.
-So LZ4 library could find more redundancy than Block API.
+So Streaming API could find more redundancy than Block API.
 
 The following figure shows difference between API and block sizes.
 In these figures, the original data is split into 4KiBytes contiguous chunks.

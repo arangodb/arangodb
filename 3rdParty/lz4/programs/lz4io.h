@@ -1,6 +1,6 @@
 /*
   LZ4io.h - LZ4 File/Stream Interface
-  Copyright (C) Yann Collet 2011-2016
+  Copyright (C) Yann Collet 2011-2023
   GPL v2 License
 
   This program is free software; you can redistribute it and/or modify
@@ -57,12 +57,10 @@ typedef struct LZ4IO_prefs_s LZ4IO_prefs_t;
 LZ4IO_prefs_t* LZ4IO_defaultPreferences(void);
 void LZ4IO_freePreferences(LZ4IO_prefs_t* prefs);
 
-/* Size in bytes of a legacy block header in little-endian format */
-#define LZIO_LEGACY_BLOCK_HEADER_SIZE 4
 
-/* ************************************************** */
-/* ****************** Functions ********************* */
-/* ************************************************** */
+/* *************************************************** */
+/* ****************** Processing ********************* */
+/* *************************************************** */
 
 /* if output_filename == stdoutmark, writes to stdout */
 int LZ4IO_compressFilename(const char* input_filename, const char* output_filename, int compressionlevel, const LZ4IO_prefs_t* prefs);
@@ -76,6 +74,9 @@ int LZ4IO_decompressMultipleFilenames(const char** inFileNamesTable, int ifntSiz
 /* ************************************************** */
 /* ****************** Parameters ******************** */
 /* ************************************************** */
+
+int LZ4IO_setNbWorkers(LZ4IO_prefs_t* const prefs, int nbWorkers);
+int LZ4IO_defaultNbWorkers(void);
 
 int LZ4IO_setDictionaryFilename(LZ4IO_prefs_t* const prefs, const char* dictionaryFilename);
 

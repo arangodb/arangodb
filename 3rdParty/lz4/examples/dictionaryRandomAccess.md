@@ -7,7 +7,7 @@ Please note that the output file is not compatible with lz4frame and is platform
 
 ## What's the point of this example ?
 
- - Dictionary based compression for homogenous files.
+ - Dictionary based compression for homogeneous files.
  - Random access to compressed blocks.
 
 
@@ -64,4 +64,4 @@ Decompression will do reverse order.
  - Read the next block.
  - Decompress it and write that page to the file.
 
-Continue these procedure until all the required data has been read.
+Continue these procedures until all the required data has been read.

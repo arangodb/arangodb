@@ -1,6 +1,6 @@
 /*
     checkTag.c - Version validation tool for LZ4
-    Copyright (C) Yann Collet 2018 - present
+    Copyright (C) Yann Collet 2018-2020
 
     GPL v2 License
 

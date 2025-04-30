@@ -1,5 +1,5 @@
 name: lz4
-version: 1.8.4
+version: 1.9.4 
 summary: Extremely Fast Compression algorithm 
 description: >
     LZ4 is lossless compression algorithm, providing compression
@@ -20,6 +20,7 @@ description: >
     LZ4 library is provided as open-source software using BSD 2-Clause license.
 confinement: strict
 grade: stable
+base: core20
 
 apps:
   lz4:

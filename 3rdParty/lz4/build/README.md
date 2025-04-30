@@ -5,23 +5,12 @@ Projects for various integrated development environments (IDE)
 
 The following projects are included with the lz4 distribution:
 - `cmake` - CMake project
-- `VS2010` - Visual Studio 2010 project (which also works well with Visual Studio 2012, 2013, 2015)
-- `VS2017` - Visual Studio 2017 project
+- `meson` - Meson project
+- `visual` - scripts to generate Visual Studio solutions from `cmake` script
+- `VS2022` - Visual Studio 2022 solution - will soon be deprecated, prefer `visual` generators
 
 
-#### How to compile lz4 with Visual Studio
-
-1. Install Visual Studio e.g. VS 2015 Community Edition (it's free).
-2. Download the latest version of lz4 from https://github.com/lz4/lz4/releases
-3. Decompress ZIP archive.
-4. Go to decompressed directory then to `build` then `VS2010` and open `lz4.sln`
-5. Visual Studio will ask about converting VS2010 project to VS2015 and you should agree.
-6. Change `Debug` to `Release` and if you have 64-bit Windows change also `Win32` to `x64`.
-7. Press F7 on keyboard or select `BUILD` from the menu bar and choose `Build Solution`.
-8. If compilation will be fine a compiled executable will be in `build\VS2010\bin\x64_Release\lz4.exe`
-
-
-#### Projects available within lz4.sln
+#### Projects available within VS2022\lz4.sln
 
 The Visual Studio solution file `lz4.sln` contains many projects that will be compiled to the
 `build\VS2010\bin\$(Platform)_$(Configuration)` directory. For example `lz4` set to `x64` and

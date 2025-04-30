@@ -45,6 +45,7 @@ FUZZERS := \
 	round_trip_hc_fuzzer \
 	compress_frame_fuzzer \
 	round_trip_frame_fuzzer \
+	round_trip_frame_uncompressed_fuzzer \
 	decompress_frame_fuzzer
 
 .PHONY: all

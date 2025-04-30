@@ -1,76 +1,85 @@
-  /*
-      checkFrame - verify frame headers
-      Copyright (C) Yann Collet 2014-present
+/*
+    checkFrame - verify frame headers
+    Copyright (C) Yann Collet 2014-2020
 
-      GPL v2 License
+    GPL v2 License
 
-      This program is free software; you can redistribute it and/or modify
-      it under the terms of the GNU General Public License as published by
-      the Free Software Foundation; either version 2 of the License, or
-      (at your option) any later version.
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
 
-      This program is distributed in the hope that it will be useful,
-      but WITHOUT ANY WARRANTY; without even the implied warranty of
-      MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-      GNU General Public License for more details.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-      You should have received a copy of the GNU General Public License along
-      with this program; if not, write to the Free Software Foundation, Inc.,
-      51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+    You should have received a copy of the GNU General Public License along
+    with this program; if not, write to the Free Software Foundation, Inc.,
+    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-      You can contact the author at :
-      - LZ4 homepage : http://www.lz4.org
-      - LZ4 source repository : https://github.com/lz4/lz4
-  */
-
-  /*-************************************
-  *  Includes
-  **************************************/
-  #include "util.h"       /* U32 */
-  #include <stdlib.h>     /* malloc, free */
-  #include <stdio.h>      /* fprintf */
-  #include <string.h>     /* strcmp */
-  #include <time.h>       /* clock_t, clock(), CLOCKS_PER_SEC */
-  #include <assert.h>
-  #include "lz4frame.h"   /* include multiple times to test correctness/safety */
-  #include "lz4frame.h"
-  #define LZ4F_STATIC_LINKING_ONLY
-  #include "lz4frame.h"
-  #include "lz4frame.h"
-  #include "lz4.h"        /* LZ4_VERSION_STRING */
-  #define XXH_STATIC_LINKING_ONLY
-  #include "xxhash.h"     /* XXH64 */
+    You can contact the author at :
+    - LZ4 homepage : http://www.lz4.org
+    - LZ4 source repository : https://github.com/lz4/lz4
+*/
 
 
-  /*-************************************
-  *  Constants
-  **************************************/
-  #define KB *(1U<<10)
-  #define MB *(1U<<20)
-  #define GB *(1U<<30)
+/*-************************************
+*  Compiler options
+**************************************/
+#ifdef _MSC_VER    /* Visual Studio */
+#  pragma warning(disable : 4127)    /* disable: C4127: conditional expression is constant */
+#endif
 
 
-  /*-************************************
-  *  Macros
-  **************************************/
-  #define DISPLAY(...)          fprintf(stderr, __VA_ARGS__)
-  #define DISPLAYLEVEL(l, ...)  if (displayLevel>=l) { DISPLAY(__VA_ARGS__); }
+/*-************************************
+*  Includes
+**************************************/
+#include "util.h"       /* U32 */
+#include <stdlib.h>     /* malloc, free */
+#include <stdio.h>      /* fprintf */
+#include <string.h>     /* strcmp */
+#include <time.h>       /* clock_t, clock(), CLOCKS_PER_SEC */
+#include <assert.h>
+#include "lz4frame.h"   /* include multiple times to test correctness/safety */
+#include "lz4frame.h"
+#define LZ4F_STATIC_LINKING_ONLY
+#include "lz4frame.h"
+#include "lz4frame.h"
+#include "lz4.h"        /* LZ4_VERSION_STRING */
+#define XXH_STATIC_LINKING_ONLY
+#include "xxhash.h"     /* XXH64 */
 
-  /**************************************
-  *  Exceptions
-  ***************************************/
-  #ifndef DEBUG
-  #  define DEBUG 0
-  #endif
-  #define DEBUGOUTPUT(...) if (DEBUG) DISPLAY(__VA_ARGS__);
-  #define EXM_THROW(error, ...)                                             \
-{                                                                         \
+
+/*-************************************
+*  Constants
+**************************************/
+#define KB *(1U<<10)
+#define MB *(1U<<20)
+#define GB *(1U<<30)
+
+
+/*-************************************
+*  Macros
+**************************************/
+#define DISPLAY(...)          fprintf(stderr, __VA_ARGS__)
+#define DISPLAYLEVEL(l, ...)  if (displayLevel>=l) { DISPLAY(__VA_ARGS__); }
+
+/**************************************
+*  Exceptions
+***************************************/
+#ifndef DEBUG
+#  define DEBUG 0
+#endif
+#define DEBUGOUTPUT(...) do { if (DEBUG) DISPLAY(__VA_ARGS__); } while (0)
+#define EXM_THROW(error, ...)                                           \
+do {                                                                      \
     DEBUGOUTPUT("Error defined at %s, line %i : \n", __FILE__, __LINE__); \
     DISPLAYLEVEL(1, "Error %i : ", error);                                \
     DISPLAYLEVEL(1, __VA_ARGS__);                                         \
     DISPLAYLEVEL(1, " \n");                                               \
-    return(error);                                                          \
-}
+    return(error);                                                        \
+} while (0)
 
 
 
@@ -153,7 +162,7 @@ int frameCheck(cRess_t ress, FILE* const srcFile, unsigned bsid, size_t blockSiz
                 if (LZ4F_isError(nextToLoad))
                     EXM_THROW(22, "Error getting frame info: %s",
                                 LZ4F_getErrorName(nextToLoad));
-                if (frameInfo.blockSizeID != bsid)
+                if (frameInfo.blockSizeID != (LZ4F_blockSizeID_t) bsid)
                     EXM_THROW(23, "Block size ID %u != expected %u",
                                 frameInfo.blockSizeID, bsid);
                 pos += remaining;

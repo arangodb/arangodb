@@ -1,6 +1,6 @@
 /*
     bench.h - Demo program to benchmark open-source compression algorithm
-    Copyright (C) Yann Collet 2012-2016
+    Copyright (C) Yann Collet 2012-2020
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,15 +25,30 @@
 
 #include <stddef.h>
 
+/* BMK_benchFiles() :
+ * Benchmark all files provided through array @fileNamesTable.
+ * All files must be valid, otherwise benchmark fails.
+ * Roundtrip measurements are done for each file individually, but
+ * unless BMK_setBenchSeparately() is set, all results are agglomerated.
+ * The method benchmarks all compression levels from @cLevelStart to @cLevelLast,
+ * both inclusive, providing one result per compression level.
+ * If @cLevelLast <= @cLevelStart, BMK_benchFiles() benchmarks @cLevelStart only.
+ * @dictFileName is optional, it's possible to provide NULL.
+ * When provided, compression and decompression use the specified file as dictionary.
+ * Only one dictionary can be provided, in which case it's applied to all benchmarked files.
+**/
 int BMK_benchFiles(const char** fileNamesTable, unsigned nbFiles,
-                   int cLevel, int cLevelLast,
+                   int cLevelStart, int cLevelLast,
                    const char* dictFileName);
 
 /* Set Parameters */
-void BMK_setNbSeconds(unsigned nbLoops);
-void BMK_setBlockSize(size_t blockSize);
-void BMK_setAdditionalParam(int additionalParam);
-void BMK_setNotificationLevel(unsigned level);
-void BMK_setBenchSeparately(int separate);
+void BMK_setNbSeconds(unsigned nbSeconds);  /* minimum benchmark duration, in seconds, for both compression and decompression */
+void BMK_setBlockSize(size_t blockSize);    /* Internally cut input file(s) into independent blocks of specified size */
+void BMK_setNotificationLevel(unsigned level);  /* Influence verbosity level */
+void BMK_setBenchSeparately(int separate);  /* When providing multiple files, output one result per file */
+void BMK_setDecodeOnlyMode(int set);        /* v1.9.4+: set benchmark mode to decode only */
+void BMK_skipChecksums(int skip);           /* v1.9.4+: only useful for DecodeOnlyMode; do not calculate checksum when present, to save CPU time */
+
+void BMK_setAdditionalParam(int additionalParam); /* hidden param, influence output format, for python parsing */
 
 #endif   /* BENCH_H_125623623633 */
