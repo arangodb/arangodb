@@ -349,6 +349,11 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
+  stopAsyncTasks();
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
   // Double use diagnostics:
   uint64_t userCount = _numberOfUsers.fetch_add(1);
   if (userCount > 0) {
@@ -367,11 +372,6 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
       }
     }
   });
-  stopAsyncTasks();
-}
-
-template<class Executor>
-void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
   if (_prefetchTask && !_prefetchTask->isConsumed() &&
       !_prefetchTask->tryClaim()) {
     // some thread is still working on our prefetch task
