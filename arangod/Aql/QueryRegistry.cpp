@@ -280,9 +280,38 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   finishPromise.setValue(std::move(queryToFinish));
 }
 
+fu2::unique_function<void(bool cancelled)>
+QueryRegistry::generateQueryTrackingDesctruction(
+    std::weak_ptr<QueryDestructionContext> queryDestructionContextWeak,
+    std::chrono::seconds waitUntilLoggingFor) {
+  return [queryDestructionContextWeak, waitUntilLoggingFor,
+          this](bool cancelled) noexcept {
+    if (cancelled) {
+      return;
+    }
+    auto const lock = queryDestructionContextWeak.lock();
+    if (lock == nullptr) {
+      return;
+    }
+
+    LOG_DEVEL << "LOGGING";
+    LOG_TOPIC("0a5df", WARN, Logger::QUERIES)
+        << "Query: " << lock->queryString << ", finished: " << lock->finished
+        << ", errorCode: " << lock->errorCode;
+    // reschedule with a backoff
+    auto const newWaitUntilLoggingFor = waitUntilLoggingFor * 4;
+    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+        newWaitUntilLoggingFor,
+        generateQueryTrackingDesctruction(queryDestructionContextWeak,
+                                          newWaitUntilLoggingFor));
+  };
+}
+
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
 void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
+  LOG_DEVEL << "DESTEROY QUERY";
   std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -298,24 +327,22 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
     }
   }
   {
-    auto const begin = std::chrono::steady_clock::now();
-    struct QueryDestructionContext {
-      // TODO put query information (and maybe even `begin`) here
-    };
-    auto queryDestructionContext = std::make_shared<QueryDestructionContext>();
+    auto const queryDestructionContext =
+        std::make_shared<QueryDestructionContext>(
+            queryInfoLifetimeExtension->_queryString,
+            queryInfoLifetimeExtension->_errorCode,
+            queryInfoLifetimeExtension->_finished);
     using namespace std::chrono_literals;
-    auto const waitUntilLoggingFor = 1s;
-    SchedulerFeature::SCHEDULER->queueDelayed(
-    "query destruction timing", RequestLane::CLUSTER_INTERNAL, waitUntilLoggingFor, [begin, waitUntilLoggingFor, weakPtr = std::weak_ptr(queryDestructionContext)](bool canceled) noexcept {
-      if (canceled) {
-        return;
-      }
-      // TODO read information auf of the query destruction context (lock the weakPtr for this)
-      LOG_TOPIC_IF("", WARN, Logger::QUERIES, weakPtr.expired()) << "";// TODO
-      // reschedule with a backoff
-      auto const waitUntilLoggingFor = waitUntilLoggingFor * 4;
-    });
+    static auto constexpr waitUntilLoggingFor = 1s;
+
+    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL, 1s,
+        generateQueryTrackingDesctruction(
+            std::weak_ptr(queryDestructionContext), waitUntilLoggingFor));
+
+    LOG_DEVEL << "STARTING TO DELETE QUERY";
     queryInfoLifetimeExtension.reset();
+    LOG_DEVEL << "DELETED QUERY";
   }
 }
 

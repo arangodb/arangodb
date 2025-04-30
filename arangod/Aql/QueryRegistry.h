@@ -31,6 +31,7 @@
 #include "Futures/Promise.h"
 
 #include <deque>
+#include <chrono>
 #include <string_view>
 #include <unordered_map>
 
@@ -142,6 +143,16 @@ class QueryRegistry {
 #endif
 
  private:
+  struct QueryDestructionContext {
+    std::string queryString;
+    ErrorCode errorCode;
+    bool finished;
+  };
+
+  fu2::unique_function<void(bool cancelled)> generateQueryTrackingDesctruction(
+      std::weak_ptr<QueryDestructionContext> queryDestructionContextWeak,
+      std::chrono::seconds waitUntilLoggingFor);
+
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
     /// @brief constructor for a regular query entry
