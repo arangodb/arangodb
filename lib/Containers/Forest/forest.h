@@ -26,7 +26,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace arangodb::async_registry {
+namespace arangodb::containers {
 
 using Id = void*;
 
@@ -119,4 +119,4 @@ struct IndexedForestWithRoots : IndexedForest<Node> {
   std::vector<Id> _roots;
 };
 
-}  // namespace arangodb::async_registry
+}  // namespace arangodb::containers

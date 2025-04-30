@@ -27,7 +27,7 @@
 #include <stack>
 #include <vector>
 
-namespace arangodb::async_registry {
+namespace arangodb::containers {
 
 using Id = void*;
 using TreeHierarchy = size_t;
@@ -73,4 +73,4 @@ struct DFS_PostOrder {
   std::stack<std::tuple<Id, TreeHierarchy, bool>> _stack;
 };
 
-}  // namespace arangodb::async_registry
+}  // namespace arangodb::containers

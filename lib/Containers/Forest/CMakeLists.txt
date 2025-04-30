@@ -3,4 +3,4 @@ add_library(arango_async_registry_stacktrace INTERFACE
   forest.h)
 target_include_directories(arango_async_registry_stacktrace
   INTERFACE
-  ${PROJECT_SOURCE_DIR}/arangod)
+  ${PROJECT_SOURCE_DIR}/lib)
