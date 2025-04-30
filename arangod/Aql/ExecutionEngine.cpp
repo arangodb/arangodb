@@ -282,10 +282,11 @@ ExecutionEngine::~ExecutionEngine() {
       auto block = it->get();
       if (ExecutionBlock* seenDependency =
               block->isDependencyInList(seenBlocks);
-          seenDependency != nullptr) {
+          seenDependency != nullptr && block->getPlanNode()->getType() != ExecutionNode::GATHER) {
         // We have a dependency that has already been seen, we need to log this
         // situation in theory this could lead to deadlocks. Some Blocks are
         // fine we just want to see those here.
+        // Gather Nodes are known to violate this, but they are safe.
         LOG_TOPIC("a6c2b", WARN, Logger::AQL)
             << "Stopping async tasks for " << block->printBlockInfo()
             << " but have already stopped dependency "
@@ -294,6 +295,7 @@ ExecutionEngine::~ExecutionEngine() {
         for (auto it2 = _blocks.rbegin(); it2 != _blocks.rend(); ++it2) {
           LOG_TOPIC("a6c2d", WARN, Logger::AQL) << (*it2)->printBlockAndDependenciesInfo();
         }
+        TRI_ASSERT(false) << "Triggered violation in ExecutionBlock ordering";
       }
       block->stopAsyncTasks();
       seenBlocks.insert(block);

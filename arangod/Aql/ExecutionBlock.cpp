@@ -221,8 +221,10 @@ auto ExecutionBlock::isDependencyInList(std::unordered_set<ExecutionBlock*> cons
 }
 
 auto ExecutionBlock::printBlockAndDependenciesInfo() const noexcept -> std::string const {
+  
   std::stringstream ss;
   ss << printBlockInfo();
+  ss << " async prefetching type: " <<(int) getPlanNode()->canUseAsyncPrefetching();
   ss << " calls: [";
   for (auto const& dependency : _dependencies) {
     ss << " " << dependency->printBlockInfo() << ",";
