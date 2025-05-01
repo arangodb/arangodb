@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/Timing.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/SourceLocation.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
@@ -50,6 +51,9 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+using namespace std::chrono_literals;
+
+static auto constexpr kWaitUntilLoggingFor = 1s;
 
 QueryRegistry::~QueryRegistry() {
   disallowInserts();
@@ -281,37 +285,36 @@ void QueryRegistry::closeEngine(EngineId engineId) {
 }
 
 fu2::unique_function<void(bool cancelled)>
-QueryRegistry::generateQueryTrackingDesctruction(
-    std::weak_ptr<QueryDestructionContext> queryDestructionContextWeak,
+QueryRegistry::generateQueryTrackingDestruction(
+    std::weak_ptr<ClusterQuery> weakClusterQuery,
+    QueryDestructionContext queryCtx,
     std::chrono::seconds waitUntilLoggingFor) {
-  return [queryDestructionContextWeak, waitUntilLoggingFor,
-          this](bool cancelled) noexcept {
-    if (cancelled) {
-      return;
-    }
-    auto const lock = queryDestructionContextWeak.lock();
+  // Canceled is only relevant for deleted tasks when the shared ptr to it is
+  // dropped, in this case nobody is holding the ptr
+  return [weakClusterQuery, queryCtx = std::move(queryCtx), waitUntilLoggingFor,
+          this](bool /* cancelled */) noexcept {
+    auto const lock = weakClusterQuery.lock();
     if (lock == nullptr) {
       return;
     }
 
-    LOG_DEVEL << "LOGGING";
     LOG_TOPIC("0a5df", WARN, Logger::QUERIES)
-        << "Query: " << lock->queryString << ", finished: " << lock->finished
-        << ", errorCode: " << lock->errorCode;
+        << "Query destruction took over: " << waitUntilLoggingFor
+        << queryCtx.queryString << ", finished: " << queryCtx.finished
+        << ", errorCode: " << queryCtx.errorCode;
     // reschedule with a backoff
     auto const newWaitUntilLoggingFor = waitUntilLoggingFor * 4;
     std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
         "query destruction timing", RequestLane::CLUSTER_INTERNAL,
         newWaitUntilLoggingFor,
-        generateQueryTrackingDesctruction(queryDestructionContextWeak,
-                                          newWaitUntilLoggingFor));
+        generateQueryTrackingDestruction(std::move(weakClusterQuery), queryCtx,
+                                         newWaitUntilLoggingFor));
   };
 }
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
 void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
-  LOG_DEVEL << "DESTEROY QUERY";
   std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -326,24 +329,19 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
       queryInfoLifetimeExtension = deleteQuery(queryMapIt);
     }
   }
-  {
-    auto const queryDestructionContext =
-        std::make_shared<QueryDestructionContext>(
-            queryInfoLifetimeExtension->_queryString,
-            queryInfoLifetimeExtension->_errorCode,
-            queryInfoLifetimeExtension->_finished);
-    using namespace std::chrono_literals;
-    static auto constexpr waitUntilLoggingFor = 1s;
 
-    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
-        "query destruction timing", RequestLane::CLUSTER_INTERNAL, 1s,
-        generateQueryTrackingDesctruction(
-            std::weak_ptr(queryDestructionContext), waitUntilLoggingFor));
+  QueryDestructionContext queryDestructionContext(
+      queryInfoLifetimeExtension->_queryString,
+      queryInfoLifetimeExtension->_errorCode,
+      queryInfoLifetimeExtension->_finished);
+  using namespace std::chrono_literals;
 
-    LOG_DEVEL << "STARTING TO DELETE QUERY";
-    queryInfoLifetimeExtension.reset();
-    LOG_DEVEL << "DELETED QUERY";
-  }
+  std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+      "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+      kWaitUntilLoggingFor,
+      generateQueryTrackingDestruction(
+          std::weak_ptr(queryInfoLifetimeExtension->_query),
+          std::move(queryDestructionContext), kWaitUntilLoggingFor));
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
@@ -351,6 +349,7 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
   WRITE_LOCKER(writeLocker, _lock);
 
   QueryInfoMap::iterator queryMapIt = lookupQueryForFinalization(id, errorCode);
+  auto weakPtr = std::weak_ptr(queryMapIt->second->_query);
   if (queryMapIt == _queries.end()) {
     return std::shared_ptr<ClusterQuery>();
   }
@@ -368,9 +367,18 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     // last thread closes its engine
     return queryInfo._promise.getFuture();
   }
+  QueryDestructionContext queryDestructionContext(
+      queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
 
   auto result = queryInfo._query;
   deleteQuery(queryMapIt);
+
+  std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+      "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+      kWaitUntilLoggingFor,
+      generateQueryTrackingDestruction(
+          weakPtr, std::move(queryDestructionContext), kWaitUntilLoggingFor));
+
   return result;
 }
 

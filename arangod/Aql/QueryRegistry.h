@@ -149,8 +149,9 @@ class QueryRegistry {
     bool finished;
   };
 
-  fu2::unique_function<void(bool cancelled)> generateQueryTrackingDesctruction(
-      std::weak_ptr<QueryDestructionContext> queryDestructionContextWeak,
+  fu2::unique_function<void(bool cancelled)> generateQueryTrackingDestruction(
+      std::weak_ptr<ClusterQuery> weakClusterQuery,
+      QueryDestructionContext queryCtx,
       std::chrono::seconds waitUntilLoggingFor);
 
   /// @brief a struct for all information regarding one query in the registry
