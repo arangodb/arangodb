@@ -298,7 +298,7 @@ QueryRegistry::generateQueryTrackingDestruction(
       return;
     }
 
-    LOG_TOPIC("0a5df", WARN, Logger::QUERIES)
+    LOG_TOPIC("a16bf", WARN, Logger::QUERIES)
         << "Query destruction took over: " << waitUntilLoggingFor
         << queryCtx.queryString << ", finished: " << queryCtx.finished
         << ", errorCode: " << queryCtx.errorCode;
