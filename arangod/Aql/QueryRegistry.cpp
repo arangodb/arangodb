@@ -347,18 +347,20 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
     }
   }
 
-  QueryDestructionContext queryDestructionContext(
-      queryInfoLifetimeExtension->_queryString,
-      queryInfoLifetimeExtension->_errorCode,
-      queryInfoLifetimeExtension->_finished);
-  using namespace std::chrono_literals;
+  if (queryInfoLifetimeExtension != nullptr) {
+    QueryDestructionContext queryDestructionContext(
+        queryInfoLifetimeExtension->_queryString,
+        queryInfoLifetimeExtension->_errorCode,
+        queryInfoLifetimeExtension->_finished);
+    using namespace std::chrono_literals;
 
-  std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
-      "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-      kWaitUntilLoggingFor,
-      generateQueryTrackingDestruction(
-          std::weak_ptr(queryInfoLifetimeExtension->_query),
-          std::move(queryDestructionContext), kWaitUntilLoggingFor));
+    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+        kWaitUntilLoggingFor,
+        generateQueryTrackingDestruction(
+            std::weak_ptr(queryInfoLifetimeExtension->_query),
+            std::move(queryDestructionContext), kWaitUntilLoggingFor));
+  }
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
