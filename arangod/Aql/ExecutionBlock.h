@@ -31,8 +31,9 @@
 
 #include <atomic>
 #include <cstdint>
-#include <string_view>
+#include <unordered_set>
 #include <utility>
+#include <string_view>
 #include <vector>
 
 namespace arangodb {
@@ -131,8 +132,16 @@ class ExecutionBlock {
 
   [[nodiscard]] auto printBlockInfo() const -> std::string const;
   [[nodiscard]] auto printTypeInfo() const -> std::string const;
+  [[nodiscard]] auto printBlockAndDependenciesInfo() const noexcept
+      -> std::string const;
 
   virtual auto stopAsyncTasks() -> void;
+
+  [[nodiscard]] auto isDependencyInList(
+      std::unordered_set<ExecutionBlock*> const& seenBlocks) const noexcept
+      -> ExecutionBlock*;
+
+  [[nodiscard]] auto hasStoppedAsyncTasks() const noexcept -> bool;
 
  protected:
   // Trace the start of a execute call
@@ -175,6 +184,10 @@ class ExecutionBlock {
 
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
+
+  /// @brief if this is set, we have stopped async tasks, this is set to true by
+  /// stopAsyncTasks()
+  bool _stoppedAsyncTasks{false};
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// @brief if this is set to true, one thread is using this block, so we can

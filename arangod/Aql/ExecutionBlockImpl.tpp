@@ -1049,6 +1049,32 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                 return;
               }
 
+              // We are entering debugging land here.
+              // Someone hasasked as to stop async tasks.
+              // But here we are just starting to work on one.
+              // This is okay and can rarely happen. But if it happens
+              // We want to know if we start the task and finish it quickly
+
+              bool hasStoppedAsyncTasks = block->hasStoppedAsyncTasks();
+              if (hasStoppedAsyncTasks) {
+                LOG_TOPIC("14d22", WARN, Logger::AQL)
+                    << "[query#" << block->getQuery().id() << "] ALERT"
+                    << block->printBlockInfo()
+                    << " was asked to stop async task. We still start one. "
+                       "This is an allowed rare race.";
+              }
+
+              auto stopGuard =
+                  ScopeGuard([block, hasStoppedAsyncTasks]() noexcept {
+                    if (hasStoppedAsyncTasks) {
+                      LOG_TOPIC("14d21", WARN, Logger::AQL)
+                          << "[query#" << block->getQuery().id()
+                          << "] CLEAR ALERT" << block->printBlockInfo()
+                          << " We completed the task of the aforementioned "
+                             "race. All is fine.";
+                    }
+                  });
+
               TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
                 using namespace std::chrono_literals;
                 std::this_thread::sleep_for(100ms);
