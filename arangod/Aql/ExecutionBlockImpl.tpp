@@ -1090,7 +1090,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
 
               bool hasStoppedAsyncTasks = block->hasStoppedAsyncTasks();
               if (hasStoppedAsyncTasks) {
-                LOG_TOPIC("14d20", WARN, Logger::AQL)
+                LOG_TOPIC("14d22", WARN, Logger::AQL)
                     << "[query#" << block->getQuery().id() << "] ALERT"
                     << block->printBlockInfo()
                     << " was asked to stop async task. We still start one. "
