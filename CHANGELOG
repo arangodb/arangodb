@@ -3,6 +3,9 @@ devel
 
 * Fix BTS-2135: Fix the regression when queries are being destroyed.
 
+* Fix a crash when bind parameters are not set and killing of a query
+  is logged (no version with this bug was ever released!).
+
 * Switched to customized (instead of official) forked rclone v1.65.2 built with
   go1.23.8 to avoid CVEs.
 
