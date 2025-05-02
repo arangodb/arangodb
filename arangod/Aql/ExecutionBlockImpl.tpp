@@ -354,29 +354,27 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
-  // Double use diagnostics:
-  uint64_t userCount = _numberOfUsers.fetch_add(1);
-  if (userCount > 0) {
-    LOG_TOPIC("52637", WARN, Logger::AQL)
-        << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
-    CrashHandler::logBacktrace();
-    _logStacktrace.store(true, std::memory_order_relaxed);
-  }
-  auto guard = scopeGuard([&]() noexcept {
-    uint64_t userCount = _numberOfUsers.fetch_sub(1);
-    if (_logStacktrace.load(std::memory_order_relaxed)) {
-      LOG_TOPIC("52638", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
+  if (_prefetchTask) {
+    // Double use diagnostics:
+    uint64_t userCount = _numberOfUsers.fetch_add(1);
+    if (userCount > 0) {
+      _logStacktrace.store(true, std::memory_order_relaxed);
+      LOG_TOPIC("52637", WARN, Logger::AQL)
+          << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
       CrashHandler::logBacktrace();
-      if (userCount == 0) {
-        _logStacktrace.store(false, std::memory_order_relaxed);
-      }
     }
-  });
-  if (_prefetchTask && !_prefetchTask->isConsumed() &&
-      !_prefetchTask->tryClaim()) {
-    // some thread is still working on our prefetch task
-    // -> we need to wait for that task to finish first!
-    _prefetchTask->waitFor();
+    auto guard = scopeGuard([&]() noexcept {
+      _numberOfUsers.fetch_sub(1);
+      if (_logStacktrace.load(std::memory_order_relaxed)) {
+        LOG_TOPIC("52638", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
+        CrashHandler::logBacktrace();
+      }
+    });
+    if (!_prefetchTask->isConsumed() && !_prefetchTask->tryClaim()) {
+      // some thread is still working on our prefetch task
+      // -> we need to wait for that task to finish first!
+      _prefetchTask->waitFor();
+    }
   }
 }
 
@@ -516,19 +514,16 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   // Double use diagnostics:
   uint64_t userCount = _numberOfUsers.fetch_add(1);
   if (userCount > 0) {
+    _logStacktrace.store(true, std::memory_order_relaxed);
     LOG_TOPIC("52635", WARN, Logger::AQL)
         << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
     CrashHandler::logBacktrace();
-    _logStacktrace.store(true, std::memory_order_relaxed);
   }
   auto waechter = scopeGuard([&]() noexcept {
-    uint64_t userCount = _numberOfUsers.fetch_sub(1);
+    _numberOfUsers.fetch_sub(1);
     if (_logStacktrace.load(std::memory_order_relaxed)) {
       LOG_TOPIC("52636", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
       CrashHandler::logBacktrace();
-      if (userCount == 0) {
-        _logStacktrace.store(false, std::memory_order_relaxed);
-      }
     }
   });
 
