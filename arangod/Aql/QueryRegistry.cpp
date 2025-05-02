@@ -281,6 +281,23 @@ void QueryRegistry::closeEngine(EngineId engineId) {
           << "closing engine " << engineId << ", no query";
     }
   }
+  if (queryInfoLifetimeExtension != nullptr) {
+    QueryDestructionContext queryDestructionContext(
+        queryInfoLifetimeExtension->_queryString,
+        queryInfoLifetimeExtension->_errorCode,
+        queryInfoLifetimeExtension->_finished);
+    using namespace std::chrono_literals;
+
+    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+        kWaitUntilLoggingFor,
+        generateQueryTrackingDestruction(
+            std::weak_ptr(queryInfoLifetimeExtension->_query),
+            std::move(queryDestructionContext), kWaitUntilLoggingFor));
+    // Now explicitly destroy the QueryInfo before we resolve the promise,
+    // but no longer under the lock:
+    queryInfoLifetimeExtension.reset();
+  }
   finishPromise.setValue(std::move(queryToFinish));
 }
 
@@ -346,38 +363,46 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     QueryId id, ErrorCode errorCode) {
-  WRITE_LOCKER(writeLocker, _lock);
+  std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
+  std::shared_ptr<ClusterQuery> result;
+  {
+    WRITE_LOCKER(writeLocker, _lock);
 
-  QueryInfoMap::iterator queryMapIt = lookupQueryForFinalization(id, errorCode);
-  auto weakPtr = std::weak_ptr(queryMapIt->second->_query);
-  if (queryMapIt == _queries.end()) {
-    return std::shared_ptr<ClusterQuery>();
+    QueryInfoMap::iterator queryMapIt =
+        lookupQueryForFinalization(id, errorCode);
+    auto weakPtr = std::weak_ptr(queryMapIt->second->_query);
+    if (queryMapIt == _queries.end()) {
+      return std::shared_ptr<ClusterQuery>();
+    }
+    TRI_ASSERT(queryMapIt->second);
+    auto& queryInfo = *queryMapIt->second;
+
+    TRI_ASSERT(!queryInfo._finished);
+    if (queryInfo._finished) {
+      return std::shared_ptr<ClusterQuery>();
+    }
+
+    queryInfo._finished = true;
+    if (queryInfo._numOpen > 0) {
+      // we return a future for this queryInfo which will be resolved once the
+      // last thread closes its engine
+      return queryInfo._promise.getFuture();
+    }
+    QueryDestructionContext queryDestructionContext(
+        queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
+
+    result = queryInfo._query;
+    queryInfoLifetimeExtension = deleteQuery(queryMapIt);
+
+    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+        kWaitUntilLoggingFor,
+        generateQueryTrackingDestruction(
+            weakPtr, std::move(queryDestructionContext), kWaitUntilLoggingFor));
   }
-  TRI_ASSERT(queryMapIt->second);
-  auto& queryInfo = *queryMapIt->second;
-
-  TRI_ASSERT(!queryInfo._finished);
-  if (queryInfo._finished) {
-    return std::shared_ptr<ClusterQuery>();
-  }
-
-  queryInfo._finished = true;
-  if (queryInfo._numOpen > 0) {
-    // we return a future for this queryInfo which will be resolved once the
-    // last thread closes its engine
-    return queryInfo._promise.getFuture();
-  }
-  QueryDestructionContext queryDestructionContext(
-      queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
-
-  auto result = queryInfo._query;
-  deleteQuery(queryMapIt);
-
-  std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
-      "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-      kWaitUntilLoggingFor,
-      generateQueryTrackingDestruction(
-          weakPtr, std::move(queryDestructionContext), kWaitUntilLoggingFor));
+  // Now explicitly destroy the QueryInfo before we resolve the promise,
+  // but no longer under the lock:
+  queryInfoLifetimeExtension.reset();
 
   return result;
 }
