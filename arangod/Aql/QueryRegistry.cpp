@@ -281,23 +281,9 @@ void QueryRegistry::closeEngine(EngineId engineId) {
           << "closing engine " << engineId << ", no query";
     }
   }
-  if (queryInfoLifetimeExtension != nullptr) {
-    QueryDestructionContext queryDestructionContext(
-        queryInfoLifetimeExtension->_queryString,
-        queryInfoLifetimeExtension->_errorCode,
-        queryInfoLifetimeExtension->_finished);
-    using namespace std::chrono_literals;
-
-    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
-        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-        kWaitUntilLoggingFor,
-        generateQueryTrackingDestruction(
-            std::weak_ptr(queryInfoLifetimeExtension->_query),
-            std::move(queryDestructionContext), kWaitUntilLoggingFor));
-    // Now explicitly destroy the QueryInfo before we resolve the promise,
-    // but no longer under the lock:
-    queryInfoLifetimeExtension.reset();
-  }
+  // Now explicitly destroy the QueryInfo before we resolve the promise,
+  // but no longer under the lock:
+  queryInfoLifetimeExtension.reset();
   finishPromise.setValue(std::move(queryToFinish));
 }
 
