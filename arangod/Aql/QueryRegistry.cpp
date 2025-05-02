@@ -340,12 +340,16 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
         queryInfoLifetimeExtension->_finished);
     using namespace std::chrono_literals;
 
-    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
-        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-        kWaitUntilLoggingFor,
-        generateQueryTrackingDestruction(
-            std::weak_ptr(queryInfoLifetimeExtension->_query),
-            std::move(queryDestructionContext), kWaitUntilLoggingFor));
+    if (SchedulerFeature::SCHEDULER != nullptr) {
+      // During shutdown (especially in unit tests) it is possible that
+      // the scheduler is already gone.
+      std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+          "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+          kWaitUntilLoggingFor,
+          generateQueryTrackingDestruction(
+              std::weak_ptr(queryInfoLifetimeExtension->_query),
+              std::move(queryDestructionContext), kWaitUntilLoggingFor));
+    }
   }
 }
 
