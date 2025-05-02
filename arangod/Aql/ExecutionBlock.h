@@ -140,7 +140,7 @@ class ExecutionBlock {
   [[nodiscard]] auto isDependencyInList(
       std::unordered_set<ExecutionBlock*> const& seenBlocks) const noexcept
       -> ExecutionBlock*;
-    
+
   [[nodiscard]] auto hasStoppedAsyncTasks() const noexcept -> bool;
 
  protected:
@@ -185,7 +185,8 @@ class ExecutionBlock {
   /// @brief if this is set, we are done, this is reset to false by execute()
   bool _done;
 
-  /// @brief if this is set, we have stopped async tasks, this is set to true by stopAsyncTasks()
+  /// @brief if this is set, we have stopped async tasks, this is set to true by
+  /// stopAsyncTasks()
   bool _stoppedAsyncTasks{false};
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -194,6 +195,13 @@ class ExecutionBlock {
   /// this would harm our implementation.
   std::atomic<bool> _isBlockInUse{false};
 #endif
+
+  /// @brief The following is always 0 or 1, if our assumptions are correct.
+  /// The `execute` method as well as the destructor increment it at their
+  /// start and decrement it at their end. If we detect a double use, we
+  /// log the stack traces.
+  std::atomic<uint64_t> _numberOfUsers{0};
+  std::atomic<bool> _logStacktrace{false};
 };
 
 }  // namespace aql
