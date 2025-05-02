@@ -354,8 +354,6 @@ ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
-  TRI_ASSERT(!_stoppedAsyncTasks)
-      << "Someone already stopped async tasks for " << printBlockInfo();
   _stoppedAsyncTasks = true;
   if (_prefetchTask) {
     // Double use diagnostics:
