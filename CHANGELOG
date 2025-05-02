@@ -1,3 +1,14 @@
+3.12.4.4 (XXXX-XX-XX)
+---------------------
+
+* Add detection of two threads working on an ExecutionBlock concurrently.
+
+* Add detection of two threads waiting for a PrefetchTask concurrently.
+
+* Add visibility into the state if a thread waits for more than a second
+  on a PrefetchTask.
+
+
 3.12.4.3 (2025-04-25)
 ---------------------
 
