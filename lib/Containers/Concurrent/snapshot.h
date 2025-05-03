@@ -20,26 +20,11 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "registry_variable.h"
+#pragma once
 
-#include "Async/Registry/promise.h"
+#include <concepts>
 
-#include <thread>
-
-namespace arangodb::async_registry {
-
-Registry registry;
-
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{ThreadRegistry::make(registry.metrics)} {
-      registry.add(_registry);
-    }
-
-    std::shared_ptr<ThreadRegistry> _registry;
-  };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
-}
-
-}  // namespace arangodb::async_registry
+template<typename T>
+concept HasSnapshot = requires(T t) {
+  { t.snapshot() } -> std::convertible_to<typename T::Snapshot>;
+};
