@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/async.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -73,31 +74,41 @@ RequestLane RestCursorHandler::lane() const {
   return RequestLane::CLIENT_AQL;
 }
 
-RestStatus RestCursorHandler::execute() {
+futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
-
   if (type == rest::RequestType::POST) {
     if (_request->suffixes().size() == 0) {
       // POST /_api/cursor
-      return createQueryCursor();
+
+      co_await createQueryCursor();
+      co_return;
     } else if (_request->suffixes().size() == 1) {
       // POST /_api/cursor/cursor-id
-      return modifyQueryCursor();
+
+      co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::modifyQueryCursor, this));
+      co_return;
     }
     // POST /_api/cursor/cursor-id/batch-id
-    return showLatestBatch();
+    co_await showLatestBatch();
+    co_return;
   } else if (type == rest::RequestType::PUT) {
-    return modifyQueryCursor();
+    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::modifyQueryCursor, this));
+    co_return;
   } else if (type == rest::RequestType::DELETE_REQ) {
-    return deleteQueryCursor();
+    // TODO if this does not wait, it does not need to return RestStatus -
+    //      and otherwise should be a coroutine.
+    auto status = deleteQueryCursor();
+    TRI_ASSERT(status == RestStatus::DONE);
+    co_return;
   }
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return RestStatus::DONE;
+  co_return;
 }
 
 RestStatus RestCursorHandler::continueExecute() {
+  TRI_ASSERT(false);
   if (wasCanceled()) {
     generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
     return RestStatus::DONE;
@@ -172,7 +183,7 @@ void RestCursorHandler::cancel() {
 ///
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
-futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
+async<RestStatus> RestCursorHandler::registerQueryOrCursor(
     velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
@@ -240,7 +251,8 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
 
-    co_return generateCursorResult(rest::ResponseCode::CREATED);
+    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::generateCursorResult, this, rest::ResponseCode::CREATED));
+    co_return RestStatus::DONE;
   }
 
   // non-stream case. Execute query, then build a cursor
@@ -258,7 +270,10 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
   }
 
   registerQuery(std::move(query));
-  co_return processQuery();
+
+  co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::processQuery, this));
+
+  co_return RestStatus::DONE;
 }
 
 /// @brief Process the query registered in _query.
@@ -618,7 +633,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
       if (_cursor->isRetriable()) {
         _cursor->setLastQueryBatchObject(builder.steal());
       }
-      return RestStatus::FAIL;
+      return RestStatus::DONE;
     }
 
     generateResult(code, builder.slice(), std::move(ctx));
@@ -643,13 +658,13 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   return RestStatus::DONE;
 }
 
-RestStatus RestCursorHandler::createQueryCursor() {
+async<void> RestCursorHandler::createQueryCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (!suffixes.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess = false;
@@ -657,28 +672,28 @@ RestStatus RestCursorHandler::createQueryCursor() {
 
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (body.isEmptyObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_CORRUPTED_JSON);
-    return RestStatus::DONE;
+    co_return;
   }
 
   TRI_ASSERT(_query == nullptr);
-  return waitForFuture(registerQueryOrCursor(
-      body, transaction::OperationOriginAQL{"running AQL query"}));
+  co_await registerQueryOrCursor(
+      body, transaction::OperationOriginAQL{"running AQL query"});
+  co_return;
 }
-
 /// @brief shows the batch given by <batch-id> if it's the last cached batch
 /// response on a retry, and does't advance cursor
-RestStatus RestCursorHandler::showLatestBatch() {
+async<void> RestCursorHandler::showLatestBatch() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor/<cursor-id>/<batch-id>");
-    return RestStatus::DONE;
+    co_return;
   }
 
   uint64_t batchId = basics::StringUtils::uint64(suffixes[1]);
@@ -687,7 +702,7 @@ RestStatus RestCursorHandler::showLatestBatch() {
 
   if (_cursor == nullptr) {
     // error response already built here
-    return RestStatus::DONE;
+    co_return;
   }
 
   _cursor->setWakeupHandler(withLogContext(
@@ -698,13 +713,14 @@ RestStatus RestCursorHandler::showLatestBatch() {
   //   if x == y + 1, advance the cursor and return the new batch
   //   otherwise return error
   if (_cursor->isNextBatchId(batchId)) {
-    return generateCursorResult(rest::ResponseCode::OK);
+    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::generateCursorResult, this, rest::ResponseCode::OK));
+    co_return;
   }
 
   if (!_cursor->isCurrentBatchId(batchId)) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
                   "batch id not found");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto buffer = _cursor->getLastBatch();
@@ -714,7 +730,7 @@ RestStatus RestCursorHandler::showLatestBatch() {
   generateResult(rest::ResponseCode::OK, VPackSlice(buffer->data()),
                  _cursor->context());
 
-  return RestStatus::DONE;
+  co_return;
 }
 
 RestStatus RestCursorHandler::modifyQueryCursor() {

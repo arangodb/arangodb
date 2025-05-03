@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Async/SuspensionSemaphore.h"
+#include "Async/async.h"
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
@@ -33,6 +34,7 @@
 #include "Statistics/RequestStatistics.h"
 
 #include <atomic>
+#include <concepts>
 #include <memory>
 #include <mutex>
 #include <string_view>
@@ -51,14 +53,11 @@ template<typename T>
 class Future;
 }  // namespace futures
 
-template<typename>
-struct async;
-
 class GeneralRequest;
 class RequestStatistics;
 class Result;
 
-enum class RestStatus { DONE, WAITING, FAIL };
+enum class RestStatus { DONE, WAITING };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
@@ -207,6 +206,29 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   mutable std::atomic_uint8_t _executionCounter{0};
   mutable RestStatus _followupRestStatus;
 
+ protected:
+  // TODO Move this in a separate header, side-by-side with SuspensionSemaphore?
+  // Note: _suspensionSemaphore.notify() must be called for this to resume.
+  // RestHandler::wakeupHandler() does that, and can be called e.g. by the
+  // SharedQueryState's wakeup handler (for AQL-related code).
+  template<typename F>
+  requires requires(F f) { { f() } -> std::same_as<RestStatus>; }
+  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<void> {
+    auto fun = std::forward<F>(funArg);
+    auto state = fun();
+
+    while (state == RestStatus::WAITING) {
+      // Get the number of wakeups. We call fun() up to that many
+      // times before suspending again.
+      auto n = co_await _suspensionSemaphore.await();
+      for (auto i = 0; i < n && state == RestStatus::WAITING; ++i) {
+        state = fun();
+      }
+    }
+    co_return;
+  }
+
+ private:
   SuspensionSemaphore _suspensionSemaphore;
 
   std::function<void(rest::RestHandler*)> _sendResponseCallback;

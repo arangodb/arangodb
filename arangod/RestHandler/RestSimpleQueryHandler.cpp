@@ -42,27 +42,34 @@ RestSimpleQueryHandler::RestSimpleQueryHandler(
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestCursorHandler(server, request, response, queryRegistry) {}
 
-RestStatus RestSimpleQueryHandler::execute() {
+auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the sub-request type
   auto const type = _request->requestType();
 
+  // TODO remove the RestStatus return value of all callees here
   std::string const& prefix = _request->requestPath();
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
-      return waitForFuture(allDocuments());
+      auto status = co_await allDocuments();
+      TRI_ASSERT(status == RestStatus::DONE);
+      co_return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
-      return waitForFuture(allDocumentKeys());
+      auto status = co_await allDocumentKeys();
+      TRI_ASSERT(status == RestStatus::DONE);
+      co_return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
       // by-example query
-      return waitForFuture(byExample());
+      auto status = co_await byExample();
+      TRI_ASSERT(status == RestStatus::DONE);
+      co_return;
     }
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return RestStatus::DONE;
+  co_return;
 }
 
 futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {

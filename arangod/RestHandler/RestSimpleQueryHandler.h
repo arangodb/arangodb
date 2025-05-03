@@ -36,7 +36,7 @@ class RestSimpleQueryHandler : public RestCursorHandler {
                          arangodb::aql::QueryRegistry*);
 
  public:
-  RestStatus execute() override final;
+  auto executeAsync() -> futures::Future<futures::Unit> override final;
   char const* name() const override final { return "RestSimpleQueryHandler"; }
 
  private:
