@@ -34,9 +34,6 @@
 #include <optional>
 #include <string_view>
 
-// TODO forward declare, move include to .cpp
-#include <Async/async.h>
-
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -47,6 +44,9 @@ class Query;
 class QueryRegistry;
 struct QueryResult;
 }  // namespace aql
+
+template<typename>
+struct async;
 
 class Cursor;
 
@@ -62,7 +62,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final;
 
   auto executeAsync() -> futures::Future<futures::Unit> override;
-  virtual RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   void cancel() override final;
@@ -71,13 +70,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the query either as streaming cursor or in _query
   /// the query is not executed here.
   /// this method is also used by derived classes
-  [[nodiscard]] async<RestStatus> registerQueryOrCursor(
+  async<void> registerQueryOrCursor(
       velocypack::Slice body, transaction::OperationOrigin operationOrigin);
 
   /// @brief Process the query registered in _query.
   /// The function is repeatable, so whenever we need to WAIT
   /// in AQL we can post a handler calling this function again.
-  RestStatus processQuery();
+  async<void> processQuery();
 
   /// @brief returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
@@ -89,7 +88,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// guaranteed
   ///        to not be interrupted and is guaranteed to get a complete
   ///        queryResult.
-  virtual RestStatus handleQueryResult();
+  virtual async<void> handleQueryResult();
 
  private:
   /// @brief register the currently running query
@@ -105,13 +104,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief append the contents of the cursor into the response body
   /// this function will also take care of the cursor and return it to the
   /// registry if required
-  RestStatus generateCursorResult(rest::ResponseCode code);
+  async<void> generateCursorResult(rest::ResponseCode code);
 
   /// @brief create a cursor and return the first results
   async<void> createQueryCursor();
 
       /// @brief return the next results from an existing cursor
-  RestStatus modifyQueryCursor();
+  async<void> modifyQueryCursor();
 
   /// @brief dispose an existing cursor
   RestStatus deleteQueryCursor();

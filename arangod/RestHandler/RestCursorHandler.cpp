@@ -86,14 +86,14 @@ futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
     } else if (_request->suffixes().size() == 1) {
       // POST /_api/cursor/cursor-id
 
-      co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::modifyQueryCursor, this));
+      co_await modifyQueryCursor();
       co_return;
     }
     // POST /_api/cursor/cursor-id/batch-id
     co_await showLatestBatch();
     co_return;
   } else if (type == rest::RequestType::PUT) {
-    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::modifyQueryCursor, this));
+    co_await modifyQueryCursor();
     co_return;
   } else if (type == rest::RequestType::DELETE_REQ) {
     // TODO if this does not wait, it does not need to return RestStatus -
@@ -105,48 +105,6 @@ futures::Future<futures::Unit> RestCursorHandler::executeAsync() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   co_return;
-}
-
-RestStatus RestCursorHandler::continueExecute() {
-  TRI_ASSERT(false);
-  if (wasCanceled()) {
-    generateError(rest::ResponseCode::GONE, TRI_ERROR_QUERY_KILLED);
-    return RestStatus::DONE;
-  }
-
-  if (!_response->isResponseEmpty()) {
-    // an exception occurred in one of the suspension points
-    return RestStatus::DONE;
-  }
-
-  // extract the sub-request type
-  rest::RequestType const type = _request->requestType();
-
-  if (_query != nullptr) {  // non-stream query
-    if (type == rest::RequestType::POST || type == rest::RequestType::PUT) {
-      return processQuery();
-    }
-  } else if (_cursor) {  // stream cursor query
-    if (type == rest::RequestType::POST) {
-      if (_request->suffixes().size() == 0) {
-        // POST /_api/cursor
-        return generateCursorResult(rest::ResponseCode::CREATED);
-      }
-      // POST /_api/cursor/cursor-id
-      return generateCursorResult(ResponseCode::OK);
-    } else if (type == rest::RequestType::PUT) {
-      if (_request->requestPath() == SIMPLE_QUERY_ALL_PATH) {
-        // RestSimpleQueryHandler::allDocuments uses PUT for cursor creation
-        return generateCursorResult(ResponseCode::CREATED);
-      }
-      return generateCursorResult(ResponseCode::OK);
-    }
-  }
-
-  // Other parts of the query cannot be paused
-  TRI_ASSERT(false) << requestToString(type) << " " << _request->fullUrl()
-                    << " " << _request->parameters();
-  return RestStatus::DONE;
 }
 
 void RestCursorHandler::shutdownExecute(bool isFinalized) noexcept {
@@ -183,18 +141,18 @@ void RestCursorHandler::cancel() {
 ///
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
-async<RestStatus> RestCursorHandler::registerQueryOrCursor(
+async<void> RestCursorHandler::registerQueryOrCursor(
     velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    co_return RestStatus::DONE;
+    co_return;
   }
   VPackSlice querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   VPackSlice bindVars = slice.get("bindVars");
@@ -202,7 +160,7 @@ async<RestStatus> RestCursorHandler::registerQueryOrCursor(
     if (!bindVars.isObject() && !bindVars.isNull()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
-      co_return RestStatus::DONE;
+      co_return;
     }
   }
 
@@ -240,7 +198,7 @@ async<RestStatus> RestCursorHandler::registerQueryOrCursor(
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
-      co_return RestStatus::DONE;
+      co_return;
     }
 
     CursorRepository* cursors = _vocbase.cursorRepository();
@@ -251,8 +209,8 @@ async<RestStatus> RestCursorHandler::registerQueryOrCursor(
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
 
-    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::generateCursorResult, this, rest::ResponseCode::CREATED));
-    co_return RestStatus::DONE;
+    co_await generateCursorResult(rest::ResponseCode::CREATED);
+    co_return;
   }
 
   // non-stream case. Execute query, then build a cursor
@@ -262,7 +220,7 @@ async<RestStatus> RestCursorHandler::registerQueryOrCursor(
     TRI_ASSERT(ss != nullptr);
     if (ss == nullptr) {
       generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
-      co_return RestStatus::DONE;
+      co_return;
     }
 
     ss->setWakeupHandler(withLogContext(
@@ -271,15 +229,15 @@ async<RestStatus> RestCursorHandler::registerQueryOrCursor(
 
   registerQuery(std::move(query));
 
-  co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::processQuery, this));
+  co_await processQuery();
 
-  co_return RestStatus::DONE;
+  co_return;
 }
 
 /// @brief Process the query registered in _query.
 /// The function is repeatable, so whenever we need to WAIT
 /// in AQL we can post a handler calling this function again.
-RestStatus RestCursorHandler::processQuery() {
+async<void> RestCursorHandler::processQuery() {
   auto query = [this]() {
     std::unique_lock<std::mutex> mutexLocker{_queryLock};
 
@@ -295,22 +253,24 @@ RestStatus RestCursorHandler::processQuery() {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
-    // continue handler is registered earlier
-    auto state = query->execute(_queryResult);
+    co_await waitingFunToCoro([&]{
+      auto state = query->execute(_queryResult);
 
-    if (state == aql::ExecutionState::WAITING) {
-      guard.cancel();
-      return RestStatus::WAITING;
-    }
-    TRI_ASSERT(state == aql::ExecutionState::DONE);
+      if (state == aql::ExecutionState::WAITING) {
+        return RestStatus::WAITING;
+      }
+      TRI_ASSERT(state == aql::ExecutionState::DONE);
+      return RestStatus::DONE;
+    });
   }
 
   // We cannot get into HASMORE here, or we would lose results.
-  return handleQueryResult();
+  co_await handleQueryResult();
+  co_return;
 }
 
 // non stream case, result is complete
-RestStatus RestCursorHandler::handleQueryResult() {
+async<void> RestCursorHandler::handleQueryResult() {
   TRI_ASSERT(_query == nullptr);
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
@@ -406,7 +366,7 @@ RestStatus RestCursorHandler::handleQueryResult() {
     // trx.commit()) without the server code for freeing the resources and the
     // client code racing for who's first
 
-    return RestStatus::DONE;
+    co_return;
   } else {
     // result is bigger than batchSize, and a cursor will be created
     CursorRepository* cursors = _vocbase.cursorRepository();
@@ -417,7 +377,8 @@ RestStatus RestCursorHandler::handleQueryResult() {
                                              ttl, count, retriable);
     // throws if a coordinator soft shutdown is ongoing
 
-    return generateCursorResult(rest::ResponseCode::CREATED);
+    co_await generateCursorResult(rest::ResponseCode::CREATED);
+    co_return;
   }
 }
 
@@ -603,7 +564,7 @@ void RestCursorHandler::buildOptions(velocypack::Slice slice) {
 /// @brief append the contents of the cursor into the response body
 /// this function will also take care of the cursor and return it to the
 /// registry if required
-RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
+async<void> RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   TRI_ASSERT(_cursor != nullptr);
 
   // dump might delete the cursor
@@ -612,13 +573,20 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   VPackBuilder builder;
   builder.openObject(/*unindexed*/ true);
 
-  auto const [state, r] = _cursor->dump(builder);
+  auto r = Result();
 
-  if (state == aql::ExecutionState::WAITING) {
-    builder.clear();
-    TRI_ASSERT(r.ok());
-    return RestStatus::WAITING;
-  }
+  co_await waitingFunToCoro([&](){
+    auto const [state, result] = _cursor->dump(builder);
+
+    if (state == aql::ExecutionState::WAITING) {
+      TRI_ASSERT(r.ok());
+      return RestStatus::WAITING;
+    }
+
+    r = result;
+
+    return RestStatus::DONE;
+  });
 
   if (_cursor->allowDirtyReads()) {
     setOutgoingDirtyReadsHeader(true);
@@ -633,7 +601,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
       if (_cursor->isRetriable()) {
         _cursor->setLastQueryBatchObject(builder.steal());
       }
-      return RestStatus::DONE;
+      co_return;
     }
 
     generateResult(code, builder.slice(), std::move(ctx));
@@ -655,7 +623,7 @@ RestStatus RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
     generateError(r);
   }
 
-  return RestStatus::DONE;
+  co_return;
 }
 
 async<void> RestCursorHandler::createQueryCursor() {
@@ -713,7 +681,7 @@ async<void> RestCursorHandler::showLatestBatch() {
   //   if x == y + 1, advance the cursor and return the new batch
   //   otherwise return error
   if (_cursor->isNextBatchId(batchId)) {
-    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::generateCursorResult, this, rest::ResponseCode::OK));
+    co_await generateCursorResult(rest::ResponseCode::OK);
     co_return;
   }
 
@@ -733,13 +701,13 @@ async<void> RestCursorHandler::showLatestBatch() {
   co_return;
 }
 
-RestStatus RestCursorHandler::modifyQueryCursor() {
+async<void> RestCursorHandler::modifyQueryCursor() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/cursor/<cursor-id>");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // the call to lookupCursor will populate _cursor if the cursor can be
@@ -748,13 +716,14 @@ RestStatus RestCursorHandler::modifyQueryCursor() {
   lookupCursor(suffixes[0]);
 
   if (_cursor == nullptr) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   _cursor->setWakeupHandler(withLogContext(
       [self = shared_from_this()]() { return self->wakeupHandler(); }));
 
-  return generateCursorResult(rest::ResponseCode::OK);
+  co_await generateCursorResult(rest::ResponseCode::OK);
+  co_return;
 }
 
 RestStatus RestCursorHandler::deleteQueryCursor() {

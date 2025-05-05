@@ -755,13 +755,8 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
 
-  while (state == RestStatus::WAITING) {
-    // Get the number of wakeups. We call continueExecute() up to that many
-    // times before suspending again.
-    auto n = co_await _suspensionSemaphore.await();
-    for (auto i = 0; i < n && state == RestStatus::WAITING; ++i) {
-      state = continueExecute();
-    }
+  if (state == RestStatus::WAITING) {
+    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::continueExecute, this));
   }
 }
 

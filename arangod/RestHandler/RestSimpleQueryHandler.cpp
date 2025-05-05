@@ -51,18 +51,15 @@ auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
-      auto status = co_await allDocuments();
-      TRI_ASSERT(status == RestStatus::DONE);
+      co_await allDocuments();
       co_return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
-      auto status = co_await allDocumentKeys();
-      TRI_ASSERT(status == RestStatus::DONE);
+      co_await allDocumentKeys();
       co_return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
       // by-example query
-      auto status = co_await byExample();
-      TRI_ASSERT(status == RestStatus::DONE);
+      co_await byExample();
       co_return;
     }
   }
@@ -72,12 +69,12 @@ auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {
   co_return;
 }
 
-futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {
+async<void> RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   std::string collectionName;
@@ -93,7 +90,7 @@ futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -155,20 +152,21 @@ futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  co_return co_await registerQueryOrCursor(
+  co_await registerQueryOrCursor(
       data.slice(), transaction::OperationOriginREST{"fetching all documents"});
+  co_return;
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return a cursor with all document keys from the collection
 //////////////////////////////////////////////////////////////////////////////
 
-futures::Future<RestStatus> RestSimpleQueryHandler::allDocumentKeys() {
+async<void> RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   std::string collectionName;
@@ -184,7 +182,7 @@ futures::Future<RestStatus> RestSimpleQueryHandler::allDocumentKeys() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -267,17 +265,17 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
 /// @brief return a cursor with all documents matching the example
 //////////////////////////////////////////////////////////////////////////////
 
-futures::Future<RestStatus> RestSimpleQueryHandler::byExample() {
+async<void> RestSimpleQueryHandler::byExample() {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   if (!body.isObject() || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   // velocypack will throw an exception for negative numbers
@@ -300,7 +298,7 @@ futures::Future<RestStatus> RestSimpleQueryHandler::byExample() {
   if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   auto col = _vocbase.lookupCollection(cname);

@@ -38,7 +38,6 @@
 #include <memory>
 #include <mutex>
 #include <string_view>
-#include <thread>
 
 namespace arangodb {
 namespace application_features {
