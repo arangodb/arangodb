@@ -15,7 +15,7 @@ class State:
 
     def __str__(self):
         if len(self.name) > len("arangodb::async_registry::State::"):
-            return self.name[len("arangodb::async_registry::State::"):]
+            return "\"" + self.name[len("arangodb::async_registry::State::"):] + "\""
         else:
             return self.name
     
@@ -85,13 +85,12 @@ class Promise:
     state: State
 
     @classmethod
-    def from_gdb(cls, value_ptr: gdb.Value):
-        value = value_ptr.dereference()
+    def from_gdb(cls, ptr: gdb.Value, value: gdb.Value):
         return cls(
-            PromiseId(value_ptr),
+            PromiseId(ptr),
             Thread.from_gdb(value["thread"]),
             SourceLocation.from_gdb(value["source_location"]),
-            Requester.from_gdb(value["requester"]['_M_i']),
+            Requester.from_gdb(value["requester"]["_M_i"]),
             State.from_gdb(value["state"])
         )
 
@@ -119,7 +118,7 @@ class ThreadRegistry:
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
-        return cls(Promise.from_gdb(promise) for promise in GdbAtomicList(value["promise_head"]["_M_b"]["_M_p"]))
+        return cls(Promise.from_gdb(node_ptr, node_ptr.dereference()["data"]) for node_ptr in GdbAtomicList(value["_head"]["_M_b"]["_M_p"]))
 
 class GdbVector:
     def __init__(self, value: gdb.Value):
@@ -129,7 +128,7 @@ class GdbVector:
     def __iter__(self):
         current = self._begin
         while current != self._end:
-            registry = current.dereference()["_M_ptr"].dereference()
+            registry = current.dereference()["_M_ptr"]
             current += 1
             yield registry
 
@@ -139,7 +138,7 @@ class AsyncRegistry:
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
-        return cls(ThreadRegistry.from_gdb(registry) for registry in GdbVector(value['registries']['_M_impl']))
+        return cls(ThreadRegistry.from_gdb(registry) for registry in GdbVector(value['_lists']['_M_impl']))
 
     def promises(self) -> Iterable[Promise]:
         for registry in self.thread_registries:
