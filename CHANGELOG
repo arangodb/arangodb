@@ -4,6 +4,9 @@ devel
 * Improved the error message displayed when the APPROX_NEAR function fails to
   apply a vector index.
  
+* Fix a crash when bind parameters are not set and killing of a query
+  is logged (no version with this bug was ever released!).
+
 * Switched to customized (instead of official) forked rclone v1.65.2 built with
   go1.23.8 to avoid CVEs.
 
