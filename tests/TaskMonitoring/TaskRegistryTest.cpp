@@ -23,8 +23,7 @@
 
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
-#include "Tasks/task.h"
-#include "Tasks/task_registry_variable.h"
+#include "TaskMonitoring/task_registry_variable.h"
 #include "Inspection/JsonPrintInspector.h"
 #include <gtest/gtest.h>
 
@@ -32,7 +31,7 @@
 #include <thread>
 
 using namespace arangodb;
-using namespace arangodb::task_registry;
+using namespace arangodb::task_monitoring;
 
 namespace {
 auto get_all_tasks() -> std::vector<TaskSnapshot> {

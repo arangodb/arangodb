@@ -20,13 +20,13 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Tasks/task.h"
+#include "TaskMonitoring/task.h"
 
 #include "Assertions/ProdAssert.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
-#include "Tasks/task_registry_variable.h"
+#include "TaskMonitoring/task_registry_variable.h"
 #include <optional>
 #include <source_location>
 
@@ -40,7 +40,7 @@ template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
-namespace arangodb::task_registry {
+namespace arangodb::task_monitoring {
 
 void PrintTo(const TaskSnapshot& task, std::ostream* os) {
   *os << inspection::json(task);
@@ -96,4 +96,4 @@ ChildTask::ChildTask(std::string name, Task& parent, std::source_location loc)
           .running_thread = basics::ThreadId::current(),
           .source_location = std::move(loc)}} {}
 
-}  // namespace arangodb::task_registry
+}  // namespace arangodb::task_monitoring

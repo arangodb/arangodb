@@ -32,7 +32,7 @@
 #include <optional>
 #include <string>
 
-namespace arangodb::task_registry {
+namespace arangodb::task_monitoring {
 
 struct RootTask {
   bool operator==(RootTask const&) const = default;
@@ -143,4 +143,4 @@ struct ChildTask : public Task {
             std::source_location = std::source_location::current());
 };
 
-}  // namespace arangodb::task_registry
+}  // namespace arangodb::task_monitoring

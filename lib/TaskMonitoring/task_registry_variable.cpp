@@ -20,19 +20,22 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
+#include "TaskMonitoring/task_registry_variable.h"
 
-#include "Containers/Concurrent/ListOfNonOwnedLists.h"
-#include "Containers/Concurrent/ThreadOwnedList.h"
-#include "Tasks/task.h"
+namespace arangodb::task_monitoring {
 
-namespace arangodb::task_registry {
+Registry registry;
 
-using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
-struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
+      registry.add(_registry);
+    }
 
-extern Registry registry;
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
+}
 
-auto get_thread_registry() noexcept -> ThreadRegistry&;
-
-}  // namespace arangodb::task_registry
+}  // namespace arangodb::task_monitoring
