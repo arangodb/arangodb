@@ -53,9 +53,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace std::chrono_literals;
 
-#if 0
 static auto constexpr kWaitUntilLoggingFor = 1s;
-#endif
 
 QueryRegistry::~QueryRegistry() {
   disallowInserts();
@@ -289,36 +287,28 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   finishPromise.setValue(std::move(queryToFinish));
 }
 
-#if 0
-fu2::unique_function<void(bool cancelled)>
+fu2::unique_function<void(bool)>
 QueryRegistry::generateQueryTrackingDestruction(
-    std::weak_ptr<ClusterQuery> weakClusterQuery,
-    QueryDestructionContext queryCtx, std::chrono::seconds waitUntilLoggingFor,
-    void* v) {
-  // Canceled is only relevant for deleted tasks when the shared ptr to it is
-  // dropped, in this case nobody is holding the ptr
-  return [weakClusterQuery, queryCtx = std::move(queryCtx), waitUntilLoggingFor,
-          this, v](bool /* cancelled */) noexcept {
-    auto const lock = weakClusterQuery.lock();
-    if (lock == nullptr) {
+    std::chrono::steady_clock::time_point startTime,
+    QueryDestructionContext queryCtx) {
+  // Canceled is only relevant if we are holding the reference to the
+  // task posted on scheduler, which in this case we are not
+  return [queryCtx = std::move(queryCtx),
+          startTime = std::move(startTime)](bool cancelled) mutable noexcept {
+    if (cancelled) {
+      LOG_DEVEL << "Cancelling";
       return;
     }
 
+    auto const timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - startTime);
     LOG_TOPIC("a16bf", WARN, Logger::QUERIES)
-        << "Query destruction took over: " << waitUntilLoggingFor
-        << queryCtx.queryString << ", finished: " << queryCtx.finished
+        << "Query destruction is taking: " << timeDiff
+        << ", query: " << queryCtx.queryString
+        << ", finished: " << queryCtx.finished
         << ", errorCode: " << queryCtx.errorCode;
-    // reschedule with a backoff
-    auto const newWaitUntilLoggingFor = waitUntilLoggingFor * 4;
-    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
-        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-        newWaitUntilLoggingFor,
-        generateQueryTrackingDestruction(std::move(weakClusterQuery), queryCtx,
-                                         newWaitUntilLoggingFor,
-                                         (void*)lock.get()));
   };
 }
-#endif
 
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
@@ -339,24 +329,17 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
   }
 
 #if 0
-  if (queryInfoLifetimeExtension != nullptr) {
-    QueryDestructionContext queryDestructionContext(
-        queryInfoLifetimeExtension->_queryString,
-        queryInfoLifetimeExtension->_errorCode,
-        queryInfoLifetimeExtension->_finished);
-    using namespace std::chrono_literals;
-
-    if (SchedulerFeature::SCHEDULER != nullptr) {
-      // During shutdown (especially in unit tests) it is possible that
-      // the scheduler is already gone.
-      std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
-          "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-          std::chrono::seconds(1),
-          generateQueryTrackingDestruction(
-              std::weak_ptr(queryInfoLifetimeExtension->_query),
-              std::move(queryDestructionContext), std::chrono::seconds(1),
-              (void*)queryInfoLifetimeExtension->_query.get()));
-    }
+  QueryDestructionContext queryDestructionContext(
+      queryInfoLifetimeExtension->_queryString,
+      queryInfoLifetimeExtension->_errorCode,
+      queryInfoLifetimeExtension->_finished);
+  LOG_DEVEL << __PRETTY_FUNCTION__ << ": Sending delayedTask...";
+  auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
+      "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+      kWaitUntilLoggingFor,
+      generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
+                                       std::move(queryDestructionContext)));
+  queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
   }
 #endif
 }
@@ -388,20 +371,18 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
       // last thread closes its engine
       return queryInfo._promise.getFuture();
     }
-#if 0
     QueryDestructionContext queryDestructionContext(
         queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
 
     result = queryInfo._query;
     queryInfoLifetimeExtension = deleteQuery(queryMapIt);
 
-    std::ignore = SchedulerFeature::SCHEDULER->queueDelayed(
+    auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
         "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-        std::chrono::seconds(1),
-        generateQueryTrackingDestruction(
-            weakPtr, std::move(queryDestructionContext),
-            std::chrono::seconds(1), (void*)result.get()));
-#endif
+        kWaitUntilLoggingFor,
+        generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
+                                         std::move(queryDestructionContext)));
+    queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
   }
   // Now explicitly destroy the QueryInfo before we resolve the promise,
   // but no longer under the lock:
@@ -797,11 +778,18 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
       _isTombstone(true) {}
 
 QueryRegistry::QueryInfo::~QueryInfo() {
+  auto const startDestructionTime = std::chrono::steady_clock::now();
+  using namespace std::chrono_literals;
   if (!_promise.isFulfilled()) {
     // we just set a dummy value to avoid abandoning the promise, because this
     // makes it much more difficult to debug cases where we _must not_ abandon a
     // promise
     _promise.setValue(std::shared_ptr<ClusterQuery>{nullptr});
+  }
+  auto const diff = std::chrono::steady_clock::now() - startDestructionTime;
+  if (diff > 5s) {
+    LOG_TOPIC("a16ba", WARN, Logger::QUERIES)
+        << "Query info destruction took: " << diff;
   }
 }
 

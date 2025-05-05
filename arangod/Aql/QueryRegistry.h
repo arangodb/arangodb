@@ -29,16 +29,30 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
 #include "Futures/Promise.h"
+#include "Scheduler/Scheduler.h"
 
 #include <deque>
 #include <chrono>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 
 namespace arangodb {
 namespace aql {
 class ExecutionEngine;
 class ClusterQuery;
+
+struct QueryDestructionContext {
+  std::string queryString;
+  ErrorCode errorCode;
+  bool finished;
+  Scheduler::WorkHandle scheduledHandle;
+
+  ~QueryDestructionContext() {
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(2s);
+  }
+};
 
 /// manages cluster queries and engines
 class QueryRegistry {
@@ -147,12 +161,16 @@ class QueryRegistry {
     std::string queryString;
     ErrorCode errorCode;
     bool finished;
+
+    ~QueryDestructionContext() {
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(2s);
+    }
   };
 
-  fu2::unique_function<void(bool cancelled)> generateQueryTrackingDestruction(
-      std::weak_ptr<ClusterQuery> weakClusterQuery,
-      QueryDestructionContext queryCtx,
-      std::chrono::seconds waitUntilLoggingFor, void* v);
+  fu2::unique_function<void(bool)> generateQueryTrackingDestruction(
+      std::chrono::steady_clock::time_point startTime,
+      QueryDestructionContext queryCtx);
 
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
@@ -182,6 +200,8 @@ class QueryRegistry {
     bool _finished = false;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
+
+    Scheduler::WorkHandle _destructionTrackingTask;
   };
 
   struct EngineInfo final {
