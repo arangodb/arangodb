@@ -78,6 +78,10 @@ struct TaskSnapshot {
   std::optional<basics::ThreadId> thread;
   basics::SourceLocationSnapshot source_location;
   bool operator==(TaskSnapshot const&) const = default;
+  auto update_state(State new_state) -> TaskSnapshot& {
+    state = new_state;
+    return *this;
+  }
 };
 template<typename Inspector>
 auto inspect(Inspector& f, TaskSnapshot& x) {
@@ -154,6 +158,7 @@ struct Task {
        std::source_location loc = std::source_location::current());
   Task(std::string name, Task& parent,
        std::source_location loc = std::source_location::current());
+  ~Task();
 
   auto id() -> void*;
 

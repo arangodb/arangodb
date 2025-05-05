@@ -129,6 +129,10 @@ Task::Task(std::string name, Task& parent, std::source_location loc)
                 std::move(name), parent._node_in_registry, std::move(loc));
           })),
           mark_finished_nodes_for_deletion)} {}
+Task::~Task() {
+  _node_in_registry->data.state.store(State::Finished,
+                                      std::memory_order_relaxed);
+}
 
 auto Task::id() -> void* { return _node_in_registry->data.id(); }
 

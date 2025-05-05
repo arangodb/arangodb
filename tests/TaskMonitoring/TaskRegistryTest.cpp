@@ -23,6 +23,7 @@
 
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
+#include "TaskMonitoring/task.h"
 #include "TaskMonitoring/task_registry_variable.h"
 #include "Inspection/JsonPrintInspector.h"
 #include <gtest/gtest.h>
@@ -52,6 +53,7 @@ struct MyTask : public Task {
       : Task{std::move(name), task, loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))} {}
 };
+
 }  // namespace
 
 struct TaskRegistryTest : ::testing::Test {
@@ -169,25 +171,37 @@ struct WaitSlot {
 
 TEST_F(TaskRegistryTest, a_base_task_lives_as_long_as_its_child) {
   WaitSlot wait;
+  TaskSnapshot parent_task_snapshot;
+  TaskSnapshot child_task_snapshot;
   {
     auto parent_task = MyTask{"parent task"};
-    std::ignore = [&parent_task, &wait]() -> async<void> {
-      auto child_task = MyTask{"child task", parent_task};
-      EXPECT_EQ(
-          get_all_tasks(),
-          (std::vector<TaskSnapshot>{
-              (TaskSnapshot{.name = "child task",
-                            .state = State::Running,
-                            .id = child_task.id(),
-                            .parent = {TaskIdWrapper{parent_task.id()}},
-                            .thread = basics::ThreadId::current(),
-                            .source_location = child_task.source_location}),
+
+    auto tasks_in_registry = get_all_tasks();
+    EXPECT_EQ(tasks_in_registry.size(), 1);
+    EXPECT_EQ(tasks_in_registry[0],
               (TaskSnapshot{.name = "parent task",
                             .state = State::Running,
                             .id = parent_task.id(),
                             .parent = {RootTask{}},
                             .thread = basics::ThreadId::current(),
-                            .source_location = parent_task.source_location})}));
+                            .source_location = parent_task.source_location}));
+    parent_task_snapshot = tasks_in_registry[0];
+
+    std::ignore = [&parent_task, &wait, parent_task_snapshot,
+                   &child_task_snapshot]() -> async<void> {
+      auto child_task = MyTask{"child task", parent_task};
+
+      auto tasks_in_registry = get_all_tasks();
+      EXPECT_EQ(tasks_in_registry.size(), 2);
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskIdWrapper{parent_task.id()}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
+      child_task_snapshot = tasks_in_registry[0];
+      EXPECT_EQ(tasks_in_registry[1], parent_task_snapshot);
       co_await wait;
       co_return;
     }();
@@ -195,8 +209,12 @@ TEST_F(TaskRegistryTest, a_base_task_lives_as_long_as_its_child) {
 
   // both task-in-registries still exist:
   // child lives in suspended coroutine and references parent
+  // although parent scope is deleted
   get_thread_registry().garbage_collect();  // does not do anything
-  EXPECT_EQ(get_all_tasks().size(), 2);
+  EXPECT_EQ(get_all_tasks(),
+            (std::vector<TaskSnapshot>{
+                child_task_snapshot,
+                parent_task_snapshot.update_state(State::Finished)}));
 
   // resume coroutine, mark child for deletion at end of coroutine and mark
   // parent for deletion at end of scope
@@ -205,47 +223,57 @@ TEST_F(TaskRegistryTest, a_base_task_lives_as_long_as_its_child) {
 
 TEST_F(TaskRegistryTest, hierarchy_with_different_scopes) {
   WaitSlot wait;
+  TaskSnapshot parent_task_snapshot;
+  TaskSnapshot child_task_snapshot;
+  TaskSnapshot child_of_child_task_snapshot;
   {
     auto parent_task = MyTask{"parent task"};
-
-    std::ignore = [&parent_task, &wait]() -> async<void> {
-      auto child_task = MyTask{"child task", parent_task};
-      EXPECT_EQ(
-          get_all_tasks(),
-          (std::vector<TaskSnapshot>{
-              (TaskSnapshot{.name = "child task",
-                            .state = State::Running,
-                            .id = child_task.id(),
-                            .parent = {TaskIdWrapper{parent_task.id()}},
-                            .thread = basics::ThreadId::current(),
-                            .source_location = child_task.source_location}),
+    auto tasks_in_registry = get_all_tasks();
+    EXPECT_EQ(tasks_in_registry.size(), 1);
+    EXPECT_EQ(tasks_in_registry[0],
               (TaskSnapshot{.name = "parent task",
                             .state = State::Running,
                             .id = parent_task.id(),
                             .parent = {RootTask{}},
                             .thread = basics::ThreadId::current(),
-                            .source_location = parent_task.source_location})}));
+                            .source_location = parent_task.source_location}));
+    parent_task_snapshot = tasks_in_registry[0];
 
-      co_await [&parent_task, &child_task, &wait,
-                first_child_task = get_all_tasks()[0]]() -> async<void> {
+    std::ignore = [&parent_task, &wait, parent_task_snapshot,
+                   &child_task_snapshot,
+                   &child_of_child_task_snapshot]() -> async<void> {
+      auto child_task = MyTask{"child task", parent_task};
+
+      auto tasks_in_registry = get_all_tasks();
+      EXPECT_EQ(tasks_in_registry.size(), 2);
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskIdWrapper{parent_task.id()}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
+      child_task_snapshot = tasks_in_registry[0];
+      EXPECT_EQ(tasks_in_registry[1], parent_task_snapshot);
+
+      co_await [&child_task, &wait, parent_task_snapshot, child_task_snapshot,
+                &child_of_child_task_snapshot]() -> async<void> {
         auto child_of_child_task = MyTask{"child of child task", child_task};
-        EXPECT_EQ(get_all_tasks(),
-                  (std::vector<TaskSnapshot>{
-                      (TaskSnapshot{.name = "child of child task",
-                                    .state = State::Running,
-                                    .id = child_of_child_task.id(),
-                                    .parent = {TaskIdWrapper{child_task.id()}},
-                                    .thread = basics::ThreadId::current(),
-                                    .source_location =
-                                        child_of_child_task.source_location}),
-                      first_child_task,
-                      (TaskSnapshot{
-                          .name = "parent task",
-                          .state = State::Running,
-                          .id = parent_task.id(),
-                          .parent = {RootTask{}},
-                          .thread = basics::ThreadId::current(),
-                          .source_location = parent_task.source_location})}));
+
+        auto tasks_in_registry = get_all_tasks();
+        EXPECT_EQ(tasks_in_registry.size(), 3);
+        EXPECT_EQ(tasks_in_registry[0],
+                  (TaskSnapshot{
+                      .name = "child of child task",
+                      .state = State::Running,
+                      .id = child_of_child_task.id(),
+                      .parent = {TaskIdWrapper{child_task.id()}},
+                      .thread = basics::ThreadId::current(),
+                      .source_location = child_of_child_task.source_location}));
+        child_of_child_task_snapshot = tasks_in_registry[0];
+        EXPECT_EQ(tasks_in_registry[1], child_task_snapshot);
+        EXPECT_EQ(tasks_in_registry[2], parent_task_snapshot);
+
         co_await wait;
         co_return;
       }();
@@ -257,7 +285,10 @@ TEST_F(TaskRegistryTest, hierarchy_with_different_scopes) {
   // both task-in-registries still exist:
   // child lives in suspended coroutine and references parent
   get_thread_registry().garbage_collect();  // does not do anything
-  EXPECT_EQ(get_all_tasks().size(), 3);
+  EXPECT_EQ(get_all_tasks(),
+            (std::vector<TaskSnapshot>{
+                child_of_child_task_snapshot, child_task_snapshot,
+                parent_task_snapshot.update_state(State::Finished)}));
 
   // resume coroutine, mark child of child for deletion, child and parent are
   // marked for deletion when child of child is destroyed
@@ -268,48 +299,60 @@ TEST_F(TaskRegistryTest,
        a_base_task_lives_as_long_as_its_longest_living_child) {
   WaitSlot first_wait;
   WaitSlot second_wait;
-  TaskSnapshot first_child_task;
+  TaskSnapshot parent_task_snapshot;
+  TaskSnapshot first_child_task_snapshot;
+  TaskSnapshot second_child_task_snapshot;
   {
     auto parent_task = MyTask{"parent task"};
-    auto a = [&parent_task, &first_wait, &first_child_task]() -> async<void> {
-      auto child_task = MyTask{"first child task", parent_task};
-      EXPECT_EQ(
-          get_all_tasks(),
-          (std::vector<TaskSnapshot>{
-              (TaskSnapshot{.name = "first child task",
-                            .state = State::Running,
-                            .id = child_task.id(),
-                            .parent = {TaskIdWrapper{parent_task.id()}},
-                            .thread = basics::ThreadId::current(),
-                            .source_location = child_task.source_location}),
+    auto tasks_in_registry = get_all_tasks();
+    EXPECT_EQ(tasks_in_registry.size(), 1);
+    EXPECT_EQ(tasks_in_registry[0],
               (TaskSnapshot{.name = "parent task",
                             .state = State::Running,
                             .id = parent_task.id(),
                             .parent = {RootTask{}},
                             .thread = basics::ThreadId::current(),
-                            .source_location = parent_task.source_location})}));
-      first_child_task = get_all_tasks()[0];
+                            .source_location = parent_task.source_location}));
+    parent_task_snapshot = tasks_in_registry[0];
+
+    std::ignore = [&parent_task, &first_wait, parent_task_snapshot,
+                   &first_child_task_snapshot]() -> async<void> {
+      auto child_task = MyTask{"first child task", parent_task};
+
+      auto tasks_in_registry = get_all_tasks();
+      EXPECT_EQ(tasks_in_registry.size(), 2);
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "first child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskIdWrapper{parent_task.id()}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
+      first_child_task_snapshot = tasks_in_registry[0];
+      EXPECT_EQ(tasks_in_registry[1], parent_task_snapshot);
+
       co_await first_wait;
       co_return;
     }();
-    auto b = [&parent_task, &second_wait, &first_child_task]() -> async<void> {
+
+    std::ignore = [&parent_task, &second_wait, parent_task_snapshot,
+                   first_child_task_snapshot,
+                   &second_child_task_snapshot]() -> async<void> {
       auto child_task = MyTask{"second child task", parent_task};
-      EXPECT_EQ(
-          get_all_tasks(),
-          (std::vector<TaskSnapshot>{
-              (TaskSnapshot{.name = "second child task",
-                            .state = State::Running,
-                            .id = child_task.id(),
-                            .parent = {TaskIdWrapper{parent_task.id()}},
-                            .thread = basics::ThreadId::current(),
-                            .source_location = child_task.source_location}),
-              first_child_task,
-              (TaskSnapshot{.name = "parent task",
-                            .state = State::Running,
-                            .id = parent_task.id(),
-                            .parent = {RootTask{}},
-                            .thread = basics::ThreadId::current(),
-                            .source_location = parent_task.source_location})}));
+
+      auto tasks_in_registry = get_all_tasks();
+      EXPECT_EQ(tasks_in_registry.size(), 3);
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "second child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskIdWrapper{parent_task.id()}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
+      second_child_task_snapshot = tasks_in_registry[0];
+      EXPECT_EQ(tasks_in_registry[1], first_child_task_snapshot);
+      EXPECT_EQ(tasks_in_registry[2], parent_task_snapshot);
+
       co_await second_wait;
       co_return;
     }();
@@ -318,14 +361,18 @@ TEST_F(TaskRegistryTest,
   // all three task-in-registries still exist:
   // childs live in suspended coroutines and reference parent
   get_thread_registry().garbage_collect();  // does not do anything
-  EXPECT_EQ(get_all_tasks().size(), 3);
+  EXPECT_EQ(get_all_tasks(),
+            (std::vector<TaskSnapshot>{
+                second_child_task_snapshot, first_child_task_snapshot,
+                parent_task_snapshot.update_state(State::Finished)}));
 
   // marks second child for deletion, parent is still in scope
   second_wait.resume();
   get_thread_registry().garbage_collect();
-  EXPECT_EQ(get_all_tasks().size(), 2);
-  EXPECT_EQ(get_all_tasks()[0].name, "first child task");
-  EXPECT_EQ(get_all_tasks()[1].name, "parent task");
+  EXPECT_EQ(get_all_tasks(),
+            (std::vector<TaskSnapshot>{
+                first_child_task_snapshot,
+                parent_task_snapshot.update_state(State::Finished)}));
 
   // marks first child for deletion, parent is still referenced by both first
   // and second task-in-registry and will only be marked for deleted when both
