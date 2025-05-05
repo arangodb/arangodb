@@ -31,7 +31,6 @@ namespace arangodb::task_monitoring {
 using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
 struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
 
-
 /**
    Global variable that holds all active tasks.
 

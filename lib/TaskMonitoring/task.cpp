@@ -68,48 +68,33 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
 }
 
 namespace {
-/**
-   Gives a stack of nodes that can be marked for deletion
-
-   We first have to go up in the hierarchy and collect all nodes that can be
-   marked for deletion: Otherwise a garbage collection could run in between and
-   destroy an already marked for deletion node while we are working on its
-   parent ptr.
- */
-auto deletable_nodes_dependent_on_node(Node* node)
-    -> std::vector<containers::ThreadOwnedList<TaskInRegistry>::Node*> {
-  auto stack =
-      std::vector<containers::ThreadOwnedList<TaskInRegistry>::Node*>{};
+auto mark_finished_nodes_for_deletion(Node* node) {
   auto current_node = node;
   while (true) {
     auto specific_node =
         reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
             current_node);
+
     // make sure that we don't mark a node twice for deletion
-    if (specific_node->data.state.load(std::memory_order_acquire) ==
-        State::Deleted) {
+    auto expected = false;
+    if (not specific_node->data.isDeleted.compare_exchange_strong(
+            expected, true, std::memory_order_acq_rel)) {
       break;
     }
-    stack.push_back(specific_node);
 
     auto& parent = specific_node->data.parent;
     if (not std::holds_alternative<NodeReference>(parent)) {
+      specific_node->list->mark_for_deletion(specific_node);
       break;
     }
     auto& parent_ref = std::get<NodeReference>(parent);
     if (parent_ref.ref_count() != 1) {
+      specific_node->list->mark_for_deletion(specific_node);
       break;
     }
     // node is last reference to parent, therefore it can be marked for deletion
     current_node = parent_ref.get();
-  }
-  return stack;
-}
-auto mark_finished_nodes_for_deletion(Node* node) {
-  auto stack = deletable_nodes_dependent_on_node(node);
-  while (!stack.empty()) {
-    auto specific_node = stack.back();
-    stack.pop_back();
+
     specific_node->list->mark_for_deletion(specific_node);
   }
 }

@@ -128,6 +128,7 @@ struct TaskInRegistry {
 
   std::string const name;
   std::atomic<State> state;
+  std::atomic<bool> isDeleted = false;
   ParentTask parent;
   std::optional<basics::ThreadId>
       running_thread;  // proably has to also be atomic because
@@ -144,8 +145,10 @@ struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
 
 struct ChildTask;
 /**
-   This task adds an entry to the task registry on construction and mark the
-   entry for deletion on destruction.
+   This is a scope for an active task.
+
+   It adds an entry to the task registry on construction and sets its
+   state to finished on destruction.
  */
 struct Task {
   friend ChildTask;
