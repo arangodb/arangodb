@@ -29,8 +29,10 @@
 #include "fmt/format.h"
 #include "shared_reference.h"
 
+#include <atomic>
 #include <cstdint>
 #include <optional>
+#include <source_location>
 #include <string>
 
 namespace arangodb::task_monitoring {
@@ -83,8 +85,7 @@ struct Node;
 using NodeReference = SharedReference<Node>;
 struct ParentTask : std::variant<RootTask, NodeReference> {};
 
-struct TaskScope;
-struct ScheduledTaskScope;
+struct Task;
 
 /**
    The task object inside the registry
@@ -93,12 +94,30 @@ struct TaskInRegistry {
   using Snapshot = TaskSnapshot;
   auto id() -> void* { return this; }
   auto snapshot() -> TaskSnapshot;
-  auto set_to_deleted() -> void { deleted = true; }
+  auto set_to_deleted() -> void {
+    deleted.store(true, std::memory_order_release);
+  }
+  static auto root(std::string name, std::source_location loc)
+      -> TaskInRegistry {
+    return TaskInRegistry{.name = std::move(name),
+                          .state = "running",
+                          .parent = ParentTask{RootTask{}},
+                          .running_thread = basics::ThreadId::current(),
+                          .source_location = std::move(loc)};
+  }
+  static auto child(std::string name, NodeReference parent,
+                    std::source_location loc) -> TaskInRegistry {
+    return TaskInRegistry{.name = std::move(name),
+                          .state = "running",
+                          .parent = ParentTask{parent},
+                          .running_thread = basics::ThreadId::current(),
+                          .source_location = std::move(loc)};
+  }
 
   std::string const name;
   std::string state;  // has to probably be atomic (for reading and writing
                       // concurrently on different threads), but is string...
-  bool deleted = false;
+  std::atomic<bool> deleted = false;
   ParentTask parent;
   std::optional<basics::ThreadId>
       running_thread;  // proably has to also be atomic because
@@ -125,22 +144,15 @@ struct Task {
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
 
-  Task(TaskInRegistry task_in_registry);
+  Task(std::string name,
+       std::source_location loc = std::source_location::current());
+  Task(std::string name, Task& parent,
+       std::source_location loc = std::source_location::current());
 
   auto id() -> void*;
 
  private:
   NodeReference _node_in_registry;
-};
-
-/** Helper type to create a basic task */
-struct BaseTask : public Task {
-  BaseTask(std::string name,
-           std::source_location = std::source_location::current());
-};
-struct ChildTask : public Task {
-  ChildTask(std::string name, Task& parent,
-            std::source_location = std::source_location::current());
 };
 
 }  // namespace arangodb::task_monitoring

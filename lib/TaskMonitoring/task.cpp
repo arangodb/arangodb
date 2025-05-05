@@ -27,6 +27,7 @@
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
 #include "TaskMonitoring/task_registry_variable.h"
+#include <atomic>
 #include <optional>
 #include <source_location>
 #include <variant>
@@ -85,7 +86,7 @@ auto deletable_nodes_dependent_on_node(Node* node)
         reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
             current_node);
     // make sure that we don't mark a node twice for deletion
-    if (specific_node->data.deleted) {
+    if (specific_node->data.deleted.load(std::memory_order_acquire)) {
       break;
     }
     stack.push_back(specific_node);
@@ -113,26 +114,21 @@ auto mark_finished_nodes_for_deletion(Node* node) {
 }
 }  // namespace
 
-Task::Task(TaskInRegistry task_in_registry)
+Task::Task(std::string name, std::source_location loc)
     : _node_in_registry{NodeReference::create(
-          reinterpret_cast<Node*>(get_thread_registry().add(
-              [&]() { return std::move(task_in_registry); })),
+          reinterpret_cast<Node*>(get_thread_registry().add([&]() {
+            return TaskInRegistry::root(std::move(name), std::move(loc));
+          })),
+          mark_finished_nodes_for_deletion)} {}
+
+Task::Task(std::string name, Task& parent, std::source_location loc)
+    : _node_in_registry{NodeReference::create(
+          reinterpret_cast<Node*>(get_thread_registry().add([&]() {
+            return TaskInRegistry::child(
+                std::move(name), parent._node_in_registry, std::move(loc));
+          })),
           mark_finished_nodes_for_deletion)} {}
 
 auto Task::id() -> void* { return _node_in_registry->data.id(); }
-
-BaseTask::BaseTask(std::string name, std::source_location loc)
-    : Task{TaskInRegistry{.name = std::move(name),
-                          .state = "running",
-                          .parent = ParentTask{RootTask{}},
-                          .running_thread = basics::ThreadId::current(),
-                          .source_location = std::move(loc)}} {}
-
-ChildTask::ChildTask(std::string name, Task& parent, std::source_location loc)
-    : Task{TaskInRegistry{.name = std::move(name),
-                          .state = "running",
-                          .parent = ParentTask{parent._node_in_registry},
-                          .running_thread = basics::ThreadId::current(),
-                          .source_location = std::move(loc)}} {}
 
 }  // namespace arangodb::task_monitoring

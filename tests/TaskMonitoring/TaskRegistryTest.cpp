@@ -41,18 +41,15 @@ auto get_all_tasks() -> std::vector<TaskSnapshot> {
   return tasks;
 }
 
-struct MyBaseTask : public BaseTask {
+struct MyTask : public Task {
   basics::SourceLocationSnapshot source_location;
-  MyBaseTask(std::string name,
-             std::source_location loc = std::source_location::current())
-      : BaseTask{std::move(name), loc},
+  MyTask(std::string name,
+         std::source_location loc = std::source_location::current())
+      : Task{std::move(name), loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))} {}
-};
-struct MyChildTask : public ChildTask {
-  basics::SourceLocationSnapshot source_location;
-  MyChildTask(std::string name, Task& task,
-              std::source_location loc = std::source_location::current())
-      : ChildTask{std::move(name), task, loc},
+  MyTask(std::string name, Task& task,
+         std::source_location loc = std::source_location::current())
+      : Task{std::move(name), task, loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))} {}
 };
 }  // namespace
@@ -83,7 +80,7 @@ struct TaskRegistryTest : ::testing::Test {
 };
 
 TEST_F(TaskRegistryTest, a_base_task_creates_a_root_task) {
-  auto task = MyBaseTask{"test task"};
+  auto task = MyTask{"test task"};
 
   EXPECT_EQ(get_all_tasks(), (std::vector<TaskSnapshot>{(TaskSnapshot{
                                  .name = "test task",
@@ -95,8 +92,8 @@ TEST_F(TaskRegistryTest, a_base_task_creates_a_root_task) {
 }
 
 TEST_F(TaskRegistryTest, creates_a_child_task) {
-  auto parent_task = MyBaseTask{"parent task"};
-  auto child_task = MyChildTask{"child task", parent_task};
+  auto parent_task = MyTask{"parent task"};
+  auto child_task = MyTask{"child task", parent_task};
 
   EXPECT_EQ(
       get_all_tasks(),
@@ -116,11 +113,11 @@ TEST_F(TaskRegistryTest, creates_a_child_task) {
 }
 
 TEST_F(TaskRegistryTest, creates_a_child_task_hierarchy) {
-  auto parent_task = MyBaseTask{"parent task"};
-  auto child_task = MyChildTask{"child task", parent_task};
-  auto child_of_child_task = MyChildTask{"child of child task", child_task};
+  auto parent_task = MyTask{"parent task"};
+  auto child_task = MyTask{"child task", parent_task};
+  auto child_of_child_task = MyTask{"child of child task", child_task};
   auto child_of_child_of_child_task =
-      MyChildTask{"child of child of child task", child_of_child_task};
+      MyTask{"child of child of child task", child_of_child_task};
 
   EXPECT_EQ(
       get_all_tasks(),
@@ -173,9 +170,9 @@ struct WaitSlot {
 TEST_F(TaskRegistryTest, a_base_task_lives_as_long_as_its_child) {
   WaitSlot wait;
   {
-    auto parent_task = MyBaseTask{"parent task"};
+    auto parent_task = MyTask{"parent task"};
     std::ignore = [&parent_task, &wait]() -> async<void> {
-      auto child_task = MyChildTask{"child task", parent_task};
+      auto child_task = MyTask{"child task", parent_task};
       EXPECT_EQ(
           get_all_tasks(),
           (std::vector<TaskSnapshot>{
@@ -209,10 +206,10 @@ TEST_F(TaskRegistryTest, a_base_task_lives_as_long_as_its_child) {
 TEST_F(TaskRegistryTest, hierarchy_with_different_scopes) {
   WaitSlot wait;
   {
-    auto parent_task = MyBaseTask{"parent task"};
+    auto parent_task = MyTask{"parent task"};
 
     std::ignore = [&parent_task, &wait]() -> async<void> {
-      auto child_task = MyChildTask{"child task", parent_task};
+      auto child_task = MyTask{"child task", parent_task};
       EXPECT_EQ(
           get_all_tasks(),
           (std::vector<TaskSnapshot>{
@@ -231,8 +228,7 @@ TEST_F(TaskRegistryTest, hierarchy_with_different_scopes) {
 
       co_await [&parent_task, &child_task, &wait,
                 first_child_task = get_all_tasks()[0]]() -> async<void> {
-        auto child_of_child_task =
-            MyChildTask{"child of child task", child_task};
+        auto child_of_child_task = MyTask{"child of child task", child_task};
         EXPECT_EQ(get_all_tasks(),
                   (std::vector<TaskSnapshot>{
                       (TaskSnapshot{.name = "child of child task",
@@ -274,9 +270,9 @@ TEST_F(TaskRegistryTest,
   WaitSlot second_wait;
   TaskSnapshot first_child_task;
   {
-    auto parent_task = MyBaseTask{"parent task"};
+    auto parent_task = MyTask{"parent task"};
     auto a = [&parent_task, &first_wait, &first_child_task]() -> async<void> {
-      auto child_task = MyChildTask{"first child task", parent_task};
+      auto child_task = MyTask{"first child task", parent_task};
       EXPECT_EQ(
           get_all_tasks(),
           (std::vector<TaskSnapshot>{
@@ -297,7 +293,7 @@ TEST_F(TaskRegistryTest,
       co_return;
     }();
     auto b = [&parent_task, &second_wait, &first_child_task]() -> async<void> {
-      auto child_task = MyChildTask{"second child task", parent_task};
+      auto child_task = MyTask{"second child task", parent_task};
       EXPECT_EQ(
           get_all_tasks(),
           (std::vector<TaskSnapshot>{
