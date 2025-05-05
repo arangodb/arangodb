@@ -62,9 +62,17 @@ auto inspect(Inspector& f, ParentTaskSnapshot& x) {
       inspection::inlineType<TaskIdWrapper>());
 }
 
+enum class State { Created = 0, Running, Finished, Deleted };
+template<typename Inspector>
+auto inspect(Inspector& f, State& x) {
+  return f.enumeration(x).values(State::Created, "Created", State::Running,
+                                 "Running", State::Finished, "Finished",
+                                 State::Deleted, "Deleted");
+}
+
 struct TaskSnapshot {
   std::string name;
-  std::string state;
+  State state;
   void* id;
   ParentTaskSnapshot parent;
   std::optional<basics::ThreadId> thread;
@@ -95,12 +103,12 @@ struct TaskInRegistry {
   auto id() -> void* { return this; }
   auto snapshot() -> TaskSnapshot;
   auto set_to_deleted() -> void {
-    deleted.store(true, std::memory_order_release);
+    state.store(State::Deleted, std::memory_order_release);
   }
   static auto root(std::string name, std::source_location loc)
       -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
-                          .state = "running",
+                          .state = State::Running,
                           .parent = ParentTask{RootTask{}},
                           .running_thread = basics::ThreadId::current(),
                           .source_location = std::move(loc)};
@@ -108,16 +116,14 @@ struct TaskInRegistry {
   static auto child(std::string name, NodeReference parent,
                     std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
-                          .state = "running",
+                          .state = State::Running,
                           .parent = ParentTask{parent},
                           .running_thread = basics::ThreadId::current(),
                           .source_location = std::move(loc)};
   }
 
   std::string const name;
-  std::string state;  // has to probably be atomic (for reading and writing
-                      // concurrently on different threads), but is string...
-  std::atomic<bool> deleted = false;
+  std::atomic<State> state;
   ParentTask parent;
   std::optional<basics::ThreadId>
       running_thread;  // proably has to also be atomic because

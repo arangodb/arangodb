@@ -86,7 +86,8 @@ auto deletable_nodes_dependent_on_node(Node* node)
         reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
             current_node);
     // make sure that we don't mark a node twice for deletion
-    if (specific_node->data.deleted.load(std::memory_order_acquire)) {
+    if (specific_node->data.state.load(std::memory_order_acquire) ==
+        State::Deleted) {
       break;
     }
     stack.push_back(specific_node);
