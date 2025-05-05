@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Async/Registry/registry_variable.h"
-#include "Async/Registry/Metrics.h"
+#include "AsyncRegistryServer/Metrics.h"
 #include "Basics/FutureSharedLock.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -33,7 +33,7 @@ namespace arangodb::async_registry {
 class Feature final : public ArangodFeature {
  private:
   static auto create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
-      -> std::shared_ptr<const Metrics>;
+      -> std::shared_ptr<RegistryMetrics>;
   struct SchedulerWrapper {
     using WorkHandle = Scheduler::WorkHandle;
     template<typename F>
@@ -68,7 +68,7 @@ class Feature final : public ArangodFeature {
   };
   Options _options;
 
-  std::shared_ptr<const Metrics> metrics;
+  std::shared_ptr<RegistryMetrics> metrics;
 
   struct PromiseCleanupThread;
   std::shared_ptr<PromiseCleanupThread> _cleanupThread;

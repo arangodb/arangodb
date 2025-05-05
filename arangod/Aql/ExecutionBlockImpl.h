@@ -42,6 +42,12 @@
 
 namespace arangodb {
 class ExecContext;
+namespace futures {
+template<typename T>
+class Future;
+
+struct Unit;
+}  // namespace futures
 }  // namespace arangodb
 
 namespace arangodb::aql {
@@ -234,6 +240,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   // an ongoing query in a specific state.
   auto testInjectInputRange(DataRange range, SkipResult skipped) -> void;
 #endif
+
+  void stopAsyncTasks() override;
 
  private:
   struct ExecutionContext {
