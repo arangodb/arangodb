@@ -161,11 +161,6 @@ class QueryRegistry {
     std::string queryString;
     ErrorCode errorCode;
     bool finished;
-
-    /*    ~QueryDestructionContext() {*/
-    /*using namespace std::chrono_literals;*/
-    /*std::this_thread::sleep_for(2s);*/
-    /*}*/
   };
 
   fu2::unique_function<void(bool)> generateQueryTrackingDestruction(

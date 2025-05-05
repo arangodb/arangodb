@@ -296,7 +296,6 @@ QueryRegistry::generateQueryTrackingDestruction(
   return [queryCtx = std::move(queryCtx),
           startTime = std::move(startTime)](bool cancelled) mutable noexcept {
     if (cancelled) {
-      LOG_DEVEL << "Cancelling";
       return;
     }
 
@@ -328,20 +327,16 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
     }
   }
 
-#if 0
   QueryDestructionContext queryDestructionContext(
       queryInfoLifetimeExtension->_queryString,
       queryInfoLifetimeExtension->_errorCode,
       queryInfoLifetimeExtension->_finished);
-  LOG_DEVEL << __PRETTY_FUNCTION__ << ": Sending delayedTask...";
   auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
       "query destruction timing", RequestLane::CLUSTER_INTERNAL,
       kWaitUntilLoggingFor,
       generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
                                        std::move(queryDestructionContext)));
   queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
-  }
-#endif
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
