@@ -31,6 +31,7 @@
 #include <optional>
 #include <source_location>
 #include <variant>
+#include <optional>
 
 // helper type for the visitor
 namespace {
@@ -42,10 +43,13 @@ template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
-namespace arangodb::task_monitoring {
+using namespace arangodb;
+using namespace arangodb::task_monitoring;
 
-void PrintTo(const TaskSnapshot& task, std::ostream* os) {
-  *os << inspection::json(task);
+void arangodb::task_monitoring::PrintTo(const TaskSnapshot& task,
+                                        std::ostream* os) {
+  *os << task.id << "| " << task.name << " - " << inspection::json(task.parent);
+  // inspection::json(task);
 }
 
 auto TaskInRegistry::snapshot() -> TaskSnapshot {
@@ -103,22 +107,26 @@ auto mark_finished_nodes_for_deletion(Node* node) {
 Task::Task(std::string name, std::source_location loc)
     : _node_in_registry{NodeReference::create(
           reinterpret_cast<Node*>(get_thread_registry().add([&]() {
+            if (auto current = *get_current_task(); current != nullptr) {
+              return TaskInRegistry::child(
+                  std::move(name), current->_node_in_registry, std::move(loc));
+            }
             return TaskInRegistry::root(std::move(name), std::move(loc));
           })),
-          mark_finished_nodes_for_deletion)} {}
+          mark_finished_nodes_for_deletion)} {
+  parent = *get_current_task();
+  *get_current_task() = this;
+}
 
-Task::Task(std::string name, Task& parent, std::source_location loc)
-    : _node_in_registry{NodeReference::create(
-          reinterpret_cast<Node*>(get_thread_registry().add([&]() {
-            return TaskInRegistry::child(
-                std::move(name), parent._node_in_registry, std::move(loc));
-          })),
-          mark_finished_nodes_for_deletion)} {}
 Task::~Task() {
   _node_in_registry->data.state.store(State::Finished,
                                       std::memory_order_relaxed);
+  *get_current_task() = parent;
 }
 
 auto Task::id() -> void* { return _node_in_registry->data.id(); }
 
-}  // namespace arangodb::task_monitoring
+auto arangodb::task_monitoring::get_current_task() -> Task** {
+  static thread_local Task* current = nullptr;
+  return &current;
+}

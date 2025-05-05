@@ -121,7 +121,7 @@ struct TaskInRegistry {
                     std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
                           .state = State::Running,
-                          .parent = ParentTask{parent},
+                          .parent = ParentTask{std::move(parent)},
                           .running_thread = basics::ThreadId::current(),
                           .source_location = std::move(loc)};
   }
@@ -152,21 +152,22 @@ struct ChildTask;
  */
 struct Task {
   friend ChildTask;
-  Task(Task&& other) = default;
-  Task& operator=(Task&& other) = default;
+  Task(Task&& other) = delete;
+  Task& operator=(Task&& other) = delete;
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
 
   Task(std::string name,
-       std::source_location loc = std::source_location::current());
-  Task(std::string name, Task& parent,
        std::source_location loc = std::source_location::current());
   ~Task();
 
   auto id() -> void*;
 
  private:
+  Task* parent;
   NodeReference _node_in_registry;
 };
+
+auto get_current_task() -> Task**;
 
 }  // namespace arangodb::task_monitoring

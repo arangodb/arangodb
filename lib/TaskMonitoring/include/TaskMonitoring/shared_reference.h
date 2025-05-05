@@ -74,13 +74,15 @@ struct SharedReference {
   auto operator=(SharedReference const& other) -> SharedReference {
     _shared_node = other._shared_node;
     _shared_node->increment();
+    return *this;
   }
   SharedReference(SharedReference&& other) : _shared_node{other._shared_node} {
     other._shared_node = nullptr;
   }
-  auto operator=(SharedReference&& other) -> SharedReference {
+  auto operator=(SharedReference&& other) -> SharedReference& {
     _shared_node = other._shared_node;
     other._shared_node = nullptr;
+    return *this;
   }
   ~SharedReference() {
     if (_shared_node) {
