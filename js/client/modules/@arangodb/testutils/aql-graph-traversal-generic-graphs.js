@@ -1161,6 +1161,60 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
   );
 }
 
+/*
+ *       B
+ *     ↕   ↕
+ *   A       C
+ *     ↕   ↕
+ *       D
+ */
+protoGraphs.bidirectionalCircle = new ProtoGraph("bidirectionalCircle", [
+    ["A", "B", 1],
+    ["B", "A", 1],
+    ["B", "C", 1],
+    ["C", "B", 1],
+    ["C", "D", 1],
+    ["D", "C", 1],
+    ["D", "A", 1],
+    ["A", "D", 1]
+  ],
+  [1, 2, 4],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0]
+        ]
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 0],
+          ["D", 1]
+        ]
+    },
+    {
+      numberOfShards: 4,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3]
+        ]
+    }
+  ],
+  [],
+  true
+);
+
 exports.ProtoGraph = ProtoGraph;
 exports.protoGraphs = protoGraphs;
 exports.TestVariants = TestVariants;
