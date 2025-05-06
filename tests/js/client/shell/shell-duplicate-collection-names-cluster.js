@@ -58,10 +58,10 @@ function createDuplicateCollectionNameSuite() {
         if (s.status !== 204) {
           break;
         }
-        internal.wait(1);
         if (++count > timeout) {
           assertTrue(false, "Async job did not finish quickly enough!");
         }
+        internal.wait(1);
       }
       let c;
       count = 0;
