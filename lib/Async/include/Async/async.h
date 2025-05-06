@@ -103,6 +103,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   }
   void unhandled_exception() {
     _value.set_exception(std::current_exception());
+    ExecContext::set(_callerExecContext);
     *async_registry::get_current_coroutine() = _requester;
     ExecContext::set(_callerExecContext);
   }
