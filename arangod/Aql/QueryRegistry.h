@@ -158,6 +158,7 @@ class QueryRegistry {
 
  private:
   struct QueryDestructionContext {
+    QueryId id;
     std::string queryString;
     ErrorCode errorCode;
     bool finished;
@@ -165,7 +166,7 @@ class QueryRegistry {
 
   fu2::unique_function<void(bool)> generateQueryTrackingDestruction(
       std::chrono::steady_clock::time_point startTime,
-      QueryDestructionContext queryCtx);
+      std::shared_ptr<QueryDestructionContext> queryCtx);
 
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
@@ -197,6 +198,9 @@ class QueryRegistry {
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
 
     Scheduler::WorkHandle _destructionTrackingTask;
+    /// @brief serves to log the information if the query destruction took too
+    /// long
+    std::shared_ptr<QueryDestructionContext> _queryDestrcutionContext;
   };
 
   struct EngineInfo final {
