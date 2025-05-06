@@ -20,26 +20,28 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "registry_variable.h"
+#pragma once
 
-#include "Async/Registry/promise.h"
+#include "Basics/threads-posix.h"
+#include "Inspection/Format.h"
 
-#include <thread>
+namespace arangodb::basics {
 
-namespace arangodb::async_registry {
-
-Registry registry;
-
-auto get_thread_registry() noexcept -> ThreadRegistry& {
-  struct ThreadRegistryGuard {
-    ThreadRegistryGuard() : _registry{ThreadRegistry::make(registry.metrics)} {
-      registry.add(_registry);
-    }
-
-    std::shared_ptr<ThreadRegistry> _registry;
-  };
-  static thread_local auto registry_guard = ThreadRegistryGuard{};
-  return *registry_guard._registry;
+struct ThreadId {
+  static auto current() noexcept -> ThreadId;
+  auto name() -> std::string;
+  TRI_tid_t posix_id;
+  pid_t kernel_id;
+  bool operator==(ThreadId const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ThreadId& x) {
+  return f.object(x).fields(f.field("LWPID", x.kernel_id),
+                            f.field("name", x.name()));
 }
 
-}  // namespace arangodb::async_registry
+}  // namespace arangodb::basics
+
+template<>
+struct fmt::formatter<arangodb::basics::ThreadId>
+    : arangodb::inspection::inspection_formatter {};

@@ -68,13 +68,13 @@ namespace {
 auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
   Forest<PromiseSnapshot> forest;
   std::vector<Id> roots;
-  registry.for_promise([&](PromiseSnapshot promise) {
+  registry.for_node([&](PromiseSnapshot promise) {
     if (promise.state != State::Deleted) {
       std::visit(overloaded{
                      [&](PromiseId async_waiter) {
                        forest.insert(promise.id, async_waiter, promise);
                      },
-                     [&](ThreadId sync_waiter_thread) {
+                     [&](basics::ThreadId sync_waiter_thread) {
                        forest.insert(promise.id, nullptr, promise);
                        roots.emplace_back(promise.id);
                      },
