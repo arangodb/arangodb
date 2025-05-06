@@ -243,7 +243,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
         // In this case we must not proceed, or else the MoveShard job
         // which is currently asking all leaders to resign is getting stuck.
         // The outer retry loop will retry.
-        return {TRI_ERROR_CLUSTER_NOT_LEADER};
+        LOG_TOPIC("abbbe", INFO, Logger::CLUSTER)
+            << "Cannot create collection since a leader is being moved, "
+               "delaying for 1 second...";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        continue;
       }
     }
 
