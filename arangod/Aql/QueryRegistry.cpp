@@ -31,7 +31,6 @@
 #include "Aql/Query.h"
 #include "Aql/Timing.h"
 #include "Basics/ReadLocker.h"
-#include "Basics/SourceLocation.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
@@ -291,8 +290,6 @@ fu2::unique_function<void(bool)>
 QueryRegistry::generateQueryTrackingDestruction(
     std::chrono::steady_clock::time_point startTime,
     QueryDestructionContext queryCtx) {
-  // Canceled is only relevant if we are holding the reference to the
-  // task posted on scheduler, which in this case we are not
   return [queryCtx = std::move(queryCtx),
           startTime = std::move(startTime)](bool cancelled) mutable noexcept {
     if (cancelled) {
@@ -348,7 +345,6 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
 
     QueryInfoMap::iterator queryMapIt =
         lookupQueryForFinalization(id, errorCode);
-    auto weakPtr = std::weak_ptr(queryMapIt->second->_query);
     if (queryMapIt == _queries.end()) {
       return std::shared_ptr<ClusterQuery>();
     }
@@ -378,6 +374,13 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
         generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
                                          std::move(queryDestructionContext)));
     queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+
+    queryInfo._finished = true;
+    if (queryInfo._numOpen > 0) {
+      // we return a future for this queryInfo which will be resolved once the
+      // last thread closes its engine
+      return queryInfo._promise.getFuture();
+    }
   }
   // Now explicitly destroy the QueryInfo before we resolve the promise,
   // but no longer under the lock:
