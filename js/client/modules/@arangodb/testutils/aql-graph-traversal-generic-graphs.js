@@ -841,6 +841,73 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
   ]
 );
 
+// Generate node names
+const generateNodeNames = (count) => {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const nodes = [];
+  
+  // First add single letter nodes
+  for (let i = 0; i < Math.min(count, alphabet.length); i++) {
+    nodes.push(alphabet[i]);
+  }
+  
+  // If we need more nodes, add two-letter combinations
+  if (count > alphabet.length) {
+    for (let i = 0; i < alphabet.length && nodes.length < count; i++) {
+      for (let j = 0; j < alphabet.length && nodes.length < count; j++) {
+        nodes.push(alphabet[i] + alphabet[j]);
+      }
+    }
+  }
+  
+  return nodes;
+};
+
+// Generate edges for complete graph
+const generateCompleteGraphEdges = (nodes) => {
+  const edges = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = 0; j < nodes.length; j++) {
+      if (i !== j) { // Don't create self-loops
+        // Generate random weight between 1 and 5
+        const weight = Math.floor(Math.random() * 5) + 1;
+        edges.push([nodes[i], nodes[j], weight]);
+      }
+    }
+  }
+  return edges;
+};
+
+// Create the huge complete graph with 100 nodes
+/*
+ *        B
+ *     ↙↗ ↑  ↖↘
+ *   A   ← →   C       // Demonstration of the complete graph
+ *     ↖↘ ↓  ↙↗        // Note: Consists out of 100 nodes
+ *        D
+ */
+const hugeCompleteGraphNodes = generateNodeNames(100);
+const hugeCompleteGraphEdges = generateCompleteGraphEdges(hugeCompleteGraphNodes);
+
+protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph", 
+  hugeCompleteGraphEdges,
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding: hugeCompleteGraphNodes.map((node, index) => [node, 0])
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding: hugeCompleteGraphNodes.map((node, index) => [node, index % 2])
+    },
+    {
+      numberOfShards: 5,
+      vertexSharding: hugeCompleteGraphNodes.map((node, index) => [node, index % 5])
+    }
+  ]
+);
+
 /*
  *
  *
