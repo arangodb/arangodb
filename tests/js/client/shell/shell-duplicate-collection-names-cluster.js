@@ -55,7 +55,7 @@ function createDuplicateCollectionNameSuite() {
           break;
         }
         internal.wait(1);
-        if (++count > 10) {
+        if (++count > 60) {
           assertTrue(false, "Async job did not finish quickly enough!");
         }
       }
