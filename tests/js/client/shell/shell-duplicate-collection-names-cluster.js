@@ -75,6 +75,7 @@ function createDuplicateCollectionNameSuite() {
         if (++count > timeout) {
           assertTrue(false, "Collection did not appear quickly enough!");
         }
+        internal.wait(1);
       }
       c.drop();  // this will drop one copy (should be the only one)
       // Give `arangosh` some tries to see the duplicate collection:
