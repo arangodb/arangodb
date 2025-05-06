@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
+  coordinator in two different threads) creates two collections with the same
+  name in the same database (different collection ID).
+
+* Updated ArangoDB Starter to v0.19.10-preview-1.
+
+* Fix a crash when bind parameters are not set and killing of a query
+  is logged (no version with this bug was ever released!).
+
 * Switched to customized (instead of official) forked rclone v1.65.2 built with
   go1.23.8 to avoid CVEs.
 
