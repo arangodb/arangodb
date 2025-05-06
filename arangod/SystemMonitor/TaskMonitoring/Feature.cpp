@@ -30,22 +30,24 @@
 
 using namespace arangodb::task_monitoring;
 
-DECLARE_COUNTER(arangodb_tasks_total,
-                "Total number of created tasks since database creation");
+DECLARE_COUNTER(
+    arangodb_monitoring_tasks_total,
+    "Total number of created monitoring tasks since database creation");
 
-DECLARE_GAUGE(arangodb_tasks_existing, std::uint64_t,
-              "Number of currently existing tasks");
+DECLARE_GAUGE(arangodb_monitoring_tasks_existing, std::uint64_t,
+              "Number of currently existing monitoring tasks");
 
-DECLARE_GAUGE(arangodb_tasks_ready_for_deletion, std::uint64_t,
-              "Number of currently existing tasks that wait "
+DECLARE_GAUGE(arangodb_monitoring_tasks_ready_for_deletion, std::uint64_t,
+              "Number of currently existing monitoring tasks that wait "
               "for their garbage collection");
 
-DECLARE_COUNTER(arangodb_tasks_thread_registries_total,
-                "Total number of threads that started tasks "
+DECLARE_COUNTER(arangodb_monitoring_tasks_thread_registries_total,
+                "Total number of threads that started monitoring tasks "
                 "since database creation");
 
-DECLARE_GAUGE(arangodb_tasks_existing_thread_registries, std::uint64_t,
-              "Number of threads that started currently existing tasks");
+DECLARE_GAUGE(
+    arangodb_monitoring_tasks_existing_thread_registries, std::uint64_t,
+    "Number of threads that started currently existing monitoring tasks");
 
 Feature::Feature(Server& server)
     : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
@@ -56,11 +58,13 @@ Feature::Feature(Server& server)
 auto Feature::create_metrics(arangodb::metrics::MetricsFeature& metrics_feature)
     -> std::shared_ptr<RegistryMetrics> {
   return std::make_shared<RegistryMetrics>(
-      metrics_feature.addShared(arangodb_tasks_total{}),
-      metrics_feature.addShared(arangodb_tasks_existing{}),
-      metrics_feature.addShared(arangodb_tasks_ready_for_deletion{}),
-      metrics_feature.addShared(arangodb_tasks_thread_registries_total{}),
-      metrics_feature.addShared(arangodb_tasks_existing_thread_registries{}));
+      metrics_feature.addShared(arangodb_monitoring_tasks_total{}),
+      metrics_feature.addShared(arangodb_monitoring_tasks_existing{}),
+      metrics_feature.addShared(arangodb_monitoring_tasks_ready_for_deletion{}),
+      metrics_feature.addShared(
+          arangodb_monitoring_tasks_thread_registries_total{}),
+      metrics_feature.addShared(
+          arangodb_monitoring_tasks_existing_thread_registries{}));
 }
 auto Feature::asyncLock()
     -> futures::Future<futures::FutureSharedLock<SchedulerWrapper>::LockGuard> {
