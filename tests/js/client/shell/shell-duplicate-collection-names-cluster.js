@@ -29,6 +29,9 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let IM = global.instanceManager;
+let { versionHas } = require('@arangodb/test-helper');
+
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 
 function createDuplicateCollectionNameSuite() {
   'use strict';
@@ -49,13 +52,17 @@ function createDuplicateCollectionNameSuite() {
       // with a normal `db._create(cn);` we would run the risk of an exception.
       let rr = arango.POST("/_api/collection", {name:cn});
       let count = 0;
+      let timeout = 20;
+      if (isInstr) {
+        timeout *= 10;
+      }
       while (true) {
         let s = arango.PUT(`/_api/job/${r.headers["x-arango-async-id"]}`,{});
         if (s.status !== 204) {
           break;
         }
         internal.wait(1);
-        if (++count > 60) {
+        if (++count > timeout) {
           assertTrue(false, "Async job did not finish quickly enough!");
         }
       }
