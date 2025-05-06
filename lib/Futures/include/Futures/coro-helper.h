@@ -61,9 +61,7 @@ struct future_promise_base {
   using promise_type = future_promise<T>;
 
   future_promise_base(std::source_location loc)
-      : promise{std::move(loc)},
-        context{arangodb::ExecContext::currentAsShared(),
-                *arangodb::async_registry::get_current_coroutine()} {
+      : promise{std::move(loc)}, context{} {
     *arangodb::async_registry::get_current_coroutine() = {promise.id()};
   }
   ~future_promise_base() {}
@@ -111,9 +109,7 @@ struct future_promise_base {
             arangodb::async_registry::State::Running);
         if (old_state.has_value() &&
             old_state.value() == arangodb::async_registry::State::Suspended) {
-          outer_promise->context = arangodb::Context{
-              arangodb::ExecContext::currentAsShared(),
-              *arangodb::async_registry::get_current_coroutine()};
+          outer_promise->context = arangodb::Context{};
         }
         myContext.set();
         return inner_awaitable.await_resume();
@@ -130,12 +126,10 @@ struct future_promise_base {
     }
     promise.update_source_location(std::move(loc));
 
-    return awaitable{
-        .outer_promise = static_cast<promise_type*>(this),
-        .inner_awaitable = arangodb::get_awaitable_object(
-            std::forward<U>(co_awaited_expression)),
-        .myContext = arangodb::Context{arangodb::ExecContext::currentAsShared(),
-                                       {promise.id()}}};
+    return awaitable{.outer_promise = static_cast<promise_type*>(this),
+                     .inner_awaitable = arangodb::get_awaitable_object(
+                         std::forward<U>(co_awaited_expression)),
+                     .myContext = arangodb::Context{}};
   }
 
   auto get_return_object() -> arangodb::futures::Future<T> {

@@ -28,11 +28,15 @@
 namespace arangodb {
 
 struct Context {
-  std::shared_ptr<ExecContext const> _callerExecContext;
+  std::shared_ptr<ExecContext const> _execContext;
   async_registry::Requester _requester;
 
+  Context()
+      : _execContext{ExecContext::currentAsShared()},
+        _requester{*async_registry::get_current_coroutine()} {}
+
   auto set() -> void {
-    ExecContext::set(_callerExecContext);
+    ExecContext::set(_execContext);
     *async_registry::get_current_coroutine() = _requester;
   }
 };

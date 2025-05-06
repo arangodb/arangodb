@@ -27,9 +27,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
   using promise_type = async_promise<T>;
 
   async_promise_base(std::source_location loc)
-      : async_registry::AddToAsyncRegistry{std::move(loc)},
-        _context{ExecContext::currentAsShared(),
-                 *async_registry::get_current_coroutine()} {
+      : async_registry::AddToAsyncRegistry{std::move(loc)}, _context{} {
     *async_registry::get_current_coroutine() = {id()};
   }
 
@@ -77,9 +75,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
         auto old_state =
             outer_promise->update_state(async_registry::State::Running);
         if (old_state.value() == async_registry::State::Suspended) {
-          outer_promise->_context =
-              Context{ExecContext::currentAsShared(),
-                      *async_registry::get_current_coroutine()};
+          outer_promise->_context = Context{};
         }
         myContext.set();
         return inner_awaitable.await_resume();
@@ -95,11 +91,10 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
     }
     update_source_location(loc);
 
-    return awaitable{
-        .outer_promise = this,
-        .inner_awaitable =
-            get_awaitable_object(std::forward<U>(co_awaited_expression)),
-        .myContext = Context{ExecContext::currentAsShared(), {id()}}};
+    return awaitable{.outer_promise = this,
+                     .inner_awaitable = get_awaitable_object(
+                         std::forward<U>(co_awaited_expression)),
+                     .myContext = Context{}};
   }
   void unhandled_exception() {
     _value.set_exception(std::current_exception());
