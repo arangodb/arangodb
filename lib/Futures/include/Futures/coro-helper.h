@@ -32,6 +32,7 @@ namespace std_coro = std;
 #endif
 #include <optional>
 
+#include "Async/context.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Promise.h"
@@ -61,8 +62,8 @@ struct future_promise_base {
 
   future_promise_base(std::source_location loc)
       : promise{std::move(loc)},
-        callerExecContext{arangodb::ExecContext::currentAsShared()},
-        requester{*arangodb::async_registry::get_current_coroutine()} {
+        context{arangodb::ExecContext::currentAsShared(),
+                *arangodb::async_registry::get_current_coroutine()} {
     *arangodb::async_registry::get_current_coroutine() = {promise.id()};
   }
   ~future_promise_base() {}
@@ -76,9 +77,7 @@ struct future_promise_base {
     struct awaitable {
       bool await_ready() noexcept { return false; }
       bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
-        arangodb::ExecContext::set(_promise->callerExecContext);
-        *arangodb::async_registry::get_current_coroutine() =
-            _promise->requester;
+        _promise->context.set();
         // we have to destroy the coroutine frame before
         // we resolve the promise
         _promise->promise.setTry(std::move(_promise->result));
@@ -104,9 +103,7 @@ struct future_promise_base {
       auto await_suspend(std::coroutine_handle<> handle) {
         outer_promise->promise.update_state(
             arangodb::async_registry::State::Suspended);
-        arangodb::ExecContext::set(outer_promise->callerExecContext);
-        *arangodb::async_registry::get_current_coroutine() =
-            outer_promise->requester;
+        outer_promise->context.set();
         return inner_awaitable.await_suspend(handle);
       }
       auto await_resume() {
@@ -114,20 +111,17 @@ struct future_promise_base {
             arangodb::async_registry::State::Running);
         if (old_state.has_value() &&
             old_state.value() == arangodb::async_registry::State::Suspended) {
-          outer_promise->callerExecContext =
-              arangodb::ExecContext::currentAsShared();
-          outer_promise->requester =
-              *arangodb::async_registry::get_current_coroutine();
+          outer_promise->context = arangodb::Context{
+              arangodb::ExecContext::currentAsShared(),
+              *arangodb::async_registry::get_current_coroutine()};
         }
-        arangodb::ExecContext::set(myExecContext);
-        *arangodb::async_registry::get_current_coroutine() = {
-            outer_promise->promise.id()};
+        myContext.set();
         return inner_awaitable.await_resume();
       }
 
       promise_type* outer_promise;
       inner_awaitable_type inner_awaitable;
-      std::shared_ptr<arangodb::ExecContext const> myExecContext;
+      arangodb::Context myContext;
     };
 
     // update promises in registry
@@ -136,10 +130,12 @@ struct future_promise_base {
     }
     promise.update_source_location(std::move(loc));
 
-    return awaitable{.outer_promise = static_cast<promise_type*>(this),
-                     .inner_awaitable = arangodb::get_awaitable_object(
-                         std::forward<U>(co_awaited_expression)),
-                     .myExecContext = arangodb::ExecContext::currentAsShared()};
+    return awaitable{
+        .outer_promise = static_cast<promise_type*>(this),
+        .inner_awaitable = arangodb::get_awaitable_object(
+            std::forward<U>(co_awaited_expression)),
+        .myContext = arangodb::Context{arangodb::ExecContext::currentAsShared(),
+                                       {promise.id()}}};
   }
 
   auto get_return_object() -> arangodb::futures::Future<T> {
@@ -148,14 +144,12 @@ struct future_promise_base {
 
   auto unhandled_exception() noexcept {
     result.set_exception(std::current_exception());
-    arangodb::ExecContext::set(callerExecContext);
-    *arangodb::async_registry::get_current_coroutine() = requester;
+    context.set();
   }
 
   arangodb::futures::Promise<T> promise;
   arangodb::futures::Try<T> result;
-  std::shared_ptr<arangodb::ExecContext const> callerExecContext;
-  arangodb::async_registry::Requester requester;
+  arangodb::Context context;
 };
 
 template<typename T>
