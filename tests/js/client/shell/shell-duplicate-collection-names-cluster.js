@@ -66,13 +66,13 @@ function createDuplicateCollectionNameSuite() {
       let c;
       count = 0;
       while (true) {
-        // Reconnect to clear collection cache in arangosh:
-        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "");
+        // Flush collection cache in arangosh:
+        db._flushCache();
         c = db._collection(cn);
         if (c !== null) {
           break;
         }
-        if (++count > 10) {
+        if (++count > timeout) {
           assertTrue(false, "Collection did not appear quickly enough!");
         }
       }
@@ -80,7 +80,7 @@ function createDuplicateCollectionNameSuite() {
       // Give `arangosh` some tries to see the duplicate collection:
       for (let i = 0; i < 10; ++i) {
         // Reconnect to clear collection cache in arangosh:
-        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "");
+        db._flushCache();
         c = db._collection(cn);
         if (c !== null) {
           break;   // This is going badly!
