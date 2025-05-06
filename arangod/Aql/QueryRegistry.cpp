@@ -321,17 +321,17 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
 
     if (queryMapIt->second->_numOpen == 0) {
       queryInfoLifetimeExtension = deleteQuery(queryMapIt);
+      QueryDestructionContext queryDestructionContext(
+          queryInfoLifetimeExtension->_queryString,
+          queryInfoLifetimeExtension->_errorCode,
+          queryInfoLifetimeExtension->_finished);
+      auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
+          "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+          kWaitUntilLoggingFor,
+          generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
+                                           std::move(queryDestructionContext)));
+      queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
     }
-    QueryDestructionContext queryDestructionContext(
-        queryInfoLifetimeExtension->_queryString,
-        queryInfoLifetimeExtension->_errorCode,
-        queryInfoLifetimeExtension->_finished);
-    auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
-        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-        kWaitUntilLoggingFor,
-        generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
-                                         std::move(queryDestructionContext)));
-    queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
   }
   queryInfoLifetimeExtension.reset();
 }
@@ -787,7 +787,8 @@ QueryRegistry::QueryInfo::~QueryInfo() {
   auto const diff = std::chrono::steady_clock::now() - startDestructionTime;
   if (diff > 5s) {
     LOG_TOPIC("a16ba", WARN, Logger::QUERIES)
-        << "Query info destruction took: " << diff;
+        << "Query info destruction took: " << diff
+        << " with query: " << this->_queryString;
   }
 }
 
