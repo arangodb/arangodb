@@ -1,6 +1,5 @@
-add_library(arango_async_registry_stacktrace INTERFACE
+add_library(arango_forest INTERFACE
   depth_first.h
   forest.h)
-target_include_directories(arango_async_registry_stacktrace
-  INTERFACE
+target_include_directories(arango_forest INTERFACE
   ${PROJECT_SOURCE_DIR}/lib)

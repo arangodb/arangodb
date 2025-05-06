@@ -3,4 +3,4 @@ target_sources(arangoserver PRIVATE
   Metrics.cpp
   RestHandler.cpp)
 target_link_libraries(arangoserver
-  arango_async_registry_stacktrace)
+  arango_forest)
