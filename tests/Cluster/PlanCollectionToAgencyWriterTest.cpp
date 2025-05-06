@@ -24,7 +24,6 @@
 #include "gtest/gtest.h"
 
 #include "Agency/AgencyComm.h"
-#include "Agency/AgencyCommon.h"
 #include "Agency/AgencyPaths.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/IShardDistributionFactory.h"
@@ -134,12 +133,8 @@ TEST_F(PlanCollectionToAgencyWriterTest, can_produce_agency_operation) {
   auto writer = createWriterWithTestSharding(col);
 
   auto serversAvailable = generateServerNames(3);
-  consensus::query_t shardLocks = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder guard(shardLocks.get());
-  }
-  auto res = writer.prepareStartBuildingTransaction(
-      dbName(), 2, serversAvailable, shardLocks);
+  auto res =
+      writer.prepareStartBuildingTransaction(dbName(), 2, serversAvailable);
   ASSERT_TRUE(res.ok());
   auto transaction = res.get();
   LOG_DEVEL << transaction.toJson();

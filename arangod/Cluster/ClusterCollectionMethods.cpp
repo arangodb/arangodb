@@ -194,7 +194,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
 
   // TODO Timeout?
   std::vector<std::string> collectionNames = writer.collectionNames();
-  consensus::query_t locks;
   while (true) {
     // Now check if any of the to-be-created collections has
     // `distributeShardsLike` set to a collection, which already exists. If so,
@@ -219,16 +218,20 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       }
     }
     // If we still have some, they must be existing collections and we must
-    // check that their shards are not locked:
+    // check that their leaders are not asked to resign:
     if (!distributeShardsLikeColls.empty()) {
       LOG_DEVEL << "DistributeShardsLikeCollections2:";
       for (auto const& d : distributeShardsLikeColls) {
         LOG_DEVEL << "  DistributeShardsLikeCollections2: " << d;
       }
       std::vector<std::string> shards;
+      bool seenResignation = false;
       for (auto const& c : distributeShardsLikeColls) {
         auto coll = ci.getCollection(databaseName, c);
         for (auto const& s : *coll->shardIds()) {
+          if (!s.second.empty() && s.second[0].starts_with("_")) {
+            seenResignation = true;
+          }
           shards.push_back(std::string(s.first));
         }
       }
@@ -236,30 +239,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       for (auto const& s : shards) {
         LOG_DEVEL << "  DistributeShardsLikeShards: " << s;
       }
-      AgencyCache& agencyCache =
-          server.getFeature<ClusterFeature>().agencyCache();
-      locks = std::get<0>(agencyCache.get("Supervision/Shards"));
-      LOG_DEVEL << "Locks of shards in Agency: " << locks->toJson();
-      VPackSlice locksSlice = locks->slice();
-
-      // Check if any of the shards of your distributeShardsLike collections
-      // are locked:
-      std::string someLocked = "";
-      if (locksSlice.isObject()) {
-        for (auto const& s : shards) {
-          if (!locksSlice.get(s).isNone()) {
-            someLocked.append(s + " ");
-            break;
-          }
-        }
-      }
-      if (!someLocked.empty()) {
-        LOG_TOPIC("25162", INFO, Logger::CLUSTER)
-            << "Collection creation must pause, since shards " << someLocked
-            << "of the target of a distributeShardsLike entry are currently "
-               "locked. Waiting for 1s...";
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        continue;
+      if (seenResignation) {
+        // In this case we must not proceed, or else the MoveShard job
+        // which is currently asking all leaders to resign is getting stuck.
+        // The outer retry loop will retry.
+        return {TRI_ERROR_CLUSTER_NOT_LEADER};
       }
     }
 
@@ -273,7 +257,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
     auto buildingTransaction = writer.prepareStartBuildingTransaction(
-        databaseName, planVersion.get(), availableServers, locks);
+        databaseName, planVersion.get(), availableServers);
     if (buildingTransaction.fail()) {
       return buildingTransaction.result();
     }
