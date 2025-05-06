@@ -52,10 +52,7 @@ function createDuplicateCollectionNameSuite() {
       // with a normal `db._create(cn);` we would run the risk of an exception.
       let rr = arango.POST("/_api/collection", {name:cn});
       let count = 0;
-      let timeout = 20;
-      if (isInstr) {
-        timeout *= 10;
-      }
+      const timeout = isInstr ? 200 : 20;
       while (true) {
         let s = arango.PUT(`/_api/job/${r.headers["x-arango-async-id"]}`,{});
         if (s.status !== 204) {
