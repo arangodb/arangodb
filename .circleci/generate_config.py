@@ -303,7 +303,7 @@ def get_test_size(size, build_config, cluster):
     return get_size(size, build_config.arch)
 
 
-def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, extra_args, replication_version=1):
+def create_test_job(test, cluster, build_config, build_jobs, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
     params = test["params"]
@@ -319,7 +319,7 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, extr
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
     )
-    sub_arangosh_args = arangosh_args
+    sub_arangosh_args = args.arangosh_args
     if 'arangosh_args' in test:
         # Yaml workaround: prepend an A to stop bad things from happening.
         if test["arangosh_args"] != "":
@@ -349,8 +349,8 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, extr
         sub_extra_args.append(f"--replicationVersion {replication_version}")
     if build_config.isNightly:
         sub_extra_args.append(f"--skipNightly false")
-    if sub_extra_args != [] or extra_args != []:
-        job["extraArgs"] = " ".join(sub_extra_args + extra_args)
+    if sub_extra_args != [] or args.extra_args != []:
+        job["extraArgs"] = " ".join(sub_extra_args + args.extra_args)
 
     buckets = params.get("buckets", 1)
     if suite_name == "replication_sync":
@@ -382,21 +382,21 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
 
 
 def add_test_definition_jobs_to_workflow(
-    workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2
+    workflow, tests, build_config, build_jobs
 ):
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args))
-            if repl2:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args, 2))
+            jobs.append(create_test_job(test, True, build_config, build_jobs))
+            if args.replication_two:
+                jobs.append(create_test_job(test, True, build_config, build_jobs, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test, False, build_config, build_jobs, arangosh_args, extra_args))
+            jobs.append(create_test_job(test, False, build_config, build_jobs))
         else:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args))
-            if repl2:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args, 2))
-            jobs.append(create_test_job(test, False, build_config, build_jobs, arangosh_args, extra_args))
+            jobs.append(create_test_job(test, True, build_config, build_jobs))
+            if args.replication_two:
+                jobs.append(create_test_job(test, True, build_config, build_jobs, 2))
+            jobs.append(create_test_job(test, False, build_config, build_jobs))
 
 
 def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
@@ -430,7 +430,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
             )
 
 
-def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2):
+def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs)
     if args.ui == "only":
@@ -446,7 +446,7 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, a
             }
         )
     add_test_definition_jobs_to_workflow(
-        workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2
+        workflow, tests, build_config, build_jobs
     )
 
 
@@ -530,9 +530,7 @@ def add_frontend_build_job(workflow, build_config, overrides=None):
     return name
 
 
-def add_workflow(workflows, tests, build_config, args, extra_args):
-    arangosh_args = args.arangosh_args
-    repl2 = args.replication_two
+def add_workflow(workflows, tests, build_config, args):
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         ui = True
@@ -559,11 +557,11 @@ def add_workflow(workflows, tests, build_config, args, extra_args):
     add_create_docker_image_job(workflow, build_config, build_jobs, args)
 
     tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
-    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs, arangosh_args, extra_args, repl2)
+    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs)
     return workflow
 
 
-def add_x64_community_workflow(workflows, tests, args, extra_args):
+def add_x64_community_workflow(workflows, tests, args):
     if args.sanitizer != "" and args.nightly:
         # for nightly sanitizer runs we skip community and only test enterprise
         return
@@ -572,13 +570,12 @@ def add_x64_community_workflow(workflows, tests, args, extra_args):
         tests,
         BuildConfig("x64", False, args.sanitizer, args.nightly),
         args,
-        extra_args,
     )
 
 
-def add_x64_enterprise_workflow(workflows, tests, args, extra_args):
+def add_x64_enterprise_workflow(workflows, tests, args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
-    workflow = add_workflow(workflows, tests, build_config, args, extra_args)
+    workflow = add_workflow(workflows, tests, build_config, args)
     if args.sanitizer == "" and (args.ui == "off" or args.ui == ""):
         add_build_job(
             workflow,
@@ -592,37 +589,35 @@ def add_x64_enterprise_workflow(workflows, tests, args, extra_args):
         )
 
 
-def add_aarch64_community_workflow(workflows, tests, args, extra_args):
+def add_aarch64_community_workflow(workflows, tests, args):
     if args.ui != "only":
         add_workflow(
             workflows,
             tests,
             BuildConfig("aarch64", False, args.sanitizer, args.nightly),
             args,
-            extra_args,
         )
 
 
-def add_aarch64_enterprise_workflow(workflows, tests, args, extra_args):
+def add_aarch64_enterprise_workflow(workflows, tests, args):
     if args.ui != "only":
         add_workflow(
             workflows,
             tests,
             BuildConfig("aarch64", True, args.sanitizer, args.nightly),
             args,
-            extra_args,
         )
 
 
-def generate_jobs(config, args, extra_args, tests):
+def generate_jobs(config, args, tests):
     """generate job definitions"""
     workflows = config["workflows"]
-    add_x64_community_workflow(workflows, tests, args, extra_args)
-    add_x64_enterprise_workflow(workflows, tests, args, extra_args)
+    add_x64_community_workflow(workflows, tests, args)
+    add_x64_enterprise_workflow(workflows, tests, args)
     if args.sanitizer == "":
         # ATM we run ARM only without sanitizer
-        add_aarch64_community_workflow(workflows, tests, args, extra_args)
-        add_aarch64_enterprise_workflow(workflows, tests, args, extra_args)
+        add_aarch64_community_workflow(workflows, tests, args)
+        add_aarch64_enterprise_workflow(workflows, tests, args)
 
 
 def main():
@@ -640,12 +635,10 @@ def main():
             args.arangosh_args = []
         else:
             args.arangosh_args = arangosh_args[1:].split(' ')
-        extra_args = args.extra_args
-        del args.extra_args
-        if extra_args == "A" or extra_args == "":
-            extra_args = []
+        if args.extra_args == "A" or args.extra_args == "":
+            args.extra_args = []
         else:
-            extra_args = extra_args[1:].split(' ')
+            args.extra_args = args.extra_args[1:].split(' ')
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = read_definitions(args.definitions)
@@ -654,7 +647,7 @@ def main():
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
-                generate_jobs(config, args, extra_args, tests)
+                generate_jobs(config, args, tests)
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
