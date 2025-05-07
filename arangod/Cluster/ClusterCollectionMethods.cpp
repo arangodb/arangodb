@@ -219,7 +219,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     // If we still have some, they must be existing collections and we must
     // check that their leaders are not asked to resign:
     if (!distributeShardsLikeColls.empty()) {
-      std::vector<std::string> shards;
       bool seenResignation = false;
       for (auto const& c : distributeShardsLikeColls) {
         auto coll = ci.getCollection(databaseName, c);
@@ -227,7 +226,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           if (!s.second.empty() && s.second[0].starts_with("_")) {
             seenResignation = true;
           }
-          shards.push_back(std::string(s.first));
         }
       }
       if (seenResignation) {
