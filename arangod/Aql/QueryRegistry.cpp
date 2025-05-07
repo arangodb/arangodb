@@ -80,12 +80,15 @@ auto postQueryDestructionTrackingTask(auto queryId,
       queryId, queryInfoLifetimeExtension->_queryString,
       queryInfoLifetimeExtension->_errorCode,
       queryInfoLifetimeExtension->_finished);
-  auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
-      "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-      kWaitUntilLoggingFor,
-      generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
-                                       queryDestructionContext));
-  queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+
+  if (SchedulerFeature::SCHEDULER != nullptr) {
+    auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+        kWaitUntilLoggingFor,
+        generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
+                                         queryDestructionContext));
+    queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+  }
 }
 
 QueryRegistry::~QueryRegistry() {
