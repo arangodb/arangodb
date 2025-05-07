@@ -109,7 +109,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief create a cursor and return the first results
   async<void> createQueryCursor();
 
-      /// @brief return the next results from an existing cursor
+  /// @brief return the next results from an existing cursor
   async<void> modifyQueryCursor();
 
   /// @brief dispose an existing cursor

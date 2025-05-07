@@ -253,7 +253,7 @@ async<void> RestCursorHandler::processQuery() {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
-    co_await waitingFunToCoro([&]{
+    co_await waitingFunToCoro([&] {
       auto state = query->execute(_queryResult);
 
       if (state == aql::ExecutionState::WAITING) {
@@ -575,7 +575,7 @@ async<void> RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
 
   auto r = Result();
 
-  co_await waitingFunToCoro([&](){
+  co_await waitingFunToCoro([&]() {
     auto const [state, result] = _cursor->dump(builder);
 
     if (state == aql::ExecutionState::WAITING) {

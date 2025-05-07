@@ -83,8 +83,7 @@ auto RestSimpleHandler::executeAsync() -> futures::Future<futures::Unit> {
   co_return;
 }
 
-async<void> RestSimpleHandler::removeByKeys(
-    VPackSlice const& slice) {
+async<void> RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
   {
@@ -250,8 +249,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                  _queryResult.context);
 }
 
-async<void> RestSimpleHandler::lookupByKeys(
-    VPackSlice const& slice) {
+async<void> RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }

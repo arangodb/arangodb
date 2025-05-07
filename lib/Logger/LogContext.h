@@ -572,12 +572,13 @@ struct LogContext::Accessor::ScopedValue {
   }
   // TODO This constructor is broken, as the destructor will still pop only a
   //      single entry!
-//  explicit ScopedValue(std::vector<std::shared_ptr<LogContext::Values>>&& vs) {
-//    for (auto&& v : vs) {
-//      appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
-//    }
-//    vs.clear();
-//  }
+  //  explicit ScopedValue(std::vector<std::shared_ptr<LogContext::Values>>&&
+  //  vs) {
+  //    for (auto&& v : vs) {
+  //      appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
+  //    }
+  //    vs.clear();
+  //  }
 
   template<class KV, class Base, std::size_t Depth>
   explicit ScopedValue(ValueBuilder<KV, Base, Depth>&& v) {
