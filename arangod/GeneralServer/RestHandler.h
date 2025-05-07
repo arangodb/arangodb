@@ -165,9 +165,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
-  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
-
   enum class HandlerState : uint8_t {
     PREPARE = 0,
     EXECUTE,
@@ -205,8 +202,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  private:
   mutable std::mutex _executionMutex;
-  mutable std::atomic_uint8_t _executionCounter{0};
-  mutable RestStatus _followupRestStatus;
 
  protected:
   // TODO Move this in a separate header, side-by-side with SuspensionSemaphore?
@@ -214,7 +209,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
-  requires requires(F f) { { f() } -> std::same_as<RestStatus>; }
+  requires requires(F f) {
+    { f() } -> std::same_as<RestStatus>;
+  }
   [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<void> {
     auto fun = std::forward<F>(funArg);
     auto state = fun();
@@ -228,6 +225,25 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       }
     }
     co_return;
+  }
+
+  template<typename F, typename T = std::invoke_result_t<F>::value_type>
+  requires requires(F f) {
+    { f() } -> std::same_as<std::optional<T>>;
+  }
+  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<T> {
+    auto fun = std::forward<F>(funArg);
+    auto res = fun();
+
+    while (!res.has_value()) {
+      // Get the number of wakeups. We call fun() up to that many
+      // times before suspending again.
+      auto n = co_await _suspensionSemaphore.await();
+      for (auto i = 0; i < n && !res.has_value(); ++i) {
+        res = fun();
+      }
+    }
+    co_return std::move(res).value();
   }
 
  private:

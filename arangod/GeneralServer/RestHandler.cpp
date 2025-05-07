@@ -46,6 +46,7 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
 
+#include <Agency/RestAgencyHandler.h>
 #include <Async/async.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
@@ -697,50 +698,6 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
-RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
-  if (f.isReady()) {             // fast-path out
-    f.result().throwIfFailed();  // just throw the error upwards
-    return RestStatus::DONE;
-  }
-  TRI_ASSERT(_executionCounter == 0);
-  _executionCounter = 2;
-  std::move(f).thenFinal(withLogContext(
-      [self = shared_from_this()](futures::Try<futures::Unit>&& t) -> void {
-        if (t.hasException()) {
-          self->handleExceptionPtr(std::move(t).exception());
-        }
-        if (--self->_executionCounter == 0) {
-          self->wakeupHandler();
-        }
-      }));
-  return --_executionCounter == 0 ? RestStatus::DONE : RestStatus::WAITING;
-}
-
-RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
-  if (f.isReady()) {             // fast-path out
-    f.result().throwIfFailed();  // just throw the error upwards
-    return f.waitAndGet();
-  }
-  TRI_ASSERT(_executionCounter == 0);
-  _executionCounter = 2;
-  std::move(f).thenFinal(withLogContext(
-      [self = shared_from_this()](futures::Try<RestStatus>&& t) -> void {
-        if (t.hasException()) {
-          self->handleExceptionPtr(std::move(t).exception());
-          self->_followupRestStatus = RestStatus::DONE;
-        } else {
-          self->_followupRestStatus = t.get();
-          if (t.get() == RestStatus::WAITING) {
-            return;  // rest handler will be woken up externally
-          }
-        }
-        if (--self->_executionCounter == 0) {
-          self->wakeupHandler();
-        }
-      }));
-  return --_executionCounter == 0 ? _followupRestStatus : RestStatus::WAITING;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -756,7 +713,8 @@ futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
 
   if (state == RestStatus::WAITING) {
-    co_await waitingFunToCoro(std::bind(&std::decay_t<decltype(*this)>::continueExecute, this));
+    co_await waitingFunToCoro(
+        std::bind(&std::decay_t<decltype(*this)>::continueExecute, this));
   }
 }
 

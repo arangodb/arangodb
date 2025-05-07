@@ -50,8 +50,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
-  RestStatus execute() override;
-  RestStatus continueExecute() override;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   [[nodiscard]] auto prepareExecute(bool isContinue)
       -> std::vector<std::shared_ptr<LogContext::Values>> override;
   void shutdownExecute(bool isFinalized) noexcept override;
@@ -103,8 +102,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // set, then the root block of the stored query must be a ScatterBlock
   // and the shard ID is given as an additional argument to the ScatterBlock's
   // special API.
-  RestStatus useQuery(std::string const& operation,
-                      std::string const& idString);
+  auto useQuery(std::string const& operation, std::string const& idString)
+      -> async<void>;
 
   // POST method for /_api/aql/setup (internal)
   // Only available on DBServers in the Cluster.
@@ -136,10 +135,10 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                             arangodb::velocypack::Slice querySlice);
 
   // handle query finalization for all engines
-  RestStatus handleFinishQuery(std::string const& idString);
+  auto handleFinishQuery(std::string const& idString) -> async<void>;
 
   // dig out vocbase from context and query from ID, handle errors
-  Result findEngine(std::string const& idString);
+  auto findEngine(std::string const& idString) -> async<Result>;
 
   // our query registry
   QueryRegistry* _queryRegistry;
