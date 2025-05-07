@@ -303,7 +303,7 @@ def get_test_size(size, build_config, cluster):
     return get_size(size, build_config.arch)
 
 
-def create_test_job(test, cluster, build_config, build_jobs, replication_version=1):
+def create_test_job(test, cluster, build_config, build_jobs, args, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
     params = test["params"]
@@ -323,13 +323,12 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
     if 'arangosh_args' in test:
         # Yaml workaround: prepend an A to stop bad things from happening.
         if test["arangosh_args"] != "":
-            sub_arangosh_args = test["arangosh_args"] + arangosh_args
-        del(test["arangosh_args"])
+            sub_arangosh_args = test["arangosh_args"] + args.arangosh_args
+        del test["arangosh_args"]
     job = {
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "arangosh_args": arangosh_args,
         "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
         "requires": build_jobs,
@@ -346,9 +345,9 @@ def create_test_job(test, cluster, build_config, build_jobs, replication_version
 
     sub_extra_args = test["args"].copy()
     if cluster:
-        sub_extra_args.append(f"--replicationVersion {replication_version}")
+        sub_extra_args += ["--replicationVersion", f"{replication_version}"]
     if build_config.isNightly:
-        sub_extra_args.append(f"--skipNightly false")
+        sub_extra_args += ["--skipNightly", "false"]
     if sub_extra_args != [] or args.extra_args != []:
         job["extraArgs"] = " ".join(sub_extra_args + args.extra_args)
 
@@ -382,21 +381,21 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
 
 
 def add_test_definition_jobs_to_workflow(
-    workflow, tests, build_config, build_jobs
+        workflow, tests, build_config, build_jobs, args
 ):
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test, True, build_config, build_jobs))
+            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, 2))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test, False, build_config, build_jobs))
+            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
         else:
-            jobs.append(create_test_job(test, True, build_config, build_jobs))
+            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, 2))
-            jobs.append(create_test_job(test, False, build_config, build_jobs))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
+            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
 
 
 def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
@@ -446,7 +445,7 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
             }
         )
     add_test_definition_jobs_to_workflow(
-        workflow, tests, build_config, build_jobs
+        workflow, tests, build_config, build_jobs, args
     )
 
 
@@ -472,7 +471,7 @@ def add_create_docker_image_job(workflow, build_config, build_jobs, args):
         else "public.ecr.aws/b0b8h2r4/arangodb-preview"
     )
     branch = os.environ.get("CIRCLE_BRANCH", "unknown-brach")
-    match = re.fullmatch("(.+\/)?(.+)", branch)
+    match = re.fullmatch(r"(.+\/)?(.+)", branch)
     if match:
         branch = match.group(2)
 
@@ -519,7 +518,7 @@ def add_build_job(workflow, build_config, overrides=None):
     return name
 
 
-def add_frontend_build_job(workflow, build_config, overrides=None):
+def add_frontend_build_job(workflow, build_config):
     edition = "ee" if build_config.enterprise else "ce"
     preset = "enterprise-pr" if build_config.enterprise else "community-pr"
     if build_config.sanitizer != "":
@@ -576,7 +575,7 @@ def add_x64_community_workflow(workflows, tests, args):
 def add_x64_enterprise_workflow(workflows, tests, args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
     workflow = add_workflow(workflows, tests, build_config, args)
-    if args.sanitizer == "" and (args.ui == "off" or args.ui == ""):
+    if args.sanitizer == "" and args.ui in ["off", ""]:
         add_build_job(
             workflow,
             build_config,
@@ -631,11 +630,11 @@ def main():
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
         arangosh_args = args.arangosh_args
-        if arangosh_args == "A" or arangosh_args == "":
+        if arangosh_args in ["A", ""]:
             args.arangosh_args = []
         else:
             args.arangosh_args = arangosh_args[1:].split(' ')
-        if args.extra_args == "A" or args.extra_args == "":
+        if args.extra_args in ["A", ""]:
             args.extra_args = []
         else:
             args.extra_args = args.extra_args[1:].split(' ')
