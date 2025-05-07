@@ -1,7 +1,7 @@
 devel
 -----
 
-* Updated ArangoDB Starter to v0.19.11-preview-1.
+* Updated ArangoDB Starter to v0.19.11.
 
 * Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
   coordinator in two different threads) creates two collections with the same
