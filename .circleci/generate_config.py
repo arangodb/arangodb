@@ -344,13 +344,13 @@ def create_test_job(test, cluster, build_config, build_jobs, arangosh_args, extr
         # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size
         job["size"] = get_test_size("medium+", build_config, cluster)
 
-    sub_extra_args = test["args"].copy() + extra_args
+    sub_extra_args = test["args"].copy()
     if cluster:
         sub_extra_args.append(f"--replicationVersion {replication_version}")
     if build_config.isNightly:
         sub_extra_args.append(f"--skipNightly false")
-    if sub_extra_args != []:
-        job["extraArgs"] = " ".join(sub_extra_args)
+    if sub_extra_args != [] or extra_args != []:
+        job["extraArgs"] = " ".join(sub_extra_args + extra_args)
 
     buckets = params.get("buckets", 1)
     if suite_name == "replication_sync":
