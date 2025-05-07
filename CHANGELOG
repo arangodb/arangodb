@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.11-preview-1.
+
 * Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
   coordinator in two different threads) creates two collections with the same
   name in the same database (different collection ID).
@@ -20,8 +22,6 @@ devel
 * Upgraded OpenSSL to 3.5.0.
 
 * Set Node v20.14.0 for core UI production (CI) compilation.
-
-* Updated ArangoDB Starter to v0.19.10.
 
 * Remove overeager assert, only relevant for testing.
 
