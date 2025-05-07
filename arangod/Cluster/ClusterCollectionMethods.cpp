@@ -192,12 +192,15 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   double pollInterval = ci.getPollInterval();
   AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
 
-  // TODO Timeout?
   std::vector<std::string> collectionNames = writer.collectionNames();
-  while (true) {
+  // Retry for at most 60s:
+  auto startTime = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - startTime <
+         std::chrono::seconds(60)) {
     // Now check if any of the to-be-created collections has
-    // `distributeShardsLike` set to a collection, which already exists. If so,
-    // we need to check if any of its shards are currently locked:
+    // `distributeShardsLike` set to a collection, which already exists.
+    // If so, we need to check if any of its shards currently have
+    // their leader asked to resign!
     std::unordered_set<std::string> distributeShardsLikeColls;
     auto const& colls = writer.collectionsToCreate();
     for (auto const& c : colls) {
@@ -208,10 +211,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     }
     // If we have some, let's see if they are about to be generated or not:
     if (!distributeShardsLikeColls.empty()) {
-      LOG_DEVEL << "DistributeShardsLikeCollections1:";
-      for (auto const& d : distributeShardsLikeColls) {
-        LOG_DEVEL << "  DistributeShardsLikeCollections1: " << d;
-      }
       for (auto const& c : colls) {
         auto const& name = c.getName();
         distributeShardsLikeColls.erase(name);
@@ -220,10 +219,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     // If we still have some, they must be existing collections and we must
     // check that their leaders are not asked to resign:
     if (!distributeShardsLikeColls.empty()) {
-      LOG_DEVEL << "DistributeShardsLikeCollections2:";
-      for (auto const& d : distributeShardsLikeColls) {
-        LOG_DEVEL << "  DistributeShardsLikeCollections2: " << d;
-      }
       std::vector<std::string> shards;
       bool seenResignation = false;
       for (auto const& c : distributeShardsLikeColls) {
@@ -234,10 +229,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
           }
           shards.push_back(std::string(s.first));
         }
-      }
-      LOG_DEVEL << "DistributeShardsLikeShards:";
-      for (auto const& s : shards) {
-        LOG_DEVEL << "  DistributeShardsLikeShards: " << s;
       }
       if (seenResignation) {
         // In this case we must not proceed, or else the MoveShard job
@@ -500,6 +491,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       // checked at the beginning of this retry loop
     }
   }
+  return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
+          "Failed to create collection after 60 retries, giving up."};
 }
 
 Result impl(ClusterInfo& ci, ArangodServer& server,
