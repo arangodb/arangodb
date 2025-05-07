@@ -79,12 +79,7 @@ function moveShardCreateCollectionSuite() {
       });
       const moveShardId = moveShardResult.id;
 
-      // Let the job begin:
-      internal.wait(1);
-      // Note that this wait would not really be required, since the following
-      // loop waits for the status to be "Pending" anyway!
-      
-      // Check if MoveShard operation is pending:
+      // Let the job begin: Check if MoveShard operation is pending:
       let moveShardPending = false;
       let maxWait = 30; // 30 seconds timeout
       while (maxWait > 0) {
@@ -226,9 +221,12 @@ function moveShardCreateCollectionSuite() {
         const moveShardStatus = arango.GET(`/_admin/cluster/queryAgencyJob?id=${moveShardId}`);
         assertEqual(moveShardStatus.status, "Pending");
 
-        // Wait for the delays to expire (15 seconds)
-        internal.wait(16);
-        
+        // Stop the delays:
+        result = request({ method: "PUT", url: endpoints[toServer] + "/_admin/debug/failat/DontDelayCreateShard15", body: {} });
+        assertEqual(200, result.status);
+        result = request({ method: "PUT", url: endpoints[toServer] + "/_admin/debug/failat/DontDelayTakeoverShardLeadership15", body: {} });
+        assertEqual(200, result.status);
+
         // Check if create operation completed
         let createJobCompleted = false;
         maxWait = 30; // 30 seconds timeout

@@ -113,7 +113,11 @@ bool CreateCollection::first() {
   auto const& props = properties();
 
   TRI_IF_FAILURE("DelayCreateShard15") {
-    std::this_thread::sleep_for(std::chrono::seconds(15));
+    for (int i = 0; i < 15; ++i) {
+      // Allow to stop the delay from the outside:
+      TRI_IF_FAILURE("DontDelayCreateShard15") { break; }
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
   }
 
   std::string from;
