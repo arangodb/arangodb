@@ -355,7 +355,7 @@ std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
     "migrate";
 std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
 
-RestStatus RestAdminClusterHandler::execute() {
+auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
   // here we first do a glboal check, which is based on the setting in startup
   // option
   // `--cluster.api-jwt-policy`:
@@ -378,7 +378,7 @@ RestStatus RestAdminClusterHandler::execute() {
     if (apiJwtPolicy == "jwt-all" ||
         (apiJwtPolicy == "jwt-write" && isWriteOperation)) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-      return RestStatus::DONE;
+      co_return;
     }
   }
 
@@ -394,69 +394,89 @@ RestStatus RestAdminClusterHandler::execute() {
     std::string const& command = suffixes.at(0);
 
     if (command == Health) {
-      return handleHealth();
+      co_await handleHealth();
+      co_return;
     } else if (command == NumberOfServers) {
-      return handleNumberOfServers();
+      co_await handleNumberOfServers();
+      co_return;
     } else if (command == Maintenance) {
-      return handleMaintenance();
+      co_await handleMaintenance();
+      co_return;
     } else if (command == NodeVersion) {
-      return handleNodeVersion();
+      co_await handleNodeVersion();
+      co_return;
     } else if (command == NodeEngine) {
-      return handleNodeEngine();
+      co_await handleNodeEngine();
+      co_return;
     } else if (command == NodeStatistics) {
-      return handleNodeStatistics();
+      co_await handleNodeStatistics();
+      co_return;
     } else if (command == Statistics) {
-      return handleStatistics();
+      co_await handleStatistics();
+      co_return;
     } else if (command == ShardDistribution) {
-      return handleShardDistribution();
+      handleShardDistribution();
+      co_return;
     } else if (command == CollectionShardDistribution) {
-      return handleCollectionShardDistribution();
+      handleCollectionShardDistribution();
+      co_return;
     } else if (command == CleanoutServer) {
-      return handleCleanoutServer();
+      co_await handleCleanoutServer();
+      co_return;
     } else if (command == ResignLeadership) {
-      return handleResignLeadership();
+      co_await handleResignLeadership();
+      co_return;
     } else if (command == MoveShard) {
-      return handleMoveShard();
+      co_await handleMoveShard();
+      co_return;
     } else if (command == CancelJob) {
-      return handleCancelJob();
+      co_await handleCancelJob();
+      co_return;
     } else if (command == QueryJobStatus) {
-      return handleQueryJobStatus();
+      co_await handleQueryJobStatus();
+      co_return;
     } else if (command == RemoveServer) {
-      return handleRemoveServer();
+      co_await handleRemoveServer();
+      co_return;
     } else if (command == RebalanceShards) {
-      return handleRebalanceShards();
+      co_await handleRebalanceShards();
+      co_return;
     } else if (command == Rebalance) {
-      return handleRebalance();
+      co_await handleRebalance();
+      co_return;
     } else if (command == ShardStatistics) {
-      return handleShardStatistics();
+      handleShardStatistics();
+      co_return;
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command + "'");
-      return RestStatus::DONE;
+      co_return;
     }
   } else if (len == 2) {
     std::string const& command = suffixes.at(0);
     if (command == Rebalance) {
-      return handleRebalance();
+      co_await handleRebalance();
+      co_return;
     } else if (command == Maintenance) {
-      return handleDBServerMaintenance(suffixes.at(1));
+      co_await handleDBServerMaintenance(suffixes.at(1));
+      co_return;
     } else if (command == VPackSortMigration) {
-      return waitForFuture(handleVPackSortMigration(suffixes.at(1)));
+      co_await handleVPackSortMigration(suffixes.at(1));
+      co_return;
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     std::string("invalid command '") + command +
                         "', expecting 'rebalance' or 'maintenance'");
-      return RestStatus::DONE;
+      co_return;
     }
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                 "expecting URL /_admin/cluster/<command>");
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestAdminClusterHandler::FutureVoid
-RestAdminClusterHandler::retryTryDeleteServer(
+futures::Future<futures::Unit> RestAdminClusterHandler::retryTryDeleteServer(
     std::unique_ptr<RemoveServerContext>&& ctx) {
   if (++ctx->tries < 60) {
     return SchedulerFeature::SCHEDULER->delay("remove-server", 1s)
@@ -471,7 +491,7 @@ RestAdminClusterHandler::retryTryDeleteServer(
   }
 }
 
-RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
+futures::Future<futures::Unit> RestAdminClusterHandler::tryDeleteServer(
     std::unique_ptr<RemoveServerContext>&& ctx) {
   auto rootPath = arangodb::cluster::paths::root()->arango();
   VPackBuffer<uint8_t> trx;
@@ -609,37 +629,36 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::tryDeleteServer(
       });
 }
 
-RestStatus RestAdminClusterHandler::handlePostRemoveServer(
+async<void> RestAdminClusterHandler::handlePostRemoveServer(
     std::string const& server) {
   auto ctx = std::make_unique<RemoveServerContext>(server);
 
-  return waitForFuture(
-      tryDeleteServer(std::move(ctx))
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    co_await tryDeleteServer(std::move(ctx));
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleRemoveServer() {
+async<void> RestAdminClusterHandler::handleRemoveServer() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   VPackSlice server = VPackSlice::noneSlice();
@@ -651,37 +670,37 @@ RestStatus RestAdminClusterHandler::handleRemoveServer() {
 
   if (server.isString()) {
     std::string serverId = resolveServerNameID(server.copyString());
-    return handlePostRemoveServer(serverId);
+    co_return co_await handlePostRemoveServer(serverId);
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                 "expecting string or object with key `server`");
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestAdminClusterHandler::handleShardStatistics() {
+void RestAdminClusterHandler::handleShardStatistics() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    return;
   }
 
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    return;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-    return RestStatus::DONE;
+    return;
   }
 
   if (!_vocbase.isSystem()) {
     generateError(
         GeneralResponse::responseCode(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE),
         TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
-    return RestStatus::DONE;
+    return;
   }
 
   std::string const& restrictServer = _request->value("DBserver");
@@ -703,16 +722,14 @@ RestStatus RestAdminClusterHandler::handleShardStatistics() {
   } else {
     generateError(res);
   }
-
-  return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleCleanoutServer() {
-  return handleSingleServerJob("cleanOutServer");
+async<void> RestAdminClusterHandler::handleCleanoutServer() {
+  co_return co_await handleSingleServerJob("cleanOutServer");
 }
 
-RestStatus RestAdminClusterHandler::handleResignLeadership() {
-  return handleSingleServerJob("resignLeadership");
+async<void> RestAdminClusterHandler::handleResignLeadership() {
+  co_return co_await handleSingleServerJob("resignLeadership");
 }
 
 std::unique_ptr<RestAdminClusterHandler::MoveShardContext>
@@ -743,23 +760,23 @@ RestAdminClusterHandler::MoveShardContext::fromVelocyPack(VPackSlice slice) {
   return nullptr;
 }
 
-RestStatus RestAdminClusterHandler::handleMoveShard() {
+async<void> RestAdminClusterHandler::handleMoveShard() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::unique_ptr<MoveShardContext> ctx =
@@ -776,21 +793,21 @@ RestStatus RestAdminClusterHandler::handleMoveShard() {
     if (!canAccess) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "insufficient permissions on database to move shard");
-      return RestStatus::DONE;
+      co_return;
     }
 
     ctx->fromServer = resolveServerNameID(ctx->fromServer);
     ctx->toServer = resolveServerNameID(ctx->toServer);
-    return handlePostMoveShard(std::move(ctx));
+    co_return co_await handlePostMoveShard(std::move(ctx));
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                 "object with keys `database`, `collection`, `shard`, "
                 "`fromServer` and `toServer` (all strings) expected");
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
+async<void> RestAdminClusterHandler::createMoveShard(
     std::unique_ptr<MoveShardContext>&& ctx, VPackSlice plan) {
   auto planPath = arangodb::cluster::paths::root()->arango()->plan();
 
@@ -801,7 +818,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!serversFound) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "one or both dbservers not found");
-    return futures::makeFuture();
+    co_return;
   }
 
   VPackSlice collection = plan.get(planPath->collections()
@@ -811,14 +828,14 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!collection.isObject()) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "database/collection not found");
-    return futures::makeFuture();
+    co_return;
   }
 
   if (collection.hasKey(StaticStrings::DistributeShardsLike)) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "MoveShard only allowed for collections which have "
                   "distributeShardsLike unset.");
-    return futures::makeFuture();
+    co_return;
   }
 
   VPackSlice shard =
@@ -826,7 +843,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!shard.isArray()) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "shard not found");
-    return futures::makeFuture();
+    co_return;
   }
 
   bool fromFound = false;
@@ -841,7 +858,7 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
   if (!fromFound) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "shard is not located on the server");
-    return futures::makeFuture();
+    co_return;
   }
 
   std::string jobId = std::to_string(
@@ -878,26 +895,23 @@ RestAdminClusterHandler::FutureVoid RestAdminClusterHandler::createMoveShard(
         .done();
   }
 
-  return AsyncAgencyComm()
-      .sendWriteTransaction(20s, std::move(trx))
-      .thenValue([this, ctx = std::move(ctx),
-                  jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
-        if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-          VPackBuilder builder;
-          ;
-          {
-            VPackObjectBuilder ob(&builder);
-            builder.add("id", VPackValue(jobId));
-          }
+  auto result =
+      co_await AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx));
 
-          generateOk(rest::ResponseCode::ACCEPTED, builder);
-        } else {
-          generateError(result.asResult());
-        }
-      });
+  if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add("id", VPackValue(jobId));
+    }
+
+    generateOk(rest::ResponseCode::ACCEPTED, builder);
+  } else {
+    generateError(result.asResult());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handlePostMoveShard(
+async<void> RestAdminClusterHandler::handlePostMoveShard(
     std::unique_ptr<MoveShardContext>&& ctx) {
   std::shared_ptr<LogicalCollection> collection =
       server().getFeature<ClusterFeature>().clusterInfo().getCollectionNT(
@@ -906,7 +920,7 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(
   if (collection == nullptr) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "database/collection not found");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // base64-encode collection id with RevisionId
@@ -928,59 +942,55 @@ RestStatus RestAdminClusterHandler::handlePostMoveShard(
   }
 
   // gather information about that shard
-  return waitForFuture(
-      AsyncAgencyComm()
-          .sendReadTransaction(20s, std::move(trx))
-          .thenValue([this, ctx = std::move(ctx)](
-                         AsyncAgencyCommResult&& result) mutable {
-            if (result.ok()) {
-              switch (result.statusCode()) {
-                case fuerte::StatusOK:
-                  return createMoveShard(std::move(ctx), result.slice().at(0));
-                case fuerte::StatusNotFound:
-                  generateError(rest::ResponseCode::NOT_FOUND,
-                                TRI_ERROR_HTTP_NOT_FOUND, "unknown collection");
-                  return futures::makeFuture();
-                default:
-                  break;
-              }
-            }
+  try {
+    auto result =
+        co_await AsyncAgencyComm().sendReadTransaction(20s, std::move(trx));
+    if (result.ok()) {
+      switch (result.statusCode()) {
+        case fuerte::StatusOK:
+          co_return co_await createMoveShard(std::move(ctx),
+                                             result.slice().at(0));
+        case fuerte::StatusNotFound:
+          generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                        "unknown collection");
+          co_return;
+        default:
+          break;
+      }
+    }
 
-            generateError(result.asResult());
-            return futures::makeFuture();
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+    generateError(result.asResult());
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
+async<void> RestAdminClusterHandler::handleQueryJobStatus() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::string jobId = request()->value("id");
   if (jobId.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "missing id parameter");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
@@ -991,78 +1001,73 @@ RestStatus RestAdminClusterHandler::handleQueryJobStatus() {
       targetPath->toDo()->job(jobId)->str(),
   };
 
-  return waitForFuture(
-      AsyncAgencyComm()
-          .sendTransaction(20s, AgencyReadTransaction{std::move(paths)})
-          .thenValue([this, targetPath, jobId = std::move(jobId)](
-                         AsyncAgencyCommResult&& result) {
-            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              auto paths = std::vector{
-                  targetPath->pending()->job(jobId)->vec(),
-                  targetPath->failed()->job(jobId)->vec(),
-                  targetPath->finished()->job(jobId)->vec(),
-                  targetPath->toDo()->job(jobId)->vec(),
-              };
+  try {
+    auto result = co_await AsyncAgencyComm().sendTransaction(
+        20s, AgencyReadTransaction{std::move(paths)});
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      auto paths = std::vector{
+          targetPath->pending()->job(jobId)->vec(),
+          targetPath->failed()->job(jobId)->vec(),
+          targetPath->finished()->job(jobId)->vec(),
+          targetPath->toDo()->job(jobId)->vec(),
+      };
 
-              for (auto const& path : paths) {
-                VPackSlice job = result.slice().at(0).get(path);
+      for (auto const& path : paths) {
+        VPackSlice job = result.slice().at(0).get(path);
 
-                if (job.isObject()) {
-                  VPackBuffer<uint8_t> payload;
-                  {
-                    VPackBuilder builder(payload);
-                    VPackObjectBuilder ob(&builder);
+        if (job.isObject()) {
+          VPackBuffer<uint8_t> payload;
+          {
+            VPackBuilder builder(payload);
+            VPackObjectBuilder ob(&builder);
 
-                    // append all the job keys
-                    builder.add(VPackObjectIterator(job));
-                    builder.add("error", VPackValue(false));
-                    builder.add("job", VPackValue(jobId));
-                    builder.add("status", VPackValue(path[2]));
-                  }
+            // append all the job keys
+            builder.add(VPackObjectIterator(job));
+            builder.add("error", VPackValue(false));
+            builder.add("job", VPackValue(jobId));
+            builder.add("status", VPackValue(path[2]));
+          }
 
-                  resetResponse(rest::ResponseCode::OK);
-                  response()->setPayload(std::move(payload));
-                  return;
-                }
-              }
+          resetResponse(rest::ResponseCode::OK);
+          response()->setPayload(std::move(payload));
+          co_return;
+        }
+      }
 
-              generateError(rest::ResponseCode::NOT_FOUND,
-                            TRI_ERROR_HTTP_NOT_FOUND);
-            } else {
-              generateError(result.asResult());
-            }
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    } else {
+      generateError(result.asResult());
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleCancelJob() {
+async<void> RestAdminClusterHandler::handleCancelJob() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::string jobId;
@@ -1071,7 +1076,7 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "object with key `id`");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
@@ -1106,11 +1111,11 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
           generateError(
               Result{TRI_ERROR_BAD_PARAMETER,
                      "Only MoveShard and CleanOutServer jobs can be aborted"});
-          return RestStatus::DONE;
+          co_return;
         } else if (path[2] != "Pending" && path[2] != "ToDo") {
           generateError(Result{TRI_ERROR_BAD_PARAMETER,
                                path[2] + " jobs can no longer be cancelled."});
-          return RestStatus::DONE;
+          co_return;
         }
 
         // This tranaction aims at killing a job that is todo or pending.
@@ -1159,44 +1164,42 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                                                         std::move(trxBody));
         };
 
-        return waitForFuture(
-            sendTransaction()
-                .thenValue([=, this](AsyncAgencyCommResult&& wr) {
-                  if (!wr.ok()) {
-                    // Only if no longer pending or todo.
-                    if (wr.statusCode() == 412) {
-                      auto results = wr.slice().get("results");
-                      if (results[0].getNumber<uint64_t>() == 0 &&
-                          results[1].getNumber<uint64_t>() == 0) {
-                        generateError(
-                            Result{TRI_ERROR_HTTP_PRECONDITION_FAILED,
-                                   "Job is no longer pending or to do"});
-                        return;
-                      }
-                    } else {
-                      generateError(wr.asResult());
-                      return;
-                    }
-                  }
+        try {
+          auto wr = co_await sendTransaction();
 
-                  VPackBuffer<uint8_t> payload;
-                  {
-                    VPackBuilder builder(payload);
-                    VPackObjectBuilder ob(&builder);
-                    builder.add("job", VPackValue(jobId));
-                    builder.add("status", VPackValue("aborted"));
-                    builder.add("error", VPackValue(false));
-                  }
-                  resetResponse(rest::ResponseCode::OK);
-                  response()->setPayload(std::move(payload));
-                })
-                .thenError<VPackException>([this](VPackException const& e) {
-                  generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-                })
-                .thenError<std::exception>([this](std::exception const& e) {
-                  generateError(rest::ResponseCode::SERVER_ERROR,
-                                TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-                }));
+          if (!wr.ok()) {
+            // Only if no longer pending or todo.
+            if (wr.statusCode() == 412) {
+              auto results = wr.slice().get("results");
+              if (results[0].getNumber<uint64_t>() == 0 &&
+                  results[1].getNumber<uint64_t>() == 0) {
+                generateError(Result{TRI_ERROR_HTTP_PRECONDITION_FAILED,
+                                     "Job is no longer pending or to do"});
+                co_return;
+              }
+            } else {
+              generateError(wr.asResult());
+              co_return;
+            }
+          }
+
+          VPackBuffer<uint8_t> payload;
+          {
+            VPackBuilder builder(payload);
+            VPackObjectBuilder ob(&builder);
+            builder.add("job", VPackValue(jobId));
+            builder.add("status", VPackValue("aborted"));
+            builder.add("error", VPackValue(false));
+          }
+          resetResponse(rest::ResponseCode::OK);
+          response()->setPayload(std::move(payload));
+        } catch (VPackException const& e) {
+          generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+        } catch (std::exception const& e) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+        }
+        co_return;
       }
     }
 
@@ -1209,48 +1212,48 @@ RestStatus RestAdminClusterHandler::handleCancelJob() {
                   e.what());
   }
 
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestAdminClusterHandler::handleSingleServerJob(
+async<void> RestAdminClusterHandler::handleSingleServerJob(
     std::string const& job) {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (body.isObject()) {
     VPackSlice server = body.get("server");
     if (server.isString()) {
       std::string serverId = resolveServerNameID(server.copyString());
-      return handleCreateSingleServerJob(job, serverId, body);
+      co_return co_await handleCreateSingleServerJob(job, serverId, body);
     }
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                 "object with key `server`");
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
+async<void> RestAdminClusterHandler::handleCreateSingleServerJob(
     std::string const& job, std::string const& serverId, VPackSlice body) {
   std::string jobId = std::to_string(
       server().getFeature<ClusterFeature>().clusterInfo().uniqid());
@@ -1274,44 +1277,41 @@ RestStatus RestAdminClusterHandler::handleCreateSingleServerJob(
         VPackValue(timepointToString(std::chrono::system_clock::now())));
   }
 
-  return waitForFuture(
-      AsyncAgencyComm()
-          .setValue(20s, jobToDoPath, builder.slice())
-          .thenValue(
-              [this, jobId = std::move(jobId)](AsyncAgencyCommResult&& result) {
-                if (result.ok() && result.statusCode() == 200) {
-                  VPackBuilder builder;
-                  {
-                    VPackObjectBuilder ob(&builder);
-                    builder.add("id", VPackValue(jobId));
-                  }
+  try {
+    auto result =
+        co_await AsyncAgencyComm().setValue(20s, jobToDoPath, builder.slice());
 
-                  generateOk(arangodb::rest::ResponseCode::ACCEPTED, builder);
-                } else {
-                  generateError(result.asResult());
-                }
-              })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+    if (result.ok() && result.statusCode() == 200) {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder ob(&builder);
+        builder.add("id", VPackValue(jobId));
+      }
+
+      generateOk(arangodb::rest::ResponseCode::ACCEPTED, builder);
+    } else {
+      generateError(result.asResult());
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleProxyGetRequest(
+async<void> RestAdminClusterHandler::handleProxyGetRequest(
     std::string const& url, std::string const& serverFromParameter) {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::string const& serverId = request()->value(serverFromParameter);
@@ -1319,7 +1319,7 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(
     generateError(
         rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         std::string("missing parameter `") + serverFromParameter + "`");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto* pool = server().getFeature<NetworkFeature>().pool();
@@ -1329,75 +1329,72 @@ RestStatus RestAdminClusterHandler::handleProxyGetRequest(
   auto frequest = network::sendRequestRetry(pool, "server:" + serverId,
                                             fuerte::RestVerb::Get, url,
                                             VPackBuffer<uint8_t>(), opt);
+  try {
+    auto result = co_await std::move(frequest);
 
-  return waitForFuture(
-      std::move(frequest)
-          .thenValue([this](network::Response&& result) {
-            if (result.ok()) {
-              resetResponse(ResponseCode(
-                  result.statusCode()));  // I quit if the values are not the
-                                          // HTTP Status Codes
-              auto payload = result.response().stealPayload();
-              response()->setPayload(std::move(*payload));
-            } else {
-              switch (result.error) {
-                case fuerte::Error::ConnectionCanceled:
-                  generateError(rest::ResponseCode::BAD,
-                                TRI_ERROR_HTTP_BAD_PARAMETER, "unknown server");
-                  break;
-                case fuerte::Error::CouldNotConnect:
-                case fuerte::Error::RequestTimeout:
-                  generateError(rest::ResponseCode::REQUEST_TIMEOUT,
-                                TRI_ERROR_HTTP_GATEWAY_TIMEOUT,
-                                "server did not answer");
-                  break;
-                default:
-                  generateError(rest::ResponseCode::SERVER_ERROR,
-                                TRI_ERROR_HTTP_SERVER_ERROR);
-              }
-            }
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+    if (result.ok()) {
+      resetResponse(ResponseCode(
+          result.statusCode()));  // I quit if the values are not the
+      // HTTP Status Codes
+      auto payload = result.response().stealPayload();
+      response()->setPayload(std::move(*payload));
+    } else {
+      switch (result.error) {
+        case fuerte::Error::ConnectionCanceled:
+          generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "unknown server");
+          break;
+        case fuerte::Error::CouldNotConnect:
+        case fuerte::Error::RequestTimeout:
+          generateError(rest::ResponseCode::REQUEST_TIMEOUT,
+                        TRI_ERROR_HTTP_GATEWAY_TIMEOUT,
+                        "server did not answer");
+          break;
+        default:
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR);
+      }
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleNodeVersion() {
-  return handleProxyGetRequest("/_api/version", "ServerID");
+async<void> RestAdminClusterHandler::handleNodeVersion() {
+  co_return co_await handleProxyGetRequest("/_api/version", "ServerID");
 }
 
-RestStatus RestAdminClusterHandler::handleNodeStatistics() {
-  return handleProxyGetRequest("/_admin/statistics", "ServerID");
+async<void> RestAdminClusterHandler::handleNodeStatistics() {
+  co_return co_await handleProxyGetRequest("/_admin/statistics", "ServerID");
 }
 
-RestStatus RestAdminClusterHandler::handleNodeEngine() {
-  return handleProxyGetRequest("/_api/engine", "ServerID");
+async<void> RestAdminClusterHandler::handleNodeEngine() {
+  co_return co_await handleProxyGetRequest("/_api/engine", "ServerID");
 }
 
-RestStatus RestAdminClusterHandler::handleStatistics() {
-  return handleProxyGetRequest("/_admin/statistics", "DBserver");
+async<void> RestAdminClusterHandler::handleStatistics() {
+  co_return co_await handleProxyGetRequest("/_admin/statistics", "DBserver");
 }
 
-RestStatus RestAdminClusterHandler::handleShardDistribution() {
+void RestAdminClusterHandler::handleShardDistribution() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    return;
   }
 
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    return;
   }
 
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    return;
   }
 
   auto reporter = cluster::ShardDistributionReporter::instance(server());
@@ -1409,15 +1406,14 @@ RestStatus RestAdminClusterHandler::handleShardDistribution() {
     reporter->getDistributionForDatabase(_vocbase.name(), builder);
   }
   generateOk(rest::ResponseCode::OK, builder);
-  return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(
+void RestAdminClusterHandler::handleGetCollectionShardDistribution(
     std::string const& collection) {
   if (collection.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "expected nonempty `collection` parameter");
-    return RestStatus::DONE;
+    return;
   }
 
   auto reporter = cluster::ShardDistributionReporter::instance(server());
@@ -1430,19 +1426,18 @@ RestStatus RestAdminClusterHandler::handleGetCollectionShardDistribution(
                                                    builder);
   }
   generateOk(rest::ResponseCode::OK, builder);
-  return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
+void RestAdminClusterHandler::handleCollectionShardDistribution() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    return;
   }
 
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    return;
   }
 
   switch (request()->requestType()) {
@@ -1454,13 +1449,13 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-      return RestStatus::DONE;
+      return;
   }
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    return;
   }
 
   if (body.isObject()) {
@@ -1472,14 +1467,13 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                 "object with key `collection`");
-  return RestStatus::DONE;
 }
 
-RestStatus RestAdminClusterHandler::handleGetMaintenance() {
+async<void> RestAdminClusterHandler::handleGetMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "not allowed on single servers");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto maintenancePath = arangodb::cluster::paths::root()
@@ -1487,32 +1481,27 @@ RestStatus RestAdminClusterHandler::handleGetMaintenance() {
                              ->supervision()
                              ->state()
                              ->mode();
-
-  return waitForFuture(
-      AsyncAgencyComm()
-          .getValues(maintenancePath)
-          .thenValue([this](AgencyReadResult&& result) {
-            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              generateOk(rest::ResponseCode::OK, result.value());
-            } else {
-              generateError(result.asResult());
-            }
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    auto result = co_await AsyncAgencyComm().getValues(maintenancePath);
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      generateOk(rest::ResponseCode::OK, result.value());
+    } else {
+      generateError(result.asResult());
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
+async<void> RestAdminClusterHandler::handleGetDBServerMaintenance(
     std::string const& serverId) {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "not allowed on single servers");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto maintenancePath = arangodb::cluster::paths::root()
@@ -1521,27 +1510,22 @@ RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
                              ->maintenanceDBServers()
                              ->dbserver(serverId);
 
-  return waitForFuture(
-      AsyncAgencyComm()
-          .getValues(maintenancePath)
-          .thenValue([this](AgencyReadResult&& result) {
-            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              generateOk(rest::ResponseCode::OK, result.value());
-            } else {
-              generateError(result.asResult());
-            }
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    auto result = co_await AsyncAgencyComm().getValues(maintenancePath);
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      generateOk(rest::ResponseCode::OK, result.value());
+    } else {
+      generateError(result.asResult());
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestAdminClusterHandler::FutureVoid
-RestAdminClusterHandler::waitForSupervisionState(
+futures::Future<futures::Unit> RestAdminClusterHandler::waitForSupervisionState(
     bool state, std::string const& reactivationTime,
     clock::time_point startTime) {
   return SchedulerFeature::SCHEDULER->delay("wait-for-supervision", 1s)
@@ -1592,8 +1576,8 @@ RestAdminClusterHandler::waitForSupervisionState(
       });
 }
 
-RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate,
-                                                   uint64_t timeout) {
+async<void> RestAdminClusterHandler::setMaintenance(bool wantToActivate,
+                                                    uint64_t timeout) {
   // we don't need a timeout when disabling the maintenance
   TRI_ASSERT(wantToActivate || timeout == 0);
 
@@ -1618,28 +1602,25 @@ RestStatus RestAdminClusterHandler::setMaintenance(bool wantToActivate,
 
   auto self(shared_from_this());
 
-  return waitForFuture(
-      sendTransaction()
-          .thenValue([this, wantToActivate,
-                      reactivationTime](AsyncAgencyCommResult&& result) {
-            if (result.ok() && result.statusCode() == 200) {
-              return waitForSupervisionState(wantToActivate, reactivationTime,
-                                             std::chrono::steady_clock::now());
-            } else {
-              generateError(result.asResult());
-            }
-            return futures::makeFuture();
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    auto result = co_await sendTransaction();
+    if (result.ok() && result.statusCode() == 200) {
+      co_await waitForSupervisionState(wantToActivate, reactivationTime,
+                                       std::chrono::steady_clock::now());
+      co_return;
+    } else {
+      generateError(result.asResult());
+    }
+    co_return;
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestAdminClusterHandler::FutureVoid
+futures::Future<futures::Unit>
 RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
                                                     bool waitForMaintenance) {
   struct Context {
@@ -1689,7 +1670,7 @@ RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
   });
 }
 
-RestStatus RestAdminClusterHandler::setDBServerMaintenance(
+async<void> RestAdminClusterHandler::setDBServerMaintenance(
     std::string const& serverId, std::string const& mode, uint64_t timeout) {
   auto maintenancePath = arangodb::cluster::paths::root()
                              ->arango()
@@ -1741,41 +1722,35 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
 
   auto self(shared_from_this());
   bool const isMaintenanceMode = mode == "maintenance";
-
-  return waitForFuture(
-      sendTransaction()
-          .thenValue([this, reactivationTime, isMaintenanceMode,
-                      serverId](AsyncAgencyCommResult&& result) {
-            if (result.ok() && result.statusCode() == 200) {
-              VPackBuilder builder;
-              { VPackObjectBuilder obj(&builder); }
-              generateOk(rest::ResponseCode::OK, builder);
-              return waitForDBServerMaintenance(serverId, isMaintenanceMode);
-            } else {
-              generateError(result.asResult());
-            }
-            return futures::makeFuture();
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    auto result = co_await sendTransaction();
+    if (result.ok() && result.statusCode() == 200) {
+      VPackBuilder builder;
+      { VPackObjectBuilder obj(&builder); }
+      generateOk(rest::ResponseCode::OK, builder);
+      co_await waitForDBServerMaintenance(serverId, isMaintenanceMode);
+    } else {
+      generateError(result.asResult());
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handlePutMaintenance() {
+async<void> RestAdminClusterHandler::handlePutMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "not allowed on single servers");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (body.isString()) {
@@ -1783,10 +1758,10 @@ RestStatus RestAdminClusterHandler::handlePutMaintenance() {
       // supervision maintenance will turn itself off automatically
       // after one hour by default
       constexpr uint64_t timeout = 3600;  // 1 hour
-      return setMaintenance(true, timeout);
+      co_return co_await setMaintenance(true, timeout);
     } else if (body.isEqualString("off")) {
       // timeout doesn't matter for turning off the supervision
-      return setMaintenance(false, /*timeout*/ 0);
+      co_return co_await setMaintenance(false, /*timeout*/ 0);
     } else {
       // user sent a stringified timeout value, so lets honor this
       VPackValueLength l;
@@ -1794,29 +1769,29 @@ RestStatus RestAdminClusterHandler::handlePutMaintenance() {
       bool valid = false;
       uint64_t timeout = NumberUtils::atoi_positive<uint64_t>(p, p + l, valid);
       if (valid) {
-        return setMaintenance(true, timeout);
+        co_return co_await setMaintenance(true, timeout);
       }
       // otherwise fall-through to error
     }
   } else if (body.isNumber()) {
     // user sent a numeric timeout value, so lets honor this
     uint64_t timeout = body.getNumber<uint64_t>();
-    return setMaintenance(true, timeout);
+    co_return co_await setMaintenance(true, timeout);
   }
 
   generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                 "string expected with value `on` or `off`");
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestAdminClusterHandler::handlePutDBServerMaintenance(
+async<void> RestAdminClusterHandler::handlePutDBServerMaintenance(
     std::string const& serverId) {
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (body.isObject() && body.hasKey("mode")) {
@@ -1833,7 +1808,7 @@ RestStatus RestAdminClusterHandler::handlePutDBServerMaintenance(
           }
         }
       }
-      return setDBServerMaintenance(serverId, mode, timeout);
+      co_return co_await setDBServerMaintenance(serverId, mode, timeout);
     }
     // otherwise fall-through to error
   }
@@ -1841,72 +1816,72 @@ RestStatus RestAdminClusterHandler::handlePutDBServerMaintenance(
   generateError(
       rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
       "object expected with attribute 'mode' and optional attribute 'timeout'");
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestAdminClusterHandler::handleMaintenance() {
+async<void> RestAdminClusterHandler::handleMaintenance() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator() &&
       !ServerState::instance()->isSingleServer()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on single server and coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "not allowed on single servers");
-    return RestStatus::DONE;
+    co_return;
   }
 
   switch (request()->requestType()) {
     case rest::RequestType::GET:
-      return handleGetMaintenance();
+      co_return co_await handleGetMaintenance();
     case rest::RequestType::PUT:
-      return handlePutMaintenance();
+      co_return co_await handlePutMaintenance();
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-      return RestStatus::DONE;
+      co_return;
   }
 }
 
-RestStatus RestAdminClusterHandler::handleDBServerMaintenance(
+async<void> RestAdminClusterHandler::handleDBServerMaintenance(
     std::string const& serverId) {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   TRI_ASSERT(AsyncAgencyCommManager::INSTANCE != nullptr);
 
   switch (request()->requestType()) {
     case rest::RequestType::GET:
-      return handleGetDBServerMaintenance(serverId);
+      co_return co_await handleGetDBServerMaintenance(serverId);
     case rest::RequestType::PUT:
-      return handlePutDBServerMaintenance(serverId);
+      co_return co_await handlePutDBServerMaintenance(serverId);
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-      return RestStatus::DONE;
+      co_return;
   }
 }
 
-RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
+async<void> RestAdminClusterHandler::handleGetNumberOfServers() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "not allowed on single servers");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
@@ -1923,67 +1898,59 @@ RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
         .done();
   }
 
-  auto self(shared_from_this());
-  return waitForFuture(
-      AsyncAgencyComm()
-          .sendReadTransaction(10.0s, std::move(trx))
-          .thenValue([this](AsyncAgencyCommResult&& result) {
-            auto targetPath =
-                arangodb::cluster::paths::root()->arango()->target();
+  try {
+    auto result =
+        co_await AsyncAgencyComm().sendReadTransaction(10.0s, std::move(trx));
 
-            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuilder builder;
-              {
-                VPackObjectBuilder ob(&builder);
-                builder.add("numberOfDBServers",
-                            result.slice().at(0).get(
-                                targetPath->numberOfDBServers()->vec()));
-                builder.add("numberOfCoordinators",
-                            result.slice().at(0).get(
-                                targetPath->numberOfCoordinators()->vec()));
-                builder.add("cleanedServers",
-                            result.slice().at(0).get(
-                                targetPath->cleanedServers()->vec()));
-              }
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder ob(&builder);
+        builder.add(
+            "numberOfDBServers",
+            result.slice().at(0).get(targetPath->numberOfDBServers()->vec()));
+        builder.add("numberOfCoordinators",
+                    result.slice().at(0).get(
+                        targetPath->numberOfCoordinators()->vec()));
+        builder.add("cleanedServers", result.slice().at(0).get(
+                                          targetPath->cleanedServers()->vec()));
+      }
 
-              generateOk(rest::ResponseCode::OK, builder);
-            } else {
-              generateError(rest::ResponseCode::SERVER_ERROR,
-                            TRI_ERROR_HTTP_SERVER_ERROR,
-                            "agency communication failed");
-            }
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+      generateOk(rest::ResponseCode::OK, builder);
+    } else {
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_HTTP_SERVER_ERROR, "agency communication failed");
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
+async<void> RestAdminClusterHandler::handlePutNumberOfServers() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "not allowed on single servers");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool parseSuccess;
   VPackSlice body = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!body.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "object expected");
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::vector<AgencyOperation> ops;
@@ -2003,7 +1970,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
     } else if (!numberOfCoordinators.isNone()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "numberOfCoordinators: number expected");
-      return RestStatus::DONE;
+      co_return;
     }
 
     VPackSlice numberOfDBServers = body.get("numberOfDBServers");
@@ -2014,7 +1981,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
     } else if (!numberOfDBServers.isNone()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "numberOfDBServers: number expected");
-      return RestStatus::DONE;
+      co_return;
     }
 
     VPackSlice cleanedServers = body.get("cleanedServers");
@@ -2034,12 +2001,12 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
       } else {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                       "cleanedServers: array of strings expected");
-        return RestStatus::DONE;
+        co_return;
       }
     } else if (!cleanedServers.isNone()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "cleanedServers: array expected");
-      return RestStatus::DONE;
+      co_return;
     }
 
     std::move(write).end().done();
@@ -2052,34 +2019,29 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
     //               "missing fields");
     // but that would break API compatibility. Introduce this behavior
     // in 4.0!!
-    return RestStatus::DONE;
+    co_return;
   }
-
-  auto self(shared_from_this());
-  return waitForFuture(
-      AsyncAgencyComm()
-          .sendWriteTransaction(20s, std::move(trx))
-          .thenValue([this](AsyncAgencyCommResult&& result) {
-            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
-            } else {
-              generateError(result.asResult());
-            }
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    auto result =
+        co_await AsyncAgencyComm().sendWriteTransaction(20s, std::move(trx));
+    if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+      generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
+    } else {
+      generateError(result.asResult());
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleNumberOfServers() {
+async<void> RestAdminClusterHandler::handleNumberOfServers() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // GET requests are allowed for everyone, unless --server.harden is used.
@@ -2093,47 +2055,45 @@ RestStatus RestAdminClusterHandler::handleNumberOfServers() {
 
   if (needsAdminPrivileges && !ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   switch (request()->requestType()) {
     case rest::RequestType::GET:
-      return handleGetNumberOfServers();
+      co_return co_await handleGetNumberOfServers();
     case rest::RequestType::PUT:
-      return handlePutNumberOfServers();
+      co_return co_await handlePutNumberOfServers();
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-      return RestStatus::DONE;
+      co_return;
   }
 }
 
-RestStatus RestAdminClusterHandler::handleHealth() {
+async<void> RestAdminClusterHandler::handleHealth() {
   // We allow this API whenever one is authenticated in some way. There used
   // to be a check for isAdminUser here. However, we want that the UI with
   // the cluster health dashboard works for every authenticated user.
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator() &&
       !ServerState::instance()->isSingleServer()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on single server and coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "not allowed on single servers");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // TODO handle timeout parameter
-
-  auto self(shared_from_this());
 
   // query the agency config
   auto fConfig =
@@ -2141,7 +2101,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
           .sendWithFailover(fuerte::RestVerb::Get, "/_api/agency/config", 60.0s,
                             AsyncAgencyComm::RequestType::READ,
                             VPackBuffer<uint8_t>())
-          .thenValue([self](AsyncAgencyCommResult&& result) {
+          .thenValue([this](AsyncAgencyCommResult&& result) {
             // this lambda has to capture self since collect returns early on
             // an exception and the RestHandler might be freed too early
             // otherwise
@@ -2154,7 +2114,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
             // version
             std::vector<futures::Future<::agentConfigHealthResult>> fs;
 
-            auto* pool = self->server().getFeature<NetworkFeature>().pool();
+            auto* pool = server().getFeature<NetworkFeature>().pool();
             for (auto member : VPackObjectIterator(result.slice().get(
                      std::vector<std::string>{"configuration", "pool"}))) {
               std::string endpoint = member.value.copyString();
@@ -2196,33 +2156,27 @@ RestStatus RestAdminClusterHandler::handleHealth() {
   }
   auto fStore = AsyncAgencyComm().sendReadTransaction(60.0s, std::move(trx));
 
-  return waitForFuture(
-      futures::collect(std::move(fConfig), std::move(fStore))
-          .thenValue([this](auto&& result) {
-            auto rootPath = arangodb::cluster::paths::root()->arango();
-            auto& [configResult, storeResult] = result;
-            if (storeResult.ok() &&
-                storeResult.statusCode() == fuerte::StatusOK) {
-              VPackBuilder builder;
-              {
-                VPackObjectBuilder ob(&builder);
-                ::buildHealthResult(builder, configResult,
-                                    storeResult.slice().at(0));
-              }
-              generateOk(rest::ResponseCode::OK, builder);
-            } else {
-              generateError(rest::ResponseCode::SERVER_ERROR,
-                            TRI_ERROR_HTTP_SERVER_ERROR,
-                            "agency communication failed");
-            }
-          })
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    auto result =
+        co_await futures::collect(std::move(fConfig), std::move(fStore));
+    auto& [configResult, storeResult] = result;
+    if (storeResult.ok() && storeResult.statusCode() == fuerte::StatusOK) {
+      VPackBuilder builder;
+      {
+        VPackObjectBuilder ob(&builder);
+        ::buildHealthResult(builder, configResult, storeResult.slice().at(0));
+      }
+      generateOk(rest::ResponseCode::OK, builder);
+    } else {
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_HTTP_SERVER_ERROR, "agency communication failed");
+    }
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
 std::string RestAdminClusterHandler::resolveServerNameID(
@@ -2332,9 +2286,9 @@ void theSimpleStupidOne(
 }
 }  // namespace
 
-RestAdminClusterHandler::FutureVoid
+futures::Future<futures::Unit>
 RestAdminClusterHandler::handlePostRebalanceShards(
-    const ReshardAlgorithm& algorithm) {
+    ReshardAlgorithm const& algorithm) {
   // dbserver -> shards
   std::vector<MoveShardDescription> moves;
   std::map<std::string, std::unordered_set<CollectionShardPair>> shardMap;
@@ -2397,24 +2351,24 @@ RestAdminClusterHandler::handlePostRebalanceShards(
       });
 }
 
-RestStatus RestAdminClusterHandler::handleRebalanceShards() {
+async<void> RestAdminClusterHandler::handleRebalanceShards() {
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(auth::Level::RW)) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "insufficient permissions");
-    return RestStatus::DONE;
+    co_return;
   }
 
   // ADD YOUR ALGORITHM HERE!!!
@@ -2426,18 +2380,17 @@ RestStatus RestAdminClusterHandler::handleRebalanceShards() {
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "unknown algorithm");
-    return RestStatus::DONE;
+    co_return;
   }
 
-  return waitForFuture(
-      handlePostRebalanceShards(algorithm)
-          .thenError<VPackException>([this](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this](std::exception const& e) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR, e.what());
-          }));
+  try {
+    co_await handlePostRebalanceShards(algorithm);
+  } catch (VPackException const& e) {
+    generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  }
 }
 
 namespace {
@@ -2495,11 +2448,11 @@ RestAdminClusterHandler::countAllMoveShardJobs() {
   };
 }
 
-RestStatus RestAdminClusterHandler::handleRebalanceGet() {
+void RestAdminClusterHandler::handleRebalanceGet() {
   if (request()->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expect GET /_admin/cluster/rebalance");
-    return RestStatus::DONE;
+    return;
   }
 
   auto [todo, pending] = countAllMoveShardJobs();
@@ -2519,7 +2472,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceGet() {
   }
 
   generateOk(rest::ResponseCode::OK, builder.slice());
-  return RestStatus::DONE;
+  return;
 }
 
 namespace {
@@ -2584,11 +2537,11 @@ futures::Future<Result> executeMoveShardOperations(std::vector<T> const& batch,
 }
 }  // namespace
 
-RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
+async<void> RestAdminClusterHandler::handleRebalanceExecute() {
   if (request()->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
   auto opts =
       velocypack::deserialize<RebalanceExecuteOptions>(_request->payload());
@@ -2596,7 +2549,7 @@ RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
   if (opts.version != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "unknown version provided");
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
@@ -2607,21 +2560,18 @@ RestStatus RestAdminClusterHandler::handleRebalanceExecute() {
 
   if (opts.moves.empty()) {
     generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
-    return RestStatus::DONE;
+    co_return;
   }
 
-  return waitForFuture(executeMoveShardOperations(opts.moves, ci, idMapper)
-                           .thenValue([this](auto&& result) {
-                             if (result.ok()) {
-                               generateOk(rest::ResponseCode::ACCEPTED,
-                                          VPackSlice::noneSlice());
-                             } else {
-                               generateError(result);
-                             }
-                           }));
+  auto result = co_await executeMoveShardOperations(opts.moves, ci, idMapper);
+  if (result.ok()) {
+    generateOk(rest::ResponseCode::ACCEPTED, VPackSlice::noneSlice());
+  } else {
+    generateError(result);
+  }
 }
 
-RestStatus RestAdminClusterHandler::handleRebalancePlan() {
+async<void> RestAdminClusterHandler::handleRebalancePlan() {
   using namespace cluster::rebalance;
 
   auto const readRebalanceOptions = [&]() -> std::optional<RebalanceOptions> {
@@ -2645,7 +2595,7 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
 
   auto options = readRebalanceOptions();
   if (!options) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto p = collectRebalanceInformation(options->databasesExcluded,
@@ -2720,57 +2670,56 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
   switch (request()->requestType()) {
     case rest::RequestType::POST: {
       buildResponse(rest::ResponseCode::OK);
-      return RestStatus::DONE;
+      co_return;
     }
     case rest::RequestType::PUT: {
       buildResponse(rest::ResponseCode::ACCEPTED);
-      return waitForFuture(
-          executeMoveShardOperations(moves, ci, moveShardConverter)
-              .thenValue([&](auto&& result) {
-                if (!result.ok()) {
-                  generateError(result);
-                }
-              }));
+      auto result =
+          co_await executeMoveShardOperations(moves, ci, moveShardConverter);
+      if (!result.ok()) {
+        generateError(result);
+      }
+      co_return;
     }
     default:
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-      return RestStatus::DONE;
+      co_return;
   }
 }
 
-RestStatus RestAdminClusterHandler::handleRebalance() {
+async<void> RestAdminClusterHandler::handleRebalance() {
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                   "only allowed on coordinators");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (request()->requestType() == rest::RequestType::GET) {
-    return handleRebalanceGet();
+    co_return handleRebalanceGet();
   }
 
   bool parseSuccess = false;
   std::ignore = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (auto const& suff = request()->suffixes(); suff.size() == 2) {
     if (suff[1] != "execute") {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expect /_admin/cluster/rebalance[/execute]");
-      return RestStatus::DONE;
+      co_return;
     }
-    return handleRebalanceExecute();
+    co_return co_await handleRebalanceExecute();
   }
 
-  return handleRebalancePlan();
+  co_return co_await handleRebalancePlan();
 }
 
 cluster::rebalance::AutoRebalanceProblem
@@ -2912,8 +2861,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
   return p;
 }
 
-RestAdminClusterHandler::FutureVoid
-RestAdminClusterHandler::handleVPackSortMigration(
+async<void> RestAdminClusterHandler::handleVPackSortMigration(
     std::string const& subCommand) {
   // First we do the authentication: We only allow superuser access, since
   // this is a critical migration operation:
