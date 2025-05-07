@@ -418,7 +418,7 @@ auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
     result.close();
 
     result.close();  // Close the result object
-  }  // format end
+  }                  // format end
 
   generateResult(rest::ResponseCode::OK, result.slice());
   co_return;
