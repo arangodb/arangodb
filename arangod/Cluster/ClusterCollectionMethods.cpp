@@ -197,10 +197,24 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   auto startTime = std::chrono::steady_clock::now();
   while (std::chrono::steady_clock::now() - startTime <
          std::chrono::seconds(60)) {
+    // TODO: Is this necessary?
+    ci.loadCurrentDBServers();
+    auto planVersion =
+        ci.checkDataSourceNamesAvailable(databaseName, collectionNames);
+    if (planVersion.fail()) {
+      return planVersion.result();
+    }
+    std::vector<ServerID> availableServers = ci.getCurrentDBServers();
+
     // Now check if any of the to-be-created collections has
     // `distributeShardsLike` set to a collection, which already exists.
     // If so, we need to check if any of its shards currently have
     // their leader asked to resign!
+    // Note that this might see a newer version of the plan than seen
+    // above! However, in that case our precondition below will fail
+    // anyway. Therefore, if this precondition does not fail, the plan
+    // version has not changed, and so the checks below here have indeed
+    // seen the same state, so we are good.
     std::unordered_set<std::string> distributeShardsLikeColls;
     auto const& colls = writer.collectionsToCreate();
     for (auto const& c : colls) {
@@ -239,15 +253,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
         continue;
       }
     }
-
-    // TODO: Is this necessary?
-    ci.loadCurrentDBServers();
-    auto planVersion =
-        ci.checkDataSourceNamesAvailable(databaseName, collectionNames);
-    if (planVersion.fail()) {
-      return planVersion.result();
-    }
-    std::vector<ServerID> availableServers = ci.getCurrentDBServers();
 
     auto buildingTransaction = writer.prepareStartBuildingTransaction(
         databaseName, planVersion.get(), availableServers);
