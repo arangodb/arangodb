@@ -389,7 +389,7 @@ def add_test_definition_jobs_to_workflow(
         if "cluster" in test["flags"]:
             jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args))
             if repl2:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, 2))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, arangosh_args, extra_args, 2))
         elif "single" in test["flags"]:
             jobs.append(create_test_job(test, False, build_config, build_jobs, arangosh_args, extra_args))
         else:
