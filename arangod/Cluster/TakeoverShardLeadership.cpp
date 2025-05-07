@@ -268,9 +268,7 @@ bool TakeoverShardLeadership::first() {
   Result res;
 
   TRI_IF_FAILURE("DelayTakeoverShardLeadership15") {
-    LOG_DEVEL << "Sleeping for 60s...";
     std::this_thread::sleep_for(std::chrono::seconds(15));
-    LOG_DEVEL << "Slept well.";
   }
 
   try {
