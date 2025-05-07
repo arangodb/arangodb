@@ -6,7 +6,7 @@ devel
   of a shard group was currently being asked to resign.
 
 * Fix BTS-2093: A MoveShard operation could fail and leave locks unreleased
-  if a new collection with `distributeShardsLike` was create at the wrong
+  if a new collection with `distributeShardsLike` was created at the wrong
   moment.
 
 * Updated ArangoDB Starter to v0.19.11-preview-1.
