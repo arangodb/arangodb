@@ -95,7 +95,7 @@ int main(int argc, char* argv[]) {
           return std::make_unique<ProcessEnvironmentFeature>(
               server, context.binaryName());
         },
- #endif
+#endif
         [&](ArangoshServer& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, context.binaryName());
         },
