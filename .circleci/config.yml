@@ -32,7 +32,7 @@ parameters:
     default: false
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:12"
+    default: "arangodb/ubuntubuildarangodb-devel:15"
   nightly:
     type: boolean
     default: false
