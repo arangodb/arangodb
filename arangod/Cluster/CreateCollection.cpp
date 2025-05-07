@@ -112,6 +112,10 @@ bool CreateCollection::first() {
   auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
 
+  TRI_IF_FAILURE("DelayCreateShard15") {
+    std::this_thread::sleep_for(std::chrono::seconds(15));
+  }
+
   std::string from;
   _description.get("from", from);
 

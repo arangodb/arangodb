@@ -267,6 +267,12 @@ bool TakeoverShardLeadership::first() {
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
   Result res;
 
+  TRI_IF_FAILURE("DelayTakeoverShardLeadership15") {
+    LOG_DEVEL << "Sleeping for 60s...";
+    std::this_thread::sleep_for(std::chrono::seconds(15));
+    LOG_DEVEL << "Slept well.";
+  }
+
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
