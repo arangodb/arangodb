@@ -43,6 +43,7 @@ class ExecutionEngine;
 class ClusterQuery;
 
 struct QueryDestructionContext {
+  QueryId id;
   std::string queryString;
   ErrorCode errorCode;
   bool finished;
@@ -163,10 +164,6 @@ class QueryRegistry {
     ErrorCode errorCode;
     bool finished;
   };
-
-  fu2::unique_function<void(bool)> generateQueryTrackingDestruction(
-      std::chrono::steady_clock::time_point startTime,
-      std::shared_ptr<QueryDestructionContext> queryCtx);
 
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {

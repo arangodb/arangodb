@@ -54,6 +54,40 @@ using namespace std::chrono_literals;
 
 static auto constexpr kWaitUntilLoggingFor = 5s;
 
+fu2::unique_function<void(bool)> generateQueryTrackingDestruction(
+    std::chrono::steady_clock::time_point startTime,
+    std::shared_ptr<QueryDestructionContext> queryCtx) {
+  return [queryCtx = std::move(queryCtx),
+          startTime = std::move(startTime)](bool cancelled) mutable noexcept {
+    if (cancelled) {
+      return;
+    }
+
+    auto const timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
+        std::chrono::steady_clock::now() - startTime);
+    LOG_TOPIC("a16bf", WARN, Logger::QUERIES)
+        << "Query destruction is taking: " << timeDiff
+        << ", query id: " << queryCtx->id
+        << ", query: " << queryCtx->queryString
+        << ", finished: " << queryCtx->finished
+        << ", errorCode: " << queryCtx->errorCode;
+  };
+}
+
+auto postQueryDestructionTrackingTask(auto queryId,
+                                      auto& queryInfoLifetimeExtension) {
+  auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
+      queryId, queryInfoLifetimeExtension->_queryString,
+      queryInfoLifetimeExtension->_errorCode,
+      queryInfoLifetimeExtension->_finished);
+  auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
+      "query destruction timing", RequestLane::CLUSTER_INTERNAL,
+      kWaitUntilLoggingFor,
+      generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
+                                       queryDestructionContext));
+  queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+}
+
 QueryRegistry::~QueryRegistry() {
   disallowInserts();
   destroyAll();
@@ -272,6 +306,9 @@ void QueryRegistry::closeEngine(EngineId engineId) {
         auto queryMapIt = _queries.find(ei._queryInfo->_query->id());
         TRI_ASSERT(queryMapIt != _queries.end());
         queryInfoLifetimeExtension = deleteQuery(queryMapIt);
+
+        postQueryDestructionTrackingTask(ei._queryInfo->_query->id(),
+                                         queryInfoLifetimeExtension);
       } else if (ei._queryInfo->_expires != 0) {
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
@@ -286,30 +323,12 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   finishPromise.setValue(std::move(queryToFinish));
 }
 
-fu2::unique_function<void(bool)>
-QueryRegistry::generateQueryTrackingDestruction(
-    std::chrono::steady_clock::time_point startTime,
-    std::shared_ptr<QueryDestructionContext> queryCtx) {
-  return [queryCtx = std::move(queryCtx),
-          startTime = std::move(startTime)](bool cancelled) mutable noexcept {
-    if (cancelled) {
-      return;
-    }
-
-    auto const timeDiff = std::chrono::duration_cast<std::chrono::seconds>(
-        std::chrono::steady_clock::now() - startTime);
-    LOG_TOPIC("a16bf", WARN, Logger::QUERIES)
-        << "Query destruction is taking: " << timeDiff
-        << ", query id: " << queryCtx->id
-        << ", query: " << queryCtx->queryString
-        << ", finished: " << queryCtx->finished
-        << ", errorCode: " << queryCtx->errorCode;
-  };
-}
-
 /// @brief destroy
 // cppcheck-suppress virtualCallInConstructor
 void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
+  // The queryInfo which holds the reference to _query should survive outside
+  // the loop so that the query destruction is triggered after the lock
+  // is released
   std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -322,20 +341,10 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
 
     if (queryMapIt->second->_numOpen == 0) {
       queryInfoLifetimeExtension = deleteQuery(queryMapIt);
-      auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
-          id, queryInfoLifetimeExtension->_queryString,
-          queryInfoLifetimeExtension->_errorCode,
-          queryInfoLifetimeExtension->_finished);
-      auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
-          "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-          kWaitUntilLoggingFor,
-          generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
-                                           queryDestructionContext));
-      queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
-      queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+      postQueryDestructionTrackingTask(queryMapIt->first,
+                                       queryInfoLifetimeExtension);
     }
   }
-  queryInfoLifetimeExtension.reset();
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
@@ -370,12 +379,7 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     result = queryInfo._query;
     queryInfoLifetimeExtension = deleteQuery(queryMapIt);
 
-    auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
-        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
-        kWaitUntilLoggingFor,
-        generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
-                                         std::move(queryDestructionContext)));
-    queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+    postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
 
     queryInfo._finished = true;
     if (queryInfo._numOpen > 0) {
@@ -786,6 +790,7 @@ QueryRegistry::QueryInfo::~QueryInfo() {
     // promise
     _promise.setValue(std::shared_ptr<ClusterQuery>{nullptr});
   }
+  _query.reset();
   auto const diff = std::chrono::duration_cast<std::chrono::seconds>(
       std::chrono::steady_clock::now() - startDestructionTime);
   if (diff > 5s) {
