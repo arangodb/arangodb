@@ -335,7 +335,7 @@ class instance {
       'log.file': this.logFile
     });
     if (this.options.extremeVerbosity) {
-      this.args['temp.dumpenv'] = true;
+      this.args['dump-env'] = true;
     }
 
     if (this.options.forceOneShard) {

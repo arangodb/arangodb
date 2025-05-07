@@ -40,12 +40,13 @@ extern char** environ;
 
 namespace arangodb {
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void ProcessEnvironmentFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("temp", "temporary files");
 
   options
-      ->addOption("--temp.dumpenv", "Dump the full environment to the logs.",
+      ->addOption("--dump-env", "Dump the full environment to the logs.",
                   new BooleanParameter(&_dumpEnv))
       .setLongDescription("will dump the full environment to the logfiles");
 }
@@ -59,5 +60,5 @@ void ProcessEnvironmentFeature::prepare() {
     }
   }
 }
-
+#endif
 }  // namespace arangodb

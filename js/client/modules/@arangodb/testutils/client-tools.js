@@ -152,7 +152,7 @@ class ConfigBuilder {
   }
 
   setDumpEnv() {
-    this.config['temp.dumpenv'] = true;
+    this.config['dump-env'] = true;
   }
   setAuth(username, password) {
     if (username !== undefined) {

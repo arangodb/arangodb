@@ -79,10 +79,12 @@ int main(int argc, char* argv[]) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::true_type{});
         },
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
         [&](ArangoImportServer& server, TypeTag<ProcessEnvironmentFeature>) {
           return std::make_unique<ProcessEnvironmentFeature>(
               server, context.binaryName());
         },
+#endif
         [&](ArangoImportServer& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, context.binaryName());
         },

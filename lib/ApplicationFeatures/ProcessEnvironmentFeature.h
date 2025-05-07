@@ -30,6 +30,7 @@ namespace application_features {
 class GreetingsFeaturePhase;
 }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class ProcessEnvironmentFeature final
     : public application_features::ApplicationFeature {
  public:
@@ -48,5 +49,5 @@ class ProcessEnvironmentFeature final
  private:
   bool _dumpEnv;
 };
-
+#endif
 }  // namespace arangodb
