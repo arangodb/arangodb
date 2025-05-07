@@ -50,14 +50,11 @@ RestGraphHandler::RestGraphHandler(ArangodServer& server,
     : RestVocbaseBaseHandler(server, request, response),
       _graphManager(_vocbase, transaction::OperationOriginREST{::moduleName}) {}
 
-RestStatus RestGraphHandler::execute() {
-  auto f = executeGharial().thenValue([&](Result res) {
-    if (res.fail()) {
-      TRI_ASSERT(!_response->isResponseEmpty());
-    }
-  });
-
-  return waitForFuture(std::move(f));
+auto RestGraphHandler::executeAsync() -> futures::Future<futures::Unit> {
+  auto res = co_await executeGharial();
+  if (res.fail()) {
+    TRI_ASSERT(!_response->isResponseEmpty());
+  }
 }
 
 Result RestGraphHandler::returnError(ErrorCode errorNumber) {
