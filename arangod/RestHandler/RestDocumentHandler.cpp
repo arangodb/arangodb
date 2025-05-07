@@ -109,18 +109,14 @@ auto RestDocumentHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_return co_await removeDocument();
     case rest::RequestType::GET:
       co_return co_await readDocument();
-      ;
     case rest::RequestType::HEAD:
       co_return co_await checkDocument();
-      ;
     case rest::RequestType::POST:
       co_return co_await insertDocument();
     case rest::RequestType::PUT:
       co_return co_await replaceDocument();
-      ;
     case rest::RequestType::PATCH:
       co_return co_await updateDocument();
-      ;
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
     }
