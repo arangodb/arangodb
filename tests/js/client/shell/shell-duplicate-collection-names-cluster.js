@@ -55,7 +55,7 @@ function createDuplicateCollectionNameSuite() {
       const timeout = isInstr ? 200 : 20;
       while (true) {
         let s = arango.PUT(`/_api/job/${r.headers["x-arango-async-id"]}`,{});
-        if (s.status !== 204) {
+        if (s.code !== 204) {
           break;
         }
         if (++count > timeout) {
