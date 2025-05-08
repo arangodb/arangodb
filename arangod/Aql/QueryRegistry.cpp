@@ -370,12 +370,6 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
       return std::shared_ptr<ClusterQuery>();
     }
 
-    queryInfo._finished = true;
-    if (queryInfo._numOpen > 0) {
-      // we return a future for this queryInfo which will be resolved once the
-      // last thread closes its engine
-      return queryInfo._promise.getFuture();
-    }
     auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
         id, queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
 

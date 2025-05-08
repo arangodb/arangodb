@@ -48,11 +48,6 @@ struct QueryDestructionContext {
   ErrorCode errorCode;
   bool finished;
   Scheduler::WorkHandle scheduledHandle;
-
-  ~QueryDestructionContext() {
-    using namespace std::chrono_literals;
-    std::this_thread::sleep_for(2s);
-  }
 };
 
 /// manages cluster queries and engines
@@ -158,13 +153,6 @@ class QueryRegistry {
 #endif
 
  private:
-  struct QueryDestructionContext {
-    QueryId id;
-    std::string queryString;
-    ErrorCode errorCode;
-    bool finished;
-  };
-
   /// @brief a struct for all information regarding one query in the registry
   struct QueryInfo final {
     /// @brief constructor for a regular query entry
