@@ -312,7 +312,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
           << "closing engine " << engineId << ", no query";
     }
   }
-  if (queryToFinish) {
+  if (queryInfoLifetimeExtension && queryToFinish) {
     postQueryDestructionTrackingTask(queryToFinish->id(),
                                      queryInfoLifetimeExtension);
     // Now explicitly destroy the QueryInfo before we resolve the promise,
@@ -342,7 +342,7 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
       queryInfoLifetimeExtension = deleteQuery(queryMapIt);
     }
   }
-  if (queryInfoLifetimeExtension != nullptr) {
+  if (queryInfoLifetimeExtension) {
     postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
     // Now explicitly destroy the QueryInfo before we resolve the promise,
     // but no longer under the lock:
