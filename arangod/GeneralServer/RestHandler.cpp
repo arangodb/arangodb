@@ -171,7 +171,9 @@ void RestHandler::trackQueueStart() noexcept {
       SchedulerFeature::SCHEDULER->queueStatistics()._queued);
 }
 
-void RestHandler::trackQueueEnd() noexcept { _statistics.SET_QUEUE_END(); }
+void RestHandler::trackQueueEnd() noexcept {
+  _statistics.SET_QUEUE_END();
+}
 
 void RestHandler::trackTaskStart() noexcept {
   TRI_ASSERT(!_trackedAsOngoingLowPrio);

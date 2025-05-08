@@ -266,6 +266,7 @@ function backgroundIndexSuite() {
         } 
         c.save(docs);
       }
+      print("This step 1");
 
       const idxDef = {type: 'persistent', fields: ['value'], unique: true, inBackground: true};
       // lets insert the rest via tasks
@@ -291,6 +292,7 @@ function backgroundIndexSuite() {
       // wait for insertion tasks to complete
       waitForTasks();
       
+      print("This step 2");
       // basic checks
       assertEqual(c.count(), 25001);
 
@@ -301,11 +303,26 @@ function backgroundIndexSuite() {
       let cmp = c.ensureIndex(idxDef);
       assertEqual(cmp.id, idx.id);
 
-      for (let i = 0; i < 25000; i++) {
-        const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+      print("This step 3");
+      db._profileQuery("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+                               {'@coll': cn, 'val': 1}, {count:true})
+      for (let i = 0; i < 25; i++) {
+
+        print("Query " + i);
+        if(i == 10) {
+          print("PROFILE LEVEL 3");
+          const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
+                                 {'@coll': cn, 'val': i}, {count:true, profile: 3});
+
+          assertEqual(cursor.count(), 1);
+        } else { 
+          const cursor = db._query("FOR doc IN @@coll FILTER doc.value == @val RETURN 1", 
                                {'@coll': cn, 'val': i}, {count:true});
-        assertEqual(cursor.count(), 1);
+
+          assertEqual(cursor.count(), 1);
+        }
       }
+      print("Step 4");
 
       let indexes = c.indexes(true);
       for (let i of indexes) {

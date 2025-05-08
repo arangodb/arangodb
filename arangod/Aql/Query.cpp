@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Query.h"
+#include <exception>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallList.h"
@@ -686,6 +687,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
 /// @brief execute an AQL query
 ExecutionState Query::execute(QueryResult& queryResult) {
+  LOG_DEVEL << ADB_HERE << " BEGIN " << id();
+  ScopeGuard guard(
+      [this]() noexcept { LOG_DEVEL << ADB_HERE << " FINISH " << id(); });
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -698,6 +702,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     bool useQueryCache = canUseResultsCache();
     switch (_executionPhase) {
       case ExecutionPhase::INITIALIZE: {
+        LOG_DEVEL << ADB_HERE << " INITIALIZE";
         if (useQueryCache) {
           // check the query cache for an existing result
           auto cacheEntry = QueryCache::instance()->lookup(
@@ -744,6 +749,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
       }
         [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
+        LOG_DEVEL << ADB_HERE << " EXECUTE";
         TRI_ASSERT(queryResult.data != nullptr);
         TRI_ASSERT(queryResult.data->isOpenArray());
         TRI_ASSERT(_trx != nullptr);
@@ -842,6 +848,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         [[fallthrough]];
       case ExecutionPhase::FINALIZE: {
+        LOG_DEVEL << ADB_HERE << " FINALIZE";
         if (!queryResult.extra) {
           queryResult.extra = std::make_shared<VPackBuilder>();
         }
@@ -861,12 +868,14 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     // We should not be able to get here
     TRI_ASSERT(false);
   } catch (Exception const& ex) {
+    LOG_DEVEL << ADB_HERE << " EXCEPTION " << id();
     setResult({ex.code(), absl::StrCat("AQL: ", ex.message(),
                                        QueryExecutionState::toStringWithPrefix(
                                            _execState))});
     cleanupPlanAndEngine(/*sync*/ true);
     queryResult.reset(result());
   } catch (std::bad_alloc const&) {
+    LOG_DEVEL << ADB_HERE << " EXCEPTION " << id();
     setResult(
         {TRI_ERROR_OUT_OF_MEMORY,
          absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
@@ -874,6 +883,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     cleanupPlanAndEngine(/*sync*/ true);
     queryResult.reset(result());
   } catch (std::exception const& ex) {
+    LOG_DEVEL << ADB_HERE << " EXCEPTION " << id();
     setResult({TRI_ERROR_INTERNAL,
                absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
                                            _execState))});
@@ -881,6 +891,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     queryResult.reset(result());
   }
 
+  LOG_DEVEL << ADB_HERE << " DONE " << id();
   return ExecutionState::DONE;
 }
 

@@ -72,10 +72,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   uint64_t messageId() const;
 
   /// @brief called when the handler is queued for execution in the scheduler
-  void trackQueueStart() noexcept;
+  virtual void trackQueueStart() noexcept;
 
   /// @brief called when the handler is dequeued in the scheduler
-  void trackQueueEnd() noexcept;
+  virtual void trackQueueEnd() noexcept;
 
   /// @brief called when the handler execution is started
   void trackTaskStart() noexcept;

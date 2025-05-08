@@ -95,8 +95,8 @@ class Scheduler {
   // a boolean value (true = queueing successful, false = queueing failed)
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
-  [[nodiscard]] bool tryBoundedQueue(RequestLane lane, F&& fn) noexcept {
-    return doQueue(lane, std::forward<F>(fn), true);
+  [[nodiscard]] bool tryBoundedQueue(RequestLane lane, F&& fn, bool debug = false) noexcept {
+    return doQueue(lane, std::forward<F>(fn), true, debug);
   }
 
   // Enqueues a task after delay - this uses the queue functions above.
@@ -117,6 +117,7 @@ class Scheduler {
 
     // used by some schedulers to chain work items
     WorkItemBase* next = nullptr;
+    bool debug{false};
   };
 
   class DelayedWorkItem {
@@ -213,9 +214,10 @@ class Scheduler {
  private:
   template<typename F,
            std::enable_if_t<std::is_class_v<std::decay_t<F>>, int> = 0>
-  [[nodiscard]] bool doQueue(RequestLane lane, F&& fn, bool bounded) {
+  [[nodiscard]] bool doQueue(RequestLane lane, F&& fn, bool bounded, bool debug = false) {
     auto item = std::make_unique<Scheduler::WorkItem<std::decay_t<F>>>(
         std::forward<F>(fn));
+    item->debug = debug;
     auto result = queueItem(lane, std::move(item), bounded);
     ADB_PROD_ASSERT(result || bounded);
     return result;

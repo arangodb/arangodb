@@ -35,6 +35,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Exceptions.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -498,6 +499,10 @@ RestStatus RestAqlHandler::execute() {
   // extract the sub-request type
   rest::RequestType type = _request->requestType();
 
+  LOG_DEVEL << ADB_HERE << " suffixes: " << suffixes << " and type: " << type;
+  ScopeGuard guard([]() noexcept{
+    LOG_DEVEL << ADB_HERE << " ENGIND";
+  });
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::POST: {
@@ -860,11 +865,14 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                                                 ErrorCode::ValueType>(
           querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
+  LOG_DEVEL << ADB_HERE << " BEFORE FINISH QUERY " << qid;
   auto f =
       _queryRegistry->finishQuery(qid, errorCode)
           .thenValue([self = shared_from_this(), this,
-                      errorCode](std::shared_ptr<ClusterQuery> query) mutable
+                      errorCode, qid](std::shared_ptr<ClusterQuery> query) mutable
                      -> futures::Future<futures::Unit> {
+
+            LOG_DEVEL << ADB_HERE << " AFTER FINISH QUERY " << qid;
             if (query == nullptr) {
               // this may be a race between query garbage collection and
               // the client  shutting down the query. it is debatable
@@ -880,6 +888,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
             return query->finalizeClusterQuery(errorCode).thenValue(
                 [self = std::move(self), this,
                  q = std::move(query)](Result res) {
+                  LOG_DEVEL << ADB_HERE << " INSIDE finalizeClusterQuery";
                   VPackBufferUInt8 buffer;
                   VPackBuilder answerBuilder(buffer);
                   answerBuilder.openObject(/*unindexed*/ true);
@@ -902,6 +911,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                 });
           });
 
+  LOG_DEVEL << ADB_HERE << " BEFORE waitForFuture";
   return waitForFuture(std::move(f));
 }
 
