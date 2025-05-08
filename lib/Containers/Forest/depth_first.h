@@ -68,9 +68,9 @@ struct DFS_PostOrder {
     return next();
   }
 
-  Forest const& _forest;
-  const Id _start;
-  std::stack<std::tuple<Id, TreeHierarchy, bool>> _stack;
+  Forest const& _forest = {};
+  const Id _start = nullptr;
+  std::stack<std::tuple<Id, TreeHierarchy, bool>> _stack = {};
 };
 
 }  // namespace arangodb::containers

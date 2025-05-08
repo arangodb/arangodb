@@ -44,6 +44,12 @@ using namespace arangodb;
 using namespace arangodb::async_registry;
 using namespace arangodb::containers;
 
+RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
+                         GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _feature(server.getFeature<Feature>()) {}
+
+namespace {
 struct Entry {
   TreeHierarchy hierarchy;
   PromiseSnapshot data;
@@ -53,13 +59,6 @@ auto inspect(Inspector& f, Entry& x) {
   return f.object(x).fields(f.field("hierarchy", x.hierarchy),
                             f.field("data", x.data));
 }
-
-RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
-                         GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response),
-      _feature(server.getFeature<Feature>()) {}
-
-namespace {
 /**
    Creates a forest of all promises in the async registry
 

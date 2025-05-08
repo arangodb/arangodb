@@ -68,11 +68,11 @@ struct Forest {
 
   bool operator==(Forest<Node> const&) const = default;
 
-  std::vector<Id> _parent;  // has one entry for each node
-  std::vector<Node> _node;  // has one entry for each node
-  std::unordered_map<Id, size_t>
-      _position;  // at which position of the vectors _waiter and _data to find
-                  // entries for Id
+  std::vector<Id> _parent = {};  // has one entry for each node
+  std::vector<Node> _node = {};  // has one entry for each node
+  // at which position of the vectors _waiter and _data to find
+  // entries for Id
+  std::unordered_map<Id, size_t> _position = {};
 };
 
 /**
