@@ -66,6 +66,8 @@ class Thread {
  public:
 #if defined(TRI_HAVE_POSIX_THREADS)
   typedef pthread_t thread_t;
+#elif defined(TRI_HAVE_WIN32_THREADS)
+  typedef HANDLE thread_t;
 #else
 #error OS not supported
 #endif

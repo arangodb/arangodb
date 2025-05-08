@@ -56,7 +56,7 @@ template<class K, class V,
 #if !defined(ABSL_HAVE_ADDRESS_SANITIZER) && \
     !defined(ABSL_HAVE_MEMORY_SANITIZER)
          ,  // TODO(MBkkt) After additional benchmarks change Sizeof
-         class = std::enable_if_t<detail::MapSizeofChecker<40, 88, K, V>()>
+         class = std::enable_if_t<detail::MapSizeofChecker<48, 96, K, V>()>
 #endif
          >
 using FlatHashMap = absl::flat_hash_map<K, V, Hash, Eq, Allocator>;

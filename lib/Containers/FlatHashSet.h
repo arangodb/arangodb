@@ -53,7 +53,7 @@ template<class T, class Hash = typename absl::flat_hash_set<T>::hasher,
 #if !defined(ABSL_HAVE_ADDRESS_SANITIZER) && \
     !defined(ABSL_HAVE_MEMORY_SANITIZER)
          ,  // TODO(MBkkt) After additional benchmarks change Sizeof
-         class = std::enable_if_t<detail::SetSizeofChecker<40, T>()>
+         class = std::enable_if_t<detail::SetSizeofChecker<48, T>()>
 #endif
          >
 using FlatHashSet = absl::flat_hash_set<T, Hash, Eq, Allocator>;

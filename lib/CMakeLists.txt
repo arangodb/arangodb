@@ -77,7 +77,6 @@ add_library(arango_lightweight STATIC
         Basics/SourceLocation.cpp
         Basics/system-functions.cpp
         Basics/terminal-utils-posix.cpp
-        Basics/threads-posix.cpp
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
         Logger/Appenders.cpp
@@ -104,6 +103,20 @@ add_library(arango_lightweight STATIC
         ProgramOptions/UnitsHelper.cpp
         Random/RandomGenerator.cpp
 )
+
+if (MSVC)
+  target_sources(arango_lightweight PRIVATE
+          Basics/terminal-utils-win32.cpp
+          Basics/threads-win32.cpp
+          Basics/win-utils.cpp
+          )
+  target_link_libraries(arango_lightweight PRIVATE syslog-win32)
+else ()
+  target_sources(arango_lightweight PRIVATE
+          Basics/terminal-utils-posix.cpp
+          Basics/threads-posix.cpp
+          )
+endif ()
 
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # some auto-generated headers live here, like "Basics/build.h"

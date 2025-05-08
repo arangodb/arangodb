@@ -28,7 +28,17 @@
 #include <cstring>
 #include <type_traits>
 
+#ifdef _WIN32
+#include <stdlib.h>
+static_assert(sizeof(uint16_t) == sizeof(unsigned short),
+              "wrong size for ushort");
+static_assert(sizeof(uint32_t) == sizeof(unsigned long),
+              "wrong size for ulong");
+#elif __linux__
 #include <endian.h>
+#else
+#pragma messsage("unsupported os or compiler")
+#endif
 
 namespace arangodb {
 namespace basics {
@@ -76,7 +86,18 @@ struct EndianTraits<T, 8> {
 
   inline static type letoh(type in) { return le64toh(in); }
 
-  inline static type htobe(type in) { return htobe64(in); }
+  inline static type htobe(type in) { 
+#ifdef __linux__
+    return htobe64(in);
+#elif _WIN32
+    if (isLittleEndian()) {
+      return _byteswap_uint64(in);
+    }
+    return in;
+#else
+    return in;
+#endif
+  }
 
   inline static type betoh(type in) { return be64toh(in); }
 };

@@ -14,6 +14,8 @@
 */
 
 #include <windows.h>
+#undef min
+#undef max
 
 #ifdef __cplusplus
 extern "C" {
