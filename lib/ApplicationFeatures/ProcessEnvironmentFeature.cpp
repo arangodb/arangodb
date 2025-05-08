@@ -45,10 +45,8 @@ void ProcessEnvironmentFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("temp", "temporary files");
 
-  options
-      ->addOption("--dump-env", "Dump the full environment to the logs.",
-                  new BooleanParameter(&_dumpEnv))
-      .setLongDescription("will dump the full environment to the logfiles");
+  options->addOption("--dump-env", "Dump the full environment to the logs.",
+                     new BooleanParameter(&_dumpEnv));
 }
 
 void ProcessEnvironmentFeature::prepare() {
