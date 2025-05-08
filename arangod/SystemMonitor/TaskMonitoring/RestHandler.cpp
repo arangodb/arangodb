@@ -190,7 +190,11 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto lock_guard = co_await _feature.asyncLock();
 
   // do actual work
-  auto promises = all_undeleted_promises().index_by_awaitee();
-  generateResult(rest::ResponseCode::OK, getStacktraceData(promises).slice());
+  VPackBuilder builder;
+  builder.openArray();
+  registry.for_node(
+      [&](TaskSnapshot task) { velocypack::serialize(builder, task); });
+  builder.close();
+  generateResult(rest::ResponseCode::OK, builder.slice());
   co_return;
 }
