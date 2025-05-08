@@ -250,9 +250,6 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
     }
     return p;
   };
-  if(work->debug) {
-    LOG_DEVEL << ADB_HERE << " approxQueueLength: " << approxQueueLength; 
-  }
   try {
     _queues[queueNo].queue.push(makePointer(work.get()));
   } catch (...) {
@@ -471,9 +468,6 @@ void SupervisedScheduler::runWorker() {
       std::unique_ptr<WorkItemBase> work = getWork(state);
       if (work == nullptr) {
         break;
-      }
-      if (work->debug) {
-        LOG_DEVEL << ADB_HERE << " WORK DEBUG";
       }
 
       _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
@@ -747,7 +741,6 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
         // if we can't pull from medium prio, then we will not be able to
         // pull from low prio.
         // so we can as well abort the search here and exit.
-        LOG_DEVEL << ADB_HERE << " Cannot pull from queue: " << i;
         break;
       }
       maxCheckedQueue = i;

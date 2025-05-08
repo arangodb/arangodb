@@ -60,7 +60,6 @@ fu2::unique_function<void(bool)> generateQueryTrackingDestruction(
   return [queryCtx = std::move(queryCtx),
           startTime = std::move(startTime)](bool cancelled) mutable noexcept {
     if (cancelled) {
-      LOG_DEVEL << "CANCELLING " << queryCtx->id;
       return;
     }
 
@@ -77,7 +76,6 @@ fu2::unique_function<void(bool)> generateQueryTrackingDestruction(
 
 auto postQueryDestructionTrackingTask(auto queryId,
                                       auto& queryInfoLifetimeExtension) {
-  LOG_DEVEL << "BEFORE POSTING TASK " << queryId;
   auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
       queryId, queryInfoLifetimeExtension->_queryString,
       queryInfoLifetimeExtension->_errorCode,
@@ -85,13 +83,12 @@ auto postQueryDestructionTrackingTask(auto queryId,
 
   if (SchedulerFeature::SCHEDULER != nullptr) {
     auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
-        "query destruction timing", RequestLane::CLIENT_FAST,
+        "query destruction timing", RequestLane::CLUSTER_INTERNAL,
         kWaitUntilLoggingFor,
         generateQueryTrackingDestruction(std::chrono::steady_clock::now(),
                                          queryDestructionContext));
-    // queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+    queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
   }
-  LOG_DEVEL << "AFTER POSTING TASK " << queryId;
 }
 
 QueryRegistry::~QueryRegistry() {
@@ -313,11 +310,8 @@ void QueryRegistry::closeEngine(EngineId engineId) {
         TRI_ASSERT(queryMapIt != _queries.end());
         queryInfoLifetimeExtension = deleteQuery(queryMapIt);
 
-        LOG_DEVEL << ADB_HERE
-                  << " BEFORE POST: " << ei._queryInfo->_query->id();
         postQueryDestructionTrackingTask(ei._queryInfo->_query->id(),
                                          queryInfoLifetimeExtension);
-        LOG_DEVEL << ADB_HERE << " AFTER POST: " << ei._queryInfo->_query->id();
       } else if (ei._queryInfo->_expires != 0) {
         ei._queryInfo->_expires = TRI_microtime() + ei._queryInfo->_timeToLive;
       }
@@ -338,7 +332,6 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
   // The queryInfo which holds the reference to _query should survive outside
   // the loop so that the query destruction is triggered after the lock
   // is released
-  LOG_DEVEL << ADB_HERE << " BEGIN " << id;
   std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
   {
     WRITE_LOCKER(writeLocker, _lock);
@@ -351,19 +344,14 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
 
     if (queryMapIt->second->_numOpen == 0) {
       queryInfoLifetimeExtension = deleteQuery(queryMapIt);
-      LOG_DEVEL << ADB_HERE << " BEFORE POST: " << queryMapIt->first;
       postQueryDestructionTrackingTask(queryMapIt->first,
                                        queryInfoLifetimeExtension);
-      LOG_DEVEL << ADB_HERE << " AFTER POST: " << queryMapIt->first;
     }
   }
-
-  LOG_DEVEL << ADB_HERE << " END " << id;
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     QueryId id, ErrorCode errorCode) {
-  LOG_DEVEL << ADB_HERE << " START " << id;
   std::unique_ptr<QueryInfo> queryInfoLifetimeExtension;
   std::shared_ptr<ClusterQuery> result;
   {
@@ -382,38 +370,31 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
       return std::shared_ptr<ClusterQuery>();
     }
 
+    queryInfo._finished = true;
+    if (queryInfo._numOpen > 0) {
+      // we return a future for this queryInfo which will be resolved once the
+      // last thread closes its engine
+      return queryInfo._promise.getFuture();
+    }
     auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
         id, queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
 
     result = queryInfo._query;
     queryInfoLifetimeExtension = deleteQuery(queryMapIt);
 
-    LOG_DEVEL << ADB_HERE << " BEFORE POST: " << id;
     postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
-    LOG_DEVEL << ADB_HERE << " AFTER POST: " << id;
 
     queryInfo._finished = true;
     if (queryInfo._numOpen > 0) {
       // we return a future for this queryInfo which will be resolved once the
       // last thread closes its engine
-      return queryInfo._promise.getFuture()
-          .thenValue([id](std::shared_ptr<ClusterQuery>&& var) {
-            LOG_DEVEL << ADB_HERE << " INSIDE FUTURE " << id;
-            return std::move(var);
-          })
-          .thenError<std::exception>(
-              [id](std::exception const& e) -> std::shared_ptr<ClusterQuery> {
-                LOG_DEVEL << ADB_HERE << " INSIDE ERROR " << id;
-                throw;
-              });
+      return queryInfo._promise.getFuture();
     }
   }
   // Now explicitly destroy the QueryInfo before we resolve the promise,
   // but no longer under the lock:
-  LOG_DEVEL << ADB_HERE << " BEFORE RESET END " << id;
   queryInfoLifetimeExtension.reset();
 
-  LOG_DEVEL << ADB_HERE << " END " << id;
   return result;
 }
 

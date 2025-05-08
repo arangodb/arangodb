@@ -429,7 +429,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       serversAdded.emplace(server);
     }
 
-    LOG_DEVEL << ADB_HERE << " BEFORE REPONSE";
     networkCalls.emplace_back(buildSetupRequest(
         trx, server, infoSlice, didCreateEngine, snippetIds, serverToQueryId,
         serverToQueryIdLock, pool, options, true /* fastPath */));
@@ -452,7 +451,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // Otherwise we need to report.
             // Note that if a request times out, we will get
             // TRI_ERROR_CLUSTER_TIMEOUT and not TRI_ERROR_LOCK_TIMEOUT!
-            LOG_DEVEL << ADB_HERE << " HAVE REPONSE";
             Result res;
             for (auto const& tryRes : responses) {
               auto response = tryRes.get();

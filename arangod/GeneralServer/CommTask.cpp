@@ -51,7 +51,6 @@
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
-#include "Aql/RestAqlHandler.h"
 #ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
 #endif
@@ -711,11 +710,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   };
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-  if (handler != nullptr) {
-    LOG_DEVEL << ADB_HERE << "LADIDA name: " << handler->name();
-  }
-  //bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb), dynamic_cast<aql::RestAqlHandler*>(handler.get()) != nullptr);
-  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb), true);
+  bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {
     sendErrorResponse(rest::ResponseCode::SERVICE_UNAVAILABLE, respType, mid,

@@ -26,7 +26,6 @@
 #include "Aql/types.h"
 #include "Futures/Future.h"
 #include "Logger/LogContext.h"
-#include "Logger/LogMacros.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <memory>
@@ -55,17 +54,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus continueExecute() override;
   void prepareExecute(bool isContinue) override;
   void shutdownExecute(bool isFinalized) noexcept override;
-  void trackQueueStart() noexcept override {
-    LOG_DEVEL << ADB_HERE;
-    RestHandler::trackQueueStart();
-  }
-
-  void trackQueueEnd() noexcept override {
-    RestHandler::trackQueueEnd();
-    auto var = _statistics.ELAPSED_WHILE_QUEUED();
-    LOG_DEVEL << ADB_HERE << " TIME exceeded " << var;
-  }
-
 
   class Route {
    public:
