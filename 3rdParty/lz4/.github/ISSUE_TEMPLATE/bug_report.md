@@ -26,7 +26,7 @@ If applicable, add screenshots to help explain your problem.
  - Version [e.g. 22]
  - Compiler [e.g. gcc]
  - Build System [e.g. Makefile]
- - Other hardware specs [e.g Core 2 duo...]
+ - Other hardware specs [e.g. Core 2 duo...]
 
 **Additional context**
 Add any other context about the problem here.

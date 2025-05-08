@@ -21,10 +21,16 @@ lz4
 
 # IDE / editors files
 .clang_complete
+.vscode
 _codelite/
 _codelite_lz4/
 bin/
 *.zip
+*.swp
+compile_flags.txt
+compile_commands.json
+.vscode
+.cache
 
 # analyzers
 infer-out
@@ -37,5 +43,10 @@ infer-out
 nul
 ld.exe*
 
-# test files
+# test artifacts
 *.lz4
+tmp*
+
+# generated Windows resource files
+lib/*.rc
+programs/*.rc

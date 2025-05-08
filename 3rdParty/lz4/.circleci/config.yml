@@ -43,26 +43,26 @@ jobs:
     # Test
     #   This would typically be a build job when using workflows, possibly combined with build
     # This is based on your 1.0 configuration file or project settings
-    - run: CFLAGS= make clangtest && make clean
-    - run: g++ -v; make gpptest     && make clean
-    - run: gcc -v; g++ -v; make ctocpptest && make clean
+    - run: CC=clang CFLAGS="-Werror -O0" make all && make clean
+    - run: c++ -v; make cxxtest      && make clean
+    - run: cc -v; c++ -v; make ctocxxtest && make clean
     - run: gcc-5 -v; CC=gcc-5 CFLAGS="-O2 -Werror" make check && make clean
     - run: gcc-5 -v; CC=gcc-5 CFLAGS="-O2 -m32 -Werror" CPPFLAGS=-I/usr/include/x86_64-linux-gnu make check && make clean
-    - run: gcc-6 -v; CC=gcc-6 MOREFLAGS="-O2 -Werror" make check  && make clean
-    - run: make cmake               && make clean
+    - run: gcc-6 -v; CC=gcc-6 CFLAGS="-O2 -Werror" make check  && make clean
+    - run: make cmakebuild           && make clean
     - run: make -C tests test-lz4
     - run: make -C tests test-lz4c
     - run: make -C tests test-frametest
     - run: make -C tests test-fuzzer && make clean
-    - run: make -C lib all          && make clean
-    - run: pyenv global 3.4.4; make versionsTest MOREFLAGS=-I/usr/include/x86_64-linux-gnu && make clean
-    - run: make travis-install      && make clean
+    - run: make -C lib all           && make clean
+    - run: pyenv global 3.4.4; CPPFLAGS=-I/usr/include/x86_64-linux-gnu make versionsTest && make clean
+    - run: make test-install         && make clean
     - run: gcc -v; CFLAGS="-O2 -m32 -Werror" CPPFLAGS=-I/usr/include/x86_64-linux-gnu make check && make clean
     - run: clang -v; make staticAnalyze && make clean
-    - run: make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc-static                  && make clean
-    - run: make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc64-static MOREFLAGS=-m64 && make clean
-    - run: make platformTest CC=arm-linux-gnueabi-gcc QEMU_SYS=qemu-arm-static                  && make clean
-    - run: make platformTest CC=aarch64-linux-gnu-gcc QEMU_SYS=qemu-aarch64-static              && make clean
+    - run: make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc-static V=1       && make clean
+    - run: CFLAGS=-m64 LDFLAGS=-m64 make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc64-static V=1 && make clean
+    - run: make platformTest CC=arm-linux-gnueabi-gcc QEMU_SYS=qemu-arm-static V=1      && make clean
+    - run: make platformTest CC=aarch64-linux-gnu-gcc QEMU_SYS=qemu-aarch64-static V=1  && make clean
     # Teardown
     #   If you break your build into multiple jobs with workflows, you will probably want to do the parts of this that are relevant in each
     # Save test results
