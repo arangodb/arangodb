@@ -342,10 +342,12 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
       queryInfoLifetimeExtension = deleteQuery(queryMapIt);
     }
   }
-  postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
-  // Now explicitly destroy the QueryInfo before we resolve the promise,
-  // but no longer under the lock:
-  queryInfoLifetimeExtension.reset();
+  if (queryInfoLifetimeExtension != nullptr) {
+    postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
+    // Now explicitly destroy the QueryInfo before we resolve the promise,
+    // but no longer under the lock:
+    queryInfoLifetimeExtension.reset();
+  }
 }
 
 futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
@@ -777,7 +779,7 @@ QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
 
 QueryRegistry::QueryInfo::~QueryInfo() {
   auto const startDestructionTime = std::chrono::steady_clock::now();
-  auto const queryId = _query->id();
+  auto const queryId = _query != nullptr ? _query->id() : 0;
   using namespace std::chrono_literals;
   if (!_promise.isFulfilled()) {
     // we just set a dummy value to avoid abandoning the promise, because this
