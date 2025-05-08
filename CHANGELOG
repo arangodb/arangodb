@@ -1,6 +1,8 @@
 devel
 -----
 
+* Stabilize a test concerning write concern.
+
 * Fix BTS-2112: If the URL in an HTTP request is corrupt, don't just close
   the connection, rather, return a proper HTTP 400 BAD response. This was
   found by fuzzing.
