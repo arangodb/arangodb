@@ -185,7 +185,7 @@ class QueryRegistry {
     Scheduler::WorkHandle _destructionTrackingTask;
     /// @brief serves to log the information if the query destruction took too
     /// long
-    std::shared_ptr<QueryDestructionContext> _queryDestrcutionContext;
+    std::shared_ptr<QueryDestructionContext> _queryDestructionContext;
   };
 
   struct EngineInfo final {

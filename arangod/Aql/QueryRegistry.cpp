@@ -370,21 +370,20 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
       return std::shared_ptr<ClusterQuery>();
     }
 
-    auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
-        id, queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
-
-    result = queryInfo._query;
-    queryInfoLifetimeExtension = deleteQuery(queryMapIt);
-
-    postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
-
     queryInfo._finished = true;
     if (queryInfo._numOpen > 0) {
       // we return a future for this queryInfo which will be resolved once the
       // last thread closes its engine
       return queryInfo._promise.getFuture();
     }
+
+    auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
+        id, queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
+
+    result = queryInfo._query;
+    queryInfoLifetimeExtension = deleteQuery(queryMapIt);
   }
+  postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
   // Now explicitly destroy the QueryInfo before we resolve the promise,
   // but no longer under the lock:
   queryInfoLifetimeExtension.reset();
@@ -793,7 +792,7 @@ QueryRegistry::QueryInfo::~QueryInfo() {
   if (diff > 5s) {
     LOG_TOPIC("a16ba", WARN, Logger::QUERIES)
         << "Query info destruction took: " << diff
-        << "s with query id: " << _queryDestrcutionContext->id;
+        << "s with query id: " << _queryDestructionContext->id;
   }
 }
 
