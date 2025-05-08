@@ -44,7 +44,7 @@ class ClusterQuery;
 
 struct QueryDestructionContext {
   QueryId id;
-  std::string queryString;
+  std::string_view queryString;
   ErrorCode errorCode;
   bool finished;
   Scheduler::WorkHandle scheduledHandle;
@@ -183,9 +183,6 @@ class QueryRegistry {
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
 
     Scheduler::WorkHandle _destructionTrackingTask;
-    /// @brief serves to log the information if the query destruction took too
-    /// long
-    std::shared_ptr<QueryDestructionContext> _queryDestructionContext;
   };
 
   struct EngineInfo final {

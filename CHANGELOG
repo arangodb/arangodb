@@ -1,7 +1,8 @@
 devel
 -----
 
-* Fix BTS-2135: Fix the regression when queries are being destroyed.
+* Fix BTS-2135: A global lock on the query registry was in some cases
+  unnecessarily held for the full duration of query destruction. 
 
 * Fix a crash when bind parameters are not set and killing of a query
   is logged (no version with this bug was ever released!).
