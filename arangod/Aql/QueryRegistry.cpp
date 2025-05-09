@@ -312,8 +312,8 @@ void QueryRegistry::closeEngine(EngineId engineId) {
           << "closing engine " << engineId << ", no query";
     }
   }
-  if (queryInfoLifetimeExtension && queryToFinish) {
-    postQueryDestructionTrackingTask(queryToFinish->id(),
+  if (queryInfoLifetimeExtension) {
+    postQueryDestructionTrackingTask(queryInfoLifetimeExtension->_query->id(),
                                      *queryInfoLifetimeExtension);
     // Now explicitly destroy the QueryInfo before we resolve the promise,
     // but no longer under the lock:
