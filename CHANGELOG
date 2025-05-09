@@ -1,6 +1,16 @@
 devel
 -----
 
+* Fix BTS-2135: A global lock on the query registry was in some cases
+  unnecessarily held for the full duration of query destruction.
+  This could lead to throughput reduction or stalls in some situations.
+
+* Stabilize a test concerning write concern.
+
+* Fix BTS-2112: If the URL in an HTTP request is corrupt, don't just close
+  the connection, rather, return a proper HTTP 400 BAD response. This was
+  found by fuzzing.
+
 * Fix BTS-2106: A MoveShard operation could get stuck if a new collection
   with `distributeShardsLike` was created at the wrong moment when the leader
   of a shard group was currently being asked to resign.

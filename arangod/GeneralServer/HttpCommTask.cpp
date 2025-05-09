@@ -107,6 +107,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_lastHeaderWasValue = false;
   me->_shouldKeepAlive = false;
   me->_messageDone = false;
+  me->_urlCorrupt = false;
 
   // acquire a new statistics entry for the request
   me->acquireRequestStatistics(1UL).SET_READ_START(TRI_microtime());
@@ -249,18 +250,19 @@ int HttpCommTask<T>::on_body(llhttp_t* p, const char* at, size_t len) try {
 }
 
 template<SocketType T>
-int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
+int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
   HttpCommTask<T>* me = static_cast<HttpCommTask<T>*>(p->data);
-  me->_request->parseUrl(me->_url.data(), me->_url.size());
-
-  me->requestStatistics(1UL).SET_READ_END();
-  me->_messageDone = true;
-
+  try {
+    me->requestStatistics(1UL).SET_READ_END();
+    me->_messageDone = true;
+    me->_request->parseUrl(me->_url.data(), me->_url.size());
+    me->_urlCorrupt = false;
+  } catch (...) {
+    // the caller of this function is a C function, which doesn't know
+    // exceptions. we must not let an exception escape from here.
+    me->_urlCorrupt = true;
+  }
   return HPE_PAUSED;
-} catch (...) {
-  // the caller of this function is a C function, which doesn't know
-  // exceptions. we must not let an exception escape from here.
-  return HPE_INTERNAL;
 }
 
 template<SocketType T>
@@ -269,7 +271,8 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
-      _messageDone(false) {
+      _messageDone(false),
+      _urlCorrupt(false) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -343,7 +346,17 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
       _messageDone = false;
-      processRequest();
+      if (_urlCorrupt) {
+        LOG_TOPIC("33323", WARN, Logger::REQUESTS)
+            << "request failed because of a corrupt URL";
+        auto msgId = _request->messageId();
+        auto respContentType = _request->contentTypeResponse();
+        this->sendErrorResponse(rest::ResponseCode::BAD, respContentType, msgId,
+                                TRI_ERROR_HTTP_BAD_PARAMETER, "URL is corrupt");
+      } else {
+        processRequest();
+      }
+      _urlCorrupt = false;
       return false;  // stop read loop
     }
 
