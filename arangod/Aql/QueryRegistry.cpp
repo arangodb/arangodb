@@ -377,9 +377,6 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
       return queryInfo._promise.getFuture();
     }
 
-    auto queryDestructionContext = std::make_shared<QueryDestructionContext>(
-        id, queryInfo._queryString, queryInfo._errorCode, queryInfo._finished);
-
     result = queryInfo._query;
     queryInfoLifetimeExtension = deleteQuery(queryMapIt);
   }
