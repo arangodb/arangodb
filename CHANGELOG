@@ -2,7 +2,8 @@ devel
 -----
 
 * Fix BTS-2135: A global lock on the query registry was in some cases
-  unnecessarily held for the full duration of query destruction. 
+  unnecessarily held for the full duration of query destruction.
+  This could lead to throughput reduction or stalls in some situations.
 
 * Stabilize a test concerning write concern.
 
