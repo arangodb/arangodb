@@ -430,9 +430,8 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
   //      changed, and we have one with a different tail before the destructor
   //      gets called. The latter is planned to being addressed in a different
   //      PR.
-    auto const logScopeGuard =
-        LogContext::Accessor::ScopedValue(std::move(logContextValues));
-
+  auto const logScopeGuard =
+      LogContext::Accessor::ScopedValue(std::move(logContextValues));
 
   if (_state == HandlerState::FAILED) {
     co_return fail();

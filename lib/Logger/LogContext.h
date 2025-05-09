@@ -312,7 +312,7 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
         *this, std::forward<Value>(v));
   }
   std::shared_ptr<Values> share() && {
-    return std::move(*this).passValues([]<class... Args>(Args&&... args) {
+    return std::move(*this).passValues([]<class... Args>(Args && ... args) {
       return std::make_shared<ValuesImpl<ValueTypesT, KeysT>>(
           std::forward<Args>(args)...);
     });
@@ -325,9 +325,10 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
 
   template<class F>
   auto passValues(F&& func) && {
-    return [this, &func]<std::size_t... I>(std::index_sequence<I...>) {
+    return [ this, &func ]<std::size_t... I>(std::index_sequence<I...>) {
       return std::forward<F>(func)(this->template value<I>()...);
-    }(std::make_index_sequence<Depth>{});
+    }
+    (std::make_index_sequence<Depth>{});
   }
 
   template<std::size_t Idx>
@@ -587,7 +588,7 @@ struct LogContext::Accessor::ScopedValue {
 
   template<class KV, class Base, std::size_t Depth>
   explicit ScopedValue(ValueBuilder<KV, Base, Depth>&& v) {
-    std::move(v).passValues([this]<class... Args>(Args&&... args) {
+    std::move(v).passValues([this]<class... Args>(Args && ... args) {
       this->appendEntry<
           ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
                      typename ValueBuilder<KV, Base, Depth>::KeysT>>(
@@ -740,7 +741,7 @@ inline LogContext::EntryPtr LogContext::Current::pushValues(
 template<class KV, class Base, std::size_t Depth>
 inline LogContext::EntryPtr LogContext::Current::pushValues(
     ValueBuilder<KV, Base, Depth>&& v) {
-  return std::move(v).passValues([]<class... Args>(Args&&... args) {
+  return std::move(v).passValues([]<class... Args>(Args && ... args) {
     return Current::appendEntry<
         ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
                    typename ValueBuilder<KV, Base, Depth>::KeysT>>(
@@ -802,10 +803,11 @@ inline void LogContext::popTail(EntryCache& cache) noexcept {
 /// to retain the current LogContext (e.g., when using futures).
 template<typename Func>
 auto withLogContext(Func&& func) {
-  return [func = std::forward<Func>(func), ctx = LogContext::current()]<
-             typename... Args,
-             typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-             Args&&... args) mutable {
+  return [
+    func = std::forward<Func>(func), ctx = LogContext::current()
+  ]<typename... Args,
+    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+      Args && ... args) mutable {
     LogContext::ScopedContext ctxGuard(ctx);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
