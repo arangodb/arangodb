@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Async/Registry/promise.h"
+#include "Logger/LogContext.h"
 #include "Utils/ExecContext.h"
 
 namespace arangodb {
@@ -30,14 +31,27 @@ namespace arangodb {
 struct Context {
   std::shared_ptr<ExecContext const> _execContext;
   async_registry::Requester _requester;
+  std::optional<LogContext> _logContext;
 
   Context()
       : _execContext{ExecContext::currentAsShared()},
-        _requester{*async_registry::get_current_coroutine()} {}
+        _requester{*async_registry::get_current_coroutine()},
+        _logContext{LogContext::current()} {}
+
+  auto operator=(Context&& other) noexcept -> Context& {
+    _execContext = std::move(other._execContext);
+    _requester = other._requester;
+    _logContext.reset();
+    _logContext.swap(other._logContext);
+    other._logContext.reset();
+
+    return *this;
+  }
 
   auto set() -> void {
     ExecContext::set(_execContext);
     *async_registry::get_current_coroutine() = _requester;
+    LogContext::setCurrent(*_logContext);
   }
 };
 

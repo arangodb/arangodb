@@ -71,5 +71,12 @@ void LogContext::doVisit(Visitor const& visitor, Entry const* entry) const {
 }
 
 void LogContext::setCurrent(LogContext ctx) noexcept {
+  _threadControlBlock._logContext.clear(_threadControlBlock._entryCache);
   _threadControlBlock._logContext = std::move(ctx);
+}
+
+void LogContext::ValueBag::visit(Visitor const& visitor) const {
+  for (auto& v : _values) {
+    v->visit(visitor);
+  }
 }

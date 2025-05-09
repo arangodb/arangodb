@@ -96,6 +96,7 @@ class LogContext {
   struct EntryPtr;
 
   struct Values;
+  struct ValueBag;
 
   template<const char K[], class V>
   struct KeyValue {
@@ -311,7 +312,7 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
         *this, std::forward<Value>(v));
   }
   std::shared_ptr<Values> share() && {
-    return std::move(*this).passValues([]<class... Args>(Args && ... args) {
+    return std::move(*this).passValues([]<class... Args>(Args&&... args) {
       return std::make_shared<ValuesImpl<ValueTypesT, KeysT>>(
           std::forward<Args>(args)...);
     });
@@ -324,10 +325,9 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
 
   template<class F>
   auto passValues(F&& func) && {
-    return [ this, &func ]<std::size_t... I>(std::index_sequence<I...>) {
+    return [this, &func]<std::size_t... I>(std::index_sequence<I...>) {
       return std::forward<F>(func)(this->template value<I>()...);
-    }
-    (std::make_index_sequence<Depth>{});
+    }(std::make_index_sequence<Depth>{});
   }
 
   template<std::size_t Idx>
@@ -359,6 +359,16 @@ struct LogContext::ValueBuilder<LogContext::KeyValue<K, V>, Base, Depth> {
 struct LogContext::Values {
   virtual ~Values() = default;
   virtual void visit(Visitor const&) const = 0;
+};
+
+struct LogContext::ValueBag : Values {
+  template<class... V>
+  explicit ValueBag(V&&... v) : _values(std::forward<V>(v)...) {}
+  virtual ~ValueBag() = default;
+  void visit(Visitor const&) const override;
+
+ private:
+  std::vector<std::shared_ptr<LogContext::Values>> _values;
 };
 
 template<class Vals, const char... KeyValues[]>
@@ -570,19 +580,14 @@ struct LogContext::Accessor::ScopedValue {
   explicit ScopedValue(std::shared_ptr<LogContext::Values> v) {
     appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
   }
-  // TODO This constructor is broken, as the destructor will still pop only a
-  //      single entry!
-  //  explicit ScopedValue(std::vector<std::shared_ptr<LogContext::Values>>&&
-  //  vs) {
-  //    for (auto&& v : vs) {
-  //      appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
-  //    }
-  //    vs.clear();
-  //  }
+  // TODO Maybe we should remove this constructor and have users create a
+  //      ValueBag themselves.
+  explicit ScopedValue(std::vector<std::shared_ptr<LogContext::Values>>&& vs)
+      : ScopedValue(std::make_shared<LogContext::ValueBag>(std::move(vs))) {}
 
   template<class KV, class Base, std::size_t Depth>
   explicit ScopedValue(ValueBuilder<KV, Base, Depth>&& v) {
-    std::move(v).passValues([this]<class... Args>(Args && ... args) {
+    std::move(v).passValues([this]<class... Args>(Args&&... args) {
       this->appendEntry<
           ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
                      typename ValueBuilder<KV, Base, Depth>::KeysT>>(
@@ -735,7 +740,7 @@ inline LogContext::EntryPtr LogContext::Current::pushValues(
 template<class KV, class Base, std::size_t Depth>
 inline LogContext::EntryPtr LogContext::Current::pushValues(
     ValueBuilder<KV, Base, Depth>&& v) {
-  return std::move(v).passValues([]<class... Args>(Args && ... args) {
+  return std::move(v).passValues([]<class... Args>(Args&&... args) {
     return Current::appendEntry<
         ValuesImpl<typename ValueBuilder<KV, Base, Depth>::ValueTypesT,
                    typename ValueBuilder<KV, Base, Depth>::KeysT>>(
@@ -797,11 +802,10 @@ inline void LogContext::popTail(EntryCache& cache) noexcept {
 /// to retain the current LogContext (e.g., when using futures).
 template<typename Func>
 auto withLogContext(Func&& func) {
-  return [
-    func = std::forward<Func>(func), ctx = LogContext::current()
-  ]<typename... Args,
-    typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
-      Args && ... args) mutable {
+  return [func = std::forward<Func>(func), ctx = LogContext::current()]<
+             typename... Args,
+             typename = std::enable_if_t<std::is_invocable_v<Func, Args...>>>(
+             Args&&... args) mutable {
     LogContext::ScopedContext ctxGuard(ctx);
     return std::forward<Func>(func)(std::forward<Args>(args)...);
   };
