@@ -42,14 +42,6 @@ namespace aql {
 class ExecutionEngine;
 class ClusterQuery;
 
-struct QueryDestructionContext {
-  QueryId id;
-  std::string_view queryString;
-  ErrorCode errorCode;
-  bool finished;
-  Scheduler::WorkHandle scheduledHandle;
-};
-
 /// manages cluster queries and engines
 class QueryRegistry {
  public:
@@ -184,6 +176,17 @@ class QueryRegistry {
 
     Scheduler::WorkHandle _destructionTrackingTask;
   };
+
+  struct QueryDestructionContext {
+    QueryId id;
+    std::string_view queryString;
+    ErrorCode errorCode;
+    bool finished;
+    Scheduler::WorkHandle scheduledHandle;
+  };
+
+  static void postQueryDestructionTrackingTask(
+      auto queryId, auto& queryInfoLifetimeExtension);
 
   struct EngineInfo final {
     EngineInfo(EngineInfo const&) = delete;
