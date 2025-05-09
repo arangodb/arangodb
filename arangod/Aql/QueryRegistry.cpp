@@ -55,7 +55,7 @@ using namespace std::chrono_literals;
 static auto constexpr kWaitUntilLoggingFor = 5s;
 
 void QueryRegistry::postQueryDestructionTrackingTask(
-    QueryId queryId, QueryInfo const& queryInfoLifetimeExtension) {
+    QueryId queryId, QueryInfo& queryInfoLifetimeExtension) {
   auto queryDestructionContext =
       QueryDestructionContext(queryId, queryInfoLifetimeExtension._queryString,
                               queryInfoLifetimeExtension._errorCode,
@@ -82,7 +82,7 @@ void QueryRegistry::postQueryDestructionTrackingTask(
               << ", finished: " << queryCtx.finished
               << ", errorCode: " << queryCtx.errorCode;
         });
-    queryInfoLifetimeExtension->_destructionTrackingTask.swap(delayedTask);
+    queryInfoLifetimeExtension._destructionTrackingTask.swap(delayedTask);
   }
 }
 
