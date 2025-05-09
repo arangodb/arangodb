@@ -384,8 +384,6 @@ using namespace arangodb;
 using namespace cluster;
 using namespace methods;
 
-namespace StringUtils = basics::StringUtils;
-
 class ClusterInfo::SyncerThread final
     : public arangodb::ServerThread<ArangodServer> {
  public:
@@ -471,6 +469,8 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _currentMemoryUsage(0),
       _plannedCollections(_resourceMonitor),
       _newPlannedCollections(_resourceMonitor),
+      _collectionNameBlockers(_resourceMonitor),
+      _newCollectionNameBlockers(_resourceMonitor),
       _shards(_resourceMonitor),
       _shardsToPlanServers(_resourceMonitor),
       _shardToName(_resourceMonitor),
@@ -952,6 +952,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     // Create a copy, since we might not visit all databases
     _newPlannedViews = _plannedViews;
     _newPlannedCollections = _plannedCollections;
+    _newCollectionNameBlockers = _collectionNameBlockers;
     _currentCleanups.clear();
     // set plan loader
     _planLoader = std::this_thread::get_id();
@@ -962,6 +963,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _planLoader = std::thread::id();
     _newPlannedViews.clear();
     _newPlannedCollections.clear();
+    _newCollectionNameBlockers.clear();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto diff = clock::now() - start;
@@ -1474,6 +1476,11 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         }
         _newPlannedCollections.erase(it);
       }
+      if (auto it = _newCollectionNameBlockers.find(
+              pmr::DatabaseID(databaseName, _resourceMonitor));
+          it != _newCollectionNameBlockers.end()) {
+        _newCollectionNameBlockers.erase(it);
+      }
       continue;
     }
 
@@ -1506,6 +1513,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     }
 
     auto databaseCollections = allocateShared<DatabaseCollections>();
+    auto blockedCollectionNames = allocateShared<DatabaseBlockers>();
 
     // an iterator to all collections in the current database (from the previous
     // round) we can safely keep this iterator around because we hold the
@@ -1647,6 +1655,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           // register with name as well as with id:
           databaseCollections->try_emplace(collectionName, cwh);
           databaseCollections->try_emplace(collectionId, cwh);
+        } else {
+          blockedCollectionNames->emplace(collectionName);
         }
 
         auto shardIDs = newCollection->shardIds();
@@ -1774,6 +1784,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     }
     _newPlannedCollections.insert_or_assign(databaseName,
                                             std::move(databaseCollections));
+    _newCollectionNameBlockers.insert_or_assign(
+        databaseName, std::move(blockedCollectionNames));
   }
 
   // Ensure "search-alias" views are being created AFTER collections
@@ -1891,6 +1903,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
 
   if (swapCollections) {
     _plannedCollections.swap(_newPlannedCollections);
+    _collectionNameBlockers.swap(_newCollectionNameBlockers);
     _shards.swap(newShards);
     _shardsToPlanServers.swap(newShardsToPlanServers);
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
@@ -2439,11 +2452,14 @@ ResultT<uint64_t> ClusterInfo::checkDataSourceNamesAvailable(
     // We will protect against deleted database with Preconditions
     return {_planVersion};
   }
+  auto blockedCollList = _collectionNameBlockers.find(databaseName);
 
   auto viewList = _plannedViews.find(databaseName);
   for (auto const& name : names) {
     if (colList->second->contains(name) ||
-        (viewList != _plannedViews.end() && viewList->second.contains(name))) {
+        (viewList != _plannedViews.end() && viewList->second.contains(name)) ||
+        (blockedCollList != _collectionNameBlockers.end() &&
+         blockedCollList->second->contains(name))) {
       // Either a Collection or a view is known with this name. Disallow it.
       return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                     absl::StrCat("duplicate collection name '", name, "'"));
@@ -4796,13 +4812,13 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                   -> std::optional<std::tuple<Result, consensus::index_t>> {
                 if (servers.isNone()) {
                   return std::make_tuple(
-                      Result{
-                          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                          fmt::format(
-                              "Database or collection ({}/{}) gone in Current "
-                              "while waiting for leader of shard {} (raft "
-                              "index {})",
-                              *database, collection, shardId, index)},
+                      Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                             fmt::format(
+                                 "Database or collection ({}/{}) gone in "
+                                 "Current "
+                                 "while waiting for leader of shard {} (raft "
+                                 "index {})",
+                                 *database, collection, shardId, index)},
                       index);
                 }
 
