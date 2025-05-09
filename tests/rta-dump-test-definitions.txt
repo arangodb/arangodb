@@ -1,0 +1,42 @@
+# test_suite [flags ...] -- [additional-params...]
+# for possible flags and params see
+# https://github.com/arangodb/oskar#testing
+
+
+# Single Server only Tests
+BackupAuthNoSysTests,BackupAuthSysTests,BackupNoAuthSysTests single name=single_server_only
+
+rta_makedata single -- --extraArgs:experimental-vector-index true
+
+# Cluster Tests
+
+rta_makedata cluster parallelity=6 -- --extraArgs:experimental-vector-index true 
+rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true --extraArgs:experimental-vector-index true
+
+hot_backup enterprise single size=medium -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
+hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
+
+# Dump Tests
+dump cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump cluster suffix=_vpack size=medium parallelity=5 -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+dump single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+# BTS-1852 enable after fix:
+# dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_authentication size=medium  -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_jwt size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_non_parallel size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_maskings  enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_encrypted enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_mixed_single_cluster size=large -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_mixed_cluster_single suffix=vpack size=medium -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+dump_mixed_single_cluster suffix=vpack size=large -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+# takes long, needs to go first. However, doesn't utilize the SUT hard.
+dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+
+replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true --test replication-rta.js
