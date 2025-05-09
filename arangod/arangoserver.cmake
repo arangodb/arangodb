@@ -6,9 +6,9 @@ add_library(arangoserver STATIC
   Auth/TokenCache.cpp
   Auth/User.cpp
   Auth/UserManager.cpp
-  Cluster/Action.cpp
-  Cluster/ActionBase.cpp
-  Cluster/ActionDescription.cpp
+  Cluster/MaintenanceActions/Action.cpp
+  Cluster/MaintenanceActions/ActionBase.cpp
+  Cluster/MaintenanceActions/ActionDescription.cpp
   Cluster/AgencyCache.cpp
   Cluster/AgencyCallback.cpp
   Cluster/AgencyCallbackRegistry.cpp
@@ -21,13 +21,13 @@ add_library(arangoserver STATIC
   Cluster/ClusterTypes.cpp
   Cluster/ClusterUpgradeFeature.cpp
   Cluster/CollectionInfoCurrent.cpp
-  Cluster/CreateCollection.cpp
-  Cluster/CreateDatabase.cpp
+  Cluster/MaintenanceActions/CreateCollection.cpp
+  Cluster/MaintenanceActions/CreateDatabase.cpp
   Cluster/DBServerAgencySync.cpp
-  Cluster/DropCollection.cpp
-  Cluster/DropDatabase.cpp
-  Cluster/DropIndex.cpp
-  Cluster/EnsureIndex.cpp
+  Cluster/MaintenanceActions/DropCollection.cpp
+  Cluster/MaintenanceActions/DropDatabase.cpp
+  Cluster/MaintenanceActions/DropIndex.cpp
+  Cluster/MaintenanceActions/EnsureIndex.cpp
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/Maintenance.cpp
@@ -36,15 +36,15 @@ add_library(arangoserver STATIC
   Cluster/MaintenanceWorker.cpp
   Cluster/RebootTracker.cpp
   Cluster/ReplicationTimeoutFeature.cpp
-  Cluster/ResignShardLeadership.cpp
+  Cluster/MaintenanceActions/ResignShardLeadership.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerDefaults.cpp
   Cluster/ServerState.cpp
-  Cluster/SynchronizeShard.cpp
-  Cluster/TakeoverShardLeadership.cpp
-  Cluster/UpdateCollection.cpp
-  Cluster/UpdateReplicatedLogAction.cpp
+  Cluster/MaintenanceActions/SynchronizeShard.cpp
+  Cluster/MaintenanceActions/TakeoverShardLeadership.cpp
+  Cluster/MaintenanceActions/UpdateCollection.cpp
+  Cluster/MaintenanceActions/UpdateReplicatedLogAction.cpp
   FeaturePhases/AgencyFeaturePhase.cpp
   FeaturePhases/AqlFeaturePhase.cpp
   FeaturePhases/BasicFeaturePhaseServer.cpp

@@ -25,7 +25,7 @@
 
 #include "Async/async.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ActionDescription.h"
+#include "Cluster/MaintenanceActions/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"

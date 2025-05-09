@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Cluster/ActionBase.h"
+#include "Cluster/MaintenanceActions/ActionBase.h"
 
 namespace arangodb::maintenance {
 

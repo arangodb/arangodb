@@ -26,7 +26,7 @@
 
 #include "Basics/ConditionVariable.h"
 #include "Basics/Result.h"
-#include "Cluster/Action.h"
+#include "Cluster/MaintenanceActions/Action.h"
 #include "Cluster/MaintenanceWorker.h"
 #include "Cluster/Utils/ShardID.h"
 #include "ProgramOptions/ProgramOptions.h"

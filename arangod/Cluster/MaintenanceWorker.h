@@ -25,7 +25,7 @@
 #pragma once
 
 #include "Basics/Thread.h"
-#include "Cluster/Action.h"
+#include "Cluster/MaintenanceActions/Action.h"
 
 namespace arangodb {
 

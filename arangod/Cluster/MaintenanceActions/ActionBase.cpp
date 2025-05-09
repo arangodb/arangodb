@@ -22,7 +22,7 @@
 /// @author Matthew Von-Maszewski
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ActionBase.h"
+#include "Cluster/MaintenanceActions/ActionBase.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/TimeString.h"
