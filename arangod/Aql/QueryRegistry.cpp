@@ -55,11 +55,11 @@ using namespace std::chrono_literals;
 static auto constexpr kWaitUntilLoggingFor = 5s;
 
 void QueryRegistry::postQueryDestructionTrackingTask(
-    auto queryId, auto& queryInfoLifetimeExtension) {
+    QueryId queryId, QueryInfo const& queryInfoLifetimeExtension) {
   auto queryDestructionContext =
-      QueryDestructionContext(queryId, queryInfoLifetimeExtension->_queryString,
-                              queryInfoLifetimeExtension->_errorCode,
-                              queryInfoLifetimeExtension->_finished);
+      QueryDestructionContext(queryId, queryInfoLifetimeExtension._queryString,
+                              queryInfoLifetimeExtension._errorCode,
+                              queryInfoLifetimeExtension._finished);
 
   if (SchedulerFeature::SCHEDULER != nullptr) {
     auto delayedTask = SchedulerFeature::SCHEDULER->queueDelayed(
@@ -314,7 +314,7 @@ void QueryRegistry::closeEngine(EngineId engineId) {
   }
   if (queryInfoLifetimeExtension && queryToFinish) {
     postQueryDestructionTrackingTask(queryToFinish->id(),
-                                     queryInfoLifetimeExtension);
+                                     *queryInfoLifetimeExtension);
     // Now explicitly destroy the QueryInfo before we resolve the promise,
     // but no longer under the lock:
     queryInfoLifetimeExtension.reset();
@@ -343,7 +343,7 @@ void QueryRegistry::destroyQuery(QueryId id, ErrorCode errorCode) {
     }
   }
   if (queryInfoLifetimeExtension) {
-    postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
+    postQueryDestructionTrackingTask(id, *queryInfoLifetimeExtension);
     // Now explicitly destroy the QueryInfo before we resolve the promise,
     // but no longer under the lock:
     queryInfoLifetimeExtension.reset();
@@ -383,7 +383,7 @@ futures::Future<std::shared_ptr<ClusterQuery>> QueryRegistry::finishQuery(
     result = queryInfo._query;
     queryInfoLifetimeExtension = deleteQuery(queryMapIt);
   }
-  postQueryDestructionTrackingTask(id, queryInfoLifetimeExtension);
+  postQueryDestructionTrackingTask(id, *queryInfoLifetimeExtension);
   // Now explicitly destroy the QueryInfo before we resolve the promise,
   // but no longer under the lock:
   queryInfoLifetimeExtension.reset();

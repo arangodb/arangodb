@@ -186,7 +186,7 @@ class QueryRegistry {
   };
 
   static void postQueryDestructionTrackingTask(
-      auto queryId, auto& queryInfoLifetimeExtension);
+      QueryId queryId, QueryInfo const& queryInfoLifetimeExtension);
 
   struct EngineInfo final {
     EngineInfo(EngineInfo const&) = delete;
