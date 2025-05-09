@@ -4,6 +4,34 @@ devel
 * Improved the error message displayed when the APPROX_NEAR function fails to
   apply a vector index.
  
+* Fix BTS-2135: A global lock on the query registry was in some cases
+  unnecessarily held for the full duration of query destruction.
+  This could lead to throughput reduction or stalls in some situations.
+
+* Stabilize a test concerning write concern.
+
+* Fix BTS-2112: If the URL in an HTTP request is corrupt, don't just close
+  the connection, rather, return a proper HTTP 400 BAD response. This was
+  found by fuzzing.
+
+* Fix BTS-2106: A MoveShard operation could get stuck if a new collection
+  with `distributeShardsLike` was created at the wrong moment when the leader
+  of a shard group was currently being asked to resign.
+
+* Fix BTS-2093: A MoveShard operation could fail and leave locks unreleased
+  if a new collection with `distributeShardsLike` was created at the wrong
+  moment.
+
+* Updated ArangoDB Starter to v0.19.11-preview-1.
+
+* Updated ArangoDB Starter to v0.19.11.
+
+* Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
+  coordinator in two different threads) creates two collections with the same
+  name in the same database (different collection ID).
+
+* Updated ArangoDB Starter to v0.19.10-preview-1.
+
 * Fix a crash when bind parameters are not set and killing of a query
   is logged (no version with this bug was ever released!).
 
@@ -17,8 +45,6 @@ devel
 * Upgraded OpenSSL to 3.5.0.
 
 * Set Node v20.14.0 for core UI production (CI) compilation.
-
-* Updated ArangoDB Starter to v0.19.10.
 
 * Remove overeager assert, only relevant for testing.
 

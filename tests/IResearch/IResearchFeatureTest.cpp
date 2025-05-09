@@ -1629,8 +1629,8 @@ TEST_F(IResearchFeatureTest, test_execution_threads_limit) {
   iresearch.prepare();
   iresearch.start();
   auto& metricsFeature = server.server().getFeature<metrics::MetricsFeature>();
-  metrics::MetricKeyView key{.name =
-                                 "arangodb_search_execution_threads_demand"};
+  metrics::MetricKeyView key{.name = "arangodb_search_execution_threads_demand",
+                             .labels = ""};
   auto* metricValue = metricsFeature.get(key);
   ASSERT_NE(nullptr, metricValue);
   auto gauge = static_cast<metrics::Gauge<uint64_t>*>(metricValue);
