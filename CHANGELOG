@@ -1,4 +1,4 @@
-3.12.4.4 (XXXX-XX-XX)
+3.12.4.4 (2025-05-09)
 ---------------------
 
 * Fix BTS-2135: A global lock on the query registry was in some cases
@@ -9,8 +9,8 @@
 
 * Add detection of two threads waiting for a PrefetchTask concurrently.
 
-* Add visibility into the state if a thread waits for more than a second
-  on a PrefetchTask.
+* Add visibility into the state if a thread waits for more than a second on a
+  PrefetchTask.
 
 
 3.12.4.3 (2025-04-25)
