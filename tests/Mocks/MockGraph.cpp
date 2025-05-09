@@ -293,7 +293,7 @@ MockGraph::simulateApi(
         server.server(), fakeRequest.release(), fakeResponse.release(),
         &queryRegistry};
 
-    aqlHandler.execute();
+    aqlHandler.executeAsync().wait();
     auto response = aqlHandler.stealResponse();  // Read: (EngineId eid)
     auto resBody =
         static_cast<GeneralResponseMock*>(response.get())->_payload.slice();

@@ -85,8 +85,7 @@ TEST_F(RestTransactionHandlerTest, parsing_errors) {
   request.addSuffix("begin");
   parser.parse("{ \"write\": [33] }");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::BAD, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -111,8 +110,7 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_ro) {
   request.addSuffix("begin");
   parser.parse("{ \"collections\":{\"read\": [\"33\"]}}");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -137,8 +135,7 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_write) {
   request.addSuffix("begin");
   parser.parse("{ \"collections\":{\"write\": [\"33\"]}}");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -163,8 +160,7 @@ TEST_F(RestTransactionHandlerTest, collection_not_found_exclusive) {
   request.addSuffix("begin");
   parser.parse("{ \"collections\":{\"exclusive\": [\"33\"]}}");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -197,8 +193,7 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
   request.addSuffix("begin");
   parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -222,8 +217,7 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
   request.clearSuffixes();
   request.addSuffix(tid);
 
-  status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -245,8 +239,7 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_abort) {
 
   request.setRequestType(arangodb::rest::RequestType::DELETE_REQ);
 
-  status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -278,8 +271,7 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
   request.addSuffix("begin");
   parser.parse("{ \"collections\":{\"read\": [\"42\"]}}");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::CREATED, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -303,8 +295,7 @@ TEST_F(RestTransactionHandlerTest, simple_transaction_and_commit) {
   request.clearSuffixes();
   request.addSuffix(tid);
 
-  status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::OK, responce.responseCode());
   slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -346,8 +337,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_read_only) {
   request.addSuffix("begin");
   parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
@@ -390,8 +380,7 @@ TEST_F(RestTransactionHandlerTest, permission_denied_forbidden) {
   request.addSuffix("begin");
   parser.parse("{ \"collections\":{\"write\": [\"42\"]}}");
 
-  arangodb::RestStatus status = handler.execute();
-  EXPECT_EQ(arangodb::RestStatus::DONE, status);
+  handler.executeAsync().wait();
   EXPECT_EQ(arangodb::rest::ResponseCode::FORBIDDEN, responce.responseCode());
   VPackSlice slice = responce._payload.slice();
   EXPECT_TRUE(slice.isObject());
