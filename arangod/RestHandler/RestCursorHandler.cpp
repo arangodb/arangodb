@@ -450,13 +450,7 @@ void RestCursorHandler::cancelQuery() {
   std::lock_guard mutexLocker{_queryLock};
 
   if (_query != nullptr) {
-    // cursor is canceled. now remove the continue handler we may have
-    // registered in the query
-    if (_query->sharedState()) {
-      _query->sharedState()->resetWakeupHandler();
-    }
-
-    _query->setKillFlag();
+    _query->kill();
   }
   _queryKilled = true;
 }

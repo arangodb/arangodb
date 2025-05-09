@@ -134,7 +134,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
   virtual void shutdownExecute(bool isFinalized) noexcept;
 
-  // you might need to implment this in your handler
+  // you might need to implement this in your handler
   // if it will be executed in an async job
   virtual void cancel() { _canceled.store(true); }
 
