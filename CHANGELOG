@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improved the error message displayed when the APPROX_NEAR function fails to
+  apply a vector index.
+ 
 * Fix BTS-2135: A global lock on the query registry was in some cases
   unnecessarily held for the full duration of query destruction.
   This could lead to throughput reduction or stalls in some situations.
