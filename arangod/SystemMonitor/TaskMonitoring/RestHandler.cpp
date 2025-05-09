@@ -43,6 +43,12 @@ using namespace arangodb;
 using namespace arangodb::task_monitoring;
 using namespace arangodb::containers;
 
+RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
+                         GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
+      _feature(server.getFeature<Feature>()) {}
+
+namespace {
 struct Entry {
   TreeHierarchy hierarchy;
   TaskSnapshot data;
@@ -52,13 +58,6 @@ auto inspect(Inspector& f, Entry& x) {
   return f.object(x).fields(f.field("hierarchy", x.hierarchy),
                             f.field("data", x.data));
 }
-
-RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
-                         GeneralResponse* response)
-    : RestVocbaseBaseHandler(server, request, response),
-      _feature(server.getFeature<Feature>()) {}
-
-namespace {
 /**
    Creates a forest of all current tasks
 
@@ -66,13 +65,13 @@ namespace {
  larger hierarchy task.
  **/
 auto all_undeleted_promises() -> ForestWithRoots<TaskSnapshot> {
-  Forest<TaskSnapshot> forest;
+  auto forest = Forest<TaskSnapshot>{};
   std::vector<Id> roots;
   registry.for_node([&](TaskSnapshot task) {
     // if (promise.state != State::Deleted) {
     std::visit(overloaded{
-                   [&](TaskIdWrapper task_id) {
-                     forest.insert(task.id, task_id.id, task);
+                   [&](TaskIdWrapper parent) {
+                     forest.insert(task.id, parent.id, task);
                    },
                    [&](RootTask root) {
                      forest.insert(task.id, nullptr, task);
@@ -190,11 +189,7 @@ auto RestHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto lock_guard = co_await _feature.asyncLock();
 
   // do actual work
-  VPackBuilder builder;
-  builder.openArray();
-  registry.for_node(
-      [&](TaskSnapshot task) { velocypack::serialize(builder, task); });
-  builder.close();
-  generateResult(rest::ResponseCode::OK, builder.slice());
+  auto promises = all_undeleted_promises().index_by_awaitee();
+  generateResult(rest::ResponseCode::OK, getStacktraceData(promises).slice());
   co_return;
 }
