@@ -29,6 +29,9 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let IM = global.instanceManager;
+let { versionHas } = require('@arangodb/test-helper');
+
+const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 
 function createDuplicateCollectionNameSuite() {
   'use strict';
@@ -49,34 +52,36 @@ function createDuplicateCollectionNameSuite() {
       // with a normal `db._create(cn);` we would run the risk of an exception.
       let rr = arango.POST("/_api/collection", {name:cn});
       let count = 0;
+      const timeout = isInstr ? 200 : 20;
       while (true) {
         let s = arango.PUT(`/_api/job/${r.headers["x-arango-async-id"]}`,{});
-        if (s.status !== 204) {
+        if (s.code !== 204) {
           break;
         }
-        internal.wait(1);
-        if (++count > 10) {
+        if (++count > timeout) {
           assertTrue(false, "Async job did not finish quickly enough!");
         }
+        internal.wait(1);
       }
       let c;
       count = 0;
       while (true) {
-        // Reconnect to clear collection cache in arangosh:
-        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "");
+        // Flush collection cache in arangosh:
+        db._flushCache();
         c = db._collection(cn);
         if (c !== null) {
           break;
         }
-        if (++count > 10) {
+        if (++count > timeout) {
           assertTrue(false, "Collection did not appear quickly enough!");
         }
+        internal.wait(1);
       }
       c.drop();  // this will drop one copy (should be the only one)
       // Give `arangosh` some tries to see the duplicate collection:
       for (let i = 0; i < 10; ++i) {
         // Reconnect to clear collection cache in arangosh:
-        arango.reconnect(arango.getEndpoint(), db._name(), arango.connectedUser(), "");
+        db._flushCache();
         c = db._collection(cn);
         if (c !== null) {
           break;   // This is going badly!
