@@ -450,7 +450,7 @@ void RestCursorHandler::cancelQuery() {
   std::lock_guard mutexLocker{_queryLock};
 
   if (_query != nullptr) {
-    _query->kill();
+    _query->setKillFlag();
   }
   _queryKilled = true;
 }
