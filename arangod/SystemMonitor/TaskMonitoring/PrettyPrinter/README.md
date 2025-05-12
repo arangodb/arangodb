@@ -5,7 +5,7 @@ This python-package provides a pretty-printer for the hierarchical task monitori
 The pretty-printer groups tasks by their top-level (hierarchy 0, no parent) and by their state. The output is grouped and ordered as follows:
 1. Running tasks
 2. Finished tasks
-3. Deleted tasks
+3. Deleted tasks (optional, see below)
 
 Each group displays the task hierarchy as an ASCII tree for improved readability.
 
@@ -14,8 +14,11 @@ Each group displays the task hierarchy as an ASCII tree for improved readability
 To pretty-print a monitoring output JSON file:
 
 ```sh
-cat <monitoring_output.json> | ./src/pretty_printer.py
+cat <monitoring_output.json> | ./src/pretty_printer.py [--show-deleted]
 ```
+
+- By default, **Deleted** tasks are hidden.
+- Use the `--show-deleted` flag to include Deleted tasks in the output.
 
 ## Run tests
 

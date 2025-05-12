@@ -58,13 +58,14 @@ class TaskTree:
                 roots.append(node)
         return TaskTree(roots)
 
-    def pretty_print(self):
-        # Group by state: Running, Finished, Deleted (in this order)
+    def pretty_print(self, show_deleted: bool = False):
         state_order = ["Running", "Finished", "Deleted"]
         grouped = collections.defaultdict(list)
         for node in self.roots:
             grouped[node.state].append(node)
         for state in state_order:
+            if state == "Deleted" and not show_deleted:
+                continue
             if grouped[state]:
                 print(f"=== {state} Tasks ===")
                 if state == "Running":

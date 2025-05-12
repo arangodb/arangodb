@@ -403,7 +403,7 @@ class TestTaskTree(unittest.TestCase):
         sys_stdout = sys.stdout
         sys.stdout = captured
         try:
-            tree.pretty_print()
+            tree.pretty_print(show_deleted=True)
         finally:
             sys.stdout = sys_stdout
         output = captured.getvalue()
@@ -434,7 +434,7 @@ class TestTaskTree(unittest.TestCase):
         sys_stdout = sys.stdout
         sys.stdout = captured
         try:
-            tree.pretty_print()
+            tree.pretty_print(show_deleted=True)
         finally:
             sys.stdout = sys_stdout
         output = captured.getvalue()
@@ -552,13 +552,41 @@ class TestTaskTree(unittest.TestCase):
         self.assertNotIn("[x2]", output)
         self.assertNotIn("  2 x", output)
 
+    def test_deleted_tasks_hidden_by_default(self):
+        tree = TaskTree.from_json(SAMPLE_NON_RUNNING_GROUP_THREAD_NAME["task_stacktraces"])
+        captured = io.StringIO()
+        sys_stdout = sys.stdout
+        sys.stdout = captured
+        try:
+            tree.pretty_print(show_deleted=False)
+        finally:
+            sys.stdout = sys_stdout
+        output = captured.getvalue()
+        # Deleted tasks should not be printed
+        self.assertNotIn("Deleted Tasks", output)
+        self.assertNotIn("Top Task [Deleted]", output)
+
+    def test_deleted_tasks_shown_with_flag(self):
+        tree = TaskTree.from_json(SAMPLE_NON_RUNNING_GROUP_THREAD_NAME["task_stacktraces"])
+        captured = io.StringIO()
+        sys_stdout = sys.stdout
+        sys.stdout = captured
+        try:
+            tree.pretty_print(show_deleted=True)
+        finally:
+            sys.stdout = sys_stdout
+        output = captured.getvalue()
+        # Deleted tasks should be printed
+        self.assertIn("=== Deleted Tasks ===", output)
+        self.assertIn("Top Task [Deleted]", output)
+
     def test_non_running_group_by_thread_name(self):
         tree = TaskTree.from_json(SAMPLE_NON_RUNNING_GROUP_THREAD_NAME["task_stacktraces"])
         captured = io.StringIO()
         sys_stdout = sys.stdout
         sys.stdout = captured
         try:
-            tree.pretty_print()
+            tree.pretty_print(show_deleted=True)
         finally:
             sys.stdout = sys_stdout
         output = captured.getvalue()
@@ -573,7 +601,7 @@ class TestTaskTree(unittest.TestCase):
         sys_stdout = sys.stdout
         sys.stdout = captured
         try:
-            tree.pretty_print()
+            tree.pretty_print(show_deleted=True)
         finally:
             sys.stdout = sys_stdout
         output = captured.getvalue()
