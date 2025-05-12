@@ -553,13 +553,11 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
-              export KMP_AFFINITY=verbose,disabled
+              echo "Setting arch env variables"
               export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_CPUINFO_FILE=/proc/cpuinfo
+              export KMP_AFFINITY=verbose
+              export KMP_TOPOLOGY_METHOD=hwlock
             fi
-            lscpu -e
-            echo "CPUINFO"
-            cat /proc/cpuinfo
 
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -605,9 +603,10 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
-              export KMP_AFFINITY=verbose,disabled
+              echo "Setting arch env variables"
               export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_CPUINFO_FILE=/proc/cpuinfo
+              export KMP_AFFINITY=verbose
+              export KMP_TOPOLOGY_METHOD=hwlock
             fi
             lscpu -e
             echo "CPUINFO"
@@ -668,9 +667,10 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
-              export KMP_AFFINITY=verbose,disabled
+              echo "Setting arch env variables"
               export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_CPUINFO_FILE=/proc/cpuinfo
+              export KMP_AFFINITY=verbose
+              export KMP_TOPOLOGY_METHOD=hwlock
             fi
             lscpu -e
             echo "CPUINFO"
