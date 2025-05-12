@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ConnectionCache.h"
+#include <atomic>
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
@@ -50,13 +51,14 @@ ConnectionLease::~ConnectionLease() {
 ConnectionLease::ConnectionLease(ConnectionLease&& other) noexcept
     : _cache(other._cache),
       _connection(std::move(other._connection)),
-      _preventRecycling(other._preventRecycling) {}
+      _preventRecycling(
+          other._preventRecycling.load(std::memory_order_relaxed)) {}
 
 ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
   if (this != &other) {
     _cache = other._cache;
     _connection = std::move(other._connection);
-    _preventRecycling = other._preventRecycling;
+    _preventRecycling = other._preventRecycling.load(std::memory_order_relaxed);
   }
   return *this;
 }
@@ -64,7 +66,7 @@ ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
 void ConnectionLease::preventRecycling() noexcept {
   // this will prevent the connection from being inserted back into the
   // connection cache
-  _preventRecycling = true;
+  _preventRecycling.store(true);  // data race write and read
 }
 
 ConnectionCache::ConnectionCache(
