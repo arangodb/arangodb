@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
@@ -51,13 +51,13 @@ void ProcessEnvironmentFeature::collectOptions(
 
 void ProcessEnvironmentFeature::prepare() {
   if (_dumpEnv) {
-   // Maybe Replace with TRI_ASSERT, I  leave that to you
+    // Maybe Replace with TRI_ASSERT, I  leave that to you
     if (environ == nullptr) {
-            return;
+      return;
     }
 
     for (char** env = environ; *env != nullptr; ++env) {
-        LOG_TOPIC("a7777", INFO, arangodb::Logger::FIXME) << *env;
+      LOG_TOPIC("a7777", INFO, arangodb::Logger::FIXME) << *env;
     }
   }
 }
