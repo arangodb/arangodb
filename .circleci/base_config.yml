@@ -555,7 +555,7 @@ jobs:
             if test "$ARCH" == "aarch64"; then
               echo "Setting arch env variables"
               export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_AFFINITY=verbose
+              export KMP_AFFINITY=verbose,disabled
               export KMP_TOPOLOGY_METHOD=hwlock
             fi
 
@@ -605,7 +605,7 @@ jobs:
             if test "$ARCH" == "aarch64"; then
               echo "Setting arch env variables"
               export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_AFFINITY=verbose
+              export KMP_AFFINITY=verbose,disabled
               export KMP_TOPOLOGY_METHOD=hwlock
             fi
             lscpu -e
@@ -669,7 +669,7 @@ jobs:
             if test "$ARCH" == "aarch64"; then
               echo "Setting arch env variables"
               export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_AFFINITY=verbose
+              export KMP_AFFINITY=verbose,disabled
               export KMP_TOPOLOGY_METHOD=hwlock
             fi
             lscpu -e
