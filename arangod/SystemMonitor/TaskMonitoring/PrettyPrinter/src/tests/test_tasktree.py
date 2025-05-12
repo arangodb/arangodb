@@ -459,6 +459,37 @@ class TestTaskTree(unittest.TestCase):
         self.assertEqual(output.count("Child Task [Running] (thread: worker:2) @ funcB (file.cpp:20)"), 2)
         self.assertNotIn("[x2]", output)
         self.assertNotIn("  2 x", output)
+        # Check reverse order: deepest child first, then parent, then root
+        idx_child2 = output.find("Child Task [Running] (thread: worker:2) @ funcB (file.cpp:20)")
+        idx_root = output.find("Top Task [Running] (thread: main:1) @ funcA (file.cpp:10)")
+        if not (idx_child2 < idx_root):
+            print("\nDEBUG OUTPUT (test_grouping_nested):\n" + output)
+        self.assertTrue(idx_child2 < idx_root, "Deepest child should appear before root in output")
+
+    def test_reverse_ordering_deep_stack(self):
+        # Simulate a deep stack
+        deep_stack = {
+            "task_stacktraces": [[
+                {"hierarchy": 0, "data": {"id": "root", "name": "Root", "state": "Running", "parent": {}, "thread": {"LWPID": 1, "name": "main"}, "source_location": {"file_name": "file.cpp", "line": 1, "function_name": "rootFunc"}}},
+                {"hierarchy": 1, "data": {"id": "mid", "name": "Mid", "state": "Running", "parent": {"id": "root"}, "thread": {"LWPID": 1, "name": "main"}, "source_location": {"file_name": "file.cpp", "line": 2, "function_name": "midFunc"}}},
+                {"hierarchy": 2, "data": {"id": "leaf", "name": "Leaf", "state": "Running", "parent": {"id": "mid"}, "thread": {"LWPID": 1, "name": "main"}, "source_location": {"file_name": "file.cpp", "line": 3, "function_name": "leafFunc"}}}
+            ]]
+        }
+        tree = TaskTree.from_json(deep_stack["task_stacktraces"])
+        captured = io.StringIO()
+        sys_stdout = sys.stdout
+        sys.stdout = captured
+        try:
+            tree.pretty_print()
+        finally:
+            sys.stdout = sys_stdout
+        output = captured.getvalue()
+        idx_leaf = output.find("Leaf [Running] (thread: main:1) @ leafFunc (file.cpp:3)")
+        idx_mid = output.find("Mid [Running] (thread: main:1) @ midFunc (file.cpp:2)")
+        idx_root = output.find("Root [Running] (thread: main:1) @ rootFunc (file.cpp:1)")
+        if not (idx_leaf < idx_mid < idx_root):
+            print("\nDEBUG OUTPUT (test_reverse_ordering_deep_stack):\n" + output)
+        self.assertTrue(idx_leaf < idx_mid < idx_root, "Order should be leaf, then mid, then root")
 
     def test_reused_id_siblings(self):
         tree = TaskTree.from_json(SAMPLE_REUSED_ID_SIBLINGS["task_stacktraces"])

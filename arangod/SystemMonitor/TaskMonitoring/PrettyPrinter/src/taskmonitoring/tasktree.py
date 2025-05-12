@@ -68,48 +68,44 @@ class TaskTree:
             if grouped[state]:
                 print(f"=== {state} Tasks ===")
                 if state == "Running":
-                    for node in grouped[state]:
+                    for node in reversed(grouped[state]):
                         self._print_grouped_nodes([node], top_level=True, force_no_group=True)
                 else:
-                    self._print_grouped_nodes(grouped[state], top_level=True)
+                    self._print_grouped_nodes(list(reversed(grouped[state])), top_level=True)
                 print()
 
     def _print_grouped_nodes(self, nodes: List[TaskNode], prefix: str = "", is_last: bool = True, top_level: bool = False, force_no_group: bool = False):
         if force_no_group:
-            # Print all nodes individually, no grouping
-            for idx, node in enumerate(nodes):
+            # Post-order: print children first
+            for idx, node in enumerate(reversed(nodes)):
                 count = 1
+                if node.children:
+                    self._print_grouped_nodes(list(reversed(node.children)), prefix + ("   " if (is_last and idx == len(nodes) - 1) else "│  "), True, top_level=False, force_no_group=force_no_group)
                 if top_level:
                     count_str = f"{count:3d} x"
                     print(f"{count_str} {str(node)}")
-                    next_top_level = False
                 else:
                     connector = "└─ " if (is_last and idx == len(nodes) - 1) else "├─ "
                     print(prefix + connector + str(node))
-                    next_top_level = False
-                if node.children:
-                    self._print_grouped_nodes(node.children, prefix + ("   " if (is_last and idx == len(nodes) - 1) else "│  "), True, top_level=next_top_level, force_no_group=force_no_group)
             return
         # Group nodes by their group_key
         group_map = collections.defaultdict(list)
         for node in nodes:
             group_map[node.group_key()].append(node)
         group_items = list(group_map.items())
-        for idx, (key, group) in enumerate(group_items):
+        for idx, (key, group) in enumerate(reversed(group_items)):
             node = group[0]
             count = len(group)
-            if top_level:
-                count_str = f"{count:3d} x" if count < 1000 else f"{count} x"
-                print(f"{count_str} {str(node)}")
-                next_top_level = False
-            else:
-                connector = "└─ " if (is_last and idx == len(group_items) - 1) else "├─ "
-                count_str = f" [x{count}]" if count > 1 else ""
-                print(prefix + connector + str(node) + count_str)
-                next_top_level = False
-            # Collect all children from all grouped nodes
+            # Post-order: print children first
             all_children = []
             for n in group:
                 all_children.extend(n.children)
             if all_children:
-                self._print_grouped_nodes(all_children, prefix + ("   " if (is_last and idx == len(group_items) - 1) else "│  "), True, top_level=next_top_level) 
+                self._print_grouped_nodes(list(reversed(all_children)), prefix + ("   " if (is_last and idx == len(group_items) - 1) else "│  "), True, top_level=False)
+            if top_level:
+                count_str = f"{count:3d} x" if count < 1000 else f"{count} x"
+                print(f"{count_str} {str(node)}")
+            else:
+                connector = "└─ " if (is_last and idx == len(group_items) - 1) else "├─ "
+                count_str = f" [x{count}]" if count > 1 else ""
+                print(prefix + connector + str(node) + count_str) 
