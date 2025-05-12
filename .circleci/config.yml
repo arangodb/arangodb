@@ -19,17 +19,21 @@ jobs:
       - run:
           name: Compile C++ program
           command: |
+            export OMP_DISPLAY_ENV=VERBOSE
+             
             echo "PROC INFO:"
             cat /proc/cpuinfo
             echo "LSCPU extended:"
             lscpu -e
             echo "Run checker:"
             ./cgroup_checker.sh || true
+            echo ""
             echo "Build with gcc"
             g++ --version
             g++ -fopenmp openmp.cpp -o openmp-gcc
             ./openmp-gcc
 
+            echo ""
             echo "Build with clang"
             clang++-19 --version
             LD_PRELOAD=$PWD/libomp.so clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
