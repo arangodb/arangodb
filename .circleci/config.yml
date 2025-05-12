@@ -20,6 +20,9 @@ jobs:
           name: Compile C++ program
           command: |
             export OMP_DISPLAY_ENV=VERBOSE
+            export KM_AFFINITY=VERBOSE
+            export OMP_THREAD_LIMIT=2
+            export KMP_AFFINITY=verbose
              
             echo "PROC INFO:"
             cat /proc/cpuinfo
