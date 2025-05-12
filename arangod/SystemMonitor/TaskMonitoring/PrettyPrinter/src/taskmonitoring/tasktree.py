@@ -16,19 +16,24 @@ class TaskNode:
         self.children.append(child)
 
     def group_key(self) -> Tuple:
-        # Used for grouping: all fields except id, parent_id, and hierarchy
+        # For 'Running' tasks, do not group (return unique key)
+        if self.state == "Running":
+            return (id(self),)
+        # For non-'Running', group by name, state, thread name (not ID), and source location
         return (
             self.name,
             self.state,
             self.thread["name"],
-            self.thread["LWPID"],
             self.source_location["file_name"],
             self.source_location["line"],
             self.source_location["function_name"]
         )
 
     def __str__(self):
-        return f"{self.name} [{self.state}] (thread: {self.thread['name']}:{self.thread['LWPID']}) @ {self.source_location['function_name']} ({self.source_location['file_name']}:{self.source_location['line']})"
+        if self.state == "Running":
+            return f"{self.name} [{self.state}] (thread: {self.thread['name']}:{self.thread['LWPID']}) @ {self.source_location['function_name']} ({self.source_location['file_name']}:{self.source_location['line']})"
+        else:
+            return f"{self.name} [{self.state}] (thread: {self.thread['name']}) @ {self.source_location['function_name']} ({self.source_location['file_name']}:{self.source_location['line']})"
 
 class TaskTree:
     def __init__(self, roots: List[TaskNode]):
@@ -62,10 +67,29 @@ class TaskTree:
         for state in state_order:
             if grouped[state]:
                 print(f"=== {state} Tasks ===")
-                self._print_grouped_nodes(grouped[state], top_level=True)
+                if state == "Running":
+                    for node in grouped[state]:
+                        self._print_grouped_nodes([node], top_level=True, force_no_group=True)
+                else:
+                    self._print_grouped_nodes(grouped[state], top_level=True)
                 print()
 
-    def _print_grouped_nodes(self, nodes: List[TaskNode], prefix: str = "", is_last: bool = True, top_level: bool = False):
+    def _print_grouped_nodes(self, nodes: List[TaskNode], prefix: str = "", is_last: bool = True, top_level: bool = False, force_no_group: bool = False):
+        if force_no_group:
+            # Print all nodes individually, no grouping
+            for idx, node in enumerate(nodes):
+                count = 1
+                if top_level:
+                    count_str = f"{count:3d} x"
+                    print(f"{count_str} {str(node)}")
+                    next_top_level = False
+                else:
+                    connector = "└─ " if (is_last and idx == len(nodes) - 1) else "├─ "
+                    print(prefix + connector + str(node))
+                    next_top_level = False
+                if node.children:
+                    self._print_grouped_nodes(node.children, prefix + ("   " if (is_last and idx == len(nodes) - 1) else "│  "), True, top_level=next_top_level, force_no_group=force_no_group)
+            return
         # Group nodes by their group_key
         group_map = collections.defaultdict(list)
         for node in nodes:
@@ -75,7 +99,6 @@ class TaskTree:
             node = group[0]
             count = len(group)
             if top_level:
-                # Print counter at the start, right-aligned in 3 chars, then ' x' (e.g., '  5 x')
                 count_str = f"{count:3d} x" if count < 1000 else f"{count} x"
                 print(f"{count_str} {str(node)}")
                 next_top_level = False
