@@ -36,8 +36,8 @@ jobs:
             echo ""
             echo "Build with clang"
             clang++-19 --version
-            LD_PRELOAD=$PWD/libomp.so clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
-            ./openmp-clang
+            clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
+            LD_PRELOAD=$PWD/libomp.so ./openmp-clang
 
 
 workflows:
