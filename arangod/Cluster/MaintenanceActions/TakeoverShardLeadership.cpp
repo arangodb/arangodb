@@ -51,6 +51,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -266,6 +267,9 @@ bool TakeoverShardLeadership::first() {
   std::string const& planRaftIndex = _description.get(PLAN_RAFT_INDEX);
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
   Result res;
+
+  // Add task monitoring
+  auto task = task_monitoring::Task{"TakeoverShardLeadership for DB: '" + database + "', Collection: '" + collection + "', Shard: '" + shard + "'"};
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();

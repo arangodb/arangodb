@@ -36,6 +36,7 @@
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::methods;
@@ -68,6 +69,9 @@ bool DropDatabase::first() {
   std::string const database = _description.get(DATABASE);
   LOG_TOPIC("22779", DEBUG, Logger::MAINTENANCE)
       << "DropDatabase: dropping " << database;
+
+  // Add task monitoring
+  auto task = task_monitoring::Task{"DropDatabase for DB: '" + database + "'"};
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();

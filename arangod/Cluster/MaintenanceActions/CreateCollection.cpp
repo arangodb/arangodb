@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "TaskMonitoring/task.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -111,6 +112,9 @@ bool CreateCollection::first() {
   auto const& shard = getShard();
   auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
+
+  // Add task monitoring
+  auto task = task_monitoring::Task{"CreateCollection for DB: '" + database + "', Collection: '" + collection + "', Shard: '" + shard + "'"};
 
   std::string from;
   _description.get("from", from);
