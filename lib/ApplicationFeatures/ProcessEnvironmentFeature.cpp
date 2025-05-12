@@ -51,10 +51,13 @@ void ProcessEnvironmentFeature::collectOptions(
 
 void ProcessEnvironmentFeature::prepare() {
   if (_dumpEnv) {
-    int i = 0;
-    while (environ[i]) {
-      LOG_TOPIC("a7777", INFO, arangodb::Logger::FIXME) << environ[i];
-      i++;
+   // Maybe Replace with TRI_ASSERT, I  leave that to you
+    if (environ == nullptr) {
+            return;
+    }
+
+    for (char** env = environ; *env != nullptr; ++env) {
+        LOG_TOPIC("a7777", INFO, arangodb::Logger::FIXME) << *env;
     }
   }
 }
