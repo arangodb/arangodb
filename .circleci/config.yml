@@ -32,7 +32,7 @@ jobs:
 
             echo "Build with clang"
             clang++-19 --version
-            clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
+            LD_PRELOAD=$PWD/libomp.so clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
             ./openmp-clang
 
 
