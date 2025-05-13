@@ -558,14 +558,9 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
-              echo "Setting arch env variables"
-              export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_AFFINITY=verbose,disabled
-              export KMP_TOPOLOGY_METHOD=hwlock
-              export LD_PRELOAD=$PWD/libomp.so
+              export KMP_AFFINITY=disabled
+              export OMP_NUM_THREADS=1
             fi
-
-            #
 
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -616,11 +611,8 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
-              echo "Setting arch env variables"
-              export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_AFFINITY=verbose,disabled
-              export KMP_TOPOLOGY_METHOD=hwlock
-              export LD_PRELOAD=$PWD/libomp.so
+              export KMP_AFFINITY=disabled
+              export OMP_NUM_THREADS=1
             fi
             lscpu -e
             echo "CPUINFO"
@@ -686,11 +678,8 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
-              echo "Setting arch env variables"
-              export OMP_DISPLAY_ENV=VERBOSE
-              export KMP_AFFINITY=verbose,disabled
-              export KMP_TOPOLOGY_METHOD=hwlock
-              export LD_PRELOAD=$PWD/libomp.so
+              export KMP_AFFINITY=disabled
+              export OMP_NUM_THREADS=1
             fi
             lscpu -e
             echo "CPUINFO"
