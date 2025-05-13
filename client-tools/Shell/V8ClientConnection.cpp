@@ -2811,6 +2811,7 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
   }
 
   auto req = fuzzer.createRequest();
+  auto req_copy = *req;
 
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;
@@ -2818,6 +2819,20 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;
+  }
+
+  if (!connection || connection->state() == fu::Connection::State::Closed) {
+    LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME) <<
+      "connection closed after" << req;
+    if (response) {
+      LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME) <<
+        "Server responce: " << response;
+    }
+    if (rc != fu::Error::NoError) {
+      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME) <<
+        "rc: " << response;
+    }
+    return kFuzzNotConnected;
   }
 
   if (rc == fu::Error::ConnectionClosed) {
