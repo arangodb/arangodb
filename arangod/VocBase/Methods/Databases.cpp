@@ -98,7 +98,8 @@ std::vector<std::string> Databases::list(ArangodServer& server,
 }
 
 Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
-  auto task = task_monitoring::Task{"Collect Database information for " + vocbase->name()};
+  auto task = task_monitoring::Task{"Collect Database information for " +
+                                    vocbase->name()};
   if (ServerState::instance()->isCoordinator()) {
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     auto [acb, idx] = cache.read(std::vector<std::string>{
@@ -190,7 +191,8 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
 
 // Create database on cluster;
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
-  auto task = task_monitoring::Task{"Create Database " + info.getName() + " on Coordinator"};
+  auto task = task_monitoring::Task{"Create Database " + info.getName() +
+                                    " on Coordinator"};
   // TODO: Add status strings to task for phases.
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 

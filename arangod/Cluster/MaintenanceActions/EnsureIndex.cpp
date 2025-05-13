@@ -116,7 +116,9 @@ bool EnsureIndex::first() {
   auto const& id = properties().get(ID).copyString();
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"EnsureIndex for DB: '" + database + "', Collection: '" + collection + "', Shard: '" + shard + "'"};
+  auto task = task_monitoring::Task{"EnsureIndex for DB: '" + database +
+                                    "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
 
   try {  // now try to guard the database
     auto& df = _feature.server().getFeature<DatabaseFeature>();

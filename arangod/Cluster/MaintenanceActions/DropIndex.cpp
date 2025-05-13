@@ -92,7 +92,9 @@ bool DropIndex::first() {
   auto const& id = _description.get(INDEX);
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"DropIndex for DB: '" + database + "', Shard: '" + shard + "', Index: '" + id + "'"};
+  auto task =
+      task_monitoring::Task{"DropIndex for DB: '" + database + "', Shard: '" +
+                            shard + "', Index: '" + id + "'"};
 
   VPackBuilder index;
   index.add(VPackValue(_description.get(INDEX)));

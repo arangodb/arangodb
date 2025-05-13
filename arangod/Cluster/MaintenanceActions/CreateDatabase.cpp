@@ -71,7 +71,8 @@ bool CreateDatabase::first() {
   auto database = _description.get(DATABASE);
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"CreateDatabase for DB: '" + database + "'"};
+  auto task =
+      task_monitoring::Task{"CreateDatabase for DB: '" + database + "'"};
 
   LOG_TOPIC("953b1", DEBUG, Logger::MAINTENANCE)
       << "CreateDatabase: creating database " << database;

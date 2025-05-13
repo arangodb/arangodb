@@ -71,7 +71,8 @@ bool DropCollection::first() {
   auto const& shard = getShard();
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"DropCollection for DB: '" + database + "', Shard: '" + shard + "'"};
+  auto task = task_monitoring::Task{"DropCollection for DB: '" + database +
+                                    "', Shard: '" + shard + "'"};
 
   LOG_TOPIC("a2961", DEBUG, Logger::MAINTENANCE)
       << "DropCollection: dropping local shard '" << database << "/" << shard;

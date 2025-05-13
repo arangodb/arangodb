@@ -65,7 +65,9 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
   auto& df = _feature.server().getFeature<DatabaseFeature>();
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"UpdateReplicatedLogAction for DB: '" + database + "', LogId: '" + std::to_string(logId.id()) + "'"};
+  auto task =
+      task_monitoring::Task{"UpdateReplicatedLogAction for DB: '" + database +
+                            "', LogId: '" + std::to_string(logId.id()) + "'"};
 
   auto result = basics::catchToResult([&] {
     DatabaseGuard guard(df, database);

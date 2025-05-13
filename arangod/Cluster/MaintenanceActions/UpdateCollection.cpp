@@ -91,7 +91,9 @@ bool UpdateCollection::first() {
   Result res;
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"UpdateCollection for DB: '" + database + "', Collection: '" + collection + "', Shard: '" + shard + "'"};
+  auto task = task_monitoring::Task{"UpdateCollection for DB: '" + database +
+                                    "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
 
   std::string from;
   _description.get("from", from);

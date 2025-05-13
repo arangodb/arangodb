@@ -269,7 +269,9 @@ bool TakeoverShardLeadership::first() {
   Result res;
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"TakeoverShardLeadership for DB: '" + database + "', Collection: '" + collection + "', Shard: '" + shard + "'"};
+  auto task = task_monitoring::Task{"TakeoverShardLeadership for DB: '" +
+                                    database + "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();

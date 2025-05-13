@@ -114,7 +114,9 @@ bool CreateCollection::first() {
   auto const& props = properties();
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"CreateCollection for DB: '" + database + "', Collection: '" + collection + "', Shard: '" + shard + "'"};
+  auto task = task_monitoring::Task{"CreateCollection for DB: '" + database +
+                                    "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
 
   std::string from;
   _description.get("from", from);

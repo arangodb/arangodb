@@ -82,7 +82,9 @@ bool ResignShardLeadership::first() {
   std::string const& collection = getShard();
 
   // Add task monitoring
-  auto task = task_monitoring::Task{"ResignShardLeadership for DB: '" + database + "', Shard: '" + collection + "'"};
+  auto task =
+      task_monitoring::Task{"ResignShardLeadership for DB: '" + database +
+                            "', Shard: '" + collection + "'"};
 
   LOG_TOPIC("14f43", DEBUG, Logger::MAINTENANCE)
       << "trying to withdraw as leader of shard '" << database << "/"
