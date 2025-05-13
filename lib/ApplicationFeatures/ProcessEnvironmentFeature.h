@@ -18,27 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
 
 namespace arangodb {
+namespace application_features {
+class GreetingsFeaturePhase;
+}
 
-class VPackFeature;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+class ProcessEnvironmentFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "Temp"; }
 
-using namespace application_features;
+  template<typename Server>
+  ProcessEnvironmentFeature(Server& server, std::string const& appname)
+      : ApplicationFeature{server, *this}, _dumpEnv(false) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
-using ArangoVPackFeaturesList =
-    TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
-             ConfigFeature, LoggerFeature, OptionsCheckFeature,
-             FileSystemFeature, RandomFeature, ShellColorsFeature,
-             ShutdownFeature, ProcessEnvironmentFeature, VPackFeature>;
-struct ArangoVPackFeatures : ArangoVPackFeaturesList {};
-using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
-using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
 
+ private:
+  bool _dumpEnv;
+};
+#endif
 }  // namespace arangodb
