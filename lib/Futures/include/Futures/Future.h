@@ -133,9 +133,7 @@ struct EmptyConstructor {};
 
 // uses a condition_variable to wait
 template<typename T>
-void waitImpl(
-    Future<T>& f,
-    std::function<std::chrono::steady_clock::duration const()> cb = nullptr) {
+void waitImpl(Future<T>& f, std::function<std::chrono::steady_clock::duration const ()> cb = nullptr) {
   if (f.isReady()) {
     return;  // short-circuit
   }
@@ -158,12 +156,11 @@ void waitImpl(
   std::unique_lock<std::mutex> lock(m);
 
   if (cb != nullptr) {
-    while (cv.wait_for(lock, cb(), [&ret] { return ret.isReady(); })) {
-    }
+    while (!cv.wait_for(lock, cb(), [&ret] { return ret.isReady(); })) {}
   } else {
     cv.wait(lock, [&ret] { return ret.isReady(); });
   }
-
+  
   f = std::move(ret);
 }
 
@@ -280,9 +277,7 @@ class Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait(std::function<std::chrono::steady_clock::duration const()> cb) {
-    detail::waitImpl(*this, cb);
-  }
+  void wait(std::function<std::chrono::steady_clock::duration const () > cb) { detail::waitImpl(*this, cb); }
   void wait() { detail::waitImpl(*this); }
 
   /// When this Future has completed, execute func which is a function that
@@ -544,3 +539,4 @@ class Future {
 
 }  // namespace futures
 }  // namespace arangodb
+               
