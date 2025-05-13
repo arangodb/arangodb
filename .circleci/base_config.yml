@@ -526,7 +526,7 @@ jobs:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
-            apt install git -y
+            apt update && apt install git -y
             git clone https://github.com/arangodb/arangodb.git
             cd arangodb
             git checkout fix/arm-failure
@@ -564,6 +564,8 @@ jobs:
               export KMP_TOPOLOGY_METHOD=hwlock
               export LD_PRELOAD=$PWD/libomp.so
             fi
+
+            #
 
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -605,7 +607,7 @@ jobs:
       - run:
           name: Run HotBackup tests
           command: |
-            apt install git -y
+            apt update && apt install git -y
             git clone https://github.com/arangodb/arangodb.git
             cd arangodb
             git checkout fix/arm-failure
@@ -674,7 +676,7 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
-            apt install git -y
+            apt update && apt install git -y
             git clone https://github.com/arangodb/arangodb.git
             cd arangodb
             git checkout fix/arm-failure
