@@ -23,7 +23,6 @@
 
 #include "arangorestore.h"
 
-#include "Basics/files.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 
