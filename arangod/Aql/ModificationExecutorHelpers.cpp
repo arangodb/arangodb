@@ -247,11 +247,9 @@ AqlValue ModificationExecutorHelpers::getDocumentOrNull(
 // while to avoid delays:
 void ModificationExecutorHelpers::waitAndDetach(
     futures::Future<OperationResult>& future) {
-  if (!future.isReady()) {
-    {
-      using namespace std::literals::chrono_literals;
-      future.wait(std::chrono::steady_clock::now() + 1100ms);
-    }
+  using namespace std::literals::chrono_literals;
+  future.wait(std::chrono::steady_clock::now() + 1100ms);
+
     if (!future.isReady()) {
       LOG_TOPIC("afe32", INFO, Logger::THREADS)
         << "Did not get replication response within " << detachTime.count()
@@ -272,5 +270,4 @@ void ModificationExecutorHelpers::waitAndDetach(
       }
       future.wait();
     }
-  }
 }
