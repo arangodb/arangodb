@@ -250,11 +250,7 @@ void ModificationExecutorHelpers::waitAndDetach(
   if (!future.isReady()) {
     {
       using namespace std::literals::chrono_literals;
-      auto const end = std::chrono::steady_clock::now() + 100ms;
-      auto const cb = [&]() noexcept {
-        return end - std::chrono::steady_clock::now();
-      };
-      future.wait(cb);
+      future.wait(std::chrono::steady_clock::now() + 100ms);
     }
     if (!future.isReady()) {
       auto const detachTime = std::chrono::milliseconds(

@@ -133,35 +133,37 @@ struct EmptyConstructor {};
 
 // uses a condition_variable to wait
 template<typename T>
-void waitImpl(
-    Future<T>& f,
-    std::function<std::chrono::steady_clock::duration const()> cb = nullptr) {
+void waitImpl(Future<T>& f, std::chrono::steady_clock::time_point tp = {}) {
   if (f.isReady()) {
     return;  // short-circuit
   }
 
-  std::mutex m;
-  std::condition_variable cv;
+  struct muco {
+    std::mutex m;
+    std::condition_variable cv;
+  };
+  auto mc = std::make_shared<muco>();
 
   Promise<T> p;
   Future<T> ret = p.getFuture();
-  std::move(f).thenFinal([p(std::move(p)), &cv, &m](Try<T>&& t) mutable {
+  std::move(f).thenFinal([p(std::move(p)), mc](Try<T>&& t) mutable {
     // We need to hold this mutex, while sending the notify.
     // Otherwise the future ret may be ready and thereby leaving this function
     // which would free the condtion variable, before sending notify.
     // This is one of the rare cases where notify without lock would cause
     // undefined behaviour.
-    std::lock_guard<std::mutex> guard(m);
+    std::lock_guard<std::mutex> guard(mc->m);
     p.setTry(std::move(t));
-    cv.notify_one();
+    mc->cv.notify_one();
   });
-  std::unique_lock<std::mutex> lock(m);
+  std::unique_lock<std::mutex> lock(mc->m);
 
-  if (cb != nullptr) {
-    while (!cv.wait_for(lock, cb(), [&ret] { return ret.isReady(); })) {
+  auto n = std::chrono::steady_clock::now();
+  if (tp > std::chrono::steady_clock::time_point{}) {
+    while (!mc->cv.wait_for(lock, tp - n, [&ret] { return ret.isReady(); })) {
     }
   } else {
-    cv.wait(lock, [&ret] { return ret.isReady(); });
+    mc->cv.wait(lock, [&ret] { return ret.isReady(); });
   }
 
   f = std::move(ret);
@@ -280,8 +282,11 @@ class Future {
   Try<T> const&& result() const&& { return std::move(getStateTryChecked()); }
 
   /// Blocks until this Future is complete.
-  void wait(std::function<std::chrono::steady_clock::duration const()> cb) {
+  /*void wait(std::function<std::chrono::steady_clock::duration const()> cb) {
     detail::waitImpl(*this, cb);
+    }*/
+  void wait(std::chrono::steady_clock::time_point tp) {
+    detail::waitImpl(*this, tp);
   }
   void wait() { detail::waitImpl(*this); }
 
