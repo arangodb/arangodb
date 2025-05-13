@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <memory>
+#include <string_view>
 #include "Metrics/Fwd.h"
 
 namespace arangodb {

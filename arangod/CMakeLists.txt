@@ -10,6 +10,8 @@ else()
   add_definitions("-DTEST_VIRTUAL=")
 endif()
 
+add_definitions("-Wno-error=enum-constexpr-conversion -Wno-error=unused-local-typedef")
+
 # add necessary defines for ICU. this will suffix all included ICU functions
 # and the ICU namespace with _64_64
 add_definitions("-DU_HAVE_LIB_SUFFIX=1")
