@@ -46,10 +46,11 @@ overloaded(Ts...) -> overloaded<Ts...>;
 using namespace arangodb;
 using namespace arangodb::task_monitoring;
 
-auto operator<<(std::ostream& out,
-                arangodb::task_monitoring::TaskSnapshot const& task)
-    -> std::ostream& {
-  return out << inspection::json(task);
+auto arangodb::task_monitoring::PrintTo(TaskSnapshot const& task,
+                                        std::ostream* os) -> void {
+  // *os << task.id << "| " << task.name << " - " <<
+  // inspection::json(task.parent);
+  *os << inspection::json(task);
 }
 
 auto TaskInRegistry::snapshot() -> TaskSnapshot {
@@ -119,6 +120,11 @@ Task::~Task() {
 
 auto Task::id() -> TaskId { return _node_in_registry->data.id(); }
 
+auto Task::source_location() -> basics::SourceLocationSnapshot {
+  return basics::SourceLocationSnapshot::from(
+      _node_in_registry->data.source_location);
+}
+
 /**
    Function to get and set global thread local variable of the currently running
    task on the current thread
@@ -132,4 +138,18 @@ auto arangodb::task_monitoring::get_current_task() -> Task** {
   // make sure that this is only created once on a thread
   static thread_local auto current = Guard{};
   return &current.task;
+}
+
+ThreadTask::ThreadTask(std::string name, std::function<void()> lambda,
+                       std::source_location loc) {
+  auto current_task_ptr = *get_current_task();
+  std::jthread([current_task = current_task_ptr,
+                // extend lifetime of task
+                current_task_ref = current_task_ptr->_node_in_registry,
+                name = std::move(name), lambda = std::move(lambda),
+                loc = std::move(loc)]() {
+    *get_current_task() = current_task;
+    auto task = Task{std::move(name), std::move(loc)};
+    lambda();
+  });
 }

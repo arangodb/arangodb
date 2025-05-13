@@ -33,6 +33,7 @@
 #include <optional>
 #include <source_location>
 #include <string>
+#include <thread>
 
 namespace arangodb::task_monitoring {
 
@@ -88,6 +89,7 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
       f.field("parent", x.parent), f.field("thread", x.thread),
       f.field("source_location", x.source_location));
 }
+auto PrintTo(TaskSnapshot const& task, std::ostream* os) -> void;
 
 struct Node;
 using NodeReference = std::shared_ptr<Node>;
@@ -139,6 +141,7 @@ struct TaskInRegistry {
  */
 struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
 
+struct ThreadTask;
 /**
    This is a scope for an active task.
 
@@ -152,6 +155,7 @@ struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
    as its task scope or its longest living child.
 */
 struct Task {
+  friend struct ThreadTask;
   Task(Task&& other) = delete;
   Task& operator=(Task&& other) = delete;
   Task(Task const&) = delete;
@@ -162,6 +166,7 @@ struct Task {
   ~Task();
 
   auto id() -> TaskId;
+  auto source_location() -> basics::SourceLocationSnapshot;
 
  private:
   Task* parent;
@@ -170,8 +175,15 @@ struct Task {
 
 auto get_current_task() -> Task**;
 
-}  // namespace arangodb::task_monitoring
+/**
+   Executes the given lambda in a new thread as a new task.
 
-auto operator<<(std::ostream& out,
-                arangodb::task_monitoring::TaskSnapshot const& task)
-    -> std::ostream&;
+   Creates a new task in the task registry. Its parent is the task that was
+   running on the already existing thread. Inside the lambda, you can use
+   *get_current_task() to get its task.
+ */
+struct ThreadTask {
+  ThreadTask(std::string name, std::function<void()> lambda,
+             std::source_location loc = std::source_location::current());
+};
+}  // namespace arangodb::task_monitoring
