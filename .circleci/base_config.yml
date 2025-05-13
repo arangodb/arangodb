@@ -557,6 +557,7 @@ jobs:
               export OMP_DISPLAY_ENV=VERBOSE
               export KMP_AFFINITY=verbose,disabled
               export KMP_TOPOLOGY_METHOD=hwlock
+              export LD_PRELOAD=$PWD/libomp.so
             fi
 
             export TIMELIMIT=<< parameters.timeLimit >>
@@ -607,6 +608,7 @@ jobs:
               export OMP_DISPLAY_ENV=VERBOSE
               export KMP_AFFINITY=verbose,disabled
               export KMP_TOPOLOGY_METHOD=hwlock
+              export LD_PRELOAD=$PWD/libomp.so
             fi
             lscpu -e
             echo "CPUINFO"
@@ -671,6 +673,7 @@ jobs:
               export OMP_DISPLAY_ENV=VERBOSE
               export KMP_AFFINITY=verbose,disabled
               export KMP_TOPOLOGY_METHOD=hwlock
+              export LD_PRELOAD=$PWD/libomp.so
             fi
             lscpu -e
             echo "CPUINFO"
