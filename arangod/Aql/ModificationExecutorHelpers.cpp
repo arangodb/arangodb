@@ -248,26 +248,27 @@ AqlValue ModificationExecutorHelpers::getDocumentOrNull(
 void ModificationExecutorHelpers::waitAndDetach(
     futures::Future<OperationResult>& future) {
   using namespace std::literals::chrono_literals;
-  future.wait(std::chrono::steady_clock::now() + 1100ms);
+  future.wait(
+      std::chrono::steady_clock::now() + 1000ms +
+      std::chrono::milliseconds(RandomGenerator::interval(uint32_t(100))));
 
-    if (!future.isReady()) {
-      LOG_TOPIC("afe32", INFO, Logger::THREADS)
+  if (!future.isReady()) {
+    LOG_TOPIC("afe32", INFO, Logger::THREADS)
         << "Did not get replication response within " << detachTime.count()
         << " milliseconds, detaching scheduler thread.";
-      uint64_t currentNumberDetached = 0;
-      uint64_t maximumNumberDetached = 0;
-      auto res = SchedulerFeature::SCHEDULER->detachThread(
+    uint64_t currentNumberDetached = 0;
+    uint64_t maximumNumberDetached = 0;
+    auto res = SchedulerFeature::SCHEDULER->detachThread(
         &currentNumberDetached, &maximumNumberDetached);
-      if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
-        LOG_TOPIC("afe33", WARN, Logger::THREADS)
+    if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+      LOG_TOPIC("afe33", WARN, Logger::THREADS)
           << "Could not detach scheduler thread (currently detached "
-          "threads: "
+             "threads: "
           << currentNumberDetached
-          << ", maximal number of detached threads: "
-          << maximumNumberDetached
+          << ", maximal number of detached threads: " << maximumNumberDetached
           << "), will continue to wait for replication in scheduler "
-          "thread, this can potentially lead to blockages!";
-      }
-      future.wait();
+             "thread, this can potentially lead to blockages!";
     }
+    future.wait();
+  }
 }
