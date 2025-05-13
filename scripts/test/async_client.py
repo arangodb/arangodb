@@ -401,6 +401,7 @@ class ArangoCLIprogressiveTimeoutExecutor:
             cwd=self.cfg.test_data_dir.resolve(),
             env=self.get_environment(params),
         ) as process:
+            print(f"The enviroment is {self.get_environment(params)}")
             os.close(slave)
             # pylint: disable=consider-using-f-string
             params["pid"] = process.pid

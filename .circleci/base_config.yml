@@ -607,6 +607,9 @@ jobs:
             cd arangodb
             git checkout fix/arm-failure
             cd ..
+            lscpu -e
+            echo "CPUINFO"
+            cat /proc/cpuinfo
             # Fix arm failing when using OpenMP
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
@@ -614,9 +617,6 @@ jobs:
               export KMP_AFFINITY=disabled
               export OMP_NUM_THREADS=1
             fi
-            lscpu -e
-            echo "CPUINFO"
-            cat /proc/cpuinfo
 
             python3 scripts/toolbox/HotBackupConsistencyTest.py \
               --arangod $PWD/build/bin/arangod \
