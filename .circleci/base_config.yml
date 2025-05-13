@@ -262,7 +262,7 @@ jobs:
     steps:
       - checkout-arangodb:
           with-submodules: false
-          destination: "/root/project"
+          destination: "/home/circleci/project"
       - run:
           name: Build frontend
           command: |
@@ -500,6 +500,9 @@ jobs:
       - run:
           name: Enabled coredumps
           command: ulimit -c unlimited
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
       - run:
           name: Log processes
           command: |
@@ -526,11 +529,6 @@ jobs:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
-            git clone git@github.com:arangodb/arangodb
-            cd arangodb
-            git checkout fix/arm-failure 
-            cd ..
-
             mkdir work
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
@@ -593,6 +591,9 @@ jobs:
         type: string
     resource_class: << parameters.size >>
     steps:
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/root/project"
       - attach_workspace:
           at: .
       - run:
@@ -605,11 +606,6 @@ jobs:
       - run:
           name: Run HotBackup tests
           command: |
-            git clone git@github.com:arangodb/arangodb
-            cd arangodb
-            git checkout fix/arm-failure 
-            cd ..
-
             # Fix arm failing when using OpenMP
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
@@ -663,13 +659,12 @@ jobs:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - attach_workspace:
           at: work/ArangoDB
+      - checkout-arangodb:
+          with-submodules: false
+          destination: "/home/circleci/project"
       - run:
           name: Clone RTA
           command: |
-            git clone git@github.com:arangodb/arangodb
-            cd arangodb
-            git checkout fix/arm-failure 
-            cd ..
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
@@ -757,7 +752,7 @@ jobs:
             du -sh /root/workspace/build/bin/*
       - checkout-arangodb:
           with-submodules: true
-          destination: "/root/project"
+          destination: "/home/circleci/project"
       - checkout-enterprise:
           destination: "/root/project/enterprise"
       - run:
