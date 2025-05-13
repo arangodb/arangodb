@@ -248,9 +248,11 @@ AqlValue ModificationExecutorHelpers::getDocumentOrNull(
 void ModificationExecutorHelpers::waitAndDetach(
     futures::Future<OperationResult>& future) {
   using namespace std::literals::chrono_literals;
-  future.wait(
-      std::chrono::steady_clock::now() + 1000ms +
-      std::chrono::milliseconds(RandomGenerator::interval(uint32_t(100))));
+
+  auto const detachTime = std::chrono::milliseconds(
+      1010 + RandomGenerator::interval(uint32_t(100)) * 100);
+
+  future.wait(std::chrono::steady_clock::now() + detachTime);
 
   if (!future.isReady()) {
     LOG_TOPIC("afe32", INFO, Logger::THREADS)
