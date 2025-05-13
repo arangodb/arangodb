@@ -61,7 +61,7 @@ struct ConnectionLease {
 
   ConnectionCache* _cache;
   std::unique_ptr<GeneralClientConnection> _connection;
-  bool _preventRecycling;
+  std::atomic<bool> _preventRecycling;
 };
 
 class ConnectionCache {
