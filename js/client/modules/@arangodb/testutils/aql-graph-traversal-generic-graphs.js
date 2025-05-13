@@ -239,6 +239,19 @@ class TestGraph {
 
     this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload);
     db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
+    
+    // Print first and last 10 vertices for debugging
+    print("First 10 vertices in graph " + this.graphName + ":");
+    const first10Vertices = Object.entries(this.verticesByName).slice(0, 10);
+    first10Vertices.forEach(([key, id]) => {
+      print(`  ${key}: ${id} (node name: ${key})`);
+    });
+    
+    print("\nLast 10 vertices in graph " + this.graphName + ":");
+    const last10Vertices = Object.entries(this.verticesByName).slice(-10);
+    last10Vertices.forEach(([key, id]) => {
+      print(`  ${key}: ${id} (node name: ${key})`);
+    });
   }
 
   name() {
@@ -904,6 +917,74 @@ protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph",
     {
       numberOfShards: 5,
       vertexSharding: hugeCompleteGraphNodes.map((node, index) => [node, index % 5])
+    }
+  ]
+);
+
+/*
+ * Grid Graph Structure (1000x1000)
+ * Each node connects to its right and bottom neighbors
+ * 
+ * 1 → 2 → 3 → ... → 1000
+ * ↓   ↓   ↓         ↓
+ * 1001 → 1002 → 1003 → ... → 2000
+ * ↓   ↓   ↓         ↓
+ * ... ... ...       ...
+ * ↓   ↓   ↓         ↓
+ * 999001 → 999002 → 999003 → ... → 1000000
+ */
+
+// Generate grid graph with 1000x1000 nodes
+const generateGridGraph = (width, height) => {
+  const nodes = [];
+  const edges = [];
+  
+  // Generate node names as simple numbers
+  const getNodeName = (row, col) => {
+    // Calculate node number: row * width + col + 1
+    const nodeNum = (row * width + col + 1).toString();
+    return nodeNum;
+  };
+
+  // Generate nodes and edges
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const nodeName = getNodeName(row, col);
+      nodes.push(nodeName);
+      
+      // Connect to right neighbor
+      if (col < width - 1) {
+        edges.push([nodeName, getNodeName(row, col + 1), 1]);
+      }
+      
+      // Connect to bottom neighbor
+      if (row < height - 1) {
+        edges.push([nodeName, getNodeName(row + 1, col), 1]);
+      }
+    }
+  }
+
+  return { nodes, edges };
+};
+
+const gridSize = 1000;
+const gridGraph = generateGridGraph(gridSize, gridSize);
+
+protoGraphs.hugeGridGraph = new ProtoGraph("hugeGridGraph",
+  gridGraph.edges,
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding: gridGraph.nodes.map((node, index) => [node, 0])
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding: gridGraph.nodes.map((node, index) => [node, index % 2])
+    },
+    {
+      numberOfShards: 5,
+      vertexSharding: gridGraph.nodes.map((node, index) => [node, index % 5])
     }
   ]
 );

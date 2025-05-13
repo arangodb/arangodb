@@ -149,7 +149,7 @@ class AllShortestPathsFinderTest
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::AllShortestPaths;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
-                                                       pathType};
+                                                       pathType, *_query};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return AllShortestPathsFinder{
         MockGraphProvider(

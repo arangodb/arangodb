@@ -39,6 +39,20 @@ const {getCompactStatsNodes, TraversalBlock} = require("@arangodb/testutils/aql-
 const {findExecutionNodes} = require("@arangodb/aql-helper");
 const isCluster = require("internal").isCluster();
 let IM = global.instanceManager;
+const bidirectionalMethods = require('@arangodb/testutils/aql-graph-traversal-generic-bidirectional-tests');
+const bidirectionalCircle = {
+  testBidirectionalCircleDfsLongRunning: bidirectionalMethods.testBidirectionalCircleDfsLongRunning,
+  testBidirectionalCircleBfsLongRunning: bidirectionalMethods.testBidirectionalCircleBfsLongRunning,
+  testBidirectionalCircleWeightedPathLongRunning: bidirectionalMethods.testBidirectionalCircleWeightedPathLongRunning,
+}
+const hugeCompleteGraph = {
+  testHugeCompleteGraphKPathsLongRunning: bidirectionalMethods.testHugeCompleteGraphKPathsLongRunning,
+}
+const hugeGridGraph = {
+  testHugeGridGraphShortestPathLongRunning: bidirectionalMethods.testHugeGridGraphShortestPathLongRunning,
+  testHugeGridGraphAllShortestPathsLongRunning: bidirectionalMethods.testHugeGridGraphAllShortestPathsLongRunning,
+}
+
 /*
   TODO:
     We need more tests to cover the following things:
@@ -6990,6 +7004,18 @@ const testsByGraph = {
     testEmptyGraphBfsPath,
     testEmptyGraphDfsPath,
     testEmptyGraphWeightedPath,
+  },
+  // Used for DFS, BFS, Weighted Path - Query Cancellation
+  bidirectionalCircle: {
+    ...bidirectionalCircle
+  },
+  // Used for K Paths - Query Cancellation
+  hugeCompleteGraph: {
+    ...hugeCompleteGraph
+  },
+  // Used for Shortest Path, All Shortest Paths - Query Cancellation
+  hugeGridGraph: {
+    ...hugeGridGraph
   }
 };
 

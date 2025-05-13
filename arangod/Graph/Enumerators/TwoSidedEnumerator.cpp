@@ -197,6 +197,11 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
         -> void {
+  if (_graphOptions.isKilled()) {
+    clear();
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());
@@ -248,8 +253,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
-    Ball::testDepthZero(Ball& other, ResultList& results) {
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::Ball::testDepthZero(Ball& other, ResultList& results) {
   for (auto const& step : _shell) {
     other.matchResultsInShell(step, results, _validator);
   }
@@ -286,9 +291,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
-    Ball::buildPath(Step const& vertexInShell,
-                    PathResult<ProviderType, Step>& path) -> void {
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
+                        PathValidator>::Ball::buildPath(Step const& vertexInShell,
+                                                        PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
     _interior.buildPath(vertexInShell, path);
   } else {

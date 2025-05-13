@@ -419,7 +419,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 
   arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions{
       0, std::numeric_limits<size_t>::max(),
-      arangodb::graph::PathType::Type::ShortestPath};
+      arangodb::graph::PathType::Type::ShortestPath, opts->query()};
   PathValidatorOptions validatorOptions(opts->tmpVar(),
                                         opts->getExpressionCtx());
 

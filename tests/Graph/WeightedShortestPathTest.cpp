@@ -150,7 +150,7 @@ class WeightedShortestPathTest
     arangodb::graph::PathType::Type pathType =
         arangodb::graph::PathType::Type::ShortestPath;
     arangodb::graph::TwoSidedEnumeratorOptions options{minDepth, maxDepth,
-                                                       pathType};
+                                                       pathType, *_query};
     options.setStopAtFirstDepth(false);
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     auto forwardProviderOptions =
