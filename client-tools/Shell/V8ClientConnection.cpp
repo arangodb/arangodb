@@ -2822,17 +2822,16 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
   }
 
   if (!connection || connection->state() == fu::Connection::State::Closed) {
-    LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME) <<
-      "connection closed after" << req;
+    LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
+      << "connection closed after" << req;
     if (response) {
-      LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME) <<
-        "Server responce: " << response;
+      LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
+        << "Server responce: " << response;
     }
     if (rc != fu::Error::NoError) {
-      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME) <<
-        "rc: " << response;
+      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME)
+        << "rc: " << response;
     }
-    return kFuzzNotConnected;
   }
 
   if (rc == fu::Error::ConnectionClosed) {
