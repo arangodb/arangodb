@@ -1,7 +1,7 @@
 v3.11.14 (XXXX-XX-XX)
 ---------------------
 
-* Optimise wait and detach in futures
+* Optimize wait and detach in futures.
 
 * Updated ArangoDB Starter to v0.18.15.
 
