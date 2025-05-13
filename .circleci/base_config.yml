@@ -526,6 +526,11 @@ jobs:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
+            git clone git@github.com:arangodb/arangodb
+            cd arangodb
+            git checkout fix/arm-failure 
+            cd ..
+
             mkdir work
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
@@ -600,6 +605,11 @@ jobs:
       - run:
           name: Run HotBackup tests
           command: |
+            git clone git@github.com:arangodb/arangodb
+            cd arangodb
+            git checkout fix/arm-failure 
+            cd ..
+
             # Fix arm failing when using OpenMP
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
@@ -656,6 +666,10 @@ jobs:
       - run:
           name: Clone RTA
           command: |
+            git clone git@github.com:arangodb/arangodb
+            cd arangodb
+            git checkout fix/arm-failure 
+            cd ..
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
