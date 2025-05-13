@@ -45,21 +45,20 @@ auto inspect(Inspector& f, RootTask& x) {
   return f.object(x).fields();
 }
 
-struct TaskIdWrapper {
+struct TaskId {
   void* id;
-  bool operator==(TaskIdWrapper const&) const = default;
+  bool operator==(TaskId const&) const = default;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, TaskIdWrapper& x) {
+auto inspect(Inspector& f, TaskId& x) {
   return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
 }
 
-struct ParentTaskSnapshot : std::variant<RootTask, TaskIdWrapper> {};
+struct ParentTaskSnapshot : std::variant<RootTask, TaskId> {};
 template<typename Inspector>
 auto inspect(Inspector& f, ParentTaskSnapshot& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<RootTask>(),
-      inspection::inlineType<TaskIdWrapper>());
+      inspection::inlineType<RootTask>(), inspection::inlineType<TaskId>());
 }
 
 enum class State { Created = 0, Running, Finished, Deleted };
@@ -96,8 +95,6 @@ void PrintTo(const TaskSnapshot& task, std::ostream* os);
 struct Node;
 using NodeReference = SharedReference<Node>;
 struct ParentTask : std::variant<RootTask, NodeReference> {};
-
-struct Task;
 
 /**
    The task object inside the registry
@@ -139,19 +136,26 @@ struct TaskInRegistry {
 };
 
 /**
+   A node in the task registry
+
    Use inheritance to circumvent problems with non-satified constraints for Node
+   when used in ParentTask in TaskInRegistry
  */
 struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
 
-struct ChildTask;
 /**
    This is a scope for an active task.
 
    It adds an entry to the task registry on construction and sets its
    state to finished on destruction.
- */
+
+   A task registry entry is marked for deletion (and will then be garbage
+   collected at some point) when all its shared references are gone. A shared
+   reference to a task registry entry is owned by a task and the children of
+   their parent tasks. Therefore a task in the registry lives at least as long
+   as its task scope or its longest living child.
+*/
 struct Task {
-  friend ChildTask;
   Task(Task&& other) = delete;
   Task& operator=(Task&& other) = delete;
   Task(Task const&) = delete;

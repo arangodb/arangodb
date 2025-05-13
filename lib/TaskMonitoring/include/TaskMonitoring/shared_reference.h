@@ -31,6 +31,9 @@
 
    Destroys itself and calls a custom cleanup function on the resource when the
    reference count decrements to zero.
+   This struct provides a similar interface and behaves similarly to a
+   shared_ptr, but it provides a ref_count function that uses a release memory
+   order.
  */
 template<typename T>
 struct Shared {
