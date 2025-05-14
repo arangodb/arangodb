@@ -121,8 +121,14 @@ auto mark_finished_nodes_for_deletion(Node* node) {
       break;
     }
     // do not continue if node is not the only child of parent
+    // if child is the only reference to parent, parent is not running any more
+    // (there is no Task that holds another shared reference) so no new children
+    // can be added to the parent
     auto& parent_ref = std::get<NodeReference>(parent);
-    if (parent_ref.ref_count() != 1) {
+    if (parent_ref.use_count() != 1) {
+      // if we miss decrement updates here, it does not matter:
+      // miss 2 -> 1: parent mark for deletion is done by the other child
+      // miss 1 -> 0: loop once more but exit early because isDeleted==true
       specific_node->list->mark_for_deletion(specific_node);
       break;
     }
@@ -138,7 +144,7 @@ auto mark_finished_nodes_for_deletion(Node* node) {
 }  // namespace
 
 Task::Task(std::string name, std::source_location loc)
-    : _node_in_registry{NodeReference::create(
+    : _node_in_registry{NodeReference(
           reinterpret_cast<Node*>(get_thread_registry().add([&]() {
             if (auto current = *get_current_task(); current != nullptr) {
               return TaskInRegistry::child(

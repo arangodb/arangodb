@@ -27,7 +27,6 @@
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
-#include "shared_reference.h"
 
 #include <atomic>
 #include <cstdint>
@@ -93,7 +92,7 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
 void PrintTo(const TaskSnapshot& task, std::ostream* os);
 
 struct Node;
-using NodeReference = SharedReference<Node>;
+using NodeReference = std::shared_ptr<Node>;
 struct ParentTask : std::variant<RootTask, NodeReference> {};
 
 /**
