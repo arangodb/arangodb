@@ -25,11 +25,13 @@
 
 #include "Basics/PhysicalMemory.h"
 #include "Basics/files.h"
+#include "Basics/application-exit.h"
 #include "ProgramOptions/Parameters.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
+#include <iostream>
 
 #ifdef TRI_HAVE_MACH
 #include <mach/mach_host.h>
@@ -84,11 +86,16 @@ struct PhysicalMemoryCache {
     std::string value;
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
       if (!value.empty()) {
-        uint64_t v = arangodb::options::fromString<uint64_t>(value);
-        if (v != 0) {
-          // value in environment variable must always be > 0
-          cachedValue = v;
-          overridden = true;
+        try {
+          uint64_t v = arangodb::options::fromString<uint64_t>(value);
+          if (v != 0) {
+            // value in environment variable must always be > 0
+            cachedValue = v;
+            overridden = true;
+          }
+        } catch (...) {
+          std::cerr << "failed to parse ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY: " << value;
+          FATAL_ERROR_EXIT();
         }
       }
     }
