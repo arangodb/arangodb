@@ -47,8 +47,9 @@ class SslFeature;
 class VersionFeature;
 class HttpEndpointProvider;
 class ArangoGlobalContext;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class ProcessEnvironmentFeature;
-
+#endif
 using namespace application_features;
 
 template<typename... T>

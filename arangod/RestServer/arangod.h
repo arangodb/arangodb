@@ -143,8 +143,9 @@ class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
 class VectorIndexFeature;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class ProcessEnvironmentFeature;
-
+#endif
 namespace transaction {
 
 class ManagerFeature;
