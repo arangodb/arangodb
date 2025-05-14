@@ -89,7 +89,6 @@ auto inspect(Inspector& f, TaskSnapshot& x) {
                             f.field("thread", x.thread),
                             f.field("source_location", x.source_location));
 }
-void PrintTo(const TaskSnapshot& task, std::ostream* os);
 
 struct Node;
 using NodeReference = std::shared_ptr<Node>;
@@ -174,3 +173,7 @@ struct Task {
 auto get_current_task() -> Task**;
 
 }  // namespace arangodb::task_monitoring
+
+auto operator<<(std::ostream& out,
+                arangodb::task_monitoring::TaskSnapshot const& task)
+    -> std::ostream&;

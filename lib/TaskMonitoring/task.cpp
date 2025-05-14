@@ -46,9 +46,10 @@ overloaded(Ts...) -> overloaded<Ts...>;
 using namespace arangodb;
 using namespace arangodb::task_monitoring;
 
-void arangodb::task_monitoring::PrintTo(const TaskSnapshot& task,
-                                        std::ostream* os) {
-  *os << inspection::json(task);
+auto operator<<(std::ostream& out,
+                arangodb::task_monitoring::TaskSnapshot const& task)
+    -> std::ostream& {
+  return out << inspection::json(task);
 }
 
 auto TaskInRegistry::snapshot() -> TaskSnapshot {
