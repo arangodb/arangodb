@@ -28,36 +28,37 @@
 #include "VocBase/Methods/Collections.h"
 
 namespace arangodb {
+template<typename>
+struct async;
 
 class LogicalCollection;
 
-class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
+class RestCollectionHandler : public RestVocbaseBaseHandler {
  public:
   RestCollectionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-  char const* name() const override final { return "RestCollectionHandler"; }
-  RequestLane lane() const override final;
+  char const* name() const final { return "RestCollectionHandler"; }
+  RequestLane lane() const final;
 
-  RestStatus execute() override final;
-  void shutdownExecute(bool isFinalized) noexcept override final;
+  futures::Future<futures::Unit> executeAsync() final;
+  void shutdownExecute(bool isFinalized) noexcept final;
 
  protected:
   enum class FiguresType { None = 0, Standard = 1, Detailed = 2 };
 
   enum class CountType { None = 0, Standard = 1, Detailed = 2 };
 
-  void collectionRepresentation(std::string const& name, bool showProperties,
-                                FiguresType showFigures, CountType showCount);
+  async<void> collectionRepresentation(std::string const& name,
+                                       bool showProperties,
+                                       FiguresType showFigures,
+                                       CountType showCount);
 
-  void collectionRepresentation(std::shared_ptr<LogicalCollection> coll,
-                                bool showProperties, FiguresType showFigures,
-                                CountType showCount);
+  async<void> collectionRepresentation(std::shared_ptr<LogicalCollection> coll,
+                                       bool showProperties,
+                                       FiguresType showFigures,
+                                       CountType showCount);
 
-  void collectionRepresentation(methods::Collections::Context& ctxt,
-                                bool showProperties, FiguresType showFigures,
-                                CountType showCount);
-
-  futures::Future<futures::Unit> collectionRepresentationAsync(
+  futures::Future<futures::Unit> collectionRepresentation(
       methods::Collections::Context& ctxt, bool showProperties,
       FiguresType showFigures, CountType showCount);
 
@@ -66,13 +67,13 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
       velocypack::Builder& builder) = 0;
 
  private:
-  RestStatus standardResponse();
+  void standardResponse();
   futures::Future<futures::Unit> initializeTransaction(LogicalCollection&);
 
-  futures::Future<RestStatus> handleCommandGet();
-  void handleCommandPost();
-  futures::Future<RestStatus> handleCommandPut();
-  void handleCommandDelete();
+  async<void> handleCommandGet();
+  async<void> handleCommandPost();
+  async<void> handleCommandPut();
+  async<void> handleCommandDelete();
 
   VPackBuilder _builder;
   std::unique_ptr<transaction::Methods> _activeTrx;

@@ -35,7 +35,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     }();
 
     uint count = 0;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           EXPECT_EQ(promise.source_location.line, 34);
@@ -53,7 +53,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     }();
 
     uint count = 0;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           EXPECT_EQ(promise.source_location.line, 50);
@@ -62,7 +62,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     wait.resume();
 
     count = 0;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           EXPECT_EQ(promise.source_location.line, 52);
@@ -80,7 +80,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     }();
 
     uint count = 0;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           EXPECT_EQ(promise.source_location.line, 77);
@@ -89,7 +89,7 @@ TEST(AsyncTest, source_location_in_registry_is_co_await_line) {
     wait.await();
 
     count = 0;
-    arangodb::async_registry::registry.for_promise(
+    arangodb::async_registry::registry.for_node(
         [&](arangodb::async_registry::PromiseSnapshot promise) {
           count++;
           EXPECT_EQ(promise.source_location.line, 79);

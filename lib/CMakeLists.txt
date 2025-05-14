@@ -193,7 +193,7 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
         ApplicationFeatures/VersionFeature.cpp
-
+        ApplicationFeatures/ProcessEnvironmentFeature.cpp
 )
 target_link_libraries(arango_basic_features
   PUBLIC velocypack
@@ -440,6 +440,7 @@ endif()
 
 add_subdirectory(Actor)
 add_subdirectory(Async)
+add_subdirectory(Containers)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
 if (USE_V8)
