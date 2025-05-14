@@ -258,7 +258,9 @@ using ArangodFeaturesList = TypeList<
     ReplicationTimeoutFeature,
     SchedulerFeature,
     VectorIndexFeature,
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     ProcessEnvironmentFeature,
+#endif
 #ifdef USE_V8
     ScriptFeature,
 #endif
