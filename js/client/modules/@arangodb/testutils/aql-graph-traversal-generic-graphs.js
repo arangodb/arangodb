@@ -148,6 +148,7 @@ class TestGraph {
       isEnterprise: false,
       isSatellite: false
     };
+    this.debug = false;
   }
   
   hasProjectionPayload() {
@@ -240,18 +241,19 @@ class TestGraph {
     this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload);
     db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
     
-    // Print first and last 10 vertices for debugging
-    print("First 10 vertices in graph " + this.graphName + ":");
-    const first10Vertices = Object.entries(this.verticesByName).slice(0, 10);
-    first10Vertices.forEach(([key, id]) => {
-      print(`  ${key}: ${id} (node name: ${key})`);
-    });
-    
-    print("\nLast 10 vertices in graph " + this.graphName + ":");
-    const last10Vertices = Object.entries(this.verticesByName).slice(-10);
-    last10Vertices.forEach(([key, id]) => {
-      print(`  ${key}: ${id} (node name: ${key})`);
-    });
+    if (this.debug) {
+      print("First 10 vertices in graph " + this.graphName + ":");
+      const first10Vertices = Object.entries(this.verticesByName).slice(0, 10);
+      first10Vertices.forEach(([key, id]) => {
+        print(`  ${key}: ${id} (node name: ${key})`);
+      });
+
+      print("\nLast 10 vertices in graph " + this.graphName + ":");
+      const last10Vertices = Object.entries(this.verticesByName).slice(-10);
+      last10Vertices.forEach(([key, id]) => {
+        print(`  ${key}: ${id} (node name: ${key})`);
+      });
+    }
   }
 
   name() {
