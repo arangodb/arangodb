@@ -44,14 +44,14 @@ const bidirectionalCircle = {
   testBidirectionalCircleDfsLongRunning: bidirectionalMethods.testBidirectionalCircleDfsLongRunning,
   testBidirectionalCircleBfsLongRunning: bidirectionalMethods.testBidirectionalCircleBfsLongRunning,
   testBidirectionalCircleWeightedPathLongRunning: bidirectionalMethods.testBidirectionalCircleWeightedPathLongRunning,
-}
+};
 const hugeCompleteGraph = {
   testHugeCompleteGraphKPathsLongRunning: bidirectionalMethods.testHugeCompleteGraphKPathsLongRunning,
-}
+};
 const hugeGridGraph = {
   testHugeGridGraphShortestPathLongRunning: bidirectionalMethods.testHugeGridGraphShortestPathLongRunning,
   testHugeGridGraphAllShortestPathsLongRunning: bidirectionalMethods.testHugeGridGraphAllShortestPathsLongRunning,
-}
+};
 
 /*
   TODO:
