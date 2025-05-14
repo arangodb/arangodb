@@ -126,7 +126,8 @@ class TwoSidedEnumerator {
    public:
     Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
          PathValidatorOptions validatorOptions,
-         arangodb::ResourceMonitor& resourceMonitor);
+         arangodb::ResourceMonitor& resourceMonitor,
+         TwoSidedEnumerator& parent);
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
@@ -186,6 +187,11 @@ class TwoSidedEnumerator {
     Direction _direction;
     size_t _minDepth{0};
     GraphOptions _graphOptions;
+
+    // Reference to the parent TwoSidedEnumerator
+    // Intention: To be able to call clear() on the parent
+    // Case: When a kill signal is received
+    TwoSidedEnumerator& _parent;
   };
 
  public:

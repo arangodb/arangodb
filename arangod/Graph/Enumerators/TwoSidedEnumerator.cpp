@@ -56,7 +56,8 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::Ball(Direction dir, ProviderType&& provider,
                GraphOptions const& options,
                PathValidatorOptions validatorOptions,
-               arangodb::ResourceMonitor& resourceMonitor)
+               arangodb::ResourceMonitor& resourceMonitor,
+               TwoSidedEnumerator& parent)
     : _resourceMonitor(resourceMonitor),
       _interior(resourceMonitor),
       _queue(resourceMonitor),
@@ -64,7 +65,8 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _minDepth(options.getMinDepth()),
-      _graphOptions(options) {}
+      _graphOptions(options),
+      _parent(parent) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -198,7 +200,12 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
         -> void {
   if (_graphOptions.isKilled()) {
+    // First clear our own instance (Ball)
     clear();
+    // Then clear the other instance (Ball)
+    other.clear();
+    // Then clear the parent (TwoSidedEnumerator)
+    _parent.clear();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
@@ -253,8 +260,8 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::testDepthZero(Ball& other, ResultList& results) {
+void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+    Ball::testDepthZero(Ball& other, ResultList& results) {
   for (auto const& step : _shell) {
     other.matchResultsInShell(step, results, _validator);
   }
@@ -291,9 +298,9 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
-auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                        PathValidator>::Ball::buildPath(Step const& vertexInShell,
-                                                        PathResult<ProviderType, Step>& path) -> void {
+auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
+    Ball::buildPath(Step const& vertexInShell,
+                    PathResult<ProviderType, Step>& path) -> void {
   if (_direction == FORWARD) {
     _interior.buildPath(vertexInShell, path);
   } else {
@@ -317,10 +324,15 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
                        PathValidatorOptions validatorOptions,
                        arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
-      _left{Direction::FORWARD, std::move(forwardProvider), _options,
-            validatorOptions, resourceMonitor},
-      _right{Direction::BACKWARD, std::move(backwardProvider), _options,
-             std::move(validatorOptions), resourceMonitor},
+      _left{Direction::FORWARD, std::move(forwardProvider),
+            _options,           validatorOptions,
+            resourceMonitor,    *this},
+      _right{Direction::BACKWARD,
+             std::move(backwardProvider),
+             _options,
+             std::move(validatorOptions),
+             resourceMonitor,
+             *this},
       _baselineDepth(_options.getMaxDepth()),
       _resultPath{_left.provider(), _right.provider()} {}
 
@@ -456,6 +468,14 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                         PathValidator>::searchMoreResults() {
   while (_results.empty() && !searchDone()) {
     _resultsFetched = false;
+
+    // Check for kill signal before proceeding
+    // We will also do additional checks in computeNeighbourhoodOfNextVertex
+    if (_options.isKilled()) {
+      clear();
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    }
+
     if (_searchLeft) {
       if (ADB_UNLIKELY(_left.doneWithDepth())) {
         startNextDepth();
