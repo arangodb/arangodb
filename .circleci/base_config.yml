@@ -558,6 +558,7 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
+              echo "Setting aarch64 enviroment for OMP"
               export KMP_AFFINITY=disabled
               export OMP_NUM_THREADS=1
             fi
@@ -614,6 +615,7 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
+              echo "Setting aarch64 enviroment for OMP"
               export KMP_AFFINITY=disabled
               export OMP_NUM_THREADS=1
             fi
@@ -678,6 +680,7 @@ jobs:
             ARCH=$(uname -m)
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
+              echo "Setting aarch64 enviroment for OMP"
               export KMP_AFFINITY=disabled
               export OMP_NUM_THREADS=1
             fi
