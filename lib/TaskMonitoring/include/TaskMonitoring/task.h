@@ -71,7 +71,7 @@ auto inspect(Inspector& f, State& x) {
 struct TaskSnapshot {
   std::string name;
   State state;
-  void* id;
+  TaskId id;
   ParentTaskSnapshot parent;
   std::optional<basics::ThreadId> thread;
   basics::SourceLocationSnapshot source_location;
@@ -83,11 +83,10 @@ struct TaskSnapshot {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, TaskSnapshot& x) {
-  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)),
-                            f.field("name", x.name), f.field("state", x.state),
-                            f.field("parent", x.parent),
-                            f.field("thread", x.thread),
-                            f.field("source_location", x.source_location));
+  return f.object(x).fields(
+      f.embedFields(x.id), f.field("name", x.name), f.field("state", x.state),
+      f.field("parent", x.parent), f.field("thread", x.thread),
+      f.field("source_location", x.source_location));
 }
 
 struct Node;
@@ -99,7 +98,7 @@ struct ParentTask : std::variant<RootTask, NodeReference> {};
  */
 struct TaskInRegistry {
   using Snapshot = TaskSnapshot;
-  auto id() -> void* { return this; }
+  auto id() -> TaskId { return TaskId{this}; }
   auto snapshot() -> TaskSnapshot;
   auto set_to_deleted() -> void {
     state.store(State::Deleted, std::memory_order_release);
@@ -163,7 +162,7 @@ struct Task {
        std::source_location loc = std::source_location::current());
   ~Task();
 
-  auto id() -> void*;
+  auto id() -> TaskId;
 
  private:
   Task* parent;

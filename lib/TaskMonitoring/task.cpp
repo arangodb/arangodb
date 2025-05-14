@@ -166,7 +166,7 @@ Task::~Task() {
   *get_current_task() = parent;
 }
 
-auto Task::id() -> void* { return _node_in_registry->data.id(); }
+auto Task::id() -> TaskId { return _node_in_registry->data.id(); }
 
 /**
    Function to get and set global thread local variable of the currently running
