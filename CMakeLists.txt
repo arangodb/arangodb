@@ -1033,10 +1033,10 @@ if(STATIC_EXECUTABLES)
   # TODO avoid hard coded paths
   if(ARCH_AMD64)
     set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
-    set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a" CACHE PATH "BLAS static library path")
+    set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
   else()
     set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
-    set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a" CACHE PATH "BLAS static library path")
+    set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
   endif()
   message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
 
