@@ -32,6 +32,7 @@
 #include <unistd.h>
 #endif
 #include <iostream>
+#include <ostream>
 
 #ifdef TRI_HAVE_MACH
 #include <mach/mach_host.h>
@@ -94,7 +95,8 @@ struct PhysicalMemoryCache {
             overridden = true;
           }
         } catch (...) {
-          std::cerr << "failed to parse ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY: " << value;
+          std::cerr << "failed to parse ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY: " <<
+            value << std::endl;
           FATAL_ERROR_EXIT();
         }
       }
