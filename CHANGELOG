@@ -1,4 +1,4 @@
-v3.11.14 (XXXX-XX-XX)
+v3.11.14 (2025-05-14)
 ---------------------
 
 * Optimize wait and detach in futures.

@@ -1,7 +1,19 @@
 {
+ "externalDocs": {
+  "description": "ArangoDB Documentation",
+  "url": "https://docs.arangodb.com"
+ },
  "info": {
-  "description": "ArangoDB REST API Interface",
-  "title": "ArangoDB",
+  "contact": {
+   "name": "ArangoDB Inc.",
+   "url": "https://arangodb.com"
+  },
+  "license": {
+   "name": "Apache 2.0",
+   "url": "https://github.com/arangodb/arangodb/blob/3.11/LICENSE"
+  },
+  "summary": "The RESTful HTTP API of the ArangoDB Core Database System",
+  "title": "ArangoDB Core API",
   "version": "3.11.14"
  },
  "openapi": "3.1.0",
@@ -305,8 +317,19 @@
   },
   "/_admin/cluster/maintenance": {
    "put": {
-    "description": "Enable or disable the cluster supervision (Agency) maintenance mode.\n\nThis API allows to temporarily enable the supervision maintenance mode. Please be aware that no\nautomatic failovers of any kind will take place while the maintenance mode is enabled.\nThe cluster supervision reactivates itself automatically at some point after disabling it.\n\nTo enable the maintenance mode the request body must contain the string `\"on\"`\n(Please note it _must_ be lowercase as well as include the quotes). This will enable the\nmaintenance mode for 60 minutes, i.e. the supervision maintenance will reactivate itself\nafter 60 minutes.\n\nSince ArangoDB 3.8.3 it is possible to enable the maintenance mode for a different\nduration than 60 minutes, it is possible to send the desired duration value (in seconds)\nas a string in the request body. For example, sending `\"7200\"`\n(including the quotes) will enable the maintenance mode for 7200 seconds, i.e. 2 hours.\n\nTo disable the maintenance mode the request body must contain the string `\"off\"`\n(Please note it _must_ be lowercase as well as include the quotes).\n",
+    "description": "Enable or disable the cluster supervision (Agency) maintenance mode.\n\nThis endpoint allows you to temporarily enable the supervision maintenance mode.\nPlease be aware that no automatic failovers of any kind will take place\nwhile the maintenance mode is enabled. The cluster supervision reactivates\nitself automatically at some point after disabling it.\n",
     "operationId": "setClusterMaintenance",
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "description": "The mode to set for the cluster supervision.\n\nPossible values (always lowercase and in double quotes):\n- `\"on\"`: Enable the maintenance mode for 60 minutes, i.e. the\n  supervision maintenance will reactivate itself after one hour.\n- `\"off\"`: Disable the maintenance mode.\n- `\"\u003cnumber\u003e\"`: Enable the maintenance mode for a different\n  duration (in seconds) than the default 60 minutes. For example,\n  `\"7200\"` enables the maintenance mode for 7200 seconds (2 hours).\n",
+        "example": "on",
+        "type": "string"
+       }
+      }
+     }
+    },
     "responses": {
      "200": {
       "description": "is returned when everything went well.\n"
@@ -420,7 +443,7 @@
        "schema": {
         "properties": {
          "mode": {
-          "description": "The mode to put the DB-Server in.\n",
+          "description": "The mode to set for the DB-Server.\n",
           "enum": [
            "maintenance",
            "normal"
@@ -6258,7 +6281,31 @@
           "type": "integer"
          },
          "schema": {
-          "description": "Optional object that specifies the collection level schema for\ndocuments. The attribute keys `rule`, `level` and `message` must follow the\nrules documented in [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\n",
+          "description": "The configuration of the collection-level schema validation for documents.\n",
+          "properties": {
+           "level": {
+            "default": "strict",
+            "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+            "enum": [
+             "none",
+             "new",
+             "moderate",
+             "strict"
+            ],
+            "type": "string"
+           },
+           "message": {
+            "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+            "type": "string"
+           },
+           "rule": {
+            "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+            "type": "object"
+           }
+          },
+          "required": [
+           "rule"
+          ],
           "type": "object"
          },
          "shardKeys": {
@@ -6308,11 +6355,15 @@
       "content": {
        "application/json": {
         "schema": {
-         "description": "",
          "properties": {
           "cacheEnabled": {
            "description": "Whether the in-memory hash cache for documents is enabled for this\ncollection.\n",
            "type": "boolean"
+          },
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
           },
           "computedValues": {
            "description": "A list of objects, each representing a computed value.\n",
@@ -6369,6 +6420,11 @@
           "distributeShardsLike": {
            "description": "The name of another collection. This collection uses the `replicationFactor`,\n`numberOfShards`, `shardingStrategy`, and `writeConcern` properties of the other collection and\nthe shards of this collection are distributed in the same way as the shards of\nthe other collection.\n",
            "type": "string"
+          },
+          "error": {
+           "description": "A flag indicating that no error occurred.\n",
+           "example": false,
+           "type": "boolean"
           },
           "globallyUniqueId": {
            "description": "A unique identifier of the collection. This is an internal property.\n",
@@ -6439,7 +6495,41 @@
            "type": "integer"
           },
           "schema": {
-           "description": "An object that specifies the collection-level schema for documents.\n",
+           "description": "The configuration of the collection-level schema validation for documents.\n",
+           "properties": {
+            "level": {
+             "default": "strict",
+             "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+             "enum": [
+              "none",
+              "new",
+              "moderate",
+              "strict"
+             ],
+             "type": "string"
+            },
+            "message": {
+             "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+             "type": "string"
+            },
+            "rule": {
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "type": "object"
+            },
+            "type": {
+             "description": "The schema validation type. Only JSON Schema is supported.\n",
+             "enum": [
+              "json"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "rule",
+            "level",
+            "message",
+            "type"
+           ],
            "type": "object"
           },
           "shardKeys": {
@@ -6469,6 +6559,20 @@
            "description": "Determines an attribute of the collection that must contain the shard key value\nof the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_\n",
            "type": "string"
           },
+          "status": {
+           "description": "The status of the collection (deprecated).\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
+           "example": 3,
+           "type": "integer"
+          },
+          "statusString": {
+           "description": "The status of the collection as a descriptive string (deprecated).\n",
+           "enum": [
+            "loaded",
+            "deleted"
+           ],
+           "example": "loaded",
+           "type": "string"
+          },
           "syncByRevision": {
            "description": "Whether the newer revision-based replication protocol is\nenabled for this collection. This is an internal property.\n",
            "type": "boolean"
@@ -6487,8 +6591,19 @@
           }
          },
          "required": [
+          "error",
+          "code",
+          "name",
+          "type",
+          "status",
+          "statusString",
+          "isSystem",
+          "id",
+          "globallyUniqueId",
           "waitForSync",
           "keyOptions",
+          "schema",
+          "computedValues",
           "cacheEnabled",
           "syncByRevision"
          ],
@@ -7251,7 +7366,41 @@
            "type": "integer"
           },
           "schema": {
-           "description": "An object that specifies the collection-level schema for documents.\n",
+           "description": "The configuration of the collection-level schema validation for documents.\n",
+           "properties": {
+            "level": {
+             "default": "strict",
+             "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+             "enum": [
+              "none",
+              "new",
+              "moderate",
+              "strict"
+             ],
+             "type": "string"
+            },
+            "message": {
+             "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+             "type": "string"
+            },
+            "rule": {
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "type": "object"
+            },
+            "type": {
+             "description": "The schema validation type. Only JSON Schema is supported.\n",
+             "enum": [
+              "json"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "rule",
+            "level",
+            "message",
+            "type"
+           ],
            "type": "object"
           },
           "shardKeys": {
@@ -7279,6 +7428,20 @@
           },
           "smartJoinAttribute": {
            "description": "Determines an attribute of the collection that must contain the shard key value\nof the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_\n",
+           "type": "string"
+          },
+          "status": {
+           "description": "The status of the collection (deprecated).\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
+           "example": 3,
+           "type": "integer"
+          },
+          "statusString": {
+           "description": "The status of the collection as a descriptive string (deprecated).\n",
+           "enum": [
+            "loaded",
+            "deleted"
+           ],
+           "example": "loaded",
            "type": "string"
           },
           "syncByRevision": {
@@ -7456,8 +7619,63 @@
           "figures": {
            "description": "The metrics of the collection.\n",
            "properties": {
+            "cacheInUse": {
+             "description": "Whether the document cache is enabled for this collection.\n",
+             "type": "boolean"
+            },
+            "cacheLifeTimeHitRate": {
+             "description": "The overall cache hit ratio in percent. In cluster deployments,\nit is the sum of percentages of all shards.\n\nThe attribute is only present if `cacheInUse` is `true`.\n",
+             "type": "number"
+            },
+            "cacheSize": {
+             "description": "The total memory usage of the document cache in bytes.\n",
+             "type": "integer"
+            },
+            "cacheUsage": {
+             "description": "The current data memory usage of the document cache in bytes.\n",
+             "type": "integer"
+            },
+            "cacheWindowedHitRate": {
+             "description": "The cache hit ratio of the past several thousand find\noperations in percent. In cluster deployments,\nit is the sum of percentages of all shards.\n\nThe attribute is only present if `cacheInUse` is `true`.\n",
+             "type": "number"
+            },
+            "documentsSize": {
+             "description": "The approximate on-disk size of the documents in bytes.\n",
+             "type": "integer"
+            },
+            "engine": {
+             "description": "Extended, storage-engine specific figures.\nOnly included if the `details` query parameter is set to `true`.\n",
+             "properties": {
+              "documents": {
+               "description": "The number of documents determined by iterating over all\nRocksDB keys in range of the column family and counting them.\n",
+               "type": "integer"
+              },
+              "indexes": {
+               "description": "The detailed index metrics with the number of entries per index.\n",
+               "items": {
+                "properties": {
+                 "count": {
+                  "description": "The number of index entries.\n",
+                  "type": "integer"
+                 },
+                 "id": {
+                  "description": "The identifier of the index.\n",
+                  "type": "integer"
+                 },
+                 "type": {
+                  "description": "The index type.\nA `persistent` index is reported as `rocksdb-persistent`.\n",
+                  "type": "string"
+                 }
+                },
+                "type": "object"
+               },
+               "type": "array"
+              }
+             },
+             "type": "object"
+            },
             "indexes": {
-             "description": "The index metrics.\n",
+             "description": "The coarse index metrics.\n",
              "properties": {
               "count": {
                "description": "The total number of indexes defined for the collection, including the pre-defined\nindexes (e.g. primary index).\n",
@@ -7549,7 +7767,41 @@
            "type": "integer"
           },
           "schema": {
-           "description": "An object that specifies the collection-level schema for documents.\n",
+           "description": "The configuration of the collection-level schema validation for documents.\n",
+           "properties": {
+            "level": {
+             "default": "strict",
+             "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+             "enum": [
+              "none",
+              "new",
+              "moderate",
+              "strict"
+             ],
+             "type": "string"
+            },
+            "message": {
+             "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+             "type": "string"
+            },
+            "rule": {
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "type": "object"
+            },
+            "type": {
+             "description": "The schema validation type. Only JSON Schema is supported.\n",
+             "enum": [
+              "json"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "rule",
+            "level",
+            "message",
+            "type"
+           ],
            "type": "object"
           },
           "shardKeys": {
@@ -7577,6 +7829,20 @@
           },
           "smartJoinAttribute": {
            "description": "Determines an attribute of the collection that must contain the shard key value\nof the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_\n",
+           "type": "string"
+          },
+          "status": {
+           "description": "The status of the collection (deprecated).\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
+           "example": 3,
+           "type": "integer"
+          },
+          "statusString": {
+           "description": "The status of the collection as a descriptive string (deprecated).\n",
+           "enum": [
+            "loaded",
+            "deleted"
+           ],
+           "example": "loaded",
            "type": "string"
           },
           "syncByRevision": {
@@ -7899,15 +8165,20 @@
       "content": {
        "application/json": {
         "schema": {
-         "code": {
-          "description": "The HTTP response status code.\n",
-          "example": 200,
-          "type": "integer"
-         },
          "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 200,
+           "type": "integer"
+          },
           "error": {
            "description": "A flag indicating that no error occurred.\n",
            "example": false,
+           "type": "boolean"
+          },
+          "result": {
+           "description": "The value `true`.\n",
+           "example": true,
            "type": "boolean"
           }
          },
@@ -7916,11 +8187,6 @@
           "code",
           "result"
          ],
-         "result": {
-          "description": "The value `true`.\n",
-          "example": true,
-          "type": "boolean"
-         },
          "type": "object"
         }
        }
@@ -8176,7 +8442,41 @@
            "type": "integer"
           },
           "schema": {
-           "description": "An object that specifies the collection-level schema for documents.\n",
+           "description": "The configuration of the collection-level schema validation for documents.\n",
+           "properties": {
+            "level": {
+             "default": "strict",
+             "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+             "enum": [
+              "none",
+              "new",
+              "moderate",
+              "strict"
+             ],
+             "type": "string"
+            },
+            "message": {
+             "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+             "type": "string"
+            },
+            "rule": {
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "type": "object"
+            },
+            "type": {
+             "description": "The schema validation type. Only JSON Schema is supported.\n",
+             "enum": [
+              "json"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "rule",
+            "level",
+            "message",
+            "type"
+           ],
            "type": "object"
           },
           "shardKeys": {
@@ -8204,6 +8504,20 @@
           },
           "smartJoinAttribute": {
            "description": "Determines an attribute of the collection that must contain the shard key value\nof the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_\n",
+           "type": "string"
+          },
+          "status": {
+           "description": "The status of the collection (deprecated).\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
+           "example": 3,
+           "type": "integer"
+          },
+          "statusString": {
+           "description": "The status of the collection as a descriptive string (deprecated).\n",
+           "enum": [
+            "loaded",
+            "deleted"
+           ],
+           "example": "loaded",
            "type": "string"
           },
           "syncByRevision": {
@@ -8247,10 +8561,76 @@
       "description": "All the collection properties.\n"
      },
      "400": {
-      "description": "If the `collection-name` placeholder is missing, then a *HTTP 400* is\nreturned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 400,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The `name` attribute is missing or has an invalid value.\n"
      },
      "404": {
-      "description": "If the collection is unknown, then a *HTTP 404*\nis returned.\n"
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "code": {
+           "description": "The HTTP response status code.\n",
+           "example": 404,
+           "type": "integer"
+          },
+          "error": {
+           "description": "A flag indicating that an error occurred.\n",
+           "example": true,
+           "type": "boolean"
+          },
+          "errorMessage": {
+           "description": "A descriptive error message.\n",
+           "type": "string"
+          },
+          "errorNum": {
+           "description": "ArangoDB error number for the error that occurred.\n",
+           "type": "integer"
+          }
+         },
+         "required": [
+          "error",
+          "code",
+          "errorNum",
+          "errorMessage"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "A collection called `collection-name` could not be found.\n"
      }
     },
     "summary": "Get the properties of a collection",
@@ -8350,7 +8730,31 @@
           "type": "integer"
          },
          "schema": {
-          "description": "Optional object that specifies the collection level schema for\ndocuments. The attribute keys `rule`, `level` and `message` must follow the\nrules documented in [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\n",
+          "description": "The configuration of the collection-level schema validation for documents.\n",
+          "properties": {
+           "level": {
+            "default": "strict",
+            "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+            "enum": [
+             "none",
+             "new",
+             "moderate",
+             "strict"
+            ],
+            "type": "string"
+           },
+           "message": {
+            "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+            "type": "string"
+           },
+           "rule": {
+            "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+            "type": "object"
+           }
+          },
+          "required": [
+           "rule"
+          ],
           "type": "object"
          },
          "waitForSync": {
@@ -8512,7 +8916,41 @@
            "type": "integer"
           },
           "schema": {
-           "description": "An object that specifies the collection-level schema for documents.\n",
+           "description": "The configuration of the collection-level schema validation for documents.\n",
+           "properties": {
+            "level": {
+             "default": "strict",
+             "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+             "enum": [
+              "none",
+              "new",
+              "moderate",
+              "strict"
+             ],
+             "type": "string"
+            },
+            "message": {
+             "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+             "type": "string"
+            },
+            "rule": {
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "type": "object"
+            },
+            "type": {
+             "description": "The schema validation type. Only JSON Schema is supported.\n",
+             "enum": [
+              "json"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "rule",
+            "level",
+            "message",
+            "type"
+           ],
            "type": "object"
           },
           "shardKeys": {
@@ -8540,6 +8978,20 @@
           },
           "smartJoinAttribute": {
            "description": "Determines an attribute of the collection that must contain the shard key value\nof the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_\n",
+           "type": "string"
+          },
+          "status": {
+           "description": "The status of the collection (deprecated).\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
+           "example": 3,
+           "type": "integer"
+          },
+          "statusString": {
+           "description": "The status of the collection as a descriptive string (deprecated).\n",
+           "enum": [
+            "loaded",
+            "deleted"
+           ],
+           "example": "loaded",
            "type": "string"
           },
           "syncByRevision": {
@@ -8850,10 +9302,70 @@
        "application/json": {
         "schema": {
          "properties": {
+          "cacheEnabled": {
+           "description": "Whether the in-memory hash cache for documents is enabled for this\ncollection.\n",
+           "type": "boolean"
+          },
           "code": {
            "description": "The HTTP response status code.\n",
            "example": 200,
            "type": "integer"
+          },
+          "computedValues": {
+           "description": "A list of objects, each representing a computed value.\n",
+           "items": {
+            "properties": {
+             "computeOn": {
+              "description": "An array of strings that defines on which write operations the value is\ncomputed.\n",
+              "example": [
+               "insert",
+               "update",
+               "replace"
+              ],
+              "items": {
+               "enum": [
+                "insert",
+                "update",
+                "replace"
+               ],
+               "type": "string"
+              },
+              "type": "array",
+              "uniqueItems": true
+             },
+             "expression": {
+              "description": "An AQL `RETURN` operation with an expression that computes the desired value.\n",
+              "type": "string"
+             },
+             "failOnWarning": {
+              "description": "Whether the write operation fails if the expression produces a warning.\n",
+              "type": "boolean"
+             },
+             "keepNull": {
+              "description": "Whether the target attribute is set if the expression evaluates to `null`.\n",
+              "type": "boolean"
+             },
+             "name": {
+              "description": "The name of the target attribute.\n",
+              "type": "string"
+             },
+             "overwrite": {
+              "description": "Whether the computed value takes precedence over a user-provided or\nexisting attribute.\n",
+              "type": "boolean"
+             }
+            },
+            "required": [
+             "name",
+             "expression",
+             "overwrite"
+            ],
+            "type": "object"
+           },
+           "type": "array"
+          },
+          "distributeShardsLike": {
+           "description": "The name of another collection. This collection uses the `replicationFactor`,\n`numberOfShards` and `shardingStrategy` properties of the other collection and\nthe shards of this collection are distributed in the same way as the shards of\nthe other collection.\n",
+           "type": "string"
           },
           "error": {
            "description": "A flag indicating that no error occurred.\n",
@@ -8868,24 +9380,162 @@
            "description": "A unique identifier of the collection (deprecated).\n",
            "type": "string"
           },
+          "isDisjoint": {
+           "description": "Whether the SmartGraph or EnterpriseGraph this collection belongs to is disjoint\n(Enterprise Edition only). This is an internal property. _(cluster only)_\n",
+           "type": "boolean"
+          },
+          "isSmart": {
+           "description": "Whether the collection is used in a SmartGraph or EnterpriseGraph (Enterprise Edition only).\nThis is an internal property. _(cluster only)_\n",
+           "type": "boolean"
+          },
           "isSystem": {
            "description": "Whether the collection is a system collection. Collection names that starts with\nan underscore are usually system collections.\n",
            "example": false,
            "type": "boolean"
           },
+          "keyOptions": {
+           "description": "An object which contains key generation options.\n",
+           "properties": {
+            "allowUserKeys": {
+             "description": "If set to `true`, then you are allowed to supply\nown key values in the `_key` attribute of a document. If set to\n`false`, then the key generator is solely responsible for\ngenerating keys and an error is raised if you supply own key values in the\n`_key` attribute of documents.\n\n\u003e **WARNING:**\nYou should not use both user-specified and automatically generated document keys\nin the same collection in cluster deployments for collections with more than a\nsingle shard. Mixing the two can lead to conflicts because Coordinators that\nauto-generate keys in this case are not aware of all keys which are already used.\n",
+             "type": "boolean"
+            },
+            "increment": {
+             "description": "The increment value for the `autoincrement` key generator.\nNot used by other key generator types.\n",
+             "type": "integer"
+            },
+            "lastValue": {
+             "description": "The offset value of the `autoincrement` or `padded` key generator.\nThis is an internal property for restoring dumps properly.\n",
+             "type": "integer"
+            },
+            "offset": {
+             "description": "The initial offset value for the `autoincrement` key generator.\nNot used by other key generator types.\n",
+             "type": "integer"
+            },
+            "type": {
+             "description": "Specifies the type of the key generator.\n",
+             "enum": [
+              "traditional",
+              "autoincrement",
+              "uuid",
+              "padded"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "type",
+            "allowUserKeys"
+           ],
+           "type": "object"
+          },
           "name": {
-           "description": "The name of the collection.\n",
+           "description": "The name of this collection.\n",
            "example": "coll",
            "type": "string"
           },
+          "numberOfShards": {
+           "description": "The number of shards of the collection. _(cluster only)_\n",
+           "type": "integer"
+          },
+          "replicationFactor": {
+           "description": "Contains how many copies of each shard are kept on different DB-Servers.\nIt is an integer number in the range of 1-10 or the string `\"satellite\"`\nfor SatelliteCollections (Enterprise Edition only). _(cluster only)_\n",
+           "type": "integer"
+          },
+          "schema": {
+           "description": "The configuration of the collection-level schema validation for documents.\n",
+           "properties": {
+            "level": {
+             "default": "strict",
+             "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+             "enum": [
+              "none",
+              "new",
+              "moderate",
+              "strict"
+             ],
+             "type": "string"
+            },
+            "message": {
+             "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+             "type": "string"
+            },
+            "rule": {
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "type": "object"
+            },
+            "type": {
+             "description": "The schema validation type. Only JSON Schema is supported.\n",
+             "enum": [
+              "json"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "rule",
+            "level",
+            "message",
+            "type"
+           ],
+           "type": "object"
+          },
+          "shardKeys": {
+           "description": "Contains the names of document attributes that are used to\ndetermine the target shard for documents. _(cluster only)_\n",
+           "items": {
+            "type": "string"
+           },
+           "type": "array"
+          },
+          "shardingStrategy": {
+           "description": "The sharding strategy selected for the collection. _(cluster only)_\n",
+           "enum": [
+            "community-compat",
+            "enterprise-compat",
+            "enterprise-smart-edge-compat",
+            "hash",
+            "enterprise-hash-smart-edge",
+            "enterprise-hex-smart-vertex"
+           ],
+           "type": "string"
+          },
+          "smartGraphAttribute": {
+           "description": "The attribute that is used for sharding: vertices with the same value of\nthis attribute are placed in the same shard. All vertices are required to\nhave this attribute set and it has to be a string. Edges derive the\nattribute from their connected vertices (Enterprise Edition only). _(cluster only)_\n",
+           "type": "string"
+          },
+          "smartJoinAttribute": {
+           "description": "Determines an attribute of the collection that must contain the shard key value\nof the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_\n",
+           "type": "string"
+          },
           "status": {
-           "description": "The status of the collection.\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
+           "description": "The status of the collection (deprecated).\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
            "example": 3,
            "type": "integer"
+          },
+          "statusString": {
+           "description": "The status of the collection as a descriptive string (deprecated).\n",
+           "enum": [
+            "loaded",
+            "deleted"
+           ],
+           "example": "loaded",
+           "type": "string"
+          },
+          "syncByRevision": {
+           "description": "Whether the newer revision-based replication protocol is\nenabled for this collection. This is an internal property.\n",
+           "type": "boolean"
           },
           "type": {
            "description": "The type of the collection:\n- `0`: \"unknown\"\n- `2`: regular document collection\n- `3`: edge collection\n",
            "example": 2,
+           "type": "integer"
+          },
+          "waitForSync": {
+           "description": "If `true`, creating, changing, or removing\ndocuments waits until the data has been synchronized to disk.\n",
+           "type": "boolean"
+          },
+          "writeConcern": {
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the default `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -8894,10 +9544,17 @@
           "code",
           "name",
           "type",
-          "isSystem",
           "status",
+          "statusString",
+          "isSystem",
           "id",
-          "globallyUniqueId"
+          "globallyUniqueId",
+          "waitForSync",
+          "keyOptions",
+          "schema",
+          "computedValues",
+          "cacheEnabled",
+          "syncByRevision"
          ],
          "type": "object"
         }
@@ -9348,7 +10005,41 @@
            "type": "string"
           },
           "schema": {
-           "description": "An object that specifies the collection-level schema for documents.\n",
+           "description": "The configuration of the collection-level schema validation for documents.\n",
+           "properties": {
+            "level": {
+             "default": "strict",
+             "description": "The level controls when the validation is triggered:\n- `\"none\"`: The rule is inactive and validation thus turned off.\n- `\"new\"`: Only newly inserted documents are validated.\n- `\"moderate\"`: New and modified documents must pass validation,\n  except for modified documents where the OLD value did not pass\n  validation already. This level is useful if you have documents\n  which do not match your target structure, but you want to stop\n  the insertion of more invalid documents and prohibit that valid\n  documents are changed to invalid documents.\n- `\"strict\"`: All new and modified document must strictly pass\n  validation. No exceptions are made.\n",
+             "enum": [
+              "none",
+              "new",
+              "moderate",
+              "strict"
+             ],
+             "type": "string"
+            },
+            "message": {
+             "description": "The error message to raise if the schema validation fails\nfor a document.\n",
+             "type": "string"
+            },
+            "rule": {
+             "description": "A [JSON Schema](https://json-schema.org/specification-links#draft-4)\nobject (draft-4, without remote schemas).\n\nSee [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\nfor details.\n",
+             "type": "object"
+            },
+            "type": {
+             "description": "The schema validation type. Only JSON Schema is supported.\n",
+             "enum": [
+              "json"
+             ],
+             "type": "string"
+            }
+           },
+           "required": [
+            "rule",
+            "level",
+            "message",
+            "type"
+           ],
            "type": "object"
           },
           "shardKeys": {
@@ -9376,6 +10067,20 @@
           },
           "smartJoinAttribute": {
            "description": "Determines an attribute of the collection that must contain the shard key value\nof the referred-to SmartJoin collection (Enterprise Edition only). _(cluster only)_\n",
+           "type": "string"
+          },
+          "status": {
+           "description": "The status of the collection (deprecated).\n- `3`: loaded\n- `5`: deleted\n\nEvery other status indicates a corrupted collection.\n",
+           "example": 3,
+           "type": "integer"
+          },
+          "statusString": {
+           "description": "The status of the collection as a descriptive string (deprecated).\n",
+           "enum": [
+            "loaded",
+            "deleted"
+           ],
+           "example": "loaded",
            "type": "string"
           },
           "syncByRevision": {
@@ -10491,9 +11196,6 @@
           },
           "result": {
            "description": "An array of result documents for the current batch\n(might be empty if the query has no results).\n",
-           "items": {
-            "type": ""
-           },
            "type": "array"
           }
          },
@@ -10926,9 +11628,6 @@
           },
           "result": {
            "description": "An array of result documents for the current batch\n(might be empty if the query has no results).\n",
-           "items": {
-            "type": ""
-           },
            "type": "array"
           }
          },
@@ -11345,9 +12044,6 @@
           },
           "result": {
            "description": "An array of result documents for the current batch\n(might be empty if the query has no results).\n",
-           "items": {
-            "type": ""
-           },
            "type": "array"
           }
          },
@@ -13759,8 +14455,7 @@
        "schema": {
         "properties": {
          "data": {
-          "description": "An arbitrary JSON value that will be parsed and passed to the\nscript as its first argument.\n",
-          "type": "json"
+          "description": "An arbitrary JSON value that will be parsed and passed to the\nscript as its first argument.\n"
          }
         },
         "type": "object"
@@ -13784,6 +14479,16 @@
     "description": "Removes the service at the given mount path from the database and file system.\n\nReturns an empty response on success.\n",
     "operationId": "deleteFoxxService",
     "parameters": [
+     {
+      "description": "The name of the database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
      {
       "description": "Mount path of the installed service.\n",
       "in": "query",
@@ -16869,7 +17574,7 @@
   },
   "/_db/{database-name}/_api/gharial/{graph}/edge/{collection}/{edge}": {
    "delete": {
-    "description": "Removes an edge from the collection.\n",
+    "description": "Removes an edge from an edge collection of the named graph. Any other edges\nthat directly reference this edge like a vertex are removed, too.\n",
     "operationId": "deleteEdge",
     "parameters": [
      {
@@ -19859,7 +20564,7 @@
   },
   "/_db/{database-name}/_api/gharial/{graph}/vertex/{collection}/{vertex}": {
    "delete": {
-    "description": "Removes a vertex from the collection.\n",
+    "description": "Removes a vertex from a collection of the named graph. Additionally removes all\nincoming and outgoing edges of the vertex.\n",
     "operationId": "deleteVertex",
     "parameters": [
      {
@@ -25167,128 +25872,6 @@
    }
   },
   "/_db/{database-name}/_api/tasks": {
-   "post": {
-    "description": "creates a new task with a generated id\n",
-    "operationId": "createTask",
-    "parameters": [
-     {
-      "description": "The name of the database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "requestBody": {
-     "content": {
-      "application/json": {
-       "schema": {
-        "properties": {
-         "command": {
-          "description": "The JavaScript code to be executed\n",
-          "type": "string"
-         },
-         "name": {
-          "description": "The name of the task\n",
-          "type": "string"
-         },
-         "offset": {
-          "description": "Number of seconds initial delay\n",
-          "type": "integer"
-         },
-         "params": {
-          "description": "The parameters to be passed into command\n",
-          "type": "string"
-         },
-         "period": {
-          "description": "number of seconds between the executions\n",
-          "type": "integer"
-         }
-        },
-        "required": [
-         "name",
-         "command",
-         "params"
-        ],
-        "type": "object"
-       }
-      }
-     }
-    },
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "properties": {
-          "code": {
-           "description": "The status code, 200 in this case.\n",
-           "type": "number"
-          },
-          "command": {
-           "description": "the javascript function for this task\n",
-           "type": "string"
-          },
-          "created": {
-           "description": "The timestamp when this task was created\n",
-           "type": "number"
-          },
-          "database": {
-           "description": "the database this task belongs to\n",
-           "type": "string"
-          },
-          "error": {
-           "description": "`false` in this case\n",
-           "type": "boolean"
-          },
-          "id": {
-           "description": "A string identifying the task\n",
-           "type": "string"
-          },
-          "offset": {
-           "description": "time offset in seconds from the created timestamp\n",
-           "type": "number"
-          },
-          "period": {
-           "description": "this task should run each `period` seconds\n",
-           "type": "number"
-          },
-          "type": {
-           "description": "What type of task is this [ `periodic`, `timed`]\n  - periodic are tasks that repeat periodically\n  - timed are tasks that execute once at a specific time\n",
-           "type": "string"
-          }
-         },
-         "required": [
-          "id",
-          "created",
-          "type",
-          "period",
-          "offset",
-          "command",
-          "database",
-          "code",
-          "error"
-         ],
-         "type": "object"
-        }
-       }
-      },
-      "description": "The task was registered\n"
-     },
-     "400": {
-      "description": "If the post body is not accurate, a *HTTP 400* is returned.\n"
-     }
-    },
-    "summary": "Create a task",
-    "tags": [
-     "Tasks"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/tasks/": {
    "get": {
     "description": "fetches all existing tasks on the server\n",
     "operationId": "listTasks",
@@ -25365,6 +25948,123 @@
      }
     },
     "summary": "List all tasks",
+    "tags": [
+     "Tasks"
+    ]
+   },
+   "post": {
+    "description": "Creates a new task with a generated identifier.\n",
+    "operationId": "createTask",
+    "parameters": [
+     {
+      "description": "The name of the database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "properties": {
+         "command": {
+          "description": "The JavaScript code to be executed.\n",
+          "type": "string"
+         },
+         "name": {
+          "description": "The name of the task.\n",
+          "type": "string"
+         },
+         "offset": {
+          "description": "The number of seconds for the initial delay.\n",
+          "type": "integer"
+         },
+         "params": {
+          "description": "The parameters to be passed to the command.\n",
+          "type": "string"
+         },
+         "period": {
+          "description": "The number of seconds between the executions.\n",
+          "type": "integer"
+         }
+        },
+        "required": [
+         "command"
+        ],
+        "type": "object"
+       }
+      }
+     }
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "command": {
+           "description": "The JavaScript code of this task.\n",
+           "type": "string"
+          },
+          "created": {
+           "description": "The timestamp when this task was created.\n",
+           "type": "number"
+          },
+          "database": {
+           "description": "The database this task belongs to.\n",
+           "type": "string"
+          },
+          "id": {
+           "description": "A string identifying the task.\n",
+           "type": "string"
+          },
+          "name": {
+           "description": "The name of the task.\n",
+           "type": "string"
+          },
+          "offset": {
+           "description": "The time offset in seconds from the created timestamp.\n",
+           "type": "number"
+          },
+          "period": {
+           "description": "The task runs every `period` seconds.\n",
+           "type": "number"
+          },
+          "type": {
+           "description": "The kind of the task:\n- `\"periodic\"`: The task repeats periodically\n- `\"timed\"`: The task executes once at a specific time\n",
+           "enum": [
+            "periodic",
+            "timed"
+           ],
+           "type": "string"
+          }
+         },
+         "required": [
+          "id",
+          "name",
+          "created",
+          "type",
+          "period",
+          "offset",
+          "command",
+          "database"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The task has been registered.\n"
+     },
+     "400": {
+      "description": "The task can't be registered because the request is invalid.\n"
+     }
+    },
+    "summary": "Create a task",
     "tags": [
      "Tasks"
     ]
@@ -25571,30 +26271,28 @@
        "schema": {
         "properties": {
          "command": {
-          "description": "The JavaScript code to be executed\n",
+          "description": "The JavaScript code to be executed.\n",
           "type": "string"
          },
          "name": {
-          "description": "The name of the task\n",
+          "description": "The name of the task.\n",
           "type": "string"
          },
          "offset": {
-          "description": "Number of seconds initial delay\n",
+          "description": "The number of seconds for the initial delay.\n",
           "type": "integer"
          },
          "params": {
-          "description": "The parameters to be passed into command\n",
+          "description": "The parameters to be passed to the command.\n",
           "type": "string"
          },
          "period": {
-          "description": "number of seconds between the executions\n",
+          "description": "The number of seconds between the executions.\n",
           "type": "integer"
          }
         },
         "required": [
-         "name",
-         "command",
-         "params"
+         "command"
         ],
         "type": "object"
        }
@@ -25602,8 +26300,69 @@
      }
     },
     "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "properties": {
+          "command": {
+           "description": "The JavaScript code of this task.\n",
+           "type": "string"
+          },
+          "created": {
+           "description": "The timestamp when this task was created.\n",
+           "type": "number"
+          },
+          "database": {
+           "description": "The database this task belongs to.\n",
+           "type": "string"
+          },
+          "id": {
+           "description": "The user-provided string identifying the task.\n",
+           "type": "string"
+          },
+          "name": {
+           "description": "The name of the task.\n",
+           "type": "string"
+          },
+          "offset": {
+           "description": "The time offset in seconds from the created timestamp.\n",
+           "type": "number"
+          },
+          "period": {
+           "description": "The task runs every `period` seconds.\n",
+           "type": "number"
+          },
+          "type": {
+           "description": "The kind of the task:\n- `\"periodic\"`: The task repeats periodically\n- `\"timed\"`: The task executes once at a specific time\n",
+           "enum": [
+            "periodic",
+            "timed"
+           ],
+           "type": "string"
+          }
+         },
+         "required": [
+          "id",
+          "name",
+          "created",
+          "type",
+          "period",
+          "offset",
+          "command",
+          "database"
+         ],
+         "type": "object"
+        }
+       }
+      },
+      "description": "The task has been registered.\n"
+     },
      "400": {
-      "description": "If the task `id` already exists or the rest body is not accurate, *HTTP 400* is returned.\n"
+      "description": "The task can't be registered because the request is invalid.\n"
+     },
+     "409": {
+      "description": "A task with the specified `id` already exists.\n"
      }
     },
     "summary": "Create a task with ID",
@@ -25921,6 +26680,37 @@
    }
   },
   "/_db/{database-name}/_api/user": {
+   "get": {
+    "description": "Fetches data about all users. You need the *Administrate* server access level\nin order to execute this REST call.  Otherwise, you will only get information\nabout yourself.\n\nThe call will return a JSON object with at least the following\nattributes on success:\n\n- `user`: The name of the user as a string.\n- `active`: An optional flag that specifies whether the user is active.\n- `extra`: A JSON object with extra user information. It is used by the web\n  interface to store graph viewer settings and saved queries.\n",
+    "operationId": "listUsers",
+    "parameters": [
+     {
+      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and administrate access to the `_system` database.\n",
+      "example": "_system",
+      "in": "path",
+      "name": "database-name",
+      "required": true,
+      "schema": {
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "description": "The users that were found.\n"
+     },
+     "401": {
+      "description": "Returned if you have *No access* database access level to the `_system`\ndatabase.\n"
+     },
+     "403": {
+      "description": "Returned if you have *No access* server access level.\n"
+     }
+    },
+    "summary": "List available users",
+    "tags": [
+     "Users"
+    ]
+   },
    "post": {
     "description": "Create a new user. You need server access level *Administrate* in order to\nexecute this REST call.\n",
     "operationId": "createUser",
@@ -25985,39 +26775,6 @@
      }
     },
     "summary": "Create a user",
-    "tags": [
-     "Users"
-    ]
-   }
-  },
-  "/_db/{database-name}/_api/user/": {
-   "get": {
-    "description": "Fetches data about all users. You need the *Administrate* server access level\nin order to execute this REST call.  Otherwise, you will only get information\nabout yourself.\n\nThe call will return a JSON object with at least the following\nattributes on success:\n\n- `user`: The name of the user as a string.\n- `active`: An optional flag that specifies whether the user is active.\n- `extra`: A JSON object with extra user information. It is used by the web\n  interface to store graph viewer settings and saved queries.\n",
-    "operationId": "listUsers",
-    "parameters": [
-     {
-      "description": "The name of a database. Which database you use doesn't matter as long\nas the user account you authenticate with has at least read access\nto this database and administrate access to the `_system` database.\n",
-      "example": "_system",
-      "in": "path",
-      "name": "database-name",
-      "required": true,
-      "schema": {
-       "type": "string"
-      }
-     }
-    ],
-    "responses": {
-     "200": {
-      "description": "The users that were found.\n"
-     },
-     "401": {
-      "description": "Returned if you have *No access* database access level to the `_system`\ndatabase.\n"
-     },
-     "403": {
-      "description": "Returned if you have *No access* server access level.\n"
-     }
-    },
-    "summary": "List available users",
     "tags": [
      "Users"
     ]
@@ -26255,7 +27012,7 @@
     ]
    }
   },
-  "/_db/{database-name}/_api/user/{user}/database/": {
+  "/_db/{database-name}/_api/user/{user}/database": {
    "get": {
     "description": "Fetch the list of databases available to the specified `user`.\n\nYou need *Administrate* permissions for the server access level in order to\nexecute this REST call.\n\nThe call will return a JSON object with the per-database access\nprivileges for the specified user. The `result` object will contain\nthe databases names as object keys, and the associated privileges\nfor the database as values.\n\nIn case you specified `full`, the result will contain the permissions\nfor the databases as well as the permissions for the collections.\n",
     "operationId": "listUserDatabases",
@@ -29229,7 +29986,7 @@
           },
           "errorMessage": {
            "description": "A descriptive error message.\n",
-           "type": "string."
+           "type": "string"
           },
           "errorNum": {
            "description": "ArangoDB error number for the error that occurred.\n",
