@@ -38,7 +38,7 @@ using ArangoVPackFeaturesList =
              FileSystemFeature, RandomFeature, ShellColorsFeature,
              ShutdownFeature,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-             ProcessEnvironmentFeature
+             ProcessEnvironmentFeature,
 #endif
              VPackFeature>;
 struct ArangoVPackFeatures : ArangoVPackFeaturesList {};
