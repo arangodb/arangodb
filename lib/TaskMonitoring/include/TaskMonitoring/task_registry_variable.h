@@ -22,34 +22,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Async/Registry/promise.h"
+#include "Containers/Concurrent/ListOfNonOwnedLists.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
 #include "TaskMonitoring/task.h"
-#include "Utils/ExecContext.h"
 
-namespace arangodb {
+namespace arangodb::task_monitoring {
+
+using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
+struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
 
 /**
-   Global context in arangodb
+   Global variable that holds all active tasks.
 
-   In an asyncronous coroutine we need to capture this context when suspending
-   and resetting it when resuming to make sure that the global variables are set
-   correctly.
+   Includes a list of thread owned lists, one for each initialized
+   thread.
  */
-struct Context {
-  std::shared_ptr<ExecContext const> _execContext;
-  async_registry::Requester _requester;
-  task_monitoring::Task* _task;
+extern Registry registry;
 
-  Context()
-      : _execContext{ExecContext::currentAsShared()},
-        _requester{*async_registry::get_current_coroutine()},
-        _task{*task_monitoring::get_current_task()} {}
+/**
+   Get thread registry of all active tasks on current thread.
 
-  auto set() -> void {
-    ExecContext::set(_execContext);
-    *async_registry::get_current_coroutine() = _requester;
-    *task_monitoring::get_current_task() = _task;
-  }
-};
+   Creates the thread registry when called for the first time and adds it to the
+   global registry.
+ */
+auto get_thread_registry() noexcept -> ThreadRegistry&;
 
-}  // namespace arangodb
+}  // namespace arangodb::task_monitoring

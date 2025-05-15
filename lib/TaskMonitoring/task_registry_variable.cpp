@@ -20,36 +20,22 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
+#include "TaskMonitoring/task_registry_variable.h"
 
-#include "Async/Registry/promise.h"
-#include "TaskMonitoring/task.h"
-#include "Utils/ExecContext.h"
+namespace arangodb::task_monitoring {
 
-namespace arangodb {
+Registry registry;
 
-/**
-   Global context in arangodb
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
+      registry.add(_registry);
+    }
 
-   In an asyncronous coroutine we need to capture this context when suspending
-   and resetting it when resuming to make sure that the global variables are set
-   correctly.
- */
-struct Context {
-  std::shared_ptr<ExecContext const> _execContext;
-  async_registry::Requester _requester;
-  task_monitoring::Task* _task;
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
+}
 
-  Context()
-      : _execContext{ExecContext::currentAsShared()},
-        _requester{*async_registry::get_current_coroutine()},
-        _task{*task_monitoring::get_current_task()} {}
-
-  auto set() -> void {
-    ExecContext::set(_execContext);
-    *async_registry::get_current_coroutine() = _requester;
-    *task_monitoring::get_current_task() = _task;
-  }
-};
-
-}  // namespace arangodb
+}  // namespace arangodb::task_monitoring
