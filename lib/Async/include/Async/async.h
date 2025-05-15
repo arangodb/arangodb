@@ -5,7 +5,6 @@
 #include "Async/expected.h"
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
-#include "Utils/ExecContext.h"
 #include "Inspection/Format.h"
 
 #include <coroutine>
