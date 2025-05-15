@@ -18,51 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Basics/TypeList.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
 namespace application_features {
-
-template<typename Features>
-class ApplicationServerT;
-class BasicFeaturePhaseClient;
-class CommunicationFeaturePhase;
 class GreetingsFeaturePhase;
-}  // namespace application_features
+}
 
-class ClientFeature;
-class ConfigFeature;
-class FileSystemFeature;
-class LoggerFeature;
-class OptionsCheckFeature;
-class RandomFeature;
-class ShellColorsFeature;
-class ShutdownFeature;
-class SslFeature;
-class VersionFeature;
-class HttpEndpointProvider;
-class ArangoGlobalContext;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-class ProcessEnvironmentFeature;
-#endif
-using namespace application_features;
+class ProcessEnvironmentFeature final
+    : public application_features::ApplicationFeature {
+ public:
+  static constexpr std::string_view name() noexcept { return "Temp"; }
 
-template<typename... T>
-using ArangoClientFeaturesList = TypeList<
-    // Phases
-    CommunicationFeaturePhase, GreetingsFeaturePhase,
-    // Features
-    VersionFeature,  // VersionFeature must go first
-    HttpEndpointProvider, ConfigFeature, FileSystemFeature, LoggerFeature,
-    OptionsCheckFeature, RandomFeature, ShellColorsFeature, ShutdownFeature,
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    ProcessEnvironmentFeature,
-#endif
-    SslFeature, T...>;
+  template<typename Server>
+  ProcessEnvironmentFeature(Server& server, std::string const& appname)
+      : ApplicationFeature{server, *this}, _dumpEnv(false) {
+    setOptional(false);
+    startsAfter<application_features::GreetingsFeaturePhase, Server>();
+  }
 
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void prepare() override final;
+
+ private:
+  bool _dumpEnv;
+};
+#endif
 }  // namespace arangodb
