@@ -163,8 +163,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         _connectionBuilderCache.erase(iit);
       } else if (it != _connectionCache.end()) {
         std::shared_ptr<fu::Connection> oldConnection;
-        auto haveOld = (_connection &&
-                        _connection->state() == fu::Connection::State::Connected);
+        auto haveOld = (_connection && _connection->state() ==
+                                           fu::Connection::State::Connected);
         if (haveOld) {
           _connection.swap(oldConnection);
         }
@@ -178,7 +178,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         return std::make_pair(c, true);
       }
     }
-      // no connection found in cache. create a new one
+    // no connection found in cache. create a new one
     // remember the current builder for later use
     _connectionBuilderCache.emplace(id, _builder);
     _connectedBuilder = _builder;
@@ -312,14 +312,15 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   return nullptr;
 }
 
-std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
+std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
+    bool bypassCache) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
   _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
   if (!_connection || (_connection->state() == fu::Connection::State::Closed)) {
-    return createConnection();
+    return createConnection(bypassCache);
   }
   return _connection;
 }
@@ -2805,7 +2806,7 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
-  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  std::shared_ptr<fu::Connection> connection = acquireConnection(true);
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     return kFuzzNotConnected;
   }
@@ -2819,17 +2820,18 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;
+    if (rc != fu::Error::NoError) {
+      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME)
+          << "rc: " << static_cast<uint32_t>(rc);
+    }
   }
 
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
-      << "connection closed after " << req_copy;
+        << "connection closed after " << req_copy.payloadAsString();
     if (response) {
       LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
           << "Server responce: " << response;
-    }
-    if (rc != fu::Error::NoError) {
-      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME) << "rc: " << response;
     }
   }
 
@@ -2868,7 +2870,7 @@ again:
     return v8::Undefined(isolate);
   }
 
-  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  std::shared_ptr<fu::Connection> connection = acquireConnection(false);
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
@@ -2945,7 +2947,7 @@ again:
     return v8::Undefined(isolate);
   }
 
-  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  std::shared_ptr<fu::Connection> connection = acquireConnection(false);
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
