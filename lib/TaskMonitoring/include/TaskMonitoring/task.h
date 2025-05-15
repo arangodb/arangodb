@@ -73,6 +73,7 @@ auto inspect(Inspector& f, State& x) {
 struct TaskSnapshot {
   std::string name;
   State state;
+  std::string message;
   TaskId id;
   ParentTaskSnapshot parent;
   std::optional<basics::ThreadId> thread;
@@ -87,7 +88,8 @@ template<typename Inspector>
 auto inspect(Inspector& f, TaskSnapshot& x) {
   return f.object(x).fields(
       f.embedFields(x.id), f.field("name", x.name), f.field("state", x.state),
-      f.field("parent", x.parent), f.field("thread", x.thread),
+      f.field("message", x.message), f.field("parent", x.parent),
+      f.field("thread", x.thread),
       f.field("source_location", x.source_location));
 }
 auto PrintTo(TaskSnapshot const& task, std::ostream* os) -> void;
@@ -95,6 +97,17 @@ auto PrintTo(TaskSnapshot const& task, std::ostream* os) -> void;
 struct Node;
 using NodeReference = std::shared_ptr<Node>;
 struct ParentTask : std::variant<RootTask, NodeReference> {};
+
+/**
+   A user-defined message type that can be used to provide additional
+   information for a task.
+
+   The to_string method is called when a snapshot of a task is created.
+ */
+struct TaskMessage {
+  virtual ~TaskMessage() = default;
+  virtual auto to_string() -> std::string { return ""; };
+};
 
 /**
    The task object inside the registry
@@ -107,20 +120,24 @@ struct TaskInRegistry {
     state.store(State::Deleted, std::memory_order_release);
   }
   static auto create(std::string name, ParentTask parent,
+                     std::shared_ptr<TaskMessage> printer,
                      std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
                           .state = State::Running,
                           .parent = std::move(parent),
                           .running_thread = {basics::ThreadId::current()},
-                          .source_location = std::move(loc)};
+                          .source_location = std::move(loc),
+                          .printer = printer};
   }
   static auto scheduled(std::string name, ParentTask parent,
+                        std::shared_ptr<TaskMessage> printer,
                         std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
                           .state = State::Scheduled,
                           .parent = std::move(parent),
                           .running_thread = {std::nullopt},
-                          .source_location = std::move(loc)};
+                          .source_location = std::move(loc),
+                          .printer = printer};
   }
 
   std::string const name;
@@ -130,6 +147,7 @@ struct TaskInRegistry {
       running_thread;  // TODO will be changed to a lock-free ptr to a
                        // ThreadInfo in the future
   std::source_location const source_location;
+  std::shared_ptr<TaskMessage> printer;
   // possibly interesting other properties:
   // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
 };
@@ -162,7 +180,8 @@ struct Task {
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
 
-  Task(std::string name, bool isScheduled = false,
+  Task(std::string name, std::shared_ptr<TaskMessage> printer = nullptr,
+       bool isScheduled = false,
        std::source_location loc = std::source_location::current());
   ~Task();
 
@@ -186,6 +205,7 @@ auto get_current_task() -> Task**;
  */
 struct ThreadTask {
   ThreadTask(std::string name, std::function<void()> lambda,
+             std::shared_ptr<TaskMessage> printer = nullptr,
              std::source_location loc = std::source_location::current());
 };
 
@@ -199,6 +219,7 @@ struct ThreadTask {
 struct ScheduledTask {
   ScheduledTask(std::string name, RequestLane lane,
                 std::function<void()> lambda,
+                std::shared_ptr<TaskMessage> printer = nullptr,
                 std::source_location loc = std::source_location::current());
 };
 }  // namespace arangodb::task_monitoring

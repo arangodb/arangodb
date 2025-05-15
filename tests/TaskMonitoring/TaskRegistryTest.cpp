@@ -31,6 +31,7 @@
 
 #include <coroutine>
 #include <optional>
+#include <string>
 #include <thread>
 
 using namespace arangodb;
@@ -46,9 +47,10 @@ auto get_all_tasks() -> std::vector<TaskSnapshot> {
 
 struct MyTask : public Task {
   basics::SourceLocationSnapshot source_location;
-  MyTask(std::string name, bool isScheduled = false,
+  MyTask(std::string name, std::shared_ptr<TaskMessage> printer = nullptr,
+         bool isScheduled = false,
          std::source_location loc = std::source_location::current())
-      : Task{std::move(name), isScheduled, loc},
+      : Task{std::move(name), printer, isScheduled, loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))} {}
 };
 
@@ -554,12 +556,31 @@ TEST_F(TaskRegistryTest, thread_task_connects_task_over_threads) {
     EXPECT_NE(tasks_in_registry[1].thread, main_task_snapshot.thread);
   });
 }
+
+struct MyMessage : TaskMessage {
+  const std::string name;
+  std::atomic<int> number = 0;
+  MyMessage(std::string name) : name{std::move(name)} {}
+  auto to_string() -> std::string override {
+    return name + " at state " + std::to_string(number.load());
+  }
+};
+TEST_F(TaskRegistryTest, task_has_a_print_object) {
+  auto message = std::make_shared<MyMessage>("message_name");
+  message->number.store(4);
+  auto main_task = Task{"main task", message};
+  EXPECT_EQ(get_all_tasks()[0].message, "message_name at state 4");
+
+  message->number.fetch_add(2);
+  EXPECT_EQ(get_all_tasks()[0].message, "message_name at state 6");
+}
+
 TEST_F(TaskRegistryTest, creates_a_scheduled_tasks) {
   auto main_task = MyTask{"main task"};
 
   EXPECT_EQ(get_all_tasks().size(), 1);
 
-  auto scheduled_task = MyTask{"scheduled task", true};
+  auto scheduled_task = MyTask{"scheduled task", nullptr, true};
   auto tasks_in_registry = get_all_tasks();
   EXPECT_EQ(tasks_in_registry.size(), 2);
   EXPECT_EQ(tasks_in_registry[0],

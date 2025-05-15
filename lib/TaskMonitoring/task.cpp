@@ -56,9 +56,16 @@ auto arangodb::task_monitoring::PrintTo(TaskSnapshot const& task,
 }
 
 auto TaskInRegistry::snapshot() -> TaskSnapshot {
+  std::string message;
+  if (printer == nullptr) {
+    message = "";
+  } else {
+    message = printer->to_string();
+  }
   return TaskSnapshot{
       .name = name,
       .state = state,
+      .message = message,
       .id = id(),
       .parent = std::visit(
           overloaded{
@@ -98,7 +105,8 @@ auto mark_finished_nodes_for_deletion(Node* node) {
 }
 }  // namespace
 
-Task::Task(std::string name, bool isScheduled, std::source_location loc)
+Task::Task(std::string name, std::shared_ptr<TaskMessage> printer,
+           bool isScheduled, std::source_location loc)
     : _node_in_registry{NodeReference(
           reinterpret_cast<Node*>(get_thread_registry().add([&]() {
             ParentTask parent;
@@ -109,10 +117,10 @@ Task::Task(std::string name, bool isScheduled, std::source_location loc)
             }
             if (isScheduled) {
               return TaskInRegistry::scheduled(
-                  std::move(name), std::move(parent), std::move(loc));
+                  std::move(name), std::move(parent), printer, std::move(loc));
             } else {
               return TaskInRegistry::create(std::move(name), std::move(parent),
-                                            std::move(loc));
+                                            printer, std::move(loc));
             }
           })),
           mark_finished_nodes_for_deletion)},
@@ -154,25 +162,27 @@ auto arangodb::task_monitoring::get_current_task() -> Task** {
 }
 
 ThreadTask::ThreadTask(std::string name, std::function<void()> lambda,
+                       std::shared_ptr<TaskMessage> printer,
                        std::source_location loc) {
   auto current_task_ptr = *get_current_task();
   std::jthread([current_task = current_task_ptr,
                 // extend lifetime of task
                 current_task_ref = current_task_ptr->_node_in_registry,
-                name = std::move(name), lambda = std::move(lambda),
+                name = std::move(name), lambda = std::move(lambda), printer,
                 loc = std::move(loc)]() {
     *get_current_task() = current_task;
-    auto task = Task{std::move(name), false, std::move(loc)};
+    auto task = Task{std::move(name), printer, false, std::move(loc)};
     lambda();
   });
 }
 
 ScheduledTask::ScheduledTask(std::string name, RequestLane lane,
                              std::function<void()> lambda,
+                             std::shared_ptr<TaskMessage> printer,
                              std::source_location loc) {
   SchedulerFeature::SCHEDULER->queue(
-      lane,
-      [task = Task{std::move(name), true, std::move(loc)}, lambda]() mutable {
+      lane, [task = Task{std::move(name), printer, true, std::move(loc)},
+             lambda]() mutable {
         task.start();
         lambda();
       });
