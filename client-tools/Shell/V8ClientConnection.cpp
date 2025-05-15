@@ -155,30 +155,30 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     std::string oldConnectionId = _currentConnectionId;
     _currentConnectionId = id;
     // check if we have a connection for that endpoint in our cache
-    auto it = _connectionCache.find(id);
-    auto iit = _connectionBuilderCache.find(id);
-    if (it != _connectionCache.end() && (*it).second.get() == nullptr) {
-      _connectionCache.erase(it);
-      _connectionBuilderCache.erase(iit);
-    } else if (it != _connectionCache.end()) {
-      std::shared_ptr<fu::Connection> oldConnection;
-      auto haveOld = (_connection &&
-                      _connection->state() == fu::Connection::State::Connected);
-      if (haveOld) {
-        _connection.swap(oldConnection);
-      }
-      auto c = (*it).second;
-      // cache hit. remove the connection from the cache and return it!
-      _connectedBuilder = (*iit).second;
-      _connectionCache.erase(it);
-      if (haveOld) {
-        _connectionCache.emplace(oldConnectionId, oldConnection);
-      }
-      if (!bypassCache) {
+    if (!bypassCache) {
+      auto it = _connectionCache.find(id);
+      auto iit = _connectionBuilderCache.find(id);
+      if (it != _connectionCache.end() && (*it).second.get() == nullptr) {
+        _connectionCache.erase(it);
+        _connectionBuilderCache.erase(iit);
+      } else if (it != _connectionCache.end()) {
+        std::shared_ptr<fu::Connection> oldConnection;
+        auto haveOld = (_connection &&
+                        _connection->state() == fu::Connection::State::Connected);
+        if (haveOld) {
+          _connection.swap(oldConnection);
+        }
+        auto c = (*it).second;
+        // cache hit. remove the connection from the cache and return it!
+        _connectedBuilder = (*iit).second;
+        _connectionCache.erase(it);
+        if (haveOld) {
+          _connectionCache.emplace(oldConnectionId, oldConnection);
+        }
         return std::make_pair(c, true);
       }
     }
-    // no connection found in cache. create a new one
+      // no connection found in cache. create a new one
     // remember the current builder for later use
     _connectionBuilderCache.emplace(id, _builder);
     _connectedBuilder = _builder;
@@ -2823,7 +2823,7 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
 
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
-        << "connection closed after" << req;
+      << "connection closed after " << req_copy;
     if (response) {
       LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
           << "Server responce: " << response;
