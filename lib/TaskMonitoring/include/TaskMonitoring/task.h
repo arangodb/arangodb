@@ -27,7 +27,6 @@
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
-#include "shared_reference.h"
 
 #include <atomic>
 #include <cstdint>
@@ -45,21 +44,20 @@ auto inspect(Inspector& f, RootTask& x) {
   return f.object(x).fields();
 }
 
-struct TaskIdWrapper {
+struct TaskId {
   void* id;
-  bool operator==(TaskIdWrapper const&) const = default;
+  bool operator==(TaskId const&) const = default;
 };
 template<typename Inspector>
-auto inspect(Inspector& f, TaskIdWrapper& x) {
+auto inspect(Inspector& f, TaskId& x) {
   return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
 }
 
-struct ParentTaskSnapshot : std::variant<RootTask, TaskIdWrapper> {};
+struct ParentTaskSnapshot : std::variant<RootTask, TaskId> {};
 template<typename Inspector>
 auto inspect(Inspector& f, ParentTaskSnapshot& x) {
   return f.variant(x).unqualified().alternatives(
-      inspection::inlineType<RootTask>(),
-      inspection::inlineType<TaskIdWrapper>());
+      inspection::inlineType<RootTask>(), inspection::inlineType<TaskId>());
 }
 
 enum class State { Created = 0, Running, Finished, Deleted };
@@ -73,7 +71,7 @@ auto inspect(Inspector& f, State& x) {
 struct TaskSnapshot {
   std::string name;
   State state;
-  void* id;
+  TaskId id;
   ParentTaskSnapshot parent;
   std::optional<basics::ThreadId> thread;
   basics::SourceLocationSnapshot source_location;
@@ -85,26 +83,22 @@ struct TaskSnapshot {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, TaskSnapshot& x) {
-  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)),
-                            f.field("name", x.name), f.field("state", x.state),
-                            f.field("parent", x.parent),
-                            f.field("thread", x.thread),
-                            f.field("source_location", x.source_location));
+  return f.object(x).fields(
+      f.embedFields(x.id), f.field("name", x.name), f.field("state", x.state),
+      f.field("parent", x.parent), f.field("thread", x.thread),
+      f.field("source_location", x.source_location));
 }
-void PrintTo(const TaskSnapshot& task, std::ostream* os);
 
 struct Node;
-using NodeReference = SharedReference<Node>;
+using NodeReference = std::shared_ptr<Node>;
 struct ParentTask : std::variant<RootTask, NodeReference> {};
-
-struct Task;
 
 /**
    The task object inside the registry
  */
 struct TaskInRegistry {
   using Snapshot = TaskSnapshot;
-  auto id() -> void* { return this; }
+  auto id() -> TaskId { return TaskId{this}; }
   auto snapshot() -> TaskSnapshot;
   auto set_to_deleted() -> void {
     state.store(State::Deleted, std::memory_order_release);
@@ -139,19 +133,26 @@ struct TaskInRegistry {
 };
 
 /**
+   A node in the task registry
+
    Use inheritance to circumvent problems with non-satified constraints for Node
+   when used in ParentTask in TaskInRegistry
  */
 struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
 
-struct ChildTask;
 /**
    This is a scope for an active task.
 
    It adds an entry to the task registry on construction and sets its
    state to finished on destruction.
- */
+
+   A task registry entry is marked for deletion (and will then be garbage
+   collected at some point) when all its shared references are gone. A shared
+   reference to a task registry entry is owned by a task and the children of
+   their parent tasks. Therefore a task in the registry lives at least as long
+   as its task scope or its longest living child.
+*/
 struct Task {
-  friend ChildTask;
   Task(Task&& other) = delete;
   Task& operator=(Task&& other) = delete;
   Task(Task const&) = delete;
@@ -161,7 +162,7 @@ struct Task {
        std::source_location loc = std::source_location::current());
   ~Task();
 
-  auto id() -> void*;
+  auto id() -> TaskId;
 
  private:
   Task* parent;
@@ -171,3 +172,7 @@ struct Task {
 auto get_current_task() -> Task**;
 
 }  // namespace arangodb::task_monitoring
+
+auto operator<<(std::ostream& out,
+                arangodb::task_monitoring::TaskSnapshot const& task)
+    -> std::ostream&;

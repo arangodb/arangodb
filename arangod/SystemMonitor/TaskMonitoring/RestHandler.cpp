@@ -69,16 +69,15 @@ auto all_undeleted_promises() -> ForestWithRoots<TaskSnapshot> {
   std::vector<Id> roots;
   registry.for_node([&](TaskSnapshot task) {
     // if (promise.state != State::Deleted) {
-    std::visit(overloaded{
-                   [&](TaskIdWrapper parent) {
-                     forest.insert(task.id, parent.id, task);
-                   },
-                   [&](RootTask root) {
-                     forest.insert(task.id, nullptr, task);
-                     roots.emplace_back(task.id);
-                   },
-               },
-               task.parent);
+    std::visit(
+        overloaded{
+            [&](TaskId parent) { forest.insert(task.id.id, parent.id, task); },
+            [&](RootTask root) {
+              forest.insert(task.id.id, nullptr, task);
+              roots.emplace_back(task.id.id);
+            },
+        },
+        task.parent);
     // }
   });
   return ForestWithRoots{forest, roots};

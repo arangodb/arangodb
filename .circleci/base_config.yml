@@ -14,6 +14,9 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
+  extra_args:
+    type: string
+    default: ""
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:15"
