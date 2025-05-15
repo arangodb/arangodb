@@ -97,7 +97,8 @@ struct PhysicalMemoryCache {
         } catch (...) {
           std::cerr
               << "failed to parse ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY: "
-              << value << std::endl;
+              << "expected integer, got " <<
+              << value <<  std::endl;
           FATAL_ERROR_EXIT();
         }
       }
