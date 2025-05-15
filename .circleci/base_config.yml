@@ -562,6 +562,7 @@ jobs:
             fi
             export KMP_AFFINITY=disabled
             export OMP_NUM_THREADS=1
+            export OMP_DYNAMIC=false
 
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -619,6 +620,7 @@ jobs:
             fi
             export KMP_AFFINITY=disabled
             export OMP_NUM_THREADS=1
+            export OMP_DYNAMIC=false
 
             python3 scripts/toolbox/HotBackupConsistencyTest.py \
               --arangod $PWD/build/bin/arangod \
@@ -684,6 +686,8 @@ jobs:
             fi
             export KMP_AFFINITY=disabled
             export OMP_NUM_THREADS=1
+            export OMP_DYNAMIC=false
+
             lscpu -e
             echo "CPUINFO"
             cat /proc/cpuinfo
