@@ -25,6 +25,7 @@
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
+#include "GeneralServer/RequestLane.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
 
@@ -61,12 +62,12 @@ auto inspect(Inspector& f, ParentTaskSnapshot& x) {
       inspection::inlineType<RootTask>(), inspection::inlineType<TaskId>());
 }
 
-enum class State { Created = 0, Running, Finished, Deleted };
+enum class State { Created = 0, Scheduled, Running, Finished, Deleted };
 template<typename Inspector>
 auto inspect(Inspector& f, State& x) {
-  return f.enumeration(x).values(State::Created, "Created", State::Running,
-                                 "Running", State::Finished, "Finished",
-                                 State::Deleted, "Deleted");
+  return f.enumeration(x).values(
+      State::Created, "Created", State::Scheduled, "Scheduled", State::Running,
+      "Running", State::Finished, "Finished", State::Deleted, "Deleted");
 }
 
 struct TaskSnapshot {
@@ -105,29 +106,29 @@ struct TaskInRegistry {
   auto set_to_deleted() -> void {
     state.store(State::Deleted, std::memory_order_release);
   }
-  static auto root(std::string name, std::source_location loc)
-      -> TaskInRegistry {
+  static auto create(std::string name, ParentTask parent,
+                     std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
                           .state = State::Running,
-                          .parent = ParentTask{RootTask{}},
-                          .running_thread = basics::ThreadId::current(),
+                          .parent = std::move(parent),
+                          .running_thread = {basics::ThreadId::current()},
                           .source_location = std::move(loc)};
   }
-  static auto child(std::string name, NodeReference parent,
-                    std::source_location loc) -> TaskInRegistry {
+  static auto scheduled(std::string name, ParentTask parent,
+                        std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
-                          .state = State::Running,
-                          .parent = ParentTask{std::move(parent)},
-                          .running_thread = basics::ThreadId::current(),
+                          .state = State::Scheduled,
+                          .parent = std::move(parent),
+                          .running_thread = {std::nullopt},
                           .source_location = std::move(loc)};
   }
 
   std::string const name;
   std::atomic<State> state;
   ParentTask parent;
-  std::optional<basics::ThreadId>
-      running_thread;  // proably has to also be atomic because
-                       // changes for scheduled task
+  std::atomic<std::optional<basics::ThreadId>>
+      running_thread;  // TODO will be changed to a lock-free ptr to a
+                       // ThreadInfo in the future
   std::source_location const source_location;
   // possibly interesting other properties:
   // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
@@ -156,21 +157,22 @@ struct ThreadTask;
 */
 struct Task {
   friend struct ThreadTask;
-  Task(Task&& other) = delete;
-  Task& operator=(Task&& other) = delete;
+  Task(Task&& other) = default;
+  Task& operator=(Task&& other) = default;
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
 
-  Task(std::string name,
+  Task(std::string name, bool isScheduled = false,
        std::source_location loc = std::source_location::current());
   ~Task();
 
   auto id() -> TaskId;
   auto source_location() -> basics::SourceLocationSnapshot;
+  auto start() -> void;
 
  private:
-  Task* parent;
   NodeReference _node_in_registry;
+  Task* parent;
 };
 
 auto get_current_task() -> Task**;
@@ -185,5 +187,18 @@ auto get_current_task() -> Task**;
 struct ThreadTask {
   ThreadTask(std::string name, std::function<void()> lambda,
              std::source_location loc = std::source_location::current());
+};
+
+/**
+   Schedules the given lamda on the given lane of the scheduler queue as a new
+   task.
+
+   Creates a new task in the task registry with a scheduled state. As soon as
+   the lambda is executed, the state is updated to running.
+ */
+struct ScheduledTask {
+  ScheduledTask(std::string name, RequestLane lane,
+                std::function<void()> lambda,
+                std::source_location loc = std::source_location::current());
 };
 }  // namespace arangodb::task_monitoring

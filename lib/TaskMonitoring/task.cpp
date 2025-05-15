@@ -27,6 +27,8 @@
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Format.h"
 #include "TaskMonitoring/task_registry_variable.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include <atomic>
 #include <optional>
 #include <source_location>
@@ -96,19 +98,25 @@ auto mark_finished_nodes_for_deletion(Node* node) {
 }
 }  // namespace
 
-Task::Task(std::string name, std::source_location loc)
+Task::Task(std::string name, bool isScheduled, std::source_location loc)
     : _node_in_registry{NodeReference(
           reinterpret_cast<Node*>(get_thread_registry().add([&]() {
+            ParentTask parent;
             if (auto current = *get_current_task(); current != nullptr) {
-              return TaskInRegistry::child(
-                  std::move(name), current->_node_in_registry, std::move(loc));
+              parent = {current->_node_in_registry};
+            } else {
+              parent = {RootTask{}};
             }
-            return TaskInRegistry::root(std::move(name), std::move(loc));
+            if (isScheduled) {
+              return TaskInRegistry::scheduled(
+                  std::move(name), std::move(parent), std::move(loc));
+            } else {
+              return TaskInRegistry::create(std::move(name), std::move(parent),
+                                            std::move(loc));
+            }
           })),
-          mark_finished_nodes_for_deletion)} {
-  // remember its parent task to switch the current task back to the parent task
-  // when this task is destroyed
-  parent = *get_current_task();
+          mark_finished_nodes_for_deletion)},
+      parent{*get_current_task()} {
   *get_current_task() = this;
 }
 
@@ -123,6 +131,11 @@ auto Task::id() -> TaskId { return _node_in_registry->data.id(); }
 auto Task::source_location() -> basics::SourceLocationSnapshot {
   return basics::SourceLocationSnapshot::from(
       _node_in_registry->data.source_location);
+}
+
+auto Task::start() -> void {
+  _node_in_registry->data.state.store(State::Running);
+  _node_in_registry->data.running_thread.store(basics::ThreadId::current());
 }
 
 /**
@@ -149,7 +162,18 @@ ThreadTask::ThreadTask(std::string name, std::function<void()> lambda,
                 name = std::move(name), lambda = std::move(lambda),
                 loc = std::move(loc)]() {
     *get_current_task() = current_task;
-    auto task = Task{std::move(name), std::move(loc)};
+    auto task = Task{std::move(name), false, std::move(loc)};
     lambda();
   });
+}
+
+ScheduledTask::ScheduledTask(std::string name, RequestLane lane,
+                             std::function<void()> lambda,
+                             std::source_location loc) {
+  SchedulerFeature::SCHEDULER->queue(
+      lane,
+      [task = Task{std::move(name), true, std::move(loc)}, lambda]() mutable {
+        task.start();
+        lambda();
+      });
 }

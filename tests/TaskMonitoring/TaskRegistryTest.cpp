@@ -23,12 +23,14 @@
 
 #include "Async/async.h"
 #include "Containers/Concurrent/thread.h"
+#include "GeneralServer/RequestLane.h"
 #include "TaskMonitoring/task.h"
 #include "TaskMonitoring/task_registry_variable.h"
 #include "Inspection/JsonPrintInspector.h"
 #include <gtest/gtest.h>
 
 #include <coroutine>
+#include <optional>
 #include <thread>
 
 using namespace arangodb;
@@ -44,9 +46,9 @@ auto get_all_tasks() -> std::vector<TaskSnapshot> {
 
 struct MyTask : public Task {
   basics::SourceLocationSnapshot source_location;
-  MyTask(std::string name,
+  MyTask(std::string name, bool isScheduled = false,
          std::source_location loc = std::source_location::current())
-      : Task{std::move(name), loc},
+      : Task{std::move(name), isScheduled, loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))} {}
 };
 
@@ -551,4 +553,32 @@ TEST_F(TaskRegistryTest, thread_task_connects_task_over_threads) {
                                 thread_task_snapshot_ptr->source_location()}));
     EXPECT_NE(tasks_in_registry[1].thread, main_task_snapshot.thread);
   });
+}
+TEST_F(TaskRegistryTest, creates_a_scheduled_tasks) {
+  auto main_task = MyTask{"main task"};
+
+  EXPECT_EQ(get_all_tasks().size(), 1);
+
+  auto scheduled_task = MyTask{"scheduled task", true};
+  auto tasks_in_registry = get_all_tasks();
+  EXPECT_EQ(tasks_in_registry.size(), 2);
+  EXPECT_EQ(tasks_in_registry[0],
+            (TaskSnapshot{.name = "scheduled task",
+                          .state = State::Scheduled,
+                          .id = scheduled_task.id(),
+                          .parent = {main_task.id()},
+                          .thread = std::nullopt,
+                          .source_location = scheduled_task.source_location}));
+  auto scheduled_task_snapshot = tasks_in_registry[0];
+
+  scheduled_task.start();
+  tasks_in_registry = get_all_tasks();
+  EXPECT_EQ(tasks_in_registry.size(), 2);
+  EXPECT_EQ(tasks_in_registry[0],
+            (TaskSnapshot{.name = "scheduled task",
+                          .state = State::Running,
+                          .id = scheduled_task.id(),
+                          .parent = {main_task.id()},
+                          .thread = basics::ThreadId::current(),
+                          .source_location = scheduled_task.source_location}));
 }

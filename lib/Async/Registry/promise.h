@@ -35,6 +35,8 @@
 #include "fmt/format.h"
 #include "fmt/std.h"
 
+namespace arangodb::async_registry {
+
 namespace {
 // helper type for the visitor
 template<class... Ts>
@@ -44,8 +46,6 @@ struct overloaded : Ts... {
 template<class... Ts>
 overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
-
-namespace arangodb::async_registry {
 
 enum class State { Running = 0, Suspended, Resolved, Deleted };
 template<typename Inspector>
