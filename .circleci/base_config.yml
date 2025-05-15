@@ -559,9 +559,9 @@ jobs:
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
               echo "Setting aarch64 enviroment for OMP"
-              export KMP_AFFINITY=disabled
-              export OMP_NUM_THREADS=1
             fi
+            export KMP_AFFINITY=disabled
+            export OMP_NUM_THREADS=1
 
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -616,9 +616,9 @@ jobs:
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
               echo "Setting aarch64 enviroment for OMP"
-              export KMP_AFFINITY=disabled
-              export OMP_NUM_THREADS=1
             fi
+            export KMP_AFFINITY=disabled
+            export OMP_NUM_THREADS=1
 
             python3 scripts/toolbox/HotBackupConsistencyTest.py \
               --arangod $PWD/build/bin/arangod \
@@ -681,9 +681,9 @@ jobs:
             echo "Architecture is $ARCH"
             if test "$ARCH" == "aarch64"; then
               echo "Setting aarch64 enviroment for OMP"
-              export KMP_AFFINITY=disabled
-              export OMP_NUM_THREADS=1
             fi
+            export KMP_AFFINITY=disabled
+            export OMP_NUM_THREADS=1
             lscpu -e
             echo "CPUINFO"
             cat /proc/cpuinfo
