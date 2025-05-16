@@ -511,12 +511,10 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     using ClusterProvider = ClusterProvider<ClusterProviderStep>;
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
-    ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
-                                                      opts->produceVertices(),
-                                                      opts->query());
-    ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
-                                                       opts->produceVertices(),
-                                                       opts->query());
+    ClusterBaseProviderOptions forwardProviderOptions(
+        cache, engines(), false, opts->produceVertices(), opts->query());
+    ClusterBaseProviderOptions backwardProviderOptions(
+        cache, engines(), true, opts->produceVertices(), opts->query());
 
     auto usesWeight =
         checkWeight(forwardProviderOptions, backwardProviderOptions);

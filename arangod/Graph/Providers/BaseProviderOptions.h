@@ -100,10 +100,10 @@ struct SingleServerBaseProviderOptions {
       MonitoredCollectionToShardMap const& collectionToShardMap,
       aql::Projections const& vertexProjections,
       aql::Projections const& edgeProjections, bool produceVertices,
-      bool useCache,
-      aql::QueryContext& query);
+      bool useCache, aql::QueryContext& query);
 
-  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) = delete;
+  SingleServerBaseProviderOptions(SingleServerBaseProviderOptions const&) =
+      delete;
   SingleServerBaseProviderOptions(SingleServerBaseProviderOptions&&) = default;
 
   aql::Variable const* tmpVar() const;
@@ -133,9 +133,7 @@ struct SingleServerBaseProviderOptions {
 
   aql::Projections const& getEdgeProjections() const;
 
-  bool isKilled() const noexcept {
-    return _queryObserver.isKilled();
-  }
+  bool isKilled() const noexcept { return _queryObserver.isKilled(); }
 
  private:
   // The temporary Variable used in the Indexes
@@ -188,8 +186,7 @@ struct ClusterBaseProviderOptions {
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
       std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
-      bool produceVertices,
-      aql::QueryContext& query);
+      bool produceVertices, aql::QueryContext& query);
 
   ClusterBaseProviderOptions(
       std::shared_ptr<RefactoredClusterTraverserCache> cache,
@@ -236,9 +233,7 @@ struct ClusterBaseProviderOptions {
     _clearEdgeCacheOnClear = flag;
   }
 
-  bool isKilled() const noexcept {
-    return _queryObserver.isKilled();
-  }
+  bool isKilled() const noexcept { return _queryObserver.isKilled(); }
 
  private:
   std::shared_ptr<RefactoredClusterTraverserCache> _cache;

@@ -33,7 +33,8 @@ namespace arangodb::graph {
 
 struct OneSidedEnumeratorOptions {
  public:
-  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth, aql::QueryContext& query);
+  OneSidedEnumeratorOptions(size_t minDepth, size_t maxDepth,
+                            aql::QueryContext& query);
   ~OneSidedEnumeratorOptions();
 
   [[nodiscard]] size_t getMinDepth() const noexcept;

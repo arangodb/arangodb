@@ -86,8 +86,7 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     MonitoredCollectionToShardMap const& collectionToShardMap,
     aql::Projections const& vertexProjections,
     aql::Projections const& edgeProjections, bool produceVertices,
-    bool useCache,
-    aql::QueryContext& query)
+    bool useCache, aql::QueryContext& query)
     : _temporaryVariable(tmpVar),
       _indexInformation(std::move(indexInfo)),
       _expressionContext(expressionContext),
@@ -171,8 +170,7 @@ void SingleServerBaseProviderOptions::unPrepareContext() {
 ClusterBaseProviderOptions::ClusterBaseProviderOptions(
     std::shared_ptr<RefactoredClusterTraverserCache> cache,
     std::unordered_map<ServerID, aql::EngineId> const* engines, bool backward,
-    bool produceVertices,
-    aql::QueryContext& query)
+    bool produceVertices, aql::QueryContext& query)
     : _cache(std::move(cache)),
       _engines(engines),
       _backward(backward),

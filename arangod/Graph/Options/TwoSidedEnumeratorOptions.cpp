@@ -31,7 +31,10 @@ TwoSidedEnumeratorOptions::TwoSidedEnumeratorOptions(size_t minDepth,
                                                      size_t maxDepth,
                                                      PathType::Type pathType,
                                                      aql::QueryContext& query)
-    : _minDepth(minDepth), _maxDepth(maxDepth), _pathType(pathType), _observer(query) {
+    : _minDepth(minDepth),
+      _maxDepth(maxDepth),
+      _pathType(pathType),
+      _observer(query) {
   if (getPathType() == PathType::Type::AllShortestPaths) {
     setStopAtFirstDepth(true);
   } else if (getPathType() == PathType::Type::ShortestPath) {

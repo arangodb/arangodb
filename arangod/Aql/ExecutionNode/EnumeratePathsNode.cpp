@@ -483,8 +483,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
         opts->tmpVar(), std::move(reversedUsedIndexes),
         opts->getExpressionCtx(), {}, opts->collectionToShard(),
         opts->getVertexProjections(), opts->getEdgeProjections(),
-        opts->produceVertices(), opts->useCache(),
-        opts->query());
+        opts->produceVertices(), opts->useCache(), opts->query());
 
     using Provider = SingleServerProvider<SingleServerProviderStep>;
     if (opts->query().queryOptions().getTraversalProfileLevel() ==
@@ -680,13 +679,11 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
   } else {  // Cluster case (on coordinator)
     auto cache = std::make_shared<RefactoredClusterTraverserCache>(
         opts->query().resourceMonitor());
-    ClusterBaseProviderOptions forwardProviderOptions(cache, engines(), false,
-                                                      opts->produceVertices(),
-                                                      opts->query());
+    ClusterBaseProviderOptions forwardProviderOptions(
+        cache, engines(), false, opts->produceVertices(), opts->query());
     forwardProviderOptions.setClearEdgeCacheOnClear(false);
-    ClusterBaseProviderOptions backwardProviderOptions(cache, engines(), true,
-                                                       opts->produceVertices(),
-                                                       opts->query());
+    ClusterBaseProviderOptions backwardProviderOptions(
+        cache, engines(), true, opts->produceVertices(), opts->query());
     backwardProviderOptions.setClearEdgeCacheOnClear(false);
     // A comment is in order here: For all cases covered here
     // (k-shortest-paths, all shortest paths, k-paths) we do not need to
