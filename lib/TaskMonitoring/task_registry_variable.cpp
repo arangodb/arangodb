@@ -18,29 +18,24 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
+#include "TaskMonitoring/task_registry_variable.h"
 
-#pragma once
+namespace arangodb::task_monitoring {
 
-#include "RestHandler/RestBaseHandler.h"
+Registry registry;
 
-#include <string>
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
+      registry.add(_registry);
+    }
 
-namespace arangodb {
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
+}
 
-class RestUsageMetricsHandler : public arangodb::RestBaseHandler {
- public:
-  RestUsageMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
-
-  char const* name() const final { return "RestUsageMetricsHandler"; }
-  /// @brief must be on fast lane so that metrics can always be retrieved,
-  /// even from otherwise totally busy servers
-  RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
-  auto executeAsync() -> futures::Future<futures::Unit> final;
-
- private:
-  auto makeRedirection(std::string const& serverId) -> async<void>;
-};
-
-}  // namespace arangodb
+}  // namespace arangodb::task_monitoring

@@ -37,10 +37,10 @@ class RestMetricsHandler : public arangodb::RestBaseHandler {
   /// @brief must be on fast lane so that metrics can always be retrieved,
   /// even from otherwise totally busy servers
   RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() final;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
 
  private:
-  RestStatus makeRedirection(std::string const& serverId, bool last);
+  auto makeRedirection(std::string const& serverId, bool last) -> async<void>;
 };
 
 }  // namespace arangodb

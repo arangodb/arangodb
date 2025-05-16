@@ -31,6 +31,7 @@
 #include <thread>
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Containers/Concurrent/thread.h"
+#include "Containers/Concurrent/source_location.h"
 #include "fmt/format.h"
 #include "fmt/std.h"
 
@@ -45,34 +46,6 @@ overloaded(Ts...) -> overloaded<Ts...>;
 }  // namespace
 
 namespace arangodb::async_registry {
-
-struct SourceLocationSnapshot {
-  std::string_view file_name;
-  std::string_view function_name;
-  std::uint_least32_t line;
-  bool operator==(SourceLocationSnapshot const&) const = default;
-  static auto from(std::source_location loc) -> SourceLocationSnapshot {
-    return SourceLocationSnapshot{.file_name = loc.file_name(),
-                                  .function_name = loc.function_name(),
-                                  .line = loc.line()};
-  }
-};
-template<typename Inspector>
-auto inspect(Inspector& f, SourceLocationSnapshot& x) {
-  return f.object(x).fields(f.field("file_name", x.file_name),
-                            f.field("line", x.line),
-                            f.field("function_name", x.function_name));
-}
-struct SourceLocation {
-  auto snapshot() -> SourceLocationSnapshot {
-    return SourceLocationSnapshot{.file_name = file_name,
-                                  .function_name = function_name,
-                                  .line = line.load()};
-  }
-  const std::string_view file_name;
-  const std::string_view function_name;
-  std::atomic<std::uint_least32_t> line;
-};
 
 enum class State { Running = 0, Suspended, Resolved, Deleted };
 template<typename Inspector>
@@ -130,7 +103,7 @@ auto inspect(Inspector& f, Requester& x) {
 struct PromiseSnapshot {
   void* id;
   basics::ThreadId thread;
-  SourceLocationSnapshot source_location;
+  basics::SourceLocationSnapshot source_location;
   Requester requester;
   State state;
   bool operator==(PromiseSnapshot const&) const = default;
@@ -144,6 +117,9 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
                             f.field("state", x.state));
 }
 
+/**
+   Promise in the registry
+ */
 struct Promise {
   using Snapshot = PromiseSnapshot;
   Promise(Requester requester, std::source_location location);
@@ -162,8 +138,7 @@ struct Promise {
   }
 
   basics::ThreadId thread;
-
-  SourceLocation source_location;
+  basics::VariableSourceLocation source_location;
   std::atomic<Requester> requester;
   std::atomic<State> state = State::Running;
 };
@@ -174,6 +149,14 @@ struct Promise {
  */
 auto get_current_coroutine() noexcept -> Requester*;
 
+/**
+   Wrapper promise for easier usage in the code
+
+   This is a wrapper around the promise: On construction, it creates a promise
+   and registers it in the global register. On destruction, it marks the promise
+   for deletion in the register. Therefore it has a shorter lifetime than the
+   promise itself.
+ */
 struct AddToAsyncRegistry {
   AddToAsyncRegistry() = default;
   AddToAsyncRegistry(std::source_location loc);
