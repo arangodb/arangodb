@@ -1,6 +1,13 @@
+/*jshint globalstrict:true, strict:true, esnext: true */
+/*global print */
+
+"use strict";
+
 const jsunity = require("jsunity");
-const {assertTrue} = jsunity.jsUnity.assertions;
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 const protoGraphs = require('@arangodb/testutils/aql-graph-traversal-generic-graphs').protoGraphs;
+const internal = require("internal");
+const db = internal.db;
 const arango = internal.arango;
 
 // seconds to add to execution time for verification
@@ -78,7 +85,7 @@ const localHelper = {
     );
     if (debug) {
       if (disableAsyncHeader) {
-        print(response)
+        print(response);
       }
       print("Async query response code:", response.code);
       print("Async query ID:", response.headers['x-arango-async-id']);
@@ -172,7 +179,7 @@ const localHelper = {
       print("Test completed successfully");
     }
   }
-}
+};
 
 /*
   Bidirectional Circle
