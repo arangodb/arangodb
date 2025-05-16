@@ -174,7 +174,8 @@ class DFSFinderTest
   }
 
   auto pathFinder(size_t minDepth, size_t maxDepth) -> DFSFinder {
-    arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth, *_query.get()};
+    arangodb::graph::OneSidedEnumeratorOptions options{minDepth, maxDepth,
+                                                       *_query.get()};
     PathValidatorOptions validatorOpts{&_tmpVar, _expressionContext};
     return DFSFinder(
         {*_query.get(),
