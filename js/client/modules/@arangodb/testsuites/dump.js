@@ -939,7 +939,9 @@ function dumpMultiple (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){}, []);
+  return dump_backend_two_instances(dumpOptions, dumpOptions, {}, {},
+                                    dumpOptions, dumpOptions,
+                                    'dump_multiple', tstFiles, function(){}, []);
 }
 
 function dumpWithCrashes (options) {
