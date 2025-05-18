@@ -33,6 +33,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const isCluster = require("internal").isCluster();
 const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
+const { versionHas } = require("@arangodb/test-helper");
 const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {
   "name": "cachorro",
   "id": "9999995",
@@ -1356,7 +1357,53 @@ function restoreIntegrationSuite() {
       assertFalse(props.syncByRevision);
       fs.removeDirectoryRecursive(path, true);
     },
-    
+  };
+}
+
+function restoreIntegrationVectorSuite() {
+  'use strict';
+  const cn = 'UnitTestsVectorIndexRestore';
+  const arangorestore = pu.ARANGORESTORE_BIN;
+
+  assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
+
+  let addConnectionArgs = function (args) {
+    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
+    args.push('--server.endpoint');
+    args.push(endpoint);
+    if (args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {
+      args.push('--server.database');
+      args.push(arango.getDatabaseName());
+    }
+    args.push('--server.username');
+    args.push(arango.connectedUser());
+  };
+
+  let runRestore = function (path, args, rc) {
+    args.push('--input-directory');
+    args.push(path);
+    addConnectionArgs(args);
+
+    const actualRc = executeExternalAndWaitWithSanitizer(arangorestore, args, 'shell-restore-integration');
+    assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
+    assertEqual(rc, actualRc.exit, actualRc);
+  };
+
+  return {
+
+    setUp: function () {
+      db._drop(cn);
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+      db._databases().forEach((database) => {
+        if (database !== "_system") {
+          db._dropDatabase(database);
+        }
+      });
+    },
+
     testRestoreVectorIndex: function () {
       let path = fs.getTempFile();
       fs.makeDirectory(path);
@@ -1404,6 +1451,11 @@ function restoreIntegrationSuite() {
   };
 }
 
+
 jsunity.run(restoreIntegrationSuite);
+
+if (!versionHas("arm")) {
+  jsunity.run(restoreIntegrationVectorSuite);
+}
 
 return jsunity.done();
