@@ -1375,8 +1375,8 @@ function restoreIntegrationSuite() {
         }
       }));
       let data = [];
-      for(let i = 0; i < 1000; ++i) {
-        data.push({value: i, vector: [0, i / 10, i / 100, i / 1000]});
+      for (let i = 0; i < 1000; ++i) {
+        data.push({_key: "test" + i, value: i, vector: [0, i / 10, i / 100, i / 1000]});
       }
       createCollectionDataFile(data, path, cn, /*split*/ false);
       
@@ -1390,7 +1390,7 @@ function restoreIntegrationSuite() {
       assertEqual(["_key"], indexes[0].fields);
       assertEqual("vector", indexes[1].type);
       assertEqual(["vector"], indexes[1].fields);
-      assertEqual("skiplist", indexes[2].type);
+      assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
       // test if the vector index works
