@@ -1808,7 +1808,7 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
       }
     }
   }
-  indexes = newIndexes.slice();
+  indexes["indexes"] = newIndexes.slice();
 
   // re-create indexes
   if (indexes.length() > 0) {
