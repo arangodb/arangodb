@@ -402,8 +402,8 @@ class TestGraph {
         keys.push(vertexKey);
       }
 
-      // Process vertices in batches of 100k
-      const VERTEX_BATCH_SIZE = 100000;
+      // Process vertices in smaller batches to reduce memory pressure
+      const VERTEX_BATCH_SIZE = 10000; // Reduced from 100k to 10k
       for (let i = 0; i < toSave.length; i += VERTEX_BATCH_SIZE) {
         const batch = toSave.slice(i, i + VERTEX_BATCH_SIZE);
         const batchKeys = keys.slice(i, i + VERTEX_BATCH_SIZE);
@@ -414,21 +414,30 @@ class TestGraph {
           verticesByName[batchKeys[idx]] = d._id;
           return null;
         });
+        // Clear references to help garbage collection
+        batch.length = 0;
+        batchKeys.length = 0;
       }
+      // Clear the full arrays after processing
+      toSave.length = 0;
+      keys.length = 0;
     }
 
-    // Process edges in batches of 100k
-    const EDGE_BATCH_SIZE = 100000;
-    const edgeDocs = edges.map(([v, w, weight]) => {
+    // Process edges in smaller batches to reduce memory pressure
+    const EDGE_BATCH_SIZE = 10000; // Reduced from 100k to 10k
+    let edgeDocs = [];
+    let currentBatch = [];
+    let currentBatchSize = 0;
+
+    // Process edges in a streaming fashion
+    for (const [v, w, weight] of edges) {
       const edge = {
         _from: verticesByName[v],
         _to: verticesByName[w],
-        // Will be used in filters of tests.
         secondFrom: verticesByName[v]
       };
-      // check if our edge also has a weight defined and is a number
+      
       if (weight && typeof weight === 'number') {
-        // if found, add attribute "distance" as weightAttribute to the edge document
         edge[graphWeightAttribute] = weight;
         edge[graphIndexedAttribute] = weight;
       }
@@ -439,17 +448,28 @@ class TestGraph {
         edge.payload3 = payloadGen.next().value;
       }
 
-      return edge;
-    });
+      currentBatch.push(edge);
+      currentBatchSize++;
 
-    // Save edges in batches
-    for (let i = 0; i < edgeDocs.length; i += EDGE_BATCH_SIZE) {
-      const batch = edgeDocs.slice(i, i + EDGE_BATCH_SIZE);
-      if (this.debug) {
-        print(`Saving edge batch ${i} of ${edgeDocs.length}`);
+      // When batch is full, save it and clear memory
+      if (currentBatchSize >= EDGE_BATCH_SIZE) {
+        if (this.debug) {
+          print(`Saving edge batch of size ${currentBatchSize}`);
+        }
+        ec.save(currentBatch);
+        currentBatch = [];
+        currentBatchSize = 0;
       }
-      ec.save(batch);
     }
+
+    // Save any remaining edges
+    if (currentBatch.length > 0) {
+      if (this.debug) {
+        print(`Saving final edge batch of size ${currentBatch.length}`);
+      }
+      ec.save(currentBatch);
+    }
+
     return verticesByName;
   }
 
