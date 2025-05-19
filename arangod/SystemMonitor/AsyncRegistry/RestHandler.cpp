@@ -25,8 +25,8 @@
 #include <variant>
 
 #include "Async/Registry/promise.h"
-#include "SystemMonitor/AsyncRegistry/Stacktrace/depth_first.h"
-#include "SystemMonitor/AsyncRegistry/Stacktrace/forest.h"
+#include "Containers/Forest/depth_first.h"
+#include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
@@ -42,6 +42,7 @@
 
 using namespace arangodb;
 using namespace arangodb::async_registry;
+using namespace arangodb::containers;
 
 struct Entry {
   TreeHierarchy hierarchy;
