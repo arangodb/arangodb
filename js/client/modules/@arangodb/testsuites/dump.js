@@ -758,7 +758,11 @@ function getClusterStrings(options) {
   }
 }
 
-function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs, restartServer) {
+function dump_backend_two_instances (firstRunOptions, secondRunOptions,
+                                     serverAuthInfo, clientAuth,
+                                     dumpOptions, restoreOptions,
+                                     which, tstFiles, afterServerStart,
+                                     rtaArgs, restartServer) {
   print(CYAN + which + ' tests...' + RESET);
 
   const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer);
@@ -941,9 +945,8 @@ function dumpMultipleTwo (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
-                                    dumpOptions, dumpOptions,
-                                    'dump_multiple', tstFiles, function(){}, [], true);
+  return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {}, dumpOptions, dumpOptions,
+                                    'dump_multiple_two', tstFiles, function(){}, [], true);
 }
 function dumpMultipleSame (options) {
   let dumpOptions = {
@@ -967,7 +970,7 @@ function dumpMultipleSame (options) {
 
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
                                     dumpOptions, dumpOptions,
-                                    'dump_multiple', tstFiles, function(){}, [], false);
+                                    'dump_multiple_same', tstFiles, function(){}, [], false);
 }
 
 function dumpWithCrashes (options) {
