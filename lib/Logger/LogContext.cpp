@@ -30,12 +30,17 @@ using namespace arangodb;
 thread_local LogContext::ThreadControlBlock LogContext::_threadControlBlock;
 
 void LogContext::clear(EntryCache& cache) {
-  if (_tail) {
+  while (_tail) {
+    auto prev = _tail->_prev;
     if (_tail->decRefCnt() == 1) {
       _tail->release(cache);
+    } else {
+      _tail = nullptr;
+      break;
     }
-    _tail = nullptr;
+    _tail = prev;
   }
+  TRI_ASSERT(_tail == nullptr);
 }
 
 LogContext::ScopedContext::ScopedContext(LogContext ctx) noexcept {
