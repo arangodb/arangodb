@@ -416,6 +416,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     AqlCallStack _stack;
     mutable std::atomic<uint64_t> _numberWaiters{0};
     mutable std::atomic<bool> _logStacktrace{false};
+    mutable std::atomic<bool> _timeoutInWait{false};
   };
 
   /**

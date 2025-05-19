@@ -2628,15 +2628,15 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
     std::cv_status s = _bell.wait_for(guard, std::chrono::milliseconds(1000));
     if (s == std::cv_status::timeout) {
       auto state = _state.load(std::memory_order_relaxed);
-      // We put "ALERT: " in if the status is not "InProgress", since
+      // We only log this if the status is not "InProgress", since
       // this is the only one we expect when a timeout occurs!
-      std::string_view alerting =
-          state.status == Status::InProgress ? "" : "ALERT: ";
-      LOG_TOPIC("62514", WARN, Logger::AQL)
-          << alerting
-          << "Have waited for a second on an async prefetch task, state "
-             "is "
-          << (int)state.status << " abandoned: " << state.abandoned;
+      if (state.status != Status::InProgress) {
+        LOG_TOPIC("62514", WARN, Logger::AQL)
+            << "ALERT: Have waited for a second on an async prefetch task, "
+               "state is "
+            << (int)state.status << " abandoned: " << state.abandoned;
+        _timeoutInWait.store(true, std::memory_order_relaxed);
+      }
     }
   }
   count = _numberWaiters.fetch_sub(1);
@@ -2718,6 +2718,10 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
   _state.store({Status::Finished, true}, std::memory_order_release);
   _lock.unlock();
 
+  if (_timeoutInWait.load(std::memory_order_relaxed)) {
+    LOG_TOPIC("62518", WARN, Logger::AQL)
+        << "PrefetchTask: notify_one happens after timeout saw FINISHED";
+  }
   _bell.notify_one();
 }
 
