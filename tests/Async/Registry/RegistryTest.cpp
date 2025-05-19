@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
+#include "thread.h"
 
 #include <gtest/gtest.h>
+#include <optional>
 #include <source_location>
 #include <thread>
 
@@ -48,10 +50,10 @@ struct MyPromise : public AddToAsyncRegistry {
         thread{basics::ThreadId::current()} {}
   auto snapshot(State state = State::Running) -> PromiseSnapshot {
     return PromiseSnapshot{.id = id(),
-                           .thread = thread,
-                           .source_location = source_location,
                            .requester = {thread},
-                           .state = state};
+                           .state = state,
+                           .thread = thread,
+                           .source_location = source_location};
   }
 };
 
@@ -131,4 +133,42 @@ TEST_F(
 
   get_thread_registry().garbage_collect();
   EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
+}
+
+TEST_F(AsyncRegistryTest, sets_running_thread_to_current_thread_when_running) {
+  auto promise = MyPromise{};
+  auto all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises.size(), 1);
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
+
+  promise.update_state(State::Suspended);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Suspended);
+  EXPECT_EQ(all_promises[0].thread, std::nullopt);
+
+  promise.update_state(State::Running);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
+
+  promise.update_state(State::Resolved);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Resolved);
+  EXPECT_EQ(all_promises[0].thread, std::nullopt);
+
+  promise.update_state(State::Running);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
+
+  promise.update_state(State::Deleted);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Deleted);
+  EXPECT_EQ(all_promises[0].thread, std::nullopt);
+
+  promise.update_state(State::Running);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
 }
