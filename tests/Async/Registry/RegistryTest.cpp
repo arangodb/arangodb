@@ -40,11 +40,11 @@ auto promises_in_registry() -> std::vector<PromiseSnapshot> {
 }
 
 struct MyPromise : public AddToAsyncRegistry {
-  SourceLocationSnapshot source_location;
+  basics::SourceLocationSnapshot source_location;
   basics::ThreadId thread;
   MyPromise(std::source_location loc = std::source_location::current())
       : AddToAsyncRegistry{loc},
-        source_location{SourceLocationSnapshot::from(std::move(loc))},
+        source_location{basics::SourceLocationSnapshot::from(std::move(loc))},
         thread{basics::ThreadId::current()} {}
   auto snapshot(State state = State::Running) -> PromiseSnapshot {
     return PromiseSnapshot{.id = id(),

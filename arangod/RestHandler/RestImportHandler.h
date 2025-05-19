@@ -65,7 +65,7 @@ class RestImportHandler : public RestVocbaseBaseHandler {
   explicit RestImportHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  RestStatus execute() override final;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   char const* name() const override final { return "RestImportHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
