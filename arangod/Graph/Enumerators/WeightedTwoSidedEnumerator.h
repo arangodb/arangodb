@@ -221,7 +221,8 @@ class WeightedTwoSidedEnumerator {
    public:
     Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
          PathValidatorOptions validatorOptions,
-         arangodb::ResourceMonitor& resourceMonitor);
+         arangodb::ResourceMonitor& resourceMonitor,
+         WeightedTwoSidedEnumerator& parent);
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
@@ -296,6 +297,11 @@ class WeightedTwoSidedEnumerator {
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();
     bool _haveSeenOtherSide;
+
+    // Reference to the parent WeightedTwoSidedEnumerator
+    // Intention: To be able to call clear() on the parent
+    // Case: When a kill signal is received
+    WeightedTwoSidedEnumerator& _parent;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
@@ -345,7 +351,7 @@ class WeightedTwoSidedEnumerator {
    * @return true There will be no further path.
    * @return false There is a chance that there is more data available.
    */
-  [[nodiscard]] bool isDone() const;
+  [[nodiscard]] bool isDone();
 
   /**
    * @brief Reset to new source and target vertices.
@@ -410,7 +416,7 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private : [[nodiscard]] auto searchDone() const -> bool;
+ private : [[nodiscard]] auto searchDone() -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;
