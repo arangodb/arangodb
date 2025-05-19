@@ -360,7 +360,7 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
     uint64_t userCount = _numberOfUsers.fetch_add(1);
     if (userCount > 0) {
       _logStacktrace.store(true, std::memory_order_relaxed);
-      LOG_TOPIC("52637", WARN, Logger::AQL)
+      LOG_TOPIC("52637", ERR, Logger::AQL)
           << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
       CrashHandler::logBacktrace();
     }
@@ -2631,14 +2631,14 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
       // We only log this if the status is not "InProgress", since
       // this is the only one we expect when a timeout occurs!
       if (state.status != Status::InProgress) {
-        LOG_TOPIC("62514", WARN, Logger::AQL)
-            << "ALERT: Have waited for a second on an async prefetch task, "
+        _timeoutInWait.store(true, std::memory_order_relaxed);
+        LOG_TOPIC("62514", INFO, Logger::AQL)
+            << "Have waited for a second on an async prefetch task, "
                "state is "
             << (int)state.status << " abandoned: " << state.abandoned
             << " Blockinfo: " << _block.printBlockInfo()
             << " Query ID: " << _block.getQuery().id();
         ;
-        _timeoutInWait.store(true, std::memory_order_relaxed);
       }
     }
   }
@@ -2723,7 +2723,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
 
   if (_timeoutInWait.load(std::memory_order_relaxed)) {
     LOG_TOPIC("62518", WARN, Logger::AQL)
-        << "PrefetchTask: notify_one happens after timeout saw FINISHED";
+        << "PrefetchTask: notify_one happens after timeout saw != InProgress";
   }
   _bell.notify_one();
 }
