@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix arangorestore failing to restore the dump containing a
+  vector index.
+
 * FE-575: adds debounce and loading state for node start search.
 
 * Fix BTS-2086: Fixes missing reschedule of license checks on single-server
