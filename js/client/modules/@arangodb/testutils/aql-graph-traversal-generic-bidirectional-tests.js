@@ -198,7 +198,7 @@ function testBidirectionalCircleDfsLongRunning(testGraph) {
     RETURN v.key
   `;
 
-  localHelper.testKillLongRunningQuery(queryString);
+  localHelper.testKillLongRunningQuery(queryString, true);
 }
 
 function testBidirectionalCircleBfsLongRunning(testGraph) {
@@ -211,7 +211,7 @@ function testBidirectionalCircleBfsLongRunning(testGraph) {
     RETURN v.key
   `;
 
-  localHelper.testKillLongRunningQuery(queryString);
+  localHelper.testKillLongRunningQuery(queryString, true);
 }
 
 function testBidirectionalCircleWeightedPathLongRunning(testGraph) {
@@ -224,7 +224,7 @@ function testBidirectionalCircleWeightedPathLongRunning(testGraph) {
     RETURN v.key
   `;
 
-  localHelper.testKillLongRunningQuery(queryString);
+  localHelper.testKillLongRunningQuery(queryString, true);
 }
 
 /*
@@ -242,7 +242,7 @@ function testHugeCompleteGraphKPathsLongRunning(testGraph) {
     RETURN path
   `;
 
-  localHelper.testKillLongRunningQuery(queryString);
+  localHelper.testKillLongRunningQuery(queryString, true);
 }
 
 /*
@@ -261,8 +261,7 @@ function testHugeGridGraphShortestPathLongRunning(testGraph) {
     RETURN v.key
   `;
 
-  const debug = false;
-  localHelper.testKillLongRunningQuery(queryString, debug, debug);
+  localHelper.testKillLongRunningQuery(queryString, true);
 }
 
 function testHugeGridGraphAllShortestPathsLongRunning(testGraph) {
@@ -275,7 +274,7 @@ function testHugeGridGraphAllShortestPathsLongRunning(testGraph) {
     RETURN path
   `;
 
-  localHelper.testKillLongRunningQuery(queryString);
+  localHelper.testKillLongRunningQuery(queryString, true);
 }
 
 // DFS, BFS, Weighted Path
