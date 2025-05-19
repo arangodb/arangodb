@@ -93,12 +93,12 @@ const testPaths = {
 };
 
 class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
-  constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
+  constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer) {
     super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
-    this.restartServer = firstRunOptions.cluster !== secondRunOptions.cluster;
+    this.restartServer = restartServer;
     this.clientAuth = clientAuth;
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
@@ -756,10 +756,10 @@ function getClusterStrings(options) {
   }
 }
 
-function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
+function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs, restartServer) {
   print(CYAN + which + ' tests...' + RESET);
 
-  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs);
+  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer);
   if (!helper.startFirstInstance()) {
     helper.destructor(false);
     return helper.extractResults();
@@ -846,7 +846,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
 }
 
 function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
-  return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs);
+  return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs, false);
 }
 
 function dump (options) {
@@ -891,7 +891,7 @@ function dumpMixedClusterSingle (options) {
                                     tstFiles, function(){}, [
                                       //'--testFoxx', 'false',
                                       // BTS-1617: disable 404 for now
-                                      '--skip', '404,550,900,960']);
+                                      '--skip', '404,550,900,960'], true);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -916,7 +916,7 @@ function dumpMixedSingleCluster (options) {
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
                                       // '--testFoxx', 'false',
-                                      '--skip', '550,900,960']);
+                                      '--skip', '550,900,960'], true);
 }
 
 function dumpMultiple (options) {
@@ -939,9 +939,9 @@ function dumpMultiple (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend_two_instances(dumpOptions, dumpOptions, {}, {},
+  return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
                                     dumpOptions, dumpOptions,
-                                    'dump_multiple', tstFiles, function(){}, []);
+                                    'dump_multiple', tstFiles, function(){}, [], true);
 }
 
 function dumpWithCrashes (options) {
@@ -1193,7 +1193,7 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, []);
+  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
   if (!helper.startFirstInstance()) {
       helper.destructor(false);
     return helper.extractResults();
