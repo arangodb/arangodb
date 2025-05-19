@@ -2638,7 +2638,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
             << (int)state.status << " abandoned: " << state.abandoned
             << " Blockinfo: " << _block.printBlockInfo()
             << " Query ID: " << _block.getQuery().id();
-        ;
       }
     }
   }
