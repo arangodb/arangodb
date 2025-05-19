@@ -33,11 +33,18 @@ using namespace arangodb::async_registry;
 auto breakpoint() { raise(SIGINT); }
 
 auto format(PromiseSnapshot const& snapshot) -> std::string {
-  return fmt::format("\"{}\" (\"{}\":{}), thread {}, {}",
-                     snapshot.source_location.function_name,
-                     snapshot.source_location.file_name,
-                     snapshot.source_location.line, snapshot.thread.kernel_id,
-                     arangodb::inspection::json(snapshot.state));
+  if (snapshot.thread == std::nullopt) {
+    return fmt::format(
+        "\"{}\" (\"{}\":{}), {}", snapshot.source_location.function_name,
+        snapshot.source_location.file_name, snapshot.source_location.line,
+        arangodb::inspection::json(snapshot.state));
+  } else {
+    return fmt::format(
+        "\"{}\" (\"{}\":{}), {} on thread {}",
+        snapshot.source_location.function_name,
+        snapshot.source_location.file_name, snapshot.source_location.line,
+        arangodb::inspection::json(snapshot.state), snapshot.thread->kernel_id);
+  }
 }
 
 /**
@@ -69,6 +76,18 @@ int main() {
   auto parent = thread_registry->add([&]() {
     return Promise{{current_thread}, std::source_location::current()};
   });
+  expected = fmt::format(
+      "async registry = {{\n"
+      "[thread {}] = \n"
+      "  ┌ {}\n"
+      "─ thread {}}}",
+      current_thread.kernel_id, format(parent->data.snapshot()),
+      current_thread.kernel_id);
+
+  breakpoint();
+
+  // works also with a currently non-running promise
+  parent->data.running_thread.store(std::nullopt);
   expected = fmt::format(
       "async registry = {{\n"
       "[thread {}] = \n"
