@@ -2634,7 +2634,10 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
         LOG_TOPIC("62514", WARN, Logger::AQL)
             << "ALERT: Have waited for a second on an async prefetch task, "
                "state is "
-            << (int)state.status << " abandoned: " << state.abandoned;
+            << (int)state.status << " abandoned: " << state.abandoned
+            << " Blockinfo: " << _block.printBlockInfo()
+            << " Query ID: " << _block.getQuery().id();
+        ;
         _timeoutInWait.store(true, std::memory_order_relaxed);
       }
     }
