@@ -127,7 +127,7 @@ dump_jwt size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vecto
 dump_multiple_same single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_multiple_same cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_multiple_two single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple_two cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two cluster size=lange parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_non_parallel size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_maskings  enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
