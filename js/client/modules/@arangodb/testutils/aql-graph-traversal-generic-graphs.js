@@ -401,16 +401,25 @@ class TestGraph {
         toSave.push(doc);
         keys.push(vertexKey);
       }
-      // Save all vertices in one request, and map the result back to the input.
-      // This should speed up the tests.
-      vc.save(toSave).forEach((d, i) => {
-        verticesByName[keys[i]] = d._id;
-        return null;
-      });
+
+      // Process vertices in batches of 100k
+      const VERTEX_BATCH_SIZE = 100000;
+      for (let i = 0; i < toSave.length; i += VERTEX_BATCH_SIZE) {
+        const batch = toSave.slice(i, i + VERTEX_BATCH_SIZE);
+        const batchKeys = keys.slice(i, i + VERTEX_BATCH_SIZE);
+        if (this.debug) {
+          print(`Saving vertex batch ${i} of ${toSave.length}`);
+        }
+        vc.save(batch).forEach((d, idx) => {
+          verticesByName[batchKeys[idx]] = d._id;
+          return null;
+        });
+      }
     }
 
-    // Save all edges in one request
-    ec.save(edges.map(([v, w, weight]) => {
+    // Process edges in batches of 100k
+    const EDGE_BATCH_SIZE = 100000;
+    const edgeDocs = edges.map(([v, w, weight]) => {
       const edge = {
         _from: verticesByName[v],
         _to: verticesByName[w],
@@ -431,7 +440,16 @@ class TestGraph {
       }
 
       return edge;
-    }));
+    });
+
+    // Save edges in batches
+    for (let i = 0; i < edgeDocs.length; i += EDGE_BATCH_SIZE) {
+      const batch = edgeDocs.slice(i, i + EDGE_BATCH_SIZE);
+      if (this.debug) {
+        print(`Saving edge batch ${i} of ${edgeDocs.length}`);
+      }
+      ec.save(batch);
+    }
     return verticesByName;
   }
 
