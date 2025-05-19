@@ -58,18 +58,19 @@ class Requester(object):
             return ""
 
 class Data(object):
-    def __init__(self, owning_thread: Thread, source_location: SourceLocation, id: int, state: str, requester: Requester):
-        self.owning_thread = owning_thread
+    def __init__(self, running_thread: Optional[Thread], source_location: SourceLocation, id: int, state: str, requester: Requester):
+        self.running_thread = running_thread
         self.source_location = source_location
         self.id = id
         self.waiter = requester
         self.state = state
     @classmethod
     def from_json(cls, blob: dict):
-        return cls(Thread.from_json(blob["owning_thread"]), SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Requester.from_json(blob["requester"]))
+        return cls(Thread.from_json(blob["running_thread"]) if "running_thread" in blob else None, SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Requester.from_json(blob["requester"]))
     def __str__(self):
         waiter_str = str(self.waiter) if self.waiter != None else ""
-        return str(self.source_location) + ", " + str(self.owning_thread) + ", " + self.state + waiter_str
+        thread_str = "" if not self.running_thread else " on " + str(self.running_thread)
+        return str(self.source_location) + ", " + self.state + thread_str + waiter_str
         
 class Promise(object):
     def __init__(self, hierarchy: int, data: Data):
