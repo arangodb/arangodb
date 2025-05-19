@@ -124,8 +124,10 @@ dump single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack tr
 # dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_authentication size=medium  -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_jwt size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_same single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_same cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_non_parallel size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_maskings  enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true

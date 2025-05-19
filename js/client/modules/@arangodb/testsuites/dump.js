@@ -35,7 +35,8 @@ const functionsDocumentation = {
   'dump_jwt': 'dump tests with JWT',
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
-  'dump_multiple': 'restore multiple DBs at once',
+  'dump_multiple_same': 'restore multiple DBs at once to the same installation',
+  'dump_multiple_two': 'restore multiple DBs at once to a fresh installation',
   'dump_with_crashes': 'restore and crash the client multiple times',
   'dump_with_crashes_parallel': 'restore and crash the client multiple times - parallel version',
   'dump_parallel': 'use experimental parallel dump',
@@ -85,7 +86,8 @@ const testPaths = {
   'dump_jwt': [tu.pathForTesting('client/dump')],
   'dump_encrypted': [tu.pathForTesting('client/dump')],
   'dump_maskings': [tu.pathForTesting('client/dump')],
-  'dump_multiple': [tu.pathForTesting('client/dump')],
+  'dump_multiple_same': [tu.pathForTesting('client/dump')],
+  'dump_multiple_two': [tu.pathForTesting('client/dump')],
   'dump_with_crashes': [tu.pathForTesting('client/dump')],
   'dump_with_crashes_parallel': [tu.pathForTesting('client/dump')],
   'dump_parallel': [tu.pathForTesting('client/dump')],
@@ -919,7 +921,7 @@ function dumpMixedSingleCluster (options) {
                                       '--skip', '550,900,960'], true);
 }
 
-function dumpMultiple (options) {
+function dumpMultipleTwo (options) {
   let dumpOptions = {
     dumpVPack: options.dumpVPack,
     dbServers: 3,
@@ -942,6 +944,30 @@ function dumpMultiple (options) {
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
                                     dumpOptions, dumpOptions,
                                     'dump_multiple', tstFiles, function(){}, [], true);
+}
+function dumpMultipleSame (options) {
+  let dumpOptions = {
+    dumpVPack: options.dumpVPack,
+    dbServers: 3,
+    allDatabases: true,
+    deactivateCompression: true,
+    parallelDump: true,
+    splitFiles: true,
+  };
+  _.defaults(dumpOptions, options);
+  let c = getClusterStrings(dumpOptions);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
+    dumpCleanup: 'cleanup-multiple.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+
+  return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
+                                    dumpOptions, dumpOptions,
+                                    'dump_multiple', tstFiles, function(){}, [], false);
 }
 
 function dumpWithCrashes (options) {
@@ -1274,7 +1300,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_jwt'] = dumpJwt;
   testFns['dump_encrypted'] = dumpEncrypted;
   testFns['dump_maskings'] = dumpMaskings;
-  testFns['dump_multiple'] = dumpMultiple;
+  testFns['dump_multiple_same'] = dumpMultipleSame;
+  testFns['dump_multiple_two'] = dumpMultipleTwo;
   testFns['dump_with_crashes'] = dumpWithCrashes;
   testFns['dump_with_crashes_non_parallel'] = dumpWithCrashesNonParallel;
   testFns['dump_non_parallel'] = dumpNonParallel;
