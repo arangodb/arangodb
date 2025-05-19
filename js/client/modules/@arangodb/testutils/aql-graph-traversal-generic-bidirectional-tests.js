@@ -10,10 +10,10 @@ const internal = require("internal");
 const db = internal.db;
 const arango = internal.arango;
 
-// seconds to add to execution time for verification
+// Seconds to add to execution time for verification.
 // This is to account for the time it takes for the query to be scheduled and executed
-// and for the query to be killed
-const VERIFICATION_TIME_BUFFER = 3; 
+// and killed.
+const VERIFICATION_TIME_BUFFER = internal.isCluster() ? 10 : 5;
 
 const localHelper = {
   getRunningQueries: function() {
