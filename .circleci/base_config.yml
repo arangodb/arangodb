@@ -574,14 +574,6 @@ jobs:
             ./llvm.sh 19
             apt-get install -y libomp-19-dev liblapack-dev libopenblas-dev gfortran
 
-            cd arangodb
-            g++ -fopenmp openmp.cpp -o openmp-gcc
-            ./openmp-gcc
-
-            clang++-19 -fopenmp=libomp openmp.cpp -o openmp-clang
-            LD_PRELOAD=$PWD/libomp.so ./openmp-clang
-            cd ..
-
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
