@@ -265,6 +265,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane _lane;
 
+  // TODO we don't need the member any longer
   std::shared_ptr<LogContext::Values> _logContextScopeValues;
 
  protected:
