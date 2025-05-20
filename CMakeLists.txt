@@ -1042,20 +1042,13 @@ if(STATIC_EXECUTABLES)
   endif()
   message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
 
-  message("Setting OpenMP variables")
-  #find_package(OpenMP REQUIRED)
+  # Setting this is necessary because we want to bind to gcc static library
+  # since the LLVM OpenMP implementation fails in our CI
   set(OpenMP_C_FLAGS "-fopenmp=libgomp")
   set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
   set(OpenMP_C_LIB_NAMES "gomp;pthread")
   set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
   set(OpenMP_pthread_LIBRARY "pthread")
-  #find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
-
-  #if(LIBOMP)
-    #message(STATUS "Using hardcoded paths '-fopenmp=libgomp -L/opt/omp -llapack -lgfortran'")
-  #else()
-    #message(FATAL_ERROR "libomp.a not found in /opt/omp")
-  #endif()
 
   # TODO avoid hard coded paths
   set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -L/opt/omp -llapack -lgfortran")
@@ -1065,17 +1058,6 @@ else()
   find_package(OpenMP REQUIRED)
   find_package(LAPACK)
   find_package(BLAS)
-
-  message("OpenMP_C_FLAGS: ${OpenMP_C_FLAGS}")
-  message("OpenMP_CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
-  message("OpenMP_C_LIB_NAMES: ${OpenMP_C_LIB_NAMES}")
-  message("OpenMP_CXX_LIB_NAMES: ${OpenMP_CXX_LIB_NAMES}")
-  message("OpenMP_gomp_LIBRARY: ${OpenMP_gomp_LIBRARY}")
-#OpenMP_C_FLAGS: -fopenmp=libomp
-#OpenMP_CXX_FLAGS: -fopenmp=libomp
-#OpenMP_C_LIB_NAMES: omp;pthread
-#OpenMP_CXX_LIB_NAMES: omp;pthread
-#OpenMP_gomp_LIBRARY:
 
   set(FAISS_EXE_LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
 
