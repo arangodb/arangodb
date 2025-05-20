@@ -361,13 +361,18 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
     if (userCount > 0) {
       _logStacktrace.store(true, std::memory_order_relaxed);
       LOG_TOPIC("52637", ERR, Logger::AQL)
-          << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
+          << "ALERT: Double use of ExecutionBlock detected, "
+          << " Blockinfo: " << printBlockInfo()
+          << " Query ID: " << getQuery().id() << ", stacktrace:";
       CrashHandler::logBacktrace();
     }
     auto guard = scopeGuard([&]() noexcept {
       _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
       if (_logStacktrace.load(std::memory_order_relaxed)) {
-        LOG_TOPIC("52638", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
+        LOG_TOPIC("52638", WARN, Logger::AQL)
+            << "ALERT: Found _logStacktrace:"
+            << " Blockinfo: " << printBlockInfo()
+            << " Query ID: " << getQuery().id() << ", stacktrace:";
         CrashHandler::logBacktrace();
       }
     });
@@ -517,13 +522,18 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   if (userCount > 0) {
     _logStacktrace.store(true, std::memory_order_relaxed);
     LOG_TOPIC("52635", WARN, Logger::AQL)
-        << "ALERT: Double use of ExecutionBlock detected, stacktrace:";
+        << "ALERT: Double use of ExecutionBlock detected, "
+        << " Blockinfo: " << printBlockInfo()
+        << " Query ID: " << getQuery().id() << ", stacktrace:";
     CrashHandler::logBacktrace();
   }
   auto waechter = scopeGuard([&]() noexcept {
     _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
     if (_logStacktrace.load(std::memory_order_relaxed)) {
-      LOG_TOPIC("52636", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
+      LOG_TOPIC("52636", WARN, Logger::AQL)
+          << "ALERT: Found _logStacktrace:"
+          << " Blockinfo: " << printBlockInfo()
+          << " Query ID: " << getQuery().id() << ", stacktrace:";
       CrashHandler::logBacktrace();
     }
   });
@@ -2617,8 +2627,9 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   uint64_t count = _numberWaiters.fetch_add(1, std::memory_order_relaxed);
   if (count > 0) {
     LOG_TOPIC("62515", WARN, Logger::AQL)
-        << "ALERT: Detected " << count + 1
-        << " waiters for a PrefetchTask, stacktrace:";
+        << "ALERT: Detected " << count + 1 << " waiters for a PrefetchTask, "
+        << " Blockinfo: " << _block.printBlockInfo()
+        << " Query ID: " << _block.getQuery().id() << ", stacktrace:";
     CrashHandler::logBacktrace();
     _logStacktrace.store(true, std::memory_order_relaxed);
   }
