@@ -710,7 +710,7 @@ futures::Future<futures::Unit> RestHandler::executeAsync() {
   // this can be removed.
   if (state == RestStatus::WAITING) {
     co_await waitingFunToCoro(
-        std::bind(&std::decay_t<decltype(*this)>::continueExecute, this));
+        std::bind(&std::decay_t<decltype(*this)>::continueExecute));
   }
 }
 
