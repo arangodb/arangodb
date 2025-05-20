@@ -80,5 +80,9 @@ void LogContext::setCurrent(LogContext ctx) noexcept {
 }
 
 LogContext::ThreadControlBlock::~ThreadControlBlock() noexcept {
+  // The LogContext destructor will possibly release remaining entries to the
+  // thread-local _entryCache. _entryCache is destroyed before _logContext.
+  // Therefore it must be cleared here, otherwise it will release its entries to
+  // an already destructed EntryCache.
   _logContext.clear(_entryCache);
 }
