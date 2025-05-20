@@ -1044,6 +1044,7 @@ if(STATIC_EXECUTABLES)
 
   # Setting this is necessary because we want to bind to gcc static library
   # since the LLVM OpenMP implementation fails in our CI
+  # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
   set(OpenMP_C_FLAGS "-fopenmp=libgomp")
   set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
   set(OpenMP_C_LIB_NAMES "gomp;pthread")
