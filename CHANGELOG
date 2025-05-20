@@ -1,6 +1,13 @@
 devel
 -----
 
+* Add detection of two threads working on an ExecutionBlock concurrently.
+
+* Add detection of two threads waiting for a PrefetchTask concurrently.
+
+* Add visibility into the state if a thread waits for more than a second
+  on a PrefetchTask (and does not see InProgress).
+
 * Fix a memory leak in LogContext, which could leak entries which are still, and
   only, used by a thread-local LogContext when that thread is destroyed.
 
