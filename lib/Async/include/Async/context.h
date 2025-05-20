@@ -31,6 +31,9 @@ namespace arangodb {
 struct Context {
   std::shared_ptr<ExecContext const> _execContext;
   async_registry::Requester _requester;
+  // Note that this is optional just because LogContext::clear is private,
+  // and operator= needs the LHS to be cleared. A simple change to LogContext
+  // could make this optional unnecessary.
   std::optional<LogContext> _logContext;
 
   Context()
@@ -42,13 +45,13 @@ struct Context {
     _execContext = std::move(other._execContext);
     _requester = other._requester;
     _logContext.reset();
-    _logContext.swap(other._logContext);
+    _logContext = std::move(other._logContext);
     other._logContext.reset();
 
     return *this;
   }
 
-  auto set() -> void {
+  auto set() noexcept -> void {
     ExecContext::set(_execContext);
     *async_registry::get_current_coroutine() = _requester;
     LogContext::setCurrent(*_logContext);
