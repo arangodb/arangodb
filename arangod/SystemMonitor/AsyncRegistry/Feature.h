@@ -23,7 +23,7 @@
 #pragma once
 
 #include "Async/Registry/registry_variable.h"
-#include "AsyncRegistryServer/Metrics.h"
+#include "SystemMonitor/AsyncRegistry/Metrics.h"
 #include "Basics/FutureSharedLock.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/SchedulerFeature.h"

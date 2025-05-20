@@ -20,14 +20,14 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "AsyncRegistryServer/Stacktrace/forest.h"
-#include "AsyncRegistryServer/Stacktrace/depth_first.h"
+#include "Containers/Forest/forest.h"
+#include "Containers/Forest/depth_first.h"
 
 #include <gtest/gtest.h>
 
-using namespace arangodb::async_registry;
+using namespace arangodb::containers;
 
-TEST(AsyncRegistryStacktraceTest, insert_nodes_into_forest) {
+TEST(ForestTest, insert_nodes_into_forest) {
   Forest<std::string> forest;
 
   forest.insert((void*)32, (void*)1, "first");
@@ -45,7 +45,7 @@ TEST(AsyncRegistryStacktraceTest, insert_nodes_into_forest) {
   ASSERT_EQ(forest.node((void*)1), std::nullopt);
 }
 
-TEST(AsyncRegistryStacktraceTest, index_forest) {
+TEST(ForestTest, index_forest) {
   Forest<std::string> forest;
   forest.insert((void*)1, (void*)2, "first");
   forest.insert((void*)2, (void*)4, "second");
@@ -66,7 +66,7 @@ TEST(AsyncRegistryStacktraceTest, index_forest) {
   ASSERT_EQ(forest, (Forest<std::string>{{}, {}, {}}));
 }
 
-TEST(AsyncRegistryStacktraceTest, executes_post_ordered_depth_first) {
+TEST(ForestTest, executes_post_ordered_depth_first) {
   Forest<std::string> forest;
   forest.insert((void*)1, (void*)0, "root");
   forest.insert((void*)2, (void*)1, "node");
