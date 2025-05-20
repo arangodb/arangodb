@@ -221,8 +221,7 @@ class WeightedTwoSidedEnumerator {
    public:
     Ball(Direction dir, ProviderType&& provider, GraphOptions const& options,
          PathValidatorOptions validatorOptions,
-         arangodb::ResourceMonitor& resourceMonitor,
-         WeightedTwoSidedEnumerator& parent);
+         arangodb::ResourceMonitor& resourceMonitor);
     ~Ball();
     auto clear() -> void;
     auto reset(VertexRef center, size_t depth = 0) -> void;
@@ -297,11 +296,6 @@ class WeightedTwoSidedEnumerator {
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();
     bool _haveSeenOtherSide;
-
-    // Reference to the parent WeightedTwoSidedEnumerator
-    // Intention: To be able to call clear() on the parent
-    // Case: When a kill signal is received
-    WeightedTwoSidedEnumerator& _parent;
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 

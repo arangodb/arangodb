@@ -165,7 +165,6 @@ auto SingleServerProvider<Step>::expand(
   auto const& vertex = step.getVertex();
 
   if (_opts.isKilled()) {
-    clear();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 

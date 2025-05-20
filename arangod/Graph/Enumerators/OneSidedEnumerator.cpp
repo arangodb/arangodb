@@ -109,9 +109,6 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 template<class Configuration>
 void OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() {
   if (_options.isKilled()) {
-    // Clear false may sounds misleading, but this means we do not want to keep
-    // the path store
-    clear(false);
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 

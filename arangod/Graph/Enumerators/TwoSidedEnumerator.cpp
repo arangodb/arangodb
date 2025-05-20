@@ -56,8 +56,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::Ball(Direction dir, ProviderType&& provider,
                GraphOptions const& options,
                PathValidatorOptions validatorOptions,
-               arangodb::ResourceMonitor& resourceMonitor,
-               TwoSidedEnumerator& parent)
+               arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
       _interior(resourceMonitor),
       _queue(resourceMonitor),
@@ -65,8 +64,7 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       _validator(_provider, _interior, std::move(validatorOptions)),
       _direction(dir),
       _minDepth(options.getMinDepth()),
-      _graphOptions(options),
-      _parent(parent) {}
+      _graphOptions(options) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -200,12 +198,6 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     Ball::computeNeighbourhoodOfNextVertex(Ball& other, ResultList& results)
         -> void {
   if (_graphOptions.isKilled()) {
-    // First clear our own instance (Ball)
-    clear();
-    // Then clear the other instance (Ball)
-    other.clear();
-    // Then clear the parent (TwoSidedEnumerator)
-    _parent.clear();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
@@ -326,13 +318,12 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     : _options(std::move(options)),
       _left{Direction::FORWARD, std::move(forwardProvider),
             _options,           validatorOptions,
-            resourceMonitor,    *this},
+            resourceMonitor},
       _right{Direction::BACKWARD,
              std::move(backwardProvider),
              _options,
              std::move(validatorOptions),
-             resourceMonitor,
-             *this},
+             resourceMonitor},
       _baselineDepth(_options.getMaxDepth()),
       _resultPath{_left.provider(), _right.provider()} {}
 
@@ -472,7 +463,6 @@ void TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     // Check for kill signal before proceeding
     // We will also do additional checks in computeNeighbourhoodOfNextVertex
     if (_options.isKilled()) {
-      clear();
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
 

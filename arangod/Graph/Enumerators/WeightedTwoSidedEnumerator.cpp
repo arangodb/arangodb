@@ -58,8 +58,7 @@ WeightedTwoSidedEnumerator<
     PathValidator>::Ball::Ball(Direction dir, ProviderType&& provider,
                                GraphOptions const& options,
                                PathValidatorOptions validatorOptions,
-                               arangodb::ResourceMonitor& resourceMonitor,
-                               WeightedTwoSidedEnumerator& parent)
+                               arangodb::ResourceMonitor& resourceMonitor)
     : _resourceMonitor(resourceMonitor),
       _interior(resourceMonitor),
       _queue(resourceMonitor),
@@ -68,8 +67,7 @@ WeightedTwoSidedEnumerator<
       _direction(dir),
       _graphOptions(options),
       _diameter(-std::numeric_limits<double>::infinity()),
-      _haveSeenOtherSide(false),
-      _parent(parent) {}
+      _haveSeenOtherSide(false) {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
@@ -257,12 +255,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
     computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& candidates)
         -> void {
   if (_graphOptions.isKilled()) {
-    // First clear our own instance (Ball)
-    clear();
-    // Then clear the other instance (Ball)
-    other.clear();
-    // Then clear the parent (WeightedTwoSidedEnumerator)
-    _parent.clear();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
 
@@ -426,9 +418,9 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
       _left{Direction::FORWARD, std::move(forwardProvider), _options,
-            validatorOptions, resourceMonitor, *this},
+            validatorOptions, resourceMonitor},
       _right{Direction::BACKWARD, std::move(backwardProvider), _options,
-             std::move(validatorOptions), resourceMonitor, *this},
+             std::move(validatorOptions), resourceMonitor},
       _resultsCache(_left, _right),
       _resultPath{_left.provider(), _right.provider()} {
   // For now, we only support KShortestPaths searches, since we do not
@@ -875,8 +867,6 @@ template<class QueueType, class PathStoreType, class ProviderType,
 auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::searchDone() -> bool {
   if (_options.isKilled()) {
-    // Here we're not inside a Ball, so we can clear via main clear method
-    clear();
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
   if ((_left.noPathLeft() && _right.noPathLeft()) || isAlgorithmFinished()) {
