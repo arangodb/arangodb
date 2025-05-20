@@ -32,7 +32,7 @@ class Thread:
         return cls(value['posix_id'], value['kernel_id'])
 
     def __str__(self):
-        return "thread " + str(self.lwpid)
+        return f"LWPID {self.lwpid} (pthread {self.posix_id})"
 
 @dataclass
 class SourceLocation:

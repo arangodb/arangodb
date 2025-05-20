@@ -15,13 +15,14 @@ from typing import Optional
 from asyncregistry.stacktrace import Stacktrace
 
 class Thread(object):
-    def __init__(self, id: int):
+    def __init__(self, id: int, posix_id: int):
         self.id = id
+        self.posix_id = posix_id
     @classmethod
     def from_json(cls, blob: dict):
-        return cls(blob["LWPID"])
+        return cls(blob["LWPID"], blob["posix_id"])
     def __str__(self):
-        return str(self.id)
+        return f"LWPID {self.id} (pthread {self.posix_id})"
 
 class SourceLocation(object):
     def __init__(self, file_name: str, line: int, function_name: str):
