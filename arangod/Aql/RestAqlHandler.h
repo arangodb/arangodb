@@ -51,8 +51,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
   auto executeAsync() -> futures::Future<futures::Unit> override;
-  [[nodiscard]] auto prepareExecute(bool isContinue)
-      -> std::vector<std::shared_ptr<LogContext::Values>> override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   class Route {
@@ -144,9 +142,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   QueryRegistry* _queryRegistry;
 
   ExecutionEngine* _engine;
-
-  std::shared_ptr<LogContext::Values> _logContextQueryIdValue;
-  LogContext::EntryPtr _logContextQueryIdEntry;
 };
 
 }  // namespace arangodb::aql

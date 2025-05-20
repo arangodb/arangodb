@@ -150,10 +150,10 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     TRI_ASSERT(clusterQueryId > 0);
   }
 
-  TRI_ASSERT(_logContextQueryIdValue == nullptr);
-  _logContextQueryIdValue = LogContext::makeValue()
+  auto queryIdValue = LogContext::makeValue()
                                 .with<structuredParams::QueryId>(clusterQueryId)
                                 .share();
+  auto const logContextScopeGuard = ScopedValue{std::move(queryIdValue)};
 
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
 
@@ -406,11 +406,10 @@ auto RestAqlHandler::useQuery(std::string const& operation,
     co_return;
   }
 
-  if (_logContextQueryIdValue == nullptr) {
-    _logContextQueryIdValue = LogContext::makeValue()
-                                  .with<structuredParams::QueryId>(idString)
-                                  .share();
-  }
+  auto queryIdValue = LogContext::makeValue()
+                              .with<structuredParams::QueryId>(idString)
+                              .share();
+  auto const logContextScopeGuard = ScopedValue{std::move(queryIdValue)};
 
   if (!_engine) {  // the PUT verb
     TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE ||
@@ -468,14 +467,6 @@ auto RestAqlHandler::useQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
-}
-auto RestAqlHandler::prepareExecute(bool isContinue)
-    -> std::vector<std::shared_ptr<LogContext::Values>> {
-  auto vector = RestVocbaseBaseHandler::prepareExecute(isContinue);
-  if (_logContextQueryIdValue != nullptr) {
-    vector.emplace_back(_logContextQueryIdValue);
-  }
-  return vector;
 }
 
 // executes the handler
