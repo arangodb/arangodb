@@ -6,7 +6,7 @@ devel
 * Add detection of two threads waiting for a PrefetchTask concurrently.
 
 * Add visibility into the state if a thread waits for more than a second
-  on a PrefetchTask (and does not see ONGOING).
+  on a PrefetchTask (and does not see InProgress).
 
 * Fix arangorestore failing to restore the dump containing a
   vector index.
