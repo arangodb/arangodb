@@ -496,7 +496,7 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 /// For older RestHandlers, that implement execute() and continueExecute() with
 /// WAITING instead of executeAsync(). Calling wakeupHandler() will continue the
 /// execution by calling continueExecute().
-bool RestHandler::wakeupHandler() { return _suspensionSemaphore.notify(); }
+bool RestHandler::wakeupHandler() { return _suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);

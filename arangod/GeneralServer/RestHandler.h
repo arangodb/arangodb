@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Async/SuspensionSemaphore.h"
+#include "Async/SuspensionCounter.h"
 #include "Async/async.h"
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
@@ -204,8 +204,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   mutable std::mutex _executionMutex;
 
  protected:
-  // TODO Move this in a separate header, side-by-side with SuspensionSemaphore?
-  // Note: _suspensionSemaphore.notify() must be called for this to resume.
+  // TODO Move this in a separate header, side-by-side with SuspensionCounter?
+  // Note: _suspensionCounter.notify() must be called for this to resume.
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
@@ -219,7 +219,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     while (state == RestStatus::WAITING) {
       // Get the number of wakeups. We call fun() up to that many
       // times before suspending again.
-      auto n = co_await _suspensionSemaphore.await();
+      auto n = co_await _suspensionCounter.await();
       for (auto i = 0; i < n && state == RestStatus::WAITING; ++i) {
         state = fun();
       }
@@ -238,7 +238,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
     while (!res.has_value()) {
       // Get the number of wakeups. We call fun() up to that many
       // times before suspending again.
-      auto n = co_await _suspensionSemaphore.await();
+      auto n = co_await _suspensionCounter.await();
       for (auto i = 0; i < n && !res.has_value(); ++i) {
         res = fun();
       }
@@ -247,7 +247,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   }
 
  private:
-  SuspensionSemaphore _suspensionSemaphore;
+  SuspensionCounter _suspensionCounter;
 
   std::function<void(rest::RestHandler*)> _sendResponseCallback;
 

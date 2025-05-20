@@ -31,9 +31,14 @@ namespace arangodb {
 
 class Scheduler;
 
-// SuspensionSemaphore::await() returns an awaitable that suspends until
-// notify() is called, and which returns the number of notifies.
-struct SuspensionSemaphore {
+// SuspensionCounter::await() returns an awaitable that suspends until
+// notify() is called, and which in turn returns the number of notifies that
+// happened while it was suspended.
+// This is useful to connect a callee using WAITING for asynchronous execution
+// with a caller that is a coroutine.
+// The callee can be instructed to call notify() when it is done, and the caller
+// can await the result of notify().
+struct SuspensionCounter {
   // returns true if still suspended
   bool notify() {
     auto counter = _counter.load();
@@ -59,18 +64,18 @@ struct SuspensionSemaphore {
   auto await() {
     struct Awaitable {
       bool await_ready() const noexcept {
-        return _semaphore->_counter.load(std::memory_order_relaxed) > 0;
+        return _suspensionCounter->_counter.load(std::memory_order_relaxed) > 0;
       }
       [[nodiscard]] std::int64_t await_resume() const noexcept {
-        return _semaphore->_counter.exchange(0);
+        return _suspensionCounter->_counter.exchange(0);
       }
       bool await_suspend(std::coroutine_handle<> c) {
-        _semaphore->_c = c;
+        _suspensionCounter->_c = c;
         auto counter = std::int64_t{};
-        return _semaphore->_counter.compare_exchange_strong(counter, -1);
+        return _suspensionCounter->_counter.compare_exchange_strong(counter, -1);
       }
 
-      SuspensionSemaphore* _semaphore;
+      SuspensionCounter* _suspensionCounter;
     };
 
     return Awaitable{this};

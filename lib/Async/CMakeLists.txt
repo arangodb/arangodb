@@ -9,11 +9,13 @@ add_library(arango_async STATIC
   include/Async/async.h
   include/Async/coro-utils.h
   include/Async/expected.h
-  include/Async/SuspensionSemaphore.h
-  src/SuspensionSemaphore.cpp
+  include/Async/SuspensionCounter.h
+  src/SuspensionCounter.cpp
 )
 
 target_include_directories(arango_async INTERFACE
+  include)
+target_include_directories(arango_async PRIVATE
   include)
 
 target_link_libraries(arango_async INTERFACE
