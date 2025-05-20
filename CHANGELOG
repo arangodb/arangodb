@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix a memory leak in LogContext, which could leak entries which are still, and
+  only, used by a thread-local LogContext when that thread is destroyed.
+
 * Fix arangorestore failing to restore the dump containing a
   vector index.
 
