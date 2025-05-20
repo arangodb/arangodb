@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix a possible crash when requesting the async registry:
+  Does now not request the thread name of a potentially destroyed thread.
+
 * Fix arangorestore failing to restore the dump containing a
   vector index.
 
