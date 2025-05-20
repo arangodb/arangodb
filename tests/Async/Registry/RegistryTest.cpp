@@ -24,6 +24,7 @@
 #include "Async/Registry/registry_variable.h"
 
 #include <gtest/gtest.h>
+#include <pthread.h>
 #include <source_location>
 #include <thread>
 
@@ -131,4 +132,31 @@ TEST_F(
 
   get_thread_registry().garbage_collect();
   EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
+}
+
+TEST_F(AsyncRegistryTest,
+       works_on_different_threads_also_after_they_are_deleted) {
+  PromiseSnapshot promise_snapshot;
+  std::vector<PromiseSnapshot> all_promises;
+  {
+    std::jthread([&all_promises, &promise_snapshot]() {
+      auto promise = MyPromise{};
+      promise_snapshot = promise.snapshot();
+
+      all_promises = promises_in_registry();
+    }).join();
+  }
+
+  try {
+    char buffer[32];
+    EXPECT_EQ(pthread_getname_np(promise_snapshot.thread.posix_id, buffer, 32),
+              0);
+  } catch (...) {
+    EXPECT_TRUE(false);
+  }
+  try {
+    EXPECT_EQ(fmt::format("{}", inspection::json(all_promises)), "");
+  } catch (...) {
+    EXPECT_TRUE(false);
+  }
 }
