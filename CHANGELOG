@@ -1,6 +1,19 @@
 devel
 -----
 
+* Add detection of two threads working on an ExecutionBlock concurrently.
+
+* Add detection of two threads waiting for a PrefetchTask concurrently.
+
+* Add visibility into the state if a thread waits for more than a second
+  on a PrefetchTask (and does not see InProgress).
+
+* Fix a memory leak in LogContext, which could leak entries which are still, and
+  only, used by a thread-local LogContext when that thread is destroyed.
+
+* Fix arangorestore failing to restore the dump containing a
+  vector index.
+
 * FE-575: adds debounce and loading state for node start search.
 
 * Fix BTS-2086: Fixes missing reschedule of license checks on single-server
