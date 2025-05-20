@@ -357,7 +357,7 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
   if (_prefetchTask) {
     // Double use diagnostics:
-    uint64_t userCount = _numberOfUsers.fetch_add(1);
+    uint64_t userCount = _numberOfUsers.fetch_add(1, std::memory_order_relaxed);
     if (userCount > 0) {
       _logStacktrace.store(true, std::memory_order_relaxed);
       LOG_TOPIC("52637", ERR, Logger::AQL)
@@ -365,7 +365,7 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
       CrashHandler::logBacktrace();
     }
     auto guard = scopeGuard([&]() noexcept {
-      _numberOfUsers.fetch_sub(1);
+      _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
       if (_logStacktrace.load(std::memory_order_relaxed)) {
         LOG_TOPIC("52638", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
         CrashHandler::logBacktrace();
@@ -513,7 +513,7 @@ template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
   // Double use diagnostics:
-  uint64_t userCount = _numberOfUsers.fetch_add(1);
+  uint64_t userCount = _numberOfUsers.fetch_add(1, std::memory_order_relaxed);
   if (userCount > 0) {
     _logStacktrace.store(true, std::memory_order_relaxed);
     LOG_TOPIC("52635", WARN, Logger::AQL)
@@ -521,7 +521,7 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
     CrashHandler::logBacktrace();
   }
   auto waechter = scopeGuard([&]() noexcept {
-    _numberOfUsers.fetch_sub(1);
+    _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
     if (_logStacktrace.load(std::memory_order_relaxed)) {
       LOG_TOPIC("52636", WARN, Logger::AQL) << "ALERT: Found _logStacktrace:";
       CrashHandler::logBacktrace();
@@ -2641,7 +2641,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
       }
     }
   }
-  count = _numberWaiters.fetch_sub(1);
+  count = _numberWaiters.fetch_sub(1, std::memory_order_relaxed);
   if (_logStacktrace.load(std::memory_order_relaxed) == true) {
     LOG_TOPIC("62516", WARN, Logger::AQL) << "ALERT: Found logStacktrace:";
     CrashHandler::logBacktrace();
