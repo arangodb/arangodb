@@ -151,8 +151,8 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   }
 
   auto queryIdValue = LogContext::makeValue()
-                                .with<structuredParams::QueryId>(clusterQueryId)
-                                .share();
+                          .with<structuredParams::QueryId>(clusterQueryId)
+                          .share();
   auto const logContextScopeGuard = ScopedValue{std::move(queryIdValue)};
 
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
@@ -406,9 +406,8 @@ auto RestAqlHandler::useQuery(std::string const& operation,
     co_return;
   }
 
-  auto queryIdValue = LogContext::makeValue()
-                              .with<structuredParams::QueryId>(idString)
-                              .share();
+  auto queryIdValue =
+      LogContext::makeValue().with<structuredParams::QueryId>(idString).share();
   auto const logContextScopeGuard = ScopedValue{std::move(queryIdValue)};
 
   if (!_engine) {  // the PUT verb
