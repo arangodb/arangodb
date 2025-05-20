@@ -160,9 +160,9 @@ auto RestAgencyHandler::pollIndex(index_t const& start, double const& timeout)
   auto pollResult = _agent->poll(start, timeout);
 
   if (std::get<1>(pollResult)) {
-    auto rb = co_await std::move(std::get<0>(pollResult));
-
     try {
+      auto rb = co_await std::move(std::get<0>(pollResult));
+
       VPackSlice res = rb->slice();
 
       if (res.isObject() && res.hasKey("result")) {
