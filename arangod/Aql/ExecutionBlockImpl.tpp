@@ -2631,7 +2631,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
       // We only log this if the status is not "InProgress", since
       // this is the only one we expect when a timeout occurs!
       if (state.status != Status::InProgress) {
-        _timeoutInWait.store(true, std::memory_order_relaxed);
         LOG_TOPIC("62514", INFO, Logger::AQL)
             << "Have waited for a second on an async prefetch task, "
                "state is "
@@ -2720,10 +2719,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
   _state.store({Status::Finished, true}, std::memory_order_release);
   _lock.unlock();
 
-  if (_timeoutInWait.load(std::memory_order_relaxed)) {
-    LOG_TOPIC("62518", WARN, Logger::AQL)
-        << "PrefetchTask: notify_one happens after timeout saw != InProgress";
-  }
   _bell.notify_one();
 }
 
