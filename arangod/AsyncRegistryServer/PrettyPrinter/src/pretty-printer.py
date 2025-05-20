@@ -68,7 +68,7 @@ class Data(object):
         return cls(Thread.from_json(blob["running_thread"]) if "running_thread" in blob else None, SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Requester.from_json(blob["requester"]))
     def __str__(self):
         waiter_str = str(self.waiter) if self.waiter != None else ""
-        thread_str = "" if not self.running_thread else " on " + str(self.running_thread)
+        thread_str = f" on {self.running_thread}" if self.running_thread else ""
         return str(self.source_location) + ", " + self.state + thread_str + waiter_str
         
 class Promise(object):
