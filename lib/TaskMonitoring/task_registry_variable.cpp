@@ -20,23 +20,22 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
+#include "TaskMonitoring/task_registry_variable.h"
 
-#include "AsyncRegistryServer/Feature.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
+namespace arangodb::task_monitoring {
 
-namespace arangodb::async_registry {
+Registry registry;
 
-class RestHandler : public arangodb::RestVocbaseBaseHandler {
- public:
-  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+auto get_thread_registry() noexcept -> ThreadRegistry& {
+  struct ThreadRegistryGuard {
+    ThreadRegistryGuard() : _registry{ThreadRegistry::make()} {
+      registry.add(_registry);
+    }
 
- public:
-  char const* name() const override final { return "AsyncRegistryRestHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
-  futures::Future<futures::Unit> executeAsync() override;
+    std::shared_ptr<ThreadRegistry> _registry;
+  };
+  static thread_local auto registry_guard = ThreadRegistryGuard{};
+  return *registry_guard._registry;
+}
 
-  Feature& _feature;
-};
-
-}  // namespace arangodb::async_registry
+}  // namespace arangodb::task_monitoring

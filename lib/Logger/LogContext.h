@@ -569,6 +569,8 @@ struct LogContext::ThreadControlBlock {
   ThreadControlBlock& operator=(ThreadControlBlock const&) = delete;
   ThreadControlBlock& operator=(ThreadControlBlock&&) = delete;
 
+  ~ThreadControlBlock() noexcept;
+
   void pop(LogContext::Entry* entry) noexcept;
 
  private:

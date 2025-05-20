@@ -18,31 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
+#include "Containers/Concurrent/ListOfNonOwnedLists.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
+#include "TaskMonitoring/task.h"
 
-namespace arangodb {
+namespace arangodb::task_monitoring {
 
-class VPackFeature;
+using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
+struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
 
-using namespace application_features;
+/**
+   Global variable that holds all active tasks.
 
-using ArangoVPackFeaturesList =
-    TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
-             ConfigFeature, LoggerFeature, OptionsCheckFeature,
-             FileSystemFeature, RandomFeature, ShellColorsFeature,
-             ShutdownFeature,
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-             ProcessEnvironmentFeature,
-#endif
-             VPackFeature>;
-struct ArangoVPackFeatures : ArangoVPackFeaturesList {};
-using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
-using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;
+   Includes a list of thread owned lists, one for each initialized
+   thread.
+ */
+extern Registry registry;
 
-}  // namespace arangodb
+/**
+   Get thread registry of all active tasks on current thread.
+
+   Creates the thread registry when called for the first time and adds it to the
+   global registry.
+ */
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
+}  // namespace arangodb::task_monitoring

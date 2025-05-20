@@ -575,7 +575,7 @@ def add_x64_community_workflow(workflows, tests, args):
 def add_x64_enterprise_workflow(workflows, tests, args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
     workflow = add_workflow(workflows, tests, build_config, args)
-    if args.sanitizer == "" and args.ui in ["off", ""]:
+    if args.sanitizer == "" and args.ui != "only":
         add_build_job(
             workflow,
             build_config,

@@ -18,31 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Utils/ArangoClient.h"
+#include "SystemMonitor/AsyncRegistry/Feature.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-namespace arangodb {
+namespace arangodb::async_registry {
 
-class VPackFeature;
+class RestHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-using namespace application_features;
+ public:
+  char const* name() const override final { return "AsyncRegistryRestHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
+  futures::Future<futures::Unit> executeAsync() override;
 
-using ArangoVPackFeaturesList =
-    TypeList<BasicFeaturePhaseClient, GreetingsFeaturePhase, VersionFeature,
-             ConfigFeature, LoggerFeature, OptionsCheckFeature,
-             FileSystemFeature, RandomFeature, ShellColorsFeature,
-             ShutdownFeature,
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-             ProcessEnvironmentFeature,
-#endif
-             VPackFeature>;
-struct ArangoVPackFeatures : ArangoVPackFeaturesList {};
-using ArangoVPackServer = ApplicationServerT<ArangoVPackFeatures>;
-using ArangoVPackFeature = ApplicationFeatureT<ArangoVPackServer>;
+  Feature& _feature;
+};
 
-}  // namespace arangodb
+}  // namespace arangodb::async_registry
