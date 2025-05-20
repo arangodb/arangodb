@@ -316,14 +316,10 @@ TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
                        PathValidatorOptions validatorOptions,
                        arangodb::ResourceMonitor& resourceMonitor)
     : _options(std::move(options)),
-      _left{Direction::FORWARD, std::move(forwardProvider),
-            _options,           validatorOptions,
-            resourceMonitor},
-      _right{Direction::BACKWARD,
-             std::move(backwardProvider),
-             _options,
-             std::move(validatorOptions),
-             resourceMonitor},
+      _left{Direction::FORWARD, std::move(forwardProvider), _options,
+            validatorOptions, resourceMonitor},
+      _right{Direction::BACKWARD, std::move(backwardProvider), _options,
+             std::move(validatorOptions), resourceMonitor},
       _baselineDepth(_options.getMaxDepth()),
       _resultPath{_left.provider(), _right.provider()} {}
 
