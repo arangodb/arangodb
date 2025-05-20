@@ -143,8 +143,9 @@ class RocksDBIndexCacheRefillFeature;
 class RocksDBOptionFeature;
 class RocksDBRecoveryManager;
 class VectorIndexFeature;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 class ProcessEnvironmentFeature;
-
+#endif
 namespace transaction {
 
 class ManagerFeature;
@@ -258,7 +259,9 @@ using ArangodFeaturesList = TypeList<
     ReplicationTimeoutFeature,
     SchedulerFeature,
     VectorIndexFeature,
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     ProcessEnvironmentFeature,
+#endif
 #ifdef USE_V8
     ScriptFeature,
 #endif

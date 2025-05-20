@@ -1,6 +1,11 @@
 devel
 -----
 
+* FE-575: adds debounce and loading state for node start search.
+
+* Fix BTS-2086: Fixes missing reschedule of license checks on single-server
+  instances.
+
 * Improved the error message displayed when the APPROX_NEAR function fails to
   apply a vector index.
  
@@ -22,15 +27,12 @@ devel
   if a new collection with `distributeShardsLike` was created at the wrong
   moment.
 
-* Updated ArangoDB Starter to v0.19.11-preview-1.
-
 * Updated ArangoDB Starter to v0.19.11.
 
 * Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
   coordinator in two different threads) creates two collections with the same
   name in the same database (different collection ID).
 
-* Updated ArangoDB Starter to v0.19.10-preview-1.
 
 * Fix a crash when bind parameters are not set and killing of a query
   is logged (no version with this bug was ever released!).

@@ -49,11 +49,14 @@ using ArangoshFeaturesList = TypeList<
 #ifdef USE_ENTERPRISE
     EncryptionFeature,
 #endif
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    ProcessEnvironmentFeature,
+#endif
     ShellConsoleFeature, HttpEndpointProvider, ConfigFeature, LoggerFeature,
     OptionsCheckFeature, FileSystemFeature, RandomFeature, ShellColorsFeature,
     ShutdownFeature, SslFeature, V8ShellFeaturePhase, ShellFeature,
     V8PlatformFeature, V8ShellFeature, LanguageFeature, V8SecurityFeature,
-    ProcessMonitoringFeature, TempFeature, ProcessEnvironmentFeature>;
+    ProcessMonitoringFeature, TempFeature>;
 struct ArangoshFeatures : ArangoshFeaturesList {};
 using ArangoshServer = ApplicationServerT<ArangoshFeatures>;
 using ArangoshFeature = ApplicationFeatureT<ArangoshServer>;

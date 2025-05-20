@@ -18,29 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include "Containers/Concurrent/ListOfNonOwnedLists.h"
+#include "Containers/Concurrent/ThreadOwnedList.h"
+#include "TaskMonitoring/task.h"
 
-#include <string>
+namespace arangodb::task_monitoring {
 
-namespace arangodb {
+using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
+struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
 
-class RestUsageMetricsHandler : public arangodb::RestBaseHandler {
- public:
-  RestUsageMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+/**
+   Global variable that holds all active tasks.
 
-  char const* name() const final { return "RestUsageMetricsHandler"; }
-  /// @brief must be on fast lane so that metrics can always be retrieved,
-  /// even from otherwise totally busy servers
-  RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
-  auto executeAsync() -> futures::Future<futures::Unit> final;
+   Includes a list of thread owned lists, one for each initialized
+   thread.
+ */
+extern Registry registry;
 
- private:
-  auto makeRedirection(std::string const& serverId) -> async<void>;
-};
+/**
+   Get thread registry of all active tasks on current thread.
 
-}  // namespace arangodb
+   Creates the thread registry when called for the first time and adds it to the
+   global registry.
+ */
+auto get_thread_registry() noexcept -> ThreadRegistry&;
+
+}  // namespace arangodb::task_monitoring
