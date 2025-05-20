@@ -526,11 +526,6 @@ jobs:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
-            apt update && apt install git -y
-            git clone https://github.com/arangodb/arangodb.git
-            cd arangodb
-            git checkout fix/arm-failure
-            cd ..
             mkdir work
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
@@ -553,26 +548,6 @@ jobs:
             if command -v promtool &> /dev/null; then
               export PROMTOOL_PATH=`command -v promtool`
             fi
-            # Fix arm failing when using OpenMP
-
-            ARCH=$(uname -m)
-            echo "Architecture is $ARCH"
-            if test "$ARCH" == "aarch64"; then
-              echo "Setting aarch64 enviroment for OMP"
-              export LD_PRELOAD=$PWD/arangodb/libomp.so
-            fi
-            export KMP_AFFINITY=disabled
-            export OMP_NUM_THREADS=1
-            export OMP_DYNAMIC=false
-            export KMP_HW_SUBSET=1s,1c
-
-            echo "Testing openmp sample program"
-            apt-get update
-            apt-get install -y build-essential g++ wget             
-            wget https://apt.llvm.org/llvm.sh
-            chmod +x llvm.sh
-            ./llvm.sh 19
-            apt-get install -y libomp-19-dev liblapack-dev libopenblas-dev gfortran
 
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
@@ -614,26 +589,6 @@ jobs:
       - run:
           name: Run HotBackup tests
           command: |
-            apt update && apt install git -y
-            git clone https://github.com/arangodb/arangodb.git
-            cd arangodb
-            git checkout fix/arm-failure
-            cd ..
-            lscpu -e
-            echo "CPUINFO"
-            cat /proc/cpuinfo
-            # Fix arm failing when using OpenMP
-            ARCH=$(uname -m)
-            echo "Architecture is $ARCH"
-            if test "$ARCH" == "aarch64"; then
-              echo "Setting aarch64 enviroment for OMP"
-              export LD_PRELOAD=$PWD/arangodb/libomp.so
-            fi
-            export KMP_AFFINITY=disabled
-            export OMP_NUM_THREADS=1
-            export OMP_DYNAMIC=false
-            export KMP_HW_SUBSET=1s,1c
-
             python3 scripts/toolbox/HotBackupConsistencyTest.py \
               --arangod $PWD/build/bin/arangod \
               --topdir $PWD \
@@ -684,28 +639,7 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
-            apt update && apt install git -y
-            git clone https://github.com/arangodb/arangodb.git
-            cd arangodb
-            git checkout fix/arm-failure
-            cd ..
             pwd
-            # Fix arm failing when using OpenMP
-            ARCH=$(uname -m)
-            echo "Architecture is $ARCH"
-            if test "$ARCH" == "aarch64"; then
-              echo "Setting aarch64 enviroment for OMP"
-              export LD_PRELOAD=$PWD/arangodb/libomp.so
-            fi
-            export KMP_AFFINITY=disabled
-            export OMP_NUM_THREADS=1
-            export OMP_DYNAMIC=false
-            export KMP_HW_SUBSET=1s,1c
-
-            lscpu -e
-            echo "CPUINFO"
-            cat /proc/cpuinfo
-
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
