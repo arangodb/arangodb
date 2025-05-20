@@ -1048,7 +1048,6 @@ if(STATIC_EXECUTABLES)
   set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
   set(OpenMP_C_LIB_NAMES "gomp;pthread")
   set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
-  set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/x86_64-linux-gnu/13/libgomp.a")
   set(OpenMP_pthread_LIBRARY "pthread")
   #find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
 
