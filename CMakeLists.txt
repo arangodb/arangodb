@@ -1038,7 +1038,7 @@ if(STATIC_EXECUTABLES)
   else()
     set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
     set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
-    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/aarch64-linux-gnu//13/libgomp.a")
+    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/aarch64-linux-gnu/13/libgomp.a")
   endif()
   message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
 
