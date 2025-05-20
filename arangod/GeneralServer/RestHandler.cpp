@@ -493,9 +493,8 @@ auto RestHandler::prepareExecute(bool isContinue)
 
 void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 
-/// For older RestHandlers, that implement execute() and continueExecute() with
-/// WAITING instead of executeAsync(). Calling wakeupHandler() will continue the
-/// execution by calling continueExecute().
+// Compatability function for old-style code that uses the
+// WAITING/wakeupHandler scheme for async execution.
 bool RestHandler::wakeupHandler() { return _suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
@@ -707,6 +706,8 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
 
+  // After ensuring that no execute() implementation still returns WAITING,
+  // this can be removed.
   if (state == RestStatus::WAITING) {
     co_await waitingFunToCoro(
         std::bind(&std::decay_t<decltype(*this)>::continueExecute, this));

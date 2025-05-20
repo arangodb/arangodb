@@ -111,7 +111,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       std::function<void(rest::RestHandler*)> responseCallback);
 
   /// Continue execution of a suspended (via WAITING) rest handler state machine
-  bool wakeupHandler();
+  [[deprecated]] bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
   futures::Future<Result> forwardRequest(bool& forwarded);
@@ -131,7 +131,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
       -> std::vector<std::shared_ptr<LogContext::Values>>;
   virtual RestStatus execute();
   virtual futures::Future<futures::Unit> executeAsync();
-  virtual RestStatus continueExecute() { return RestStatus::DONE; }
+  // No longer used
+  [[deprecated]] static RestStatus continueExecute() { return RestStatus::DONE; }
   virtual void shutdownExecute(bool isFinalized) noexcept;
 
   // you might need to implement this in your handler
