@@ -548,6 +548,9 @@ class instance {
       throw new Error(`${this.name} don't have planned memory though its configured!`);
     }
     if ((this.useableMemory !== 0) && (this.options.memory !== undefined)) {
+      if (this.useableMemory !== parseInt(this.useableMemory, 10)) {
+        throw new Error(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory} not parseable: expected integer!`);
+      }
       if (this.options.extremeVerbosity) {
         print(`appointed ${this.name} memory: ${this.useableMemory}`);
       }

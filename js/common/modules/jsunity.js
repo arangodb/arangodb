@@ -203,18 +203,15 @@ function matchesTestFilter(suiteName, key) {
   if (testFilter === "undefined" || testFilter === undefined || testFilter === null) {
     return true;
   }
+  const matchFilter = (suite, testCase, filter) => {
+    const [suiteFilter, testCaseFilter] = filter.includes('::') ? filter.split('::') : [suite, filter];
+    return minimatch(suite, suiteFilter) && minimatch(testCase, testCaseFilter);
+  };
   if (typeof testFilter === 'string') {
-    var suiteMatched = true;
-    if (testFilter.includes('::')) {
-      var [suiteFilter, testCaseFilter] = testFilter.split('::');
-      suiteMatched = minimatch(suiteName, suiteFilter);
-      testFilter = testCaseFilter;
-    }
-
-    return suiteMatched && minimatch(key, testFilter);
+    return matchFilter(suiteName, key, testFilter);
   }
   if (Array.isArray(testFilter)) {
-    return testFilter.some(key => matchesTestFilter(suiteName, key));
+    return testFilter.some(filter => matchFilter(suiteName, key, filter));
   }
   return false;
 }

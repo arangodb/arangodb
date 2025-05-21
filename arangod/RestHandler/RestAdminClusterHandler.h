@@ -43,7 +43,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   ~RestAdminClusterHandler() override = default;
 
  public:
-  RestStatus execute() override;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   char const* name() const override final { return "RestAdminClusterHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
@@ -71,49 +71,47 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const VPackSortMigrationMigrate;
   static std::string const VPackSortMigrationStatus;
 
-  RestStatus handleHealth();
-  RestStatus handleNumberOfServers();
-  RestStatus handleMaintenance();
-  RestStatus handleDBServerMaintenance(std::string const& serverId);
+  async<void> handleHealth();
+  async<void> handleNumberOfServers();
+  async<void> handleMaintenance();
+  async<void> handleDBServerMaintenance(std::string const& serverId);
 
   // timeout can be used to set an arbitrary timeout for the maintenance
   // duration. it will be ignored if "state" is not true.
-  RestStatus setMaintenance(bool state, uint64_t timeout);
-  RestStatus setDBServerMaintenance(std::string const& serverId,
-                                    std::string const& mode, uint64_t timeout);
-  RestStatus handlePutMaintenance();
-  RestStatus handleGetMaintenance();
-  RestStatus handlePutDBServerMaintenance(std::string const& serverId);
-  RestStatus handleGetDBServerMaintenance(std::string const& serverId);
+  async<void> setMaintenance(bool state, uint64_t timeout);
+  async<void> setDBServerMaintenance(std::string const& serverId,
+                                     std::string const& mode, uint64_t timeout);
+  async<void> handlePutMaintenance();
+  async<void> handleGetMaintenance();
+  async<void> handlePutDBServerMaintenance(std::string const& serverId);
+  async<void> handleGetDBServerMaintenance(std::string const& serverId);
 
-  RestStatus handleGetNumberOfServers();
-  RestStatus handlePutNumberOfServers();
+  async<void> handleGetNumberOfServers();
+  async<void> handlePutNumberOfServers();
 
-  RestStatus handleNodeVersion();
-  RestStatus handleNodeStatistics();
-  RestStatus handleNodeEngine();
-  RestStatus handleStatistics();
+  async<void> handleNodeVersion();
+  async<void> handleNodeStatistics();
+  async<void> handleNodeEngine();
+  async<void> handleStatistics();
 
-  RestStatus handleShardDistribution();
-  RestStatus handleCollectionShardDistribution();
-  RestStatus handleShardStatistics();
+  void handleShardDistribution();
+  void handleCollectionShardDistribution();
+  void handleShardStatistics();
 
-  RestStatus handleCleanoutServer();
-  RestStatus handleResignLeadership();
-  RestStatus handleMoveShard();
-  RestStatus handleCancelJob();
-  RestStatus handleQueryJobStatus();
+  async<void> handleCleanoutServer();
+  async<void> handleResignLeadership();
+  async<void> handleMoveShard();
+  async<void> handleCancelJob();
+  async<void> handleQueryJobStatus();
 
-  RestStatus handleRemoveServer();
-  RestStatus handleRebalanceShards();
-  RestStatus handleRebalance();
-  RestStatus handleRebalanceGet();
-  RestStatus handleRebalanceExecute();
-  RestStatus handleRebalancePlan();
+  async<void> handleRemoveServer();
+  async<void> handleRebalanceShards();
+  async<void> handleRebalance();
+  void handleRebalanceGet();
+  async<void> handleRebalanceExecute();
+  async<void> handleRebalancePlan();
 
-  typedef futures::Future<futures::Unit> FutureVoid;
-
-  FutureVoid handleVPackSortMigration(std::string const& subCommand);
+  async<void> handleVPackSortMigration(std::string const& subCommand);
 
   struct MoveShardContext {
     std::string database;
@@ -142,21 +140,21 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
         arangodb::velocypack::Slice slice);
   };
 
-  RestStatus handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx);
+  async<void> handlePostMoveShard(std::unique_ptr<MoveShardContext>&& ctx);
 
-  RestStatus handleSingleServerJob(std::string const& job);
-  RestStatus handleCreateSingleServerJob(std::string const& job,
-                                         std::string const& server,
-                                         VPackSlice body);
+  async<void> handleSingleServerJob(std::string const& job);
+  async<void> handleCreateSingleServerJob(std::string const& job,
+                                          std::string const& server,
+                                          VPackSlice body);
 
   typedef std::chrono::steady_clock clock;
 
-  FutureVoid waitForSupervisionState(bool state,
-                                     std::string const& reactivationTime,
-                                     clock::time_point startTime);
+  futures::Future<futures::Unit> waitForSupervisionState(
+      bool state, std::string const& reactivationTime,
+      clock::time_point startTime);
 
-  FutureVoid waitForDBServerMaintenance(std::string const& serverId,
-                                        bool waitForMaintenance);
+  futures::Future<futures::Unit> waitForDBServerMaintenance(
+      std::string const& serverId, bool waitForMaintenance);
 
   struct RemoveServerContext {
     size_t tries;
@@ -166,17 +164,18 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
         : tries(0), server(std::move(s)) {}
   };
 
-  FutureVoid tryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
-  FutureVoid retryTryDeleteServer(std::unique_ptr<RemoveServerContext>&& ctx);
-  FutureVoid createMoveShard(std::unique_ptr<MoveShardContext>&& ctx,
-                             velocypack::Slice plan);
+  futures::Future<futures::Unit> tryDeleteServer(
+      std::unique_ptr<RemoveServerContext>&& ctx);
+  futures::Future<futures::Unit> retryTryDeleteServer(
+      std::unique_ptr<RemoveServerContext>&& ctx);
+  async<void> createMoveShard(std::unique_ptr<MoveShardContext>&& ctx,
+                              velocypack::Slice plan);
 
-  RestStatus handleProxyGetRequest(std::string const& url,
-                                   std::string const& serverFromParameter);
-  RestStatus handleGetCollectionShardDistribution(
-      std::string const& collection);
+  async<void> handleProxyGetRequest(std::string const& url,
+                                    std::string const& serverFromParameter);
+  void handleGetCollectionShardDistribution(std::string const& collection);
 
-  RestStatus handlePostRemoveServer(std::string const& server);
+  async<void> handlePostRemoveServer(std::string const& server);
 
   std::string resolveServerNameID(std::string const&);
 
@@ -210,7 +209,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
                          std::uint32_t, std::string)>;
 
  private:
-  FutureVoid handlePostRebalanceShards(const ReshardAlgorithm&);
+  futures::Future<futures::Unit> handlePostRebalanceShards(
+      ReshardAlgorithm const&);
 
   cluster::rebalance::AutoRebalanceProblem collectRebalanceInformation(
       std::vector<std::string> const& excludedDatabases,
