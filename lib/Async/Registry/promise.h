@@ -102,19 +102,18 @@ auto inspect(Inspector& f, Requester& x) {
 
 struct PromiseSnapshot {
   void* id;
-  basics::ThreadId thread;
-  basics::SourceLocationSnapshot source_location;
   Requester requester;
   State state;
+  std::optional<basics::ThreadId> thread;
+  basics::SourceLocationSnapshot source_location;
   bool operator==(PromiseSnapshot const&) const = default;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PromiseSnapshot& x) {
-  return f.object(x).fields(f.field("owning_thread", x.thread),
-                            f.field("source_location", x.source_location),
-                            f.field("id", fmt::format("{}", x.id)),
-                            f.field("requester", x.requester),
-                            f.field("state", x.state));
+  return f.object(x).fields(
+      f.field("id", fmt::format("{}", x.id)), f.field("requester", x.requester),
+      f.field("state", x.state), f.field("running_thread", x.thread),
+      f.field("source_location", x.source_location));
 }
 
 /**
@@ -127,20 +126,22 @@ struct Promise {
 
   auto id() -> void* { return this; }
   auto snapshot() -> Snapshot {
-    return PromiseSnapshot{.id = id(),
-                           .thread = thread,
-                           .source_location = source_location.snapshot(),
-                           .requester = requester.load(),
-                           .state = state.load()};
+    return PromiseSnapshot{
+        .id = id(),
+        .requester = requester.load(),
+        .state = state.load(),
+        .thread = running_thread.load(std::memory_order_acquire),
+        .source_location = source_location.snapshot()};
   }
   auto set_to_deleted() -> void {
     state.store(State::Deleted, std::memory_order_relaxed);
   }
 
-  basics::ThreadId thread;
-  basics::VariableSourceLocation source_location;
+  basics::ThreadId owning_thread;
   std::atomic<Requester> requester;
   std::atomic<State> state = State::Running;
+  std::atomic<std::optional<basics::ThreadId>> running_thread;
+  basics::VariableSourceLocation source_location;
 };
 
 /**
