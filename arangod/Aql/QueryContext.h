@@ -60,9 +60,13 @@ class Graph;
 namespace aql {
 
 class Ast;
+class ShardLocking;
 
 /// @brief an AQL query basic interface
 class QueryContext {
+  /// @brief Friend class to allow ShardLocking to set the shard mapping.
+  friend class ShardLocking;
+
  private:
   QueryContext(QueryContext const&) = delete;
   QueryContext& operator=(QueryContext const&) = delete;
@@ -164,11 +168,28 @@ class QueryContext {
 
   virtual bool hasEnteredV8Executor() const { return false; }
 
+  /// @brief Get the shard mapping for the query.
+  /// This is used to get the shard mapping from the query context.
+  /// @return The shard mapping for the query.
+  virtual containers::FlatHashMap<ShardID, ServerID> const& getShardMapping() const = 0;
+
+  virtual ServerID getResponsibleServer(ShardID shardId) const = 0;
+
   // base overhead for each query. the number used here is somewhat arbitrary.
   // it is just that all the basics data structures of a query are not totally
   // free, and there is not other accounting for them. note: this value is
   // counted up in the constructor and counted down in the destructor.
   constexpr static std::size_t baseMemoryUsage = 8192;
+
+private:
+  /// @brief Set the shard mapping for the query.
+  /// This is used to inject the shard mapping into the query context.
+  /// Note this should eventually be moved into the TransactionContext, but that is a more far-reaching change.
+  /// @param shardMapping The shard mapping to set.
+  /// @note This is a private method as it is only used internally by the ShardLocking class, and
+  ///       cannot light-heartedly be called by other parts of the codebase. This would lead to
+  ///       incorrectly routed requests.
+  virtual void setShardMapping(containers::FlatHashMap<ShardID, ServerID> shardMapping) = 0;
 
  protected:
   /// @brief current resources and limits used by query

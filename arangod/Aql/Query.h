@@ -378,6 +378,26 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
+  /// @brief Set the shard mapping for the query.
+  /// This is used to inject the shard mapping into the query context.
+  /// Note this should eventually be moved into the TransactionContext, but that is a more far-reaching change.
+  /// @param shardMapping The shard mapping to set.
+  /// @note This is a private method as it is only used internally by the ShardLocking class, and
+  ///       cannot light-heartedly be called by other parts of the codebase. This would lead to
+  ///       incorrectly routed requests.
+  void setShardMapping(containers::FlatHashMap<ShardID, ServerID> shardMapping) override;
+
+  /// @brief Get the shard mapping for the query.
+  /// This is used to get the shard mapping from the query context.
+  /// @return The shard mapping for the query.
+  containers::FlatHashMap<ShardID, ServerID> const& getShardMapping() const override;
+
+  /// @brief Get the responsible server for a shard.
+  /// This is used to get the responsible server for a shard from the query context.
+  /// @param shardId The shard ID to get the responsible server for.
+  /// @return The responsible server for the shard.
+  ServerID getResponsibleServer(ShardID shardId) const override;
+
  protected:
   AqlItemBlockManager _itemBlockManager;
 
@@ -506,6 +526,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // If the query object was constructed from cache
   // the consequence is that _ast is nullptr
   bool _isCached{false};
+
+  /// @brief Mapping of shards to designated servers for the runtime of the query.
+  /// This is set by the ShardLocking class, and needs to stay constant after injection.
+  /// Note this should eventually be moved into the TransactionContext, but that is a more far-reaching change.
+  containers::FlatHashMap<ShardID, ServerID> _shardMapping;
 };
 
 }  // namespace aql

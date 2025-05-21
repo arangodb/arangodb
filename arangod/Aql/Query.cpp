@@ -2722,3 +2722,21 @@ Query::buildSerializeQueryDataCallback(
                 VPackValue(_ast->containsModificationNode()));
   };
 }
+
+void Query::setShardMapping(containers::FlatHashMap<ShardID, ServerID> shardMapping) {
+  _shardMapping = std::move(shardMapping);
+}
+
+containers::FlatHashMap<ShardID, ServerID> const& Query::getShardMapping() const {
+  return _shardMapping;
+}
+
+ServerID Query::getResponsibleServer(ShardID shardId) const {
+  auto it = _shardMapping.find(shardId);
+  if (it == _shardMapping.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL_AQL,
+        "Query: getting responsible server for shard that is not known to the query. This is an internal logic error. Please file a bug report with ArangoDB.");
+  }
+  return it->second;
+}
