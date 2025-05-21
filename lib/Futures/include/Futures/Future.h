@@ -426,6 +426,7 @@ class [[nodiscard]] Future {
            typename R = typename std::invoke_result<F&&, Try<T>&&>::type>
   typename std::enable_if<std::is_same<R, void>::value>::type thenFinal(
       F&& fn) && {
+    update_requester(async_registry::Requester::current_thread());
     getState().setCallback(std::forward<detail::decay_t<F>>(fn));
   }
 
