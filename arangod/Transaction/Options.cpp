@@ -123,8 +123,6 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice slice) {
       if (std::rand() % 2 == 0) {
         allowDirtyReads = true;
       }
-      // temporary always use dirty reads
-      allowDirtyReads = true;
     }
     TRI_IF_FAILURE("TransactionState::dirtyReadsAreDefault") {
       allowDirtyReads = true;
