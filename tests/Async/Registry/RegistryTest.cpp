@@ -23,6 +23,7 @@
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
 #include "thread.h"
+#include "Basics/Thread.h"
 
 #include <gtest/gtest.h>
 #include <optional>
@@ -183,4 +184,22 @@ TEST_F(AsyncRegistryTest, inpection_works_on_after_thread_was_deleted) {
   // we just make sure that we can still inspect the promise (and it does not
   // crash the system), although the thread the promise was created on is gone
   EXPECT_NE(fmt::format("{}", inspection::json(promise_snapshot)), "");
+}
+
+TEST_F(AsyncRegistryTest, size_tests) {
+  std::cout << "ThreadInfo: " << sizeof(basics::ThreadInfo) << std::endl;
+  std::cout << "ThreadInfo::current(): "
+            << sizeof(basics::ThreadInfo::current()) << std::endl;
+  std::shared_ptr<basics::ThreadInfo> shared_ptr =
+      std::make_shared<basics::ThreadInfo>(
+          arangodb::Thread::currentKernelThreadId(),
+          std::string{arangodb::ThreadNameFetcher{}.get()});
+  std::cout << "shared_ptr<ThreadInfo>: " << sizeof(shared_ptr) << std::endl;
+  int* bla = new int{};
+  std::cout << "int: " << sizeof(bla) << std::endl;
+  basics::ThreadInfo* normal_ptr =
+      new basics::ThreadInfo{arangodb::Thread::currentKernelThreadId(),
+                             std::string{arangodb::ThreadNameFetcher{}.get()}};
+  std::cout << "ThreadInfo*: " << sizeof(normal_ptr) << std::endl;
+  std::cout << "shared_ptr<ThreadInfo>*: " << sizeof(&shared_ptr) << std::endl;
 }
