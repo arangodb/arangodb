@@ -172,3 +172,15 @@ TEST_F(AsyncRegistryTest, sets_running_thread_to_current_thread_when_running) {
   EXPECT_EQ(all_promises[0].state, State::Running);
   EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
 }
+
+TEST_F(AsyncRegistryTest, inpection_works_on_after_thread_was_deleted) {
+  PromiseSnapshot promise_snapshot;
+  std::ignore = std::jthread([&promise_snapshot]() {
+    auto promise = MyPromise{};
+    promise_snapshot = promise.snapshot();
+  });
+
+  // we just make sure that we can still inspect the promise (and it does not
+  // crash the system), although the thread the promise was created on is gone
+  EXPECT_NE(fmt::format("{}", inspection::json(promise_snapshot)), "");
+}
