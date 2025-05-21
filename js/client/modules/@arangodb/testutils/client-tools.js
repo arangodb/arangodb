@@ -288,7 +288,7 @@ class ConfigBuilder {
 const createBaseConfigBuilder = function (type, options, instanceInfo, database = '_system') {
   const cfg = new ConfigBuilder(type);
   if (options.extremeVerbosity) {
-    // cfg.setDumpEnv();
+    cfg.setDumpEnv();
   }
   if (!options.jwtSecret) {
     cfg.setAuth(options.username, options.password);
