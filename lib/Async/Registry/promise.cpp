@@ -29,7 +29,7 @@
 using namespace arangodb::async_registry;
 
 Promise::Promise(Requester requester, std::source_location entry_point)
-    : owning_thread{basics::ThreadId::current()},
+    : owning_thread{basics::ThreadInfo::current()},
       requester{requester},
       state{State::Running},
       running_thread{basics::ThreadId::current()},

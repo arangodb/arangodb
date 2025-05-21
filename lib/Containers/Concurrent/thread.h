@@ -40,6 +40,18 @@ auto inspect(Inspector& f, ThreadId& x) {
                             f.field("posix_id", x.posix_id));
 }
 
+struct ThreadInfo {
+  static auto current() noexcept -> ThreadInfo&;
+  pid_t kernel_id;
+  std::string name;
+  bool operator==(ThreadInfo const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ThreadInfo& x) {
+  return f.object(x).fields(f.field("LWPID", x.kernel_id),
+                            f.field("name", x.name));
+}
+
 }  // namespace arangodb::basics
 
 template<>

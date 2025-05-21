@@ -32,6 +32,7 @@
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Containers/Concurrent/thread.h"
 #include "Containers/Concurrent/source_location.h"
+#include "Containers/Concurrent/shared.h"
 #include "fmt/format.h"
 #include "fmt/std.h"
 
@@ -102,6 +103,7 @@ auto inspect(Inspector& f, Requester& x) {
 
 struct PromiseSnapshot {
   void* id;
+  basics::ThreadInfo owning_thread;
   Requester requester;
   State state;
   std::optional<basics::ThreadId> thread;
@@ -110,10 +112,12 @@ struct PromiseSnapshot {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, PromiseSnapshot& x) {
-  return f.object(x).fields(
-      f.field("id", fmt::format("{}", x.id)), f.field("requester", x.requester),
-      f.field("state", x.state), f.field("running_thread", x.thread),
-      f.field("source_location", x.source_location));
+  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)),
+                            f.field("owning_thread", x.owning_thread),
+                            f.field("requester", x.requester),
+                            f.field("state", x.state),
+                            f.field("running_thread", x.thread),
+                            f.field("source_location", x.source_location));
 }
 
 /**
@@ -128,6 +132,9 @@ struct Promise {
   auto snapshot() -> Snapshot {
     return PromiseSnapshot{
         .id = id(),
+        .owning_thread =
+            owning_thread.get_ref().value(),  // owning_thread is never changed,
+                                              // can therefore never be nullopt
         .requester = requester.load(),
         .state = state.load(),
         .thread = running_thread.load(std::memory_order_acquire),
@@ -137,7 +144,7 @@ struct Promise {
     state.store(State::Deleted, std::memory_order_relaxed);
   }
 
-  basics::ThreadId owning_thread;
+  containers::SharedReference<basics::ThreadInfo> owning_thread;
   std::atomic<Requester> requester;
   std::atomic<State> state = State::Running;
   std::atomic<std::optional<basics::ThreadId>> running_thread;
