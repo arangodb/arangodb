@@ -32,7 +32,7 @@ class Thread:
         return cls(value['posix_id'], value['kernel_id'])
 
     def __str__(self):
-        return "thread " + str(self.lwpid)
+        return f"LWPID {self.lwpid} (pthread {self.posix_id})"
 
 @dataclass
 class SourceLocation:
@@ -100,7 +100,7 @@ class Promise:
         return not self.state.is_deleted()
 
     def __str__(self):
-        thread_str = "" if not self.thread else " on " + str(self.thread)
+        thread_str = f" on {self.thread}" if self.thread else ""
         return str(self.source_location) + ", " + str(self.state) + thread_str
 
 @dataclass

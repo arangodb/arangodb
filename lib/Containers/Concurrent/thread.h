@@ -37,7 +37,7 @@ struct ThreadId {
 template<typename Inspector>
 auto inspect(Inspector& f, ThreadId& x) {
   return f.object(x).fields(f.field("LWPID", x.kernel_id),
-                            f.field("name", x.name()));
+                            f.field("posix_id", x.posix_id));
 }
 
 }  // namespace arangodb::basics

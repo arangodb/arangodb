@@ -32,6 +32,10 @@ using namespace arangodb::async_registry;
 
 auto breakpoint() { raise(SIGINT); }
 
+auto format(arangodb::basics::ThreadId const& thread) -> std::string {
+  return fmt::format("LWPID {} (pthread {})", thread.kernel_id,
+                     thread.posix_id);
+}
 auto format(PromiseSnapshot const& snapshot) -> std::string {
   if (snapshot.thread == std::nullopt) {
     return fmt::format(
@@ -40,10 +44,10 @@ auto format(PromiseSnapshot const& snapshot) -> std::string {
         arangodb::inspection::json(snapshot.state));
   } else {
     return fmt::format(
-        "\"{}\" (\"{}\":{}), {} on thread {}",
+        "\"{}\" (\"{}\":{}), {} on {}",
         snapshot.source_location.function_name,
         snapshot.source_location.file_name, snapshot.source_location.line,
-        arangodb::inspection::json(snapshot.state), snapshot.thread->kernel_id);
+        arangodb::inspection::json(snapshot.state), format(snapshot.thread.value()));
   }
 }
 
@@ -78,11 +82,11 @@ int main() {
   });
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(parent->data.snapshot()),
-      current_thread.kernel_id);
+      "─ {}}}",
+      format(current_thread), format(parent->data.snapshot()),
+      format(current_thread));
 
   breakpoint();
 
@@ -90,11 +94,11 @@ int main() {
   parent->data.running_thread.store(std::nullopt);
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(parent->data.snapshot()),
-      current_thread.kernel_id);
+      "─ {}}}",
+      format(current_thread), format(parent->data.snapshot()),
+      format(current_thread));
 
   breakpoint();
 
@@ -104,12 +108,12 @@ int main() {
   });
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "    ┌ {}\n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(child->data.snapshot()),
-      format(parent->data.snapshot()), current_thread.kernel_id);
+      "─ {}}}",
+      format(current_thread), format(child->data.snapshot()),
+      format(parent->data.snapshot()), format(current_thread));
 
   breakpoint();
 
@@ -119,14 +123,14 @@ int main() {
   });
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "    ┌ {}\n"
       "    ├ {}\n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(child->data.snapshot()),
+      "─ {}}}",
+      format(current_thread), format(child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      current_thread.kernel_id);
+      format(current_thread));
 
   breakpoint();
 
@@ -136,15 +140,15 @@ int main() {
   });
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "      ┌ {}\n"
       "    ┌ {}\n"
       "    ├ {}\n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(child_of_child->data.snapshot()),
+      "─ {}}}",
+      format(current_thread), format(child_of_child->data.snapshot()),
       format(child->data.snapshot()), format(second_child->data.snapshot()),
-      format(parent->data.snapshot()), current_thread.kernel_id);
+      format(parent->data.snapshot()), format(current_thread));
 
   breakpoint();
 
@@ -154,18 +158,18 @@ int main() {
   });
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "      ┌ {}\n"
       "    ┌ {}\n"
       "    │ ┌ {}\n"
       "    ├ {}\n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(child_of_child->data.snapshot()),
+      "─ {}}}",
+      format(current_thread), format(child_of_child->data.snapshot()),
       format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      current_thread.kernel_id);
+      format(current_thread));
 
   breakpoint();
 
@@ -176,22 +180,22 @@ int main() {
   });
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "  ┌ {}\n"
-      "─ thread {}, \n"
-      "[thread {}] = \n"
+      "─ {}, \n"
+      "[{}] = \n"
       "      ┌ {}\n"
       "    ┌ {}\n"
       "    │ ┌ {}\n"
       "    ├ {}\n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(second_parent->data.snapshot()),
-      current_thread.kernel_id, current_thread.kernel_id,
+      "─ {}}}",
+      format(current_thread), format(second_parent->data.snapshot()),
+      format(current_thread), format(current_thread),
       format(child_of_child->data.snapshot()), format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      current_thread.kernel_id);
+      format(current_thread));
 
   breakpoint();
 
@@ -205,26 +209,26 @@ int main() {
   });
   expected = fmt::format(
       "async registry = {{\n"
-      "[thread {}] = \n"
+      "[{}] = \n"
       "  ┌ {}\n"
-      "─ thread {}, \n"
-      "[thread {}] = \n"
+      "─ {}, \n"
+      "[{}] = \n"
       "      ┌ {}\n"
       "    ┌ {}\n"
       "    │ ┌ {}\n"
       "    ├ {}\n"
       "  ┌ {}\n"
-      "─ thread {}, \n"
-      "[thread {}] = \n"
+      "─ {}, \n"
+      "[{}] = \n"
       "  ┌ {}\n"
-      "─ thread {}}}",
-      current_thread.kernel_id, format(second_parent->data.snapshot()),
-      current_thread.kernel_id, current_thread.kernel_id,
+      "─ {}}}",
+      format(current_thread), format(second_parent->data.snapshot()),
+      format(current_thread), format(current_thread),
       format(child_of_child->data.snapshot()), format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      current_thread.kernel_id, other_thread.kernel_id,
-      format(parent_on_other_thread->data.snapshot()), other_thread.kernel_id);
+      format(current_thread), format(other_thread),
+      format(parent_on_other_thread->data.snapshot()), format(other_thread));
 
   breakpoint();
 
