@@ -116,7 +116,7 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice slice) {
     allowDirtyReads = value.isTrue();
   } else {
     TRI_IF_FAILURE("TransactionState::maybeUseDirtyReads") {
-      // This feailure point generates some enthropy in tests
+      // This failure point generates some entropy in tests
       // and sometimes allows dirty reads to be used.
       // This is to use coverage in Traversal tests without
       // duplicating them
