@@ -24,6 +24,7 @@
 #include "Inspection/Format.h"
 
 #include <gtest/gtest.h>
+#include <variant>
 
 using namespace arangodb::containers;
 
@@ -46,4 +47,24 @@ TEST(SharedTest, shared_reference_extends_lifetime) {
 TEST(SharedTest, inspection_of_shared_reference_gives_shared_object) {
   auto ref = SharedReference<int>{4};
   EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(ref)), "4");
+}
+
+struct Bla {
+  Bla(){};
+  std::string a;
+};
+TEST(SharedTest, variant_ptr_works_like_a_variant) {
+  auto first_type = VariantPtr<int, Bla>::first(18);
+  EXPECT_TRUE(first_type.get_ref().has_value());
+  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+      first_type.get_ref().value()));
+  EXPECT_EQ(std::get<std::reference_wrapper<int>>(first_type.get_ref().value()),
+            18);
+
+  auto second_type = VariantPtr<Shared<Bla>, int>::second(22);
+  EXPECT_TRUE(second_type.get_ref().has_value());
+  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+      second_type.get_ref().value()));
+  EXPECT_EQ(
+      std::get<std::reference_wrapper<int>>(second_type.get_ref().value()), 22);
 }
