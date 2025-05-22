@@ -56,17 +56,19 @@ struct Bla {
 TEST(SharedTest, variant_ptr_works_like_a_variant) {
   auto first_type = VariantPtr<int, Bla>::first(18);
   EXPECT_TRUE(first_type.get_ref().has_value());
-  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
       first_type.get_ref().value()));
-  EXPECT_EQ(std::get<std::reference_wrapper<int>>(first_type.get_ref().value()),
-            18);
+  EXPECT_EQ(
+      std::get<std::reference_wrapper<const int>>(first_type.get_ref().value()),
+      18);
 
   auto second_type = VariantPtr<Shared<Bla>, int>::second(22);
   EXPECT_TRUE(second_type.get_ref().has_value());
-  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
       second_type.get_ref().value()));
-  EXPECT_EQ(
-      std::get<std::reference_wrapper<int>>(second_type.get_ref().value()), 22);
+  EXPECT_EQ(std::get<std::reference_wrapper<const int>>(
+                second_type.get_ref().value()),
+            22);
 }
 
 TEST(SharedTest, variant_ptr_includes_a_copy_of_a_shared_reference) {
@@ -77,10 +79,29 @@ TEST(SharedTest, variant_ptr_includes_a_copy_of_a_shared_reference) {
     auto variant = VariantPtr<int, Bla>{ref};
     EXPECT_EQ(ref.ref_count(), 2);
     EXPECT_TRUE(variant.get_ref().has_value());
-    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
         variant.get_ref().value()));
-    EXPECT_EQ(std::get<std::reference_wrapper<int>>(variant.get_ref().value()),
-              435);
+    EXPECT_EQ(
+        std::get<std::reference_wrapper<const int>>(variant.get_ref().value()),
+        435);
+  }
+  EXPECT_EQ(ref.ref_count(), 1);
+  EXPECT_EQ(ref.get_ref(), 435);
+}
+
+TEST(SharedTest, variant_ptr_includes_a_moved_shared_reference) {
+  auto ref = SharedReference<int>{435};
+  EXPECT_EQ(ref.get_ref(), 435);
+  EXPECT_EQ(ref.ref_count(), 1);
+  {
+    auto variant = VariantPtr<int, Bla>{std::move(ref)};
+    EXPECT_EQ(ref.ref_count(), 2);
+    EXPECT_TRUE(variant.get_ref().has_value());
+    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
+        variant.get_ref().value()));
+    EXPECT_EQ(
+        std::get<std::reference_wrapper<const int>>(variant.get_ref().value()),
+        435);
   }
   EXPECT_EQ(ref.ref_count(), 1);
   EXPECT_EQ(ref.get_ref(), 435);

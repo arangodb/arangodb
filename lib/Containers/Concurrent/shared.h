@@ -33,7 +33,7 @@
 namespace arangodb::containers {
 
 /**
-   Reference counting wrapper for a resource
+   Reference counting wrapper for a constant resource
 
    Destroys itself when the reference count decrements to zero.
  */
@@ -48,18 +48,19 @@ struct Shared {
   }
   template<class... Input>
   Shared(Input... args) : _data{args...} {}
-  auto get_ref() -> T& { return _data; }
-  auto ref_count() -> size_t { return _count.load(std::memory_order_relaxed); }
+  auto get_ref() const -> T const& { return _data; }
+  auto ref_count() const -> size_t {
+    return _count.load(std::memory_order_relaxed);
+  }
 
  private:
   std::atomic<std::size_t> _count = 1;
-  T _data;
+  const T _data;
 };
 
 template<typename T, typename ExpectedT>
 concept SameAs = std::is_same_v<T, ExpectedT>;
 
-// TODO forbid to change the resource value
 template<typename T>
 struct SharedReference {
   SharedReference(SharedReference&& other) : _resource{other._resource} {
@@ -76,8 +77,9 @@ struct SharedReference {
     _resource = other._resource;
   }
   auto operator=(SharedReference const& other) -> SharedReference& {
+    // TODO should both store and increment not be done at same time?
+    other._resource->increment();
     _resource = other._resource;
-    _resource->increment();
     return *this;
   }
   ~SharedReference() {
@@ -87,18 +89,18 @@ struct SharedReference {
   }
   template<class... Input>
   SharedReference(Input... args) : _resource{new Shared<T>(args...)} {}
-  auto operator*() -> std::optional<std::reference_wrapper<T>> {
+  auto operator*() const -> std::optional<std::reference_wrapper<const T>> {
     return get_ref();
   }
   operator bool() const { return _resource != nullptr; }
-  auto get_ref() -> std::optional<std::reference_wrapper<T>> {
+  auto get_ref() const -> std::optional<std::reference_wrapper<const T>> {
     if (_resource) {
       return {_resource->get_ref()};
     } else {
       return std::nullopt;
     }
   }
-  auto ref_count() -> size_t {
+  auto ref_count() const -> size_t {
     if (_resource) {
       return _resource->ref_count();
     } else {
@@ -124,8 +126,8 @@ struct VariantPtr {
 
   template<SameAs<T> U>
   VariantPtr(SharedReference<U> const& first) {
-    auto resource = first._resource;
     // TODO should both store and increment not be done at same time?
+    auto resource = first._resource;
     resource->increment();
     _resource.store(reinterpret_cast<std::uintptr_t>(resource) | 1);
   }
@@ -159,8 +161,9 @@ struct VariantPtr {
     return VariantPtr{ptr};
   }
 
-  auto get_ref() -> std::optional<
-      std::variant<std::reference_wrapper<T>, std::reference_wrapper<K>>> {
+  auto get_ref()
+      -> std::optional<std::variant<std::reference_wrapper<const T>,
+                                    std::reference_wrapper<const K>>> {
     auto data = _resource.load();
     if (data == 0) {
       return std::nullopt;
@@ -168,11 +171,11 @@ struct VariantPtr {
     constexpr auto flag_mask = (1 << num_flag_bits) - 1;
     constexpr auto data_mask = ~flag_mask;
     if (data & flag_mask) {
-      return {std::reference_wrapper<T>{
+      return {std::reference_wrapper<const T>{
           reinterpret_cast<Shared<T>*>(data & data_mask)->get_ref()}};
     } else {
-      return {
-          std::reference_wrapper<K>{*reinterpret_cast<K*>(data & data_mask)}};
+      return {std::reference_wrapper<const K>{
+          *reinterpret_cast<K*>(data & data_mask)}};
     }
   }
 
