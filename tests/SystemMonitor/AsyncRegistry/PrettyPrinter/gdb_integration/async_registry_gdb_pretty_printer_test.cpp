@@ -44,10 +44,10 @@ auto format(PromiseSnapshot const& snapshot) -> std::string {
         arangodb::inspection::json(snapshot.state));
   } else {
     return fmt::format(
-        "\"{}\" (\"{}\":{}), {} on {}",
-        snapshot.source_location.function_name,
+        "\"{}\" (\"{}\":{}), {} on {}", snapshot.source_location.function_name,
         snapshot.source_location.file_name, snapshot.source_location.line,
-        arangodb::inspection::json(snapshot.state), format(snapshot.thread.value()));
+        arangodb::inspection::json(snapshot.state),
+        format(snapshot.thread.value()));
   }
 }
 
