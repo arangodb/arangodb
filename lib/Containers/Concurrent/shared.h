@@ -48,6 +48,7 @@ struct Shared {
   }
   template<class... Input>
   Shared(Input... args) : _data{args...} {}
+  auto get() -> T* { return &_data; }
   auto get_ref() -> T& { return _data; }
   auto ref_count() const -> size_t {
     return _count.load(std::memory_order_relaxed);
@@ -88,15 +89,25 @@ struct SharedPtr {
   template<class... Input>
   SharedPtr(Input... args) : _resource{new Shared<T>(args...)} {}
   auto operator*() -> std::optional<std::reference_wrapper<T>> {
-    return get_ref();
-  }
-  operator bool() const { return _resource != nullptr; }
-  auto get_ref() -> std::optional<std::reference_wrapper<T>> {
     if (_resource) {
       return {_resource->get_ref()};
     } else {
       return std::nullopt;
     }
+  }
+  operator bool() const { return _resource != nullptr; }
+  auto get() -> std::optional<T*> {
+    if (_resource) {
+      return {_resource->get()};
+    } else {
+      return std::nullopt;
+    }
+  }
+  auto get_ref() const -> std::optional<std::reference_wrapper<T>> {
+    if (not _resource) {
+      return std::nullopt;
+    }
+    return {_resource->get_ref()};
   }
   auto ref_count() const -> size_t {
     if (_resource) {
@@ -145,9 +156,7 @@ struct AtomicSharedOrRawPtr {
     }
   }
 
-  auto get_ref() const
-      -> std::optional<std::variant<std::reference_wrapper<Left>,
-                                    std::reference_wrapper<Right>>> {
+  auto get() const -> std::optional<std::variant<Left*, Right*>> {
     auto data = _resource.load();
     if (data == 0) {
       return std::nullopt;
@@ -155,11 +164,9 @@ struct AtomicSharedOrRawPtr {
     constexpr auto flag_mask = (1 << num_flag_bits) - 1;
     constexpr auto data_mask = ~flag_mask;
     if (data & flag_mask) {
-      return {std::reference_wrapper<Left>{
-          reinterpret_cast<Shared<Left>*>(data & data_mask)->get_ref()}};
+      return {reinterpret_cast<Shared<Left>*>(data & data_mask)->get()};
     } else {
-      return {std::reference_wrapper<Right>{
-          *reinterpret_cast<Right*>(data & data_mask)}};
+      return {reinterpret_cast<Right*>(data & data_mask)};
     }
   }
 
