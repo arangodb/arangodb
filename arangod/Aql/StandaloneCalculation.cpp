@@ -248,25 +248,37 @@ class CalculationQueryContext final : public arangodb::aql::QueryContext {
         "CalculationQueryContext: entering V8 executor is not implemented");
   }
 
-  void setShardMapping(containers::FlatHashMap<ShardID, ServerID> shardMapping) override {
-    TRI_ASSERT(false) << "CalculationQueryContext: setting shard mapping is not allowed. This is an internal logic error. This is only relevant for Cluster Queries";
+  void setShardMapping(
+      containers::FlatHashMap<ShardID, ServerID> shardMapping) override {
+    TRI_ASSERT(false) << "CalculationQueryContext: setting shard mapping is "
+                         "not allowed. This is an internal logic error. This "
+                         "is only relevant for Cluster Queries";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
-        "CalculationQueryContext: setting shard mapping is not allowed. This is an internal logic error. Please file a bug report with ArangoDB.");
+        "CalculationQueryContext: setting shard mapping is not allowed. This "
+        "is an internal logic error. Please file a bug report with ArangoDB.");
   }
 
-  containers::FlatHashMap<ShardID, ServerID> const& getShardMapping() const override {
-    TRI_ASSERT(false) << "CalculationQueryContext: getting shard mapping is not allowed. This is an internal logic error. This is only relevant for Cluster Queries";
+  containers::FlatHashMap<ShardID, ServerID> const& getShardMapping()
+      const override {
+    TRI_ASSERT(false) << "CalculationQueryContext: getting shard mapping is "
+                         "not allowed. This is an internal logic error. This "
+                         "is only relevant for Cluster Queries";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
-        "CalculationQueryContext: getting shard mapping is not allowed. This is an internal logic error. Please file a bug report with ArangoDB.");
-  } 
+        "CalculationQueryContext: getting shard mapping is not allowed. This "
+        "is an internal logic error. Please file a bug report with ArangoDB.");
+  }
 
   ServerID getResponsibleServer(ShardID shardId) const override {
-    TRI_ASSERT(false) << "CalculationQueryContext: getting responsible server is not allowed. This is an internal logic error. This is only relevant for Cluster Queries";
+    TRI_ASSERT(false) << "CalculationQueryContext: getting responsible server "
+                         "is not allowed. This is an internal logic error. "
+                         "This is only relevant for Cluster Queries";
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
-        "CalculationQueryContext: getting responsible server is not allowed. This is an internal logic error. Please file a bug report with ArangoDB.");
+        "CalculationQueryContext: getting responsible server is not allowed. "
+        "This is an internal logic error. Please file a bug report with "
+        "ArangoDB.");
   }
 
  private:

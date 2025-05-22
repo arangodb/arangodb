@@ -171,7 +171,8 @@ class QueryContext {
   /// @brief Get the shard mapping for the query.
   /// This is used to get the shard mapping from the query context.
   /// @return The shard mapping for the query.
-  virtual containers::FlatHashMap<ShardID, ServerID> const& getShardMapping() const = 0;
+  virtual containers::FlatHashMap<ShardID, ServerID> const& getShardMapping()
+      const = 0;
 
   virtual ServerID getResponsibleServer(ShardID shardId) const = 0;
 
@@ -181,15 +182,18 @@ class QueryContext {
   // counted up in the constructor and counted down in the destructor.
   constexpr static std::size_t baseMemoryUsage = 8192;
 
-private:
+ private:
   /// @brief Set the shard mapping for the query.
   /// This is used to inject the shard mapping into the query context.
-  /// Note this should eventually be moved into the TransactionContext, but that is a more far-reaching change.
+  /// Note this should eventually be moved into the TransactionContext, but that
+  /// is a more far-reaching change.
   /// @param shardMapping The shard mapping to set.
-  /// @note This is a private method as it is only used internally by the ShardLocking class, and
-  ///       cannot light-heartedly be called by other parts of the codebase. This would lead to
-  ///       incorrectly routed requests.
-  virtual void setShardMapping(containers::FlatHashMap<ShardID, ServerID> shardMapping) = 0;
+  /// @note This is a private method as it is only used internally by the
+  /// ShardLocking class, and
+  ///       cannot light-heartedly be called by other parts of the codebase.
+  ///       This would lead to incorrectly routed requests.
+  virtual void setShardMapping(
+      containers::FlatHashMap<ShardID, ServerID> shardMapping) = 0;
 
  protected:
   /// @brief current resources and limits used by query
