@@ -29,10 +29,10 @@
 using namespace arangodb::containers;
 
 TEST(SharedTest, shared_reference_extends_lifetime) {
-  SharedReference<int> ref_copy;
+  SharedPtr<int> ref_copy;
   EXPECT_EQ(ref_copy.ref_count(), 1);
   {
-    auto initial_ref = SharedReference<int>{435};
+    auto initial_ref = SharedPtr<int>{435};
     EXPECT_EQ(initial_ref.ref_count(), 1);
     EXPECT_EQ(ref_copy.ref_count(), 1);
 
@@ -45,64 +45,70 @@ TEST(SharedTest, shared_reference_extends_lifetime) {
 }
 
 TEST(SharedTest, inspection_of_shared_reference_gives_shared_object) {
-  auto ref = SharedReference<int>{4};
+  auto ref = SharedPtr<int>{4};
   EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(ref)), "4");
 }
 
-struct Bla {
-  Bla(){};
+struct MyStruct {
+  MyStruct(std::string x) : a{std::move(x)} {};
+  bool operator==(MyStruct const&) const = default;
   std::string a;
 };
-TEST(SharedTest, variant_ptr_works_like_a_variant) {
-  auto first_type = VariantPtr<int, Bla>::first(18);
-  EXPECT_TRUE(first_type.get_ref().has_value());
-  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
-      first_type.get_ref().value()));
-  EXPECT_EQ(
-      std::get<std::reference_wrapper<const int>>(first_type.get_ref().value()),
-      18);
-
-  auto second_type = VariantPtr<Shared<Bla>, int>::second(22);
-  EXPECT_TRUE(second_type.get_ref().has_value());
-  EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
-      second_type.get_ref().value()));
-  EXPECT_EQ(std::get<std::reference_wrapper<const int>>(
-                second_type.get_ref().value()),
-            22);
+TEST(SharedTest, variant_ptr_can_include_a_copy_of_a_shared_reference) {
+  {
+    auto ref = SharedPtr<int>{435};
+    EXPECT_EQ(ref.get_ref(), 435);
+    EXPECT_EQ(ref.ref_count(), 1);
+    {
+      auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ref};
+      EXPECT_EQ(ref.ref_count(), 2);
+      EXPECT_TRUE(variant.get_ref().has_value());
+      EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+          variant.get_ref().value()));
+      EXPECT_EQ(
+          std::get<std::reference_wrapper<int>>(variant.get_ref().value()),
+          435);
+    }
+    EXPECT_EQ(ref.ref_count(), 1);
+    EXPECT_EQ(ref.get_ref(), 435);
+  }
+  {
+    auto ref = SharedPtr<MyStruct>{"abcde"};
+    EXPECT_EQ(ref.get_ref(), MyStruct{"abcde"});
+    EXPECT_EQ(ref.ref_count(), 1);
+    {
+      auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ref};
+      EXPECT_EQ(ref.ref_count(), 2);
+      EXPECT_TRUE(variant.get_ref().has_value());
+      EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<MyStruct>>(
+          variant.get_ref().value()));
+      EXPECT_EQ(
+          std::get<std::reference_wrapper<MyStruct>>(variant.get_ref().value()),
+          MyStruct{"abcde"});
+    }
+    EXPECT_EQ(ref.ref_count(), 1);
+    EXPECT_EQ(ref.get_ref(), MyStruct{"abcde"});
+  }
 }
 
-TEST(SharedTest, variant_ptr_includes_a_copy_of_a_shared_reference) {
-  auto ref = SharedReference<int>{435};
-  EXPECT_EQ(ref.get_ref(), 435);
-  EXPECT_EQ(ref.ref_count(), 1);
+TEST(SharedTest, variant_ptr_can_include_a_raw_pointer) {
   {
-    auto variant = VariantPtr<int, Bla>{ref};
-    EXPECT_EQ(ref.ref_count(), 2);
+    auto ptr = new int{32};
+    auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ptr};
     EXPECT_TRUE(variant.get_ref().has_value());
-    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
+    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+        variant.get_ref().value()));
+    EXPECT_EQ(std::get<std::reference_wrapper<int>>(variant.get_ref().value()),
+              32);
+  }
+  {
+    auto ptr = new MyStruct{"abcde"};
+    auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ptr};
+    EXPECT_TRUE(variant.get_ref().has_value());
+    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<MyStruct>>(
         variant.get_ref().value()));
     EXPECT_EQ(
-        std::get<std::reference_wrapper<const int>>(variant.get_ref().value()),
-        435);
+        std::get<std::reference_wrapper<MyStruct>>(variant.get_ref().value()),
+        MyStruct{"abcde"});
   }
-  EXPECT_EQ(ref.ref_count(), 1);
-  EXPECT_EQ(ref.get_ref(), 435);
-}
-
-TEST(SharedTest, variant_ptr_includes_a_moved_shared_reference) {
-  auto ref = SharedReference<int>{435};
-  EXPECT_EQ(ref.get_ref(), 435);
-  EXPECT_EQ(ref.ref_count(), 1);
-  {
-    auto variant = VariantPtr<int, Bla>{std::move(ref)};
-    EXPECT_EQ(ref.ref_count(), 2);
-    EXPECT_TRUE(variant.get_ref().has_value());
-    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<const int>>(
-        variant.get_ref().value()));
-    EXPECT_EQ(
-        std::get<std::reference_wrapper<const int>>(variant.get_ref().value()),
-        435);
-  }
-  EXPECT_EQ(ref.ref_count(), 1);
-  EXPECT_EQ(ref.get_ref(), 435);
 }

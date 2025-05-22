@@ -48,52 +48,50 @@ struct Shared {
   }
   template<class... Input>
   Shared(Input... args) : _data{args...} {}
-  auto get_ref() const -> T const& { return _data; }
+  auto get_ref() -> T& { return _data; }
   auto ref_count() const -> size_t {
     return _count.load(std::memory_order_relaxed);
   }
 
  private:
   std::atomic<std::size_t> _count = 1;
-  const T _data;
+  T _data;
 };
 
 template<typename T, typename ExpectedT>
 concept SameAs = std::is_same_v<T, ExpectedT>;
 
 template<typename T>
-struct SharedReference {
-  SharedReference(SharedReference&& other) : _resource{other._resource} {
+struct SharedPtr {
+  SharedPtr(SharedPtr&& other) : _resource{other._resource} {
     other._resource = nullptr;
   }
-  auto operator=(SharedReference&& other) -> SharedReference& {
+  auto operator=(SharedPtr&& other) -> SharedPtr& {
     _resource = other._resource;
     other._resource = nullptr;
     return *this;
   }
-  SharedReference(SharedReference const& other) {
-    // TODO should both store and increment not be done at same time?
+  SharedPtr(SharedPtr const& other) {
     other._resource->increment();
     _resource = other._resource;
   }
-  auto operator=(SharedReference const& other) -> SharedReference& {
-    // TODO should both store and increment not be done at same time?
+  auto operator=(SharedPtr const& other) -> SharedPtr& {
     other._resource->increment();
     _resource = other._resource;
     return *this;
   }
-  ~SharedReference() {
+  ~SharedPtr() {
     if (_resource) {
       _resource->decrement();
     }
   }
   template<class... Input>
-  SharedReference(Input... args) : _resource{new Shared<T>(args...)} {}
-  auto operator*() const -> std::optional<std::reference_wrapper<const T>> {
+  SharedPtr(Input... args) : _resource{new Shared<T>(args...)} {}
+  auto operator*() -> std::optional<std::reference_wrapper<T>> {
     return get_ref();
   }
   operator bool() const { return _resource != nullptr; }
-  auto get_ref() const -> std::optional<std::reference_wrapper<const T>> {
+  auto get_ref() -> std::optional<std::reference_wrapper<T>> {
     if (_resource) {
       return {_resource->get_ref()};
     } else {
@@ -108,62 +106,48 @@ struct SharedReference {
     }
   }
 
-  // TODO private:
   Shared<T>* _resource = nullptr;
 };
 
-// lock-free atomic variant (intrusive)
-// either shared or simple pointer
-template<typename T, typename K>
-struct VariantPtr {
+/**
+   Lock-free atomic either type for either a shared or a raw pointer
+
+   Works if both types have an alignment larger than 1,
+   then the last bit of a pointer to one of these types is unused and can be
+   used as a flag for the type of the pointer.
+*/
+template<typename Left, typename Right>
+struct AtomicSharedOrRawPtr {
   static constexpr auto num_flag_bits = 1;
-  static_assert(std::alignment_of_v<Shared<T>> >= (1 << num_flag_bits) &&
-                std::alignment_of_v<K> >= (1 << num_flag_bits));
+  static_assert(std::alignment_of_v<Shared<Left>> >= (1 << num_flag_bits) &&
+                std::alignment_of_v<Right> >= (1 << num_flag_bits));
 
-  template<SameAs<K> U>
-  VariantPtr(U* second)
-      : _resource{reinterpret_cast<std::uintptr_t>(second) | 0} {}
+  template<SameAs<Right> U>
+  AtomicSharedOrRawPtr(U* right)
+      : _resource{reinterpret_cast<std::uintptr_t>(right) | 0} {}
 
-  template<SameAs<T> U>
-  VariantPtr(SharedReference<U> const& first) {
-    // TODO should both store and increment not be done at same time?
-    auto resource = first._resource;
+  template<SameAs<Left> U>
+  AtomicSharedOrRawPtr(SharedPtr<U> const& left) {
+    auto resource = left._resource;
     resource->increment();
     _resource.store(reinterpret_cast<std::uintptr_t>(resource) | 1);
   }
 
-  ~VariantPtr() {
+  ~AtomicSharedOrRawPtr() {
+    // if resource includes a shared ptr, decrement it
     auto data = _resource.load();
     if (data != 0) {
       constexpr auto flag_mask = (1 << num_flag_bits) - 1;
       constexpr auto data_mask = ~flag_mask;
       if (data & flag_mask) {
-        // this is the shared ptr
-        reinterpret_cast<Shared<T>*>(data & data_mask)->decrement();
+        reinterpret_cast<Shared<Left>*>(data & data_mask)->decrement();
       }
     }
   }
-  // explicitly delete because we don't need them
-  VariantPtr(VariantPtr&&) = delete;
-  auto operator=(VariantPtr&&) -> VariantPtr& = delete;
-  VariantPtr(VariantPtr const&) = delete;
-  auto operator=(VariantPtr const&) -> VariantPtr& = delete;
 
-  // TODO get rid of these because we need to do cleanup for them
-  template<class... Input>
-  static auto first(Input... args) -> VariantPtr {
-    auto ptr = new Shared<T>(args...);
-    return VariantPtr{ptr};
-  }
-  template<class... Input>
-  static auto second(Input... args) -> VariantPtr {
-    auto ptr = new K(args...);
-    return VariantPtr{ptr};
-  }
-
-  auto get_ref()
-      -> std::optional<std::variant<std::reference_wrapper<const T>,
-                                    std::reference_wrapper<const K>>> {
+  auto get_ref() const
+      -> std::optional<std::variant<std::reference_wrapper<Left>,
+                                    std::reference_wrapper<Right>>> {
     auto data = _resource.load();
     if (data == 0) {
       return std::nullopt;
@@ -171,18 +155,15 @@ struct VariantPtr {
     constexpr auto flag_mask = (1 << num_flag_bits) - 1;
     constexpr auto data_mask = ~flag_mask;
     if (data & flag_mask) {
-      return {std::reference_wrapper<const T>{
-          reinterpret_cast<Shared<T>*>(data & data_mask)->get_ref()}};
+      return {std::reference_wrapper<Left>{
+          reinterpret_cast<Shared<Left>*>(data & data_mask)->get_ref()}};
     } else {
-      return {std::reference_wrapper<const K>{
-          *reinterpret_cast<K*>(data & data_mask)}};
+      return {std::reference_wrapper<Right>{
+          *reinterpret_cast<Right*>(data & data_mask)}};
     }
   }
 
  private:
-  template<SameAs<T> U>
-  VariantPtr(Shared<U>* shared)
-      : _resource{reinterpret_cast<std::uintptr_t>(shared) | 1} {}
   std::atomic<std::uintptr_t> _resource;
 };
 
@@ -190,6 +171,6 @@ struct VariantPtr {
 
 namespace arangodb::inspection {
 template<typename T>
-struct Access<containers::SharedReference<T>>
-    : OptionalAccess<containers::SharedReference<T>> {};
+struct Access<containers::SharedPtr<T>>
+    : OptionalAccess<containers::SharedPtr<T>> {};
 }  // namespace arangodb::inspection

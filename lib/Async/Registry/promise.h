@@ -144,7 +144,7 @@ struct Promise {
     state.store(State::Deleted, std::memory_order_relaxed);
   }
 
-  containers::SharedReference<basics::ThreadInfo> owning_thread;
+  containers::SharedPtr<basics::ThreadInfo> owning_thread;
   std::atomic<Requester> requester;
   std::atomic<State> state = State::Running;
   std::atomic<std::optional<basics::ThreadId>> running_thread;
