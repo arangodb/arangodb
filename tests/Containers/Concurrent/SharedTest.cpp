@@ -68,3 +68,20 @@ TEST(SharedTest, variant_ptr_works_like_a_variant) {
   EXPECT_EQ(
       std::get<std::reference_wrapper<int>>(second_type.get_ref().value()), 22);
 }
+
+TEST(SharedTest, variant_ptr_includes_a_copy_of_a_shared_reference) {
+  auto ref = SharedReference<int>{435};
+  EXPECT_EQ(ref.get_ref(), 435);
+  EXPECT_EQ(ref.ref_count(), 1);
+  {
+    auto variant = VariantPtr<int, Bla>{ref};
+    EXPECT_EQ(ref.ref_count(), 2);
+    EXPECT_TRUE(variant.get_ref().has_value());
+    EXPECT_TRUE(std::holds_alternative<std::reference_wrapper<int>>(
+        variant.get_ref().value()));
+    EXPECT_EQ(std::get<std::reference_wrapper<int>>(variant.get_ref().value()),
+              435);
+  }
+  EXPECT_EQ(ref.ref_count(), 1);
+  EXPECT_EQ(ref.get_ref(), 435);
+}

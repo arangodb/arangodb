@@ -56,6 +56,10 @@ struct Shared {
   T _data;
 };
 
+template<typename T, typename ExpectedT>
+concept SameAs = std::is_same_v<T, ExpectedT>;
+
+// TODO forbid to change the resource value
 template<typename T>
 struct SharedReference {
   SharedReference(SharedReference&& other) : _resource{other._resource} {
@@ -66,8 +70,10 @@ struct SharedReference {
     other._resource = nullptr;
     return *this;
   }
-  SharedReference(SharedReference const& other) : _resource{other._resource} {
-    _resource->increment();
+  SharedReference(SharedReference const& other) {
+    // TODO should both store and increment not be done at same time?
+    other._resource->increment();
+    _resource = other._resource;
   }
   auto operator=(SharedReference const& other) -> SharedReference& {
     _resource = other._resource;
@@ -100,26 +106,59 @@ struct SharedReference {
     }
   }
 
- private:
+  // TODO private:
   Shared<T>* _resource = nullptr;
 };
+
+// lock-free atomic variant (intrusive)
+// either shared or simple pointer
 template<typename T, typename K>
 struct VariantPtr {
   static constexpr auto num_flag_bits = 1;
   static_assert(std::alignment_of_v<Shared<T>> >= (1 << num_flag_bits) &&
                 std::alignment_of_v<K> >= (1 << num_flag_bits));
 
+  template<SameAs<K> U>
+  VariantPtr(U* second)
+      : _resource{reinterpret_cast<std::uintptr_t>(second) | 0} {}
+
+  template<SameAs<T> U>
+  VariantPtr(SharedReference<U> const& first) {
+    auto resource = first._resource;
+    // TODO should both store and increment not be done at same time?
+    resource->increment();
+    _resource.store(reinterpret_cast<std::uintptr_t>(resource) | 1);
+  }
+
+  ~VariantPtr() {
+    auto data = _resource.load();
+    if (data != 0) {
+      constexpr auto flag_mask = (1 << num_flag_bits) - 1;
+      constexpr auto data_mask = ~flag_mask;
+      if (data & flag_mask) {
+        // this is the shared ptr
+        reinterpret_cast<Shared<T>*>(data & data_mask)->decrement();
+      }
+    }
+  }
+  // explicitly delete because we don't need them
+  VariantPtr(VariantPtr&&) = delete;
+  auto operator=(VariantPtr&&) -> VariantPtr& = delete;
+  VariantPtr(VariantPtr const&) = delete;
+  auto operator=(VariantPtr const&) -> VariantPtr& = delete;
+
+  // TODO get rid of these because we need to do cleanup for them
   template<class... Input>
   static auto first(Input... args) -> VariantPtr {
     auto ptr = new Shared<T>(args...);
-    return VariantPtr{reinterpret_cast<std::uintptr_t>(ptr) | 1};
+    return VariantPtr{ptr};
   }
   template<class... Input>
   static auto second(Input... args) -> VariantPtr {
-    // TODO cleanup
     auto ptr = new K(args...);
-    return VariantPtr{reinterpret_cast<std::uintptr_t>(ptr) | 0};
+    return VariantPtr{ptr};
   }
+
   auto get_ref() -> std::optional<
       std::variant<std::reference_wrapper<T>, std::reference_wrapper<K>>> {
     auto data = _resource.load();
@@ -136,6 +175,11 @@ struct VariantPtr {
           std::reference_wrapper<K>{*reinterpret_cast<K*>(data & data_mask)}};
     }
   }
+
+ private:
+  template<SameAs<T> U>
+  VariantPtr(Shared<U>* shared)
+      : _resource{reinterpret_cast<std::uintptr_t>(shared) | 1} {}
   std::atomic<std::uintptr_t> _resource;
 };
 
