@@ -127,7 +127,7 @@ void GeneralServer::startListening(EndpointList& list) {
 
 /// stop accepting new connections
 void GeneralServer::stopListening() {
-  for (std::unique_ptr<Acceptor>& acceptor : _acceptors) {
+  for (auto& acceptor : _acceptors) {
     acceptor->close();
   }
 }

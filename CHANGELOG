@@ -1,6 +1,90 @@
 devel
 -----
 
+* Fix a possible crash when requesting the async registry:
+  Does now not request the thread name of a potentially destroyed thread.
+
+* Add detection of two threads working on an ExecutionBlock concurrently.
+
+* Add detection of two threads waiting for a PrefetchTask concurrently.
+
+* Add visibility into the state if a thread waits for more than a second
+  on a PrefetchTask (and does not see InProgress).
+
+* Fix a memory leak in LogContext, which could leak entries which are still, and
+  only, used by a thread-local LogContext when that thread is destroyed.
+
+* Fix arangorestore failing to restore the dump containing a
+  vector index.
+
+* FE-575: adds debounce and loading state for node start search.
+
+* Fix BTS-2086: Fixes missing reschedule of license checks on single-server
+  instances.
+
+* Improved the error message displayed when the APPROX_NEAR function fails to
+  apply a vector index.
+ 
+* upgrade LZ4 to 1.10.0
+
+* Fix BTS-2135: A global lock on the query registry was in some cases
+  unnecessarily held for the full duration of query destruction.
+  This could lead to throughput reduction or stalls in some situations.
+
+* Stabilize a test concerning write concern.
+
+* Fix BTS-2112: If the URL in an HTTP request is corrupt, don't just close
+  the connection, rather, return a proper HTTP 400 BAD response. This was
+  found by fuzzing.
+
+* Fix BTS-2106: A MoveShard operation could get stuck if a new collection
+  with `distributeShardsLike` was created at the wrong moment when the leader
+  of a shard group was currently being asked to resign.
+
+* Fix BTS-2093: A MoveShard operation could fail and leave locks unreleased
+  if a new collection with `distributeShardsLike` was created at the wrong
+  moment.
+
+* Updated ArangoDB Starter to v0.19.11.
+
+* Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
+  coordinator in two different threads) creates two collections with the same
+  name in the same database (different collection ID).
+
+
+* Fix a crash when bind parameters are not set and killing of a query
+  is logged (no version with this bug was ever released!).
+
+* Switched to customized (instead of official) forked rclone v1.65.2 built with
+  go1.23.8 to avoid CVEs.
+
+* Fix BTS-2119: The optimization rule `async-prefetch` could cause
+  crashes when a query aborts early, e.g. due to a runtime error,
+  the query being killed, or the memory limit being reached. 
+
+* Upgraded OpenSSL to 3.5.0.
+
+* Set Node v20.14.0 for core UI production (CI) compilation.
+
+* Remove overeager assert, only relevant for testing.
+
+* Implement license changes: The Community Edition without a license now has a
+  100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode after
+  a grace period, and shutdown after an additional grace period.
+
+* Add visibility for recent api calls via a new API /_admin/server/api-calls.
+
+* Fix TSAN issue in LogicalCollection.
+
+* FE-541: update disk usage message.
+
+* Simplify Maintenance by removing unused features.
+
+* Fix BTS-2100: Due to a priority inversion it was possible that a lot of
+  scheduled SynchronizeShard actions blocked higher priority 
+  TakeoverShardLeadership actions in the cluster Maintenance. This
+  could lead to service interruption during upgrades and after failovers.
+
 * FE-538: fix frontend build warnings.
 
 * FE-482: fix multiple issues with search view UI.
@@ -9,7 +93,7 @@ devel
 
 * FE-535: fix set cached query when bind params are equal.
 
-* FE-528: adds diskusage license info to UI.
+* FE-528: adds disk usage license info to UI.
 
 * BTS-2090: Fixes double log-lines per log
 
@@ -26,7 +110,7 @@ devel
   shown twice in the result, once with `isBuilding: true` and once
   without. This fixes BTS-2044.
 
-* Introduces first changes for the new diskusage based license.
+* Introduces first changes for the new disk usage-based license.
 
 * BTS-2089: Fix a crash when query logging and query cache were enabled.
 
@@ -46,8 +130,6 @@ devel
   only have happened once per month!
 
 * FE-497: fix query options input parsing (Query Editor UI > Options tab).
-
-* Upgraded OpenSSL to 3.4.1.
 
 * Disable creating a vector index with zero nLists.
 

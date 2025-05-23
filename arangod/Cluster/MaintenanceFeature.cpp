@@ -204,6 +204,19 @@ void MaintenanceFeature::collectOptions(
           arangodb::options::Flags::Dynamic));
 
   options
+      ->addOption(
+          "--server.maximal-number-sync-shard-actions",
+          "The maximum number of SynchronizeShard actions which may be queued "
+          "at any given time.",
+          new UInt64Parameter(&_maximalNumberOfSyncShardActionsQueued, 1, 1,
+                              std::numeric_limits<uint64_t>::max()),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31205);
+
+  options
       ->addOption("--server.maintenance-slow-threads",
                   "The maximum number of threads available for slow "
                   "maintenance actions (long SynchronizeShard and long "
@@ -523,7 +536,7 @@ Result MaintenanceFeature::deleteAction(uint64_t action_id) {
 ///  Execution can be immediate by calling thread, or asynchronous via thread
 ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
 Result MaintenanceFeature::addAction(
-    std::shared_ptr<maintenance::Action> newAction, bool executeNow) {
+    std::shared_ptr<maintenance::Action> newAction) {
   TRI_ASSERT(newAction != nullptr);
   TRI_ASSERT(newAction->ok());
 
@@ -547,7 +560,7 @@ Result MaintenanceFeature::addAction(
     if (!curAction) {
       if (newAction->ok()) {
         // Register action only if construction was ok
-        registerAction(newAction, executeNow);
+        registerAction(newAction);
       } else {
         /// something failed in action creation ... go check logs
         result.reset(TRI_ERROR_BAD_PARAMETER,
@@ -560,13 +573,6 @@ Result MaintenanceFeature::addAction(
       TRI_ASSERT(_action_duplicated_counter != nullptr);
       _action_duplicated_counter->count();
     }  // else
-
-    // executeNow process on this thread, right now!
-    if (result.ok() && executeNow) {
-      maintenance::MaintenanceWorker worker(*this, newAction);
-      worker.run();
-      result = worker.result();
-    }  // if
   } catch (...) {
     result.reset(TRI_ERROR_INTERNAL,
                  "addAction experienced an unexpected throw.");
@@ -580,8 +586,7 @@ Result MaintenanceFeature::addAction(
 ///  Execution can be immediate by calling thread, or asynchronous via thread
 ///  pool. not yet:  ActionDescription parameter will be MOVED to new object.
 Result MaintenanceFeature::addAction(
-    std::shared_ptr<maintenance::ActionDescription> const& description,
-    bool executeNow) {
+    std::shared_ptr<maintenance::ActionDescription> const& description) {
   Result result;
 
   // the underlying routines are believed to be safe and throw free,
@@ -603,7 +608,7 @@ Result MaintenanceFeature::addAction(
       LOG_TOPIC("fead2", DEBUG, Logger::MAINTENANCE)
           << "Did not find action with same hash: " << *description
           << " adding to queue";
-      newAction = createAndRegisterAction(description, executeNow);
+      newAction = createAndRegisterAction(description);
 
       if (!newAction || !newAction->ok()) {
         /// something failed in action creation ... go check logs
@@ -620,13 +625,6 @@ Result MaintenanceFeature::addAction(
       TRI_ASSERT(_action_duplicated_counter != nullptr);
       _action_duplicated_counter->count();
     }  // else
-
-    // executeNow process on this thread, right now!
-    if (result.ok() && executeNow) {
-      maintenance::MaintenanceWorker worker(*this, newAction);
-      worker.run();
-      result = worker.result();
-    }  // if
   } catch (...) {
     result.reset(TRI_ERROR_INTERNAL,
                  "addAction experienced an unexpected throw.");
@@ -636,32 +634,10 @@ Result MaintenanceFeature::addAction(
 
 }  // MaintenanceFeature::addAction
 
-std::shared_ptr<Action> MaintenanceFeature::preAction(
-    std::shared_ptr<ActionDescription> const& description) {
-  return createAndRegisterAction(description, true);
-
-}  // MaintenanceFeature::preAction
-
-std::shared_ptr<Action> MaintenanceFeature::postAction(
-    std::shared_ptr<ActionDescription> const& description) {
-  auto action = createAction(description);
-
-  if (action->ok()) {
-    action->setState(WAITINGPOST);
-    registerAction(action, false);
-  }
-
-  return action;
-}  // MaintenanceFeature::postAction
-
-void MaintenanceFeature::registerAction(std::shared_ptr<Action> action,
-                                        bool executeNow) {
+void MaintenanceFeature::registerAction(std::shared_ptr<Action> action) {
   // Assumes write lock on _actionRegistryLock
 
-  // mark as executing so no other workers accidentally grab it
-  if (executeNow) {
-    action->setState(maintenance::EXECUTING);
-  } else if (action->getState() == maintenance::READY) {
+  if (action->getState() == maintenance::READY) {
     _prioQueue.push(action);
   }
 
@@ -672,17 +648,15 @@ void MaintenanceFeature::registerAction(std::shared_ptr<Action> action,
     TRI_ASSERT(_action_registered_counter != nullptr);
     _action_registered_counter->count();
 
-    if (!executeNow) {
-      std::lock_guard cLock{_actionRegistryCond.mutex};
-      _actionRegistryCond.cv.notify_all();
-      // Note that we do a broadcast here for the following reason: if we did
-      // signal here, we cannot control which of the sleepers is woken up.
-      // If the new action is not fast track, then we could wake up the
-      // fast track worker, which would leave the action as it is. This would
-      // cause a delay of up to 0.1 seconds. With the broadcast, the worst
-      // case is that we wake up sleeping workers unnecessarily.
-    }  // if
-  }    // lock
+    std::lock_guard cLock{_actionRegistryCond.mutex};
+    _actionRegistryCond.cv.notify_all();
+    // Note that we do a broadcast here for the following reason: if we did
+    // signal here, we cannot control which of the sleepers is woken up.
+    // If the new action is not fast track, then we could wake up the
+    // fast track worker, which would leave the action as it is. This would
+    // cause a delay of up to 0.1 seconds. With the broadcast, the worst
+    // case is that we wake up sleeping workers unnecessarily.
+  }  // lock
 }
 
 std::shared_ptr<Action> MaintenanceFeature::createAction(
@@ -707,11 +681,11 @@ std::shared_ptr<Action> MaintenanceFeature::createAction(
 }  // if
 
 std::shared_ptr<Action> MaintenanceFeature::createAndRegisterAction(
-    std::shared_ptr<ActionDescription> const& description, bool executeNow) {
+    std::shared_ptr<ActionDescription> const& description) {
   std::shared_ptr<Action> newAction = createAction(description);
 
   if (newAction->ok()) {
-    registerAction(newAction, executeNow);
+    registerAction(newAction);
   }
 
   return newAction;
@@ -1314,10 +1288,13 @@ Result MaintenanceFeature::requeueAction(
     std::shared_ptr<maintenance::Action>& action, int newPriority) {
   TRI_ASSERT(action->getState() == ActionState::COMPLETE ||
              action->getState() == ActionState::FAILED);
+  if (action->describe().get(NAME) == SYNCHRONIZE_SHARD) {
+    increaseNumberOfSyncShardActionsQueued();
+  }
   auto newAction =
       std::make_shared<maintenance::Action>(*this, action->describe());
   newAction->setPriority(newPriority);
   std::unique_lock guard(_actionRegistryLock);
-  registerAction(std::move(newAction), false);
+  registerAction(std::move(newAction));
   return {};
 }
