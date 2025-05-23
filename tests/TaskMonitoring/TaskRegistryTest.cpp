@@ -54,24 +54,6 @@ struct MyTask : public Task {
 
 struct TaskRegistryTest : ::testing::Test {
   void TearDown() override {
-    // garbage collection has to run at most twice in order to clean everything
-    // up on the current thread:
-    // - when a child task scope is deleted, the child's task-in-registry is
-    //   marked for deletion
-    // - at this point its parent task scope can still exist, therefore it is
-    //   not marked for deletion inside the child task scope destructor
-    // - when then the parent task scope is deleted, the parent's
-    //   task-in-registry is still referenced by the child's task-in-registry
-    //   (which is not yet deleted), therefore it is not yet marked for deletion
-
-    // the first gc run destroys the child's task-in-registry
-    // which destroys the last reference to the parent's task-in-registry, which
-    // is therfore marked for deletion (together with all remaining
-    // task-in-registries higher up in the hierarchy that are not referenced by
-    // any other tasks)
-    get_thread_registry().garbage_collect();
-    // the second gc run destroys the parent's task-in-registry (and possibly
-    // other marked for deletion items)
     get_thread_registry().garbage_collect();
     EXPECT_EQ(get_all_tasks().size(), 0);
   }
@@ -99,7 +81,7 @@ TEST_F(TaskRegistryTest, creates_a_child_task) {
           (TaskSnapshot{.name = "child task",
                         .state = State::Running,
                         .id = child_task.id(),
-                        .parent = {TaskIdWrapper{parent_task.id()}},
+                        .parent = {TaskId{parent_task.id()}},
                         .thread = basics::ThreadId::current(),
                         .source_location = child_task.source_location}),
           (TaskSnapshot{.name = "parent task",
@@ -123,20 +105,20 @@ TEST_F(TaskRegistryTest, creates_a_child_task_hierarchy) {
               .name = "child of child of child task",
               .state = State::Running,
               .id = child_of_child_of_child_task.id(),
-              .parent = {TaskIdWrapper{child_of_child_task.id()}},
+              .parent = {TaskId{child_of_child_task.id()}},
               .thread = basics::ThreadId::current(),
               .source_location = child_of_child_of_child_task.source_location}),
           (TaskSnapshot{
               .name = "child of child task",
               .state = State::Running,
               .id = child_of_child_task.id(),
-              .parent = {TaskIdWrapper{child_task.id()}},
+              .parent = {TaskId{child_task.id()}},
               .thread = basics::ThreadId::current(),
               .source_location = child_of_child_task.source_location}),
           (TaskSnapshot{.name = "child task",
                         .state = State::Running,
                         .id = child_task.id(),
-                        .parent = {TaskIdWrapper{parent_task.id()}},
+                        .parent = {TaskId{parent_task.id()}},
                         .thread = basics::ThreadId::current(),
                         .source_location = child_task.source_location}),
           (TaskSnapshot{.name = "parent task",
@@ -158,7 +140,7 @@ TEST_F(TaskRegistryTest, uses_correct_parent_task) {
             (TaskSnapshot{.name = "first child task",
                           .state = State::Running,
                           .id = first_child_task.id(),
-                          .parent = {TaskIdWrapper{parent_task.id()}},
+                          .parent = {TaskId{parent_task.id()}},
                           .thread = basics::ThreadId::current(),
                           .source_location = first_child_task.source_location}),
             (TaskSnapshot{.name = "parent task",
@@ -178,7 +160,7 @@ TEST_F(TaskRegistryTest, uses_correct_parent_task) {
           (TaskSnapshot{.name = "second child task",
                         .state = State::Running,
                         .id = second_child_task.id(),
-                        .parent = {TaskIdWrapper{parent_task.id()}},
+                        .parent = {TaskId{parent_task.id()}},
                         .thread = basics::ThreadId::current(),
                         .source_location = second_child_task.source_location}),
           (TaskSnapshot{.name = "parent task",
@@ -230,14 +212,13 @@ TEST_F(TaskRegistryTest, a_base_task_lives_as_long_as_its_child) {
 
       auto tasks_in_registry = get_all_tasks();
       EXPECT_EQ(tasks_in_registry.size(), 2);
-      EXPECT_EQ(
-          tasks_in_registry[0],
-          (TaskSnapshot{.name = "child task",
-                        .state = State::Running,
-                        .id = child_task.id(),
-                        .parent = {TaskIdWrapper{parent_task_snapshot.id}},
-                        .thread = basics::ThreadId::current(),
-                        .source_location = child_task.source_location}));
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskId{parent_task_snapshot.id}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
       child_task_snapshot = tasks_in_registry[0];
       EXPECT_EQ(tasks_in_registry[1], parent_task_snapshot);
       co_await wait;
@@ -283,14 +264,13 @@ TEST_F(TaskRegistryTest, create_another_task_after_child_suspended) {
 
       auto tasks_in_registry = get_all_tasks();
       EXPECT_EQ(tasks_in_registry.size(), 2);
-      EXPECT_EQ(
-          tasks_in_registry[0],
-          (TaskSnapshot{.name = "child task",
-                        .state = State::Running,
-                        .id = child_task.id(),
-                        .parent = {TaskIdWrapper{parent_task_snapshot.id}},
-                        .thread = basics::ThreadId::current(),
-                        .source_location = child_task.source_location}));
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskId{parent_task_snapshot.id}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
       child_task_snapshot = tasks_in_registry[0];
       EXPECT_EQ(tasks_in_registry[1], parent_task_snapshot);
       co_await wait;
@@ -305,7 +285,7 @@ TEST_F(TaskRegistryTest, create_another_task_after_child_suspended) {
             (TaskSnapshot{.name = "some other task",
                           .state = State::Running,
                           .id = some_other_task.id(),
-                          .parent = {TaskIdWrapper{parent_task.id()}},
+                          .parent = {TaskId{parent_task.id()}},
                           .thread = basics::ThreadId::current(),
                           .source_location = some_other_task.source_location}),
             child_task_snapshot, parent_task_snapshot}));
@@ -354,14 +334,13 @@ TEST_F(TaskRegistryTest, hierarchy_with_different_scopes) {
 
       auto tasks_in_registry = get_all_tasks();
       EXPECT_EQ(tasks_in_registry.size(), 2);
-      EXPECT_EQ(
-          tasks_in_registry[0],
-          (TaskSnapshot{.name = "child task",
-                        .state = State::Running,
-                        .id = child_task.id(),
-                        .parent = {TaskIdWrapper{parent_task_snapshot.id}},
-                        .thread = basics::ThreadId::current(),
-                        .source_location = child_task.source_location}));
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskId{parent_task_snapshot.id}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
       child_task_snapshot = tasks_in_registry[0];
       EXPECT_EQ(tasks_in_registry[1], parent_task_snapshot);
 
@@ -376,7 +355,7 @@ TEST_F(TaskRegistryTest, hierarchy_with_different_scopes) {
                       .name = "child of child task",
                       .state = State::Running,
                       .id = child_of_child_task.id(),
-                      .parent = {TaskIdWrapper{child_task_snapshot.id}},
+                      .parent = {TaskId{child_task_snapshot.id}},
                       .thread = basics::ThreadId::current(),
                       .source_location = child_of_child_task.source_location}));
         child_of_child_task_snapshot = tasks_in_registry[0];
@@ -431,14 +410,13 @@ TEST_F(TaskRegistryTest,
 
       auto tasks_in_registry = get_all_tasks();
       EXPECT_EQ(tasks_in_registry.size(), 2);
-      EXPECT_EQ(
-          tasks_in_registry[0],
-          (TaskSnapshot{.name = "first child task",
-                        .state = State::Running,
-                        .id = child_task.id(),
-                        .parent = {TaskIdWrapper{parent_task_snapshot.id}},
-                        .thread = basics::ThreadId::current(),
-                        .source_location = child_task.source_location}));
+      EXPECT_EQ(tasks_in_registry[0],
+                (TaskSnapshot{.name = "first child task",
+                              .state = State::Running,
+                              .id = child_task.id(),
+                              .parent = {TaskId{parent_task_snapshot.id}},
+                              .thread = basics::ThreadId::current(),
+                              .source_location = child_task.source_location}));
       first_child_task_snapshot = tasks_in_registry[0];
       EXPECT_EQ(tasks_in_registry[1], parent_task_snapshot);
 
@@ -454,7 +432,7 @@ TEST_F(TaskRegistryTest,
         (TaskSnapshot{.name = "second child task",
                       .state = State::Running,
                       .id = second_child_task.id(),
-                      .parent = {TaskIdWrapper{parent_task_snapshot.id}},
+                      .parent = {TaskId{parent_task_snapshot.id}},
                       .thread = basics::ThreadId::current(),
                       .source_location = second_child_task.source_location}));
     EXPECT_EQ(tasks_in_registry[1], first_child_task_snapshot);
@@ -473,7 +451,7 @@ TEST_F(TaskRegistryTest,
                     .name = "child of second child task",
                     .state = State::Running,
                     .id = child_of_child_task.id(),
-                    .parent = {TaskIdWrapper{second_child_task_snapshot.id}},
+                    .parent = {TaskId{second_child_task_snapshot.id}},
                     .thread = basics::ThreadId::current(),
                     .source_location = child_of_child_task.source_location}));
       child_of_second_child_task_snapshot = tasks_in_registry[0];

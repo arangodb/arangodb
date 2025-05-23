@@ -37,7 +37,8 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/Version.h"
-#include "RestServer/ServerFeature.h"
+
+#include <Async/async.h>
 
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
@@ -87,20 +88,20 @@ RestMetricsHandler::RestMetricsHandler(ArangodServer& server,
                                        GeneralResponse* response)
     : RestBaseHandler(server, request, response) {}
 
-RestStatus RestMetricsHandler::execute() {
+auto RestMetricsHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto& security = server().getFeature<ServerSecurityFeature>();
 
   if (!security.canAccessHardenedApi()) {
     // don't leak information about server internals here
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (_request->requestType() != RequestType::GET) {
     // TODO(MBkkt) Now our API return 405 errorCode for 400 HTTP response code
     //             I think we should fix it, but its breaking change
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool foundServerId;
@@ -180,11 +181,12 @@ RestStatus RestMetricsHandler::execute() {
     generateError(
         notFound ? rest::ResponseCode::NOT_FOUND : rest::ResponseCode::BAD,
         TRI_ERROR_HTTP_BAD_PARAMETER, error);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (foundServerId) {
-    return makeRedirection(serverId, false);
+    co_await makeRedirection(serverId, false);
+    co_return;
   }
 
   _response->setAllowCompression(
@@ -200,14 +202,14 @@ RestStatus RestMetricsHandler::execute() {
     } else {
       _response->addPayload(VPackSlice::nullSlice());
     }
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto& metrics = server().getFeature<metrics::MetricsFeature>();
   if (!metrics.exportAPI()) {
     // don't export metrics, if so desired
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   // only export standard metrics
@@ -219,7 +221,7 @@ RestStatus RestMetricsHandler::execute() {
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
     _response->addPayload(builder.slice());
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto const leader = [&]() -> std::optional<std::string> {
@@ -233,7 +235,7 @@ RestStatus RestMetricsHandler::execute() {
   if (leader && (leader->empty() || type == metrics::kLast)) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "We didn't find leader server");
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!leader) {
@@ -242,16 +244,17 @@ RestStatus RestMetricsHandler::execute() {
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::TEXT);
     _response->addRawPayload(result);
-    return RestStatus::DONE;
+    co_return;
   }
   TRI_ASSERT(mode == metrics::CollectMode::ReadGlobal ||
              mode == metrics::CollectMode::WriteGlobal)
       << modeStr;
-  return makeRedirection(*leader, true);
+  co_await makeRedirection(*leader, true);
+  co_return;
 }
 
-RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
-                                               bool last) {
+auto RestMetricsHandler::makeRedirection(std::string const& serverId, bool last)
+    -> async<void> {
   auto* pool = server().getFeature<NetworkFeature>().pool();
   if (pool == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
@@ -265,40 +268,36 @@ RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
     options.parameters.try_emplace("type", metrics::kLast);
   }
 
-  auto f = network::sendRequest(pool, "server:" + serverId,
-                                fuerte::RestVerb::Get, _request->requestPath(),
-                                VPackBuffer<uint8_t>{}, options);
+  auto r = co_await network::sendRequest(
+      pool, "server:" + serverId, fuerte::RestVerb::Get,
+      _request->requestPath(), VPackBuffer<uint8_t>{}, options);
 
-  return waitForFuture(std::move(f).thenValue([self = shared_from_this(),
-                                               last](network::Response&& r) {
-    auto& me = basics::downCast<RestMetricsHandler>(*self);
-    if (r.fail() || !r.hasResponse()) {
-      TRI_ASSERT(r.fail());
-      me.generateError(r.combinedResult());
-      return;
+  if (r.fail() || !r.hasResponse()) {
+    TRI_ASSERT(r.fail());
+    generateError(r.combinedResult());
+    co_return;
+  }
+  if (last) {
+    auto& cm = server().getFeature<metrics::ClusterMetricsFeature>();
+    if (cm.isEnabled()) {
+      cm.update(metrics::CollectMode::TriggerGlobal);
     }
-    if (last) {
-      auto& cm = me.server().getFeature<metrics::ClusterMetricsFeature>();
-      if (cm.isEnabled()) {
-        cm.update(metrics::CollectMode::TriggerGlobal);
-      }
-    }
-    // TODO(MBkkt) move response
-    // the response will not contain any velocypack.
-    // we need to forward the request with content-type text/plain.
-    if (r.response().header.meta().contains(StaticStrings::ContentEncoding)) {
-      // forward original Content-Encoding header
-      me._response->setHeaderNC(
-          StaticStrings::ContentEncoding,
-          r.response().header.metaByKey(StaticStrings::ContentEncoding));
-    }
+  }
+  // TODO(MBkkt) move response
+  // the response will not contain any velocypack.
+  // we need to forward the request with content-type text/plain.
+  if (r.response().header.meta().contains(StaticStrings::ContentEncoding)) {
+    // forward original Content-Encoding header
+    _response->setHeaderNC(
+        StaticStrings::ContentEncoding,
+        r.response().header.metaByKey(StaticStrings::ContentEncoding));
+  }
 
-    me._response->setResponseCode(rest::ResponseCode::OK);
-    me._response->setContentType(rest::ContentType::TEXT);
-    auto payload = r.response().stealPayload();
-    me._response->addRawPayload(
-        {reinterpret_cast<char const*>(payload->data()), payload->size()});
-  }));
+  _response->setResponseCode(rest::ResponseCode::OK);
+  _response->setContentType(rest::ContentType::TEXT);
+  auto payload = r.response().stealPayload();
+  _response->addRawPayload(
+      {reinterpret_cast<char const*>(payload->data()), payload->size()});
 }
 
 }  // namespace arangodb

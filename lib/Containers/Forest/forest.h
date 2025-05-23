@@ -70,8 +70,7 @@ struct Forest {
 
   std::vector<Id> _parent = {};  // has one entry for each node
   std::vector<Node> _node = {};  // has one entry for each node
-  // at which position of the vectors _waiter and _data to find
-  // entries for Id
+  // at which position of the vectors _waiter and _data to find entries for Id
   std::unordered_map<Id, size_t> _position = {};
 };
 

@@ -327,8 +327,8 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
-  arango_tests_forest
   arango_tests_basics
+  arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
   arango_tests_task_registry

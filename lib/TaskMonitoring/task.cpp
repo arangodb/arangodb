@@ -46,10 +46,10 @@ overloaded(Ts...) -> overloaded<Ts...>;
 using namespace arangodb;
 using namespace arangodb::task_monitoring;
 
-void arangodb::task_monitoring::PrintTo(const TaskSnapshot& task,
-                                        std::ostream* os) {
-  *os << task.id << "| " << task.name << " - " << inspection::json(task.parent);
-  // inspection::json(task);
+auto operator<<(std::ostream& out,
+                arangodb::task_monitoring::TaskSnapshot const& task)
+    -> std::ostream& {
+  return out << inspection::json(task);
 }
 
 auto TaskInRegistry::snapshot() -> TaskSnapshot {
@@ -61,7 +61,7 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
           overloaded{
               [&](RootTask const& root) { return ParentTaskSnapshot{root}; },
               [&](NodeReference const& parent) {
-                return ParentTaskSnapshot{TaskIdWrapper{parent->data.id()}};
+                return ParentTaskSnapshot{TaskId{parent->data.id()}};
               }},
           parent),
       .thread = running_thread,
@@ -72,40 +72,31 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
 }
 
 namespace {
+/**
+   Marks itself for deletion and deletes a parent reference.
+
+   Deleting the parent reference makes sure that
+   a parent can directly be marked for deletion when all its children are
+   marked. Otherwise, we need to wait for the garbage collection to delete the
+   references, possibly requiring several garbage collection cycles to delete
+   all hierarchy levels.
+ */
 auto mark_finished_nodes_for_deletion(Node* node) {
-  auto current_node = node;
-  while (true) {
-    auto specific_node =
-        reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
-            current_node);
+  auto specific_node =
+      reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
+          node);
 
-    // make sure that we don't mark a node twice for deletion
-    auto expected = false;
-    if (not specific_node->data.isDeleted.compare_exchange_strong(
-            expected, true, std::memory_order_acq_rel)) {
-      break;
-    }
+  // get rid of parent task and delete a shared reference
+  specific_node->data.parent = {RootTask{}};
 
-    auto& parent = specific_node->data.parent;
-    if (not std::holds_alternative<NodeReference>(parent)) {
-      specific_node->list->mark_for_deletion(specific_node);
-      break;
-    }
-    auto& parent_ref = std::get<NodeReference>(parent);
-    if (parent_ref.ref_count() != 1) {
-      specific_node->list->mark_for_deletion(specific_node);
-      break;
-    }
-    // node is last reference to parent, therefore it can be marked for deletion
-    current_node = parent_ref.get();
-
-    specific_node->list->mark_for_deletion(specific_node);
-  }
+  // mark node for deletion needs to be last action on specific_node, because
+  // then a garbage collection run can destroy the node at any time
+  specific_node->list->mark_for_deletion(specific_node);
 }
 }  // namespace
 
 Task::Task(std::string name, std::source_location loc)
-    : _node_in_registry{NodeReference::create(
+    : _node_in_registry{NodeReference(
           reinterpret_cast<Node*>(get_thread_registry().add([&]() {
             if (auto current = *get_current_task(); current != nullptr) {
               return TaskInRegistry::child(
@@ -114,6 +105,8 @@ Task::Task(std::string name, std::source_location loc)
             return TaskInRegistry::root(std::move(name), std::move(loc));
           })),
           mark_finished_nodes_for_deletion)} {
+  // remember its parent task to switch the current task back to the parent task
+  // when this task is destroyed
   parent = *get_current_task();
   *get_current_task() = this;
 }
@@ -124,9 +117,19 @@ Task::~Task() {
   *get_current_task() = parent;
 }
 
-auto Task::id() -> void* { return _node_in_registry->data.id(); }
+auto Task::id() -> TaskId { return _node_in_registry->data.id(); }
 
+/**
+   Function to get and set global thread local variable of the currently running
+   task on the current thread
+
+   Points to nullptr if there is no task running on the current thread.
+ */
 auto arangodb::task_monitoring::get_current_task() -> Task** {
-  static thread_local Task* current = nullptr;
-  return &current;
+  struct Guard {
+    Task* task = nullptr;
+  };
+  // make sure that this is only created once on a thread
+  static thread_local auto current = Guard{};
+  return &current.task;
 }

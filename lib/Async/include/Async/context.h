@@ -28,6 +28,13 @@
 
 namespace arangodb {
 
+/**
+   Global context in arangodb
+
+   In an asyncronous coroutine we need to capture this context when suspending
+   and resetting it when resuming to make sure that the global variables are set
+   correctly.
+ */
 struct Context {
   std::shared_ptr<ExecContext const> _execContext;
   async_registry::Requester _requester;

@@ -272,6 +272,13 @@ bool TakeoverShardLeadership::first() {
   auto task = task_monitoring::Task{"TakeoverShardLeadership for DB: '" +
                                     database + "', Collection: '" + collection +
                                     "', Shard: '" + shard + "'"};
+  TRI_IF_FAILURE("DelayTakeoverShardLeadership15") {
+    for (int i = 0; i < 15; ++i) {
+      // Allow to stop the delay from the outside:
+      TRI_IF_FAILURE("DontDelayTakeoverShardLeadership15") { break; }
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
 
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
