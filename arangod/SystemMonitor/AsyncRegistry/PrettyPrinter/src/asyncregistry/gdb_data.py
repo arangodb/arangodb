@@ -26,11 +26,13 @@ class Thread:
     # TODO is there a way to get the thread name?
 
     @classmethod
-    def from_gdb(cls, value: gdb.Value):
+    def from_gdb(cls, value: gdb.Value | None):
+        if not value:
+            return None
         return cls(value['posix_id'], value['kernel_id'])
 
     def __str__(self):
-        return "thread " + str(self.lwpid)
+        return f"LWPID {self.lwpid} (pthread {self.posix_id})"
 
 @dataclass
 class SourceLocation:
@@ -79,7 +81,7 @@ class PromiseId:
 @dataclass
 class Promise:
     id: PromiseId
-    thread: Thread
+    thread: Optional[Thread]
     source_location: SourceLocation
     requester: Requester
     state: State
@@ -88,7 +90,7 @@ class Promise:
     def from_gdb(cls, ptr: gdb.Value, value: gdb.Value):
         return cls(
             PromiseId(ptr),
-            Thread.from_gdb(value["thread"]),
+            Thread.from_gdb(GdbOptional.from_gdb(value["running_thread"])._value),
             SourceLocation.from_gdb(value["source_location"]),
             Requester.from_gdb(value["requester"]["_M_i"]),
             State.from_gdb(value["state"])
@@ -98,8 +100,22 @@ class Promise:
         return not self.state.is_deleted()
 
     def __str__(self):
-        return str(self.source_location) + ", " + str(self.thread) + ", " + str(self.state)
+        thread_str = f" on {self.thread}" if self.thread else ""
+        return str(self.source_location) + ", " + str(self.state) + thread_str
 
+@dataclass
+class GdbOptional:
+    _value: Optional[gdb.Value]
+
+    @classmethod
+    def from_gdb(cls, value: gdb.Value):
+        payload = value["_M_i"]["_M_payload"]
+        engaged = payload["_M_engaged"]
+        if not engaged:
+            return cls(None)
+        internal_value = payload["_M_payload"]["_M_value"]
+        return cls(internal_value)
+    
 @dataclass
 class GdbAtomicList:
     _head_ptr: gdb.Value

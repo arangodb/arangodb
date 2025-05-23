@@ -15,14 +15,14 @@ from typing import Optional
 from asyncregistry.stacktrace import Stacktrace
 
 class Thread(object):
-    def __init__(self, name: str, id: int):
-        self.name = name
+    def __init__(self, id: int, posix_id: int):
         self.id = id
+        self.posix_id = posix_id
     @classmethod
     def from_json(cls, blob: dict):
-        return cls(blob["name"], blob["LWPID"])
+        return cls(blob["LWPID"], blob["posix_id"])
     def __str__(self):
-        return self.name + "(" + str(self.id) + ")"
+        return f"LWPID {self.id} (pthread {self.posix_id})"
 
 class SourceLocation(object):
     def __init__(self, file_name: str, line: int, function_name: str):
@@ -58,18 +58,19 @@ class Requester(object):
             return ""
 
 class Data(object):
-    def __init__(self, owning_thread: Thread, source_location: SourceLocation, id: int, state: str, requester: Requester):
-        self.owning_thread = owning_thread
+    def __init__(self, running_thread: Optional[Thread], source_location: SourceLocation, id: int, state: str, requester: Requester):
+        self.running_thread = running_thread
         self.source_location = source_location
         self.id = id
         self.waiter = requester
         self.state = state
     @classmethod
     def from_json(cls, blob: dict):
-        return cls(Thread.from_json(blob["owning_thread"]), SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Requester.from_json(blob["requester"]))
+        return cls(Thread.from_json(blob["running_thread"]) if "running_thread" in blob else None, SourceLocation.from_json(blob["source_location"]), blob["id"], blob["state"], Requester.from_json(blob["requester"]))
     def __str__(self):
         waiter_str = str(self.waiter) if self.waiter != None else ""
-        return str(self.source_location) + ", " + str(self.owning_thread) + ", " + self.state + waiter_str
+        thread_str = f" on {self.running_thread}" if self.running_thread else ""
+        return str(self.source_location) + ", " + self.state + thread_str + waiter_str
         
 class Promise(object):
     def __init__(self, hierarchy: int, data: Data):
