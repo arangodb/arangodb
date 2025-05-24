@@ -201,9 +201,15 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server(),
-                                               scheduler)) {}
+                                               scheduler)) {
+  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
+  feature.trackQueryStart();
+}
 
 Query::~Query() {
+  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
+  feature.trackQueryEnd(executionTime());
+
   if (!_planSliceCopy.isNone()) {
     _resourceMonitor->decreaseMemoryUsage(_planSliceCopy.byteSize());
   }
@@ -1952,10 +1958,6 @@ void Query::handlePostProcessing(QueryList& querylist) {
 
 void Query::handlePostProcessing() {
   // elapsed time since query start
-  auto& queryRegistryFeature =
-      vocbase().server().getFeature<QueryRegistryFeature>();
-  queryRegistryFeature.trackQueryEnd(executionTime());
-
   if (!queryOptions().skipAudit &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
@@ -2521,10 +2523,6 @@ void Query::instantiatePlan(velocypack::Slice snippets) {
   }
 
   _queryProfile->registerInQueryList();
-
-  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
-  feature.trackQueryStart();
-
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
