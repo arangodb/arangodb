@@ -59,6 +59,7 @@
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
+#include <fuerte/helper.h>
 #include <v8.h>
 
 #include <velocypack/Builder.h>
@@ -2828,7 +2829,7 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
 
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
-        << "connection closed after " << req_copy.payloadAsString();
+      << "connection closed after " << fuerte::v1::to_string(req_copy);
     if (response) {
       LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
           << "Server responce: " << response;
