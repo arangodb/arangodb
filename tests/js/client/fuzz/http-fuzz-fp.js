@@ -35,8 +35,11 @@ function httpRequestsFuzzerTestSuite() {
   return {
     testRandReqs: function () {
       // main expectation here is that the server does not crash!
+      IM.rememberConnection();
       IM.arangods.forEach(arangod => {
+        print(`Connecting ${arangod.getProcessInfo([])}`);
         arangod.connect();
+        arangod._disconnect();
         for (let i = 0; i < 15; ++i) {
           let response = arango.fuzzRequests(25000, i);
           assertTrue(response.hasOwnProperty("seed"));
@@ -56,6 +59,7 @@ function httpRequestsFuzzerTestSuite() {
           }
           assertEqual(numReqs, tempSum);
           if (IM.options.cluster) {
+            IM.reconnectMe();
             IM.checkClusterAlive();
           }
         }
@@ -65,8 +69,11 @@ function httpRequestsFuzzerTestSuite() {
 
     testReqWithSameSeed: function () {
       // main expectation here is that the server does not crash!
+      IM.rememberConnection();
       IM.arangods.forEach(arangod => {
+        print(`Connecting ${arangod.getProcessInfo([])}`);
         arangod.connect();
+        arangod._disconnect();
         for (let i = 0; i < 10; ++i) {
           let response = arango.fuzzRequests(1, 10);
           assertTrue(response.hasOwnProperty("seed"));
@@ -113,6 +120,7 @@ function httpRequestsFuzzerTestSuite() {
           assertEqual(tempSum, tempSum2);
           assertEqual(numReqs2, tempSum2);
           if (IM.options.cluster) {
+            IM.reconnectMe();
             IM.checkClusterAlive();
           }
         }
