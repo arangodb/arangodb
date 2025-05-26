@@ -54,6 +54,10 @@ struct MyStruct {
   bool operator==(MyStruct const&) const = default;
   std::string a;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, MyStruct& x) {
+  return f.object(x).fields(f.field("a", x.a));
+}
 TEST(SharedTest, variant_ptr_can_include_a_copy_of_a_shared_reference) {
   {
     auto ref = SharedPtr<int>{435};
@@ -90,11 +94,17 @@ TEST(SharedTest, variant_ptr_can_include_a_raw_pointer) {
   EXPECT_EQ(*std::get<MyStruct*>(variant.get()), MyStruct{"abcde"});
 }
 
+TEST(SharedTest, inspection_of_variant) {
   {
     auto ptr = new MyStruct{"abcde"};
     auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ptr};
-    EXPECT_TRUE(variant.get().has_value());
-    EXPECT_TRUE(std::holds_alternative<MyStruct*>(variant.get().value()));
-    EXPECT_EQ(*std::get<MyStruct*>(variant.get().value()), MyStruct{"abcde"});
+    EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(variant)),
+              fmt::format("{}", arangodb::inspection::json(*ptr)));
+  }
+  {
+    auto ref = SharedPtr<MyStruct>{"abcde"};
+    auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ref};
+    EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(variant)),
+              fmt::format("{}", arangodb::inspection::json(ref)));
   }
 }

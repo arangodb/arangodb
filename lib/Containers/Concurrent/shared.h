@@ -169,6 +169,17 @@ struct AtomicSharedOrRawPtr {
  private:
   std::atomic<std::uintptr_t> _resource;
 };
+template<typename Inspector, typename Left, typename Right>
+auto inspect(Inspector& f, AtomicSharedOrRawPtr<Left, Right>& x) {
+  if constexpr (not Inspector::isLoading) {  // only serialization
+    auto var = x.get();
+    if (std::holds_alternative<Left*>(var)) {
+      return f.apply(*std::get<Left*>(var));
+    } else {
+      return f.apply(*std::get<Right*>(var));
+    }
+  }
+}
 
 }  // namespace arangodb::containers
 
