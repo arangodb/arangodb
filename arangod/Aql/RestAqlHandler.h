@@ -129,8 +129,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   [[nodiscard]] futures::Future<futures::Unit> setupClusterQuery();
 
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&,
-                            arangodb::velocypack::Slice querySlice);
+  async<void> handleUseQuery(std::string const& operation,
+                             arangodb::velocypack::Slice querySlice);
 
   // handle query finalization for all engines
   auto handleFinishQuery(std::string const& idString) -> async<void>;

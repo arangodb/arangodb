@@ -437,20 +437,8 @@ auto RestAqlHandler::useQuery(std::string const& operation,
         << " registryId=" << idString;
   }
 
-  auto guard = _engine->getQuery().acquireUniqueLock(std::defer_lock);
   try {
-    co_await waitingFunToCoro([&] {
-      // only keep the lock while actually running the query. Also, note that
-      // we must never keep a mutex locked while co_awaiting, as we might switch
-      // threads.
-      guard.lock();
-      auto status = handleUseQuery(operation, querySlice);
-      if (status == RestStatus::WAITING) {
-        guard.unlock();
-      }
-      return status;
-    });
-    TRI_ASSERT(guard.owns_lock());
+    co_await handleUseQuery(operation, querySlice);
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -718,8 +706,8 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 }
 
 // handle for useQuery
-RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
-                                          VPackSlice querySlice) {
+async<void> RestAqlHandler::handleUseQuery(std::string const& operation,
+                                           VPackSlice querySlice) {
   VPackOptions const* opts = &VPackOptions::Defaults;
   if (_engine) {  // might be destroyed on shutdown
     opts = &_engine->getQuery().vpackOptions();
@@ -733,41 +721,31 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     auto maybeExecuteCall = AqlExecuteCall::fromVelocyPack(querySlice);
     if (maybeExecuteCall.fail()) {
       generateError(std::move(maybeExecuteCall).result());
-      return RestStatus::DONE;
+      co_return;
     }
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     auto& executeCall = maybeExecuteCall.get();
 
-    auto items = SharedAqlItemBlockPtr{};
-    auto skipped = SkipResult{};
-    auto state = ExecutionState::HASMORE;
-
     std::string const& shardId =
         _request->header(StaticStrings::AqlShardIdHeader);
 
-    auto const rootNodeType = _engine->root()->getPlanNode()->getType();
+    auto [state, skipped, items] = co_await waitingFunToCoro(
+        [&]() -> std::optional<std::tuple<ExecutionState, SkipResult,
+                                          SharedAqlItemBlockPtr>> {
+          auto res =
+              _engine->executeRemoteCall(executeCall.callStack(), shardId);
+          if (std::get<0>(res) == ExecutionState::WAITING) {
+            TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
+              _queryRegistry->destroyQuery(_engine->engineId(),
+                                           TRI_ERROR_QUERY_KILLED);
+            }
+            return std::nullopt;
+          }
+          return res;
+        });
 
-    // shardId is set IFF the root node is scatter or distribute
-    TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
-                                   rootNodeType == ExecutionNode::DISTRIBUTE));
-
-    if (shardId.empty()) {
-      std::tie(state, skipped, items) =
-          _engine->execute(executeCall.callStack());
-    } else {
-      std::tie(state, skipped, items) =
-          _engine->executeForClient(executeCall.callStack(), shardId);
-    }
-
-    if (state == ExecutionState::WAITING) {
-      TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
-        _queryRegistry->destroyQuery(_engine->engineId(),
-                                     TRI_ERROR_QUERY_KILLED);
-      }
-      return RestStatus::WAITING;
-    }
     TRI_IF_FAILURE("RestAqlHandler::killWhileWritingResult") {
       _queryRegistry->destroyQuery(_engine->engineId(), TRI_ERROR_QUERY_KILLED);
     }
@@ -779,23 +757,26 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   } else if (operation == "initializeCursor") {
     auto items = _engine->itemBlockManager().requestAndInitBlock(
         querySlice.get("items"));
-    auto tmpRes = _engine->initializeCursor(std::move(items), /*pos*/ 0);
-    if (tmpRes.first == ExecutionState::WAITING) {
-      return RestStatus::WAITING;
-    }
-    answerBuilder.add(StaticStrings::Error, VPackValue(tmpRes.second.fail()));
-    answerBuilder.add(StaticStrings::Code,
-                      VPackValue(tmpRes.second.errorNumber()));
+    auto const res = co_await waitingFunToCoro([&]() -> std::optional<Result> {
+      auto tmpRes = _engine->initializeCursor(std::move(items), /*pos*/ 0);
+      if (tmpRes.first == ExecutionState::WAITING) {
+        return std::nullopt;
+      } else {
+        return std::move(tmpRes.second);
+      }
+    });
+    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   answerBuilder.close();
 
   generateResult(rest::ResponseCode::OK, std::move(answerBuffer), opts);
 
-  return RestStatus::DONE;
+  co_return;
 }
 
 // handle query finalization for all engines

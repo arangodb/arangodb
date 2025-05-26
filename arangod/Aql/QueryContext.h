@@ -124,12 +124,6 @@ class QueryContext {
   std::lock_guard<std::mutex> acquireLockGuard() {
     return std::lock_guard{_mutex};
   }
-  std::unique_lock<std::mutex> acquireUniqueLock() {
-    return std::unique_lock{_mutex};
-  }
-  std::unique_lock<std::mutex> acquireUniqueLock(std::defer_lock_t) noexcept {
-    return std::unique_lock{_mutex, std::defer_lock};
-  }
 
   void incHttpRequests(unsigned i) noexcept {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
