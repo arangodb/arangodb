@@ -96,12 +96,11 @@ struct SharedPtr {
     }
   }
   operator bool() const { return _resource != nullptr; }
-  auto get() -> std::optional<T*> {
-    if (_resource) {
-      return {_resource->get()};
-    } else {
-      return std::nullopt;
+  auto get() -> T* {
+    if (not _resource) {
+      return nullptr;
     }
+    return {_resource->get()};
   }
   auto get_ref() const -> std::optional<std::reference_wrapper<T>> {
     if (not _resource) {
@@ -156,11 +155,8 @@ struct AtomicSharedOrRawPtr {
     }
   }
 
-  auto get() const -> std::optional<std::variant<Left*, Right*>> {
+  auto get() const -> std::variant<Left*, Right*> {
     auto data = _resource.load();
-    if (data == 0) {
-      return std::nullopt;
-    }
     constexpr auto flag_mask = (1 << num_flag_bits) - 1;
     constexpr auto data_mask = ~flag_mask;
     if (data & flag_mask) {
@@ -180,4 +176,5 @@ namespace arangodb::inspection {
 template<typename T>
 struct Access<containers::SharedPtr<T>>
     : OptionalAccess<containers::SharedPtr<T>> {};
+
 }  // namespace arangodb::inspection
