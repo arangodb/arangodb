@@ -506,6 +506,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // If the query object was constructed from cache
   // the consequence is that _ast is nullptr
   bool _isCached{false};
+
+  bool _isExecuting{false};
 };
 
 }  // namespace aql

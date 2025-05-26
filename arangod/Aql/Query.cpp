@@ -46,6 +46,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
+#include "Assertions/Assert.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
@@ -201,15 +202,10 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     : Query(0, ctx, std::move(queryString), std::move(bindParameters),
             std::move(options),
             std::make_shared<SharedQueryState>(ctx->vocbase().server(),
-                                               scheduler)) {
-  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
-  feature.trackQueryStart();
-}
+                                               scheduler)) {}
 
 Query::~Query() {
-  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
-  feature.trackQueryEnd(executionTime());
-
+  TRI_ASSERT(!_isExecuting);
   if (!_planSliceCopy.isNone()) {
     _resourceMonitor->decreaseMemoryUsage(_planSliceCopy.byteSize());
   }
@@ -695,6 +691,11 @@ ExecutionState Query::execute(QueryResult& queryResult) {
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
+
+  auto& queryRegistryFeature =
+      vocbase().server().getFeature<QueryRegistryFeature>();
+  queryRegistryFeature.trackQueryStart();
+  _isExecuting = true;
 
   try {
     if (killed()) {
@@ -1858,6 +1859,13 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
   ensureExecutionTime();
+
+  if (_isExecuting) {
+    auto& queryRegistryFeature =
+        vocbase().server().getFeature<QueryRegistryFeature>();
+    queryRegistryFeature.trackQueryEnd(executionTime());
+    _isExecuting = false;
+  }
 
   {
     std::unique_lock<std::mutex> guard{_resultMutex};
