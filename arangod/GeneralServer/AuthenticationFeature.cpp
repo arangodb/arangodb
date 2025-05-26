@@ -280,6 +280,13 @@ void AuthenticationFeature::prepare() {
 
 void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
+
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
+    TRI_ASSERT(_userManager != nullptr);
+    _userManager->startUpdateThread();
+  }
+
   std::ostringstream out;
 
   out << "Authentication is turned " << (_active ? "on" : "off");

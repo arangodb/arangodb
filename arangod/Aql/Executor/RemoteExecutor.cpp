@@ -426,8 +426,9 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
             if (ServerState::instance()->isDBServer()) {
               auto collectionNames = _engine->getQuery().collectionNames();
-              // All system collections only have a single shard, so we can just check the size, and have a high enough chance
-              // that we are in our test query.
+              // All system collections only have a single shard, so we can just
+              // check the size, and have a high enough chance that we are in
+              // our test query.
               if (collectionNames.size() > 1) {
                 TRI_RemoveFailurePointDebugging("BlockSchedulerMediumQueue");
               }

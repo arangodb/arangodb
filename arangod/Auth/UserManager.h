@@ -39,6 +39,7 @@
 #include "Auth/Handler.h"
 #endif
 
+#include <thread>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -63,10 +64,14 @@ using UserMap = std::unordered_map<std::string, auth::User>;
 class UserManager {
  public:
   explicit UserManager(ArangodServer&);
-  ~UserManager() = default;
+  ~UserManager();
 
   typedef std::function<Result(auth::User&)> UserCallback;
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
+
+  // Will start the internal thread that will load the _userCache from the DB
+  // everytime the _globalVersionChanges
+  void startUpdateThread() noexcept;
 
   // Tells coordinator to reload its data. Only called in HeartBeat thread
   void setGlobalVersion(uint64_t version) noexcept;
@@ -78,7 +83,7 @@ class UserManager {
   uint64_t globalVersion() const noexcept;
 
   // Trigger eventual reload on all other coordinators (and in TokenCache)
-  void triggerGlobalReload();
+  uint64_t triggerGlobalReload();
 
   // Trigger cache revalidation after user restore
   void triggerCacheRevalidation();
@@ -147,7 +152,10 @@ class UserManager {
                         std::string& un);
 
   // load users and permissions from local database
-  void loadFromDB();
+  uint64_t loadFromDB();
+
+  // Forces callers of it to wait until _usersInitialized is true
+  void checkIfUserDataIsAvailable() const;
 
   // store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
@@ -158,17 +166,13 @@ class UserManager {
   // underlying application server
   ArangodServer& _server;
 
-  // Protected the sync process from db, always lock
-  // before locking _userCacheLock
-  std::mutex _loadFromDBLock;
-
   // Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;
 
   // used to update caches
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
-  std::atomic<bool> _usersInitialized;
+  std::unique_ptr<std::jthread> _userCacheUpdateThread;
 
   // Caches permissions and other user info
   UserMap _userCache;
