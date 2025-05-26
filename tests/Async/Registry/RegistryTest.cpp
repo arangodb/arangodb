@@ -50,7 +50,7 @@ struct MyPromise : public AddToAsyncRegistry {
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))},
         thread{basics::ThreadId::current()} {}
   auto snapshot(State state = State::Running) -> PromiseSnapshot {
-    return PromiseSnapshot{.id = id(),
+    return PromiseSnapshot{.id = id().value(),
                            .requester = {thread},
                            .state = state,
                            .thread = thread,

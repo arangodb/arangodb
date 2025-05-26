@@ -38,7 +38,7 @@ Promise::Promise(Requester requester, std::source_location entry_point)
 
 auto arangodb::async_registry::get_current_coroutine() noexcept -> Requester* {
   struct Guard {
-    Requester identifier = Requester::current_thread();
+    Requester identifier = {basics::ThreadId::current()};
   };
   // make sure that this is only created once on a thread
   static thread_local auto current = Guard{};
@@ -55,16 +55,22 @@ AddToAsyncRegistry::~AddToAsyncRegistry() {
     node_in_registry->list->mark_for_deletion(node_in_registry.get());
   }
 }
-auto AddToAsyncRegistry::update_requester(Requester new_requester) -> void {
-  if (node_in_registry != nullptr) {
-    node_in_registry->data.requester.store(new_requester);
+auto AddToAsyncRegistry::update_requester(std::optional<PromiseId> requester)
+    -> void {
+  if (node_in_registry != nullptr && requester.has_value()) {
+    node_in_registry->data.requester.store({requester.value()});
   }
 }
-auto AddToAsyncRegistry::id() -> void* {
+auto AddToAsyncRegistry::update_requester(basics::ThreadId&& thread) -> void {
   if (node_in_registry != nullptr) {
-    return node_in_registry->data.id();
+    node_in_registry->data.requester.store({thread});
+  }
+}
+auto AddToAsyncRegistry::id() -> std::optional<PromiseId> {
+  if (node_in_registry != nullptr) {
+    return {node_in_registry->data.id()};
   } else {
-    return nullptr;
+    return std::nullopt;
   }
 }
 auto AddToAsyncRegistry::update_source_location(std::source_location loc)
