@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix an integer underflow with gauge arangodb_aql_current_query.
+
 * Fix a possible crash when requesting the async registry:
   Does now not request the thread name of a potentially destroyed thread.
 
