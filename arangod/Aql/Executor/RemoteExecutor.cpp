@@ -264,6 +264,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
   auto buffer = serializeExecuteCallBody(stack);
   this->traceExecuteRequest(VPackSlice(buffer.data()), stack);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_IF_FAILURE("RemoteBlock::forceReloadUserManager") {
     if (ServerState::instance()->isCoordinator()) {
       auto* um = AuthenticationFeature::instance()->userManager();
@@ -272,6 +273,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
       }
     }
   }
+#endif
 
   auto res =
       sendAsyncRequest(fuerte::RestVerb::Put, RestAqlHandler::Route::execute(),
@@ -418,6 +420,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
         // `this` is only valid as long as sharedState is valid.
         // So we must execute this under sharedState's mutex.
         sqs->executeAndWakeup([&]() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
           TRI_IF_FAILURE("RemoteExecutor::UnblockSchedulerMediumQueue") {
             // When we get a response on the query, we passed user updates
             // to the coordinator.
@@ -434,6 +437,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
               }
             }
           }
+#endif
 
           auto result = basics::catchToResultT([&]() { return &resp.get(); });
 
