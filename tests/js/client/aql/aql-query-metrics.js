@@ -27,11 +27,7 @@
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const internal = require("internal");
-const {
-  getMetricSingle,
-  getAllMetric,
-  getCompleteMetricsValues,
-} = require("@arangodb/test-helper");
+const getMetricSingle = require("@arangodb/test-helper").getMetricSingle;
 
 function QueryMetricsTestSuite() {
   const dbName = "metricsTestDB";

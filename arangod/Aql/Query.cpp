@@ -1720,7 +1720,7 @@ void Query::logAtEnd() const {
 
 void Query::trackExecutionStart() noexcept {
   // We should do this only once
-  if (_isExecuting) {
+  if (!_isExecuting) {
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryStart();
