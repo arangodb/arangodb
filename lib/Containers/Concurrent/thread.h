@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/threads-posix.h"
+#include "Containers/Concurrent/shared.h"
 #include "Inspection/Format.h"
 
 namespace arangodb::basics {
@@ -41,7 +42,7 @@ auto inspect(Inspector& f, ThreadId& x) {
 }
 
 struct ThreadInfo {
-  static auto current() noexcept -> ThreadInfo&;
+  static auto current() noexcept -> containers::SharedPtr<ThreadInfo>;
   pid_t kernel_id;
   std::string name;
   bool operator==(ThreadInfo const&) const = default;

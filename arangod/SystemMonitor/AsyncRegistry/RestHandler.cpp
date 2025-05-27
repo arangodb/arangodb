@@ -72,10 +72,10 @@ auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
   registry.for_node([&](PromiseSnapshot promise) {
     if (promise.state != State::Deleted) {
       std::visit(overloaded{
-                     [&](PromiseId async_waiter) {
+                     [&](PromiseId const& async_waiter) {
                        forest.insert(promise.id.id, async_waiter.id, promise);
                      },
-                     [&](basics::ThreadId sync_waiter_thread) {
+                     [&](basics::ThreadInfo const& sync_waiter_thread) {
                        forest.insert(promise.id.id, nullptr, promise);
                        roots.emplace_back(promise.id.id);
                      },

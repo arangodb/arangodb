@@ -65,36 +65,20 @@ auto inspect(Inspector& f, PromiseId& x) {
   return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
 }
 
-struct ThreadIdWrapper {
-  basics::ThreadId item;
+struct Requester : std::variant<basics::ThreadInfo, PromiseId> {
+  static auto from(std::variant<basics::ThreadInfo, void*> var) -> Requester {
+    if (std::holds_alternative<basics::ThreadInfo>(var)) {
+      return Requester{std::get<basics::ThreadInfo>(var)};
+    } else {
+      return Requester{PromiseId{std::get<void*>(var)}};
+    }
+  }
 };
 template<typename Inspector>
-auto inspect(Inspector& f, ThreadIdWrapper& x) {
-  return f.object(x).fields(f.field("thread", x.item));
-}
-struct RequesterWrapper : std::variant<ThreadIdWrapper, PromiseId> {};
-template<typename Inspector>
-auto inspect(Inspector& f, RequesterWrapper& x) {
+auto inspect(Inspector& f, Requester& x) {
   return f.variant(x).unqualified().alternatives(
       inspection::inlineType<PromiseId>(),
-      inspection::inlineType<ThreadIdWrapper>());
-}
-struct Requester : std::variant<basics::ThreadId, PromiseId> {};
-template<typename Inspector>
-auto inspect(Inspector& f, Requester& x) {
-  if constexpr (!Inspector::isLoading) {  // only serialize
-    RequesterWrapper tmp =
-        std::visit(overloaded{
-                       [&](PromiseId waiter) {
-                         return RequesterWrapper{PromiseId{waiter}};
-                       },
-                       [&](basics::ThreadId waiter) {
-                         return RequesterWrapper{ThreadIdWrapper{waiter}};
-                       },
-                   },
-                   x);
-    return f.apply(tmp);
-  }
+      inspection::inlineType<basics::ThreadInfo>());
 }
 
 struct PromiseSnapshot {
@@ -115,12 +99,27 @@ auto inspect(Inspector& f, PromiseSnapshot& x) {
       f.field("source_location", x.source_location));
 }
 
+using CurrentRequester =
+    std::variant<containers::SharedPtr<basics::ThreadInfo>, PromiseId>;
+struct AtomicRequester
+    : containers::AtomicSharedOrRawPtr<basics::ThreadInfo, void> {
+  static auto from(CurrentRequester req) -> AtomicRequester {
+    if (std::holds_alternative<containers::SharedPtr<basics::ThreadInfo>>(
+            req)) {
+      return AtomicRequester{
+          std::get<containers::SharedPtr<basics::ThreadInfo>>(req)};
+    } else {
+      return AtomicRequester{std::get<PromiseId>(req).id};
+    }
+  }
+};
+
 /**
    Promise in the registry
  */
 struct Promise {
   using Snapshot = PromiseSnapshot;
-  Promise(Requester requester, std::source_location location);
+  Promise(CurrentRequester requester, std::source_location location);
   ~Promise() = default;
 
   auto id() -> PromiseId { return PromiseId{this}; }
@@ -130,7 +129,7 @@ struct Promise {
         .owning_thread =
             owning_thread.get_ref().value(),  // owning_thread is never changed,
                                               // can therefore never be nullopt
-        .requester = requester.load(),
+        .requester = Requester::from(requester.load()),
         .state = state.load(),
         .thread = running_thread.load(std::memory_order_acquire),
         .source_location = source_location.snapshot()};
@@ -140,7 +139,9 @@ struct Promise {
   }
 
   containers::SharedPtr<basics::ThreadInfo> owning_thread;
-  std::atomic<Requester> requester;
+  AtomicRequester requester;  // can be used here because PromiseId includes a
+                              // ptr to a Promise, which has the proper
+                              // alignment to be used with AtomicSharedOrRawPtr
   std::atomic<State> state = State::Running;
   std::atomic<std::optional<basics::ThreadId>> running_thread;
   basics::VariableSourceLocation source_location;
@@ -150,7 +151,7 @@ struct Promise {
    Gives a ptr to the currently running coroutine on the thread or to the
    current thread if no coroutine is running at the moment.
  */
-auto get_current_coroutine() noexcept -> Requester*;
+auto get_current_coroutine() noexcept -> CurrentRequester*;
 
 /**
    Wrapper promise for easier usage in the code
@@ -173,7 +174,7 @@ struct AddToAsyncRegistry {
   auto update_source_location(std::source_location loc) -> void;
   auto update_state(State state) -> std::optional<State>;
   auto update_requester(std::optional<PromiseId> promise) -> void;
-  auto update_requester(basics::ThreadId&& thread) -> void;
+  auto update_requester_to_current_thread() -> void;
 
  private:
   struct noop {

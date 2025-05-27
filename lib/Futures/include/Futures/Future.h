@@ -274,7 +274,7 @@ class [[nodiscard]] Future {
 
   /// Blocks until this Future is complete.
   void wait() {
-    update_requester(basics::ThreadId::current());
+    update_requester_to_current_thread();
     detail::waitImpl(*this);
   }
 
@@ -509,9 +509,9 @@ class [[nodiscard]] Future {
       _state->update_requester(requester);
     }
   }
-  auto update_requester(basics::ThreadId&& requester) {
+  auto update_requester_to_current_thread() {
     if (_state != nullptr) {
-      _state->update_requester(std::move(requester));
+      _state->update_requester_to_current_thread();
     }
   }
   auto id() -> std::optional<async_registry::PromiseId> {

@@ -125,13 +125,12 @@ struct SharedPtr {
    Works if both types have an alignment larger than 1,
    then the last bit of a pointer to one of these types is unused and can be
    used as a flag for the type of the pointer.
+
+   Make sure that Raw define the pointer type with alignment
+   larger than (1 << num_flag_bits)
 */
 template<typename Shared, typename Raw>
 struct AtomicSharedOrRawPtr {
-  static constexpr auto num_flag_bits = 1;
-  static_assert(std::alignment_of_v<Shared<Left>> >= (1 << num_flag_bits) &&
-                std::alignment_of_v<Right> >= (1 << num_flag_bits));
-
   template<SameAs<Raw> U>
   AtomicSharedOrRawPtr(U* right) : _resource{raw_to_ptr(right)} {}
 
