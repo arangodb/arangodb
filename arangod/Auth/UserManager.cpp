@@ -259,6 +259,7 @@ void auth::UserManager::checkIfUserDataIsAvailable() const {
     // cache in a specific situation.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  _internalVersion.wait(1);
 }
 
 // private, must be called with _userCacheLock in write mode
