@@ -59,39 +59,53 @@ auto inspect(Inspector& f, MyStruct& x) {
   return f.object(x).fields(f.field("a", x.a));
 }
 TEST(SharedTest, variant_ptr_can_include_a_copy_of_a_shared_reference) {
+  auto ref = SharedPtr<MyStruct>{"abcde"};
+  EXPECT_EQ(*ref.get(), MyStruct{"abcde"});
+  EXPECT_EQ(ref.ref_count(), 1);
   {
-    auto ref = SharedPtr<int>{435};
-    EXPECT_EQ(*ref.get(), 435);
-    EXPECT_EQ(ref.ref_count(), 1);
-    {
-      auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ref};
-      EXPECT_EQ(ref.ref_count(), 2);
-      EXPECT_TRUE(std::holds_alternative<int*>(variant.get()));
-      EXPECT_EQ(*std::get<int*>(variant.get()), 435);
-    }
-    EXPECT_EQ(ref.ref_count(), 1);
-    EXPECT_EQ(*ref.get(), 435);
+    auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ref};
+    EXPECT_EQ(ref.ref_count(), 2);
+    auto variant_value = variant.load();
+    EXPECT_TRUE(std::holds_alternative<MyStruct>(variant_value));
+    EXPECT_EQ(std::get<MyStruct>(variant_value), MyStruct{"abcde"});
   }
-  {
-    auto ref = SharedPtr<MyStruct>{"abcde"};
-    EXPECT_EQ(*ref.get(), MyStruct{"abcde"});
-    EXPECT_EQ(ref.ref_count(), 1);
-    {
-      auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ref};
-      EXPECT_EQ(ref.ref_count(), 2);
-      EXPECT_TRUE(std::holds_alternative<MyStruct*>(variant.get()));
-      EXPECT_EQ(*std::get<MyStruct*>(variant.get()), MyStruct{"abcde"});
-    }
-    EXPECT_EQ(ref.ref_count(), 1);
-    EXPECT_EQ(*ref.get(), MyStruct{"abcde"});
-  }
+  EXPECT_EQ(ref.ref_count(), 1);
+  EXPECT_EQ(*ref.get(), MyStruct{"abcde"});
 }
 
 TEST(SharedTest, variant_ptr_can_include_a_raw_pointer) {
   auto ptr = new MyStruct{"abcde"};
   auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ptr};
-  EXPECT_TRUE(std::holds_alternative<MyStruct*>(variant.get()));
-  EXPECT_EQ(*std::get<MyStruct*>(variant.get()), MyStruct{"abcde"});
+  auto variant_value = variant.load();
+  EXPECT_TRUE(std::holds_alternative<MyStruct*>(variant_value));
+  EXPECT_EQ(*std::get<MyStruct*>(variant_value), MyStruct{"abcde"});
+}
+
+TEST(SharedTest, variant_nullptr_is_raw_pointer) {
+  MyStruct* ptr = nullptr;
+  auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ptr};
+  auto variant_value = variant.load();
+  EXPECT_TRUE(std::holds_alternative<MyStruct*>(variant_value));
+  EXPECT_EQ(std::get<MyStruct*>(variant_value), nullptr);
+}
+
+TEST(SharedTest, variant_shared_ptr_is_incr_and_decr_when_reassigned) {
+  auto ref = SharedPtr<MyStruct>{"abcde"};
+  EXPECT_EQ(ref.ref_count(), 1);
+
+  auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ref};
+  EXPECT_EQ(ref.ref_count(), 2);
+
+  auto another_ref = SharedPtr<MyStruct>{"xyz"};
+  EXPECT_EQ(another_ref.ref_count(), 1);
+
+  variant.store(another_ref);
+  EXPECT_EQ(ref.ref_count(), 1);          // was decremented
+  EXPECT_EQ(another_ref.ref_count(), 2);  // was incremented
+
+  auto ptr = new int{564};
+  variant.store(ptr);
+  EXPECT_EQ(another_ref.ref_count(), 1);  // was decremented
 }
 
 TEST(SharedTest, inspection_of_variant) {
@@ -106,5 +120,10 @@ TEST(SharedTest, inspection_of_variant) {
     auto variant = AtomicSharedOrRawPtr<MyStruct, int>{ref};
     EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(variant)),
               fmt::format("{}", arangodb::inspection::json(ref)));
+  }
+  {
+    MyStruct* ptr = nullptr;
+    auto variant = AtomicSharedOrRawPtr<int, MyStruct>{ptr};
+    EXPECT_EQ(fmt::format("{}", arangodb::inspection::json(variant)), "null");
   }
 }

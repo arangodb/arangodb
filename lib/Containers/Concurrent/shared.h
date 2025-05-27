@@ -38,7 +38,7 @@ namespace arangodb::containers {
    Destroys itself when the reference count decrements to zero.
  */
 template<typename T>
-struct Shared {
+struct SharedResource {
   auto increment() -> void { _count.fetch_add(1, std::memory_order_acq_rel); }
   auto decrement() -> void {
     auto old = _count.fetch_sub(1, std::memory_order_acq_rel);
@@ -47,7 +47,7 @@ struct Shared {
     }
   }
   template<class... Input>
-  Shared(Input... args) : _data{args...} {}
+  SharedResource(Input... args) : _data{args...} {}
   auto get() -> T* { return &_data; }
   auto get_ref() -> T& { return _data; }
   auto ref_count() const -> size_t {
@@ -87,7 +87,7 @@ struct SharedPtr {
     }
   }
   template<class... Input>
-  SharedPtr(Input... args) : _resource{new Shared<T>(args...)} {}
+  SharedPtr(Input... args) : _resource{new SharedResource<T>(args...)} {}
   auto operator*() -> std::optional<std::reference_wrapper<T>> {
     if (_resource) {
       return {_resource->get_ref()};
@@ -116,7 +116,7 @@ struct SharedPtr {
     }
   }
 
-  Shared<T>* _resource = nullptr;
+  SharedResource<T>* _resource = nullptr;
 };
 
 /**
@@ -126,57 +126,103 @@ struct SharedPtr {
    then the last bit of a pointer to one of these types is unused and can be
    used as a flag for the type of the pointer.
 */
-template<typename Left, typename Right>
+template<typename Shared, typename Raw>
 struct AtomicSharedOrRawPtr {
   static constexpr auto num_flag_bits = 1;
   static_assert(std::alignment_of_v<Shared<Left>> >= (1 << num_flag_bits) &&
                 std::alignment_of_v<Right> >= (1 << num_flag_bits));
 
-  template<SameAs<Right> U>
-  AtomicSharedOrRawPtr(U* right)
-      : _resource{reinterpret_cast<std::uintptr_t>(right) | 0} {}
+  template<SameAs<Raw> U>
+  AtomicSharedOrRawPtr(U* right) : _resource{raw_to_ptr(right)} {}
 
-  template<SameAs<Left> U>
+  template<SameAs<Shared> U>
   AtomicSharedOrRawPtr(SharedPtr<U> const& left) {
     auto resource = left._resource;
     resource->increment();
-    _resource.store(reinterpret_cast<std::uintptr_t>(resource) | 1);
+    _resource.store(shared_to_ptr(resource), std::memory_order_relaxed);
   }
 
   ~AtomicSharedOrRawPtr() {
-    // if resource includes a shared ptr, decrement it
-    auto data = _resource.load();
-    if (data != 0) {
-      constexpr auto flag_mask = (1 << num_flag_bits) - 1;
-      constexpr auto data_mask = ~flag_mask;
-      if (data & flag_mask) {
-        reinterpret_cast<Shared<Left>*>(data & data_mask)->decrement();
-      }
+    auto old =
+        _resource.exchange(raw_to_ptr(nullptr), std::memory_order_relaxed);
+    decrement_shared(old);
+  }
+
+  /**
+     User needs to make sure that SharedResource still exists
+   */
+  auto load() const -> std::variant<Shared, Raw*> {
+    // (1) syncs with (2), (3)
+    auto data = _resource.load(std::memory_order_acquire);
+    if (is_shared(data)) {
+      auto shared = ptr_to_shared(data);
+      return {shared->get_ref()};
+    } else {
+      return {ptr_to_raw(data)};
     }
   }
 
-  auto get() const -> std::variant<Left*, Right*> {
-    auto data = _resource.load();
-    constexpr auto flag_mask = (1 << num_flag_bits) - 1;
-    constexpr auto data_mask = ~flag_mask;
-    if (data & flag_mask) {
-      return {reinterpret_cast<Shared<Left>*>(data & data_mask)->get()};
-    } else {
-      return {reinterpret_cast<Right*>(data & data_mask)};
-    }
+  template<SameAs<Shared> U>
+  auto store(SharedPtr<U> left) -> void {
+    auto resource = left._resource;
+    resource->increment();
+    // (2) syncs with (1), (2), (3)
+    auto old =
+        _resource.exchange(shared_to_ptr(resource), std::memory_order_acq_rel);
+    decrement_shared(old);
+  }
+  template<SameAs<Raw> U>
+  auto store(U* right) -> void {
+    // (3) syncs with (1), (2), (3)
+    auto old = _resource.exchange(raw_to_ptr(right), std::memory_order_acq_rel);
+    decrement_shared(old);
   }
 
  private:
   std::atomic<std::uintptr_t> _resource;
+
+  static constexpr auto num_flag_bits = 1;
+  static constexpr auto flag_mask = (1 << num_flag_bits) - 1;
+  static constexpr auto data_mask = ~flag_mask;
+  static_assert(std::alignment_of_v<SharedResource<Shared>> >=
+                (1 << num_flag_bits));
+
+  auto is_shared(std::uintptr_t ptr) const -> bool { return ptr & flag_mask; }
+  auto shared_to_ptr(SharedResource<Shared>* shared) const -> std::uintptr_t {
+    return reinterpret_cast<std::uintptr_t>(shared) | 1;
+  }
+  auto raw_to_ptr(Raw* raw) const -> std::uintptr_t {
+    return reinterpret_cast<std::uintptr_t>(raw) | 0;
+  }
+  auto ptr_to_shared(std::uintptr_t ptr) const -> SharedResource<Shared>* {
+    return reinterpret_cast<SharedResource<Shared>*>(ptr & data_mask);
+  }
+  auto ptr_to_raw(std::uintptr_t ptr) const -> Raw* {
+    return reinterpret_cast<Raw*>(ptr & data_mask);
+  }
+
+  /**
+     can only be called if we are sure that no-one else updates
+     given ptr in-between
+   */
+  auto decrement_shared(std::uintptr_t ptr) const -> void {
+    if (is_shared(ptr)) {
+      ptr_to_shared(ptr)->decrement();
+    }
+  }
 };
-template<typename Inspector, typename Left, typename Right>
-auto inspect(Inspector& f, AtomicSharedOrRawPtr<Left, Right>& x) {
+template<typename Inspector, typename Shared, typename Raw>
+auto inspect(Inspector& f, AtomicSharedOrRawPtr<Shared, Raw>& x) {
   if constexpr (not Inspector::isLoading) {  // only serialization
-    auto var = x.get();
-    if (std::holds_alternative<Left*>(var)) {
-      return f.apply(*std::get<Left*>(var));
+    auto var = x.load();
+    if (std::holds_alternative<Shared>(var)) {
+      return f.apply(std::get<Shared>(var));
     } else {
-      return f.apply(*std::get<Right*>(var));
+      auto ptr = std::get<Raw*>(var);
+      if (ptr) {
+        return f.apply(*ptr);
+      }
+      return f.apply(inspection::Null{});
     }
   }
 }
