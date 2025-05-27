@@ -368,6 +368,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // log the end of a query (warnings only)
   void logAtEnd() const;
 
+  // set the isExecuting flag to true and change execution queries gauge
+  void trackExecutionStart() noexcept;
+
+  // set the isExecuting flag to false and change execution queries gauge
+  void trackExecutionEnd() noexcept;
+
   struct CollectionSerializationFlags {
     bool includeNumericIds = true;
     bool includeViews = true;

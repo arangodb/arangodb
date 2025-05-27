@@ -692,11 +692,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
 
-  auto& queryRegistryFeature =
-      vocbase().server().getFeature<QueryRegistryFeature>();
-  queryRegistryFeature.trackQueryStart();
-  _isExecuting = true;
-
   try {
     if (killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
@@ -754,6 +749,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         TRI_ASSERT(queryResult.data != nullptr);
         TRI_ASSERT(queryResult.data->isOpenArray());
         TRI_ASSERT(_trx != nullptr);
+        // We should do this only once
+        trackExecutionStart();
 
         if (useQueryCache && (isModificationQuery() || !_warnings.empty() ||
                               !_ast->root()->isCacheable())) {
@@ -926,6 +923,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
+  trackExecutionStart();
+  ScopeGuard guard([this]() noexcept { trackExecutionEnd(); });
 
   QueryResultV8 queryResult;
 
@@ -1719,6 +1718,25 @@ void Query::logAtEnd() const {
   }
 }
 
+void Query::trackExecutionStart() noexcept {
+  // We should do this only once
+  if (_isExecuting) {
+    auto& queryRegistryFeature =
+        vocbase().server().getFeature<QueryRegistryFeature>();
+    queryRegistryFeature.trackQueryStart();
+    _isExecuting = true;
+  }
+}
+
+void Query::trackExecutionEnd() noexcept {
+  if (_isExecuting) {
+    auto& queryRegistryFeature =
+        vocbase().server().getFeature<QueryRegistryFeature>();
+    queryRegistryFeature.trackQueryEnd(executionTime());
+    _isExecuting = false;
+  }
+}
+
 std::string Query::extractQueryString(size_t maxLength, bool show) const {
   if (!show) {
     return "<hidden>";
@@ -1860,12 +1878,7 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
   ensureExecutionTime();
 
-  if (_isExecuting) {
-    auto& queryRegistryFeature =
-        vocbase().server().getFeature<QueryRegistryFeature>();
-    queryRegistryFeature.trackQueryEnd(executionTime());
-    _isExecuting = false;
-  }
+  trackExecutionEnd();
 
   {
     std::unique_lock<std::mutex> guard{_resultMutex};
