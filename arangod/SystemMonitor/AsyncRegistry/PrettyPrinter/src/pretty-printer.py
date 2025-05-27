@@ -45,25 +45,33 @@ class SourceLocation(object):
     def __str__(self):
         return self.function_name + " (" + self.file_name + ":" + str(self.line) + ")"
 
+class PromiseId(object):
+    def __init__(self, id):
+        self.id = id
+    @classmethod
+    def from_json(cls, blob: dict):
+        return cls(blob["id"])
+    def __str__(self):
+        return self.id
+    
 class Requester(object):
-    def __init__(self, is_sync: bool, item: int):
+    def __init__(self, is_sync: bool, item: ThreadInfo | PromiseId):
         self.is_sync = is_sync
         self.item = item
     @classmethod
     def from_json(cls, blob: dict):
         if not blob:
             return None
-        sync = blob.get("thread")
-        if sync is not None:
-            return cls(True, sync)
+        if "LWPID" in blob:
+            return cls(True, ThreadInfo.from_json(blob))
         else:
-            return cls(False, blob["promise"])
+            return cls(False, PromiseId.from_json(blob))
     def __str__(self):
         if self.is_sync:
             # a sync requester is always at the bottom of a tree,
             # but has no entry on its own,
             # therefore just add it here in a new line
-            return "\n" + "─ " + str(Thread.from_json(self.item))
+            return "\n" + "─ " + str(self.item)
         else:
             return ""
 
