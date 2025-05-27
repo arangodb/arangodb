@@ -32,22 +32,28 @@ using namespace arangodb::async_registry;
 
 auto breakpoint() { raise(SIGINT); }
 
+auto format(arangodb::basics::SourceLocationSnapshot const& loc) -> std::string {
+  return fmt::format("\"{}\" (\"{}\":{})", loc.function_name, loc.file_name, loc.line);
+}
 auto format(arangodb::basics::ThreadId const& thread) -> std::string {
   return fmt::format("LWPID {} (pthread {})", thread.kernel_id,
                      thread.posix_id);
 }
+auto format(arangodb::basics::ThreadInfo const& thread) -> std::string {
+  return fmt::format("\"{}\" (LWPID {})", thread.name, thread.kernel_id);
+}
 auto format(PromiseSnapshot const& snapshot) -> std::string {
   if (snapshot.thread == std::nullopt) {
-    return fmt::format(
-        "\"{}\" (\"{}\":{}), {}", snapshot.source_location.function_name,
-        snapshot.source_location.file_name, snapshot.source_location.line,
-        arangodb::inspection::json(snapshot.state));
+    return fmt::format("{}, owned by {}, {}",
+                       format(snapshot.source_location),
+                       format(snapshot.owning_thread),
+                       arangodb::inspection::json(snapshot.state));
   } else {
-    return fmt::format(
-        "\"{}\" (\"{}\":{}), {} on {}", snapshot.source_location.function_name,
-        snapshot.source_location.file_name, snapshot.source_location.line,
-        arangodb::inspection::json(snapshot.state),
-        format(snapshot.thread.value()));
+    return fmt::format("{}, owned by {}, {} on {}",
+                       format(snapshot.source_location),
+                       format(snapshot.owning_thread),
+                       arangodb::inspection::json(snapshot.state),
+                       format(snapshot.thread.value()));
   }
 }
 

@@ -34,6 +34,19 @@ class Thread:
     def __str__(self):
         return f"LWPID {self.lwpid} (pthread {self.posix_id})"
 
+# new one
+@dataclass
+class ThreadInfo:
+    lwpid: gdb.Value
+    name: gdb.Value
+
+    @classmethod
+    def from_gdb(cls, value: gdb.Value):
+        return cls(value['kernel_id'], value['name'])
+
+    def __str__(self):
+        return f"{self.name} (LWPID {self.lwpid})"
+
 @dataclass
 class SourceLocation:
     file_name: gdb.Value
@@ -81,7 +94,8 @@ class PromiseId:
 @dataclass
 class Promise:
     id: PromiseId
-    thread: Optional[Thread]
+    owning_thread: ThreadInfo
+    running_thread: Optional[Thread]
     source_location: SourceLocation
     requester: Requester
     state: State
@@ -90,6 +104,7 @@ class Promise:
     def from_gdb(cls, ptr: gdb.Value, value: gdb.Value):
         return cls(
             PromiseId(ptr),
+            ThreadInfo.from_gdb(value["owning_thread"]["_resource"].dereference()["_data"]),
             Thread.from_gdb(GdbOptional.from_gdb(value["running_thread"])._value),
             SourceLocation.from_gdb(value["source_location"]),
             Requester.from_gdb(value["requester"]["_M_i"]),
@@ -100,8 +115,8 @@ class Promise:
         return not self.state.is_deleted()
 
     def __str__(self):
-        thread_str = f" on {self.thread}" if self.thread else ""
-        return str(self.source_location) + ", " + str(self.state) + thread_str
+        thread_str = f" on {self.running_thread}" if self.running_thread else ""
+        return str(self.source_location) + ", owned by " + str(self.owning_thread) + ", " + str(self.state) + thread_str
 
 @dataclass
 class GdbOptional:
