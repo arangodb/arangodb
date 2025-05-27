@@ -29,10 +29,12 @@
 using namespace arangodb::async_registry;
 
 Promise::Promise(Requester requester, std::source_location entry_point)
-    : thread{basics::ThreadId::current()},
+    : owning_thread{basics::ThreadId::current()},
+      requester{requester},
+      state{State::Running},
+      running_thread{basics::ThreadId::current()},
       source_location{entry_point.file_name(), entry_point.function_name(),
-                      entry_point.line()},
-      requester{requester} {}
+                      entry_point.line()} {}
 
 auto arangodb::async_registry::get_current_coroutine() noexcept -> Requester* {
   struct Guard {
@@ -73,6 +75,13 @@ auto AddToAsyncRegistry::update_source_location(std::source_location loc)
 }
 auto AddToAsyncRegistry::update_state(State state) -> std::optional<State> {
   if (node_in_registry != nullptr) {
+    if (state == State::Running) {
+      node_in_registry->data.running_thread.store(basics::ThreadId::current(),
+                                                  std::memory_order_release);
+    } else {
+      node_in_registry->data.running_thread.store(std::nullopt,
+                                                  std::memory_order_release);
+    }
     return node_in_registry->data.state.exchange(state);
   } else {
     return std::nullopt;

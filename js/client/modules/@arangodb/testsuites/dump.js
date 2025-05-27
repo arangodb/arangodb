@@ -35,7 +35,8 @@ const functionsDocumentation = {
   'dump_jwt': 'dump tests with JWT',
   'dump_encrypted': 'encrypted dump tests',
   'dump_maskings': 'masked dump tests',
-  'dump_multiple': 'restore multiple DBs at once',
+  'dump_multiple_same': 'restore multiple DBs at once to the same installation',
+  'dump_multiple_two': 'restore multiple DBs at once to a fresh installation',
   'dump_with_crashes': 'restore and crash the client multiple times',
   'dump_with_crashes_parallel': 'restore and crash the client multiple times - parallel version',
   'dump_parallel': 'use experimental parallel dump',
@@ -85,7 +86,8 @@ const testPaths = {
   'dump_jwt': [tu.pathForTesting('client/dump')],
   'dump_encrypted': [tu.pathForTesting('client/dump')],
   'dump_maskings': [tu.pathForTesting('client/dump')],
-  'dump_multiple': [tu.pathForTesting('client/dump')],
+  'dump_multiple_same': [tu.pathForTesting('client/dump')],
+  'dump_multiple_two': [tu.pathForTesting('client/dump')],
   'dump_with_crashes': [tu.pathForTesting('client/dump')],
   'dump_with_crashes_parallel': [tu.pathForTesting('client/dump')],
   'dump_parallel': [tu.pathForTesting('client/dump')],
@@ -93,12 +95,12 @@ const testPaths = {
 };
 
 class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
-  constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
+  constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer) {
     super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
-    this.restartServer = firstRunOptions.cluster !== secondRunOptions.cluster;
+    this.restartServer = restartServer;
     this.clientAuth = clientAuth;
     this.dumpOptions = dumpOptions;
     this.restoreOptions = restoreOptions;
@@ -756,10 +758,14 @@ function getClusterStrings(options) {
   }
 }
 
-function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
+function dump_backend_two_instances (firstRunOptions, secondRunOptions,
+                                     serverAuthInfo, clientAuth,
+                                     dumpOptions, restoreOptions,
+                                     which, tstFiles, afterServerStart,
+                                     rtaArgs, restartServer) {
   print(CYAN + which + ' tests...' + RESET);
 
-  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs);
+  const helper = new DumpRestoreHelper(firstRunOptions, secondRunOptions, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs, restartServer);
   if (!helper.startFirstInstance()) {
     helper.destructor(false);
     return helper.extractResults();
@@ -846,7 +852,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
 }
 
 function dump_backend (options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs) {
-  return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs);
+  return dump_backend_two_instances(options, options, serverAuthInfo, clientAuth, dumpOptions, restoreOptions, which, tstFiles, afterServerStart, rtaArgs, false);
 }
 
 function dump (options) {
@@ -891,7 +897,7 @@ function dumpMixedClusterSingle (options) {
                                     tstFiles, function(){}, [
                                       //'--testFoxx', 'false',
                                       // BTS-1617: disable 404 for now
-                                      '--skip', '404,550,900,960']);
+                                      '--skip', '404,550,900,960'], true);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -916,10 +922,10 @@ function dumpMixedSingleCluster (options) {
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
                                       // '--testFoxx', 'false',
-                                      '--skip', '550,900,960']);
+                                      '--skip', '550,900,960'], true);
 }
 
-function dumpMultiple (options) {
+function dumpMultipleTwo (options) {
   let dumpOptions = {
     dumpVPack: options.dumpVPack,
     dbServers: 3,
@@ -939,7 +945,32 @@ function dumpMultiple (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_multiple', tstFiles, function(){}, []);
+  return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {}, dumpOptions, dumpOptions,
+                                    'dump_multiple_two', tstFiles, function(){}, [], true);
+}
+function dumpMultipleSame (options) {
+  let dumpOptions = {
+    dumpVPack: options.dumpVPack,
+    dbServers: 3,
+    allDatabases: true,
+    deactivateCompression: true,
+    parallelDump: true,
+    splitFiles: true,
+  };
+  _.defaults(dumpOptions, options);
+  let c = getClusterStrings(dumpOptions);
+  let tstFiles = {
+    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
+    dumpCleanup: 'cleanup-multiple.js',
+    dumpAgain: 'dump' + c.cluster + '.js',
+    dumpTearDown: 'dump-teardown' + c.cluster + '.js',
+    dumpCheckGraph: 'check-graph-multiple.js'
+  };
+
+  return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
+                                    dumpOptions, dumpOptions,
+                                    'dump_multiple_same', tstFiles, function(){}, [], false);
 }
 
 function dumpWithCrashes (options) {
@@ -1191,7 +1222,7 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, []);
+  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
   if (!helper.startFirstInstance()) {
       helper.destructor(false);
     return helper.extractResults();
@@ -1272,7 +1303,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_jwt'] = dumpJwt;
   testFns['dump_encrypted'] = dumpEncrypted;
   testFns['dump_maskings'] = dumpMaskings;
-  testFns['dump_multiple'] = dumpMultiple;
+  testFns['dump_multiple_same'] = dumpMultipleSame;
+  testFns['dump_multiple_two'] = dumpMultipleTwo;
   testFns['dump_with_crashes'] = dumpWithCrashes;
   testFns['dump_with_crashes_non_parallel'] = dumpWithCrashesNonParallel;
   testFns['dump_non_parallel'] = dumpNonParallel;
