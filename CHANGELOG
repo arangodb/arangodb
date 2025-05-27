@@ -3,6 +3,23 @@ devel
 
 * Fix an integer underflow with gauge arangodb_aql_current_query.
 
+* Upgraded bundled version of RocksDB to 9.5.
+
+  The default values for the following RocksDB-related startup options were 
+  adjusted as well:
+
+  - `--rocksdb.compaction-read-ahead-size` was changed from 2MB to 8MB.
+  - `--rocksdb.max-subcompactions` was changed from 2 to 4.
+  - `--rocksdb.max-total-wal-size` was changed from 80MB to 256MB.
+  - `--rocksdb.throttle-slots` was changed from 120 to 128.
+  - `--rocksdb.throttle-scaling-factor` was changed from 17 to 192.
+  - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to 1GB.
+  - `--rocksdb.pending-compactions-stop-trigger` was changed from 16GB to 32GB.
+  - `--rocksdb.partition-files-for-documents` was changed from false to true.
+
+  The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
+  obsoleted.
+
 * Fix a possible crash when requesting the async registry:
   Does now not request the thread name of a potentially destroyed thread.
 
