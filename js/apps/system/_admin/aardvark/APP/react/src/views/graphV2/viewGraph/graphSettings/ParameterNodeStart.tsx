@@ -10,7 +10,11 @@ const ParameterNodeStart = () => {
   const [inputValue, setInputValue] = useState<string>("");
 
   const { values, onRemoveValue, onAddValue } = useSetupNodeStartValues();
-  const { options } = useNodeStartOptions({ graphName, inputValue, values });
+  const { options, isLoading: isLoadingOptions } = useNodeStartOptions({
+    graphName,
+    inputValue,
+    values
+  });
 
   return (
     <>
@@ -18,6 +22,7 @@ const ParameterNodeStart = () => {
       <MultiSelect
         noOptionsMessage={() => "No nodes found"}
         isClearable={false}
+        isLoading={isLoadingOptions}
         styles={{
           container: baseStyles => {
             return { width: "240px", ...baseStyles };

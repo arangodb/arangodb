@@ -193,7 +193,7 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
         ApplicationFeatures/VersionFeature.cpp
-
+        ApplicationFeatures/ProcessEnvironmentFeature.cpp
 )
 target_link_libraries(arango_basic_features
   PUBLIC velocypack
@@ -330,6 +330,7 @@ target_link_libraries(arango_lightweight
          absl::flat_hash_set
          absl::synchronization
          arango_async
+         arango_task_registry_global
   PRIVATE date_interface
           fmt
           arango_assertions
@@ -451,3 +452,4 @@ add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
 add_subdirectory(BuildId)
+add_subdirectory(TaskMonitoring)

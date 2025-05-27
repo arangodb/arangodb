@@ -165,6 +165,8 @@ struct ThreadOwnedList
 
      Can be called from any thread. The node needs to be part of the list,
      crashes otherwise.
+     Caller needs to make sure that this is not called twice: otherwise there
+     will be a double free.
    */
   auto mark_for_deletion(Node* node) noexcept -> void {
     // makes sure that node is really in this list

@@ -39,13 +39,13 @@ class RestAdminLogHandler : public RestBaseHandler {
  public:
   char const* name() const override final { return "RestAdminLogHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
 
  private:
   arangodb::Result verifyPermitted();
   void clearLogs();
-  RestStatus reportLogs(bool newFormat);
-  RestStatus handleLogLevel();
+  auto reportLogs(bool newFormat) -> async<void>;
+  auto handleLogLevel() -> async<void>;
   void handleLogStructuredParams();
 };
 }  // namespace arangodb
