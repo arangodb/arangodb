@@ -134,6 +134,7 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_ttl"));
     assertTrue(coll.hasOwnProperty("n_unknown"));
     assertTrue(coll.hasOwnProperty("n_mdi"));
+    assertTrue(coll.hasOwnProperty("n_vector"));
     const idxs = coll["idxs"];
     parseIndexes(idxs);
   });
