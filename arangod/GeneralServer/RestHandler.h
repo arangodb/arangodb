@@ -132,7 +132,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual RestStatus execute();
   virtual futures::Future<futures::Unit> executeAsync();
   // No longer used
-  [[deprecated]] static RestStatus continueExecute() { return RestStatus::DONE; }
+  [[deprecated]] static RestStatus continueExecute() {
+    return RestStatus::DONE;
+  }
   virtual void shutdownExecute(bool isFinalized) noexcept;
 
   // you might need to implement this in your handler

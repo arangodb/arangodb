@@ -72,7 +72,8 @@ struct SuspensionCounter {
       bool await_suspend(std::coroutine_handle<> c) {
         _suspensionCounter->_c = c;
         auto counter = std::int64_t{};
-        return _suspensionCounter->_counter.compare_exchange_strong(counter, -1);
+        return _suspensionCounter->_counter.compare_exchange_strong(counter,
+                                                                    -1);
       }
 
       SuspensionCounter* _suspensionCounter;

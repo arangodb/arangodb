@@ -109,8 +109,8 @@ class ExecutionEngine {
  private:
   auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
- public:
 
+ public:
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const;
 
