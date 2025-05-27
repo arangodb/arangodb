@@ -223,13 +223,6 @@ uint64_t auth::UserManager::loadFromDB() {
       return tmp;
     }
   } catch (basics::Exception const& ex) {
-    if (ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND &&
-        _server.hasFeature<BootstrapFeature>() &&
-        !_server.getFeature<BootstrapFeature>().isReady()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
-                                     "Cannot load users because the _users "
-                                     "collection is not yet available");
-    }
     LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
         << "Exception when loading users from db: " << ex.what();
   } catch (std::exception const& ex) {
@@ -246,7 +239,6 @@ void auth::UserManager::checkIfUserDataIsAvailable() const {
   TRI_IF_FAILURE("UserManager::UserDataNotAvailable") {
     if (_server.hasFeature<BootstrapFeature>() &&
         !_server.getFeature<BootstrapFeature>().isReady()) {
-      CrashHandler::logBacktrace();
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
                                      "Cannot load users because the _users "
                                      "collection is not yet available");
@@ -259,7 +251,7 @@ void auth::UserManager::checkIfUserDataIsAvailable() const {
     // cache in a specific situation.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  _internalVersion.wait(1);
+  _internalVersion.wait(0);
 }
 
 // private, must be called with _userCacheLock in write mode
