@@ -53,20 +53,6 @@ transaction::V8Context::~V8Context() noexcept {
   }
 }
 
-/// @brief order a custom type handler for the collection
-VPackCustomTypeHandler* transaction::V8Context::orderCustomTypeHandler() {
-  if (_customTypeHandler == nullptr) {
-    _customTypeHandler =
-        transaction::Context::createCustomTypeHandler(_vocbase, resolver());
-    _options.customTypeHandler = _customTypeHandler.get();
-  }
-
-  TRI_ASSERT(_customTypeHandler != nullptr);
-  TRI_ASSERT(_options.customTypeHandler != nullptr);
-
-  return _customTypeHandler.get();
-}
-
 /// @brief get transaction state, determine commit responsibility
 /*virtual*/ std::shared_ptr<TransactionState>
 transaction::V8Context::acquireState(transaction::Options const& options,

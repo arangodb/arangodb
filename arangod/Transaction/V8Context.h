@@ -49,9 +49,6 @@ class V8Context final : public Context {
   /// @brief destroy the context
   ~V8Context() noexcept;
 
-  /// @brief order a custom type handler
-  velocypack::CustomTypeHandler* orderCustomTypeHandler() override final;
-
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
       transaction::Options const& options, bool& responsibleForCommit) override;

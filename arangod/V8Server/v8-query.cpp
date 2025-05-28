@@ -234,7 +234,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler =
-      transactionContext->orderCustomTypeHandler();
+      transactionContext->getCustomTypeHandler();
 
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
@@ -344,7 +344,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // copy default options
   VPackOptions resultOptions = VPackOptions::Defaults;
   resultOptions.customTypeHandler =
-      transactionContext->orderCustomTypeHandler();
+      transactionContext->getCustomTypeHandler();
   TRI_V8_RETURN(TRI_VPackToV8(isolate, doc.at(0), &resultOptions));
   TRI_V8_TRY_CATCH_END
 }
