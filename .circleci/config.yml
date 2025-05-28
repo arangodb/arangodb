@@ -33,6 +33,9 @@ parameters:
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:15"
+  test-docker-image:
+    type: string
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5b5ffda4
   nightly:
     type: boolean
     default: false
@@ -194,6 +197,7 @@ jobs:
               python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
+                --default-container "<< pipeline.parameters.test-docker-image >>" \
                 --ui "<< pipeline.parameters.ui >>" \
                 --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \

@@ -469,8 +469,6 @@ jobs:
             docker push << parameters.tag >>
 
   run-linux-tests:
-    docker:
-      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       suiteName:
         type: string
@@ -492,6 +490,14 @@ jobs:
       timeLimit:
         type: integer
         default: 1800
+      second-git-repo:
+        type: string
+        default: ""
+      docker_image:
+        type: string
+        defaults: "<< pipeline.parameters.test-docker-image >>"
+    docker:
+      - image: << parameters.docker_image >>
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
@@ -548,7 +554,9 @@ jobs:
             if command -v promtool &> /dev/null; then
               export PROMTOOL_PATH=`command -v promtool`
             fi
-
+            if test -n "<< parameters.second-git-repo >>"; then
+              (cd .. ; git clone << parameters.second-git-repo >>)
+            fi
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \

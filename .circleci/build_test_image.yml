@@ -77,6 +77,26 @@ jobs:
           command: |
             cd /home/circleci/project/scripts/docker/test
             docker push << parameters.image >>:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+      - run:
+          name: Build GO Docker Image
+          command: |
+            cd /home/circleci/project/scripts/docker/go_test
+            /bin/sh build-image.sh << parameters.image >>_go << parameters.arch >>
+      - run:
+          name: Determine GO Docker Tag
+          command: |
+            cd /home/circleci/project/scripts/docker/go_test
+            /bin/sh determine-tag.sh << parameters.image >>_go << parameters.arch >> | tee << parameters.arch >>-tag.txt
+      - run:
+          name: Tag GO Docker Image
+          command: |
+            cd /home/circleci/project/scripts/docker/go_test
+            docker tag << parameters.image >>_go:latest-<< parameters.arch >> <<parameters.image >>:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+      - run:
+          name: Push GO Docker Image
+          command: |
+            cd /home/circleci/project/scripts/docker/go_test
+            docker push << parameters.image >>_go:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - persist_to_workspace:
           root: .
           paths:
