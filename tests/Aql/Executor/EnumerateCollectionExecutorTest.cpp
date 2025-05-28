@@ -332,8 +332,8 @@ class EnumerateCollectionExecutorTestProduce
   }
 
   // insert amount of documents into the vocbase
-  VPackOptions* insertDocuments(size_t amount,
-                                std::vector<std::string>& queryResults) {
+  VPackOptions const* insertDocuments(size_t amount,
+                                      std::vector<std::string>& queryResults) {
     // TODO: Can be optimized to not use AQL INSERT (trx object directly
     // instead)
     std::string insertQuery =
