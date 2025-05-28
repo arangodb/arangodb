@@ -272,10 +272,40 @@ ExecutionEngine::~ExecutionEngine() {
   // tasks running on any dependent which could start another on the
   // current block.
   // The blocks are pushed in a reversed topological order.
-  for (auto it = _blocks.rbegin(); it != _blocks.rend(); ++it) {
-    (*it)->stopAsyncTasks();
+  {
+    // Note: We can use raw pointers here because we are not taking
+    // any responsibilty of the pointer. It is still managed by the _blocks
+    // vector. Also we are in the destructor here, so we have guaranteed,
+    // that no one else is cleaning up the blocks.
+    std::unordered_set<ExecutionBlock*> seenBlocks;
+    bool needToPrintViolation = false;
+    for (auto it = _blocks.rbegin(); it != _blocks.rend(); ++it) {
+      auto block = it->get();
+      if (ExecutionBlock* seenDependency =
+              block->isDependencyInList(seenBlocks);
+          seenDependency != nullptr &&
+          block->getPlanNode()->getType() != ExecutionNode::GATHER) {
+        // We have a dependency that has already been seen, we need to log this
+        // situation in theory this could lead to deadlocks. Some Blocks are
+        // fine we just want to see those here.
+        // Gather Nodes are known to violate this, but they are safe.
+        LOG_TOPIC("a6c2b", WARN, Logger::AQL)
+            << "ALERT Stopping async tasks for " << block->printBlockInfo()
+            << " but have already stopped dependency "
+            << seenDependency->printBlockInfo();
+        needToPrintViolation = true;
+      }
+      block->stopAsyncTasks();
+      seenBlocks.insert(block);
+    }
+    if (needToPrintViolation) {
+      for (auto it2 = _blocks.rbegin(); it2 != _blocks.rend(); ++it2) {
+        LOG_TOPIC("a6c2d", WARN, Logger::AQL)
+            << (*it2)->printBlockAndDependenciesInfo();
+      }
+      TRI_ASSERT(false) << "Triggered violation in ExecutionBlock ordering";
+    }
   }
-
   if (_sharedState) {  // ensure no async task is working anymore
     _sharedState->invalidate();
   }
