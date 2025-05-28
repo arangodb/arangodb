@@ -153,9 +153,11 @@ class Context {
       transaction::Options const& options);
 
   TRI_vocbase_t& _vocbase;
-private:
+
+ private:
   std::unique_ptr<CollectionNameResolver> _resolver;
-protected:
+
+ protected:
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
@@ -165,7 +167,7 @@ protected:
 
   OperationOrigin _operationOrigin;
 
-private:
+ private:
   std::shared_ptr<CounterGuard> _counterGuard;
 
   struct {

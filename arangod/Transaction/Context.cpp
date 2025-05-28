@@ -169,7 +169,8 @@ VPackOptions const* transaction::Context::getVPackOptions() const noexcept {
   return &_options;
 }
 
-velocypack::CustomTypeHandler* transaction::Context::getCustomTypeHandler() const noexcept {
+velocypack::CustomTypeHandler* transaction::Context::getCustomTypeHandler()
+    const noexcept {
   TRI_ASSERT(_customTypeHandler != nullptr);
   return _customTypeHandler.get();
 }
