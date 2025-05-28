@@ -74,8 +74,7 @@ class RequestFuzzer {
   std::unique_ptr<fuerte::Request> createRequest();
 
  private:
-  fuerte::RestVerb generateHeader(std::string& header,
-                                  std::string& path);
+  fuerte::RestVerb generateHeader(std::string& header, std::string& path);
 
   void generateBody(velocypack::Builder& builder);
 

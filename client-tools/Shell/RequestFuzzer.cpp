@@ -177,8 +177,7 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
 
   std::string header;
   auto req = std::make_unique<fuerte::Request>();
-  fuerte::RestVerb requestType = generateHeader(header,
-                                                req->header.path);
+  fuerte::RestVerb requestType = generateHeader(header, req->header.path);
   req->header.restVerb = requestType;
 
   if (requestType != fuerte::RestVerb::Get &&
