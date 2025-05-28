@@ -344,6 +344,9 @@ void auth::UserManager::createRootUser() {
         << "unable to create user \"root\"";
   }
   readGuard.unlock();
+
+  uint64_t const internalVersionBeforeReload = triggerGlobalReload();
+  _internalVersion.wait(internalVersionBeforeReload);
 }
 
 VPackBuilder auth::UserManager::allUsers() {
