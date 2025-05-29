@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Iterable
 from dataclasses import dataclass
+import gdb
 
 @dataclass
 class State:
@@ -62,18 +63,26 @@ class SourceLocation:
 
 @dataclass
 class Requester:
-    content: Thread | PromiseId
+    content: ThreadInfo | PromiseId
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
-       alternative = value['_M_index']
-       if alternative == 0:
-           content = Thread.from_gdb(value['_M_u']['_M_first']['_M_storage'])
-       elif alternative == 1:
-           content = PromiseId(value['_M_u']['_M_rest']['_M_first']['_M_storage'])
-       else:
-           return "wrong input"
-       return cls(content)
+        num_flag_bits = 1
+        flag_mask = (1 << num_flag_bits) - 1
+        BIT_WIDTH_64 = 64
+        all_ones_64_bit_mask = (1 << BIT_WIDTH_64) - 1
+        data_mask_64bit = flag_mask ^ all_ones_64_bit_mask
+        if value & flag_mask:
+            return cls(ThreadInfo.from_gdb(
+                (value & data_mask_64bit)
+                .cast(gdb.lookup_type("arangodb::containers::SharedResource<arangodb::basics::ThreadInfo>").pointer())
+                .dereference()['_data']
+            ))
+        else:
+            return cls(PromiseId(
+                (value & data_mask_64bit)
+                .cast(gdb.lookup_type("void").pointer())
+            ))
 
     def __str__(self):
         return str(self.content)
@@ -107,7 +116,7 @@ class Promise:
             ThreadInfo.from_gdb(value["owning_thread"]["_resource"].dereference()["_data"]),
             Thread.from_gdb(GdbOptional.from_gdb(value["running_thread"])._value),
             SourceLocation.from_gdb(value["source_location"]),
-            Requester.from_gdb(value["requester"]["_M_i"]),
+            Requester.from_gdb(value["requester"]["_resource"]["_M_i"]),
             State.from_gdb(value["state"])
         )
 
