@@ -256,9 +256,8 @@ void V8ShellFeature::unprepare() {
     delete v8g;
 
     _context.Reset();
+    _isolate->Dispose();
   }
-
-  _isolate->Dispose();
 }
 
 void V8ShellFeature::stop() {
