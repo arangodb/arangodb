@@ -46,21 +46,17 @@ auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the sub-request type
   auto const type = _request->requestType();
 
-  // TODO remove the RestStatus return value of all callees here
   std::string const& prefix = _request->requestPath();
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
-      co_await allDocuments();
-      co_return;
+      co_return co_await allDocuments();
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
-      co_await allDocumentKeys();
-      co_return;
+      co_return co_await allDocumentKeys();
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
       // by-example query
-      co_await byExample();
-      co_return;
+      co_return co_await byExample();
     }
   }
 
@@ -152,9 +148,8 @@ async<void> RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  co_await registerQueryOrCursor(
+  co_return co_await registerQueryOrCursor(
       data.slice(), transaction::OperationOriginREST{"fetching all documents"});
-  co_return;
 }
 
 //////////////////////////////////////////////////////////////////////////////

@@ -107,8 +107,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
   /// Execute the rest handler state machine
-  virtual void runHandler(
-      std::function<void(rest::RestHandler*)> responseCallback);
+  void runHandler(std::function<void(rest::RestHandler*)> responseCallback);
 
   /// Continue execution of a suspended (via WAITING) rest handler state machine
   [[deprecated]] bool wakeupHandler();

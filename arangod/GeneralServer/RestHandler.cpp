@@ -723,9 +723,33 @@ void RestHandler::runHandler(
     std::function<void(rest::RestHandler*)> responseCallback) {
   _sendResponseCallback = std::move(responseCallback);
 
-  runHandlerStateMachine().thenFinal(
-      [self = shared_from_this()](auto&& tryResult) noexcept {
-        // TODO handle exceptions
-        std::move(tryResult).throwIfFailed();
+  runHandlerStateMachine().
+      // Swallow all exceptions. It would be desirable to guarantee no unhandled
+      // exceptions reach this point; so let's at least die in maintainer mode
+      // for now.
+      thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
+        try {
+          std::move(tryResult).throwIfFailed();
+        } catch (basics::Exception const& exception) {
+          LOG_TOPIC("e0b25", ERR, Logger::FIXME)
+              << "Uncaught exception in RestHandler " << self->name() << ": "
+              << "[" << exception.code() << "] " << exception.message()
+              << " (at " << exception.location() << ")";
+          TRI_ASSERT(false)
+              << "Uncaught exception in RestHandler " << self->name() << ": "
+              << "[" << exception.code() << "] " << exception.message()
+              << " (at " << exception.location() << ")";
+        } catch (std::exception const& exception) {
+          LOG_TOPIC("989d1", ERR, Logger::FIXME)
+              << "Uncaught exception in RestHandler " << self->name() << ": "
+              << exception.what();
+          TRI_ASSERT(false) << "Uncaught exception in RestHandler "
+                            << self->name() << ": " << exception.what();
+        } catch (...) {
+          LOG_TOPIC("99c0c", ERR, Logger::FIXME)
+              << "Uncaught exception in RestHandler " << self->name() << ".";
+          TRI_ASSERT(false)
+              << "Uncaught exception in RestHandler " << self->name() << ".";
+        }
       });
 }

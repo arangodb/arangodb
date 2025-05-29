@@ -13,9 +13,7 @@ add_library(arango_async STATIC
   src/SuspensionCounter.cpp
 )
 
-target_include_directories(arango_async INTERFACE
-  include)
-target_include_directories(arango_async PRIVATE
+target_include_directories(arango_async PUBLIC
   include)
 
 target_link_libraries(arango_async INTERFACE

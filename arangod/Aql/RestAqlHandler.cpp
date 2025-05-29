@@ -68,8 +68,6 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
-RestAqlHandler::~RestAqlHandler() {}
-
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
 // This route sets-up all the query engines required
@@ -509,8 +507,7 @@ auto RestAqlHandler::executeAsync() -> futures::Future<futures::Unit> {
         co_return;
       }
       if (suffixes[0] == "finish") {
-        co_await handleFinishQuery(suffixes[1]);
-        co_return;
+        co_return co_await handleFinishQuery(suffixes[1]);
       }
 
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
@@ -706,8 +703,8 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 }
 
 // handle for useQuery
-async<void> RestAqlHandler::handleUseQuery(std::string const& operation,
-                                           VPackSlice querySlice) {
+auto RestAqlHandler::handleUseQuery(std::string const& operation,
+                                    VPackSlice querySlice) -> async<void> {
   VPackOptions const* opts = &VPackOptions::Defaults;
   if (_engine) {  // might be destroyed on shutdown
     opts = &_engine->getQuery().vpackOptions();

@@ -46,7 +46,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
   RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                  QueryRegistry*);
-  ~RestAqlHandler();
+  ~RestAqlHandler() override = default;
 
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
@@ -129,8 +129,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   [[nodiscard]] futures::Future<futures::Unit> setupClusterQuery();
 
   // handle for useQuery
-  async<void> handleUseQuery(std::string const& operation,
-                             arangodb::velocypack::Slice querySlice);
+  auto handleUseQuery(std::string const& operation,
+                      velocypack::Slice querySlice) -> async<void>;
 
   // handle query finalization for all engines
   auto handleFinishQuery(std::string const& idString) -> async<void>;
