@@ -495,7 +495,7 @@ jobs:
         default: ""
       docker_image:
         type: string
-        defaults: "<< pipeline.parameters.test-docker-image >>"
+        default: "<< pipeline.parameters.test-docker-image >>"
     docker:
       - image: << parameters.docker_image >>
     resource_class: << parameters.size >>
