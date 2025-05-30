@@ -7,4 +7,4 @@ arch=$2
 
 docker build --platform linux/${arch} --build-arg arch=${arch} -t ${image}:latest-${arch} --file Dockerfile .
 
-echo "Built docker image ${image}-go:latest-${arch}"
+echo "Built docker image ${image}:latest-${arch}"
