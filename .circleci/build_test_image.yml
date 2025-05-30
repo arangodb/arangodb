@@ -92,7 +92,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - scripts/docker/go-test/*-tag.txt
+            - scripts/docker/*test/*-tag.txt
 
   build-test-docker-manifest:
     docker:
