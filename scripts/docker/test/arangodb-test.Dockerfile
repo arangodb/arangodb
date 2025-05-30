@@ -41,11 +41,11 @@ RUN \
     arch="amd64" \
   else \
     arch="arm64" \
-  fi \
-RCLONE_REV="v1.65.2" \
-GO_VERSION="golang-1.23.8-ed23da8" \
-ARANGO_VERSION="3.12" \
-echo "https://github.com/arangodb/rclone-arangodb/releases/download/$GO_VERSION/$GO_VERSION_$ARANGO_VERSION_$RCLONE_REV_rclone-arangodb-linux-$arch" \
+  fi; \
+RCLONE_REV="v1.65.2"; \
+GO_VERSION="golang-1.23.8-ed23da8"; \
+ARANGO_VERSION="3.12"; \
+echo "https://github.com/arangodb/rclone-arangodb/releases/download/$GO_VERSION/$GO_VERSION_$ARANGO_VERSION_$RCLONE_REV_rclone-arangodb-linux-$arch"; \
 wget -O /sbin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/$GO_VERSION/$GO_VERSION_$ARANGO_VERSION_$RCLONE_REV_rclone-arangodb-linux-$arch" && \
  chmod +x /sbin/rclone-arangodb
 
