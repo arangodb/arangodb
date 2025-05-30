@@ -194,6 +194,17 @@ jobs:
               cp .circleci/build_test_image.yml continuation_config.yml
             else
               pip install pyyaml
+              echo "python3 '.circleci/generate_config.py' --sanitizer '<< pipeline.parameters.sanitizer >>' \
+                --arangosh-args 'A<< pipeline.parameters.arangosh_args >>' \
+                --extra-args 'A<< pipeline.parameters.extra_args >>' \
+                --default-container '<< pipeline.parameters.test-docker-image >>' \
+                --ui '<< pipeline.parameters.ui >>' \
+                --ui-deployment '<< pipeline.parameters.ui-deployment >>' \
+                --ui-testsuites '<< pipeline.parameters.ui-testsuites >>' \
+                <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
+                <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
+                <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
+                -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>"
               python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
