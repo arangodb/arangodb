@@ -1,9 +1,9 @@
 #!/bin/bash
-
+set -x
 image=$1
 arch=$2
 
-OS_VERSION=$( (docker run --rm -it $image:latest-$arch cat /etc/os-release||echo 'VERSION_ID="24.04"') | grep -Po "VERSION_ID=\"\K\d+\.\d+")
+OS_VERSION=$( (docker run --rm -it $image:latest-$arch cat /etc/os-release 2>/dev/null||echo 'VERSION_ID="24.04"') | grep -Po "VERSION_ID=\"\K\d+\.\d+")
 
 echo ${OS_VERSION}-$(git rev-parse --short HEAD)
 
