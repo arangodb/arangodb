@@ -82,6 +82,7 @@ jobs:
           command: |
             set -x
             cd /home/circleci/project/scripts/docker/go-test
+            echo  << parameters.image >>
             /bin/sh build-image.sh << parameters.image >>-go << parameters.arch >>
             /bin/sh determine-tag.sh << parameters.image >>-go << parameters.arch >> | tee << parameters.arch >>-tag.txt
             cat  << parameters.arch >>-tag.txt
