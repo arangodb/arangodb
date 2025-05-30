@@ -558,6 +558,7 @@ jobs:
               export PROMTOOL_PATH=`command -v promtool`
             fi
             if test -n "<< parameters.second-git-repo >>"; then
+              ssh -o StrictHostKeyChecking=no
               (cd .. ; git clone << parameters.second-git-repo >>)
             fi
             export TIMELIMIT=<< parameters.timeLimit >>
