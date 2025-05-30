@@ -535,6 +535,7 @@ jobs:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
+            set -x
             mkdir work
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
@@ -558,7 +559,7 @@ jobs:
               export PROMTOOL_PATH=`command -v promtool`
             fi
             if test -n "<< parameters.second-git-repo >>"; then
-              ssh -o StrictHostKeyChecking=no
+              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
               (cd .. ; git clone << parameters.second-git-repo >>)
             fi
             export TIMELIMIT=<< parameters.timeLimit >>
