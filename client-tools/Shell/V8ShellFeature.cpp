@@ -256,8 +256,9 @@ void V8ShellFeature::unprepare() {
     delete v8g;
 
     _context.Reset();
-    _isolate->Dispose();
   }
+
+  _isolate->Dispose();
 }
 
 void V8ShellFeature::stop() {
@@ -460,6 +461,7 @@ std::shared_ptr<V8ClientConnection> V8ShellFeature::setup(
     v8::Local<v8::Context>& context, bool createConnection,
     std::vector<std::string> const& positionals, bool* promptError) {
   std::shared_ptr<V8ClientConnection> v8connection;
+  v8::HandleScope scope(_isolate);
 
   bool haveClient = false;
   if (createConnection) {
@@ -1194,6 +1196,8 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 }
 
 void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
+  v8::HandleScope scope(_isolate);
+  v8::TryCatch tryCatch(_isolate);
   JSLoader loader;
   loader.setDirectory(_startupDirectory);
 

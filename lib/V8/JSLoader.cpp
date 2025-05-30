@@ -50,6 +50,7 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
                                       velocypack::Builder* builder) {
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch(isolate);
+  v8::Locker locker{isolate};
 
   findScript(name);
 
