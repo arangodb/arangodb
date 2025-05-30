@@ -92,7 +92,7 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - scripts/docker/test/*-tag.txt
+            - scripts/docker/go-test/*-tag.txt
 
   build-test-docker-manifest:
     docker:
@@ -120,6 +120,11 @@ jobs:
           command: |
             cd scripts/docker/test
             ./build-manifest.sh << parameters.image >> $(cat amd64-tag.txt)
+      - run:
+          name: Build manifest
+          command: |
+            cd scripts/docker/go-test
+            ./build-manifest.sh << parameters.image >>-go $(cat amd64-tag.txt)
       # TODO - commit the tag file to the repository
       # - run:
       #     name: Update TagFile
