@@ -369,11 +369,11 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
         job["buckets"] = buckets
 
     if test['testfile_definitions'] != {}:
-        job['test-docker-contanier'] = args.default_container.replace(
+        job['test-docker-container'] = args.default_container.replace(
             ':', test['testfile_definitions']['container_suffix'])
         job['second-git-repo'] = test['testfile_definitions']['second_repo']
     else:
-        job['test-docker-contanier'] = args.default_container
+        job['test-docker-container'] = args.default_container
         job['second-git-repo'] = ""
     return {"run-linux-tests": job}
 
