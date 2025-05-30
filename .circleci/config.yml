@@ -234,6 +234,8 @@ workflows:
           requires:
             - check-build-trigger
       - generate-config:
-          definitions: "tests/test-definitions.txt"
+          definitions:
+            - "tests/test-definitions.txt"
+            - "tests/go-test-definitions.txt"
           requires:
             - cancel-redundant-pipelines
