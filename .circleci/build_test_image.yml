@@ -80,7 +80,7 @@ jobs:
       - run:
           name: Build GO Docker Image
           command: |
-            set +X
+            set -x
             cd /home/circleci/project/scripts/docker/go-test
             /bin/sh build-image.sh << parameters.image >>-go << parameters.arch >>
             /bin/sh determine-tag.sh << parameters.image >>-go << parameters.arch >> | tee << parameters.arch >>-tag.txt
