@@ -1,4 +1,4 @@
-# {"container_suffix": "_go:", "second_repo": "git@github.com:arangodb/go-driver.git"}
+# {"container_suffix": "-go:", "second_repo": "git@github.com:arangodb/go-driver.git"}
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
 # https://github.com/arangodb/oskar#testing
