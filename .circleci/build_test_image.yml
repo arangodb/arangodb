@@ -64,7 +64,7 @@ jobs:
             cd /home/circleci/project/scripts/docker/test
             image=<< parameters.image >>
             cp ../../../VERSIONS .
-            cp ../../../ARANGO_VERSION .
+            cp ../../../ARANGO-VERSION .
             /bin/sh build-image.sh $image << parameters.arch >>
             /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag.txt
             cat  << parameters.arch >>-tag.txt
