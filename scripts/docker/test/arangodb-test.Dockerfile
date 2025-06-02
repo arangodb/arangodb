@@ -35,7 +35,8 @@ RUN if [ "$arch" = "amd64" ]; then \
         strip -s promtool && \
         mv promtool /usr/local/bin/promtool; \
     fi
-
+COPY VERSIONS .
+COPY ARANGO-VERSION .
 RUN \
   if [ "$arch" = "amd64" ]; then \
     arch="amd64"; \
