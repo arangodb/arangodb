@@ -11,11 +11,12 @@ import { MDIIndexForm } from "./MDIIndexForm";
 import { MDIPrefixedIndexForm } from "./MDIPrefixedIndexForm";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
+import { VectorIndexForm } from "./vectorIndex/VectorIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
   const [indexType, setIndexType] = useState<
-    CollectionIndex["type"] | "fulltext"
+    CollectionIndex["type"] | "fulltext" | "vector"
   >(indexTypeOptions[0].value);
   let tooltipText = "Type of index to create.";
   return (
@@ -55,7 +56,7 @@ const IndexTypeForm = ({
   type,
   onClose
 }: {
-  type: CollectionIndex["type"] | "fulltext";
+  type: CollectionIndex["type"] | "fulltext" | "vector";
   onClose: () => void;
 }) => {
   if (type === "inverted") {
@@ -78,6 +79,9 @@ const IndexTypeForm = ({
   }
   if (type === "mdi-prefixed") {
     return <MDIPrefixedIndexForm onClose={onClose} />;
+  }
+  if (type === "vector") {
+    return <VectorIndexForm onClose={onClose} />;
   }
   return <></>;
 };

@@ -26,7 +26,17 @@ export const useSupportedIndexTypes = () => {
   const supported = indexes?.filter(indexType => {
     return !aliases.hasOwnProperty(indexType);
   });
-  const options = indexTypeOptions.filter(option =>
+  
+  // Add vector index conditionally based on support
+  const allIndexOptions = [
+    ...indexTypeOptions,
+    ...(supported?.includes("vector") ? [{
+      label: "Vector index (beta)",
+      value: "vector" as const
+    }] : [])
+  ];
+
+  const options = allIndexOptions.filter(option =>
     supported?.includes(option.value)
   );
   return { supported, indexTypeOptions: options, ...rest };
@@ -34,7 +44,7 @@ export const useSupportedIndexTypes = () => {
 
 const indexTypeOptions: {
   label: string;
-  value: CollectionIndex["type"] | "fulltext";
+  value: CollectionIndex["type"] | "fulltext" | "vector";
 }[] = [
   {
     label: "Persistent Index",
