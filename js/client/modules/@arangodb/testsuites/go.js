@@ -136,7 +136,7 @@ function goDriver (options) {
                 let testcase = 'WARN';
                 if (item.hasOwnProperty('Test')) {
                   testcase = item.Test;
-                } else {
+                } else if (item.hasOwnProperty('Output')) {
                   if (item.Output === 'PASS\n') {
                     // this is the final PASS, ignore it.
                     print(item.Output);
@@ -159,6 +159,8 @@ function goDriver (options) {
                 }
                 let thiscase = results[testcase];
                 switch(item.Action) {
+                case 'start':
+                  break;
                 case 'fail':
                   status = false;
                   thiscase.status = false;
@@ -184,6 +186,8 @@ function goDriver (options) {
                   break;
                 }
               } catch (x) {
+                print(x);
+                print(x.stack);
                 status = false;
                 print("Error while parsing line? - " + x);
                 print("offending Line: " + line);
