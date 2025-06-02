@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-611: Add support for experimental vector index to the collection Indexes view with "beta" label, shown only if --experimental-vector-index flag is enabled.
+
 * Upgraded bundled version of RocksDB to 9.5.
 
   The default values for the following RocksDB-related startup options were 
