@@ -47,6 +47,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
+#include "Assertions/Assert.h"
 #include "Assertions/ProdAssert.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -267,6 +268,10 @@ ExecutionEngine::~ExecutionEngine() {
     std::this_thread::sleep_for(10ms);
   }
 
+  TRI_ASSERT(std::count_if(
+      _blocks.begin(), _blocks.end(),
+      [](const auto& block) { return block->isPrefetchTaskDone(); }))
+      << "Some prefetch tasks were not destroyed before";
   stopAsyncTasks();
 
   if (_sharedState) {  // ensure no async task is working anymore

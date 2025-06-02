@@ -243,6 +243,10 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void stopAsyncTasks() override;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  bool isPrefetchTaskDone() noexcept override;
+#endif
+
  private:
   struct ExecutionContext {
     ExecutionContext(ExecutionBlockImpl& block, AqlCallStack const& callstack);

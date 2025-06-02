@@ -134,6 +134,8 @@ class ExecutionBlock {
 
   virtual auto stopAsyncTasks() -> void;
 
+  virtual auto isPrefetchTaskDone() noexcept -> bool;
+
  protected:
   // Trace the start of a execute call
   void traceExecuteBegin(AqlCallStack const& stack,
