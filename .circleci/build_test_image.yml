@@ -109,12 +109,12 @@ jobs:
       - aws-ecr/ecr_login:
           public_registry: true
       - run:
-          name: Build manifest
+          name: Build test container manifest
           command: |
             cd scripts/docker/test
             ./build-manifest.sh << parameters.image >> $(cat amd64-tag.txt)
       - run:
-          name: Build manifest
+          name: Build go test container manifest
           command: |
             cd scripts/docker/go-test
             ./build-manifest.sh << parameters.image >>-go $(cat amd64-tag.txt)
