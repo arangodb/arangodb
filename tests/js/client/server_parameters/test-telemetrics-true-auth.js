@@ -894,6 +894,7 @@ function telemetricsEnhancingOurCalm() {
 // expected values and types defined in the schema located in `tests/js/common/test-data/telemetry/telemetrySchema.json`
 // This schema file is a copy of a file located in our telemetry repository
 function telemetricsSchemaTestSuite() {
+  let col;
 
     function validateJson(jsonData, schemaArray) {
       if (typeof jsonData !== 'object' || jsonData === null || Array.isArray(jsonData)) {
@@ -930,11 +931,6 @@ function telemetricsSchemaTestSuite() {
       const { mode, type, fields: subFields } = fieldDef;
 
       if (!isPresent) {
-          if (mode !== "NULLABLE" && mode !== "REPEATED") {
-              // This case is for fields that are implicitly "REQUIRED".
-              // Given the schema's explicit modes, this path usually means the field is optional.
-              // errors.push(`Error at "${path}": Field is required but missing.`);
-          }
           return { isValid: errors.length === 0, errors }; // Missing NULLABLE/REPEATED is fine.
       }
 
@@ -1021,14 +1017,11 @@ function telemetricsSchemaTestSuite() {
 
   return {
     setUpAll: function () {
-      db._create(cn);
-      let coll = db._createEdgeCollection(cn3, {numberOfShards: 2});
-      coll.insert({_from: vn1 + "/test1", _to: vn2 + "/test2"});
+      col = db._create(cn, {numberOfShards: 3});
     },
 
     tearDownAll: function () {
       db._drop(cn);
-      db._drop(cn3);
     },
 
     setUp: function () {
@@ -1046,7 +1039,7 @@ function telemetricsSchemaTestSuite() {
         print(result.errors);
       }
       assertTrue(result.isValid);
-    }
+    },
   };
 }
 
