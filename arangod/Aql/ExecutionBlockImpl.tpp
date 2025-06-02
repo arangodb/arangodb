@@ -384,13 +384,11 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
   }
 }
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::isPrefetchTaskActive() noexcept {
   return _prefetchTask != nullptr &&
          (!_prefetchTask->isConsumed() || !_prefetchTask->isFinished());
 }
-#endif
 
 template<class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(

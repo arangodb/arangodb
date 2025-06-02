@@ -243,9 +243,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void stopAsyncTasks() override;
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool isPrefetchTaskActive() noexcept override;
-#endif
 
  private:
   struct ExecutionContext {
