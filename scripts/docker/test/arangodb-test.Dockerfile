@@ -20,7 +20,7 @@ RUN apt-get update && \
     7zip gdb tzdata curl jq binutils gcc \
     llvm-${CLANG_VERSION} libatomic1 net-tools \
     libc6 libstdc++6 \
-    libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran wget \
+    libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran wget sed \
     python3 python3-pip && \
     apt-get autoremove -y --purge && \
     apt-get clean -y && \
