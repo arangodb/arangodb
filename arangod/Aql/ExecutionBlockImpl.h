@@ -244,7 +244,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
   void stopAsyncTasks() override;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  bool isPrefetchTaskDone() noexcept override;
+  bool isPrefetchTaskActive() noexcept override;
 #endif
 
  private:
@@ -387,6 +387,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
         : _block(block), _stack(stack) {}
 
     bool isConsumed() const noexcept;
+    bool isFinished() const noexcept;
     bool tryClaim() noexcept;
     bool tryClaimOrAbandon() noexcept;
     void waitFor() const noexcept;

@@ -268,10 +268,11 @@ ExecutionEngine::~ExecutionEngine() {
     std::this_thread::sleep_for(10ms);
   }
 
-  TRI_ASSERT(std::count_if(
-      _blocks.begin(), _blocks.end(),
-      [](const auto& block) { return !block->isPrefetchTaskDone(); }))
-      << "Some prefetch tasks were not destroyed before";
+  TRI_ASSERT(std::count_if(_blocks.begin(), _blocks.end(),
+                           [](const auto& block) {
+                             return block->isPrefetchTaskActive();
+                           }) == 0)
+      << "Some async prefetch tasks were not destroyed before";
   stopAsyncTasks();
 
   if (_sharedState) {  // ensure no async task is working anymore

@@ -134,7 +134,7 @@ class ExecutionBlock {
 
   virtual auto stopAsyncTasks() -> void;
 
-  virtual auto isPrefetchTaskDone() noexcept -> bool;
+  virtual auto isPrefetchTaskActive() noexcept -> bool;
 
  protected:
   // Trace the start of a execute call

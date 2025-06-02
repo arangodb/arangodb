@@ -212,5 +212,5 @@ auto ExecutionBlock::printBlockInfo() const -> std::string const {
 auto ExecutionBlock::stopAsyncTasks() -> void {}
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-auto ExecutionBlock::isPrefetchTaskDone() noexcept -> bool { return false; }
+auto ExecutionBlock::isPrefetchTaskActive() noexcept -> bool { return false; }
 #endif

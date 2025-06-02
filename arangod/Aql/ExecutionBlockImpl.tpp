@@ -386,8 +386,9 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 template<class Executor>
-bool ExecutionBlockImpl<Executor>::isPrefetchTaskDone() noexcept {
-  return _prefetchTask == nullptr || _prefetchTask->isConsumed();
+bool ExecutionBlockImpl<Executor>::isPrefetchTaskActive() noexcept {
+  return _prefetchTask != nullptr &&
+         (!_prefetchTask->isConsumed() || !_prefetchTask->isFinished());
 }
 #endif
 
@@ -2568,6 +2569,11 @@ ExecutionBlockImpl<Executor>::ExecutionContext::ExecutionContext(
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
   return _state.load(std::memory_order_relaxed).status == Status::Consumed;
+}
+
+template<class Executor>
+bool ExecutionBlockImpl<Executor>::PrefetchTask::isFinished() const noexcept {
+  return _state.load(std::memory_order_relaxed).status == Status::Finished;
 }
 
 template<class Executor>
