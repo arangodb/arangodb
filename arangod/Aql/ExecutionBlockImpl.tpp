@@ -387,7 +387,7 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::isPrefetchTaskActive() noexcept {
   return _prefetchTask != nullptr &&
-         (!_prefetchTask->isConsumed() || !_prefetchTask->isFinished());
+         (!_prefetchTask->isConsumed() && !_prefetchTask->isFinished());
 }
 
 template<class Executor>
