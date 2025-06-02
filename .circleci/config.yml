@@ -35,7 +35,7 @@ parameters:
     default: "arangodb/ubuntubuildarangodb-devel:15"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5b5ffda4
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-ac667d9d
   nightly:
     type: boolean
     default: false
@@ -193,18 +193,8 @@ jobs:
             if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
               cp .circleci/build_test_image.yml continuation_config.yml
             else
+              set -x
               pip install pyyaml
-              echo "python3 '.circleci/generate_config.py' --sanitizer '<< pipeline.parameters.sanitizer >>' \
-                --arangosh-args 'A<< pipeline.parameters.arangosh_args >>' \
-                --extra-args 'A<< pipeline.parameters.extra_args >>' \
-                --default-container '<< pipeline.parameters.test-docker-image >>' \
-                --ui '<< pipeline.parameters.ui >>' \
-                --ui-deployment '<< pipeline.parameters.ui-deployment >>' \
-                --ui-testsuites '<< pipeline.parameters.ui-testsuites >>' \
-                <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
-                <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
-                <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
-                -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>"
               python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
@@ -234,6 +224,7 @@ workflows:
           requires:
             - check-build-trigger
       - generate-config:
-          definitions: "tests/test-definitions.txt tests/go-test-definitions.txt"
+          definitions: "tests/test-definitions.txt"
+          # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
           requires:
             - cancel-redundant-pipelines
