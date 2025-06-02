@@ -89,7 +89,7 @@ function goDriver (options) {
       process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
-      let args = ['test', '-json', '-tags', 'auth', './test/'];
+      let args = ['test', '-json', '-tags', 'auth', './tests'];
 
       if (this.options.testCase) {
         args.push('-run');
@@ -106,7 +106,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], this.options.gosource);
+      const res = executeExternal('go', args, true, [], `${this.options.gosource}/v2/`);
       // let alljsonLines = []
       let b = '';
       let results = {};
@@ -174,6 +174,9 @@ function goDriver (options) {
                   thiscase.status = true;
                   thiscase.duration = item.Elapsed * 1000; // s -> ms
                   break;
+                case 'build-output':
+                case 'build-fail':
+                  print(`ERROR: ${item.Output}`);
                 case 'run':
                   // nothing interesting to see here...
                   break;
