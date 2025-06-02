@@ -5,5 +5,7 @@
 
 
 # Single Server Replication Tests
-go_driver priority=500 single -- --gosource ../go-driver 
-go_driver priority=500 cluster -- --gosource ../go-driver 
+go_driver priority=500 single -- --gosource ../go-driver --goDriverVersion 1
+go_driver priority=500 cluster -- --gosource ../go-driver --goDriverVersion 1
+go_driver priority=500 single -- --gosource ../go-driver --goDriverVersion 2
+go_driver priority=500 cluster -- --gosource ../go-driver --goDriverVersion 2

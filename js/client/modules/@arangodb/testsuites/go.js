@@ -30,7 +30,8 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `gosource`: directory of the go driver',
-  '   - `goOptions`: additional argumnets to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
+  '   - `goDriverVersion`: version [1,2] driver tests',
+  '   - `goOptions`: additional arguments to pass via the `TEST_OPTIONS` environment, i.e. ` -timeout 180m` (prepend blank!)'
 ];
 
 const internal = require('internal');
@@ -70,6 +71,15 @@ function goDriver (options) {
       this.info = "runInGoTest";
     }
     runOneTest(file) {
+      const goVersionArgs = [
+        {
+          "path": "./test/",
+          "wd": ""
+        }, {
+          "path": "./tests",
+          "wd": "/v2/",
+        }][options.goDriverVersion -1];
+
       process.env['TEST_ENDPOINTS'] = this.instanceManager.urls.join(',');
       process.env['TEST_AUTHENTICATION'] = 'basic:root:';
       let jwt = this.instanceManager.JWT; 
@@ -89,13 +99,13 @@ function goDriver (options) {
       process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
-      let args = ['test', '-json', '-tags', 'auth', './tests'];
+      let args = ['test', '-json', '-tags', 'auth', goVersionArgs['path']];
 
       if (this.options.testCase) {
         args.push('-run');
         args.push(this.options.testCase);
       }
-      if (this.options.hasOwnProperty('goOptions')) {
+      if (this.options.goOptions !== '') {
         for (var key in this.options.goOptions) {
           args.push('-'+key);
           args.push(this.options.goOptions[key]);
@@ -106,7 +116,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], `${this.options.gosource}/v2/`);
+      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionargs['wd']}`);
       // let alljsonLines = []
       let b = '';
       let results = {};
@@ -232,5 +242,9 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['go_driver'] = goDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoObject(optionsDefaults, {
+    'goDriverVersion': 2,
+    'goOptions': '',
+  });
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };
