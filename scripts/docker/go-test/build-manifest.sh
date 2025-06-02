@@ -1,5 +1,5 @@
 set -e
-
+set -x
 manifest=$1
 tag=$2
 
