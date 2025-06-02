@@ -890,6 +890,9 @@ function telemetricsEnhancingOurCalm() {
   };
 }
 
+// This test that the values that we return from our telemetry url match the 
+// expected values and types defined in the schema located in `tests/js/common/test-data/telemetry/telemetrySchema.json`
+// This schema file is a copy of a file located in our telemetry repository
 function telemetricsSchemaTestSuite() {
 
     function validateJson(jsonData, schemaArray) {
@@ -1035,7 +1038,6 @@ function telemetricsSchemaTestSuite() {
 
     testTelemetricsMatchesSchema: function () {
       let telemetryData = getTelemetricsResult();
-      // This file representing the schema is located in our telemetry repository
       const fn = fs.join('.', 'tests', 'js', 'common', 'test-data', 'telemetry', 'telemetrySchema.json');
       let telemetrySchema = JSON.parse(fs.readFileSync(fn).toString());
 
