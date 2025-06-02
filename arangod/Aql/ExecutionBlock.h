@@ -134,7 +134,9 @@ class ExecutionBlock {
 
   virtual auto stopAsyncTasks() -> void;
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   virtual auto isPrefetchTaskActive() noexcept -> bool;
+#endif
 
  protected:
   // Trace the start of a execute call
