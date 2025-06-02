@@ -5,4 +5,17 @@ type MdiPrefixed = Omit<MdiIndex, "type"> & {
   prefixFields: string[];
 };
 
-export type CollectionIndex = Index | MdiIndex | MdiPrefixed;
+type Vector = {
+  type: "vector";
+  fields: string[];
+  name?: string;
+  params: {
+    metric: "cosine" | "l2" | string;
+    dimension: number;
+    nLists: number;
+    defaultNProbe?: number;
+    trainingIterations?: number;
+  };
+};
+
+export type CollectionIndex = Index | MdiIndex | MdiPrefixed | Vector;

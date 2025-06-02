@@ -16,7 +16,7 @@ import { VectorIndexForm } from "./vectorIndex/VectorIndexForm";
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
   const [indexType, setIndexType] = useState<
-    CollectionIndex["type"] | "fulltext" | "vector"
+    CollectionIndex["type"] | "fulltext"
   >(indexTypeOptions[0].value);
   let tooltipText = "Type of index to create.";
   return (
@@ -56,7 +56,7 @@ const IndexTypeForm = ({
   type,
   onClose
 }: {
-  type: CollectionIndex["type"] | "fulltext" | "vector";
+  type: CollectionIndex["type"] | "fulltext";
   onClose: () => void;
 }) => {
   if (type === "inverted") {

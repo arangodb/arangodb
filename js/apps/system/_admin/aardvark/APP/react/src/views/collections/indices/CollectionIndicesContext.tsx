@@ -14,7 +14,7 @@ type CollectionIndicesContextType = {
   collectionName: string;
   collectionId: string;
   indexTypeOptions: {
-    value: CollectionIndex["type"] | "fulltext" | "vector";
+    value: CollectionIndex["type"] | "fulltext";
     label: string;
   }[];
   onOpenForm: () => void;
