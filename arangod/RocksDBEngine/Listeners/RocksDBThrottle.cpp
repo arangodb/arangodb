@@ -34,6 +34,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBThrottle.h"
+#include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 #include <sys/resource.h>
 
@@ -135,6 +136,14 @@ void RocksDBThrottle::OnFlushCompleted(
                        flush_job_info.table_properties.index_size +
                        flush_job_info.table_properties.filter_size;
 
+  for (auto const& blob : flush_job_info.blob_file_addition_infos) {
+    flushSize += blob.total_blob_bytes;
+  }
+
+  LOG_TOPIC("09fd4", TRACE, Logger::ENGINES)
+      << "rocksdb flush completed. flush size: " << flushSize
+      << ", micros: " << flushTime.count();
+
   setThrottleWriteRate(flushTime, flush_job_info.table_properties.num_entries,
                        flushSize, true);
 
@@ -163,7 +172,7 @@ void RocksDBThrottle::OnCompactionCompleted(
 void RocksDBThrottle::startup(rocksdb::DB* db) {
   std::unique_lock guard{_threadCondvar.mutex};
 
-  _internalRocksDB = (rocksdb::DBImpl*)db;
+  _internalRocksDB = dynamic_cast<rocksdb::DBImpl*>(db);
 
   TRI_ASSERT(_throttleState.load() == ThrottleState::Starting);
 
@@ -260,7 +269,7 @@ void RocksDBThrottle::recalculateThrottle() {
   auto& throttleData = *_throttleData;
 
   uint64_t totalBytes = 0;
-  bool noData;
+  bool noData{false};
   {
     std::lock_guard mutexLocker{_threadMutex};
 
@@ -462,9 +471,10 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
 
     propertyName = rocksdb::DB::Properties::kNumImmutableMemTable;
     bool ok = _internalRocksDB->GetProperty(cf, propertyName, &retString);
-
+    LOG_TOPIC("ffef0", TRACE, Logger::ENGINES)
+        << "NumberImmutable memory tables: " << retString;
     if (ok) {
-      immBacklog += std::stoi(retString);
+      immBacklog = std::stoi(retString);
     }
 
     ok = _internalRocksDB->GetProperty(
@@ -479,6 +489,9 @@ std::pair<int64_t, int64_t> RocksDBThrottle::computeBacklog() {
     compactionBacklog += (immBacklog - immTrigger);
   }
 
+  LOG_TOPIC("194c6", TRACE, Logger::ENGINES)
+      << "compactionBacklog: " << compactionBacklog
+      << ", pendingCompactionBytes: " << pendingCompactionBytes;
   return {compactionBacklog, pendingCompactionBytes};
 }
 

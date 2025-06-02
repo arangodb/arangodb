@@ -51,6 +51,14 @@ const fetchOptions = async ({
   });
 };
 
+const useDebouncedValue = (value: string, delay: number) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timeout);
+  }, [value, delay]);
+  return debouncedValue;
+};
 /**
  * Takes the graph name and
  * the input entered by the user,
@@ -70,6 +78,8 @@ export const useNodeStartOptions = ({
   inputValue: string;
   values: OptionType[];
 }) => {
+  const [isLoading, setIsLoading] = useState(false);
+  const debouncedInputValue = useDebouncedValue(inputValue, 500);
   const [vertexOptions, setVertexOptions] = useState<
     OptionType[] | undefined
   >();
@@ -90,18 +100,21 @@ export const useNodeStartOptions = ({
     };
     fetchGraphVertexCollection();
   }, [graphName]);
-
+  useEffect(() => {
+    setIsLoading(true);
+  }, [inputValue]);
   // loads options based on inputValue
   useEffect(() => {
     const loadVertexOptions = async () => {
       const vertexOptions = await fetchOptions({
-        inputValue,
+        inputValue: debouncedInputValue,
         collectionOptions,
         values
       });
       setVertexOptions(vertexOptions);
+      setIsLoading(false);
     };
     loadVertexOptions();
-  }, [inputValue, collectionOptions, values]);
-  return { options: vertexOptions };
+  }, [debouncedInputValue, collectionOptions, values]);
+  return { options: vertexOptions, isLoading };
 };

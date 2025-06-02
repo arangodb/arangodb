@@ -1,9 +1,49 @@
 devel
 -----
 
+* Upgraded bundled version of RocksDB to 9.5.
+
+  The default values for the following RocksDB-related startup options were 
+  adjusted as well:
+
+  - `--rocksdb.compaction-read-ahead-size` was changed from 2MB to 8MB.
+  - `--rocksdb.max-subcompactions` was changed from 2 to 4.
+  - `--rocksdb.max-total-wal-size` was changed from 80MB to 256MB.
+  - `--rocksdb.throttle-slots` was changed from 120 to 128.
+  - `--rocksdb.throttle-scaling-factor` was changed from 17 to 192.
+  - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to 1GB.
+  - `--rocksdb.pending-compactions-stop-trigger` was changed from 16GB to 32GB.
+  - `--rocksdb.partition-files-for-documents` was changed from false to true.
+
+  The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
+  obsoleted.
+
+* Fix a possible crash when requesting the async registry:
+  Does now not request the thread name of a potentially destroyed thread.
+
+* Add detection of two threads working on an ExecutionBlock concurrently.
+
+* Add detection of two threads waiting for a PrefetchTask concurrently.
+
+* Add visibility into the state if a thread waits for more than a second
+  on a PrefetchTask (and does not see InProgress).
+
+* Fix a memory leak in LogContext, which could leak entries which are still, and
+  only, used by a thread-local LogContext when that thread is destroyed.
+
+* Fix arangorestore failing to restore the dump containing a
+  vector index.
+
+* FE-575: adds debounce and loading state for node start search.
+
+* Fix BTS-2086: Fixes missing reschedule of license checks on single-server
+  instances.
+
 * Improved the error message displayed when the APPROX_NEAR function fails to
   apply a vector index.
  
+* upgrade LZ4 to 1.10.0
+
 * Fix BTS-2135: A global lock on the query registry was in some cases
   unnecessarily held for the full duration of query destruction.
   This could lead to throughput reduction or stalls in some situations.
@@ -22,15 +62,12 @@ devel
   if a new collection with `distributeShardsLike` was created at the wrong
   moment.
 
-* Updated ArangoDB Starter to v0.19.11-preview-1.
-
 * Updated ArangoDB Starter to v0.19.11.
 
 * Fix BTS-2111: It is no longer possible that two coordinators (or indeed one
   coordinator in two different threads) creates two collections with the same
   name in the same database (different collection ID).
 
-* Updated ArangoDB Starter to v0.19.10-preview-1.
 
 * Fix a crash when bind parameters are not set and killing of a query
   is logged (no version with this bug was ever released!).
