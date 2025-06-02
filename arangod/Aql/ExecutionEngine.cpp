@@ -270,7 +270,7 @@ ExecutionEngine::~ExecutionEngine() {
 
   TRI_ASSERT(std::count_if(
       _blocks.begin(), _blocks.end(),
-      [](const auto& block) { return block->isPrefetchTaskDone(); }))
+      [](const auto& block) { return !block->isPrefetchTaskDone(); }))
       << "Some prefetch tasks were not destroyed before";
   stopAsyncTasks();
 
