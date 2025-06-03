@@ -116,7 +116,7 @@ function goDriver (options) {
         print(args);
       }
       let start = Date();
-      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionargs['wd']}`);
+      const res = executeExternal('go', args, true, [], `${this.options.gosource}${goVersionArgs['wd']}`);
       // let alljsonLines = []
       let b = '';
       let results = {};
