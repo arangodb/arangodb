@@ -1,6 +1,8 @@
 devel
 -----
 
+* Improved performance of document-search query in graph settings UI (BTS-2149)
+
 * Upgraded bundled version of RocksDB to 9.5.
 
   The default values for the following RocksDB-related startup options were 
