@@ -33,9 +33,12 @@
 namespace arangodb::containers {
 
 /**
-   Reference counting wrapper for a constant resource
+   Reference counting wrapper for a resource
 
    Destroys itself when the reference count decrements to zero.
+   This resource can be referenced - in contrast to a simle std::shared_ptr - by
+   different types of pointers at the same time, e.g. by a SharedPtr (similar to
+   an std::shared_ptr) and an AtomicSharedOrRawPtr.
  */
 template<typename T>
 struct SharedResource {
