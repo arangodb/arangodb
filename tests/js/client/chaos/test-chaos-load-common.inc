@@ -33,6 +33,7 @@ const arangodb = require('@arangodb');
 const analyzers = require("@arangodb/analyzers");
 const request = require("@arangodb/request");
 const db = arangodb.db;
+const errors = require("@arangodb").errors;
 const {
   clearAllFailurePoints,
   deriveTestSuite,
@@ -540,15 +541,21 @@ function BaseChaosSuite(testOpts) {
           } catch (err) {
             log(`executing previous command triggered exception ${err}`);
             // none of the following errors are expected in this test:
-            if (require("@arangodb").errors.ERROR_QUERY_PARSE === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_EMPTY === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_COMPILE_TIME_OPTIONS === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETERS_INVALID === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_MISSING === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED === err.errorNum ||
-                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_TYPE === err.errorNum) {
+            if (errors.ERROR_QUERY_PARSE === err.errorNum ||
+                errors.ERROR_QUERY_EMPTY === err.errorNum ||
+                errors.ERROR_QUERY_COMPILE_TIME_OPTIONS === err.errorNum ||
+                errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION === err.errorNum ||
+                errors.ERROR_QUERY_BIND_PARAMETERS_INVALID === err.errorNum ||
+                errors.ERROR_QUERY_BIND_PARAMETER_MISSING === err.errorNum ||
+                errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED === err.errorNum ||
+                errors.ERROR_QUERY_BIND_PARAMETER_TYPE === err.errorNum) {
               throw err;
+            }
+            if (testOpts.withStreamingTransactions
+                && [errors.ERROR_CLUSTER_TIMEOUT, errors.ERROR_HTTP_REQUEST_TIMEOUT].some(e => e === err.errorNum)) {
+              // after a timeout, it is no longer safe to use the transaction - the previous operation may still be
+              // running.
+              break;
             }
           }
         }
@@ -565,12 +572,12 @@ function BaseChaosSuite(testOpts) {
             }
             trx = null;
           } catch (e) {
-            if (require("@arangodb").errors.ERROR_TRANSACTION_NOT_FOUND.code === e.errorNum) {
+            if (errors.ERROR_TRANSACTION_NOT_FOUND.code === e.errorNum) {
               log(`aborting trx abort/commit loop because trx was not found`);
               break;
             }
             // due to contention we could have a lock timeout here
-            if (require("@arangodb").errors.ERROR_LOCKED.code !== e.errorNum) {
+            if (errors.ERROR_LOCKED.code !== e.errorNum) {
               log(`aborting trx abort/commit loop because of unexpected error ${JSON.stringify(e)}`);
               throw e;
             }
