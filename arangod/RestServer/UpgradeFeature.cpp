@@ -192,6 +192,10 @@ void UpgradeFeature::start() {
 
     auth::UserManager* um =
         server().getFeature<AuthenticationFeature>().userManager();
+    if (ServerState::instance()->isSingleServer()) {
+      // Kickstart the single server by waking up the waiting UpdateThread
+      um->setGlobalVersion(1);
+    }
 
     if (um != nullptr) {
       if (!ServerState::instance()->isCoordinator() && !init.restoreAdmin() &&

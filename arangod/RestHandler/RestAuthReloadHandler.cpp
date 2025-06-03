@@ -49,7 +49,7 @@ RestStatus RestAuthReloadHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
     um->triggerLocalReload();
-    std::ignore = um->triggerGlobalReload();  // noop except on coordinator
+    um->triggerGlobalReload();
     // TODO switch to revalidation?
     // TODO should we wait here?
   }

@@ -261,9 +261,7 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
     um->triggerLocalReload();
-    std::ignore = um->triggerGlobalReload();  // noop except on coordinator
-    um->triggerCacheRevalidation();
-    // TODO: switch to triggerCacheRevalidation() ?
+    um->triggerGlobalReload();
     // TODO: Do we need to wait until the reload is done?
   }
 

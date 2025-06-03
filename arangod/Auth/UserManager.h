@@ -147,6 +147,8 @@ class UserManager {
 #endif
 
  private:
+  void triggerGlobalReloadAndWait();
+
   bool checkPassword(std::string const& username, std::string const& password);
   bool checkAccessToken(std::string const& username, std::string const& token,
                         std::string& un);
@@ -155,7 +157,7 @@ class UserManager {
   uint64_t loadFromDB();
 
   // Forces callers of it to wait until _usersInitialized is true
-  void checkIfUserDataIsAvailable() const;
+  void checkIfUserDataIsAvailable();
 
   // store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);

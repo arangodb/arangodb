@@ -81,7 +81,7 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
 auth::UserManager::UserManager(ArangodServer& server)
-    : _server(server), _globalVersion(1), _internalVersion(0) {}
+    : _server(server), _globalVersion(0), _internalVersion(0) {}
 
 auth::UserManager::~UserManager() {
   if (_userCacheUpdateThread && _userCacheUpdateThread->joinable()) {
@@ -183,7 +183,7 @@ void auth::UserManager::startUpdateThread() noexcept {
   TRI_ASSERT(_userCacheUpdateThread == nullptr);
   _userCacheUpdateThread =
       std::make_unique<std::jthread>([this](std::stop_token stpTkn) {
-        _globalVersion.wait(1);
+        _globalVersion.wait(0);
         while (!stpTkn.stop_requested()) {
           uint64_t const loadedVersion = loadFromDB();
           _globalVersion.wait(loadedVersion);
@@ -199,13 +199,9 @@ void auth::UserManager::startUpdateThread() noexcept {
 uint64_t auth::UserManager::loadFromDB() {
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
-  uint64_t const tmp = globalVersion();
+  uint64_t currentGlobalVersion = globalVersion();
   uint64_t const currentInternalVersion =
       _internalVersion.load(std::memory_order_acquire);
-  if (currentInternalVersion == tmp) {
-    // Somebody else already did the work, forget about it.
-    return currentInternalVersion;
-  }
 
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
@@ -218,9 +214,9 @@ uint64_t auth::UserManager::loadFromDB() {
           _userCache.swap(userMap);
         }
       }
-      _internalVersion.store(tmp);
+      _internalVersion.store(currentGlobalVersion);
       _internalVersion.notify_all();
-      return tmp;
+      return currentGlobalVersion;
     }
   } catch (basics::Exception const& ex) {
     LOG_TOPIC("aa45c", WARN, Logger::AUTHENTICATION)
@@ -232,10 +228,10 @@ uint64_t auth::UserManager::loadFromDB() {
     LOG_TOPIC("3f537", TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
   }
-  return tmp;
+  return currentInternalVersion;
 }
 
-void auth::UserManager::checkIfUserDataIsAvailable() const {
+void auth::UserManager::checkIfUserDataIsAvailable() {
   TRI_IF_FAILURE("UserManager::UserDataNotAvailable") {
     if (_server.hasFeature<BootstrapFeature>() &&
         !_server.getFeature<BootstrapFeature>().isReady()) {
@@ -345,8 +341,7 @@ void auth::UserManager::createRootUser() {
   }
   readGuard.unlock();
 
-  uint64_t const internalVersionBeforeReload = triggerGlobalReload();
-  _internalVersion.wait(internalVersionBeforeReload);
+  triggerGlobalReloadAndWait();
 }
 
 VPackBuilder auth::UserManager::allUsers() {
@@ -367,8 +362,7 @@ VPackBuilder auth::UserManager::allUsers() {
 
 void auth::UserManager::triggerCacheRevalidation() {
   triggerLocalReload();
-  uint64_t const internalVersionBeforeReload = triggerGlobalReload();
-  _internalVersion.wait(internalVersionBeforeReload);
+  triggerGlobalReloadAndWait();
 }
 
 void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
@@ -421,13 +415,23 @@ uint64_t auth::UserManager::triggerGlobalReload() {
     }
   }
   uint64_t previousGlobalVersion = startingGlobalVersion;
-  _globalVersion.compare_exchange_strong(
+  bool const globalVersionWasIncreased = _globalVersion.compare_exchange_strong(
       previousGlobalVersion, previousGlobalVersion + 1,
       std::memory_order_release, std::memory_order_relaxed);
 
   _globalVersion.notify_one();
 
+  if (globalVersionWasIncreased) {
+    return startingGlobalVersion + 1;
+  }
   return startingGlobalVersion;
+}
+
+void auth::UserManager::triggerGlobalReloadAndWait() {
+  uint64_t internalVersionBeforeReload = triggerGlobalReload();
+  while (_internalVersion.load() < internalVersionBeforeReload) {
+    _internalVersion.wait(_internalVersion.load());
+  }
 }
 
 Result auth::UserManager::storeUser(bool const replace,
@@ -471,8 +475,7 @@ Result auth::UserManager::storeUser(bool const replace,
   Result r = storeUserInternal(user, replace);
   readGuard.unlock();
   if (r.ok()) {
-    uint64_t const internalVersionBeforeReload = triggerGlobalReload();
-    _internalVersion.wait(internalVersionBeforeReload);
+    triggerGlobalReloadAndWait();
   }
   return r;
 }
@@ -519,8 +522,7 @@ Result auth::UserManager::enumerateUsers(
 
   // cannot hold _userCacheLock while  invalidating token cache
   if (triggerUpdate) {
-    uint64_t const internalVersionBeforeReload = triggerGlobalReload();
-    _internalVersion.wait(internalVersionBeforeReload);
+    triggerGlobalReloadAndWait();
   }
   return res;
 }
@@ -556,8 +558,7 @@ Result auth::UserManager::updateUser(std::string const& name,
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
     // TODO conflict ?
-    uint64_t const internalVersionBeforeReload = triggerGlobalReload();
-    _internalVersion.wait(internalVersionBeforeReload);
+    triggerGlobalReloadAndWait();
   }
   return r;
 }
@@ -666,8 +667,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
 
   // cannot hold _userCacheLock while  invalidating token cache
   readGuard.unlock();
-  uint64_t const internalVersionBeforeReload = triggerGlobalReload();
-  _internalVersion.wait(internalVersionBeforeReload);
+  triggerGlobalReloadAndWait();
 
   return res;
 }
@@ -698,8 +698,7 @@ Result auth::UserManager::removeAllUsers() {
     }
   }
 
-  uint64_t const internalVersionBeforeReload = triggerGlobalReload();
-  _internalVersion.wait(internalVersionBeforeReload);
+  triggerGlobalReloadAndWait();
   return res;
 }
 
