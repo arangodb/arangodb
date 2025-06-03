@@ -385,6 +385,12 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
 }
 
 template<class Executor>
+bool ExecutionBlockImpl<Executor>::isPrefetchTaskActive() noexcept {
+  return _prefetchTask != nullptr &&
+         (!_prefetchTask->isConsumed() && !_prefetchTask->isFinished());
+}
+
+template<class Executor>
 std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
     SharedAqlItemBlockPtr&& newBlock, AqlCall&& call) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -2561,6 +2567,11 @@ ExecutionBlockImpl<Executor>::ExecutionContext::ExecutionContext(
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
   return _state.load(std::memory_order_relaxed).status == Status::Consumed;
+}
+
+template<class Executor>
+bool ExecutionBlockImpl<Executor>::PrefetchTask::isFinished() const noexcept {
+  return _state.load(std::memory_order_relaxed).status == Status::Finished;
 }
 
 template<class Executor>
