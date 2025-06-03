@@ -909,7 +909,6 @@ function telemetricsSchemaTestSuite() {
 
   function validateObjectAgainstSchema(obj, fieldDefinitions, currentPath) {
       let allErrors = [];
-      const dataKeys = new Set(Object.keys(obj));
 
       for (const fieldDef of fieldDefinitions) {
           const fieldName = fieldDef.name;
@@ -920,7 +919,6 @@ function telemetricsSchemaTestSuite() {
           if (!result.isValid) {
               allErrors = allErrors.concat(result.errors);
           }
-          dataKeys.delete(fieldName);
       }
 
       return { isValid: allErrors.length === 0, errors: allErrors };
