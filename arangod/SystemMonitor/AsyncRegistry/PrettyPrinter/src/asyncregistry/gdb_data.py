@@ -24,7 +24,6 @@ class State:
 class Thread:
     posix_id: gdb.Value
     lwpid: gdb.Value
-    # TODO is there a way to get the thread name?
 
     @classmethod
     def from_gdb(cls, value: gdb.Value | None):
@@ -35,7 +34,6 @@ class Thread:
     def __str__(self):
         return f"LWPID {self.lwpid} (pthread {self.posix_id})"
 
-# new one
 @dataclass
 class ThreadInfo:
     lwpid: gdb.Value

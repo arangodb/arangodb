@@ -67,11 +67,11 @@ auto inspect(Inspector& f, PromiseId& x) {
 
 struct Requester : std::variant<basics::ThreadInfo, PromiseId> {
   static auto from(std::variant<basics::ThreadInfo, void*> var) -> Requester {
-    if (std::holds_alternative<basics::ThreadInfo>(var)) {
-      return Requester{std::get<basics::ThreadInfo>(var)};
-    } else {
-      return Requester{PromiseId{std::get<void*>(var)}};
-    }
+    return std::visit(
+        overloaded{
+            [](basics::ThreadInfo const& info) { return Requester{info}; },
+            [](void* ptr) { return Requester{PromiseId{ptr}}; }},
+        var);
   }
 };
 template<typename Inspector>
@@ -104,13 +104,12 @@ using CurrentRequester =
 struct AtomicRequester
     : containers::AtomicSharedOrRawPtr<basics::ThreadInfo, void> {
   static auto from(CurrentRequester req) -> AtomicRequester {
-    if (std::holds_alternative<containers::SharedPtr<basics::ThreadInfo>>(
-            req)) {
-      return AtomicRequester{
-          std::get<containers::SharedPtr<basics::ThreadInfo>>(req)};
-    } else {
-      return AtomicRequester{std::get<PromiseId>(req).id};
-    }
+    return std::visit(
+        overloaded{[](containers::SharedPtr<basics::ThreadInfo> const& ptr) {
+                     return AtomicRequester{ptr};
+                   },
+                   [](PromiseId const& id) { return AtomicRequester{id.id}; }},
+        req);
   }
 };
 
