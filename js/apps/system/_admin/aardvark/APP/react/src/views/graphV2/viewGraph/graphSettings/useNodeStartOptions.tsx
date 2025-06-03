@@ -32,7 +32,7 @@ const fetchOptions = async ({
   const [collectionName, documentKey] = inputSplit;
   const valuesList = values
     .map(value => value.value.split("/"))
-    .filter(valueSplit => valueSplit.length > 1 && valueSplit[0] == collectionName)
+    .filter(valueSplit => valueSplit.length > 1 && valueSplit[0] === collectionName)
     .map(valueSplit => valueSplit[1]);
   const colQuery = aql`
       FOR doc IN ${db.collection(collectionName)}
