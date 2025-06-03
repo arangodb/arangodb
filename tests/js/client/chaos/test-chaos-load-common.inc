@@ -447,6 +447,7 @@ function BaseChaosSuite(testOpts) {
         }
 
         const ops = trx === null ? 1 : Math.floor(Math.random() * 5) + 1;
+        let stoppedEarly = false;
         for (let op = 0; op < ops; ++op) {
           try {
             const d = Math.random();
@@ -555,12 +556,13 @@ function BaseChaosSuite(testOpts) {
                 && [errors.ERROR_CLUSTER_TIMEOUT, errors.ERROR_HTTP_REQUEST_TIMEOUT].some(e => e === err.errorNum)) {
               // after a timeout, it is no longer safe to use the transaction - the previous operation may still be
               // running.
+              stoppedEarly = true;
               break;
             }
           }
         }
         
-        let willAbort = Math.random() < 0.2;
+        let willAbort = Math.random() < 0.2 || stoppedEarly;
         while (trx) {
           try {
             if (willAbort) {
