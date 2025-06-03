@@ -493,6 +493,9 @@ jobs:
       second-git-repo:
         type: string
         default: ""
+      second-git-branch:
+        type: string
+        default: ""
       docker_image:
         type: string
         default: "<< pipeline.parameters.test-docker-image >>"
@@ -560,7 +563,7 @@ jobs:
             fi
             if test -n "<< parameters.second-git-repo >>"; then
               export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
-              (cd .. ; git clone << parameters.second-git-repo >>)
+              (cd .. ; git clone << parameters.second-git-repo >>; git checkout << parameters.second-git-branch >>)
             fi
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse

@@ -372,9 +372,11 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
         job['docker_image'] = args.default_container.replace(
             ':', test['testfile_definitions']['container_suffix'])
         job['second-git-repo'] = test['testfile_definitions']['second_repo']
+        job['second-git-branch'] = test['testfile_definitions']['branch']
     else:
         job['docker_image'] = args.default_container
         job['second-git-repo'] = ""
+        job['second-git-branch'] = ""
     return {"run-linux-tests": job}
 
 
