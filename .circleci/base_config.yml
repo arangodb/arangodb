@@ -563,7 +563,12 @@ jobs:
             fi
             if test -n "<< parameters.second-git-repo >>"; then
               export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
-              (cd .. ; git clone << parameters.second-git-repo >>; git checkout << parameters.second-git-branch >>)
+              ( \
+                cd .. ; \
+                git clone << parameters.second-git-repo >>; \
+                cd $(echo << parameters.second-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
+                git checkout << parameters.second-git-branch >> \
+              )
             fi
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
