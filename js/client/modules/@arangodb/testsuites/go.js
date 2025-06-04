@@ -246,6 +246,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   tu.CopyIntoObject(opts, {
     'goDriverVersion': 2,
     'goOptions': '',
+    'gosource': '../go-driver',
   });
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };
