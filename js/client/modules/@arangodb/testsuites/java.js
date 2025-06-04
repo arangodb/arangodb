@@ -105,7 +105,7 @@ function javaDriver (options) {
         args.push('-Dtest=' + this.options.testCase);
         args.push('-DfailIfNoTests=false'); // if we don't specify this, errors will occur.
       }
-      if (this.options.hasOwnProperty('javaOptions')) {
+      if (this.options.javaOptions !== '') {
         for (var key in this.options.javaOptions) {
           args.push('-D' + key + '=' + this.options.javaOptions[key]);
         }
@@ -247,4 +247,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['java_driver'] = javaDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
+  tu.CopyIntoObject(opts, {
+    'javaOptions': '',
+    'javasource': '../arangodb-java-driver',
+  });
 };

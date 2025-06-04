@@ -89,15 +89,20 @@ function jsDriver (options) {
       
       // testResultsDir
       let args = [
-        //'-s', // Silent, only json
-        'run',
-        'test:cjs'
+        "mocha",
+        "--reporter",
+        "json",
+        "--require",
+        "source-map-support/register",
+        "--timeout",
+        "10000",
+        "build/esm/test"
       ];
       if (this.options.testCase) {
         args.push('--grep');
         args.push(this.options.testCase);
       }
-      if (this.options.hasOwnProperty('jsOptions')) {
+      if (this.options.jsOptions !== '') {
         for (var key in this.options.jsOptions) {
           args.push('--' + key + '=' + this.options.jsOptions[key]);
         }
@@ -107,7 +112,7 @@ function jsDriver (options) {
       }
       let start = Date();
       let status = true;
-      const res = executeExternal('npm', args, true, [], this.options.jssource);
+      const res = executeExternal('npx', args, true, [], this.options.jssource);
 
       let allBuff = '';
       let count = 0;
