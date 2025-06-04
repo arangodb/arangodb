@@ -69,6 +69,7 @@ jobs:
             /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag.txt
             cat  << parameters.arch >>-tag.txt
             docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+            docker tag $image:latest-<< parameters.arch >> $image:latest
             docker push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - run:
           name: Build GO Docker Image
