@@ -884,10 +884,9 @@ function MultipleVectorIndexesOnField() {
     };
 }
 
-if (!versionHas("arm")) {
-  jsunity.run(VectorIndexL2TestSuite);
-  jsunity.run(VectorIndexCosineTestSuite);
-  jsunity.run(MultipleVectorIndexesOnField);
-}
+jsunity.run(VectorIndexL2TestSuite);
+jsunity.run(VectorIndexCosineTestSuite);
+jsunity.run(MultipleVectorIndexesOnField);
+
 return jsunity.done();
 
