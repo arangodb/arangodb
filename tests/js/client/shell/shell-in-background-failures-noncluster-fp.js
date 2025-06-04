@@ -141,8 +141,8 @@ function IndexInBackgroundFailuresSuite () {
 
       // wait until index is there...
       let tries = 0;
-      const tries = versionHas('tsan') ? 600 : 300;
-      while (++tries < tries) {
+      const maxRetries = versionHas('tsan') ? 600 : 300;
+      while (++tries < maxRetries) {
         res = arango.PUT_RAW("/_api/job/" + id, "");
         if (res.code === 201 || res.code >= 400) {
           break;
