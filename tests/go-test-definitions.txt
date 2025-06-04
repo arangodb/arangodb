@@ -1,4 +1,4 @@
-# {"container_suffix": "-go:", "second_repo": "git@github.com:arangodb/go-driver.git", "branch": "bug-fix/v1-database-cleanup"}
+# {"container_suffix": "-go:", "second_repo": "git@github.com:arangodb/go-driver.git", "branch": "bug-fix/v1-database-cleanup", "init_command":""}
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
 # https://github.com/arangodb/oskar#testing
