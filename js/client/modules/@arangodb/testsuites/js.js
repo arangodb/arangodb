@@ -70,7 +70,7 @@ function jsDriver (options) {
       super(options, testname, ...optionalArgs);
       this.info = "runInJsTest";
     }
-    run(file) {
+    runOneTest(file) {
       let topology;
       let results = {
         'message': ''
@@ -89,8 +89,9 @@ function jsDriver (options) {
       
       // testResultsDir
       let args = [
-        '-s', // Silent, only json
-        'arango-test'
+        //'-s', // Silent, only json
+        'run',
+        'test:cjs'
       ];
       if (this.options.testCase) {
         args.push('--grep');
@@ -106,7 +107,7 @@ function jsDriver (options) {
       }
       let start = Date();
       let status = true;
-      const res = executeExternal('yarn', args, true, [], this.options.jssource);
+      const res = executeExternal('npm', args, true, [], this.options.jssource);
 
       let allBuff = '';
       let count = 0;
@@ -171,4 +172,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['js_driver'] = jsDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
+  tu.CopyIntoObject(opts, {
+    'jsOptions': '',
+    'jssource': '../arangojs',
+  });
 };
