@@ -1877,6 +1877,14 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
   ensureExecutionTime();
+  // Before transaction is destroyed we should wait for all async tasks to
+  // finish so they don't use trx object. We do this only if this is a sync
+  // operation otherwise we do not want to stall the caller
+  if (sync) {
+    for (auto const& snippet : _snippets) {
+      snippet->stopAsyncTasks();
+    }
+  }
 
   trackExecutionEnd();
 

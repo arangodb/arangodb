@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/threads-posix.h"
+#include "Containers/Concurrent/shared.h"
 #include "Inspection/Format.h"
 
 namespace arangodb::basics {
@@ -38,6 +39,18 @@ template<typename Inspector>
 auto inspect(Inspector& f, ThreadId& x) {
   return f.object(x).fields(f.field("LWPID", x.kernel_id),
                             f.field("posix_id", x.posix_id));
+}
+
+struct ThreadInfo {
+  static auto current() noexcept -> containers::SharedPtr<ThreadInfo>;
+  pid_t kernel_id;
+  std::string name;
+  bool operator==(ThreadInfo const&) const = default;
+};
+template<typename Inspector>
+auto inspect(Inspector& f, ThreadInfo& x) {
+  return f.object(x).fields(f.field("LWPID", x.kernel_id),
+                            f.field("name", x.name));
 }
 
 }  // namespace arangodb::basics
