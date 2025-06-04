@@ -567,7 +567,8 @@ jobs:
                 cd .. ; \
                 git clone << parameters.second-git-repo >>; \
                 cd $(echo << parameters.second-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
-                git checkout << parameters.second-git-branch >> \
+                git checkout << parameters.second-git-branch >>; \
+                 << parameters.init_driver_repo_command >>
               )
             fi
             export TIMELIMIT=<< parameters.timeLimit >>

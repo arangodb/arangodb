@@ -373,10 +373,12 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
             ':', test['testfile_definitions']['container_suffix'])
         job['second-git-repo'] = test['testfile_definitions']['second_repo']
         job['second-git-branch'] = test['testfile_definitions']['branch']
+        job['init_driver_repo_command'] = test['testfile_definitions']['init_command']
     else:
         job['docker_image'] = args.default_container
         job['second-git-repo'] = ""
         job['second-git-branch'] = ""
+        job['init_driver_repo_command'] = ""
     return {"run-linux-tests": job}
 
 
