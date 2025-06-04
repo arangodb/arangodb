@@ -33,7 +33,6 @@ const arangodb = require('@arangodb');
 const analyzers = require("@arangodb/analyzers");
 const request = require("@arangodb/request");
 const db = arangodb.db;
-const errors = require("@arangodb").errors;
 const {
   clearAllFailurePoints,
   deriveTestSuite,
@@ -354,6 +353,7 @@ function BaseChaosSuite(testOpts) {
     testRunChaos: function () {
       let code = (testOpts) => {
         const pid = require("internal").getPid();
+        const errors = require("@arangodb").errors;
         
         const generateAttributes = (n) => {
           let attrs = "";
@@ -447,7 +447,6 @@ function BaseChaosSuite(testOpts) {
         }
 
         const ops = trx === null ? 1 : Math.floor(Math.random() * 5) + 1;
-        let stoppedEarly = false;
         for (let op = 0; op < ops; ++op) {
           try {
             const d = Math.random();
@@ -512,7 +511,6 @@ function BaseChaosSuite(testOpts) {
               log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}, QUERY OPTIONS: ${JSON.stringify(qo)}`);
               query(`FOR doc IN ${c.name()} LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO ${c.name()} OPTIONS ${JSON.stringify(o)}`, {limit}, qo);
             } else if (d >= 0.60) {
-              const limit = Math.floor(Math.random() * 100) + 1;
               let keys = [];
               for (let i = 0; i < keys; ++i) {
                 keys.push(key());
@@ -520,7 +518,6 @@ function BaseChaosSuite(testOpts) {
               log(`RUNNING DOCUMENT BATCH LOOKUP.`);
               c.document(keys);
             } else if (d >= 0.55) {
-              const limit = Math.floor(Math.random() * 100) + 1;
               let keys = [];
               for (let i = 0; i < keys; ++i) {
                 keys.push(key());
@@ -542,27 +539,31 @@ function BaseChaosSuite(testOpts) {
           } catch (err) {
             log(`executing previous command triggered exception ${err}`);
             // none of the following errors are expected in this test:
-            if (errors.ERROR_QUERY_PARSE === err.errorNum ||
-                errors.ERROR_QUERY_EMPTY === err.errorNum ||
-                errors.ERROR_QUERY_COMPILE_TIME_OPTIONS === err.errorNum ||
-                errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION === err.errorNum ||
-                errors.ERROR_QUERY_BIND_PARAMETERS_INVALID === err.errorNum ||
-                errors.ERROR_QUERY_BIND_PARAMETER_MISSING === err.errorNum ||
-                errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED === err.errorNum ||
-                errors.ERROR_QUERY_BIND_PARAMETER_TYPE === err.errorNum) {
+            if ([
+                  errors.ERROR_QUERY_PARSE,
+                  errors.ERROR_QUERY_EMPTY,
+                  errors.ERROR_QUERY_COMPILE_TIME_OPTIONS,
+                  errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION,
+                  errors.ERROR_QUERY_BIND_PARAMETERS_INVALID,
+                  errors.ERROR_QUERY_BIND_PARAMETER_MISSING,
+                  errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
+                  errors.ERROR_QUERY_BIND_PARAMETER_TYPE,
+                ].some(e => e.code === err.errorNum)
+            ) {
               throw err;
             }
             if (testOpts.withStreamingTransactions
-                && [errors.ERROR_CLUSTER_TIMEOUT, errors.ERROR_HTTP_REQUEST_TIMEOUT].some(e => e === err.errorNum)) {
-              // after a timeout, it is no longer safe to use the transaction - the previous operation may still be
-              // running.
-              stoppedEarly = true;
+                && [errors.ERROR_CLUSTER_TIMEOUT, errors.ERROR_HTTP_REQUEST_TIMEOUT]
+                    .some(e => e.code === err.errorNum)) {
+              // After an operation using a specific streaming transaction fails due to a network timeout, it is no
+              // longer safe to use that transaction: The previous operation might still be running, and concurrent
+              // use of streaming transactions is (currently) disallowed and UB.
               break;
             }
           }
         }
         
-        let willAbort = Math.random() < 0.2 || stoppedEarly;
+        let willAbort = Math.random() < 0.2;
         while (trx) {
           try {
             if (willAbort) {
