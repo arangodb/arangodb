@@ -187,6 +187,7 @@ function goDriver (options) {
                 case 'build-output':
                 case 'build-fail':
                   print(`ERROR: ${item.Output}`);
+                  break;
                 case 'run':
                   // nothing interesting to see here...
                   break;
@@ -242,7 +243,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['go_driver'] = goDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
-  tu.CopyIntoObject(optionsDefaults, {
+  tu.CopyIntoObject(opts, {
     'goDriverVersion': 2,
     'goOptions': '',
   });
