@@ -82,6 +82,18 @@ jobs:
             cat  << parameters.arch >>-tag.txt
             docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
             docker push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+      - run:
+          name: Build js Docker Image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker/js-test
+            echo  << parameters.image >>
+            image=<< parameters.image >>-js
+            /bin/sh build-image.sh $image << parameters.arch >>
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag.txt
+            cat  << parameters.arch >>-tag.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+            docker push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - persist_to_workspace:
           root: .
           paths:
