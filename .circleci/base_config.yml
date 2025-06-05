@@ -496,6 +496,9 @@ jobs:
       second-git-branch:
         type: string
         default: ""
+      init_driver_repo_command:
+        type: string
+        default: ""
       docker_image:
         type: string
         default: "<< pipeline.parameters.test-docker-image >>"
