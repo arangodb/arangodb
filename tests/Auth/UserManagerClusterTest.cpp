@@ -43,7 +43,12 @@ class UserManagerClusterTest : public ::testing::Test {
  protected:
   auth::UserManager* userManager() {
     auto um = _server.getFeature<AuthenticationFeature>().userManager();
-    TRI_ASSERT(um != nullptr);
+    TRI_ASSERT(um !=
+               nullptr);  // starting the thread that populates the user cache
+    // the thread will wait for globalVersion to become != 0
+    um->startUpdateThread();
+    // Start the DB load in the seperate thread
+    um->setGlobalVersion(1);
     return um;
   }
 

@@ -203,6 +203,15 @@ uint64_t auth::UserManager::loadFromDB() {
   uint64_t const currentInternalVersion =
       _internalVersion.load(std::memory_order_acquire);
 
+  TRI_IF_FAILURE("UserManager::performDBLookup") {
+    // Used in GTest. It is used to identify
+    // if the UserManager would have updated it's
+    // cache in a specific situation.
+    _internalVersion.store(currentGlobalVersion);
+    _internalVersion.notify_all();
+    return currentGlobalVersion;
+  }
+
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
     if (builder) {
@@ -364,6 +373,7 @@ VPackBuilder auth::UserManager::allUsers() {
 void auth::UserManager::triggerCacheRevalidation() {
   triggerLocalReload();
   triggerGlobalReloadAndWait();
+  checkIfUserDataIsAvailable();
 }
 
 void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
