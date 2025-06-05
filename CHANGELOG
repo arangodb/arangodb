@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix telemetry response, `n_vector` would be returned inconsistently. This always
+  returns the value, regardless if the vector index feature is enabled.
+
+* Improved performance of document-search query in graph settings UI (BTS-2149)
+
 * Upgraded bundled version of RocksDB to 9.5.
 
   The default values for the following RocksDB-related startup options were 
