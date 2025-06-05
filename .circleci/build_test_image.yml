@@ -96,7 +96,7 @@ jobs:
             docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
             docker push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - run:
-          name: Build js Docker Image
+          name: Build java Docker Image
           command: |
             set -x
             cd /home/circleci/project/scripts/docker/java-test
