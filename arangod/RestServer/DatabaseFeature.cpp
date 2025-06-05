@@ -467,6 +467,11 @@ void DatabaseFeature::start() {
   }
 
   _started.store(true);
+
+  auto* um = AuthenticationFeature::instance()->userManager();
+  if (um != nullptr) {
+    um->startUpdateThread();
+  }
 }
 
 // signal to all databases that active cursors can be wiped

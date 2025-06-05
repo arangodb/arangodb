@@ -296,11 +296,6 @@ void BootstrapFeature::start() {
       // both Plan and Current have been populated successfully
       waitForDatabases();
 
-      auth::UserManager* um = AuthenticationFeature::instance()->userManager();
-      if (um != nullptr) {
-        um->triggerCacheRevalidation();
-      }
-
 #ifdef USE_V8
       if (v8Enabled && !databaseFeature.upgrade()) {
         ::runCoordinatorJS(vocbase.get());

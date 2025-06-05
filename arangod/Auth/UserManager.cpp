@@ -247,6 +247,7 @@ void auth::UserManager::checkIfUserDataIsAvailable() {
     // cache in a specific situation.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+  setGlobalVersion(1);
   _internalVersion.wait(0);
 }
 
@@ -255,8 +256,8 @@ void auth::UserManager::checkIfUserDataIsAvailable() {
 Result auth::UserManager::storeUserInternal(auth::User const& entry,
                                             bool const replace) {
   VPackBuilder data = entry.toVPackBuilder();
-  bool hasKey = data.slice().hasKey(StaticStrings::KeyString);
-  bool hasRev = data.slice().hasKey(StaticStrings::RevString);
+  bool const hasKey = data.slice().hasKey(StaticStrings::KeyString);
+  bool const hasRev = data.slice().hasKey(StaticStrings::RevString);
   TRI_ASSERT((replace && hasKey && hasRev) || (!replace && !hasKey && !hasRev));
 
   auto vocbase = getSystemDatabase(_server);
