@@ -4,7 +4,7 @@ MAINTAINER hackers@arangodb.com
 ARG arch
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y golang && \
+    apt-get install -y golang git && \
     apt-get update && \
     apt-get upgrade -y && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists && \
