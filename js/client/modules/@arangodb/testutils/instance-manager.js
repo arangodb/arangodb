@@ -112,6 +112,9 @@ class instanceManager {
     }
     if (addArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = addArgs['server.jwt-secret'];
+    } else if (options.hasOwnProperty('jwtSecret')) {
+      this.JWT = options.jwtSecret;
+      addArgs['server.jwt-secret'] = this.JWT;
     }
     if (this.options.encryptionAtRest) {
       this.restKeyFile = fs.join(this.rootDir, 'openSesame.txt');
