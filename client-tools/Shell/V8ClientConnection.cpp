@@ -2826,7 +2826,6 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
           << "rc: " << static_cast<uint32_t>(rc);
     }
   }
-
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
         << "connection closed after " << fuerte::v1::to_string(req_copy);
