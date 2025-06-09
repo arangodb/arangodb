@@ -177,7 +177,7 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
 
   std::string header;
   auto req = std::make_unique<fuerte::Request>();
-  fuerte::RestVerb requestType = generateHeader(header);
+  fuerte::RestVerb requestType = generateHeader(header, req->header.path);
   req->header.restVerb = requestType;
 
   if (requestType != fuerte::RestVerb::Get &&
@@ -204,7 +204,8 @@ std::unique_ptr<fuerte::Request> RequestFuzzer::createRequest() {
   return req;  // for not preventing copy elision
 }
 
-fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
+fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header,
+                                               std::string& path) {
   fuerte::RestVerb requestType = fuerte::RestVerb::Illegal;
 
   std::string firstLine;
@@ -217,6 +218,7 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
     randomizeCharOperation(firstLine, 1);
   }
   firstLine.append(" ");
+  auto len = firstLine.length();
   uint32_t numNestedRoutes =
       generateRandNumWithinRange<uint32_t>(1, kMaxNestedRoutes);
   for (uint32_t i = 0; i < numNestedRoutes; ++i) {
@@ -256,7 +258,7 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header) {
                                             (sizeof(alphaNumericChars) - 1)]);
     }
   }
-
+  path = firstLine.substr(len + 1, firstLine.length() - len + 1);
   firstLine.push_back(' ');
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
     firstLine.append(" HTTP/");
