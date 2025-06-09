@@ -62,7 +62,7 @@ struct future_promise_base {
 
   future_promise_base(std::source_location loc)
       : promise{std::move(loc)}, context{} {
-    *arangodb::async_registry::get_current_coroutine() = {promise.id().value()};
+    *arangodb::async_registry::get_current_coroutine() = {promise.id()};
   }
   ~future_promise_base() {}
 
@@ -122,7 +122,7 @@ struct future_promise_base {
 
     // update promises in registry
     if constexpr (arangodb::CanUpdateRequester<U>) {
-      co_awaited_expression.update_requester(promise.id());
+      co_awaited_expression.update_requester({promise.id()});
     }
     promise.update_source_location(std::move(loc));
 

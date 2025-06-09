@@ -52,9 +52,12 @@ auto get_awaitable_object(T&& t) {
 }
 
 template<typename T>
-concept CanUpdateRequester =
-    requires(T t, std::optional<async_registry::PromiseId> requester) {
-  t.update_requester(requester);
+concept CanUpdateRequester = requires(T t, async_registry::Requester waiter) {
+  t.update_requester(waiter);
+};
+template<typename T>
+concept HasId = requires(T t) {
+  { t.id() } -> std::convertible_to<void*>;
 };
 
 }  // namespace arangodb
