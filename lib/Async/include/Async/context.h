@@ -38,7 +38,7 @@ namespace arangodb {
  */
 struct Context {
   std::shared_ptr<ExecContext const> _execContext;
-  async_registry::Requester _requester;
+  async_registry::CurrentRequester _requester;
   task_monitoring::Task* _task;
   // Note that this is optional just because LogContext::clear is private,
   // and operator= needs the LHS to be cleared. A simple change to LogContext

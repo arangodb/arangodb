@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertNotNull, assertNotUndefined, arango */
+/* global getOptions, assertEqual, assertNotEqual, assertTrue, assertNotNull, assertNotUndefined, arango, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -134,6 +134,7 @@ function parseCollections(colls) {
     assertTrue(coll.hasOwnProperty("n_ttl"));
     assertTrue(coll.hasOwnProperty("n_unknown"));
     assertTrue(coll.hasOwnProperty("n_mdi"));
+    assertTrue(coll.hasOwnProperty("n_vector"));
     const idxs = coll["idxs"];
     parseIndexes(idxs);
   });
@@ -889,6 +890,157 @@ function telemetricsEnhancingOurCalm() {
   };
 }
 
+// This test that the values that we return from our telemetry url match the 
+// expected values and types defined in the schema located in `tests/js/common/test-data/telemetry/telemetrySchema.json`
+// This schema file is a copy of a file located in our telemetry repository
+function telemetricsSchemaTestSuite() {
+  let col;
+
+    function validateJson(jsonData, schemaArray) {
+      if (typeof jsonData !== 'object' || jsonData === null || Array.isArray(jsonData)) {
+          return {
+              isValid: false,
+              errors: ["Root JSON data must be an object."]
+          };
+      }
+      // The schema itself is an array of field definitions. We validate the jsonData against these.
+      return validateObjectAgainstSchema(jsonData, schemaArray, "root");
+    }
+
+  function validateObjectAgainstSchema(obj, fieldDefinitions, currentPath) {
+      let allErrors = [];
+
+      for (const fieldDef of fieldDefinitions) {
+          const fieldName = fieldDef.name;
+          const value = obj[fieldName];
+          const pathForField = fieldName ? `${currentPath}.${fieldName}` : currentPath; // Handle unnamed root for items
+
+          const result = validateFieldValue(value, fieldDef, pathForField, obj.hasOwnProperty(fieldName));
+          if (!result.isValid) {
+              allErrors = allErrors.concat(result.errors);
+          }
+      }
+
+      return { isValid: allErrors.length === 0, errors: allErrors };
+  }
+
+  function validateFieldValue(value, fieldDef, path, isPresent) {
+      const errors = [];
+      const { mode, type, fields: subFields } = fieldDef;
+
+      if (!isPresent) {
+          return { isValid: errors.length === 0, errors }; // Missing NULLABLE/REPEATED is fine.
+      }
+
+      if (value === null) {
+          if (mode === "NULLABLE") {
+              return { isValid: true, errors: [] }; // Null is fine if mode is NULLABLE.
+          } else {
+              errors.push(`Error at "${path}": Field is null, but mode is "${mode}" (expected NULLABLE, or an array if REPEATED).`);
+              return { isValid: false, errors };
+          }
+      }
+
+      if (mode === "REPEATED") {
+          if (!Array.isArray(value)) {
+              errors.push(`Error at "${path}": Field with mode REPEATED is not an array. Got: ${typeof value}`);
+              return { isValid: false, errors };
+          }
+          for (let i = 0; i < value.length; i++) {
+              const item = value[i];
+              const itemPath = `${path}[${i}]`;
+              const itemSchemaDef = { type, fields: subFields, name: `item[${i}]` }; // Item schema for validation
+
+              if (item === null) { // BigQuery allows null items in arrays.
+                  continue;
+              }
+              const itemValidationResult = validateSingleTypedValue(item, itemSchemaDef, itemPath);
+              if (!itemValidationResult.isValid) {
+                  errors.push(...itemValidationResult.errors);
+              }
+          }
+          return { isValid: errors.length === 0, errors };
+      }
+
+      return validateSingleTypedValue(value, fieldDef, path);
+  }
+
+  function validateSingleTypedValue(value, typeDef, path) {
+      const errors = [];
+      const { type, fields: subFields } = typeDef;
+
+      switch (type) {
+          case "TIMESTAMP":
+              if (!((typeof value === 'string' || typeof value === 'number'))) {
+                  errors.push(`Error at "${path}": Expected TIMESTAMP (string/number that parses to date), got ${typeof value} '${value}'.`);
+              } else if (isNaN(new Date(value).getTime())) { // Checks if string/number can be parsed into a valid date
+                  errors.push(`Error at "${path}": TIMESTAMP '${value}' is not a valid date representation.`);
+              }
+              break;
+          case "BOOLEAN":
+              if (typeof value !== 'boolean') {
+                  errors.push(`Error at "${path}": Expected BOOLEAN, got ${typeof value} '${value}'.`);
+              }
+              break;
+          case "INTEGER":
+              if (!Number.isInteger(value)) {
+                  errors.push(`Error at "${path}": Expected INTEGER, got ${typeof value} '${value}'.`);
+              }
+              break;
+          case "FLOAT": // In BigQuery, this is FLOAT64. JS 'number' covers this.
+              if (typeof value !== 'number') {
+                  errors.push(`Error at "${path}": Expected FLOAT (number), got ${typeof value} '${value}'.`);
+              }
+              break;
+          case "STRING":
+              if (typeof value !== 'string') {
+                  errors.push(`Error at "${path}": Expected STRING, got ${typeof value} '${value}'.`);
+              }
+              break;
+          case "RECORD":
+              if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+                  errors.push(`Error at "${path}": Expected RECORD (object), got ${typeof value} '${value}'.`);
+              } else {
+                  const recordResult = validateObjectAgainstSchema(value, subFields, path);
+                  if (!recordResult.isValid) {
+                      errors.push(...recordResult.errors);
+                  }
+              }
+              break;
+          default:
+              errors.push(`Error at "${path}": Unknown type "${type}".`);
+      }
+      return { isValid: errors.length === 0, errors };
+  }
+
+  return {
+    setUpAll: function () {
+      col = db._create(cn, {numberOfShards: 3});
+    },
+
+    tearDownAll: function () {
+      db._drop(cn);
+    },
+
+    setUp: function () {
+      // clear access counters
+      arango.DELETE("/_admin/telemetrics");
+    },
+
+    testTelemetricsMatchesSchema: function () {
+      let telemetryData = getTelemetricsResult();
+      const fn = fs.join('.', 'tests', 'js', 'common', 'test-data', 'telemetry', 'telemetrySchema.json');
+      let telemetrySchema = JSON.parse(fs.readFileSync(fn).toString());
+
+      const result = validateJson(telemetryData, telemetrySchema); 
+      if(result.errors.length) {
+        print(result.errors);
+      }
+      assertTrue(result.isValid);
+    },
+  };
+}
+
 if (isEnterprise) {
   jsunity.run(telemetricsShellReconnectSmartGraphTestsuite);
   jsunity.run(telemetricsApiReconnectSmartGraphTestsuite);
@@ -897,5 +1049,6 @@ jsunity.run(telemetricsShellReconnectGraphTestsuite);
 jsunity.run(telemetricsApiReconnectGraphTestsuite);
 jsunity.run(telemetricsSendToEndpointRedirectTestsuite);
 jsunity.run(telemetricsEnhancingOurCalm);
+jsunity.run(telemetricsSchemaTestSuite);
 
 return jsunity.done();

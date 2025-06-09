@@ -933,7 +933,7 @@ TEST(FutureTest,
     EXPECT_TRUE(waiter_promise.has_value());
     EXPECT_EQ(awaited_promise->requester,
               arangodb::async_registry::Requester{waiter_promise->id});
-    EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadId>(
+    EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
         waiter_promise->requester));
   }
 }
@@ -981,7 +981,7 @@ TEST(FutureTest, collected_async_promises_in_async_registry_know_their_waiter) {
               arangodb::async_registry::Requester{waiter_promise->id});
     EXPECT_EQ(awaited_promises[1].requester,
               arangodb::async_registry::Requester{waiter_promise->id});
-    EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadId>(
+    EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadInfo>(
         waiter_promise->requester));
   }
 }
