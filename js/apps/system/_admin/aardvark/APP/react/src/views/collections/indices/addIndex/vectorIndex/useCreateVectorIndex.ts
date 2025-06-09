@@ -4,7 +4,7 @@ import { useCreateIndex } from "../useCreateIndex";
 
 export const INITIAL_VALUES = {
   type: "vector",
-  fields: commonFieldsMap.fields.initialValue,
+  fields: "",
   name: commonFieldsMap.name.initialValue,
   params: {
     metric: "",
@@ -16,7 +16,13 @@ export const INITIAL_VALUES = {
 };
 
 export const FIELDS = [
-  commonFieldsMap.fields,
+  {
+    label: "Field",
+    name: "fields",
+    type: "text",
+    isRequired: true,
+    tooltip: "The name of the attribute that contains the vector embeddings. Only a single attribute is supported."
+  },
   commonFieldsMap.name,
   {
     label: "Metric",
@@ -37,14 +43,14 @@ export const FIELDS = [
     tooltip: "The dimensionality of the vector embeddings. The indexed attribute must contain vectors of this length."
   },
   {
-    label: "Number of Lists (nlists)",
+    label: "Number of Lists (nLists)",
     name: "params.nLists",
     type: "number",
     isRequired: true,
-    tooltip: "The number of centroids (clusters) to divide the vector space into. A higher value improves recall but increases indexing time. Suggested value: ~15 × N, where N is the number of documents."
+    tooltip: "The number of Voronoi cells (nLists) to partition the vector space into. A higher value improves recall but increases indexing time. The value must not exceed the number of documents. Suggested: sqrt(N) / 15, where N is the number of documents."
   },
   {
-    label: "Default N Probe",
+    label: "Default Number of Probes",
     name: "params.defaultNProbe",
     type: "number",
     tooltip: "The number of inverted lists (clusters) to search during queries by default. Increasing this value improves recall at the cost of speed. Default is 1."
@@ -58,11 +64,12 @@ export const FIELDS = [
 ];
 
 export const SCHEMA = Yup.object({
-  ...commonSchema,
+  fields: Yup.string().trim().required("Field is required"),
+  name: commonSchema.name,
   params: Yup.object({
     metric: Yup.string().required("Metric is required"),
     dimension: Yup.number().required("Dimension is required"),
-    nLists: Yup.number().required("Number of lists (nlists) is required"),
+    nLists: Yup.number().required("Number of lists (nLists) is required"),
     defaultNProbe: Yup.number().optional(),
     trainingIterations: Yup.number().optional(),
   }),
@@ -77,7 +84,7 @@ export const useCreateVectorIndex = () => {
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       type: values.type,
-      fields: values.fields.split(",").map(field => field.trim()),
+      fields: [values.fields.trim()],
       name: values.name,
       params: values.params,
     });
