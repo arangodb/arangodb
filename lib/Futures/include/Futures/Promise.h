@@ -121,31 +121,16 @@ class Promise {
 
   arangodb::futures::Future<T> getFuture();
 
-  auto id() -> std::optional<async_registry::PromiseId> {
-    if (_state) {
-      return _state->id();
-    } else {
-      return std::nullopt;
-    }
-  }
+  auto id() -> void* { return _state->id(); }
   auto update_source_location(std::source_location loc) -> void {
-    if (_state) {
-      _state->update_source_location(std::move(loc));
-    }
+    _state->update_source_location(std::move(loc));
   }
   auto update_state(async_registry::State state)
       -> std::optional<async_registry::State> {
-    if (_state) {
-      return _state->update_state(std::move(state));
-    } else {
-      return std::nullopt;
-    }
+    return _state->update_state(std::move(state));
   }
-  auto update_requester(std::optional<async_registry::PromiseId> waiter)
-      -> void {
-    if (_state) {
-      return _state->update_requester(waiter);
-    }
+  auto update_requester(async_registry::Requester waiter) -> void {
+    return _state->update_requester(waiter);
   }
 
  private:
