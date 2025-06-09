@@ -12,6 +12,7 @@ export const INITIAL_VALUES = {
     nLists: undefined,
     defaultNProbe: 1,
     trainingIterations: 25,
+    factory: undefined
   }
 };
 
@@ -61,6 +62,12 @@ export const FIELDS = [
     type: "number",
     tooltip: "The number of iterations to use during index training. More iterations improve cluster quality and accuracy, but increase training time. Default is 25."
   },
+  {
+    label: "Index Factory",
+    name: "params.factory",
+    type: "text",
+    tooltip: `Defines the FAISS index factory. Must start with "IVF". Example: IVF100_HNSW10,Flat. The number in IVF must match nLists (e.g. IVF100 → nLists = 100).`
+  }
 ];
 
 export const SCHEMA = Yup.object({
@@ -72,6 +79,7 @@ export const SCHEMA = Yup.object({
     nLists: Yup.number().required("Number of lists (nLists) is required"),
     defaultNProbe: Yup.number().optional(),
     trainingIterations: Yup.number().optional(),
+    factory: Yup.string().optional()
   }),
 });
 

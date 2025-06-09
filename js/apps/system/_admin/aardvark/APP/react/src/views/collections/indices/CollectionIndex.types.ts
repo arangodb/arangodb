@@ -15,6 +15,7 @@ type Vector = {
     nLists: number;
     defaultNProbe?: number;
     trainingIterations?: number;
+    factory?: string;
   };
 };
 
