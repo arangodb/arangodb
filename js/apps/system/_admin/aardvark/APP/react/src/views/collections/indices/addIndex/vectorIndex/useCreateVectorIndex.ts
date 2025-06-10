@@ -48,25 +48,25 @@ export const FIELDS = [
     name: "params.nLists",
     type: "number",
     isRequired: true,
-    tooltip: "The number of Voronoi cells (nLists) to partition the vector space into. A higher value improves recall but increases indexing time. The value must not exceed the number of documents. Suggested: sqrt(N) / 15, where N is the number of documents."
+    tooltip: "The number of Voronoi cells (nLists) to partition the vector space into. A higher value improves recall but increases indexing time. The value must not exceed the number of documents. Suggested: 15 * sqrt(N), where N is the number of documents."
   },
   {
     label: "Default Number of Probes",
     name: "params.defaultNProbe",
     type: "number",
-    tooltip: "The number of inverted lists (clusters) to search during queries by default. Increasing this value improves recall at the cost of speed. Default is 1."
+    tooltip: "The number of inverted lists (clusters) to search during queries by default. Increasing this value improves recall at the cost of speed. The default is 1."
   },
   {
     label: "Training Iterations",
     name: "params.trainingIterations",
     type: "number",
-    tooltip: "The number of iterations to use during index training. More iterations improve cluster quality and accuracy, but increase training time. Default is 25."
+    tooltip: "The number of iterations to use during index training. More iterations improve cluster quality and accuracy, but increase training time. The default is 25."
   },
   {
     label: "Index Factory",
     name: "params.factory",
     type: "text",
-    tooltip: `Defines the FAISS index factory. Must start with "IVF". Example: IVF100_HNSW10,Flat. The number in IVF must match nLists (e.g. IVF100 → nLists = 100).`
+    tooltip: `Defines the FAISS index factory. Must start with "IVF". Example: IVF100_HNSW10,Flat. The number following "IVF" must match nLists (e.g. IVF100 → nLists = 100).`
   }
 ];
 
