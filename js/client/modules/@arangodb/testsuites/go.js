@@ -67,7 +67,17 @@ const testPaths = {
 function goDriver (options) {
   class runGoTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
-      super(options, testname, ...optionalArgs);
+      let opts = {};
+      if (options.cluster) {
+        // tests lean on JWT enabled components
+        opts = _.clone(tu.testClientJwtAuthInfo);
+      }
+      _.defaults(opts, options);
+      if (options.cluster) {
+        // go tests lean on 1 being the default replication factor
+        opts.extraArgs['cluster.default-replication-factor'] = 1;
+      }
+      super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
     }
     runOneTest(file) {
@@ -99,6 +109,9 @@ function goDriver (options) {
       process.env['TEST_BACKUP_REMOTE_CONFIG'] = '';
       process.env['GODEBUG'] = 'tls13=1';
       process.env['CGO_ENABLED'] = '0';
+      if (this.instanceManager.JWT) {
+        process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
+      }
       let args = ['test', '-json', '-tags', 'auth', goVersionArgs['path']];
 
       if (this.options.testCase) {
@@ -111,6 +124,8 @@ function goDriver (options) {
           args.push(this.options.goOptions[key]);
         }
       }
+      args.push('-timeout');
+      args.push(`${options.oneTestTimeout/60}m`);
       if (this.options.extremeVerbosity) {
         print(process.env);
         print(args);
