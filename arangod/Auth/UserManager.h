@@ -144,6 +144,13 @@ class UserManager {
   // Overwrite internally cached permissions, only use
   // for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
+
+  // this is only needed in unittest this
+  // will shutdown the running thread on demand
+  // its needed because the failure point can be deactivated before the thread
+  // is finished and can lead to calls on the server that are not initialized
+  // properly in the unit-test environment
+  void shutdown();
 #endif
 
  private:

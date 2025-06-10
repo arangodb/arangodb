@@ -250,7 +250,7 @@ void auth::UserManager::checkIfUserDataIsAvailable() {
     }
   }
 
-  TRI_IF_FAILURE("UserManager::performDBLookup") {
+  TRI_IF_FAILURE("UserManager::failDBLookup") {
     // Used in GTest. It is used to identify
     // if the UserManager would have updated it's
     // cache in a specific situation.
@@ -905,6 +905,18 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
 void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   WRITE_LOCKER(writeGuard, _userCacheLock);
   _userCache = newMap;
+  writeGuard.unlock();
+  setGlobalVersion(1);
   _internalVersion.store(_globalVersion.load());
 }
+
+void auth::UserManager::shutdown() {
+  if (_userCacheUpdateThread && _userCacheUpdateThread->joinable()) {
+    _userCacheUpdateThread->request_stop();
+    // set global version leads to a notify_one();
+    setGlobalVersion(std::numeric_limits<uint64_t>::max());
+    _userCacheUpdateThread->join();
+  }
+}
+
 #endif
