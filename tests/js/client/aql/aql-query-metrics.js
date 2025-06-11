@@ -32,50 +32,47 @@ const arangodb = require("@arangodb");
 const aql = arangodb.aql;
 
 function QueryMetricsTestSuite() {
-  const dbName = "metricsTestDB";
-  const collName = "col";
-  let collection;
 
   return {
-    setUpAll: function () {
-      db._createDatabase(dbName);
-      db._useDatabase(dbName);
-
-      collection = db._create(collName, {
-        numberOfShards: 3,
-      });
-
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({ value: i });
-      }
-      collection.save(docs);
-    },
-
     tearDownAll: function () {
       db._useDatabase("_system");
-      db._dropDatabase(dbName);
     },
 
-    testMetricAqlCurrentQueryNoRunningQueries: function () {
-      const aqlCurrentQueryMetric = getMetricSingle(
-        "arangodb_aql_current_query",
-      );
-      assertEqual(aqlCurrentQueryMetric, 0);
-    },
-
-    testMetricAqlCurrentQueryWithRunningQueries: function () {
+    testMetricAqlCurrentQueryWithoutRunningQueries: function () {
       let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
 
       for (let i = 0; i < 1000; ++i) {
         const query = aql`
-          FOR d IN ${collection}
-          FILTER d.value > ${i}
-          LIMIT 3
-          RETURN d`;
+          FOR i IN 1..100 RETURN i`;
         db._query(query);
       }
+
+      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      assertEqual(aqlCurrentQueryMetric, 0);
+    },
+
+    testMetricAqlCurrentQueryWithStreamingQueries: function () {
+      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      assertEqual(aqlCurrentQueryMetric, 0);
+
+      let queries = [];
+      for (let i = 0; i < 100; ++i) {
+        let stmt = db._createStatement({ query: "FOR i IN 1..100 RETURN i",
+                                       options: { stream: true },
+                                       batchSize: 2});
+        queries.push(stmt.execute());
+      }
+      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      assertEqual(aqlCurrentQueryMetric, 100);
+
+      queries.forEach(function(cursor) {
+        for (var i = 1; i <= 100; ++i) {
+          assertEqual(i, cursor.next());
+          assertEqual(i !== 100, cursor.hasNext());
+        }
+        assertFalse(cursor.hasNext());
+      });
 
       aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
