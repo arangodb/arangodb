@@ -211,7 +211,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
   arangodb::ExecContextScope execContextScope(execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  userManager->setGlobalVersion(0);  // required for UserManager::loadFromDB()
+  userManager->setGlobalVersion(1);  // required for UserManager::loadFromDB()
 
   // test auth missing (grant)
   {

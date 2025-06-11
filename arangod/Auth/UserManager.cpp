@@ -256,6 +256,9 @@ void auth::UserManager::checkIfUserDataIsAvailable() {
     // cache in a specific situation.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
+
+  // This will wake up the UpdateThread if nothing else yet did.
+  // It will work only once as the global version can only increase
   setGlobalVersion(1);
   _internalVersion.wait(0);
 }
@@ -372,7 +375,7 @@ VPackBuilder auth::UserManager::allUsers() {
 
 void auth::UserManager::triggerCacheRevalidation() {
   triggerLocalReload();
-  triggerGlobalReloadAndWait();
+  triggerGlobalReload();
   checkIfUserDataIsAvailable();
 }
 
@@ -390,10 +393,9 @@ void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
 
 /// @brief reload user cache and token caches
 void auth::UserManager::triggerLocalReload() noexcept {
+  // we are forcing every caller to wait in checkIfUserDataIsAvailable for the
+  // UpdateThread to finish.Thus reloading the local userCache.
   _internalVersion.store(0, std::memory_order_release);
-  // We are not setting _usersInitialized to false here, since there is
-  // still the old data to work with.
-  _globalVersion.notify_one();
 }
 
 /// @brief used for caching

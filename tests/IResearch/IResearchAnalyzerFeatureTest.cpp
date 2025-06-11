@@ -463,10 +463,6 @@ class IResearchAnalyzerFeatureTest
     arangodb::methods::Collections::createSystem(
         *vocbase, options, arangodb::tests::AnalyzerCollectionName, false,
         unused);
-
-    // The DatabaseFeature is not started here?
-    // So we need to start the UpdateThread here.
-    userManager()->startUpdateThread();
   }
 
   ~IResearchAnalyzerFeatureTest() {

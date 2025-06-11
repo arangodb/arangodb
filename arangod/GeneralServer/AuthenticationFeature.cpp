@@ -295,6 +295,16 @@ void AuthenticationFeature::start() {
 #endif
 
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
+
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
+  if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
+    if (_userManager != nullptr) {
+      LOG_TOPIC("af72e", TRACE, arangodb::Logger::AUTHENTICATION)
+          << "Starting UserManager update thread";
+      _userManager->startUpdateThread();
+    }
+  }
 }
 
 void AuthenticationFeature::unprepare() {
