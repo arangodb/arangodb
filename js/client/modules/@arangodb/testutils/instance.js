@@ -595,10 +595,7 @@ class instance {
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
   };
-  restartOneInstance(moreArgs, unAuthOK) {
-    if (unAuthOK === undefined) {
-      unAuthOK = false;
-    }
+  restartOneInstance(moreArgs) {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
