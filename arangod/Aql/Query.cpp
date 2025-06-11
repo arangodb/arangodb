@@ -342,7 +342,8 @@ double Query::startTime() const noexcept { return _startTime; }
 
 double Query::executionTime() const noexcept {
   // should only be called once _endTime has been set
-  TRI_ASSERT(_endTime > 0.0);
+  TRI_ASSERT(_endTime > 0.0)
+      << " QueryId " << _queryId << " end is " << _endTime;
   return _endTime - _startTime;
 }
 
@@ -743,6 +744,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         queryResult.data->openArray(/*unindexed*/ true);
 
         _executionPhase = ExecutionPhase::EXECUTE;
+        trackExecutionStart();
       }
         [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
@@ -750,7 +752,6 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         TRI_ASSERT(queryResult.data->isOpenArray());
         TRI_ASSERT(_trx != nullptr);
         // We should do this only once
-        trackExecutionStart();
 
         if (useQueryCache && (isModificationQuery() || !_warnings.empty() ||
                               !_ast->root()->isCacheable())) {
@@ -807,6 +808,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           }
 
           if (state == ExecutionState::DONE) {
+            trackExecutionEnd();
             break;
           }
         }
@@ -923,9 +925,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
-  trackExecutionStart();
-  ScopeGuard guard([this]() noexcept { trackExecutionEnd(); });
-
   QueryResultV8 queryResult;
 
   try {
@@ -995,6 +994,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ExecutionState state = ExecutionState::HASMORE;
       SkipResult skipped;
       SharedAqlItemBlockPtr value;
+      trackExecutionStart();
       while (state != ExecutionState::DONE) {
         std::tie(state, skipped, value) = engine->execute(::defaultStack);
         // We cannot trigger a skip operation from here
@@ -1053,6 +1053,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           }
         }
       }
+      trackExecutionEnd();
 
       builder->close();
     } catch (...) {
@@ -1730,6 +1731,7 @@ void Query::trackExecutionStart() noexcept {
 
 void Query::trackExecutionEnd() noexcept {
   if (_isExecuting) {
+    ensureExecutionTime();
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryEnd(executionTime());
@@ -1876,7 +1878,6 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
-  ensureExecutionTime();
   // Before transaction is destroyed we should wait for all async tasks to
   // finish so they don't use trx object. We do this only if this is a sync
   // operation otherwise we do not want to stall the caller
@@ -1885,7 +1886,6 @@ ExecutionState Query::cleanupPlanAndEngine(bool sync) {
       snippet->stopAsyncTasks();
     }
   }
-
   trackExecutionEnd();
 
   {

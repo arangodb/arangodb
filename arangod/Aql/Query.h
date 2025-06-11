@@ -307,6 +307,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
     return _planCacheKey;
   }
 
+  // set the isExecuting flag to true and change execution queries gauge
+  // this is public because the QueryStreamCursor circumvents the normal
+  // execution of query and needs to call tracking on a  query on its own
+  void trackExecutionStart() noexcept;
+
  protected:
   /// @brief make sure that the query execution time is set.
   /// only the first call to this function will set the time.
@@ -368,8 +373,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // log the end of a query (warnings only)
   void logAtEnd() const;
 
-  // set the isExecuting flag to true and change execution queries gauge
-  void trackExecutionStart() noexcept;
 
   // set the isExecuting flag to false and change execution queries gauge
   void trackExecutionEnd() noexcept;
