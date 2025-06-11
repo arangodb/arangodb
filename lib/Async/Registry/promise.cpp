@@ -37,8 +37,6 @@ Promise::Promise(CurrentRequester requester, std::source_location entry_point)
       source_location{entry_point.file_name(), entry_point.function_name(),
                       entry_point.line()} {}
 
-// TODO return either SharedPtr<ThreadInfo> or *void but does not need to be
-// atomic
 auto arangodb::async_registry::get_current_coroutine() noexcept
     -> CurrentRequester* {
   struct Guard {

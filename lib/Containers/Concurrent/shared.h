@@ -68,11 +68,15 @@ concept SameAs = std::is_same_v<T, ExpectedT>;
 template<typename T>
 struct SharedPtr {
   SharedPtr(SharedPtr&& other) : _resource{other._resource} {
-    other._resource = nullptr;
+    if (&other != this) {
+      other._resource = nullptr;
+    }
   }
   auto operator=(SharedPtr&& other) -> SharedPtr& {
-    _resource = other._resource;
-    other._resource = nullptr;
+    if (&other != this) {
+      _resource = other._resource;
+      other._resource = nullptr;
+    }
     return *this;
   }
   SharedPtr(SharedPtr const& other) {

@@ -74,7 +74,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
         auto old_state =
             outer_promise->update_state(async_registry::State::Running);
         if (old_state.value() == async_registry::State::Suspended) {
-          outer_promise->_context = Context{};
+          outer_promise->_context.update();
         }
         myContext.set();
         return inner_awaitable.await_resume();
