@@ -37,7 +37,7 @@ namespace arangodb {
  */
 struct Context {
   std::shared_ptr<ExecContext const> _execContext;
-  async_registry::CurrentRequester _requester;
+  async_registry::Requester _requester;
   task_monitoring::Task* _task;
 
   Context()
