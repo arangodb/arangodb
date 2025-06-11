@@ -42,14 +42,31 @@ struct Context {
 
   Context()
       : _execContext{ExecContext::currentAsShared()},
-        _requester{*async_registry::get_current_coroutine()},
+        _requester{std::move(*async_registry::get_current_coroutine())},
         _task{*task_monitoring::get_current_task()} {}
+
+  Context(Context const& other) = delete;
+  auto operator=(Context const& other) -> Context& = delete;
+  Context(Context&& other) = default;
+  auto operator=(Context&& other) -> Context& = default;
 
   auto set() -> void {
     ExecContext::set(_execContext);
-    *async_registry::get_current_coroutine() = _requester;
+    if (_requester != *async_registry::get_current_coroutine()) {
+      *async_registry::get_current_coroutine() = _requester;
+    }
     *task_monitoring::get_current_task() = _task;
   }
+
+  auto update() -> void {
+    _execContext = ExecContext::currentAsShared();
+    if (_requester != *async_registry::get_current_coroutine()) {
+      _requester = *async_registry::get_current_coroutine();
+    }
+    _task = *task_monitoring::get_current_task();
+  }
+
+  ~Context() = default;
 };
 
 }  // namespace arangodb

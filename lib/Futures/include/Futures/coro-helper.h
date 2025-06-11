@@ -109,7 +109,7 @@ struct future_promise_base {
             arangodb::async_registry::State::Running);
         if (old_state.has_value() &&
             old_state.value() == arangodb::async_registry::State::Suspended) {
-          outer_promise->context = arangodb::Context{};
+          outer_promise->context.update();
         }
         myContext.set();
         return inner_awaitable.await_resume();
