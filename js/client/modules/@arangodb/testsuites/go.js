@@ -76,6 +76,7 @@ function goDriver (options) {
       if (options.cluster) {
         // go tests lean on 1 being the default replication factor
         opts.extraArgs['cluster.default-replication-factor'] = 1;
+        opts.coordinators = 2;
       } else {
         opts.extraArgs['server.authentication'] = true;
       }
