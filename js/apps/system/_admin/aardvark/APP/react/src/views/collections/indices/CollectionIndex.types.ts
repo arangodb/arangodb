@@ -17,6 +17,8 @@ type Vector = {
     trainingIterations?: number;
     factory?: string;
   };
+  parallelism: number;
+  inBackground: boolean;
 };
 
 export type CollectionIndex = Index | MdiIndex | MdiPrefixed | Vector;

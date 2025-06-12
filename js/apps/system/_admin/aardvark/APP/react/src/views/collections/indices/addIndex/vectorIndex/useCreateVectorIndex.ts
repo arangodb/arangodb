@@ -13,7 +13,9 @@ export const INITIAL_VALUES = {
     defaultNProbe: 1,
     trainingIterations: 25,
     factory: undefined
-  }
+  },
+  parallelism: 2,
+  inBackground: commonFieldsMap.inBackground.initialValue
 };
 
 export const FIELDS = [
@@ -67,7 +69,14 @@ export const FIELDS = [
     name: "params.factory",
     type: "text",
     tooltip: `Defines the FAISS index factory. Must start with "IVF". Example: IVF100_HNSW10,Flat. The number following "IVF" must match nLists (e.g. IVF100 → nLists = 100).`
-  }
+  },
+  {
+    label: "Parallelism",
+    name: "parallelism",
+    type: "number",
+    tooltip: "Number of threads to use for indexing. The default is 2."
+  },
+  commonFieldsMap.inBackground,
 ];
 
 export const SCHEMA = Yup.object({
@@ -81,6 +90,8 @@ export const SCHEMA = Yup.object({
     trainingIterations: Yup.number().optional(),
     factory: Yup.string().optional()
   }),
+  parallelism: Yup.number().optional(),
+  inBackground: commonSchema.inBackground
 });
 
 type ValuesType = Omit<typeof INITIAL_VALUES, "fields"> & {
@@ -95,6 +106,8 @@ export const useCreateVectorIndex = () => {
       fields: [values.fields.trim()],
       name: values.name,
       params: values.params,
+      parallelism: values.parallelism,
+      inBackground: values.inBackground
     });
   };
   return { onCreate };
