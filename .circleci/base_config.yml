@@ -75,6 +75,9 @@ parameters:
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
+  config-definitions: #dummy. we don't need this here but are required to.
+    type: string
+    default: tests/test-definitions.txt
 
 commands:
   checkout-arangodb:
