@@ -579,11 +579,11 @@ jobs:
             fi
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
-            python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
+            python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs ' << parameters.extraArgs >>'
+              --extraArgs '<< parameters.extraArgs >>'
       - run:
           name: Copy test results
           when: always
