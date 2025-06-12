@@ -63,6 +63,9 @@ parameters:
   rta-branch:
     type: string
     default: "main"
+  config-definitions:
+    type: string
+    default: tests/test-definitions.txt
 # our defined job, and its steps
 jobs:
   # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
@@ -224,8 +227,9 @@ workflows:
           requires:
             - check-build-trigger
       - generate-config:
-          definitions: "tests/test-definitions.txt tests/go-test-definitions.txt tests/arangojs-test-definitions.txt"
-          # tests/java-test-definitions.txt"
-          # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
+          definitions: <<#pipeline.parameters.config-definitions >>>
+            #"tests/test-definitions.txt tests/go-test-definitions.txt tests/arangojs-test-definitions.txt"
+            # tests/java-test-definitions.txt"
+            # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
           requires:
             - cancel-redundant-pipelines
