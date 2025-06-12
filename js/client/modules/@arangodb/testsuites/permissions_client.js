@@ -91,7 +91,7 @@ class permissionsRunner extends trs.runInArangoshRunner {
         process.env['RESULT'] = testResultJson;
 
         let content = fs.read(f);
-        content = `(function(){ const getOptions = true; ${content} 
+        content = `(function(){ const getOptions = true; const instanceRoot = ${instanceRoot};${content} 
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
         let testOptions = executeScript(content, true, f);
 
