@@ -515,3 +515,119 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
   scheduler.runOnce();
   ASSERT_EQ(gatherState, ExecutionState::DONE);
 }
+
+TEST_F(AsyncExecutorTest, two_consumers_receive_rows_from_mutex_executor) {
+  // set up the query nodes:
+  //
+  //                WaitingBlock (3000 rows)
+  //                      |
+  //                 MutexExecutor
+  //                   /    \
+  //           CONSUMER1   CONSUMER2
+  //
+  // Both CONSUMER1 and CONSUMER2 are IdExecutors connected to the same
+  // MutexExecutor, which is fed by a WaitingBlockMock with 3000 rows.
+
+  auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
+                                     RegIdFlatSet{}, RegIdFlatSetStack{{0}});
+  GlobalResourceMonitor globalMonitor;
+  arangodb::ResourceMonitor monitor(globalMonitor);
+  arangodb::aql::AqlItemBlockManager blockManager(monitor);
+
+  // Create 3000 rows of input, all as objects with {"_key": i}
+  tests::aql::MatrixBuilder<1> matrix;
+  for (int i = 0; i < 3000; ++i) {
+    std::string json = (std::string)"{\"_key\":\"" + std::to_string(i) + "\"}";
+    matrix.push_back({json.c_str()});
+  }
+  auto inputBlock = tests::aql::buildBlock<1>(blockManager, std::move(matrix));
+  std::deque<arangodb::aql::SharedAqlItemBlockPtr> blockDeque;
+  blockDeque.push_back(inputBlock);
+  auto waitingBlock = std::make_unique<WaitingExecutionBlockMock>(
+      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
+      WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+  // Create the MutexExecutor block with two clients
+  std::vector<std::string> clientIds{"1", "2"};
+  auto mutexExecutor = std::make_unique<ExecutionBlockImpl<MutexExecutor>>(
+      fakedQuery->rootEngine(), generateMutexNodeDummy(), registerInfos,
+      MutexExecutorInfos(clientIds));
+  mutexExecutor->addDependency(waitingBlock.get());
+
+  // Create two consumers (IdExecutors) that depend on the same MutexExecutor
+  auto consumer1 = std::make_unique<ExecutionBlockImpl<
+      IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+      fakedQuery->rootEngine(), generateDistributeConsumerNode("1"), registerInfos,
+      IdExecutorInfos(false, RegisterId(0), "1", false));
+  consumer1->addDependency(mutexExecutor.get());
+
+  auto consumer2 = std::make_unique<ExecutionBlockImpl<
+      IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+      fakedQuery->rootEngine(), generateDistributeConsumerNode("2"), registerInfos,
+      IdExecutorInfos(false, RegisterId(0), "2", false));
+  consumer2->addDependency(mutexExecutor.get());
+
+  // Test if we can read data one block after the other
+  // Note we do get 500 rows each time, as the MutexExecutor does round robin splitting
+  // of a single 1000 lines input.
+  // If we add a third consumer we would get 333 or 334 lines each time.
+  {
+    AqlCallStack callstack{AqlCallList{AqlCall{}}};
+    auto const [state, skipped, block] = consumer1->execute(callstack);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(block->numRows(), 500);
+    for (size_t i = 0; i < 500; ++i) {
+      auto const& value = block->getValueReference(i, 0);
+      EXPECT_TRUE(value.isObject());
+    }
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+  }
+  {
+    AqlCallStack callstack{AqlCallList{AqlCall{}}};
+    auto const [state, skipped, block] = consumer1->execute(callstack);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(block->numRows(), 500);
+    for (size_t i = 0; i < 500; ++i) {
+      auto const& value = block->getValueReference(i, 0);
+      EXPECT_TRUE(value.isObject());
+    }
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+  }
+  {
+    AqlCallStack callstack{AqlCallList{AqlCall{}}};
+    auto const [state, skipped, block] = consumer1->execute(callstack);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(block->numRows(), 500);
+    for (size_t i = 0; i < 500; ++i) {
+      auto const& value = block->getValueReference(i, 0);
+      EXPECT_TRUE(value.isObject());
+    }
+    EXPECT_EQ(state, ExecutionState::DONE);
+  }
+
+  // Note: The second consumer will see 1000 rows on the first run, as it's block has been filled
+  // to completion by the other task
+  {
+    AqlCallStack callstack{AqlCallList{AqlCall{}}};
+    auto const [state, skipped, block] = consumer2->execute(callstack);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(block->numRows(), 1000);
+    for (size_t i = 0; i < 1000; ++i) {
+      auto const& value = block->getValueReference(i, 0);
+      EXPECT_TRUE(value.isObject());
+    }
+    EXPECT_EQ(state, ExecutionState::HASMORE);
+  }
+
+  {
+    AqlCallStack callstack{AqlCallList{AqlCall{}}};
+    auto const [state, skipped, block] = consumer2->execute(callstack);
+    ASSERT_NE(block, nullptr);
+    EXPECT_EQ(block->numRows(), 500);
+    for (size_t i = 0; i < 500; ++i) {
+      auto const& value = block->getValueReference(i, 0);
+      EXPECT_TRUE(value.isObject());
+    }
+    EXPECT_EQ(state, ExecutionState::DONE);
+  }
+}
