@@ -51,6 +51,20 @@ struct AsyncExecutorTest : AqlExecutorTestCase<false> {
   FakeScheduler scheduler;
 };
 
+namespace {
+void consume_and_check_rows(ExecutionBlock* consumer, size_t expectedRows, ExecutionState expectedState) {
+  AqlCallStack callstack{AqlCallList{AqlCall{}}};
+  auto const [state, skipped, block] = consumer->execute(callstack);
+  ASSERT_NE(block, nullptr);
+  EXPECT_EQ(block->numRows(), expectedRows);
+  for (size_t i = 0; i < expectedRows; ++i) {
+    auto const& value = block->getValueReference(i, 0);
+    EXPECT_TRUE(value.isObject());
+  }
+  EXPECT_EQ(state, expectedState);
+}
+} // anonymous namespace
+
 // Regression test for https://arangodb.atlassian.net/browse/BTS-1325.
 // See https://github.com/arangodb/arangodb/pull/18729 for details.
 TEST_F(AsyncExecutorTest, sleepingBeauty) {
@@ -571,63 +585,12 @@ TEST_F(AsyncExecutorTest, two_consumers_receive_rows_from_mutex_executor) {
   // Note we do get 500 rows each time, as the MutexExecutor does round robin splitting
   // of a single 1000 lines input.
   // If we add a third consumer we would get 333 or 334 lines each time.
-  {
-    AqlCallStack callstack{AqlCallList{AqlCall{}}};
-    auto const [state, skipped, block] = consumer1->execute(callstack);
-    ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->numRows(), 500);
-    for (size_t i = 0; i < 500; ++i) {
-      auto const& value = block->getValueReference(i, 0);
-      EXPECT_TRUE(value.isObject());
-    }
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-  }
-  {
-    AqlCallStack callstack{AqlCallList{AqlCall{}}};
-    auto const [state, skipped, block] = consumer1->execute(callstack);
-    ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->numRows(), 500);
-    for (size_t i = 0; i < 500; ++i) {
-      auto const& value = block->getValueReference(i, 0);
-      EXPECT_TRUE(value.isObject());
-    }
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-  }
-  {
-    AqlCallStack callstack{AqlCallList{AqlCall{}}};
-    auto const [state, skipped, block] = consumer1->execute(callstack);
-    ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->numRows(), 500);
-    for (size_t i = 0; i < 500; ++i) {
-      auto const& value = block->getValueReference(i, 0);
-      EXPECT_TRUE(value.isObject());
-    }
-    EXPECT_EQ(state, ExecutionState::DONE);
-  }
+  consume_and_check_rows(consumer1.get(), 500, ExecutionState::HASMORE);
+  consume_and_check_rows(consumer1.get(), 500, ExecutionState::HASMORE);
+  consume_and_check_rows(consumer1.get(), 500, ExecutionState::DONE);
 
   // Note: The second consumer will see 1000 rows on the first run, as it's block has been filled
   // to completion by the other task
-  {
-    AqlCallStack callstack{AqlCallList{AqlCall{}}};
-    auto const [state, skipped, block] = consumer2->execute(callstack);
-    ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->numRows(), 1000);
-    for (size_t i = 0; i < 1000; ++i) {
-      auto const& value = block->getValueReference(i, 0);
-      EXPECT_TRUE(value.isObject());
-    }
-    EXPECT_EQ(state, ExecutionState::HASMORE);
-  }
-
-  {
-    AqlCallStack callstack{AqlCallList{AqlCall{}}};
-    auto const [state, skipped, block] = consumer2->execute(callstack);
-    ASSERT_NE(block, nullptr);
-    EXPECT_EQ(block->numRows(), 500);
-    for (size_t i = 0; i < 500; ++i) {
-      auto const& value = block->getValueReference(i, 0);
-      EXPECT_TRUE(value.isObject());
-    }
-    EXPECT_EQ(state, ExecutionState::DONE);
-  }
+  consume_and_check_rows(consumer2.get(), 1000, ExecutionState::HASMORE);
+  consume_and_check_rows(consumer2.get(), 500, ExecutionState::DONE);
 }
