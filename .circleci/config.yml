@@ -227,7 +227,7 @@ workflows:
           requires:
             - check-build-trigger
       - generate-config:
-          definitions: << pipeline.parameters.config-definitions >>>
+          definitions: << pipeline.parameters.config-definitions >>
             #"tests/test-definitions.txt tests/go-test-definitions.txt tests/arangojs-test-definitions.txt"
             # tests/java-test-definitions.txt"
             # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
