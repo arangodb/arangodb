@@ -518,6 +518,11 @@ Result auth::UserManager::enumerateUsers(
       res = storeUserInternal(*it, /*replace*/ true);
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
         res.reset();
+        // We ran into a conflict, and we have to retry
+        // so we either wait for the update thread to re-run/finish, which is
+        // blocking anyway so we can also just reload synchronously here
+        // directly.
+        loadFromDB();
         READ_LOCKER(readGuard, _userCacheLock);
         UserMap::iterator it2 = _userCache.find(it->username());
         if (it2 != _userCache.end()) {

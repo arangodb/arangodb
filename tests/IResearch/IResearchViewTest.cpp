@@ -165,6 +165,8 @@ class IResearchViewTest
   IResearchViewTest() : server(false) {
     arangodb::tests::init();
 
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
+
     server.addFeature<arangodb::FlushFeature>(false);
     server.startFeatures();
 
@@ -190,7 +192,16 @@ class IResearchViewTest
     EXPECT_TRUE(pathExists);
   }
 
-  ~IResearchViewTest() { TRI_RemoveDirectory(testFilesystemPath.c_str()); }
+  ~IResearchViewTest() {
+    TRI_RemoveDirectory(testFilesystemPath.c_str());
+
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->shutdown();
+    }
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
+  }
 };
 
 // -----------------------------------------------------------------------------
