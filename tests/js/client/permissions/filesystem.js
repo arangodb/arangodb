@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, assertUndefined */
+/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, assertUndefined, instanceRoot */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
