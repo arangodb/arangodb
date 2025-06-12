@@ -196,6 +196,9 @@ function goDriver (options) {
                   thiscase.status = false;
                   thiscase.duration = item.Elapsed;
                   break;
+                case 'pause':
+                  thiscase.message += 'PAUSE\n';
+                  break;
                 case 'output':
                   thiscase.message += item.Output;
                   print(item.Time + " - " + item.Output.replace(/^\s+|\s+$/g, ''));
