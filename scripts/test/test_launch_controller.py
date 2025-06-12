@@ -46,6 +46,7 @@ def parse_arguments():
     parser.add_argument(
         "--cluster", type=str2bool, nargs="?", const=True, default=False, help=""
     )
+    parser.add_argument("--suiteName", help="", type=str)
     parser.add_argument("--extraArgs", help="", type=str)
     parser.add_argument("--suffix", help="", type=str)
     parser.add_argument("--build", help="build folder", type=str)
@@ -61,6 +62,8 @@ def main():
         extra_args = args.extraArgs.split()
         suffix = args.suffix
         name = suite
+        if ',' in suite:
+            name = args.suiteName
         if suffix:
             name += f"_{suffix}"
         if args.cluster:
