@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, assertUndefined, instanceRoot */
+/* global fail, getOptions, assertTrue, assertEqual, assertNotEqual, assertUndefined */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -38,18 +38,15 @@ const internal = require('internal');
 // second inst - testFilesDir  --        /tmp/xxx-arangosh/permissions/testfiles
 // second inst - subInstanceTemp  --     not needed /tmp/xxx-arangosh/permissions/subinstance_tmp_directory
 
-
-let rootDir = fs.join(instanceRoot);
+let rootDir = process.env['instanceRoot'];
 let subInstanceTemp; //not set for subinstance
 let testFilesDir = fs.join(rootDir, 'test_file_tree');
 
 if (getOptions === true) {
-  rootDir = fs.join(instanceRoot, 'permissions');
   subInstanceTemp = fs.join(rootDir, 'subinstance_temp_directory');
   testFilesDir = fs.join(rootDir, 'test_file_tree');
   fs.makeDirectoryRecursive(subInstanceTemp);
   fs.makeDirectoryRecursive(testFilesDir);
-
 }
 
 
