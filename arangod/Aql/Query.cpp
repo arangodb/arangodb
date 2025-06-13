@@ -1714,8 +1714,7 @@ void Query::logAtEnd() const {
         << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
         << " failed with exit code " << result().errorNumber() << ": "
-        << result().errorMessage()
-        << ", took: " << Logger::FIXED(queryTime());
+        << result().errorMessage() << ", took: " << Logger::FIXED(queryTime());
   } else {
     LOG_TOPIC("e0b7c", WARN, Logger::QUERIES)
         << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
