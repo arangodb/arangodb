@@ -341,10 +341,8 @@ TransactionId Query::transactionId() const noexcept {
 double Query::startTime() const noexcept { return _startTime; }
 
 double Query::queryTime() const noexcept {
-  // This can return 0 if the query never entered execution phase
-  if (_startTime == 0) {
-    return 0;
-  }
+  // should only be called once _endTime has been set
+  TRI_ASSERT(_endTime > 0.0);
   return _endTime - _startTime;
 }
 
@@ -353,6 +351,7 @@ double Query::executionTime() const noexcept {
   if (_startExecutionTime == 0) {
     return 0;
   }
+  TRI_ASSERT(_endExecutionTime > 0.0);
   return _endExecutionTime - _startExecutionTime;
 }
 
@@ -1160,7 +1159,7 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
       executionStats.setPeakMemoryUsage(_resourceMonitor->peak());
-      executionStats.setExecutionTime(executionTime());
+      executionStats.setExecutionTime(queryTime());
       executionStats.setIntermediateCommits(
           _trx->state()->numIntermediateCommits());
       for (auto& engine : _snippets) {
@@ -1251,7 +1250,7 @@ QueryResult Query::explain() {
           VPackObjectBuilder guard(&b, /*unindexed*/ true);
           Optimizer::Stats::toVelocyPackForCachedPlan(b);
           b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
-          b.add("executionTime", VPackValue(executionTime()));
+          b.add("executionTime", VPackValue(queryTime()));
         }
         result.planCacheKey = _planCacheKey->hash();
       }
@@ -1716,7 +1715,7 @@ void Query::logAtEnd() const {
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
         << " failed with exit code " << result().errorNumber() << ": "
         << result().errorMessage()
-        << ", took: " << Logger::FIXED(executionTime());
+        << ", took: " << Logger::FIXED(queryTime());
   } else {
     LOG_TOPIC("e0b7c", WARN, Logger::QUERIES)
         << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
@@ -1726,7 +1725,7 @@ void Query::logAtEnd() const {
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
         << " used more memory than configured memory usage alerting threshold "
         << feature.peakMemoryUsageThreshold()
-        << ", took: " << Logger::FIXED(executionTime());
+        << ", took: " << Logger::FIXED(queryTime());
   }
 }
 
@@ -1968,7 +1967,7 @@ void Query::handlePostProcessing(QueryList& querylist) {
                          : querylist.slowQueryThreshold();
 
   bool isSlowQuery = (querylist.trackSlowQueries() &&
-                      executionTime() >= threshold && threshold >= 0.0);
+                      queryTime() >= threshold && threshold >= 0.0);
   if (isSlowQuery) {
     // yes.
     try {
@@ -2581,7 +2580,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
     return (isCurrent ? state() : QueryExecutionState::ValueType::FINISHED);
   });
 
-  double elapsed = (isCurrent ? elapsedSince(startTime()) : executionTime());
+  double elapsed = (isCurrent ? elapsedSince(startTime()) : queryTime());
 
   double now = TRI_microtime();
   // we calculate the query start timestamp as the current time minus
@@ -2709,7 +2708,7 @@ void Query::logSlow(QuerySerializationOptions const& options) const {
       << ", id: " << id() << ", token: QRY" << id()
       << ", peak memory usage: " << resourceMonitor().peak()
       << ", exit code: " << result().errorNumber()
-      << ", took: " << Logger::FIXED(executionTime()) << " s";
+      << ", took: " << Logger::FIXED(queryTime()) << " s";
 }
 
 std::function<void(velocypack::Builder&)>

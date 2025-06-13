@@ -63,7 +63,7 @@ function QueryMetricsTestSuite() {
         assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
 
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
     },
 
