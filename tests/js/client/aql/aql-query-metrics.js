@@ -30,6 +30,7 @@ const internal = require("internal");
 const getMetricSingle = require("@arangodb/test-helper").getMetricSingle;
 const arangodb = require("@arangodb");
 const aql = arangodb.aql;
+const ERRORS = arangodb.errors;
 
 function QueryMetricsTestSuite() {
 
@@ -46,6 +47,20 @@ function QueryMetricsTestSuite() {
         const query = aql`
           FOR i IN 1..100 RETURN i`;
         db._query(query);
+      }
+
+      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      assertEqual(aqlCurrentQueryMetric, 0);
+    },
+
+    testFailingQuery : function () {
+      let st = db._createStatement({ query : "for i in" });
+
+      try {
+        st.parse();
+        fail();
+      } catch (e) {
+        assertEqual(ERRORS.ERROR_QUERY_PARSE.code, e.errorNum);
       }
 
       aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");

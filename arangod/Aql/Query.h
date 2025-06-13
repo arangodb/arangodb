@@ -170,9 +170,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
+  // return only the execution time of the query, can be 0
+  double executionTime() const noexcept;
+
   /// @brief return the total execution time of the query (until
   /// the start of finalize)
-  double executionTime() const noexcept;
+  double queryTime() const noexcept;
 
   void prepareQuery();
 
@@ -316,7 +319,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief make sure that the query execution time is set.
   /// only the first call to this function will set the time.
   /// every following call will be ignored.
-  void ensureExecutionTime() noexcept;
+  void ensureEndTime() noexcept;
 
   /// @brief initializes the query
   void init(bool createProfile);
@@ -441,6 +444,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief query end time (steady clock value), only set once finalize()
   /// is reached
   double _endTime;
+
+  /// @brief query execution phase start time (steady clock value)
+  double _startExecutionTime;
+
+  /// @brief query execution end time (steady clock value), only
+  /// set once the execution phase ends
+  double _endExecutionTime;
 
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;

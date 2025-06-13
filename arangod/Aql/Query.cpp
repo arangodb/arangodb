@@ -340,14 +340,23 @@ TransactionId Query::transactionId() const noexcept {
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
 
-double Query::executionTime() const noexcept {
-  // should only be called once _endTime has been set
-  TRI_ASSERT(_endTime > 0.0)
-      << " QueryId " << _queryId << " end is " << _endTime;
+double Query::queryTime() const noexcept {
+  // This can return 0 if the query never entered execution phase
+  if (_startTime == 0) {
+    return 0;
+  }
   return _endTime - _startTime;
 }
 
-void Query::ensureExecutionTime() noexcept {
+double Query::executionTime() const noexcept {
+  // This can return 0 if the query never entered execution phase
+  if (_startExecutionTime == 0) {
+    return 0;
+  }
+  return _endExecutionTime - _startExecutionTime;
+}
+
+void Query::ensureEndTime() noexcept {
   if (_endTime == 0.0) {
     _endTime = currentSteadyClockValue();
     TRI_ASSERT(_endTime > 0.0);
@@ -925,8 +934,8 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
-  QueryResultV8 queryResult;
 
+  QueryResultV8 queryResult;
   try {
     bool useQueryCache = canUseResultsCache();
 
@@ -1053,13 +1062,14 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           }
         }
       }
-      trackExecutionEnd();
 
+      trackExecutionEnd();
       builder->close();
     } catch (...) {
       LOG_TOPIC("8a6bf", DEBUG, Logger::QUERIES)
           << elapsedSince(_startTime) << " got an exception executing "
           << " this: " << (uintptr_t)this;
+      trackExecutionEnd();
       throw;
     }
 
@@ -1237,7 +1247,7 @@ QueryResult Query::explain() {
         b.add(VPackValue("stats"));
         {
           // optimizer statistics
-          ensureExecutionTime();
+          ensureEndTime();
           VPackObjectBuilder guard(&b, /*unindexed*/ true);
           Optimizer::Stats::toVelocyPackForCachedPlan(b);
           b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
@@ -1414,10 +1424,11 @@ QueryResult Query::explain() {
       b.add(VPackValue("stats"));
       {
         // optimizer statistics
-        ensureExecutionTime();
+        ensureEndTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
+        b.add("queryTime", VPackValue(executionTime()));
         b.add("executionTime", VPackValue(executionTime()));
       }
     }
@@ -1722,6 +1733,7 @@ void Query::logAtEnd() const {
 void Query::trackExecutionStart() noexcept {
   // We should do this only once
   if (!_isExecuting) {
+    _startExecutionTime = currentSteadyClockValue();
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryStart();
@@ -1731,7 +1743,7 @@ void Query::trackExecutionStart() noexcept {
 
 void Query::trackExecutionEnd() noexcept {
   if (_isExecuting) {
-    ensureExecutionTime();
+    _endExecutionTime = currentSteadyClockValue();
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryEnd(executionTime());
@@ -1986,6 +1998,10 @@ void Query::handlePostProcessing(QueryList& querylist) {
 }
 
 void Query::handlePostProcessing() {
+  // For queries which do not enter execution phase at all
+  // we need to ensure the existance of endTime because it is needed
+  // later on
+  ensureEndTime();
   // elapsed time since query start
   if (!queryOptions().skipAudit &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
