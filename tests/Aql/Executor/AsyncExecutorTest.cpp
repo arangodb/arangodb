@@ -44,13 +44,6 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::tests;
 
-struct AsyncExecutorTest : AqlExecutorTestCase<false> {
-  AsyncExecutorTest()
-      : AqlExecutorTestCase(&scheduler), scheduler(_server->server()) {}
-
-  FakeScheduler scheduler;
-};
-
 namespace {
 void consume_and_check_rows(ExecutionBlock* consumer, size_t expectedRows, ExecutionState expectedState) {
   AqlCallStack callstack{AqlCallList{AqlCall{}}};
@@ -63,7 +56,96 @@ void consume_and_check_rows(ExecutionBlock* consumer, size_t expectedRows, Execu
   }
   EXPECT_EQ(state, expectedState);
 }
+
+void sendHardLimit(ExecutionBlock* consumer) {
+  AqlCallStack callstack{AqlCallList{AqlCall{0, false, 0, AqlCall::LimitType::HARD}}};
+  auto const [state, skipped, block] = consumer->execute(callstack);
+  ASSERT_EQ(block, nullptr);
+  EXPECT_EQ(state, ExecutionState::DONE);
+}
+
 } // anonymous namespace
+
+
+struct MutexTestSetup {
+  std::unique_ptr<WaitingExecutionBlockMock> waitingBlock;
+  std::unique_ptr<ExecutionBlockImpl<MutexExecutor>> mutexExecutor;
+  std::vector<std::unique_ptr<ExecutionBlock>> consumers;
+};
+
+struct AsyncExecutorTest : AqlExecutorTestCase<false> {
+  AsyncExecutorTest()
+      : AqlExecutorTestCase(&scheduler), scheduler(_server->server()) {}
+
+  FakeScheduler scheduler;
+
+protected:
+  MutexTestSetup create_mutex_consumers(arangodb::aql::AqlItemBlockManager& blockManager, size_t nrOfInputRows, size_t nrOfConsumers) {
+    // set up the query nodes:
+    //
+    //                WaitingBlock (nrOfInputRows rows)
+    //                      |
+    //                 MutexExecutor
+    //                   /    \
+    //           CONSUMER1   CONSUMER2 (n Consumers based on Input)
+    //
+    // Both CONSUMER1 and CONSUMER2 are IdExecutors connected to the same
+    // MutexExecutor, which is fed by a WaitingBlockMock with nrOfInputRows rows.
+    auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
+                                       RegIdFlatSet{}, RegIdFlatSetStack{{0}});
+
+    // Create input rows in blocks of at most 1000
+    std::deque<arangodb::aql::SharedAqlItemBlockPtr> blockDeque;
+    size_t rowsLeft = nrOfInputRows;
+    size_t currentRow = 0;
+    while (rowsLeft > 0) {
+      size_t blockSize = std::min(rowsLeft, static_cast<size_t>(1000));
+      tests::aql::MatrixBuilder<1> matrix;
+      for (size_t i = 0; i < blockSize; ++i) {
+        std::string json = (std::string)"{\"_key\":\"" + std::to_string(currentRow++) + "\"}";
+        matrix.push_back({json.c_str()});
+      }
+      auto inputBlock = tests::aql::buildBlock<1>(blockManager, std::move(matrix));
+      blockDeque.push_back(inputBlock);
+      rowsLeft -= blockSize;
+    }
+
+    auto waitingBlock = std::make_unique<WaitingExecutionBlockMock>(
+        fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
+        WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
+
+    // Create client IDs
+    std::vector<std::string> clientIds;
+    for (size_t i = 1; i <= nrOfConsumers; ++i) {
+      clientIds.push_back(std::to_string(i));
+    }
+
+    // Create MutexExecutor
+    auto mutexExecutor = std::make_unique<ExecutionBlockImpl<MutexExecutor>>(
+        fakedQuery->rootEngine(), generateMutexNodeDummy(), registerInfos,
+        MutexExecutorInfos(clientIds));
+    mutexExecutor->addDependency(waitingBlock.get());
+
+    // Create consumers
+    std::vector<std::unique_ptr<ExecutionBlock>> consumers;
+    for (size_t i = 1; i <= nrOfConsumers; ++i) {
+      auto consumer = std::make_unique<ExecutionBlockImpl<
+        IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
+          fakedQuery->rootEngine(),
+          generateDistributeConsumerNode(std::to_string(i)),
+          registerInfos,
+          IdExecutorInfos(false, RegisterId(0), std::to_string(i), false));
+      consumer->addDependency(mutexExecutor.get());
+      consumers.push_back(std::move(consumer));
+    }
+
+    MutexTestSetup setup;
+    setup.waitingBlock = std::move(waitingBlock);
+    setup.mutexExecutor = std::move(mutexExecutor);
+    setup.consumers = std::move(consumers);
+    return setup;
+  }
+};
 
 // Regression test for https://arangodb.atlassian.net/browse/BTS-1325.
 // See https://github.com/arangodb/arangodb/pull/18729 for details.
@@ -531,55 +613,15 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
 }
 
 TEST_F(AsyncExecutorTest, two_consumers_receive_rows_from_mutex_executor) {
-  // set up the query nodes:
-  //
-  //                WaitingBlock (3000 rows)
-  //                      |
-  //                 MutexExecutor
-  //                   /    \
-  //           CONSUMER1   CONSUMER2
-  //
-  // Both CONSUMER1 and CONSUMER2 are IdExecutors connected to the same
-  // MutexExecutor, which is fed by a WaitingBlockMock with 3000 rows.
-
-  auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
-                                     RegIdFlatSet{}, RegIdFlatSetStack{{0}});
   GlobalResourceMonitor globalMonitor;
   arangodb::ResourceMonitor monitor(globalMonitor);
   arangodb::aql::AqlItemBlockManager blockManager(monitor);
-
-  // Create 3000 rows of input, all as objects with {"_key": i}
-  tests::aql::MatrixBuilder<1> matrix;
-  for (int i = 0; i < 3000; ++i) {
-    std::string json = (std::string)"{\"_key\":\"" + std::to_string(i) + "\"}";
-    matrix.push_back({json.c_str()});
-  }
-  auto inputBlock = tests::aql::buildBlock<1>(blockManager, std::move(matrix));
-  std::deque<arangodb::aql::SharedAqlItemBlockPtr> blockDeque;
-  blockDeque.push_back(inputBlock);
-  auto waitingBlock = std::make_unique<WaitingExecutionBlockMock>(
-      fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
-      WaitingExecutionBlockMock::WaitingBehaviour::NEVER);
-
-  // Create the MutexExecutor block with two clients
-  std::vector<std::string> clientIds{"1", "2"};
-  auto mutexExecutor = std::make_unique<ExecutionBlockImpl<MutexExecutor>>(
-      fakedQuery->rootEngine(), generateMutexNodeDummy(), registerInfos,
-      MutexExecutorInfos(clientIds));
-  mutexExecutor->addDependency(waitingBlock.get());
-
+  auto setup = create_mutex_consumers(blockManager, 3000, 2);
+  auto& inputBlock = setup.waitingBlock;
+  
   // Create two consumers (IdExecutors) that depend on the same MutexExecutor
-  auto consumer1 = std::make_unique<ExecutionBlockImpl<
-      IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
-      fakedQuery->rootEngine(), generateDistributeConsumerNode("1"), registerInfos,
-      IdExecutorInfos(false, RegisterId(0), "1", false));
-  consumer1->addDependency(mutexExecutor.get());
-
-  auto consumer2 = std::make_unique<ExecutionBlockImpl<
-      IdExecutor<SingleRowFetcher<BlockPassthrough::Enable>>>>(
-      fakedQuery->rootEngine(), generateDistributeConsumerNode("2"), registerInfos,
-      IdExecutorInfos(false, RegisterId(0), "2", false));
-  consumer2->addDependency(mutexExecutor.get());
+  auto& consumer1 = setup.consumers[0];
+  auto& consumer2 = setup.consumers[1];
 
   // Test if we can read data one block after the other
   // Note we do get 500 rows each time, as the MutexExecutor does round robin splitting
@@ -589,8 +631,94 @@ TEST_F(AsyncExecutorTest, two_consumers_receive_rows_from_mutex_executor) {
   consume_and_check_rows(consumer1.get(), 500, ExecutionState::HASMORE);
   consume_and_check_rows(consumer1.get(), 500, ExecutionState::DONE);
 
+
+  EXPECT_EQ(inputBlock->remainingRows(), 0) << "One consumer fetched everything. The block now needs to be empty";
+  EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "No hardlimit was asked";
+
+
   // Note: The second consumer will see 1000 rows on the first run, as it's block has been filled
   // to completion by the other task
   consume_and_check_rows(consumer2.get(), 1000, ExecutionState::HASMORE);
   consume_and_check_rows(consumer2.get(), 500, ExecutionState::DONE);
+}
+
+TEST_F(AsyncExecutorTest, two_consumers_one_early_abort) {
+  GlobalResourceMonitor globalMonitor;
+  arangodb::ResourceMonitor monitor(globalMonitor);
+  arangodb::aql::AqlItemBlockManager blockManager(monitor);
+  auto setup = create_mutex_consumers(blockManager, 3000, 2);
+  auto& inputBlock = setup.waitingBlock;
+
+  // Create two consumers (IdExecutors) that depend on the same MutexExecutor
+  auto& consumer1 = setup.consumers[0];
+  auto& consumer2 = setup.consumers[1];
+
+  // Test first block sends a hard limit 0, basically it does not need anything.
+  sendHardLimit(consumer1.get());
+  EXPECT_EQ(inputBlock->remainingRows(), 3000) << "No rows are asked for, hardLimit should not trigger an upstream request. But we cannot yet discard rows";
+  EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "We asked for a hard limit, but only on one consumer, it cannot be forwarded to the input block";
+
+  // Note: The second consumer will still see all it's input
+  consume_and_check_rows(consumer2.get(), 500, ExecutionState::HASMORE);
+  consume_and_check_rows(consumer2.get(), 500, ExecutionState::HASMORE);
+  consume_and_check_rows(consumer2.get(), 500, ExecutionState::DONE);
+}
+
+
+TEST_F(AsyncExecutorTest, two_consumers_both_early_abort) {
+  GlobalResourceMonitor globalMonitor;
+  arangodb::ResourceMonitor monitor(globalMonitor);
+  arangodb::aql::AqlItemBlockManager blockManager(monitor);
+  auto setup = create_mutex_consumers(blockManager, 3000, 2);
+  auto& inputBlock = setup.waitingBlock;
+
+  // Create two consumers (IdExecutors) that depend on the same MutexExecutor
+  auto& consumer1 = setup.consumers[0];
+  auto& consumer2 = setup.consumers[1];
+
+
+  // Test first block consumes some data, then sends hard limit 0
+  consume_and_check_rows(consumer1.get(), 500, ExecutionState::HASMORE);
+  sendHardLimit(consumer1.get());
+  EXPECT_EQ(inputBlock->remainingRows(), 2000) << "We asked for 500 rows but rows are split equally between two consumer, so 2000 rows should be left";
+  EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "We asked for a hard limit, but only on one consumer, it cannot be forwarded to the input block";
+
+  // Note: The second consumer can still get some input, but also request Hard limit afterwards
+  consume_and_check_rows(consumer2.get(), 500, ExecutionState::HASMORE);
+  EXPECT_EQ(inputBlock->remainingRows(), 1000) << "We asked for 500 more rows but rows are split equally between two consumer, so 2000 rows should be left";
+  EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "We asked for a hard limit, but only on one consumer, it cannot be forwarded to the input block";
+
+  sendHardLimit(consumer2.get());
+  EXPECT_EQ(inputBlock->remainingRows(), 0) << "Hardlimit should consume all rows";
+  EXPECT_EQ(inputBlock->getLastCall().getLimit(), 0) << "Now both consumers are on hardlimit, so it can be forwarded to the input block";
+
+
+}
+
+TEST_F(AsyncExecutorTest, two_consumers_second_early_abort_first_can_reach_limit) {
+  GlobalResourceMonitor globalMonitor;
+  arangodb::ResourceMonitor monitor(globalMonitor);
+  arangodb::aql::AqlItemBlockManager blockManager(monitor);
+  auto setup = create_mutex_consumers(blockManager, 3000, 2);
+  auto& inputBlock = setup.waitingBlock;
+
+  // Create two consumers (IdExecutors) that depend on the same MutexExecutor
+  auto& consumer1 = setup.consumers[0];
+  auto& consumer2 = setup.consumers[1];
+
+  consume_and_check_rows(consumer1.get(), 500, ExecutionState::HASMORE);
+  consume_and_check_rows(consumer2.get(), 500, ExecutionState::HASMORE);
+  EXPECT_EQ(inputBlock->remainingRows(), 2000) << "We asked for 1000 rows equally between two consumer, so 2000 rows should be left";
+  EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "We did not ask for a hard limit, so the last call should not be a hard limit";
+  // Now stop consumer 2
+  sendHardLimit(consumer2.get());
+  EXPECT_EQ(inputBlock->remainingRows(), 2000) << "HardLimit 0, should not trigger a pull from the input block";
+  EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "Only one consumer asked for a hard limit, this cannot be forwarded to the input block";
+
+  // Let consumer 1 continue until end
+  consume_and_check_rows(consumer1.get(), 500, ExecutionState::HASMORE);
+  consume_and_check_rows(consumer1.get(), 500, ExecutionState::DONE);
+  EXPECT_EQ(inputBlock->remainingRows(), 0) << "All rows should have been consumed";
+  EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "The other consumer consumed all input, no hardlimit can be send";
+
 }

@@ -59,6 +59,8 @@ class ScatterExecutor {
     auto execute(AqlCallStack const& callStack, ExecutionState upstreamState)
         -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
+    auto remainingRows() const -> uint64_t;
+
    private:
     std::deque<std::tuple<SharedAqlItemBlockPtr, SkipResult>> _queue;
     // This is unique_ptr to get away with everything being forward declared...

@@ -123,6 +123,13 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack,
   return {state, std::move(skipped), std::move(result)};
 }
 
+auto ScatterExecutor::ClientBlockData::remainingRows() const -> uint64_t {
+  return std::accumulate(_queue.begin(), _queue.end(), 0,
+                         [](uint64_t sum, auto const& item) {
+                           return sum + std::get<0>(item)->numRows();
+                         });
+}
+
 ScatterExecutor::ScatterExecutor(Infos const&) {}
 
 auto ScatterExecutor::distributeBlock(
