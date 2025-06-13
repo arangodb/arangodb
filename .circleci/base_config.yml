@@ -571,8 +571,8 @@ jobs:
               export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
               ( \
                 cd .. ; \
-                git clone --single-branch --branch << parameters.second-git-branch >> << parameters.driver-git-repo >>; \
-                cd $(echo << parameters.second-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
+                git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>; \
+                cd $(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
                  << parameters.init_driver_repo_command >>
               )
             fi
