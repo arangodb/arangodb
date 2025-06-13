@@ -197,7 +197,10 @@ function goDriver (options) {
                   thiscase.duration = item.Elapsed;
                   break;
                 case 'pause':
-                  thiscase.message += 'PAUSE\n';
+                  thiscase.message += `${item.Time} => PAUSE\n`;
+                  break;
+                case 'cont':
+                  thiscase.message += `${item.Time} => Continue!\n`;
                   break;
                 case 'output':
                   thiscase.message += item.Output;
