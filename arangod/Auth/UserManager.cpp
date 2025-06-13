@@ -395,8 +395,7 @@ void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
 void auth::UserManager::triggerLocalReload() noexcept {
   // we are forcing every caller to wait in checkIfUserDataIsAvailable for the
   // UpdateThread to finish.Thus reloading the local userCache.
-  // TODO: If we force a thread reload, do we need everything to wait ?
-  //_internalVersion.store(0, std::memory_order_release);
+  _internalVersion.store(0, std::memory_order_release);
 
   if (ServerState::instance()->isSingleServer()) {
     // TODO: Do I need something like that for
