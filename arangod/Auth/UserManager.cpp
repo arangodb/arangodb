@@ -405,9 +405,9 @@ void auth::UserManager::triggerLocalReload() noexcept {
     // skip and update from the HeartBeat thread. So we try decrease the
     // global version here and wake up the thread that way.
     uint64_t currentGlobalVersion = globalVersion();
-    _globalVersion.compare_exchange_strong(
-        currentGlobalVersion, currentGlobalVersion - 1,
-        std::memory_order_release, std::memory_order_relaxed);
+    _globalVersion.compare_exchange_strong(currentGlobalVersion, 0,
+                                           std::memory_order_release,
+                                           std::memory_order_relaxed);
     _globalVersion.notify_one();
   }
 }
