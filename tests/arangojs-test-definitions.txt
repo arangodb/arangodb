@@ -6,4 +6,4 @@
 
 # Single Server Replication Tests
 js_driver priority=500 single
-js_driver priority=500 cluster
+js_driver priority=500 cluster size=large
