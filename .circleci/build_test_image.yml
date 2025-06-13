@@ -137,22 +137,22 @@ jobs:
       - run:
           name: Build test container manifest
           command: |
-            cd scripts/docker/test
+            cd scripts/docker/
             ./build-manifest.sh << parameters.image >> $(cat amd64-tag.txt)
       - run:
           name: Build go test container manifest
           command: |
-            cd scripts/docker/go-test
+            cd scripts/docker/
             ./build-manifest.sh << parameters.image >>-go $(cat amd64-tag-go.txt)
       - run:
           name: Build js test container manifest
           command: |
-            cd scripts/docker/js-test
+            cd scripts/docker/
             ./build-manifest.sh << parameters.image >>-js $(cat amd64-tag-js.txt)
       - run:
           name: Build js test container manifest
           command: |
-            cd scripts/docker/java-test
+            cd scripts/docker
             ./build-manifest.sh << parameters.image >>-js $(cat amd64-tag-java.txt)
       # TODO - commit the tag file to the repository
       # - run:
