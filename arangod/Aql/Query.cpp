@@ -1250,7 +1250,6 @@ QueryResult Query::explain() {
           VPackObjectBuilder guard(&b, /*unindexed*/ true);
           Optimizer::Stats::toVelocyPackForCachedPlan(b);
           b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
-          b.add("executionTime", VPackValue(queryTime()));
         }
         result.planCacheKey = _planCacheKey->hash();
       }
@@ -1427,8 +1426,7 @@ QueryResult Query::explain() {
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
-        b.add("queryTime", VPackValue(executionTime()));
-        b.add("executionTime", VPackValue(executionTime()));
+        b.add("executionTime", VPackValue(queryTime()));
       }
     }
   } catch (Exception const& ex) {
@@ -1976,7 +1974,7 @@ void Query::handlePostProcessing(QueryList& querylist) {
 
       auto& queryRegistryFeature =
           vocbase().server().getFeature<QueryRegistryFeature>();
-      queryRegistryFeature.trackSlowQuery(executionTime());
+      queryRegistryFeature.trackSlowQuery(queryTime());
       logSlow(options);
 
       querylist.trackSlow(buildQuerySlice());
