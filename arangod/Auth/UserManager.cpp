@@ -395,7 +395,22 @@ void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
 void auth::UserManager::triggerLocalReload() noexcept {
   // we are forcing every caller to wait in checkIfUserDataIsAvailable for the
   // UpdateThread to finish.Thus reloading the local userCache.
-  _internalVersion.store(0, std::memory_order_release);
+  // TODO: If we force a thread reload, do we need everything to wait ?
+  //_internalVersion.store(0, std::memory_order_release);
+
+  if (ServerState::instance()->isSingleServer()) {
+    // TODO: Do I need something like that for
+    // cluster or is the periodic heart-beat enough?
+
+    // We do want to wake up the UpdateThread but we need to be careful to not
+    // skip and update from the HeartBeat thread. So we try decrease the
+    // global version here and wake up the thread that way.
+    uint64_t currentGlobalVersion = globalVersion();
+    _globalVersion.compare_exchange_strong(
+        currentGlobalVersion, currentGlobalVersion - 1,
+        std::memory_order_release, std::memory_order_relaxed);
+    _globalVersion.notify_one();
+  }
 }
 
 /// @brief used for caching
