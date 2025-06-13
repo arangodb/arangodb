@@ -493,10 +493,10 @@ jobs:
       timeLimit:
         type: integer
         default: 1800
-      second-git-repo:
+      driver-git-repo:
         type: string
         default: ""
-      second-git-branch:
+      driver-git-branch:
         type: string
         default: ""
       init_driver_repo_command:
@@ -567,13 +567,12 @@ jobs:
             if command -v promtool &> /dev/null; then
               export PROMTOOL_PATH=`command -v promtool`
             fi
-            if test -n "<< parameters.second-git-repo >>"; then
+            if test -n "<< parameters.driver-git-repo >>"; then
               export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
               ( \
                 cd .. ; \
-                git clone << parameters.second-git-repo >>; \
+                git clone --single-branch --branch << parameters.second-git-branch >> << parameters.driver-git-repo >>; \
                 cd $(echo << parameters.second-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
-                git checkout << parameters.second-git-branch >>; \
                  << parameters.init_driver_repo_command >>
               )
             fi

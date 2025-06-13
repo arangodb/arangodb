@@ -73,7 +73,7 @@ def parse_arguments():
     )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
-    parser.add_argument("-d", "--default-container", type=str, help="sanitizer to use")
+    parser.add_argument("-d", "--default-container", type=str, help="default container to be used")
     parser.add_argument(
         "--ui", type=str, help="whether to run UI test [off|on|only|community]"
     )
@@ -371,13 +371,13 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
     if test['testfile_definitions'] != {}:
         job['docker_image'] = args.default_container.replace(
             ':', test['testfile_definitions']['container_suffix'])
-        job['second-git-repo'] = test['testfile_definitions']['second_repo']
-        job['second-git-branch'] = test['testfile_definitions']['branch']
+        job['driver-git-repo'] = test['testfile_definitions']['second_repo']
+        job['driver-git-branch'] = test['testfile_definitions']['branch']
         job['init_driver_repo_command'] = test['testfile_definitions']['init_command']
     else:
         job['docker_image'] = args.default_container
-        job['second-git-repo'] = ""
-        job['second-git-branch'] = ""
+        job['driver-git-repo'] = ""
+        job['driver-git-branch'] = ""
         job['init_driver_repo_command'] = ""
     return {"run-linux-tests": job}
 
