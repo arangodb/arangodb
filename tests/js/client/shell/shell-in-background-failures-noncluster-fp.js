@@ -47,7 +47,7 @@ function IndexInBackgroundFailuresSuite () {
 
     let timeout = 600;
     if (versionHas('asan') || versionHas('tsan') || versionHas('coverage')) {
-      timeout *= 15;
+      timeout *= 20;
     }
 
     let newFiles = 0;
