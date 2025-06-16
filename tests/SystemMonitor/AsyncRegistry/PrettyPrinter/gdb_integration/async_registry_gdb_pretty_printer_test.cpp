@@ -32,22 +32,29 @@ using namespace arangodb::async_registry;
 
 auto breakpoint() { raise(SIGINT); }
 
+auto format(arangodb::basics::SourceLocationSnapshot const& loc)
+    -> std::string {
+  return fmt::format("\"{}\" (\"{}\":{})", loc.function_name, loc.file_name,
+                     loc.line);
+}
 auto format(arangodb::basics::ThreadId const& thread) -> std::string {
   return fmt::format("LWPID {} (pthread {})", thread.kernel_id,
                      thread.posix_id);
 }
+auto format(arangodb::basics::ThreadInfo const& thread) -> std::string {
+  return fmt::format("\"{}\" (LWPID {})", thread.name, thread.kernel_id);
+}
 auto format(PromiseSnapshot const& snapshot) -> std::string {
   if (snapshot.thread == std::nullopt) {
-    return fmt::format(
-        "\"{}\" (\"{}\":{}), {}", snapshot.source_location.function_name,
-        snapshot.source_location.file_name, snapshot.source_location.line,
-        arangodb::inspection::json(snapshot.state));
+    return fmt::format("{}, owned by {}, {}", format(snapshot.source_location),
+                       format(snapshot.owning_thread),
+                       arangodb::inspection::json(snapshot.state));
   } else {
-    return fmt::format(
-        "\"{}\" (\"{}\":{}), {} on {}", snapshot.source_location.function_name,
-        snapshot.source_location.file_name, snapshot.source_location.line,
-        arangodb::inspection::json(snapshot.state),
-        format(snapshot.thread.value()));
+    return fmt::format("{}, owned by {}, {} on {}",
+                       format(snapshot.source_location),
+                       format(snapshot.owning_thread),
+                       arangodb::inspection::json(snapshot.state),
+                       format(snapshot.thread.value()));
   }
 }
 
@@ -67,7 +74,7 @@ int main() {
   // empty registry
   auto test_registry = Registry{};
   auto thread_registry = ThreadRegistry::make();
-  auto current_thread = arangodb::basics::ThreadId::current();
+  auto current_thread = arangodb::basics::ThreadInfo::current();
   test_registry.add(thread_registry);
 
   breakpoint();
@@ -78,15 +85,16 @@ int main() {
 
   // add a promise
   auto parent = thread_registry->add([&]() {
-    return Promise{{current_thread}, std::source_location::current()};
+    return Promise{CurrentRequester{current_thread},
+                   std::source_location::current()};
   });
   expected = fmt::format(
       "async registry = {{\n"
       "[{}] = \n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(parent->data.snapshot()),
-      format(current_thread));
+      format(current_thread.get_ref().value()), format(parent->data.snapshot()),
+      format(current_thread.get_ref().value()));
 
   breakpoint();
 
@@ -97,8 +105,8 @@ int main() {
       "[{}] = \n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(parent->data.snapshot()),
-      format(current_thread));
+      format(current_thread.get_ref().value()), format(parent->data.snapshot()),
+      format(current_thread.get_ref().value()));
 
   breakpoint();
 
@@ -112,8 +120,9 @@ int main() {
       "    ┌ {}\n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(child->data.snapshot()),
-      format(parent->data.snapshot()), format(current_thread));
+      format(current_thread.get_ref().value()), format(child->data.snapshot()),
+      format(parent->data.snapshot()),
+      format(current_thread.get_ref().value()));
 
   breakpoint();
 
@@ -128,9 +137,9 @@ int main() {
       "    ├ {}\n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(child->data.snapshot()),
+      format(current_thread.get_ref().value()), format(child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      format(current_thread));
+      format(current_thread.get_ref().value()));
 
   breakpoint();
 
@@ -146,9 +155,10 @@ int main() {
       "    ├ {}\n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(child_of_child->data.snapshot()),
-      format(child->data.snapshot()), format(second_child->data.snapshot()),
-      format(parent->data.snapshot()), format(current_thread));
+      format(current_thread.get_ref().value()),
+      format(child_of_child->data.snapshot()), format(child->data.snapshot()),
+      format(second_child->data.snapshot()), format(parent->data.snapshot()),
+      format(current_thread.get_ref().value()));
 
   breakpoint();
 
@@ -165,17 +175,17 @@ int main() {
       "    ├ {}\n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(child_of_child->data.snapshot()),
-      format(child->data.snapshot()),
+      format(current_thread.get_ref().value()),
+      format(child_of_child->data.snapshot()), format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      format(current_thread));
+      format(current_thread.get_ref().value()));
 
   breakpoint();
 
   // add a completely unrelated promise
   auto* second_parent = thread_registry->add([&]() {
-    return Promise{{arangodb::basics::ThreadId::current()},
+    return Promise{{arangodb::basics::ThreadInfo::current()},
                    std::source_location::current()};
   });
   expected = fmt::format(
@@ -190,17 +200,20 @@ int main() {
       "    ├ {}\n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(second_parent->data.snapshot()),
-      format(current_thread), format(current_thread),
+      format(current_thread.get_ref().value()),
+      format(second_parent->data.snapshot()),
+      format(current_thread.get_ref().value()),
+      format(current_thread.get_ref().value()),
       format(child_of_child->data.snapshot()), format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      format(current_thread));
+      format(current_thread.get_ref().value()));
 
   breakpoint();
 
   auto second_thread_registry = ThreadRegistry::make();
-  auto other_thread = arangodb::basics::ThreadId{};
+  auto other_thread =
+      arangodb::basics::ThreadInfo{};  // simulate another thread
   test_registry.add(second_thread_registry);
 
   // add a new promise on another thread
@@ -222,12 +235,14 @@ int main() {
       "[{}] = \n"
       "  ┌ {}\n"
       "─ {}}}",
-      format(current_thread), format(second_parent->data.snapshot()),
-      format(current_thread), format(current_thread),
+      format(current_thread.get_ref().value()),
+      format(second_parent->data.snapshot()),
+      format(current_thread.get_ref().value()),
+      format(current_thread.get_ref().value()),
       format(child_of_child->data.snapshot()), format(child->data.snapshot()),
       format(child_of_second_child->data.snapshot()),
       format(second_child->data.snapshot()), format(parent->data.snapshot()),
-      format(current_thread), format(other_thread),
+      format(current_thread.get_ref().value()), format(other_thread),
       format(parent_on_other_thread->data.snapshot()), format(other_thread));
 
   breakpoint();

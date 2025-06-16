@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Iterable
 from dataclasses import dataclass
+import gdb
 
 @dataclass
 class State:
@@ -23,7 +24,6 @@ class State:
 class Thread:
     posix_id: gdb.Value
     lwpid: gdb.Value
-    # TODO is there a way to get the thread name?
 
     @classmethod
     def from_gdb(cls, value: gdb.Value | None):
@@ -33,6 +33,18 @@ class Thread:
 
     def __str__(self):
         return f"LWPID {self.lwpid} (pthread {self.posix_id})"
+
+@dataclass
+class ThreadInfo:
+    lwpid: gdb.Value
+    name: gdb.Value
+
+    @classmethod
+    def from_gdb(cls, value: gdb.Value):
+        return cls(value['kernel_id'], value['name'])
+
+    def __str__(self):
+        return f"{self.name} (LWPID {self.lwpid})"
 
 @dataclass
 class SourceLocation:
@@ -49,18 +61,26 @@ class SourceLocation:
 
 @dataclass
 class Requester:
-    content: Thread | PromiseId
+    content: ThreadInfo | PromiseId
 
     @classmethod
     def from_gdb(cls, value: gdb.Value):
-       alternative = value['_M_index']
-       if alternative == 0:
-           content = Thread.from_gdb(value['_M_u']['_M_first']['_M_storage'])
-       elif alternative == 1:
-           content = PromiseId(value['_M_u']['_M_rest']['_M_first']['_M_storage'])
-       else:
-           return "wrong input"
-       return cls(content)
+        num_flag_bits = 1
+        flag_mask = (1 << num_flag_bits) - 1
+        BIT_WIDTH_64 = 64
+        all_ones_64_bit_mask = (1 << BIT_WIDTH_64) - 1
+        data_mask_64bit = flag_mask ^ all_ones_64_bit_mask
+        if value & flag_mask:
+            return cls(ThreadInfo.from_gdb(
+                (value & data_mask_64bit)
+                .cast(gdb.lookup_type("arangodb::containers::SharedResource<arangodb::basics::ThreadInfo>").pointer())
+                .dereference()['_data']
+            ))
+        else:
+            return cls(PromiseId(
+                (value & data_mask_64bit)
+                .cast(gdb.lookup_type("void").pointer())
+            ))
 
     def __str__(self):
         return str(self.content)
@@ -81,7 +101,8 @@ class PromiseId:
 @dataclass
 class Promise:
     id: PromiseId
-    thread: Optional[Thread]
+    owning_thread: ThreadInfo
+    running_thread: Optional[Thread]
     source_location: SourceLocation
     requester: Requester
     state: State
@@ -90,9 +111,10 @@ class Promise:
     def from_gdb(cls, ptr: gdb.Value, value: gdb.Value):
         return cls(
             PromiseId(ptr),
+            ThreadInfo.from_gdb(value["owning_thread"]["_resource"].dereference()["_data"]),
             Thread.from_gdb(GdbOptional.from_gdb(value["running_thread"])._value),
             SourceLocation.from_gdb(value["source_location"]),
-            Requester.from_gdb(value["requester"]["_M_i"]),
+            Requester.from_gdb(value["requester"]["_resource"]["_M_i"]),
             State.from_gdb(value["state"])
         )
 
@@ -100,8 +122,8 @@ class Promise:
         return not self.state.is_deleted()
 
     def __str__(self):
-        thread_str = f" on {self.thread}" if self.thread else ""
-        return str(self.source_location) + ", " + str(self.state) + thread_str
+        thread_str = f" on {self.running_thread}" if self.running_thread else ""
+        return str(self.source_location) + ", owned by " + str(self.owning_thread) + ", " + str(self.state) + thread_str
 
 @dataclass
 class GdbOptional:

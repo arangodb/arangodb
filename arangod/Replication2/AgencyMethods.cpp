@@ -67,14 +67,17 @@ auto sendAgencyWriteTransaction(VPackBufferUInt8 trx)
   AsyncAgencyComm ac;
   return ac.sendWriteTransaction(120s, std::move(trx))
       .thenValue([](AsyncAgencyCommResult&& res) -> ResultT<uint64_t> {
-        if (res.fail()) {
-          return res.asResult();
+        auto result = res.asResult();
+        if (result.fail()) {
+          return result;
         }
 
         // extract raft index
         auto slice = res.slice().get("results");
-        TRI_ASSERT(slice.isArray());
-        TRI_ASSERT(!slice.isEmptyArray());
+        TRI_ASSERT(slice.isArray() && !slice.isEmptyArray())
+            << "res should be an object containing a non-empty array in the "
+               "`results` field, but is "
+            << res.slice().toJson();
         return slice.at(slice.length() - 1).getNumericValue<uint64_t>();
       });
 }
