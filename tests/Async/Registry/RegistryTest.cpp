@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
-#include "thread.h"
+#include "Containers/Concurrent/shared.h"
+#include "Containers/Concurrent/thread.h"
+#include "Basics/Thread.h"
 
 #include <gtest/gtest.h>
 #include <optional>
@@ -43,16 +45,19 @@ auto promises_in_registry() -> std::vector<PromiseSnapshot> {
 
 struct MyPromise : public AddToAsyncRegistry {
   basics::SourceLocationSnapshot source_location;
-  basics::ThreadId thread;
+  basics::ThreadId thread_id;
+  containers::SharedPtr<basics::ThreadInfo> thread;
   MyPromise(std::source_location loc = std::source_location::current())
       : AddToAsyncRegistry{loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))},
-        thread{basics::ThreadId::current()} {}
+        thread_id{basics::ThreadId::current()},
+        thread{basics::ThreadInfo::current()} {}
   auto snapshot(State state = State::Running) -> PromiseSnapshot {
-    return PromiseSnapshot{.id = id(),
-                           .requester = {thread},
+    return PromiseSnapshot{.id = id().value(),
+                           .owning_thread = thread.get_ref().value(),
+                           .requester = {thread.get_ref().value()},
                            .state = state,
-                           .thread = thread,
+                           .thread = thread_id,
                            .source_location = source_location};
   }
 };
