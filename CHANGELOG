@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.12-preview-1.
+
 * Fix BTS-2150: Make dropDatabase API work even if there are leftover entries
   in /arango/Current/Databases/<dbname>.
 
