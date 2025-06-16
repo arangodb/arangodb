@@ -186,7 +186,7 @@ void auth::UserManager::startUpdateThread() noexcept {
         _globalVersion.wait(0);
         while (!stpTkn.stop_requested()) {
           uint64_t const loadedVersion = loadFromDB();
-          _globalVersion.wait(loadedVersion);
+          _internalVersion.wait(loadedVersion);
         }
       });
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -374,21 +374,27 @@ VPackBuilder auth::UserManager::allUsers() {
 }
 
 void auth::UserManager::triggerCacheRevalidation() {
-  triggerLocalReload();
   triggerGlobalReload();
   checkIfUserDataIsAvailable();
 }
 
-void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
+bool auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
+  bool wasAbleToSetVersion = false;
   uint64_t previous = _globalVersion.load(std::memory_order_relaxed);
   while (version > previous) {
     if (_globalVersion.compare_exchange_strong(previous, version,
                                                std::memory_order_release,
                                                std::memory_order_relaxed)) {
-      _globalVersion.notify_one();
+      wasAbleToSetVersion = true;
+      if (previous == 0) {
+        // we need to wake up the update-thread once
+        _globalVersion.notify_one();
+      }
+      triggerLocalReload();
       break;
     }
   }
+  return wasAbleToSetVersion;
 }
 
 /// @brief reload user cache and token caches
@@ -396,20 +402,7 @@ void auth::UserManager::triggerLocalReload() noexcept {
   // we are forcing every caller to wait in checkIfUserDataIsAvailable for the
   // UpdateThread to finish.Thus reloading the local userCache.
   _internalVersion.store(0, std::memory_order_release);
-
-  if (ServerState::instance()->isSingleServer()) {
-    // TODO: Do I need something like that for
-    // cluster or is the periodic heart-beat enough?
-
-    // We do want to wake up the UpdateThread but we need to be careful to not
-    // skip and update from the HeartBeat thread. So we try decrease the
-    // global version here and wake up the thread that way.
-    uint64_t currentGlobalVersion = globalVersion();
-    _globalVersion.compare_exchange_strong(currentGlobalVersion, 0,
-                                           std::memory_order_release,
-                                           std::memory_order_relaxed);
-    _globalVersion.notify_one();
-  }
+  _internalVersion.notify_all();
 }
 
 /// @brief used for caching
@@ -441,12 +434,9 @@ uint64_t auth::UserManager::triggerGlobalReload() {
       return 0;
     }
   }
-  uint64_t previousGlobalVersion = startingGlobalVersion;
-  bool const globalVersionWasIncreased = _globalVersion.compare_exchange_strong(
-      previousGlobalVersion, previousGlobalVersion + 1,
-      std::memory_order_release, std::memory_order_relaxed);
 
-  _globalVersion.notify_one();
+  bool const globalVersionWasIncreased =
+      setGlobalVersion(startingGlobalVersion + 1);
 
   if (globalVersionWasIncreased) {
     return startingGlobalVersion + 1;

@@ -74,7 +74,7 @@ class UserManager {
   void startUpdateThread() noexcept;
 
   // Tells coordinator to reload its data. Only called in HeartBeat thread
-  void setGlobalVersion(uint64_t version) noexcept;
+  bool setGlobalVersion(uint64_t version) noexcept;
 
   // reload user cache and token caches
   void triggerLocalReload() noexcept;
