@@ -81,7 +81,10 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
 auth::UserManager::UserManager(ArangodServer& server)
-    : _server(server), _globalVersion(0), _internalVersion(0) {}
+    : _server(server),
+      _globalVersion(0),
+      _internalVersion(0),
+      _usersInitialized(false) {}
 
 auth::UserManager::~UserManager() {
   if (_userCacheUpdateThread && _userCacheUpdateThread->joinable()) {
@@ -186,7 +189,11 @@ void auth::UserManager::startUpdateThread() noexcept {
         _globalVersion.wait(0);
         while (!stpTkn.stop_requested()) {
           uint64_t const loadedVersion = loadFromDB();
-          _internalVersion.wait(loadedVersion);
+          // global version was changed inbetween, lets reload
+          if (loadedVersion == globalVersion()) {
+            // internal version should never wait here on 0.
+            _internalVersion.wait(loadedVersion);
+          }
         }
       });
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -199,16 +206,22 @@ void auth::UserManager::startUpdateThread() noexcept {
 uint64_t auth::UserManager::loadFromDB() {
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
-  uint64_t currentGlobalVersion = globalVersion();
+  uint64_t const currentGlobalVersion = globalVersion();
   uint64_t const currentInternalVersion =
       _internalVersion.load(std::memory_order_acquire);
 
-  TRI_IF_FAILURE("UserManager::performDBLookup") {
-    // Used in GTest. It is used to identify
-    // if the UserManager would have updated it's
-    // cache in a specific situation.
+  auto const setInternalVersion = [&](uint64_t version) {
     _internalVersion.store(currentGlobalVersion);
     _internalVersion.notify_all();
+    if (_usersInitialized.load(std::memory_order::relaxed) == false) {
+      _usersInitialized.store(true);
+      _usersInitialized.notify_all();
+    }
+  };
+
+  TRI_IF_FAILURE("UserManager::performDBLookup") {
+    // Used in GTest. Will simulate a successful loadFromDB.
+    setInternalVersion(currentGlobalVersion);
     return currentGlobalVersion;
   }
 
@@ -223,8 +236,7 @@ uint64_t auth::UserManager::loadFromDB() {
           _userCache.swap(userMap);
         }
       }
-      _internalVersion.store(currentGlobalVersion);
-      _internalVersion.notify_all();
+      setInternalVersion(currentGlobalVersion);
       return currentGlobalVersion;
     }
   } catch (basics::Exception const& ex) {
@@ -260,7 +272,7 @@ void auth::UserManager::checkIfUserDataIsAvailable() {
   // This will wake up the UpdateThread if nothing else yet did.
   // It will work only once as the global version can only increase
   setGlobalVersion(1);
-  _internalVersion.wait(0);
+  _usersInitialized.wait(false);
 }
 
 // private, must be called with _userCacheLock in write mode
@@ -399,8 +411,8 @@ bool auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
 
 /// @brief reload user cache and token caches
 void auth::UserManager::triggerLocalReload() noexcept {
-  // we are forcing every caller to wait in checkIfUserDataIsAvailable for the
-  // UpdateThread to finish.Thus reloading the local userCache.
+  // we are forcing a reload here, but we still have a userCache,
+  // no need to reset _usersInitialized
   _internalVersion.store(0, std::memory_order_release);
   _internalVersion.notify_all();
 }
@@ -918,7 +930,8 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   _userCache = newMap;
   writeGuard.unlock();
   setGlobalVersion(1);
-  _internalVersion.store(_globalVersion.load());
+  _usersInitialized.store(true);
+  _usersInitialized.notify_all();
 }
 
 void auth::UserManager::shutdown() {

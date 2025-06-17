@@ -181,6 +181,7 @@ class UserManager {
   // used to update caches
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
+  std::atomic<bool> _usersInitialized;
   std::unique_ptr<std::jthread> _userCacheUpdateThread;
 
   // Caches permissions and other user info
