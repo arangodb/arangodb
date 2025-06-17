@@ -1,13 +1,16 @@
 devel
 -----
 
+* Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
+  dependencies.
+
 * Updated ArangoDB Starter to v0.19.12-preview-1.
 
-* Fix BTS-2150: Make dropDatabase API work even if there are leftover entries
-  in /arango/Current/Databases/<dbname>.
+* Fix BTS-2150: Make dropDatabase API work even if there are leftover entries in
+  /arango/Current/Databases/<dbname>.
 
-* Fix telemetry response, `n_vector` would be returned inconsistently. This always
-  returns the value, regardless if the vector index feature is enabled.
+* Fix telemetry response, `n_vector` would be returned inconsistently. This
+  always returns the value, regardless if the vector index feature is enabled.
 
 * Improved performance of document-search query in graph settings UI (BTS-2149)
 
