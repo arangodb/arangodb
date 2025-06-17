@@ -8,6 +8,8 @@
 #include "Basics/StringUtils.h"
 #include "Transaction/OperationOrigin.h"
 #include "Utils/CollectionNameResolver.h"
+
+#include <Basics/voc-errors.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -36,12 +38,34 @@ RestStatus RestSchemaHandler::execute() {
 
   // sampleNum is an optional parameter
   bool passed = false;
-  int64_t sampleNum = 100;
+  uint64_t sampleNum = 100; // Default value is 100
   auto const& val = _request->value("sampleNum", passed);
   if (passed) {
-    // int64("no-number-value") will return 0
-    sampleNum = basics::StringUtils::int64(val);
-    sampleNum = std::max<int64_t>(1, sampleNum);
+    if (val.empty() ||
+        !std::all_of(val.begin(), val.end(), [](char c)
+          { return std::isdigit(c); })) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid parameter sampleNum, must be a positive integer");
+      return RestStatus::DONE;
+    }
+
+    try {
+      unsigned long long tmp = std::stoull(val);
+      if (tmp == 0) {
+        generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid parameter sampleNum, must be >= 1");
+        return RestStatus::DONE;
+      }
+      sampleNum = tmp;
+    } catch (std::out_of_range&) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid parameter sampleNum, out of range");
+      return RestStatus::DONE;
+    } catch (...) {
+      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid parameter sampleNum");
+      return RestStatus::DONE;
+    }
   }
 
   // Check that the collection exists
@@ -61,14 +85,16 @@ futures::Future<RestStatus> RestSchemaHandler::lookupSchema(
 
   // AQL uses @collection and @sampleNum
   std::string const aql = R"(
-    LET total = @sampleNum
+    LET sampleNum = @sampleNum
 
     LET docs = (
       FOR d IN @@collection
         SORT RAND()
-        LIMIT total
+        LIMIT sampleNum
         RETURN d
     )
+
+    LET total = LENGTH(docs)
 
     FOR d IN docs
       LET keys = ATTRIBUTES(d, true)
