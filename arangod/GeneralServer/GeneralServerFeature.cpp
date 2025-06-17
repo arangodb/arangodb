@@ -99,6 +99,7 @@
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryPlanCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
+#include "RestHandler/RestSchemaHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
@@ -691,6 +692,11 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH,
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
+      queryRegistry);
+
+  f.addPrefixHandler(
+      "/_api/schema",
+      RestHandlerCreator<RestSchemaHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
 
 #ifdef USE_V8
