@@ -1,8 +1,6 @@
 devel
 -----
 
-* FE-611: Add support for experimental vector index to the collection Indexes view with "beta" label, shown only if --experimental-vector-index flag is enabled.
-
 * Fix telemetry response, `n_vector` would be returned inconsistently. This always
   returns the value, regardless if the vector index feature is enabled.
 
