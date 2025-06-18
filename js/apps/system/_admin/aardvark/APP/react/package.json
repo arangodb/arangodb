@@ -18,7 +18,7 @@
     "arangojs": "^9.1.0",
     "axios": "^0.21.2",
     "backbone": "^1.4.1",
-    "crypto-js": "^3.3.0",
+    "crypto-js": "^4.2.0",
     "d3": "^3.5.17",
     "formik": "^2.4.6",
     "framer-motion": "^11.3.19",
