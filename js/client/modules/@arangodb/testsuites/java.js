@@ -69,7 +69,13 @@ const testPaths = {
 function javaDriver (options) {
   class runInJavaTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
-      super(options, testname, ...optionalArgs);
+      let opts = {'password': 'testjava'};
+      if (options.cluster) {
+        // tests lean on JWT enabled components
+        opts = _.clone(tu.testClientJwtAuthInfo);
+      }
+      _.defaults(opts, options);
+      super(opts, testname, ...optionalArgs);
       this.info = "runInJavaTest";
     }
     runOneTest(file) {
