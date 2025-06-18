@@ -89,17 +89,42 @@ function javaDriver (options) {
 
       // strip i.e. http:// from the URL to conform with what the driver expects:
       let rx = /.*:\/\//gi;
+      //let args = [
+      //  'test', '-U',
+      //  '-Dgroups=api',
+      //  '-Dtest.useProvidedDeployment=true',
+      //  '-Dtest.arangodb.version='+ db._version(),
+      //  `-Dtest.arangodb.isEnterprise=${isEnterprise()? 'true' : 'false'}`,
+      //  '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
+      //  '-Dtest.arangodb.authentication=root:',
+      //  '-Dtest.arangodb.topology=' + topology,
+      //  '-Dallure.results.directory=' + testResultsDir
+      //];
+      let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
+arangodb.password=test
+arangodb.acquireHostList=true
+`;
+      let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
+      fs.write(propertiesFileName, propertiesFileContent);
       let args = [
-        'test', '-U',
-        '-Dgroups=api',
-        '-Dtest.useProvidedDeployment=true',
-        '-Dtest.arangodb.version='+ db._version(),
-        `-Dtest.arangodb.isEnterprise=${isEnterprise()? 'true' : 'false'}`,
-        '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
-        '-Dtest.arangodb.authentication=root:',
-        '-Dtest.arangodb.topology=' + topology,
-        '-Dallure.results.directory=' + testResultsDir
-      ];
+        'verify',
+        '-am',
+        '-pl',
+        'test-functional',
+        '-Dgpg.skip',
+        '-Dmaven.javadoc.skip',
+        '-Dssl=false',
+        // TODO? '-Dnative=<<parameters.native>>'
+        ]
+//          name: Test
+//          command: |
+//            mvn verify -am -pl test-functional -Dgpg.skip -Dmaven.javadoc.skip \
+//              -Dssl=<<parameters.ssl>> \
+//              -Dnative=<<parameters.native>> \
+//              <<parameters.args>>
+//
+      /// todo: willi@bruecklinux:~/src/arangodb-java-driver/test-functional/src/test/resources$ cat arangodb.properties 
+
 
       if (this.options.testCase) {
         args.push('-Dtest=' + this.options.testCase);
