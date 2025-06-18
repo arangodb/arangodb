@@ -1,5 +1,5 @@
 name: rocksdb_block_cache_entries
-introducedIn: "3.12.2"
+introducedIn: "3.12.6"
 help: |
   Number of entries in the RocksDB block cache.
 unit: number
