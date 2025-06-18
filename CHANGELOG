@@ -1,6 +1,15 @@
 devel
 -----
 
+* Fixes BTS-2155: Add startup options to control the grace periods after the
+  DiskUsage limit is reached.
+  - `--server.license-disk-usage-grace-period-readonly` (in seconds) defines
+    the warning duration until the server enters read-only mode. The default
+    and maximum value is 2 days.
+  - `--server.license-disk-usage-grace-period-shutdown` (in seconds) defines
+    the read-only grade period until the server shuts down. The default
+    and the maximum value is 2 days.
+
 * FE-611: Add support for experimental vector index to the collection Indexes view with "beta" label, shown only if --experimental-vector-index flag is enabled.
 
 * Add inner product metric for vector index and APPROX_NEAR_INNER_PRODUCT()
