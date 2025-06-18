@@ -121,34 +121,36 @@ auto SingleServerProvider<Step>::expand(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
 
-  LOG_DEVEL << "before expansion";
   _neighbours.rearm(step);
-  auto neighbours = _neighbours.next(*this);
-  // Now do the work:
-  for (auto const& neighbour : *neighbours) {
-    VPackSlice edge = neighbour.edge();
-    VertexType id = _cache.persistString(([&]() -> auto {
-      if (edge.isString()) {
-        return VertexType(edge);
-      } else {
-        VertexType other(transaction::helpers::extractFromFromDocument(edge));
-        if (other == vertex.getID()) {  // TODO: Check getId - discuss
-          other = VertexType(transaction::helpers::extractToFromDocument(edge));
+  // TODO return each batch of neighbours instead of iterating over all of them
+  while (_neighbours.hasMore(step.getDepth())) {
+    auto batch = _neighbours.next(*this);
+    for (auto const& neighbour : *batch) {
+      VPackSlice edge = neighbour.edge();
+      VertexType id = _cache.persistString(([&]() -> auto {
+        if (edge.isString()) {
+          return VertexType(edge);
+        } else {
+          VertexType other(transaction::helpers::extractFromFromDocument(edge));
+          if (other == vertex.getID()) {  // TODO: Check getId - discuss
+            other =
+                VertexType(transaction::helpers::extractToFromDocument(edge));
+          }
+          return other;
         }
-        return other;
-      }
-    })());
-    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
-        << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
-        << id;
+      })());
+      LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
+          << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
+          << id;
 
-    EdgeDocumentToken edgeToken{neighbour.eid};
-    callback(Step{id, std::move(edgeToken), previous, step.getDepth() + 1,
-                  _opts.weightEdge(step.getWeight(), edge),
-                  neighbour.cursorId});
-    // TODO [GraphRefactor]: Why is cursorID set, but never used?
-    // Note: There is one implementation that used, it, but there is a high
-    // probability we do not need it anymore after refactoring is complete.
+      EdgeDocumentToken edgeToken{neighbour.eid};
+      callback(Step{id, std::move(edgeToken), previous, step.getDepth() + 1,
+                    _opts.weightEdge(step.getWeight(), edge),
+                    neighbour.cursorId});
+      // TODO [GraphRefactor]: Why is cursorID set, but never used?
+      // Note: There is one implementation that used, it, but there is a high
+      // probability we do not need it anymore after refactoring is complete.
+    }
   }
 }
 
