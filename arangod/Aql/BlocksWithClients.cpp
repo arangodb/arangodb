@@ -233,6 +233,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
         // Just clear out what is still on the queue.
         std::ignore = dataContainer.execute(stack, _upstreamState);           
       }
+      stack.popCall();
     }
     if (allLanesComplete() && _upstreamState != ExecutionState::DONE) {
       // We send a hardLimit to the dependency to skip over remaining rows.
@@ -315,6 +316,7 @@ auto BlocksWithClientsImpl<Executor>::hardLimitDependency(AqlCallStack stack)
   if (state != ExecutionState::WAITING && block != nullptr) {
     // We need to report everything that is not waiting
     // Here this could be a ShadowRow!
+    TRI_ASSERT(false) << "Right now we cannot get here, as the optimization is not yet active on subqueries.";
     _executor.distributeBlock(block, skipped, _clientBlockData);
   }
 
