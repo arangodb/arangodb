@@ -101,7 +101,7 @@ function javaDriver (options) {
       //  '-Dallure.results.directory=' + testResultsDir
       //];
       let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
-arangodb.password=test
+arangodb.password=${this.options.password}
 arangodb.acquireHostList=true
 `;
       print(propertiesFileContent)
