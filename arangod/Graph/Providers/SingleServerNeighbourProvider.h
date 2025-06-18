@@ -85,6 +85,8 @@ struct SingleServerNeighbourProvider {
   size_t _readSomething = 0;
   // TODO add vertex cache
   std::optional<FoundVertexCache> _vertexCache;
+  std::optional<size_t> _currentBatchInCache = 0;
+  bool _finished = false;
   size_t _memoryUsageVertexCache = 0;
   ResourceMonitor& _resourceMonitor;
   arangodb::aql::TraversalStats
