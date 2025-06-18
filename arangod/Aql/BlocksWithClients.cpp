@@ -246,12 +246,6 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
     // Report everything is consumed.
     return {ExecutionState::DONE, SkipResult{}, nullptr};
   }
-  // mchacki: I do not think we can get a hardLimit with fullCount here
-  // So this assert is added to see if i was wrong with this assumption.
-  // If it ever shows up in production the below code will handle it correctly.
-  // but it is not most efficient. So if we ever see this assert in our tests
-  // We have option to optimize. (e.g. be sending the fullCount to upstream instead of producing data and counting in here.)
-  TRI_ASSERT(!call.fullCount) << "We should not get here, if this is triggered this is no production bug, we can optimize this case. Added this assert because we think this is actually not possible in practive.";
 
   // We are done, with everything, we will not be able to fetch any more
   // We do not have anymore data locally.
