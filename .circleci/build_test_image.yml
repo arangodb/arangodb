@@ -150,10 +150,10 @@ jobs:
             cd scripts/docker/
             ./build-manifest.sh << parameters.image >>-js $(cat amd64-tag-js.txt)
       - run:
-          name: Build js test container manifest
+          name: Build java test container manifest
           command: |
             cd scripts/docker
-            ./build-manifest.sh << parameters.image >>-js $(cat amd64-tag-java.txt)
+            ./build-manifest.sh << parameters.image >>-java $(cat amd64-tag-java.txt)
       # TODO - commit the tag file to the repository
       # - run:
       #     name: Update TagFile
