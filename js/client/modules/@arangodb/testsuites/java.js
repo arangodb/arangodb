@@ -115,7 +115,7 @@ arangodb.acquireHostList=true
         '-Dmaven.javadoc.skip',
         '-Dssl=false',
         // TODO? '-Dnative=<<parameters.native>>'
-        ]
+      ];
 //          name: Test
 //          command: |
 //            mvn verify -am -pl test-functional -Dgpg.skip -Dmaven.javadoc.skip \
