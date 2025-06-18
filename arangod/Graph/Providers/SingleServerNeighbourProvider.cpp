@@ -43,7 +43,8 @@ SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
           opts.indexInformations().second, opts.expressionContext(),
           /*requiresFullDocument*/ opts.hasWeightMethod(), opts.useCache())},
       _resourceMonitor{resourceMonitor},
-      _stats{stats} {
+      _stats{}  // TODO should hand in stats here to use it as a reference
+{
   // if (opts.indexInformations().second.empty()) {
   //   // If we have depth dependent filters, we must not use the cache,
   //   // otherwise, we do:
@@ -63,34 +64,11 @@ auto SingleServerNeighbourProvider<Step>::next(
     SingleServerProvider<Step>& provider)
     -> std::shared_ptr<std::vector<ExpansionInfo>> {
   TRI_ASSERT(_currentStep != std::nullopt);
-  // TODO what to do with vertex cache? enter partly finished vertex?
-  // // if cache includes vertex already: don't need to rearm
-  // //                          full: directly return
-  // //                          otherwise: continue
-  // // First check the cache:
-  // typename FoundVertexCache::iterator cacheEntry;
-  // auto const& vertex = step.getVertex();
-  // if (_vertexCache.has_value()) {
-  //   auto it = _vertexCache->find(vertex.getID());
-  //   if (it != _vertexCache->end()) {  // if vertex already exists in cache
-  //     if (it->second /* is fully finished */) {
-  //       // We have already expanded this vertex, so we can just use the
-  //       // cached result:
-  //       // return here batches of vertex cache instead
-  //       return it->second;  // Return a copy of the shared_ptr
-  //     } else {
-  //       // check that cursor is currently doing this vertex
-  //       cacheEntry = it;
-  //     }
-  //   } else {  // if vertex does not exist in cache, we have to rearm the
-  //   cursor
-  //     TRI_ASSERT(_cursor != nullptr);
-  //     _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
-  //     ++_rearmed;
-  //     auto [entry, _inserted] = _vertexCache->insert({vertex.getID(), {}});
-  //     cacheEntry = entry;
-  //   }
-  // }
+
+  // TODO we need to check if vertex is already part of vertex cache
+  // if yes and cache includes all neighbours of vertex: return next batch in
+  // this cache if yes and cache inlcudes not all neighbours yet: get new batch
+  // (below), save it in cache and return it
 
   std::shared_ptr<std::vector<ExpansionInfo>> newNeighbours =
       std::make_shared<std::vector<ExpansionInfo>>();
@@ -98,28 +76,21 @@ auto SingleServerNeighbourProvider<Step>::next(
       provider, _stats, _currentStep->getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
         ++_readSomething;
-        // Add to vector above:
         newNeighbours->emplace_back(std::move(eid), edge, cursorID);
       });
-  if (_vertexCache.has_value()) {
-    size_t newMemoryUsage = 0;
-    for (auto const& neighbour : *newNeighbours) {
-      newMemoryUsage += neighbour.size();
-    }
-    _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
-    // _memoryUsageVertexCache += newMemoryUsage;
-    // TODO here add these new neighbours
-    // cacheEntry->second->insert(cacheEntry->second->end(),
-    //                            newNeighbours->begin(), newNeighbours->end());
-  }
+  // if (_vertexCache.has_value()) {
+  //   size_t newMemoryUsage = 0;
+  //   for (auto const& neighbour : *newNeighbours) {
+  //     newMemoryUsage += neighbour.size();
+  //   }
+  //   _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+  //   // _memoryUsageVertexCache += newMemoryUsage;
+  //   // TODO here add these new neighbours
+  //   // cacheEntry->second->insert(cacheEntry->second->end(),
+  //   //                            newNeighbours->begin(),
+  //   newNeighbours->end());
+  // }
   return newNeighbours;
-
-  // cursor->readBatch(
-  //     [](arangodb::LocalDocumentId id) -> bool {
-  //       // return true: has done something meaningful with document
-  //       return false;
-  //     },
-  //     1000);
 }
 
 template<typename Step>
@@ -148,6 +119,11 @@ template<typename Step>
 auto SingleServerNeighbourProvider<Step>::hasDepthSpecificLookup(
     uint64_t depth) const noexcept -> bool {
   return _cursor->hasDepthSpecificLookup(depth);
+}
+
+template<typename Step>
+auto SingleServerNeighbourProvider<Step>::hasMore(uint64_t depth) -> bool {
+  return _cursor->hasMore(depth);
 }
 
 template struct arangodb::graph::SingleServerNeighbourProvider<

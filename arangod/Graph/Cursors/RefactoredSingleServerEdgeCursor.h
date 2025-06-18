@@ -118,6 +118,7 @@ class RefactoredSingleServerEdgeCursor {
   bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
   void rearm(VertexType vertex, uint64_t depth, aql::TraversalStats& stats);
+  auto hasMore(uint64_t depth) -> bool;
 
  private:
   auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;

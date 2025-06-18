@@ -448,6 +448,15 @@ void RefactoredSingleServerEdgeCursor<Step>::prepareIndexExpressions(
   }
 }
 
+template<typename Step>
+auto RefactoredSingleServerEdgeCursor<Step>::hasMore(uint64_t depth) -> bool {
+  bool hasMore = false;
+  for (auto& lookupInfo : getLookupInfos(depth)) {
+    hasMore = hasMore || lookupInfo.cursor().hasMore();
+  }
+  return hasMore;
+}
+
 template<class StepType>
 bool RefactoredSingleServerEdgeCursor<StepType>::hasDepthSpecificLookup(
     uint64_t depth) const noexcept {

@@ -76,6 +76,7 @@ struct SingleServerNeighbourProvider {
   auto clear() -> void;
   auto prepareIndexExpressions(aql::Ast* ast) -> void;
   auto hasDepthSpecificLookup(uint64_t depth) const noexcept -> bool;
+  auto hasMore(uint64_t depth) -> bool;
 
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
@@ -86,7 +87,10 @@ struct SingleServerNeighbourProvider {
   std::optional<FoundVertexCache> _vertexCache;
   size_t _memoryUsageVertexCache = 0;
   ResourceMonitor& _resourceMonitor;
-  arangodb::aql::TraversalStats& _stats;
+  arangodb::aql::TraversalStats
+      _stats;  // TODO there is a problem with handing this provider a stats
+               // reference, so currently it just creates a new one (which is
+               // never used)
 };
 
 }  // namespace arangodb::graph
