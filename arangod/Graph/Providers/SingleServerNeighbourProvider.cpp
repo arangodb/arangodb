@@ -45,11 +45,11 @@ SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
       _resourceMonitor{resourceMonitor},
       _stats{}  // TODO should hand in stats here to use it as a reference
 {
-  // if (opts.indexInformations().second.empty()) {
-  //   // If we have depth dependent filters, we must not use the cache,
-  //   // otherwise, we do:
-  //   _vertexCache.emplace();
-  // }
+  if (opts.indexInformations().second.empty()) {
+    // If we have depth dependent filters, we must not use the cache,
+    // otherwise, we do:
+    _vertexCache.emplace();
+  }
 }
 template<class Step>
 auto SingleServerNeighbourProvider<Step>::rearm(Step const& step) -> void {
@@ -58,17 +58,43 @@ auto SingleServerNeighbourProvider<Step>::rearm(Step const& step) -> void {
   TRI_ASSERT(_cursor != nullptr);
   _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
   ++_rearmed;
+  _finished = false;
 }
 template<class Step>
 auto SingleServerNeighbourProvider<Step>::next(
     SingleServerProvider<Step>& provider)
     -> std::shared_ptr<std::vector<ExpansionInfo>> {
   TRI_ASSERT(_currentStep != std::nullopt);
+  TRI_ASSERT(hasMore(_currentStep->getDepth()));
 
-  // TODO we need to check if vertex is already part of vertex cache
-  // if yes and cache includes all neighbours of vertex: return next batch in
-  // this cache if yes and cache inlcudes not all neighbours yet: get new batch
-  // (below), save it in cache and return it
+  typename FoundVertexCache::iterator vertexInCache;
+  auto const& vertex = _currentStep->getVertex();
+  if (_vertexCache.has_value()) {
+    auto it = _vertexCache->find(vertex.getID());
+    // cache can only be used if vertex in cache includes all its neighbours
+    if (it != _vertexCache->end()) {
+      if (std::get<0>(it->second)) {
+        TRI_ASSERT(_currentBatchInCache != std::nullopt);
+        auto batch = *_currentBatchInCache;
+        if (batch + 1 == std::get<1>(it->second).size()) {
+          _finished =
+              true;  // there are no more batches for vertex in the cache
+        } else {
+          _currentBatchInCache = batch + 1;  // next time give next batch
+        }
+        TRI_ASSERT(batch < std::get<1>(it->second).size());
+        return (std::get<1>(it->second))[batch];
+      }
+      vertexInCache = it;
+    } else {
+      auto const& [iter, _inserted] = _vertexCache->insert(  // insert empty
+          {vertex.getID(),
+           std::make_tuple(
+               false,
+               std::vector<std::shared_ptr<std::vector<ExpansionInfo>>>{})});
+      vertexInCache = iter;
+    }
+  }
 
   std::shared_ptr<std::vector<ExpansionInfo>> newNeighbours =
       std::make_shared<std::vector<ExpansionInfo>>();
@@ -78,18 +104,21 @@ auto SingleServerNeighbourProvider<Step>::next(
         ++_readSomething;
         newNeighbours->emplace_back(std::move(eid), edge, cursorID);
       });
-  // if (_vertexCache.has_value()) {
-  //   size_t newMemoryUsage = 0;
-  //   for (auto const& neighbour : *newNeighbours) {
-  //     newMemoryUsage += neighbour.size();
-  //   }
-  //   _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
-  //   // _memoryUsageVertexCache += newMemoryUsage;
-  //   // TODO here add these new neighbours
-  //   // cacheEntry->second->insert(cacheEntry->second->end(),
-  //   //                            newNeighbours->begin(),
-  //   newNeighbours->end());
-  // }
+  if (_vertexCache.has_value()) {
+    size_t newMemoryUsage = 0;
+    for (auto const& neighbour : *newNeighbours) {
+      newMemoryUsage += neighbour.size();
+    }
+    _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+    _memoryUsageVertexCache += newMemoryUsage;
+
+    auto& vec = std::get<1>(vertexInCache->second);
+    vec.emplace_back(newNeighbours);
+    if (!hasMore(_currentStep->getDepth())) {
+      std::get<0>(vertexInCache->second) =
+          true;  // cache for this vertex finished
+    }
+  }
   return newNeighbours;
 }
 
@@ -123,7 +152,7 @@ auto SingleServerNeighbourProvider<Step>::hasDepthSpecificLookup(
 
 template<typename Step>
 auto SingleServerNeighbourProvider<Step>::hasMore(uint64_t depth) -> bool {
-  return _cursor->hasMore(depth);
+  return _cursor->hasMore(depth) && !_finished;
 }
 
 template struct arangodb::graph::SingleServerNeighbourProvider<
