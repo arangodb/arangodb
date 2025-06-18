@@ -124,7 +124,8 @@ class RefactoredSingleServerEdgeCursor {
 
   aql::Variable const* _tmpVar;
   std::vector<LookupInfo> _lookupInfo;
-  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>>
+      _depthLookupInfo;  // depth -> lookup info
 
   ResourceMonitor& _monitor;
   transaction::Methods* _trx;
