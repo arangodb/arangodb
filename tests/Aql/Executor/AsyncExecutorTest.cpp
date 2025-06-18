@@ -618,6 +618,7 @@ TEST_F(AsyncExecutorTest, two_consumers_receive_rows_from_mutex_executor) {
   arangodb::aql::AqlItemBlockManager blockManager(monitor);
   auto setup = create_mutex_consumers(blockManager, 3000, 2);
   auto& inputBlock = setup.waitingBlock;
+  auto& mutexBlock = setup.mutexExecutor;
   
   // Create two consumers (IdExecutors) that depend on the same MutexExecutor
   auto& consumer1 = setup.consumers[0];
@@ -640,6 +641,8 @@ TEST_F(AsyncExecutorTest, two_consumers_receive_rows_from_mutex_executor) {
   // to completion by the other task
   consume_and_check_rows(consumer2.get(), 1000, ExecutionState::HASMORE);
   consume_and_check_rows(consumer2.get(), 500, ExecutionState::DONE);
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("1"), 0) << "Client 1 should have no rows left in flight";
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("2"), 0) << "Client 2 should have no rows left in flight";
 }
 
 TEST_F(AsyncExecutorTest, two_consumers_one_early_abort) {
@@ -648,6 +651,7 @@ TEST_F(AsyncExecutorTest, two_consumers_one_early_abort) {
   arangodb::aql::AqlItemBlockManager blockManager(monitor);
   auto setup = create_mutex_consumers(blockManager, 3000, 2);
   auto& inputBlock = setup.waitingBlock;
+  auto& mutexBlock = setup.mutexExecutor;
 
   // Create two consumers (IdExecutors) that depend on the same MutexExecutor
   auto& consumer1 = setup.consumers[0];
@@ -657,11 +661,16 @@ TEST_F(AsyncExecutorTest, two_consumers_one_early_abort) {
   sendHardLimit(consumer1.get());
   EXPECT_EQ(inputBlock->remainingRows(), 3000) << "No rows are asked for, hardLimit should not trigger an upstream request. But we cannot yet discard rows";
   EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "We asked for a hard limit, but only on one consumer, it cannot be forwarded to the input block";
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("1"), 0) << "Client 1 should have no rows left in flight";
 
   // Note: The second consumer will still see all it's input
   consume_and_check_rows(consumer2.get(), 500, ExecutionState::HASMORE);
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("1"), 0) << "Client 1 should have no rows left in flight";
   consume_and_check_rows(consumer2.get(), 500, ExecutionState::HASMORE);
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("1"), 0) << "Client 1 should have no rows left in flight";
   consume_and_check_rows(consumer2.get(), 500, ExecutionState::DONE);
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("1"), 0) << "Client 1 should have no rows left in flight";
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("2"), 0) << "Client 2 should have no rows left in flight";
 }
 
 
@@ -671,6 +680,7 @@ TEST_F(AsyncExecutorTest, two_consumers_both_early_abort) {
   arangodb::aql::AqlItemBlockManager blockManager(monitor);
   auto setup = create_mutex_consumers(blockManager, 3000, 2);
   auto& inputBlock = setup.waitingBlock;
+  auto& mutexBlock = setup.mutexExecutor;
 
   // Create two consumers (IdExecutors) that depend on the same MutexExecutor
   auto& consumer1 = setup.consumers[0];
@@ -685,14 +695,14 @@ TEST_F(AsyncExecutorTest, two_consumers_both_early_abort) {
 
   // Note: The second consumer can still get some input, but also request Hard limit afterwards
   consume_and_check_rows(consumer2.get(), 500, ExecutionState::HASMORE);
-  EXPECT_EQ(inputBlock->remainingRows(), 1000) << "We asked for 500 more rows but rows are split equally between two consumer, so 2000 rows should be left";
+  EXPECT_EQ(inputBlock->remainingRows(), 2000) << "We asked for 500 more rows but rows are split equally between two consumer, so 2000 rows should be left";
   EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "We asked for a hard limit, but only on one consumer, it cannot be forwarded to the input block";
 
   sendHardLimit(consumer2.get());
   EXPECT_EQ(inputBlock->remainingRows(), 0) << "Hardlimit should consume all rows";
   EXPECT_EQ(inputBlock->getLastCall().getLimit(), 0) << "Now both consumers are on hardlimit, so it can be forwarded to the input block";
-
-
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("1"), 0) << "Client 1 should have no rows left in flight";
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("2"), 0) << "Client 2 should have no rows left in flight";
 }
 
 TEST_F(AsyncExecutorTest, two_consumers_second_early_abort_first_can_reach_limit) {
@@ -701,6 +711,7 @@ TEST_F(AsyncExecutorTest, two_consumers_second_early_abort_first_can_reach_limit
   arangodb::aql::AqlItemBlockManager blockManager(monitor);
   auto setup = create_mutex_consumers(blockManager, 3000, 2);
   auto& inputBlock = setup.waitingBlock;
+  auto& mutexBlock = setup.mutexExecutor;
 
   // Create two consumers (IdExecutors) that depend on the same MutexExecutor
   auto& consumer1 = setup.consumers[0];
@@ -720,5 +731,6 @@ TEST_F(AsyncExecutorTest, two_consumers_second_early_abort_first_can_reach_limit
   consume_and_check_rows(consumer1.get(), 500, ExecutionState::DONE);
   EXPECT_EQ(inputBlock->remainingRows(), 0) << "All rows should have been consumed";
   EXPECT_NE(inputBlock->getLastCall().getLimit(), 0) << "The other consumer consumed all input, no hardlimit can be send";
-
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("1"), 0) << "Client 1 should have no rows left in flight";
+  EXPECT_EQ(mutexBlock->remainingRowsForClient("2"), 0) << "Client 2 should have no rows left in flight";
 }

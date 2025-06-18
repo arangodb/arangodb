@@ -216,3 +216,34 @@ auto DistributeClientBlock::execute(AqlCallStack callStack,
   }
   return {state, std::move(skipped), std::move(result)};
 }
+
+/**
+ * @brief Check if we have received a hard limit
+ * @return true if we have received a hard limit
+ */
+auto DistributeClientBlock::gotHardLimit() const -> bool {
+  return _gotHardLimit;
+}
+
+/**
+ * @brief Reset the hard limit
+ */
+auto DistributeClientBlock::resetHardLimit() -> void {
+  _gotHardLimit = false;
+}
+
+/**
+ * @brief Set hard limit has been seen.
+ */
+auto DistributeClientBlock::setSeenHardLimit() -> void {
+  _gotHardLimit = true;
+}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+auto DistributeClientBlock::remainingRows() const -> uint64_t {
+  return std::accumulate(_queue.begin(), _queue.end(), 0,
+                         [](uint64_t sum, auto const& item) {
+                           return sum + item.numRows();
+                         });
+}
+#endif

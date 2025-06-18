@@ -130,6 +130,18 @@ auto ScatterExecutor::ClientBlockData::remainingRows() const -> uint64_t {
                          });
 }
 
+auto ScatterExecutor::ClientBlockData::gotHardLimit() const -> bool {
+  return _gotHardLimit;
+}
+
+auto ScatterExecutor::ClientBlockData::resetHardLimit() -> void {
+  _gotHardLimit = false;
+}
+
+auto ScatterExecutor::ClientBlockData::setSeenHardLimit() -> void {
+  _gotHardLimit = true;
+}
+
 ScatterExecutor::ScatterExecutor(Infos const&) {}
 
 auto ScatterExecutor::distributeBlock(
