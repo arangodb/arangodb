@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-611: Add support for experimental vector index to the collection Indexes view with "beta" label, shown only if --experimental-vector-index flag is enabled.
+
 * Updated ArangoDB Starter to v0.19.12.
 
 * Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
