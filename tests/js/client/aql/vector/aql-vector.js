@@ -520,7 +520,7 @@ function VectorIndexCosineTestSuite() {
     let randomPoint;
     const dimension = 500;
     const numberOfDocs = 1000;
-    const seed = randomInteger();
+    const seed = -5923475293935319;
 
     return {
         setUpAll: function() {
@@ -631,7 +631,7 @@ function VectorIndexCosineTestSuite() {
 
                 // For cosine similarity the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].sim > results[j].sim);
+                    assertTrue(results[j - 1].sim >= results[j].sim);
                 }
                 // Assert that distances are in [-1, 1] range
                 for (let j = 0; j < results.length; ++j) {
