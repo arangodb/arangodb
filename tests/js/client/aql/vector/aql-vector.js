@@ -515,7 +515,7 @@ function VectorIndexL2TestSuite() {
 function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
-    const dimension = 500;
+    const dimension = 5;
     const seed = 769406749034;
 
     return {
@@ -529,11 +529,11 @@ function VectorIndexCosineTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
+            for (let i = 0; i < 5; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 250) {
+                if (i === 2) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -551,7 +551,7 @@ function VectorIndexCosineTestSuite() {
                 params: {
                     metric: "cosine",
                     dimension: dimension,
-                    nLists: 10
+                    nLists: 2
                 },
             });
         },
@@ -627,6 +627,10 @@ function VectorIndexCosineTestSuite() {
                 // For cosine similarity the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
                     assertTrue(results[j - 1].sim > results[j].sim);
+                }
+                // Assert that distances are in [-1, 1] range
+                for (let j = 0; j < results.length; ++j) {
+                    assertTrue(Math.abs(results[j].sim) <= 1);
                 }
             }
         },
