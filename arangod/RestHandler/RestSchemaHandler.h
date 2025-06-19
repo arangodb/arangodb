@@ -23,9 +23,39 @@ public:
   RestStatus handleQueryResult() override;
 
 private:
-  /// Builds and registers the AQL to infer the schema for `collection`
-  futures::Future<RestStatus> lookupSchema(std::string const& collection,
-                                           int64_t sampleNum);
+  const std::string queryString = R"(
+    LET sampleNum = @sampleNum
+
+    LET docs = (
+      FOR d IN @@collection
+        SORT RAND()
+        LIMIT sampleNum
+        RETURN d
+    )
+
+    LET total = LENGTH(docs)
+
+    FOR d IN docs
+      LET keys = ATTRIBUTES(d)
+      FOR key IN keys
+        FILTER key != "_rev"
+        COLLECT attribute = key
+        AGGREGATE
+          count = COUNT(d),
+          types = UNIQUE(TYPENAME(d[key]))
+        RETURN {
+          attribute,
+          types,
+          optional: count < total
+        }
+    )";
+
+  futures::Future<RestStatus> lookupCollectionSchema(
+    std::string const& collection, uint64_t sampleNum);
+
+  RestStatus lookupSchema(uint64_t sampleNum);
+
+  uint64_t validateSampleNum();
 };
 
 }  // namespace rest
