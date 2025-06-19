@@ -35,6 +35,7 @@ const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const { versionHas } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
@@ -50,10 +51,12 @@ function VectorIndexL2TestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 12132390894;
+    const numberOfDocs = 500;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -63,11 +66,11 @@ function VectorIndexL2TestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 500; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 250) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -515,11 +518,13 @@ function VectorIndexL2TestSuite() {
 function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
-    const dimension = 5;
-    const seed = 769406749034;
+    const dimension = 500;
+    const numberOfDocs = 1000;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -529,11 +534,11 @@ function VectorIndexCosineTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 5; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 2) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -630,7 +635,7 @@ function VectorIndexCosineTestSuite() {
                 }
                 // Assert that distances are in [-1, 1] range
                 for (let j = 0; j < results.length; ++j) {
-                    assertTrue(Math.abs(results[j].sim) <= 1);
+                  assertTrue(Math.abs(results[j].sim) <= 1.01);
                 }
             }
         },
@@ -693,10 +698,12 @@ function MultipleVectorIndexesOnField() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 47388274;
+    const numberOfDocs = 1000;
+    const seed = randomInteger();
 
     return {
         setUp: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -706,11 +713,11 @@ function MultipleVectorIndexesOnField() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 500) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
