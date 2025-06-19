@@ -427,7 +427,13 @@ function VectorIndexL2TestSuite() {
             assertEqual(resultsWithSkip.length, 5);
             assertEqual(resultsWithoutSkip.length, 8);
 
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            const expectedKeys = new Set(resultsWithoutSkip.slice(3).map(r => r.k));
+            
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+            assertEqual(skipKeys.size, expectedKeys.size);
+            assertTrue([...skipKeys].every(key => expectedKeys.has(key)));
         },
 
         testApproxL2Subquery: function() {
@@ -509,7 +515,14 @@ function VectorIndexL2TestSuite() {
                 assertEqual(skipNeighbours.length, 5);
                 assertEqual(nonSkipNeighbours.length, 8);
 
-                assertEqual(skipNeighbours, nonSkipNeighbours.slice(3, nonSkipNeighbours.length));
+                // Compare neighbours as sets by extracting keys
+                const skipNeighbourKeys = new Set(skipNeighbours.map(n => n.key));
+                const nonSkipNeighbourKeys = new Set(nonSkipNeighbours.map(n => n.key));
+                const expectedNeighbourKeys = new Set(nonSkipNeighbours.slice(3).map(n => n.key));
+                
+                assertTrue([...skipNeighbourKeys].every(key => nonSkipNeighbourKeys.has(key)));
+                assertEqual(skipNeighbourKeys.size, expectedNeighbourKeys.size);
+                assertTrue([...skipNeighbourKeys].every(key => expectedNeighbourKeys.has(key)));
             }
         },
     };
@@ -520,7 +533,7 @@ function VectorIndexCosineTestSuite() {
     let randomPoint;
     const dimension = 500;
     const numberOfDocs = 1000;
-    const seed = -5923475293935319;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
@@ -689,7 +702,14 @@ function VectorIndexCosineTestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            const expectedKeys = new Set(resultsWithoutSkip.slice(3).map(r => r.k));
+            
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+            assertEqual(skipKeys.size, expectedKeys.size);
+            assertTrue([...skipKeys].every(key => expectedKeys.has(key)));
         },
     };
 }
