@@ -25,8 +25,8 @@
 #include <variant>
 
 #include "Async/Registry/promise.h"
-#include "AsyncRegistryServer/Stacktrace/depth_first.h"
-#include "AsyncRegistryServer/Stacktrace/forest.h"
+#include "Containers/Forest/depth_first.h"
+#include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
@@ -42,6 +42,7 @@
 
 using namespace arangodb;
 using namespace arangodb::async_registry;
+using namespace arangodb::containers;
 
 struct Entry {
   TreeHierarchy hierarchy;
@@ -71,12 +72,12 @@ auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
   registry.for_node([&](PromiseSnapshot promise) {
     if (promise.state != State::Deleted) {
       std::visit(overloaded{
-                     [&](PromiseId async_waiter) {
-                       forest.insert(promise.id, async_waiter, promise);
+                     [&](PromiseId const& async_waiter) {
+                       forest.insert(promise.id.id, async_waiter.id, promise);
                      },
-                     [&](basics::ThreadId sync_waiter_thread) {
-                       forest.insert(promise.id, nullptr, promise);
-                       roots.emplace_back(promise.id);
+                     [&](basics::ThreadInfo const& sync_waiter_thread) {
+                       forest.insert(promise.id.id, nullptr, promise);
+                       roots.emplace_back(promise.id.id);
                      },
                  },
                  promise.requester);

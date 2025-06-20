@@ -124,8 +124,10 @@ dump single suffix=_vpack size=medium -- --dumpAgencyOnError true --dumpVPack tr
 # dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_authentication size=medium  -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_jwt size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_same single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_same cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two cluster size=large parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_non_parallel size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_maskings  enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
@@ -142,8 +144,8 @@ dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 -- --dump
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
 
 # Full Tests Single Server
-shell_fuzzer full cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
-shell_fuzzer full single priority=500 -- --dumpAgencyOnError true
+shell_fuzzer full !coverage cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
+shell_fuzzer full !coverage single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
 config single full priority=1000
 foxx_manager single full priority=500

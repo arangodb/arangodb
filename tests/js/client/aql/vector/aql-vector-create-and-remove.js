@@ -321,8 +321,7 @@ function VectorIndexTestCreationWithVectors() {
 }
 
 
-if (!versionHas("arm")) {
-  jsunity.run(VectorIndexCreateAndRemoveTestSuite);
-  jsunity.run(VectorIndexTestCreationWithVectors);
-}
+jsunity.run(VectorIndexCreateAndRemoveTestSuite);
+jsunity.run(VectorIndexTestCreationWithVectors);
+
 return jsunity.done();

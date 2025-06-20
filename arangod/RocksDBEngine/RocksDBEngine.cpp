@@ -3384,12 +3384,10 @@ DECLARE_GAUGE(rocksdb_block_cache_capacity, uint64_t,
 DECLARE_GAUGE(rocksdb_block_cache_pinned_usage, uint64_t,
               "rocksdb_block_cache_pinned_usage");
 DECLARE_GAUGE(rocksdb_block_cache_usage, uint64_t, "rocksdb_block_cache_usage");
-#ifdef ARANGODB_ROCKSDB8
-// DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
-//                    "rocksdb_block_cache_entries");
-// DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
-//                    "rocksdb_block_cache_charge_per_entry");
-#endif
+DECLARE_GAUGE(rocksdb_block_cache_entries, uint64_t,
+              "rocksdb_block_cache_entries");
+DECLARE_GAUGE(rocksdb_block_cache_charge_per_entry, uint64_t,
+              "rocksdb_block_cache_charge_per_entry");
 DECLARE_GAUGE(rocksdb_compaction_pending, uint64_t,
               "rocksdb_compaction_pending");
 DECLARE_GAUGE(rocksdb_compression_ratio_at_level0, uint64_t,
@@ -3472,6 +3470,11 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
+DECLARE_GAUGE(rocksdb_live_blob_file_size, uint64_t,
+              "rocksdb_live_blob_file_size");
+DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
+              "rocksdb_live_blob_file_garbage_size");
+DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
 void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   // get generic capabilities

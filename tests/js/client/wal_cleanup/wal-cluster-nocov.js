@@ -36,7 +36,8 @@ const _ = require("lodash");
 const {
   getCoordinatorEndpoints,
   getDBServerEndpoints,
-  getAgentEndpoints
+  getAgentEndpoints,
+  versionHas
 } = require('@arangodb/test-helper');
 
 const cn = "UnitTestsWalCleanup";
@@ -51,7 +52,7 @@ function WalCleanupSuite () {
     let seenNewFile = false;
     let minArchivedLogNumber = null;
     let maxArchivedLogNumber = null;
-
+    const timeout = versionHas('tsan')? 1200 : 600;
     let time = require("internal").time;
     const start = time();
 
@@ -82,7 +83,7 @@ function WalCleanupSuite () {
         break;
       }
 
-      assertFalse(time() - start > 600, "time's up for this test!");
+      assertFalse(time() - start > timeout, "time's up for this test!");
     }
   };
 

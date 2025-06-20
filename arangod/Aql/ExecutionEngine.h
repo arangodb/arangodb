@@ -130,6 +130,8 @@ class ExecutionEngine {
 
   std::vector<arangodb::cluster::CallbackGuard>& rebootTrackers();
 
+  void stopAsyncTasks();
+
 #ifdef USE_ENTERPRISE
   static bool parallelizeGraphNode(
       aql::Query& query, ExecutionPlan& plan, aql::GraphNode* graphNode,

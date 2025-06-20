@@ -1,6 +1,49 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.12.
+
+* Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
+  dependencies.
+
+* Fix BTS-2150: Make dropDatabase API work even if there are leftover entries in
+  /arango/Current/Databases/<dbname>.
+
+* Fix telemetry response, `n_vector` would be returned inconsistently. This
+  always returns the value, regardless if the vector index feature is enabled.
+
+* Improved performance of document-search query in graph settings UI (BTS-2149)
+
+* Upgraded bundled version of RocksDB to 9.5.
+
+  The default values for the following RocksDB-related startup options were 
+  adjusted as well:
+
+  - `--rocksdb.compaction-read-ahead-size` was changed from 2MB to 8MB.
+  - `--rocksdb.max-subcompactions` was changed from 2 to 4.
+  - `--rocksdb.max-total-wal-size` was changed from 80MB to 256MB.
+  - `--rocksdb.throttle-slots` was changed from 120 to 128.
+  - `--rocksdb.throttle-scaling-factor` was changed from 17 to 192.
+  - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to 1GB.
+  - `--rocksdb.pending-compactions-stop-trigger` was changed from 16GB to 32GB.
+  - `--rocksdb.partition-files-for-documents` was changed from false to true.
+
+  The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
+  obsoleted.
+
+* Fix a possible crash when requesting the async registry:
+  Does now not request the thread name of a potentially destroyed thread.
+
+* Add detection of two threads working on an ExecutionBlock concurrently.
+
+* Add detection of two threads waiting for a PrefetchTask concurrently.
+
+* Add visibility into the state if a thread waits for more than a second
+  on a PrefetchTask (and does not see InProgress).
+
+* Fix a memory leak in LogContext, which could leak entries which are still, and
+  only, used by a thread-local LogContext when that thread is destroyed.
+
 * Fix arangorestore failing to restore the dump containing a
   vector index.
 
@@ -12,6 +55,8 @@ devel
 * Improved the error message displayed when the APPROX_NEAR function fails to
   apply a vector index.
  
+* upgrade LZ4 to 1.10.0
+
 * Fix BTS-2135: A global lock on the query registry was in some cases
   unnecessarily held for the full duration of query destruction.
   This could lead to throughput reduction or stalls in some situations.

@@ -243,6 +243,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   void stopAsyncTasks() override;
 
+  bool isPrefetchTaskActive() noexcept override;
+
  private:
   struct ExecutionContext {
     ExecutionContext(ExecutionBlockImpl& block, AqlCallStack const& callstack);
@@ -383,6 +385,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
         : _block(block), _stack(stack) {}
 
     bool isConsumed() const noexcept;
+    bool isFinished() const noexcept;
     bool tryClaim() noexcept;
     bool tryClaimOrAbandon() noexcept;
     void waitFor() const noexcept;
@@ -414,6 +417,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
     ExecutionBlockImpl& _block;
     AqlCallStack _stack;
+    mutable std::atomic<uint64_t> _numberWaiters{0};
+    mutable std::atomic<bool> _logStacktrace{false};
   };
 
   /**

@@ -30,7 +30,7 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
-#include "AsyncRegistryServer/RestHandler.h"
+#include "SystemMonitor/AsyncRegistry/RestHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
