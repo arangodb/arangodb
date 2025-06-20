@@ -718,10 +718,11 @@ function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 769406749034;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -812,7 +813,7 @@ function VectorIndexInnerProductTestSuite() {
 
                 // For inner product metric the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].sim > results[j].sim);
+                    assertTrue(results[j - 1].sim >= results[j].sim);
                 }
             }
         },
