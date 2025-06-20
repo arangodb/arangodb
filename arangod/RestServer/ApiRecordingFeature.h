@@ -75,6 +75,34 @@ auto inspect(Inspector& f, ApiCallRecord& record) {
       f.field("database", record.database));
 }
 
+struct AqlQueryRecord {
+  std::chrono::system_clock::time_point timeStamp;
+  std::string queryString;
+  std::string database;
+  velocypack::SharedSlice bindParameters;
+
+  AqlQueryRecord(std::string_view queryString, std::string_view database,
+                 velocypack::SharedSlice bindParameters)
+      : timeStamp(std::chrono::system_clock::now()),
+        queryString(queryString),
+        database(database),
+        bindParameters(std::move(bindParameters)) {}
+
+  size_t memoryUsage() const noexcept;
+};
+
+// Inspector for AqlQueryRecord to allow serialization using the Inspection
+// library
+template<class Inspector>
+auto inspect(Inspector& f, AqlQueryRecord& record) {
+  return f.object(record).fields(
+      f.field("timeStamp", record.timeStamp)
+          .transformWith(arangodb::inspection::TimeStampTransformer{}),
+      f.field("queryString", record.queryString),
+      f.field("database", record.database),
+      f.field("bindParameters", record.bindParameters));
+}
+
 class ApiRecordingFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
@@ -101,6 +129,19 @@ class ApiRecordingFeature : public ArangodFeature {
     }
   }
 
+  // Iterates over AQL query records from newest to oldest, invoking the given
+  // callback function for each record. Thread-safe.
+  template<typename F>
+  requires std::is_invocable_v<F, AqlQueryRecord const&>
+  void doForAqlQueryRecords(F&& callback) const {
+    if (_aqlCallRecord) {
+      _aqlCallRecord->forItems(std::forward<F>(callback));
+    }
+  }
+
+  void recordAQLQuery(std::string_view queryString, std::string_view database,
+                      velocypack::SharedSlice bindParameters);
+
  private:
   // Cleanup thread function
   void cleanupLoop();
@@ -117,6 +158,9 @@ class ApiRecordingFeature : public ArangodFeature {
 
   /// record of recent api calls:
   std::unique_ptr<arangodb::BoundedList<ApiCallRecord>> _apiCallRecord;
+
+  // Record of recent AQL calls:
+  std::unique_ptr<arangodb::BoundedList<AqlQueryRecord>> _aqlCallRecord;
 
   // Flag to control the cleanup thread
   std::atomic<bool> _stopCleanupThread{false};

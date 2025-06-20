@@ -61,6 +61,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -190,6 +191,24 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 
   // store name of user that started the query
   _user = ExecContext::current().user();
+
+  // Record the Query:
+  ApiRecordingFeature& apiRecordingFeature(
+      _transactionContext->vocbase()
+          .server()
+          .getFeature<ApiRecordingFeature>());
+  velocypack::SharedSlice bindParamsCopy;
+  if (bindParameters != nullptr && !bindParameters->isEmpty() &&
+      !bindParameters->slice().isNone()) {
+    bindParamsCopy = velocypack::SharedSlice(bindParameters->bufferRef());
+  } else {
+    VPackBuilder builder;
+    { VPackObjectBuilder guard(&builder); }
+    bindParamsCopy = velocypack::SharedSlice{*builder.steal()};
+  }
+  apiRecordingFeature.recordAQLQuery(_queryString.string(),
+                                     _transactionContext->vocbase().name(),
+                                     std::move(bindParamsCopy));
 }
 
 /// Used to construct a full query. the constructor is protected to ensure

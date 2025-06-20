@@ -71,6 +71,8 @@ RestStatus RestAdminServerHandler::execute() {
     handleEncryptionKeyRotation();
   } else if (suffixes.size() == 1 && suffixes[0] == "api-calls") {
     handleApiCalls();
+  } else if (suffixes.size() == 1 && suffixes[0] == "aql-queries") {
+    handleAqlQueries();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -322,6 +324,32 @@ void RestAdminServerHandler::handleApiCalls() {
       // Use doForApiCallRecords to iterate through records
       apiRecordingFeature.doForApiCallRecords(
           [&builder](ApiCallRecord const& record) {
+            arangodb::velocypack::serialize(builder, record);
+          });
+    }
+  }
+  generateOk(rest::ResponseCode::OK, builder.slice());
+}
+
+void RestAdminServerHandler::handleAqlQueries() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+
+  auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(VPackValue("queries"));
+    {
+      VPackArrayBuilder guard2(&builder);
+
+      // Use doForAqlQueryRecords to iterate through records
+      apiRecordingFeature.doForAqlQueryRecords(
+          [&builder](AqlQueryRecord const& record) {
             arangodb::velocypack::serialize(builder, record);
           });
     }

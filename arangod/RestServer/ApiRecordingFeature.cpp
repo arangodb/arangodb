@@ -38,6 +38,11 @@ size_t ApiCallRecord::memoryUsage() const noexcept {
   return sizeof(ApiCallRecord) + path.size() + database.size();
 }
 
+size_t AqlQueryRecord::memoryUsage() const noexcept {
+  return sizeof(AqlQueryRecord) + queryString.size() + database.size() +
+         bindParameters.byteSize();
+}
+
 ApiRecordingFeature::ApiRecordingFeature(Server& server)
     : ArangodFeature{server, *this},
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
@@ -77,6 +82,8 @@ void ApiRecordingFeature::prepare() {
 
   if (_enabled) {
     _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
+        _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
+    _aqlCallRecord = std::make_unique<BoundedList<AqlQueryRecord>>(
         _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
   }
 }
@@ -122,6 +129,17 @@ void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
   _recordApiCallTimes.count(static_cast<double>(elapsed));
 }
 
+void ApiRecordingFeature::recordAQLQuery(
+    std::string_view queryString, std::string_view database,
+    velocypack::SharedSlice bindParameters) {
+  if (!_enabled || !_aqlCallRecord) {
+    return;
+  }
+
+  _aqlCallRecord->prepend(
+      AqlQueryRecord(queryString, database, std::move(bindParameters)));
+}
+
 void ApiRecordingFeature::cleanupLoop() {
   // Initialize delay values
   constexpr std::chrono::milliseconds MIN_DELAY{1};
@@ -131,16 +149,33 @@ void ApiRecordingFeature::cleanupLoop() {
   while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
     // Get the trash and measure the time
     auto start = std::chrono::steady_clock::now();
-    size_t count = _apiCallRecord->clearTrash();
+    size_t apiCallCount = 0;
+    size_t aqlCallCount = 0;
+
+    if (_apiCallRecord) {
+      apiCallCount = _apiCallRecord->clearTrash();
+    }
+
+    if (_aqlCallRecord) {
+      aqlCallCount = _aqlCallRecord->clearTrash();
+    }
 
     auto duration = std::chrono::steady_clock::now() - start;
     auto nanoseconds =
         std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
 
-    if (count > 0) {
-      LOG_TOPIC("53626", TRACE, Logger::MEMORY)
-          << "Cleaned up " << count << " API call record lists in "
-          << nanoseconds.count() << " nanoseconds";
+    size_t totalCount = apiCallCount + aqlCallCount;
+    if (totalCount > 0) {
+      if (apiCallCount > 0) {
+        LOG_TOPIC("53626", TRACE, Logger::MEMORY)
+            << "Cleaned up " << apiCallCount << " API call record lists in "
+            << nanoseconds.count() << " nanoseconds";
+      }
+      if (aqlCallCount > 0) {
+        LOG_TOPIC("53627", TRACE, Logger::MEMORY)
+            << "Cleaned up " << aqlCallCount << " AQL call record lists in "
+            << nanoseconds.count() << " nanoseconds";
+      }
       // Reset delay to minimum when trash was found
       currentDelay = MIN_DELAY;
     } else {
