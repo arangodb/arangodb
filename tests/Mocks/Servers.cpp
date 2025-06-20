@@ -53,6 +53,7 @@
 #include "FeaturePhases/BasicFeaturePhaseServer.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "FeaturePhases/DatabaseFeaturePhase.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/VectorIndexFeature.h"
 #ifdef USE_V8
 #include "FeaturePhases/V8FeaturePhase.h"
@@ -213,6 +214,7 @@ static void SetupAqlPhase(MockServer& server) {
   server.addFeature<QueryRegistryFeature>(
       false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
+  server.addFeature<ApiRecordingFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
   {
