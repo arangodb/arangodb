@@ -2,7 +2,8 @@ devel
 -----
 
 * Fix BTS-2151: Fix cosine similarity score in vector index returns score
-  bigger then one due to not being normalized.
+  bigger then one due to not being normalized. It is recommended to drop
+  all vector indexes that use cosine metric and create them again.
 
 * Updated ArangoDB Starter to v0.19.12.
 
