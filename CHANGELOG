@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2158: The `/_api/import` endpoint does not throw an error on an
+  invalid type parameter value.
+
 * Updated ArangoDB Starter to v0.19.12.
 
 * Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
