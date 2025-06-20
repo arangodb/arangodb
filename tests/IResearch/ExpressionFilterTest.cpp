@@ -61,6 +61,7 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -289,6 +290,8 @@ struct IResearchExpressionFilterTest
     features.emplace_back(
         server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(),
         true);
+    features.emplace_back(server.addFeature<arangodb::ApiRecordingFeature>(),
+                          false);
 
     auto& feature =
         features
@@ -362,7 +365,7 @@ struct FilterCtx : irs::attribute_provider {
 
   arangodb::iresearch::ExpressionExecutionContext*
       _execCtx;  // expression execution context
-};               // FilterCtx
+};  // FilterCtx
 
 }  // namespace
 
