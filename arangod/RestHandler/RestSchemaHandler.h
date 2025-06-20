@@ -5,6 +5,7 @@
 #pragma once
 
 #include "RestHandler/RestCursorHandler.h"
+#include "Transaction/StandaloneContext.h"
 
 namespace arangodb {
 namespace aql {
@@ -23,37 +24,15 @@ public:
   RestStatus handleQueryResult() override;
 
 private:
-  const std::string queryString = R"(
-    LET sampleNum = @sampleNum
-
-    LET docs = (
-      FOR d IN @@collection
-        SORT RAND()
-        LIMIT sampleNum
-        RETURN d
-    )
-
-    LET total = LENGTH(docs)
-
-    FOR d IN docs
-      LET keys = ATTRIBUTES(d)
-      FOR key IN keys
-        FILTER key != "_rev"
-        COLLECT attribute = key
-        AGGREGATE
-          count = COUNT(d),
-          types = UNIQUE(TYPENAME(d[key]))
-        RETURN {
-          attribute,
-          types,
-          optional: count < total
-        }
-    )";
+  static const std::string queryString;
+  static const std::string graphQueryString;
 
   futures::Future<RestStatus> lookupCollectionSchema(
     std::string const& collection, uint64_t sampleNum);
 
   RestStatus lookupSchema(uint64_t sampleNum);
+
+  const velocypack::Slice lookupGraph(std::shared_ptr<transaction::StandaloneContext>);
 
   uint64_t validateSampleNum();
 };

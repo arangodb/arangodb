@@ -10,6 +10,7 @@
 #include "Futures/Future.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/OperationOrigin.h"
+#include "Graph/GraphManager.h"
 
 #include "Logger/LogMacros.h"
 
@@ -21,6 +22,40 @@
 
 using namespace arangodb;
 using namespace arangodb::rest;
+
+const std::string RestSchemaHandler::queryString = R"(
+    LET docs = (
+      FOR d IN @@collection
+        SORT RAND()
+        LIMIT @sampleNum
+        RETURN d
+    )
+
+    LET total = LENGTH(docs)
+
+    FOR d IN docs
+      LET keys = ATTRIBUTES(d)
+      FOR key IN keys
+        FILTER key != "_rev"
+        COLLECT attribute = key
+        AGGREGATE
+          count = COUNT(d),
+          types = UNIQUE(TYPENAME(d[key]))
+        RETURN {
+          attribute,
+          types,
+          optional: count < total
+        }
+    )";
+
+const std::string RestSchemaHandler::graphQueryString = R"(
+    FOR edge IN @@collection
+      LET fromColl = PARSE_IDENTIFIER(edge._from).collection
+      LET toColl = PARSE_IDENTIFIER(edge._to).collection
+
+      COLLECT from = fromColl, to = toColl
+      RETURN {from, to}
+    )";
 
 RestSchemaHandler::RestSchemaHandler(ArangodServer& server,
                                      GeneralRequest* request,
@@ -90,8 +125,6 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum) {
   auto collectionSchemaArray = std::make_shared<velocypack::Builder>();
   collectionSchemaArray->openArray();
   for (auto const& colName : _vocbase.collectionNames()) {
-    LOG_TOPIC("SCHEMA04", DEBUG, Logger::FIXME)
-      << "  processing collection=" << colName;
     if (colName.starts_with("_"))
       continue;
 
@@ -111,13 +144,13 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum) {
 
     auto queryResultBuilder = std::make_shared<velocypack::Builder>();
     queryResultBuilder->openObject();
-    queryResultBuilder->add("name",   velocypack::Value(colName));
-    queryResultBuilder->add("schema", qr.data->slice());
+    queryResultBuilder->add("collectionName",   velocypack::Value(colName));
 
     auto col = _vocbase.lookupCollection(colName);
     std::string typeName =
       (col && col->type() == TRI_COL_TYPE_EDGE) ? "edge" : "document";
-    queryResultBuilder->add("type", velocypack::Value(typeName));
+    queryResultBuilder->add("collectionType", velocypack::Value(typeName));
+    queryResultBuilder->add("schema", qr.data->slice());
     queryResultBuilder->close();
 
     collectionSchemaArray->add(queryResultBuilder->slice());
@@ -127,17 +160,33 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum) {
   auto resultBuilder = std::make_shared<velocypack::Builder>();
   resultBuilder->openObject();
   resultBuilder->add("collections", collectionSchemaArray->slice());
+  resultBuilder->add("graphs", lookupGraph(ctx));
   resultBuilder->close();
-
-  LOG_TOPIC("SCHEMA04", DEBUG, Logger::FIXME)
-      << "  closing the json object" << resultBuilder->slice().toJson();
 
   _queryResult.data = std::move(resultBuilder);
   _queryResult.context = std::move(ctx);
-
-  LOG_TOPIC("SCHEMA05", DEBUG, Logger::FIXME)
-      << "  moved the result to _queryResult" << _queryResult.data;
   return RestStatus::DONE;
+}
+
+const velocypack::Slice RestSchemaHandler::lookupGraph(std::shared_ptr<transaction::StandaloneContext> ctx) {
+  const std::string graphQueryString = R"(
+    FOR g IN _graphs
+    RETURN {
+      name: g._key,
+      relations: g.edgeDefinitions
+    }
+)";
+
+  auto query = aql::Query::create(
+      ctx, aql::QueryString{graphQueryString},
+      std::make_shared<velocypack::Builder>(),
+      aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()}
+      );
+
+  aql::QueryResult qr;
+  while (query->execute(qr) == aql::ExecutionState::WAITING) { }
+
+  return qr.data->slice();
 }
 
 RestStatus RestSchemaHandler::handleQueryResult() {
@@ -145,42 +194,13 @@ RestStatus RestSchemaHandler::handleQueryResult() {
     generateError(_queryResult.result);
     return RestStatus::DONE;
   }
-
   auto resultSlice = _queryResult.data->slice();
   generateResult(ResponseCode::OK, resultSlice, _queryResult.context);
   return RestStatus::DONE;
 }
 
-// RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum) {
-//   auto ctx = std::make_shared<transaction::StandaloneContext>(
-//     _vocbase, transaction::OperationOriginTestCase{});
-//
-//   const std::string queryString = "FOR x IN @@collection LIMIT @sampleNum Return x";
-//   aql::QueryString aql = aql::QueryString(queryString);
-//
-//   auto bindVars = std::make_shared<velocypack::Builder>();
-//   {
-//     velocypack::ObjectBuilder ob(bindVars.get());
-//     bindVars->add("@collection", VPackValue("test"));
-//     bindVars->add("sampleNum", VPackValue(sampleNum));
-//   }
-//
-//   auto query = aql::Query::create(
-//     ctx, aql, bindVars,
-//     aql::QueryOptions(velocypack::Parser::fromJson("{}")->slice()));
-//
-//   aql::QueryResult result;
-//   while (true) {
-//     auto state = query->execute(result);
-//     if (state != aql::ExecutionState::WAITING)
-//       break;
-//   }
-//   _queryResult = std::move(result);
-//   return RestStatus::DONE;
-// }
-
+// sampleNum: How many samples to pick up from each collection
 uint64_t RestSchemaHandler::validateSampleNum() {
-  // sampleNum is an optional parameter
   bool passed = false;
   uint64_t sampleNum = 100;
   auto const& val = _request->value("sampleNum", passed);
