@@ -42,7 +42,10 @@
   "overrides": {
     "joi": {
       "hoek": "npm:@hapi/hoek@8.5.1"
-    }
+    },
+    "brace-expansion": "^1.1.11",
+    "braces": "^3.0.3",
+    "semver": "^7.5.4"
   },
   "scripts": {
     "postinstall": "npx patch-package"
