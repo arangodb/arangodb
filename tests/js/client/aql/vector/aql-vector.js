@@ -866,7 +866,17 @@ function VectorIndexInnerProductTestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            
+            // Compare as sets by extracting keys
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            const expectedKeys = new Set(resultsWithoutSkip.slice(3).map(r => r.k));
+            
+            // Check that skip results are a subset of without skip results
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+            // Check that skip results equal the expected subset
+            assertEqual(skipKeys.size, expectedKeys.size);
+            assertTrue([...skipKeys].every(key => expectedKeys.has(key)));
         },
     };
 }

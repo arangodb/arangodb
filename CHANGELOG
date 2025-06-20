@@ -1,6 +1,31 @@
 devel
 -----
 
+* Add inner product metric for vector index and APPROX_NEAR_INNER_PRODUCT()
+  AQL function. The inner product metric is similar to cosine metric except
+  vectors are not normalized.
+  
+  Example of creating a vector index with inner product:
+  ```
+    db.<collection>.ensureIndex({
+      type: "vector",
+      fields: ["value"],
+      params: {
+        "metric": "innerProduct",
+        "dimension": 300,
+        "nLists": 100
+      }
+    });
+  ```
+  
+  Example of using the APPROX_NEAR_INNER_PRODUCT() function:
+  ```
+    FOR doc IN collection
+    SORT APPROX_NEAR_INNER_PRODUCT(doc.vector, @query_vector) DESC
+    LIMIT 10
+    RETURN doc
+  ```
+
 * Fix BTS-2151: Fix cosine similarity score in vector index returns score
   bigger then one due to not being normalized. It is recommended to drop
   all vector indexes that use cosine metric and create them again.
