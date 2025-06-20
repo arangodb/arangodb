@@ -62,6 +62,9 @@ bool checkFunctionNameMatchesIndexMetric(
     case SimilarityMetric::kCosine: {
       return functionName == "APPROX_NEAR_COSINE";
     }
+    case SimilarityMetric::kInnerProduct: {
+      return functionName == "APPROX_NEAR_INNER_PRODUCT";
+    }
   }
 }
 
@@ -116,6 +119,11 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
       break;
     // Cosine similarity can only be in descending order
     case SimilarityMetric::kCosine:
+      if (sortField.ascending) {
+        return {nullptr, ascending};
+      }
+      break;
+    case SimilarityMetric::kInnerProduct:
       if (sortField.ascending) {
         return {nullptr, ascending};
       }

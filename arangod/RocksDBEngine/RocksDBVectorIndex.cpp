@@ -74,6 +74,8 @@ faiss::MetricType metricToFaissMetric(SimilarityMetric const metric) {
       return faiss::MetricType::METRIC_L2;
     case SimilarityMetric::kCosine:
       return faiss::MetricType::METRIC_INNER_PRODUCT;
+    case SimilarityMetric::kInnerProduct:
+      return faiss::METRIC_INNER_PRODUCT;
   }
 }
 
@@ -272,6 +274,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
           case arangodb::SimilarityMetric::kL2:
             return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
           case arangodb::SimilarityMetric::kCosine:
+            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
+          case arangodb::SimilarityMetric::kInnerProduct:
             return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
         }
       });
