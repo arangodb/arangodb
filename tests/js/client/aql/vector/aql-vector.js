@@ -685,6 +685,163 @@ function VectorIndexCosineTestSuite() {
     };
 }
 
+function VectorIndexInnerProductTestSuite() {
+    let collection;
+    let randomPoint;
+    const dimension = 500;
+    const seed = 769406749034;
+
+    return {
+        setUpAll: function() {
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards: 3
+            });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < 1000; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                if (i === 250) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector,
+                    nonVector: i,
+                    unIndexedVector: vector
+                });
+            }
+            collection.insert(docs);
+
+            collection.ensureIndex({
+                name: "vector_inner_product",
+                type: "vector",
+                fields: ["vector"],
+                params: {
+                    metric: "innerProduct",
+                    dimension: dimension,
+                    nLists: 10
+                },
+            });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testApproxInnerProductMultipleTopK: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " LET sim = APPROX_NEAR_INNER_PRODUCT(d.vector, @qp) " +
+                "SORT sim DESC LIMIT @topK " +
+                "RETURN {key: d._key, sim}";
+
+            const topKs = [1, 5, 10, 15, 50, 100];
+            let previousResult = [];
+            for (let i = 0; i < topKs.length; ++i) {
+                const bindVars = {
+                    qp: randomPoint,
+                    topK: topKs[i]
+                };
+                const plan = db
+                    ._createStatement({
+                        query,
+                        bindVars,
+                    })
+                    .explain().plan;
+                const indexNodes = plan.nodes.filter(function(n) {
+                    return n.type === "EnumerateNearVectorNode";
+                });
+                assertEqual(1, indexNodes.length);
+
+                // Assert gather node is sorted
+                if (isCluster) {
+                    const gatherNodes = plan.nodes.filter(function(n) {
+                        return n.type === "GatherNode";
+                    });
+                    assertEqual(1, gatherNodes.length);
+
+                    let gatherNode = gatherNodes[0];
+                    assertEqual(1, gatherNode.elements.length);
+                    assertFalse(gatherNode.elements[0].ascending);
+                }
+
+                const results = db._query(query, bindVars).toArray();
+
+                // Assert that results are deterministic
+                if (i !== 0) {
+                    for (let j = 0; j < previousResult.length; ++j) {
+                        assertEqual(previousResult[j].key, results[j].key);
+                    }
+                }
+
+                // For inner product metric the results must be ordered in descending order
+                for (let j = 1; j < results.length; ++j) {
+                    assertTrue(results[j - 1].sim > results[j].sim);
+                }
+            }
+        },
+
+        testApproxInnerProductMultipleTopKWrongOrder: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_INNER_PRODUCT(d.vector, @qp) ASC LIMIT 5 " +
+                " RETURN {key: d._key}";
+
+            const bindVars = {
+                qp: randomPoint,
+            };
+            const plan = db
+                ._createStatement({
+                    query,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(0, indexNodes.length);
+        },
+
+        testApproxInnerProductSkipping: function() {
+            const queryWithSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_INNER_PRODUCT(@qp, d.vector) DESC LIMIT 3, 5 RETURN {k: d._key}";
+            const queryWithoutSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_INNER_PRODUCT(d.vector, @qp) DESC LIMIT 8 RETURN {k: d._key}";
+
+            const bindVars = {
+                qp: randomPoint
+            };
+
+            const planSkipped = db
+                ._createStatement({
+                    query: queryWithSkip,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = planSkipped.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+
+            const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
+            const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
+            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+        },
+    };
+}
+
 function MultipleVectorIndexesOnField() {
     let collection;
     let randomPoint;
@@ -886,6 +1043,7 @@ function MultipleVectorIndexesOnField() {
 
 jsunity.run(VectorIndexL2TestSuite);
 jsunity.run(VectorIndexCosineTestSuite);
+jsunity.run(VectorIndexInnerProductTestSuite);
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();
