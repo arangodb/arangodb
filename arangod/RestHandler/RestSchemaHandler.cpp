@@ -64,7 +64,10 @@ RestSchemaHandler::RestSchemaHandler(ArangodServer& server,
   : RestCursorHandler(server, request, response, queryRegistry) {}
 
 RestStatus RestSchemaHandler::execute() {
-  if (_request->requestType() != RequestType::GET) {
+  LOG_TOPIC("SCHEMA_HANDLER", DEBUG, Logger::FIXME)
+    << "RestSchemaHandler::execute() method";
+  if (_request->requestType() != RequestType::GET && _request->requestType() != RequestType::HEAD) {
+    std::cout << "RestSchemaHandlerTest place 9" << std::endl;
     generateError(ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;

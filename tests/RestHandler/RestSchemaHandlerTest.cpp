@@ -6,6 +6,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Parser.h"
 
+#include <Aql/QueryRegistry.h>
 #include "Mocks/Servers.h"
 #include "IResearch/RestHandlerMock.h"
 #include "RestHandler/RestSchemaHandler.h"
@@ -18,6 +19,7 @@
 #include "Transaction/Methods.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Logger/LogMacros.h"
 
 #include <IResearch/common.h>
 
@@ -28,31 +30,52 @@ using namespace arangodb::aql;
 using namespace arangodb::velocypack;
 
 class RestSchemaHandlerTest : public ::testing::Test {
+public:
+  static void SetUpTestCase() {
+    server = std::make_unique<MockRestAqlServer>();
+  }
+  static void TearDownTestCase() { server.reset(); }
+
 protected:
-  MockAqlServer server;
-  QueryRegistry* _queryRegistry;
-
-  void SetUp() override {
-    auto& qrFeature = server.server().getFeature<arangodb::QueryRegistryFeature>();
-    _queryRegistry = qrFeature.queryRegistry();
-  }
-
-  std::unique_ptr<RestSchemaHandler> makeHandler(
-      GeneralRequest* req, GeneralResponse* res) {
-    return std::make_unique<RestSchemaHandler>(
-      server.server(), req, res, _queryRegistry
-    );
-  }
+  static inline std::unique_ptr<MockRestAqlServer> server;
 };
 
-TEST_F(RestSchemaHandlerTest, WrongMethodReturns405) {
-  TRI_vocbase_t vocbase(testDBInfo(server.server()));
-  auto req = std::make_unique<GeneralRequestMock>(vocbase);
-  req->setRequestType(RequestType::POST);
-  req->addSuffix("test");
-  auto res = std::make_unique<GeneralResponseMock>();
+namespace {
+arangodb::velocypack::SharedSlice operator"" _vpack(const char* json,
+                                                    size_t len) {
+  VPackOptions options;
+  options.checkAttributeUniqueness = true;
+  options.validateUtf8Strings = true;
+  VPackParser parser(&options);
+  parser.parse(json, len);
+  return parser.steal()->sharedSlice();
+}
+}
 
-  auto handler = makeHandler(req.get(), res.get());
-  EXPECT_EQ(handler->execute(), RestStatus::DONE);
-  EXPECT_EQ(res->responseCode(), ResponseCode::METHOD_NOT_ALLOWED);
+TEST_F(RestSchemaHandlerTest, WrongMethodReturns405) {
+  auto& vocbase = server->getSystemDatabase();
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
+  auto fakeResponse = std::make_unique<GeneralResponseMock>();
+  fakeRequest->setRequestType(arangodb::rest::RequestType::POST);
+  fakeRequest->_payload.add(R"json(
+    {
+      "query": "FOR i IN 1..1000 RETURN CONCAT('', i)"
+    }
+  )json"_vpack);
+
+  auto* registry = arangodb::QueryRegistryFeature::registry();
+
+  auto testee = std::make_shared<RestSchemaHandler>(
+      server->server(), fakeRequest.release(), fakeResponse.release(),
+      registry);
+
+  testee->execute();
+
+  fakeResponse.reset(
+      dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+
+  std::cout << "RestSchemaHandlerTest place 8" << std::endl;
+  std::cout << fakeResponse->_payload.slice() << std::endl;
+  EXPECT_EQ(fakeResponse->responseCode(),
+            ResponseCode::METHOD_NOT_ALLOWED);
 }
