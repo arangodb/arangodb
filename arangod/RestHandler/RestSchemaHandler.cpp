@@ -64,10 +64,7 @@ RestSchemaHandler::RestSchemaHandler(ArangodServer& server,
   : RestCursorHandler(server, request, response, queryRegistry) {}
 
 RestStatus RestSchemaHandler::execute() {
-  LOG_TOPIC("SCHEMA_HANDLER", DEBUG, Logger::FIXME)
-    << "RestSchemaHandler::execute() method";
-  if (_request->requestType() != RequestType::GET && _request->requestType() != RequestType::HEAD) {
-    std::cout << "RestSchemaHandlerTest place 9" << std::endl;
+  if (_request->requestType() != RequestType::GET) {
     generateError(ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return RestStatus::DONE;
@@ -171,7 +168,8 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum) {
   return RestStatus::DONE;
 }
 
-const velocypack::Slice RestSchemaHandler::lookupGraph(std::shared_ptr<transaction::StandaloneContext> ctx) {
+const velocypack::Slice RestSchemaHandler::lookupGraph(
+  std::shared_ptr<transaction::StandaloneContext> ctx) {
   const std::string graphQueryString = R"(
     FOR g IN _graphs
     RETURN {

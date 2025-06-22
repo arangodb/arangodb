@@ -7,6 +7,7 @@
 #include "velocypack/Parser.h"
 
 #include <Aql/QueryRegistry.h>
+#include "Basics/VelocyPackHelper.h"
 #include "Mocks/Servers.h"
 #include "IResearch/RestHandlerMock.h"
 #include "RestHandler/RestSchemaHandler.h"
@@ -33,49 +34,102 @@ class RestSchemaHandlerTest : public ::testing::Test {
 public:
   static void SetUpTestCase() {
     server = std::make_unique<MockRestAqlServer>();
+    registry = QueryRegistryFeature::registry();
+
+    auto& vocbase = server->getSystemDatabase(); // "_system"
+    std::shared_ptr<Builder> collectionJson;
+    collectionJson = Parser::fromJson(R"({ "name": "testCustomers" })");
+    vocbase.createCollection(collectionJson->slice());
+    collectionJson = Parser::fromJson(R"({ "name": "testProducts" })");
+    vocbase.createCollection(collectionJson->slice());
+    collectionJson = Parser::fromJson(R"({ "name": "testEmpty" })");
+    vocbase.createCollection(collectionJson->slice());
+
+    auto customerQuery = R"(
+      LET customers = [
+        {name: "Gilberto", age: 25, address: "San Francisco"},
+        {name: "Victor", age: "young", address: "Tokyo"},
+        {name: "Koichi", age: 35, address: {city: "San Francisco", country: "USA"}},
+        {name: "Michael", age: 35, address: "Cologne"}
+      ]
+      FOR c IN customers INSERT c INTO testCustomers
+    )";
+    tests::executeQuery(vocbase, customerQuery);
+
+    auto productQuery = R"(
+      LET products = [
+        {name: "drone", price: 499.98},
+        {name: "macBook", price: 1299.98, version: 14.5},
+        {name: "glasses", price: "expensive", color: "black"},
+        {name: "MS surface", price: 349, version: "5.5"}
+      ]
+      FOR p IN products INSERT p INTO testProducts
+    )";
+    tests::executeQuery(vocbase, productQuery);
   }
-  static void TearDownTestCase() { server.reset(); }
+  static void TearDownTestCase() {
+    server.reset();
+    delete registry;
+  }
 
 protected:
   static inline std::unique_ptr<MockRestAqlServer> server;
+  static inline QueryRegistry* registry;
 };
 
-namespace {
-arangodb::velocypack::SharedSlice operator"" _vpack(const char* json,
-                                                    size_t len) {
-  VPackOptions options;
-  options.checkAttributeUniqueness = true;
-  options.validateUtf8Strings = true;
-  VPackParser parser(&options);
-  parser.parse(json, len);
-  return parser.steal()->sharedSlice();
-}
-}
+// namespace {
+// arangodb::velocypack::SharedSlice operator"" _vpack(const char* json,
+//                                                     size_t len) {
+//   VPackOptions options;
+//   options.checkAttributeUniqueness = true;
+//   options.validateUtf8Strings = true;
+//   VPackParser parser(&options);
+//   parser.parse(json, len);
+//   return parser.steal()->sharedSlice();
+// }
+// }
 
-TEST_F(RestSchemaHandlerTest, WrongMethodReturns405) {
-  auto& vocbase = server->getSystemDatabase();
+TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
+  auto& vocbase = server->getSystemDatabase();// "_system"
   auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
-  fakeRequest->setRequestType(arangodb::rest::RequestType::POST);
-  fakeRequest->_payload.add(R"json(
-    {
-      "query": "FOR i IN 1..1000 RETURN CONCAT('', i)"
-    }
-  )json"_vpack);
-
-  auto* registry = arangodb::QueryRegistryFeature::registry();
+  fakeRequest->setRequestType(RequestType::POST);
 
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+      server->server(), fakeRequest.release(),
+      fakeResponse.release(), registry);
+  testee->execute();
+  fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  EXPECT_EQ(fakeResponse->responseCode(), ResponseCode::METHOD_NOT_ALLOWED);
+}
+
+TEST_F(RestSchemaHandlerTest, CollectionCustomerReturnsTrue) {
+  auto& vocbase = server->getSystemDatabase(); // "_system"
+
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
+  fakeRequest->setRequestType(RequestType::GET);
+  fakeRequest->addSuffix("testProducts");
+
+  auto fakeResponse = std::make_unique<GeneralResponseMock>();
+  auto testee = std::make_shared<RestSchemaHandler>(
+      server->server(), fakeRequest.release(),
+      fakeResponse.release(), registry);
 
   testee->execute();
 
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
 
-  std::cout << "RestSchemaHandlerTest place 8" << std::endl;
-  std::cout << fakeResponse->_payload.slice() << std::endl;
-  EXPECT_EQ(fakeResponse->responseCode(),
-            ResponseCode::METHOD_NOT_ALLOWED);
+  auto expected = Parser::fromJson(R"json(
+    [
+      {"attribute":"_id","types":["string"],"optional":false},
+      {"attribute":"_key","types":["string"],"optional":false},
+      {"attribute":"color","types":["string"],"optional":true},
+      {"attribute":"name","types":["string"],"optional":false},
+      {"attribute":"price","types":["string","number"],"optional":false},
+      {"attribute":"version","types":["number","string"],"optional":true}
+    ]
+    )json");
+
+  EXPECT_EQUAL_SLICES(fakeResponse->_payload.slice(), expected->slice());
 }
