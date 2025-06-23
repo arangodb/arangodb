@@ -97,13 +97,12 @@ protected:
     // Create input rows in blocks of at most 1000
     std::deque<arangodb::aql::SharedAqlItemBlockPtr> blockDeque;
     size_t rowsLeft = nrOfInputRows;
-    size_t currentRow = 0;
+    std::string dummyJson = "{\"dummy\": \"dummy\"}";
     while (rowsLeft > 0) {
       size_t blockSize = std::min(rowsLeft, static_cast<size_t>(1000));
       tests::aql::MatrixBuilder<1> matrix;
       for (size_t i = 0; i < blockSize; ++i) {
-        std::string json = (std::string)"{\"_key\":\"" + std::to_string(currentRow++) + "\"}";
-        matrix.push_back({json.c_str()});
+        matrix.push_back({dummyJson.c_str()});
       }
       auto inputBlock = tests::aql::buildBlock<1>(blockManager, std::move(matrix));
       blockDeque.push_back(inputBlock);
