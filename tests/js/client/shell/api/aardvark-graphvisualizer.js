@@ -27,11 +27,11 @@
 'use strict';
 
 const internal = require('internal');
-const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const jsunity = require("jsunity");
 const examples = require('@arangodb/graph-examples/example-graph');
+const gm = require('@arangodb/general-graph');
 
 let api = "/_admin/aardvark/graphs-v2";
 
@@ -40,18 +40,12 @@ let api = "/_admin/aardvark/graphs-v2";
 ////////////////////////////////////////////////////////////////////////////////
 
 function cleanup() {
+
   try {
-    db._graphs.remove('knows_graph');
+    gm._drop('knows_graph', true);
   } catch (e) {
   }
-  try {
-    db._drop('persons');
-  } catch (e) {
-  }
-  try {
-    db._drop('knows');
-  } catch (e) {
-  }
+
 }
 
 function setupKnowsGraph() {
@@ -625,6 +619,204 @@ function settingsAndMetadataSuite() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+// Performance test suite
+////////////////////////////////////////////////////////////////////////////////
+function performanceTestSuite() {
+  const LARGE_STRING = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam, eaque ipsa quae ab illo inventore veritatis et quasi architecto beatae vitae dicta sunt explicabo. Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut fugit, sed quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Neque porro quisquam est, qui dolorem ipsum quia dolor sit amet, consectetur, adipisci velit, sed quia non numquam eius modi tempora incidunt ut labore et dolore magnam aliquam quaerat voluptatem. Ut enim ad minima veniam, quis nostrum exercitationem ullam corporis suscipit laboriosam, nisi ut aliquid ex ea commodi consequat. Quis autem vel eum iure reprehenderit qui in ea voluptate velit esse quam nihil molestiae consequatur, vel illum qui dolorem eum fugiat quo voluptas nulla pariatur. At vero eos et accusamus et iusto odio dignissimos ducimus qui blanditiis praesentium voluptatum deleniti atque corrupti quos dolores et quas molestias excepturi sint occaecati cupiditate non provident, similique sunt in culpa qui officia deserunt mollitia animi, id est laborum et dolorum fuga.";
+
+  function cleanupPerformanceTest() {
+    try {
+      gm._drop('performance_graph');
+      db._graphs.remove('performance_graph');
+    } catch (e) {
+    }
+    try {
+      db._drop('perf_vertices');
+    } catch (e) {
+    }
+    try {
+      db._drop('perf_edges');
+    } catch (e) {
+    }
+  }
+
+  function setupPerformanceGraph() {
+    cleanupPerformanceTest();
+    
+    // Create collections
+    const vertices = db._create('perf_vertices');
+    const edges = db._createEdgeCollection('perf_edges');
+    
+    // Create graph
+    gm._create('performance_graph', [
+      gm._relation('perf_edges', 'perf_vertices', 'perf_vertices')
+    ],[], {numberOfShards: 5});
+    
+    // Prepare all vertices for batch insert
+    const allVertices = [];
+    const rootKey = 'root';
+    
+    // Add root vertex
+    allVertices.push({
+      _key: rootKey,
+      name: 'Root Node',
+      attr1: LARGE_STRING,
+      attr2: LARGE_STRING,
+      attr3: LARGE_STRING,
+      attr4: LARGE_STRING,
+      attr5: LARGE_STRING
+    });
+    
+    // Add depth 1 vertices (10 children of root)
+    const depth1Keys = [];
+    for (let i = 0; i < 10; i++) {
+      const key = `depth1_${i}`;
+      depth1Keys.push(key);
+      allVertices.push({
+        _key: key,
+        name: `Depth 1 Node ${i}`,
+        attr1: LARGE_STRING,
+        attr2: LARGE_STRING,
+        attr3: LARGE_STRING,
+        attr4: LARGE_STRING,
+        attr5: LARGE_STRING
+      });
+    }
+    
+    // Add depth 2 vertices (10 children for each depth 1 node)
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        const key = `depth2_${i}_${j}`;
+        allVertices.push({
+          _key: key,
+          name: `Depth 2 Node ${i}-${j}`,
+          attr1: LARGE_STRING,
+          attr2: LARGE_STRING,
+          attr3: LARGE_STRING,
+          attr4: LARGE_STRING,
+          attr5: LARGE_STRING
+        });
+      }
+    }
+    
+    // Batch insert all vertices
+    vertices.insert(allVertices);
+    
+    // Prepare all edges for batch insert
+    const allEdges = [];
+    
+    // Add edges from root to depth 1 nodes
+    for (let i = 0; i < 50; i++) {
+      const key = depth1Keys[i];
+      allEdges.push({
+        _from: `perf_vertices/${rootKey}`,
+        _to: `perf_vertices/${key}`,
+        relation: `root_to_${key}`,
+        edge_attr1: LARGE_STRING,
+        edge_attr2: LARGE_STRING,
+        edge_attr3: LARGE_STRING,
+        edge_attr4: LARGE_STRING,
+        edge_attr5: LARGE_STRING
+      });
+    }
+    
+    // Add edges from depth 1 to depth 2 nodes
+    for (let i = 0; i < 50; i++) {
+      const parentKey = depth1Keys[i];
+      for (let j = 0; j < 10; j++) {
+        const key = `depth2_${i}_${j}`;
+        allEdges.push({
+          _from: `perf_vertices/${parentKey}`,
+          _to: `perf_vertices/${key}`,
+          relation: `${parentKey}_to_${key}`,
+          edge_attr1: LARGE_STRING,
+          edge_attr2: LARGE_STRING,
+          edge_attr3: LARGE_STRING,
+          edge_attr4: LARGE_STRING,
+          edge_attr5: LARGE_STRING
+        });
+      }
+    }
+    
+    // Batch insert all edges
+    edges.insert(allEdges);
+    
+    require("internal").print("=== PERFORMANCE GRAPH CREATED ===");
+    require("internal").print("Total vertices:", vertices.count());
+    require("internal").print("Total edges:", edges.count());
+    require("internal").print("Root vertex size (approx):", JSON.stringify(vertices.document(rootKey)).length, "bytes");
+  }
+
+  return {
+    setUp: setupPerformanceGraph,
+    tearDown: cleanupPerformanceTest,
+
+    test_large_tree_performance: function() {
+      const startTime = Date.now();
+      
+      let cmd = api + "/performance_graph?nodeStart=perf_vertices/root";
+      let doc = arango.GET_RAW(cmd);
+
+      const endTime = Date.now();
+      const executionTime = endTime - startTime;
+
+      require("internal").print("=== LARGE TREE PERFORMANCE TEST ===");
+      require("internal").print("URL:", cmd);
+      require("internal").print("Execution time:", executionTime, "ms");
+      require("internal").print("Response Code:", doc.code);
+      require("internal").print("Response size (approx):", JSON.stringify(doc.parsedBody).length, "bytes");
+      require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
+      require("internal").print("Edges Count:", doc.parsedBody.edges ? doc.parsedBody.edges.length : 'N/A');
+
+      assertEqual(doc.code, 200);
+      assertEqual(doc.headers['content-type'], contentType);
+      assertFalse(doc.parsedBody['error']);
+      
+      // Basic structure checks
+      assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+      assertTrue(doc.parsedBody.hasOwnProperty('edges'));
+      assertTrue(doc.parsedBody.hasOwnProperty('settings'));
+      assertTrue(Array.isArray(doc.parsedBody.nodes));
+      assertTrue(Array.isArray(doc.parsedBody.edges));
+      
+      // Assert exact counts for the tree structure:
+      // 1 root + 10 depth1 + 100 depth2 = 111 vertices
+      // 10 root->depth1 + 100 depth1->depth2 = 110 edges
+      assertEqual(doc.parsedBody.nodes.length, 111, "Expected 111 nodes (1 root + 10 depth1 + 100 depth2)");
+      assertEqual(doc.parsedBody.edges.length, 110, "Expected 110 edges (10 root->depth1 + 100 depth1->depth2)");
+      
+      // Verify root node is properly marked as start vertex
+      let rootNode = doc.parsedBody.nodes.find(n => n.id === 'perf_vertices/root');
+      assertTrue(rootNode !== undefined, "Root node should be present");
+      assertTrue(rootNode.hasOwnProperty('borderWidth'), "Root node should have borderWidth");
+      assertTrue(rootNode.hasOwnProperty('shadow'), "Root node should have shadow");
+      assertEqual(rootNode.borderWidth, 4, "Root node should have border width of 4");
+      
+      // Verify node structure contains our large attributes (indirectly through label/title)
+      assertTrue(rootNode.hasOwnProperty('label'));
+      assertTrue(rootNode.hasOwnProperty('title'));
+      
+      // Verify we have the expected vertex collections in settings
+      assertTrue(doc.parsedBody.settings.hasOwnProperty('vertexCollections'));
+      assertEqual(doc.parsedBody.settings.vertexCollections.length, 1);
+      assertEqual(doc.parsedBody.settings.vertexCollections[0].name, "perf_vertices");
+      
+      // Verify we have the expected edge collections in settings
+      assertTrue(doc.parsedBody.settings.hasOwnProperty('edgesCollections'));
+      assertEqual(doc.parsedBody.settings.edgesCollections.length, 1);
+      assertEqual(doc.parsedBody.settings.edgesCollections[0].name, "perf_edges");
+      
+      // Verify start vertex is correctly set
+      assertEqual(doc.parsedBody.settings.startVertex._id, "perf_vertices/root");
+      assertEqual(doc.parsedBody.settings.startVertex._key, "root");
+      
+      require("internal").print("=== PERFORMANCE TEST COMPLETED SUCCESSFULLY ===");
+      require("internal").print("All", doc.parsedBody.nodes.length, "vertices and", doc.parsedBody.edges.length, "edges returned correctly");
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 // Run all test suites
 ////////////////////////////////////////////////////////////////////////////////
 jsunity.run(errorHandlingSuite);
@@ -632,5 +824,6 @@ jsunity.run(basicFunctionalitySuite);
 jsunity.run(configurationParametersSuite);
 jsunity.run(advancedFunctionalitySuite);
 jsunity.run(settingsAndMetadataSuite);
+jsunity.run(performanceTestSuite);
 
 return jsunity.done(); 

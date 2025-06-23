@@ -1081,23 +1081,20 @@ var buildAQLQueries = function (config, name, startVertex, multipleIds) {
   if (config.query) {
     aqlQuery = config.query;
   } else {
+    const buildQuery = (id, depth, limit) => {
+      return `
+        FOR v, e, p IN 0..${depth} ANY "${id}" GRAPH "${name}"
+        ${limit ? `LIMIT ${limit}` : ''}
+        RETURN p
+      `;
+    }
     if (multipleIds) {
       _.each(multipleIds, function (nodeid) {
-        aqlQuery =
-          'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(nodeid) + ' GRAPH ' + JSON.stringify(name);
-        if (limit !== 0) {
-          aqlQuery += ' LIMIT ' + limit;
-        }
-        aqlQuery += ' RETURN p';
+        aqlQuery = buildQuery(nodeid, depth || 2, limit);
         aqlQueries.push(aqlQuery);
       });
     } else {
-      aqlQuery =
-        'FOR v, e, p IN 0..' + (depth || '2') + ' ANY ' + JSON.stringify(startVertex._id) + ' GRAPH ' + JSON.stringify(name);
-      if (limit !== 0) {
-        aqlQuery += ' LIMIT ' + limit;
-      }
-      aqlQuery += ' RETURN p';
+      aqlQuery = buildQuery(startVertex._id, depth || 2, limit);
     }
   }
 
