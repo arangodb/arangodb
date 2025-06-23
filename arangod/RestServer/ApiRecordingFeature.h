@@ -47,6 +47,8 @@ struct ApiCallTimeScale {
 // Declare metrics
 DECLARE_HISTOGRAM(arangodb_api_recording_call_time, ApiCallTimeScale,
                   "Execution time histogram for API recording calls [ns]");
+DECLARE_HISTOGRAM(arangodb_aql_recording_call_time, ApiCallTimeScale,
+                  "Execution time histogram for AQL recording calls [ns]");
 
 struct ApiCallRecord {
   std::chrono::system_clock::time_point timeStamp;
@@ -107,6 +109,7 @@ class ApiRecordingFeature : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "ApiRecording"; }
   static constexpr size_t NUMBER_OF_API_RECORD_LISTS = 256;
+  static constexpr size_t NUMBER_OF_AQL_RECORD_LISTS = 256;
 
   explicit ApiRecordingFeature(Server& server);
   ~ApiRecordingFeature() override;
@@ -122,7 +125,7 @@ class ApiRecordingFeature : public ArangodFeature {
   // Iterates over API call records from newest to oldest, invoking the given
   // callback function for each record. Thread-safe.
   template<typename F>
-  requires std::is_invocable_v<F, ApiCallRecord const&>
+    requires std::is_invocable_v<F, ApiCallRecord const&>
   void doForApiCallRecords(F&& callback) const {
     if (_apiCallRecord) {
       _apiCallRecord->forItems(std::forward<F>(callback));
@@ -132,7 +135,7 @@ class ApiRecordingFeature : public ArangodFeature {
   // Iterates over AQL query records from newest to oldest, invoking the given
   // callback function for each record. Thread-safe.
   template<typename F>
-  requires std::is_invocable_v<F, AqlQueryRecord const&>
+    requires std::is_invocable_v<F, AqlQueryRecord const&>
   void doForAqlQueryRecords(F&& callback) const {
     if (_aqlCallRecord) {
       _aqlCallRecord->forItems(std::forward<F>(callback));
@@ -152,9 +155,16 @@ class ApiRecordingFeature : public ArangodFeature {
   // Total memory limit for all ApiCallRecord lists combined
   size_t _totalMemoryLimit{25600000};  // Default: ~25MB
 
+  // Total memory limit for all AqlCallRecord lists combined
+  size_t _totalMemoryLimitAql{25600000};  // Default: ~25MB
+
   // Memory limit for one list of ApiCallRecords (calculated as
   // _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
   size_t _memoryPerApiRecordList{100000};
+
+  // Memory limit for one list of AqlCallRecords (calculated as
+  // _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
+  size_t _memoryPerAqlRecordList{100000};
 
   /// record of recent api calls:
   std::unique_ptr<arangodb::BoundedList<ApiCallRecord>> _apiCallRecord;
@@ -170,6 +180,9 @@ class ApiRecordingFeature : public ArangodFeature {
 
   // Metrics for measuring recordAPICall performance
   metrics::Histogram<metrics::LogScale<double>>& _recordApiCallTimes;
+
+  // Metrics for measuring recordAAqlQuery performance
+  metrics::Histogram<metrics::LogScale<double>>& _recordAqlCallTimes;
 };
 
 }  // namespace arangodb

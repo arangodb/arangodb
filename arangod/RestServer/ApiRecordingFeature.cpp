@@ -46,7 +46,9 @@ size_t AqlQueryRecord::memoryUsage() const noexcept {
 ApiRecordingFeature::ApiRecordingFeature(Server& server)
     : ArangodFeature{server, *this},
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_api_recording_call_time{})) {
+          arangodb_api_recording_call_time{})),
+      _recordAqlCallTimes(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_recording_call_time{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -74,17 +76,25 @@ void ApiRecordingFeature::collectOptions(
       new UInt64Parameter(&_totalMemoryLimit, 1, 256000, 256000000000),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
+
+  options->addOption(
+      "--server.aql-recording-memory-limit",
+      "Memory limit for the list of AqlCallRecords.",
+      new UInt64Parameter(&_totalMemoryLimitAql, 1, 256000, 256000000000),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
+                                          arangodb::options::Flags::Command));
 }
 
 void ApiRecordingFeature::prepare() {
   // Calculate per-list memory limit
   _memoryPerApiRecordList = _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS;
+  _memoryPerAqlRecordList = _totalMemoryLimitAql / NUMBER_OF_AQL_RECORD_LISTS;
 
   if (_enabled) {
     _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
         _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
     _aqlCallRecord = std::make_unique<BoundedList<AqlQueryRecord>>(
-        _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
+        _memoryPerAqlRecordList, NUMBER_OF_AQL_RECORD_LISTS);
   }
 }
 
@@ -136,8 +146,19 @@ void ApiRecordingFeature::recordAQLQuery(
     return;
   }
 
+  // Start timing
+  auto start = std::chrono::steady_clock::now();
+
   _aqlCallRecord->prepend(
       AqlQueryRecord(queryString, database, std::move(bindParameters)));
+
+  // End timing and record metrics
+  auto end = std::chrono::steady_clock::now();
+  int64_t elapsed =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+  // Record in histogram (seconds)
+  _recordAqlCallTimes.count(static_cast<double>(elapsed));
 }
 
 void ApiRecordingFeature::cleanupLoop() {

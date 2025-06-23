@@ -108,6 +108,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief factory method for creating a query. this must be used to
   /// ensure that Query objects are always created using shared_ptrs.
+  /// Actually, this should really be a method of the `AqlFeature`, but
+  /// we do not revisit all call sites and ensure that we have access
+  /// to the `AqlFeature`. So this cleanup is for a later day. Therefore,
+  /// we use the `server()` functionality in the `TRI_vocbase_t` in the
+  /// `transaction::Context` to get access to the `AqlFeature` for now.
+  /// Over time, one should have access to the `AqlFeature` to create
+  /// a new `Query` object, but we are not there yet.
   static std::shared_ptr<Query> create(
       std::shared_ptr<transaction::Context> ctx, QueryString queryString,
       std::shared_ptr<velocypack::Builder> bindParameters,

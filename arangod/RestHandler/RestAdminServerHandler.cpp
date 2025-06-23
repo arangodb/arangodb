@@ -337,6 +337,13 @@ void RestAdminServerHandler::handleAqlQueries() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
+  if (!ServerState::instance()->isCoordinator() ||
+      !ServerState::instance()->isSingleServer()) {
+    generateError(
+        Result(TRI_ERROR_NOT_IMPLEMENTED,
+               "API only available on coordinators and single servers"));
+    return;
+  }
 
   auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
 

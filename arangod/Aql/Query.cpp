@@ -62,6 +62,7 @@
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/ApiRecordingFeature.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -191,24 +192,6 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 
   // store name of user that started the query
   _user = ExecContext::current().user();
-
-  // Record the Query:
-  ApiRecordingFeature& apiRecordingFeature(
-      _transactionContext->vocbase()
-          .server()
-          .getFeature<ApiRecordingFeature>());
-  velocypack::SharedSlice bindParamsCopy;
-  if (bindParameters != nullptr && !bindParameters->isEmpty() &&
-      !bindParameters->slice().isNone()) {
-    bindParamsCopy = velocypack::SharedSlice(bindParameters->bufferRef());
-  } else {
-    VPackBuilder builder;
-    { VPackObjectBuilder guard(&builder); }
-    bindParamsCopy = velocypack::SharedSlice{*builder.steal()};
-  }
-  apiRecordingFeature.recordAQLQuery(_queryString.string(),
-                                     _transactionContext->vocbase().name(),
-                                     std::move(bindParamsCopy));
 }
 
 /// Used to construct a full query. the constructor is protected to ensure
@@ -286,31 +269,21 @@ void Query::destroy() {
 
 /// @brief factory function for creating a query. this must be used to
 /// ensure that Query objects are always created using shared_ptrs.
+/// Actually, this should really be a method of the `AqlFeature`, but
+/// we do not revisit all call sites and ensure that we have access
+/// to the `AqlFeature`. So this cleanup is for a later day. Therefore,
+/// we use the `server()` functionality in the `TRI_vocbase_t` in the
+/// `transaction::Context` to get access to the `AqlFeature` for now.
+/// Over time, one should have access to the `AqlFeature` to create
+/// a new `Query` object, but we are not there yet.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
     Scheduler* scheduler) {
-  TRI_ASSERT(ctx != nullptr);
-  // workaround to enable make_shared on a class with a protected constructor
-  struct MakeSharedQuery final : Query {
-    MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
-                    QueryString queryString,
-                    std::shared_ptr<velocypack::Builder> bindParameters,
-                    QueryOptions options, Scheduler* scheduler)
-        : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options), scheduler} {}
-
-    ~MakeSharedQuery() final {
-      // Destroy this query, otherwise it's still
-      // accessible while the query is being destructed,
-      // which can result in a data race on the vptr
-      destroy();
-    }
-  };
-  TRI_ASSERT(ctx != nullptr);
-  return std::make_shared<MakeSharedQuery>(
-      std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options), scheduler);
+  AqlFeature& aqlFeature = ctx->vocbase().server().getFeature<AqlFeature>();
+  return aqlFeature.createQuery(std::move(ctx), std::move(queryString),
+                                std::move(bindParameters), std::move(options),
+                                scheduler);
 }
 
 /// @brief return the user that started the query
