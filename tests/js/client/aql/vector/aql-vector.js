@@ -281,7 +281,7 @@ function VectorIndexL2TestSuite() {
 
                 // For l2 metric the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].dist < results[j].dist);
+                    assertTrue(results[j - 1].dist <= results[j].dist);
                 }
             }
         },
