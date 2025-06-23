@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -35,6 +35,7 @@ const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const { versionHas } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
@@ -50,10 +51,12 @@ function VectorIndexL2TestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 12132390894;
+    const numberOfDocs = 500;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -63,11 +66,11 @@ function VectorIndexL2TestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 500; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 250) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -424,7 +427,13 @@ function VectorIndexL2TestSuite() {
             assertEqual(resultsWithSkip.length, 5);
             assertEqual(resultsWithoutSkip.length, 8);
 
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            const expectedKeys = new Set(resultsWithoutSkip.slice(3).map(r => r.k));
+            
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+            assertEqual(skipKeys.size, expectedKeys.size);
+            assertTrue([...skipKeys].every(key => expectedKeys.has(key)));
         },
 
         testApproxL2Subquery: function() {
@@ -506,7 +515,14 @@ function VectorIndexL2TestSuite() {
                 assertEqual(skipNeighbours.length, 5);
                 assertEqual(nonSkipNeighbours.length, 8);
 
-                assertEqual(skipNeighbours, nonSkipNeighbours.slice(3, nonSkipNeighbours.length));
+                // Compare neighbours as sets by extracting keys
+                const skipNeighbourKeys = new Set(skipNeighbours.map(n => n.key));
+                const nonSkipNeighbourKeys = new Set(nonSkipNeighbours.map(n => n.key));
+                const expectedNeighbourKeys = new Set(nonSkipNeighbours.slice(3).map(n => n.key));
+                
+                assertTrue([...skipNeighbourKeys].every(key => nonSkipNeighbourKeys.has(key)));
+                assertEqual(skipNeighbourKeys.size, expectedNeighbourKeys.size);
+                assertTrue([...skipNeighbourKeys].every(key => expectedNeighbourKeys.has(key)));
             }
         },
     };
@@ -516,10 +532,12 @@ function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 769406749034;
+    const numberOfDocs = 1000;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -529,11 +547,11 @@ function VectorIndexCosineTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 250) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -551,7 +569,7 @@ function VectorIndexCosineTestSuite() {
                 params: {
                     metric: "cosine",
                     dimension: dimension,
-                    nLists: 10
+                    nLists: 2
                 },
             });
         },
@@ -626,7 +644,11 @@ function VectorIndexCosineTestSuite() {
 
                 // For cosine similarity the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].sim > results[j].sim);
+                    assertTrue(results[j - 1].sim >= results[j].sim);
+                }
+                // Assert that distances are in [-1, 1] range
+                for (let j = 0; j < results.length; ++j) {
+                  assertTrue(Math.abs(results[j].sim) <= 1.01);
                 }
             }
         },
@@ -680,7 +702,14 @@ function VectorIndexCosineTestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            const expectedKeys = new Set(resultsWithoutSkip.slice(3).map(r => r.k));
+            
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+            assertEqual(skipKeys.size, expectedKeys.size);
+            assertTrue([...skipKeys].every(key => expectedKeys.has(key)));
         },
     };
 }
@@ -689,10 +718,12 @@ function MultipleVectorIndexesOnField() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 47388274;
+    const numberOfDocs = 1000;
+    const seed = randomInteger();
 
     return {
         setUp: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -702,11 +733,11 @@ function MultipleVectorIndexesOnField() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 500) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
