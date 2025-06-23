@@ -1081,10 +1081,65 @@ var buildAQLQueries = function (config, name, startVertex, multipleIds) {
   if (config.query) {
     aqlQuery = config.query;
   } else {
+    /*
+     * ATTRIBUTES ACCESSED BY processGraphData:
+     * 
+     * VERTEX ATTRIBUTES (accessed in generateNodeObject):
+     * - Fixed: v._id, v._key (for labels and IDs)
+     * - Dynamic: v[config.nodeLabel] (when config.nodeLabel is set)
+     * - Dynamic: v[config.nodeSize] (when config.nodeSize is set)  
+     * - Dynamic: v[config.nodeColorAttribute] (when config.nodeColorAttribute is set)
+     * 
+     * EDGE ATTRIBUTES (accessed in processGraphData):
+     * - Fixed: e._id, e._from, e._to (for connectivity and IDs)
+     * - Dynamic: e[config.edgeLabel] (when config.edgeLabel is set)
+     * - Dynamic: e[config.edgeColorAttribute] (when config.edgeColorAttribute is set)
+     * 
+     * NOTE: Dynamic attributes use getAttributeByKey() for nested access (e.g. "attr.subattr")
+     */
+    
+    // Build dynamic attribute selection based on config
+    const vertexAttrs = ['_id', '_key', '_rev']; // Always include system attributes
+    const edgeAttrs = ['_id', '_from', '_to']; // Always include system attributes
+    
+    // Add dynamic vertex attributes based on config
+    if (config.nodeLabel) {
+      const labelAttrs = config.nodeLabel.trim().split(' ');
+      labelAttrs.forEach(attr => {
+        if (!vertexAttrs.includes(attr) && attr.indexOf('.') === -1) {
+          vertexAttrs.push(attr);
+        }
+      });
+    }
+    if (config.nodeSize && !vertexAttrs.includes(config.nodeSize)) {
+      vertexAttrs.push(config.nodeSize);
+    }
+    if (config.nodeColorAttribute && !vertexAttrs.includes(config.nodeColorAttribute)) {
+      vertexAttrs.push(config.nodeColorAttribute);
+    }
+    
+    // Add dynamic edge attributes based on config
+    if (config.edgeLabel && !edgeAttrs.includes(config.edgeLabel) && config.edgeLabel.indexOf('.') === -1) {
+      edgeAttrs.push(config.edgeLabel);
+    }
+    if (config.edgeColorAttribute && !edgeAttrs.includes(config.edgeColorAttribute)) {
+      edgeAttrs.push(config.edgeColorAttribute);
+    }
+
     const buildQuery = (id, depth, limit) => {
       return `
-        FOR v, e, p IN 0..${depth} ANY "${id}" GRAPH "${name}"
+        FOR v, e IN 0..${depth} ANY "${id}" GRAPH "${name}"
         ${limit ? `LIMIT ${limit}` : ''}
+        /* Optimized query: return only needed attributes instead of full documents */
+        LET vertex_data = e == null ? KEEP(v, ${JSON.stringify(vertexAttrs)}) : KEEP(v, ${JSON.stringify(vertexAttrs)})
+        LET edge_data = e == null ? null : KEEP(e, ${JSON.stringify(edgeAttrs)})
+        LET p = e == null ? { 
+          vertices: [vertex_data], 
+          edges: [] 
+        } : { 
+          vertices: [vertex_data], 
+          edges: [edge_data] 
+        }
         RETURN p
       `;
     }
@@ -1301,9 +1356,7 @@ var processGraphData = function (cursor, config, colors, startVertex, multipleId
     nodesColorAttributes = JSON.parse(config.nodesColorAttributes);
   }
   var nodesSizeValues = [];
-  var nodesSizeMinMax = [];
   var connectionsCounts = [];
-  var connectionsMinMax = [];
 
   var nodeNames = {};
   var edgesObj = {};
@@ -1316,7 +1369,6 @@ var processGraphData = function (cursor, config, colors, startVertex, multipleId
   var nodeLabel;
   var nodeSize;
   var sizeCategory;
-  var nodeObj;
   var notFoundString = "(attribute not found)";
 
   _.each(cursor.json, function (obj) {
