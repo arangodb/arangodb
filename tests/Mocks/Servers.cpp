@@ -419,6 +419,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
       network::ConnectionPool::Config{
           .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
               _server.getFeature<metrics::MetricsFeature>(), "mock")});
+  addFeature<ApiRecordingFeature>(false);
 
   if (start) {
     MockV8Server::startFeatures();
