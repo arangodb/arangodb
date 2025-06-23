@@ -128,16 +128,16 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   auto executeForClient(AqlCallStack stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> override;
 
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 
-/**
- * @brief Get the number of rows remaining for a client
- * TEST ONLY feature. This number should never be a concern for production code.
- *
- * @param clientId The client ID
- * @return The number of rows remaining for the client
- */
+  /**
+   * @brief Get the number of rows remaining for a client
+   * TEST ONLY feature. This number should never be a concern for production
+   * code.
+   *
+   * @param clientId The client ID
+   * @return The number of rows remaining for the client
+   */
   auto remainingRowsForClient(std::string const& clientId) const -> uint64_t;
 #endif
 
@@ -168,7 +168,7 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
    */
   auto fetchMore(AqlCallStack stack) -> ExecutionState;
 
-  auto allLanesComplete() const noexcept-> bool;
+  auto allLanesComplete() const noexcept -> bool;
 
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)

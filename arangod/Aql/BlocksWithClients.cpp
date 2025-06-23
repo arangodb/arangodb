@@ -200,28 +200,33 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
   auto call = callList.peekNextCall();
 
   auto& dataContainer = it->second;
-/*
- * In this block we need to handle the following behavior:
- * 1) Call without a hardLimit:
- * - Pull what is already on the dataContainer,
- * - if dataContainer does not have more data, fetch more from upstream.
- * 
- * 2) Call with a hardLimit = 0, without fullCount:
- * - This indicates this lane is complete and does not need more data.
- * - Clear what is still active in the dataContainer. (Do not drop ShadowRows)
- * - If all other lanes already reported a hardLimit, and upstream still HASMORE, then send hardLimit to upstream.
- * 
- * 3) Call with hardLimit = 0 and fullCount:
- * - This indicates this lane is ready to skip and count.
- * - I do not think that this is possible in practice. Therefor this will be asserted, but in prod handled like case 1.
- * - As case 1 is slower then necceassy, but always correct.
- *
- * Also NOTE: We are only doing this in the main query, not in subqueries. In the main query we can simply
- * return DONE with an empty block. For subqueries we would need to return a ShadowRow. However, the row is not
- * yet available, if upstream is not fully consumed.
- * We can only fix this by returning WAITING here, and waking up the caller, as soon as the ShadowRow is available.
-*/
-  if (stack.empty() && call.hasHardLimit() && call.getLimit() == 0 && !call.fullCount) {
+  /*
+   * In this block we need to handle the following behavior:
+   * 1) Call without a hardLimit:
+   * - Pull what is already on the dataContainer,
+   * - if dataContainer does not have more data, fetch more from upstream.
+   *
+   * 2) Call with a hardLimit = 0, without fullCount:
+   * - This indicates this lane is complete and does not need more data.
+   * - Clear what is still active in the dataContainer. (Do not drop ShadowRows)
+   * - If all other lanes already reported a hardLimit, and upstream still
+   * HASMORE, then send hardLimit to upstream.
+   *
+   * 3) Call with hardLimit = 0 and fullCount:
+   * - This indicates this lane is ready to skip and count.
+   * - I do not think that this is possible in practice. Therefor this will be
+   * asserted, but in prod handled like case 1.
+   * - As case 1 is slower then necceassy, but always correct.
+   *
+   * Also NOTE: We are only doing this in the main query, not in subqueries. In
+   * the main query we can simply return DONE with an empty block. For
+   * subqueries we would need to return a ShadowRow. However, the row is not yet
+   * available, if upstream is not fully consumed. We can only fix this by
+   * returning WAITING here, and waking up the caller, as soon as the ShadowRow
+   * is available.
+   */
+  if (stack.empty() && call.hasHardLimit() && call.getLimit() == 0 &&
+      !call.fullCount) {
     dataContainer.setSeenHardLimit();
     // Need to handle this case separately, as we do not want to fetch more
     // data from upstream.
@@ -231,7 +236,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
       stack.pushCall(callList);
       while (dataContainer.hasDataFor(call)) {
         // Just clear out what is still on the queue.
-        std::ignore = dataContainer.execute(stack, _upstreamState);           
+        std::ignore = dataContainer.execute(stack, _upstreamState);
       }
       stack.popCall();
     }
@@ -291,7 +296,7 @@ auto BlocksWithClientsImpl<Executor>::hardLimitDependency(AqlCallStack stack)
   // NOTE: We do not handle limits / skip here
   // They can differ between different calls to this executor.
   // We may need to revisit this for performance reasons.
-  stack.pushCall(AqlCallList{AqlCall{0,false,0, AqlCall::LimitType::HARD}});
+  stack.pushCall(AqlCallList{AqlCall{0, false, 0, AqlCall::LimitType::HARD}});
 
   TRI_ASSERT(_dependencies.size() == 1);
   auto [state, skipped, block] = _dependencies[0]->execute(stack);
@@ -310,7 +315,8 @@ auto BlocksWithClientsImpl<Executor>::hardLimitDependency(AqlCallStack stack)
   if (state != ExecutionState::WAITING && block != nullptr) {
     // We need to report everything that is not waiting
     // Here this could be a ShadowRow!
-    TRI_ASSERT(false) << "Right now we cannot get here, as the optimization is not yet active on subqueries.";
+    TRI_ASSERT(false) << "Right now we cannot get here, as the optimization is "
+                         "not yet active on subqueries.";
     _executor.distributeBlock(block, skipped, _clientBlockData);
   }
 
@@ -352,16 +358,20 @@ auto BlocksWithClientsImpl<Executor>::fetchMore(AqlCallStack stack)
 }
 
 template<class Executor>
-auto BlocksWithClientsImpl<Executor>::allLanesComplete() const noexcept -> bool {
-  return std::ranges::none_of(_clientBlockData,
-        [](const auto& entry) { return !entry.second.gotHardLimit(); });
+auto BlocksWithClientsImpl<Executor>::allLanesComplete() const noexcept
+    -> bool {
+  return std::ranges::none_of(_clientBlockData, [](const auto& entry) {
+    return !entry.second.gotHardLimit();
+  });
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 template<class Executor>
-auto BlocksWithClientsImpl<Executor>::remainingRowsForClient(std::string const& clientId) const -> uint64_t {
+auto BlocksWithClientsImpl<Executor>::remainingRowsForClient(
+    std::string const& clientId) const -> uint64_t {
   auto it = _clientBlockData.find(clientId);
-  TRI_ASSERT(it != _clientBlockData.end()) << "Test setup issue, clientId " << clientId << " is not registered";
+  TRI_ASSERT(it != _clientBlockData.end())
+      << "Test setup issue, clientId " << clientId << " is not registered";
   return it->second.remainingRows();
 }
 #endif

@@ -73,7 +73,7 @@ class DistributeClientBlock {
   auto execute(AqlCallStack callStack, ExecutionState upstreamState)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
-   /**
+  /**
    * @brief Check if we have received a hard limit
    * @return true if we have received a hard limit
    */

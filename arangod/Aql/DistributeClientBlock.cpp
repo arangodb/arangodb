@@ -236,22 +236,17 @@ auto DistributeClientBlock::gotHardLimit() const -> bool {
 /**
  * @brief Reset the hard limit
  */
-auto DistributeClientBlock::resetHardLimit() -> void {
-  _gotHardLimit = false;
-}
+auto DistributeClientBlock::resetHardLimit() -> void { _gotHardLimit = false; }
 
 /**
  * @brief Set hard limit has been seen.
  */
-auto DistributeClientBlock::setSeenHardLimit() -> void {
-  _gotHardLimit = true;
-}
+auto DistributeClientBlock::setSeenHardLimit() -> void { _gotHardLimit = true; }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 auto DistributeClientBlock::remainingRows() const -> uint64_t {
-  return std::accumulate(_queue.begin(), _queue.end(), 0,
-                         [](uint64_t sum, auto const& item) {
-                           return sum + item.numRows();
-                         });
+  return std::accumulate(
+      _queue.begin(), _queue.end(), 0,
+      [](uint64_t sum, auto const& item) { return sum + item.numRows(); });
 }
 #endif
