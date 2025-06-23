@@ -1297,6 +1297,7 @@ function import_with_updateSuite () {
 }
 
 jsunity.run(import__testing_createCollectionSuite);
+jsunity.run(import_type_parameterSuite);
 jsunity.run(import_self_contained_documentsSuite);
 jsunity.run(import_self_contained_documentsSuite2);
 jsunity.run(import_attribute_names_and_dataSuite);
