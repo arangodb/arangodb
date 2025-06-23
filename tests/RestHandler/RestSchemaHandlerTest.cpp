@@ -35,6 +35,7 @@ public:
   static void SetUpTestCase() {
     server = std::make_unique<MockRestAqlServer>();
     registry = QueryRegistryFeature::registry();
+    vocbase = &(server->getSystemDatabase());
 
     auto& vocbase = server->getSystemDatabase(); // "_system"
     std::shared_ptr<Builder> collectionJson;
@@ -75,6 +76,7 @@ public:
 protected:
   static inline std::unique_ptr<MockRestAqlServer> server;
   static inline QueryRegistry* registry;
+  static inline TRI_vocbase_t* vocbase;
 };
 
 // namespace {
@@ -90,8 +92,8 @@ protected:
 // }
 
 TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
-  auto& vocbase = server->getSystemDatabase();// "_system"
-  auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
+  //auto& vocbase = server->getSystemDatabase();// "_system"
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   fakeRequest->setRequestType(RequestType::POST);
 
@@ -99,16 +101,16 @@ TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
       server->server(), fakeRequest.release(),
       fakeResponse.release(), registry);
   testee->execute();
-  fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
-  EXPECT_EQ(fakeResponse->responseCode(), ResponseCode::METHOD_NOT_ALLOWED);
+  //fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  EXPECT_EQ(testee->response()->responseCode(), ResponseCode::METHOD_NOT_ALLOWED);
 }
 
 TEST_F(RestSchemaHandlerTest, CollectionCustomerReturnsTrue) {
-  auto& vocbase = server->getSystemDatabase(); // "_system"
+  //auto& vocbase = server->getSystemDatabase(); // "_system"
 
-  auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
   fakeRequest->setRequestType(RequestType::GET);
-  fakeRequest->addSuffix("testProducts");
+  fakeRequest->addSuffix("testProducts"); // _api/schema/testProducts
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
