@@ -381,8 +381,9 @@ void ShardLocking::serializeIntoBuilder(
 
 containers::FlatHashMap<ShardID, ServerID> const&
 ShardLocking::getShardMapping() {
-  if (_shardMapping.empty() && !_collectionLocking.empty()) {
+  if (_query.getShardMapping().empty() && !_collectionLocking.empty()) {
     containers::FlatHashSet<ShardID> shardIds;
+    containers::FlatHashMap<ShardID, ServerID> shardMapping;
     for (auto const& lockInfo : _collectionLocking) {
       auto& allShards = lockInfo.second.allShards;
       TRI_ASSERT(!allShards.empty());
@@ -413,26 +414,32 @@ ShardLocking::getShardMapping() {
     auto& trx = _query.trxForOptimization();
     if (trx.state()->options().allowDirtyReads) {
       ++cf.dirtyReadQueriesCounter();
-      _shardMapping = trx.state()->whichReplicas(shardIds);
+      shardMapping = trx.state()->whichReplicas(shardIds);
     } else
 #endif
     {
       // We have at least one shard, otherwise we would not have snippets!
-      _shardMapping = ci.getResponsibleServers(shardIds);
+      shardMapping = ci.getResponsibleServers(shardIds);
     }
-    TRI_ASSERT(_shardMapping.size() == shardIds.size());
+    TRI_ASSERT(shardMapping.size() == shardIds.size());
 
     for (auto const& lockInfo : _collectionLocking) {
       for (auto const& sid : lockInfo.second.allShards) {
-        auto mapped = _shardMapping.find(sid);
-        if (mapped != _shardMapping.end()) {
+        auto mapped = shardMapping.find(sid);
+        if (mapped != shardMapping.end()) {
           lockInfo.first->addShardToServer(sid, mapped->second);
         }
       }
     }
+
+    // At this point the shardMapping is fixed.
+    // We inject it into the query context.
+    // Note we want to actually forward it into the TransactionContext,
+    // but that is more of a change.
+    _query.setShardMapping(std::move(shardMapping));
   }
 
-  return _shardMapping;
+  return _query.getShardMapping();
 }
 
 std::unordered_set<ShardID> const& ShardLocking::shardsForSnippet(

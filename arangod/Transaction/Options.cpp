@@ -115,6 +115,15 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice slice) {
   if (auto value = slice.get("allowDirtyReads"); value.isBool()) {
     allowDirtyReads = value.isTrue();
   } else {
+    TRI_IF_FAILURE("TransactionState::maybeUseDirtyReads") {
+      // This failure point generates some entropy in tests
+      // and sometimes allows dirty reads to be used.
+      // This is to use coverage in Traversal tests without
+      // duplicating them
+      if (std::rand() % 2 == 0) {
+        allowDirtyReads = true;
+      }
+    }
     TRI_IF_FAILURE("TransactionState::dirtyReadsAreDefault") {
       allowDirtyReads = true;
     }

@@ -160,8 +160,6 @@ class ShardLocking {
   std::unordered_map<ServerID, std::unordered_map<AccessMode::Type,
                                                   std::unordered_set<ShardID>>>
       _serverToLockTypeToShard;
-
-  containers::FlatHashMap<ShardID, ServerID> _shardMapping;
 };
 
 }  // namespace aql

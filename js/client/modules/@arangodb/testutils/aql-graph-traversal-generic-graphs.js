@@ -162,7 +162,7 @@ class TestGraph {
         break;
       }
       case TestVariants.GeneralGraph: {
-        const options = {numberOfShards: this.numberOfShards};
+        const options = {numberOfShards: this.numberOfShards, replicationFactor: 2};
         cgm._create(this.name(), [this.eRel], [this.on], options);
         verifyGeneralGraph(this.name(), options);
         break;
@@ -171,7 +171,8 @@ class TestGraph {
         const options = {
           numberOfShards: this.numberOfShards,
           smartGraphAttribute: ProtoGraph.smartAttr(),
-          isSmart: true
+          isSmart: true,
+          replicationFactor: 2
         };
         this.verificationProperties.isSmart = true;
         sgm._create(this.name(), [this.eRel], [this.on], options);
@@ -183,7 +184,8 @@ class TestGraph {
           numberOfShards: this.numberOfShards,
           smartGraphAttribute: ProtoGraph.smartAttr(),
           isSmart: true,
-          isDisjoint: true
+          isDisjoint: true,
+          replicationFactor: 2
         };
         this.verificationProperties.isSmart = true;
         this.verificationProperties.isDisjoint = true;
@@ -194,7 +196,8 @@ class TestGraph {
       case TestVariants.EnterpriseGraph: {
         const options = {
           numberOfShards: this.numberOfShards,
-          isSmart: true
+          isSmart: true,
+          replicationFactor: 2
         };
         this.verificationProperties.isSmart = true;
         this.verificationProperties.isEnterprise = true;
@@ -207,7 +210,8 @@ class TestGraph {
         const options = {
           numberOfShards: this.numberOfShards,
           isSmart: true,
-          isDisjoint: true
+          isDisjoint: true,
+          replicationFactor: 2
         };
         this.verificationProperties.isSmart = true;
         this.verificationProperties.isEnterprise = true;
