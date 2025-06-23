@@ -158,7 +158,6 @@ struct TRI_vocbase_t {
   TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
 
   arangodb::ArangodServer& _server;
-  arangodb::ApiRecordingFeature* _apiRecordingFeatureCache = nullptr;
   arangodb::StorageEngine& _engine;
   arangodb::VersionTracker& _versionTracker;
   bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
@@ -212,8 +211,7 @@ struct TRI_vocbase_t {
 
   template<typename As>
   As& engine() const noexcept
-    requires(std::derived_from<As, arangodb::StorageEngine>)
-  {
+      requires(std::derived_from<As, arangodb::StorageEngine>) {
     return static_cast<As&>(_engine);
   }
 
@@ -272,7 +270,6 @@ struct TRI_vocbase_t {
 #endif
 
   arangodb::ArangodServer& server() const noexcept { return _server; }
-  arangodb::ApiRecordingFeature* apiRecordingFeature();
 
   TRI_voc_tick_t id() const { return _info.getId(); }
   decltype(auto) name() const { return _info.getName(); }

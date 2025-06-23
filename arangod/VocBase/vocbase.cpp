@@ -64,7 +64,6 @@
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/Version.h"
-#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -1444,14 +1443,6 @@ TRI_vocbase_t::~TRI_vocbase_t() {
   _dataSourceById.clear();
   _dataSourceByName.clear();
   _dataSourceByUuid.clear();
-}
-
-arangodb::ApiRecordingFeature* TRI_vocbase_t::apiRecordingFeature() {
-  if (_apiRecordingFeatureCache == nullptr) {
-    _apiRecordingFeatureCache =
-        &(_server.getFeature<arangodb::ApiRecordingFeature>());
-  }
-  return _apiRecordingFeatureCache;
 }
 
 std::string TRI_vocbase_t::path() const { return _engine.databasePath(); }
