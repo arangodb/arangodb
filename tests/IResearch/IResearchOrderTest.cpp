@@ -323,7 +323,6 @@ class IResearchOrderTest
                           false);  // required for calculationVocbase
     features.emplace_back(server.addFeature<arangodb::ApiRecordingFeature>(),
                           false);
-    features.emplace_back(server.addFeature<arangodb::AqlFeature>(), false);
 
     for (auto& f : features) {
       f.first.prepare();
