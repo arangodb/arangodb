@@ -3317,6 +3317,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::ApiRecordingFeature>();
+  newServer.addFeature<arangodb::AqlFeature>();
 
   auto cleanup = arangodb::scopeGuard([&]() noexcept {
     dbfeature.unprepare();
@@ -4398,6 +4399,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::ApiRecordingFeature>();
+  newServer.addFeature<arangodb::AqlFeature>();
 
   dbFeature.prepare();
 
@@ -4745,6 +4747,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::ApiRecordingFeature>();
+  newServer.addFeature<arangodb::AqlFeature>();
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>().prepare();
@@ -4895,6 +4898,7 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::ApiRecordingFeature>();
+  newServer.addFeature<arangodb::AqlFeature>();
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
     server.getFeature<arangodb::DatabaseFeature>()
