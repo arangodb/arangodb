@@ -607,6 +607,12 @@ void AqlFunctionFeature::addMiscFunctions() {
                              FF::CanRunOnDBServerCluster,
                              FF::CanRunOnDBServerOneShard),
          &functions::ApproxNearL2});
+
+    add({"APPROX_NEAR_INNER_PRODUCT", ".,.|.",
+         Function::makeFlags(FF::Deterministic, FF::Cacheable,
+                             FF::CanRunOnDBServerCluster,
+                             FF::CanRunOnDBServerOneShard),
+         &functions::ApproxNearL2});
   }
 #ifdef USE_ENTERPRISE
   add({"SELECT_SMART_DISTRIBUTE_GRAPH_INPUT", ".,.",
