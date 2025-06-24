@@ -1098,41 +1098,73 @@ var buildAQLQueries = function (config, name, startVertex, multipleIds) {
      * NOTE: Dynamic attributes use getAttributeByKey() for nested access (e.g. "attr.subattr")
      */
     
-    // Build dynamic attribute selection based on config
-    const vertexAttrs = ['_id', '_key', '_rev']; // Always include system attributes
-    const edgeAttrs = ['_id', '_from', '_to']; // Always include system attributes
-    
-    // Add dynamic vertex attributes based on config
-    if (config.nodeLabel) {
-      const labelAttrs = config.nodeLabel.trim().split(' ');
-      labelAttrs.forEach(attr => {
-        if (!vertexAttrs.includes(attr) && attr.indexOf('.') === -1) {
-          vertexAttrs.push(attr);
-        }
-      });
-    }
-    if (config.nodeSize && !vertexAttrs.includes(config.nodeSize)) {
-      vertexAttrs.push(config.nodeSize);
-    }
-    if (config.nodeColorAttribute && !vertexAttrs.includes(config.nodeColorAttribute)) {
-      vertexAttrs.push(config.nodeColorAttribute);
-    }
-    
-    // Add dynamic edge attributes based on config
-    if (config.edgeLabel && !edgeAttrs.includes(config.edgeLabel) && config.edgeLabel.indexOf('.') === -1) {
-      edgeAttrs.push(config.edgeLabel);
-    }
-    if (config.edgeColorAttribute && !edgeAttrs.includes(config.edgeColorAttribute)) {
-      edgeAttrs.push(config.edgeColorAttribute);
-    }
+
 
     const buildQuery = (id, depth, limit) => {
+      // Build vertex data with pre-computed attributes
+      let vertexDataQuery = `{
+        _id: v._id,
+        _key: v._key,
+        _rev: v._rev`;
+      
+      // Add node label attributes
+      if (config.nodeLabel) {
+        const labelAttrs = config.nodeLabel.trim().split(' ');
+        labelAttrs.forEach((attr, index) => {
+          const attrPath = attr.indexOf('.') > -1 ? `v.${attr}` : `v["${attr}"]`;
+          vertexDataQuery += `,
+        nodeLabel_${index}: ${attrPath}`;
+        });
+      }
+      
+      // Add node size attribute
+      if (config.nodeSize) {
+        const sizePath = config.nodeSize.indexOf('.') > -1 ? `v.${config.nodeSize}` : `v["${config.nodeSize}"]`;
+        vertexDataQuery += `,
+        nodeSize: ${sizePath}`;
+      }
+      
+      // Add node color attribute
+      if (config.nodeColorAttribute) {
+        const colorPath = config.nodeColorAttribute.indexOf('.') > -1 ? `v.${config.nodeColorAttribute}` : `v["${config.nodeColorAttribute}"]`;
+        vertexDataQuery += `,
+        nodeColorAttribute: ${colorPath}`;
+      }
+      
+      vertexDataQuery += `
+      }`;
+      
+      // Build edge data with pre-computed attributes
+      let edgeDataQuery = `{
+        _id: e._id,
+        _from: e._from,
+        _to: e._to`;
+      
+      // Add edge label attribute
+      if (config.edgeLabel && config.edgeLabel.indexOf('.') === -1) {
+        edgeDataQuery += `,
+        edgeLabel: e["${config.edgeLabel}"]`;
+      } else if (config.edgeLabel && config.edgeLabel.indexOf('.') > -1) {
+        edgeDataQuery += `,
+        edgeLabel: e.${config.edgeLabel}`;
+      }
+      
+      // Add edge color attribute
+      if (config.edgeColorAttribute) {
+        const edgeColorPath = config.edgeColorAttribute.indexOf('.') > -1 ? `e.${config.edgeColorAttribute}` : `e["${config.edgeColorAttribute}"]`;
+        edgeDataQuery += `,
+        edgeColorAttribute: ${edgeColorPath}`;
+      }
+      
+      edgeDataQuery += `
+      }`;
+      
       return `
         FOR v, e IN 0..${depth} ANY "${id}" GRAPH "${name}"
         ${limit ? `LIMIT ${limit}` : ''}
-        /* Optimized query: return only needed attributes instead of full documents */
-        LET vertex_data = e == null ? KEEP(v, ${JSON.stringify(vertexAttrs)}) : KEEP(v, ${JSON.stringify(vertexAttrs)})
-        LET edge_data = e == null ? null : KEEP(e, ${JSON.stringify(edgeAttrs)})
+        /* Optimized query: pre-compute attribute values in AQL instead of JavaScript */
+        LET vertex_data = ${vertexDataQuery}
+        LET edge_data = e == null ? null : ${edgeDataQuery}
         LET p = e == null ? { 
           vertices: [vertex_data], 
           edges: [] 
@@ -1231,8 +1263,8 @@ var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors,
     var nodeLabelArr = config.nodeLabel.trim().split(" ");
     // in case multiple node labels are given
     if (nodeLabelArr.length > 1) {
-      _.each(nodeLabelArr, function (attr) {
-        var attrVal = getAttributeByKey(node, attr);
+      _.each(nodeLabelArr, function (attr, index) {
+        var attrVal = node[`nodeLabel_${index}`]; // Use pre-computed value from AQL
         if (attrVal !== undefined) {
           if (typeof attrVal === 'string') {
             tooltipText += attr + ": " + attrVal + "\n";
@@ -1245,7 +1277,7 @@ var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors,
         }
       });
       // in case of multiple node labels just display the first one in the graph
-      var firstAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+      var firstAttrVal = node.nodeLabel_0; // Use pre-computed value from AQL
       if (firstAttrVal !== undefined) {
         if (typeof firstAttrVal === 'string') {
           label = nodeLabelArr[0] + ": " + truncate(firstAttrVal, 16) + " ...";
@@ -1257,7 +1289,7 @@ var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors,
       }
     } else {
       // in case of single node attribute given
-      var singleAttrVal = getAttributeByKey(node, nodeLabelArr[0]);
+      var singleAttrVal = node.nodeLabel_0; // Use pre-computed value from AQL
       if (singleAttrVal !== undefined) {
         if (typeof singleAttrVal === 'string') {
           label = nodeLabelArr[0] + ": " + truncate(singleAttrVal, 16);
@@ -1286,15 +1318,15 @@ var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors,
   let sizeAttributeFound;
   if (config.nodeSize && config.nodeSizeByEdges === 'false') {
     nodeSize = 20;
-    if (Number.isInteger(node[config.nodeSize])) {
-      nodeSize = node[config.nodeSize];  
+    if (Number.isInteger(node.nodeSize)) { // Use pre-computed value from AQL
+      nodeSize = node.nodeSize;  
       sizeAttributeFound = true;
     } else {
       sizeAttributeFound = false;
     }
     
-    sizeCategory = node[config.nodeSize] || '';
-    nodesSizeValues.push(node[config.nodeSize]);
+    sizeCategory = node.nodeSize || ''; // Use pre-computed value from AQL
+    nodesSizeValues.push(node.nodeSize); // Use pre-computed value from AQL
   }
 
   var calculatedNodeColor = '#48BB78';
@@ -1329,7 +1361,7 @@ var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors,
     nodeObj.group = coll;
     nodeObj.color = "";
   } else if (config.nodeColorAttribute !== '') {
-    var attr = node[config.nodeColorAttribute]
+    var attr = node.nodeColorAttribute; // Use pre-computed value from AQL
     if (attr) {
       nodeObj.group = JSON.stringify(attr);
       nodeObj.color = "";
@@ -1377,22 +1409,16 @@ var processGraphData = function (cursor, config, colors, startVertex, multipleId
     _.each(obj.edges, function (edge) {
       if (edge._to && edge._from) {
         if (config.edgeLabel && config.edgeLabel.length > 0) {
-          // configure edge labels
-          if (config.edgeLabel.indexOf('.') > -1) {
-            edgeLabel = getAttributeByKey(edge, config.edgeLabel);
-            if (nodeLabel === undefined || nodeLabel === '') {
-              edgeLabel = edgeLabel._id;
+          // Use pre-computed edge label from AQL
+          var edgeLabelValue = edge.edgeLabel;
+          if (edgeLabelValue !== undefined) {
+            if (typeof edgeLabelValue === 'string') {
+              edgeLabel = edgeLabelValue;
+            } else {
+              edgeLabel = JSON.stringify(edgeLabelValue);
             }
           } else {
-            if (edge[config.edgeLabel] !== undefined) {
-              if (typeof edge[config.edgeLabel] === 'string') {
-                edgeLabel = edge[config.edgeLabel];
-              } else {
-                edgeLabel = JSON.stringify(edge[config.edgeLabel]);
-              }
-            } else {
-              edgeLabel = notFoundString;
-            }
+            edgeLabel = notFoundString;
           }
 
           if (typeof edgeLabel !== 'string') {
@@ -1476,12 +1502,12 @@ var processGraphData = function (cursor, config, colors, startVertex, multipleId
             edgeObj.color = tmpObjEdges[coll];
           }
         } else if (config.edgeColorAttribute !== '') {
-          if(edge[config.edgeColorAttribute]) {
-            edgeObj.colorCategory = edge[config.edgeColorAttribute] || '';
+          if(edge.edgeColorAttribute) { // Use pre-computed value from AQL
+            edgeObj.colorCategory = edge.edgeColorAttribute || '';
             const tempEdgeColor = Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3) + Math.floor(Math.random()*16777215).toString(16).substring(1, 3);
             
             const edgeColorObj = {
-              'name': edge[config.edgeColorAttribute] || '',
+              'name': edge.edgeColorAttribute || '',
               'color': tempEdgeColor
             };
 
@@ -1491,7 +1517,7 @@ var processGraphData = function (cursor, config, colors, startVertex, multipleId
             }
           }
 
-          var attr = edge[config.edgeColorAttribute];
+          var attr = edge.edgeColorAttribute; // Use pre-computed value from AQL
           if (attr) {
             if (tmpObjEdges.hasOwnProperty(attr)) {
               edgeObj.color = '#' + edgesColorAttributes.find(obj => obj.name === attr).color;

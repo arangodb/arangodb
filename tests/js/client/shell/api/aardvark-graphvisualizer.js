@@ -667,9 +667,9 @@ function performanceTestSuite() {
       attr5: LARGE_STRING
     });
     
-    // Add depth 1 vertices (10 children of root)
+    // Add depth 1 vertices (20 children of root)
     const depth1Keys = [];
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 20; i++) {
       const key = `depth1_${i}`;
       depth1Keys.push(key);
       allVertices.push({
@@ -683,9 +683,9 @@ function performanceTestSuite() {
       });
     }
     
-    // Add depth 2 vertices (10 children for each depth 1 node)
-    for (let i = 0; i < 10; i++) {
-      for (let j = 0; j < 10; j++) {
+    // Add depth 2 vertices (20 children for each depth 1 node)
+    for (let i = 0; i < 20; i++) {
+      for (let j = 0; j < 20; j++) {
         const key = `depth2_${i}_${j}`;
         allVertices.push({
           _key: key,
@@ -706,7 +706,7 @@ function performanceTestSuite() {
     const allEdges = [];
     
     // Add edges from root to depth 1 nodes
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 20; i++) {
       const key = depth1Keys[i];
       allEdges.push({
         _from: `perf_vertices/${rootKey}`,
@@ -721,9 +721,9 @@ function performanceTestSuite() {
     }
     
     // Add edges from depth 1 to depth 2 nodes
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 20; i++) {
       const parentKey = depth1Keys[i];
-      for (let j = 0; j < 10; j++) {
+      for (let j = 0; j < 20; j++) {
         const key = `depth2_${i}_${j}`;
         allEdges.push({
           _from: `perf_vertices/${parentKey}`,
@@ -780,10 +780,10 @@ function performanceTestSuite() {
       assertTrue(Array.isArray(doc.parsedBody.edges));
       
       // Assert exact counts for the tree structure:
-      // 1 root + 10 depth1 + 100 depth2 = 111 vertices
-      // 10 root->depth1 + 100 depth1->depth2 = 110 edges
-      assertEqual(doc.parsedBody.nodes.length, 111, "Expected 111 nodes (1 root + 10 depth1 + 100 depth2)");
-      assertEqual(doc.parsedBody.edges.length, 110, "Expected 110 edges (10 root->depth1 + 100 depth1->depth2)");
+      // 1 root + 20 depth1 + 400 depth2 = 421 vertices
+      // 20 root->depth1 + 400 depth1->depth2 = 420 edges
+      assertEqual(doc.parsedBody.nodes.length, 421, "Expected 421 nodes (1 root + 20 depth1 + 400 depth2)");
+      assertEqual(doc.parsedBody.edges.length, 420, "Expected 420 edges (20 root->depth1 + 400 depth1->depth2)");
       
       // Verify root node is properly marked as start vertex
       let rootNode = doc.parsedBody.nodes.find(n => n.id === 'perf_vertices/root');
