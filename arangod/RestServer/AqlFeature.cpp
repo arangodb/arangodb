@@ -123,11 +123,9 @@ ApiRecordingFeature* AqlFeature::apiRecordingFeature() {
   // This can return `nullptr` if there is no ApiRecordingFeature, as it is
   // for example the case in Tests.
   if (_apiRecordingFeature == nullptr) {
-    try {
+    if (server().hasFeature<arangodb::ApiRecordingFeature>()) {
       _apiRecordingFeature =
           &(server().getFeature<arangodb::ApiRecordingFeature>());
-    } catch (std::exception const&) {
-      // Simply ignore
     }
   }
   return _apiRecordingFeature;
