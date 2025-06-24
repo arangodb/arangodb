@@ -1164,8 +1164,8 @@ var buildAQLQueries = function (config, name, startVertex, multipleIds) {
         ${limit ? `LIMIT ${limit}` : ''}
         /* Optimized query: pre-compute attribute values in AQL instead of JavaScript */
         LET vertex_data = ${vertexDataQuery}
-        LET edge_data = e == null ? null : ${edgeDataQuery}
-        LET p = e == null ? { 
+        LET edge_data = ${edgeDataQuery}
+        LET p = e._key == null ? { 
           vertices: [vertex_data], 
           edges: [] 
         } : { 
@@ -1228,6 +1228,7 @@ var executeGraphQueries = function (config, graph, aqlQuery, aqlQueries, limit) 
     // get all nodes and edges which are connected to the given start node
     try {
       if (aqlQueries.length === 0) {
+        db._explain(aqlQuery);
         cursor = AQL_EXECUTE(aqlQuery);
       } else {
         var x;
