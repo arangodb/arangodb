@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improved the endpoint used by the Graph visulaizer tool to run
+  a better performing query. This should help on larger graphs
+  having more, not displayed data.
+
 * Fix BTS-2151: Fix cosine similarity score in vector index returns score
   bigger then one due to not being normalized. It is recommended to drop
   all vector indexes that use cosine metric and create them again.
