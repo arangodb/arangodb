@@ -2,7 +2,6 @@
 /* global db, arango, print, assertEqual */
 
 'use strict';
-const internal = require('internal');
 const gm = require("@arangodb/general-graph");
 const jsunity = require("jsunity");
 
@@ -54,7 +53,7 @@ function restSchemaHandlerTestSuite() {
         },
 
         testGraph: function () {
-            const doc = arango.GET_RAW(api);
+            const doc = arango.GET_RAW(api + "?sampleNum=1");
 
             print("Parsed body:", JSON.stringify(doc.parsedBody, null, 2));
 

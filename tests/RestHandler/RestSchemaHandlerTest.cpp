@@ -35,7 +35,7 @@ public:
   static void SetUpTestCase() {
     server = std::make_unique<MockRestAqlServer>();
     registry = QueryRegistryFeature::registry();
-    vocbase = &(server->getSystemDatabase());
+    vocbase = &server->getSystemDatabase();
 
     auto& vocbase = server->getSystemDatabase(); // "_system"
     std::shared_ptr<Builder> collectionJson;
@@ -48,9 +48,9 @@ public:
 
     auto customerQuery = R"(
       LET customers = [
-        {name: "Gilberto", age: 25, address: "San Francisco"},
-        {name: "Victor", age: "young", address: "Tokyo"},
-        {name: "Koichi", age: 35, address: {city: "San Francisco", country: "USA"}},
+        {name: "Gilberto", age: 25, address: "San Francisco", isStudent: true},
+        {name: "Victor", age: "young", address: "Tokyo", isStudent: false},
+        {name: "Koichi", address: {city: "San Francisco", country: "USA"}},
         {name: "Michael", age: 35, address: "Cologne"}
       ]
       FOR c IN customers INSERT c INTO testCustomers
@@ -92,7 +92,6 @@ protected:
 // }
 
 TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
-  //auto& vocbase = server->getSystemDatabase();// "_system"
   auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   fakeRequest->setRequestType(RequestType::POST);
@@ -101,11 +100,64 @@ TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
       server->server(), fakeRequest.release(),
       fakeResponse.release(), registry);
   testee->execute();
-  //fakeResponse.reset(dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+
   EXPECT_EQ(testee->response()->responseCode(), ResponseCode::METHOD_NOT_ALLOWED);
 }
 
-TEST_F(RestSchemaHandlerTest, CollectionCustomerReturnsTrue) {
+TEST_F(RestSchemaHandlerTest, NotExistingCollectionReturns404) {
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
+  fakeRequest->setRequestType(RequestType::GET);
+  fakeRequest->addSuffix("notExistingCol"); // _api/schema/testProducts
+
+  auto fakeResponse = std::make_unique<GeneralResponseMock>();
+  auto testee = std::make_shared<RestSchemaHandler>(
+      server->server(), fakeRequest.release(),
+      fakeResponse.release(), registry);
+
+  testee->execute();
+
+  EXPECT_EQ(testee->response()->responseCode(), ResponseCode::NOT_FOUND);
+}
+
+TEST_F(RestSchemaHandlerTest, TooManySuffixesReturns404) {
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
+  fakeRequest->setRequestType(RequestType::GET);
+  fakeRequest->addSuffix("testProducts"); // _api/schema/testProducts
+  fakeRequest->addSuffix("extraCol"); // _api/schema/testProducts
+
+  auto fakeResponse = std::make_unique<GeneralResponseMock>();
+  auto testee = std::make_shared<RestSchemaHandler>(
+      server->server(), fakeRequest.release(),
+      fakeResponse.release(), registry);
+
+  testee->execute();
+
+  EXPECT_EQ(testee->response()->responseCode(), ResponseCode::NOT_FOUND);
+}
+
+TEST_F(RestSchemaHandlerTest, SampleNum1ReturnsAllOptionalFalse) {
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
+  fakeRequest->setRequestType(RequestType::GET);
+  fakeRequest->addSuffix("testCustomers");
+  fakeRequest->setRequestPath("sampleNum=1");
+
+  std::cout << fakeRequest->requestUrl() << std::endl;
+
+  auto fakeResponse = std::make_unique<GeneralResponseMock>();
+  auto testee = std::make_shared<RestSchemaHandler>(
+      server->server(), fakeRequest.release(),
+      fakeResponse.release(), registry);
+
+  testee->execute();
+
+  fakeResponse.reset(
+      dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
+  std::cout << fakeResponse->_payload.toString() << std::endl;
+
+  EXPECT_EQ(fakeResponse->responseCode(), ResponseCode::OK);
+}
+
+TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
   //auto& vocbase = server->getSystemDatabase(); // "_system"
 
   auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);

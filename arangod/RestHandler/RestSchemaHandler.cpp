@@ -7,12 +7,9 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Futures/Future.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Graph/GraphManager.h"
-
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/vpack.h>
@@ -48,15 +45,6 @@ const std::string RestSchemaHandler::queryString = R"(
         }
     )";
 
-const std::string RestSchemaHandler::graphQueryString = R"(
-    FOR edge IN @@collection
-      LET fromColl = PARSE_IDENTIFIER(edge._from).collection
-      LET toColl = PARSE_IDENTIFIER(edge._to).collection
-
-      COLLECT from = fromColl, to = toColl
-      RETURN {from, to}
-    )";
-
 RestSchemaHandler::RestSchemaHandler(ArangodServer& server,
                                      GeneralRequest* request,
                                      GeneralResponse* response,
@@ -70,90 +58,51 @@ RestStatus RestSchemaHandler::execute() {
     return RestStatus::DONE;
   }
 
-  uint64_t sampleNum = validateSampleNum();
-  if (sampleNum == 0)
-    return RestStatus::DONE;
+  uint64_t sampleNum = validateParameter("sampleNum");
+  uint64_t exampleNum = validateParameter("exampleNum");
 
-  // path: /_api/schema or /_api/schema/<collection-name>
+  if (sampleNum == 0 || exampleNum == 0) { return RestStatus::DONE; }
+  if (sampleNum < exampleNum) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+       "Parameter exampleNum must be equal to or smaller than sampleNum");
+    return RestStatus::DONE;
+  }
+
   auto const& suffix = _request->suffixes();
-  if (suffix.empty()) {
-    lookupSchema(sampleNum);
-    return handleQueryResult();
+  switch (suffix.size()) {
+    case 0:
+      lookupSchema(sampleNum, exampleNum);
+      break;
+    case 2:
+      if (suffix[0] == "collection") {
+        lookupSchemaCollection(suffix[1], sampleNum, exampleNum);
+        break;
+      }
+      if (suffix[0] == "graph") {
+        break;
+      }
+      if (suffix[0] == "view") {
+        break;
+      }
+      [[fallthrough]]; // If suffix[0] is none of "collection", "graph" or "view", go to default
+    default:
+      generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+      "Illegal suffixes provided: must be /schema, /schema/collection/<collectionName>, "
+      "/schema/graph/<graphName>, or /schema/<viewName>");
+      return RestStatus::DONE;
   }
-  if (suffix.size() != 1) {
-    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return RestStatus::DONE;
-  }
-  std::string const collection = suffix[0];
-
-  // Check that the collection exists
-  auto found = _vocbase.lookupCollection(collection);
-  if (found == nullptr) {
-    generateError(ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "collection '" + collection + "' not found");
-    return RestStatus::DONE;
-  }
-
-  return waitForFuture(lookupCollectionSchema(collection, sampleNum));
+  return handleQueryResult();
 }
 
-futures::Future<RestStatus> RestSchemaHandler::lookupCollectionSchema(
-    std::string const& collection, uint64_t sampleNum) {
-
-  velocypack::Builder bind;
-  bind.openObject();
-  bind.add("@collection", VPackValue(collection));
-  bind.add("sampleNum", VPackValue(sampleNum));
-  bind.close();
-
-  velocypack::Builder payload;
-  payload.openObject();
-  payload.add("query", VPackValue(queryString));
-  payload.add("bindVars", bind.slice());
-  payload.close();
-
-  return registerQueryOrCursor(
-    payload.slice(),
-    transaction::OperationOriginREST{"schema endpoint"});
-}
-
-RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum) {
+RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum, uint64_t exampleNum) {
   auto ctx = std::make_shared<transaction::StandaloneContext>(
     _vocbase, transaction::OperationOriginTestCase{});
 
   auto collectionSchemaArray = std::make_shared<velocypack::Builder>();
   collectionSchemaArray->openArray();
   for (auto const& colName : _vocbase.collectionNames()) {
-    if (colName.starts_with("_"))
-      continue;
-
-    auto bindVars = std::make_shared<velocypack::Builder>();
-    bindVars->openObject();
-    bindVars->add("@collection", velocypack::Value(colName));
-    bindVars->add("sampleNum",   velocypack::Value(sampleNum));
-    bindVars->close();
-
-    auto query = aql::Query::create(
-      ctx, aql::QueryString{queryString}, bindVars,
-      aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()}
-    );
-
-    aql::QueryResult qr;
-    while (query->execute(qr) == aql::ExecutionState::WAITING) { }
-
-    auto queryResultBuilder = std::make_shared<velocypack::Builder>();
-    queryResultBuilder->openObject();
-    queryResultBuilder->add("collectionName",   velocypack::Value(colName));
-
-    auto col = _vocbase.lookupCollection(colName);
-    std::string typeName =
-      (col && col->type() == TRI_COL_TYPE_EDGE) ? "edge" : "document";
-    queryResultBuilder->add("collectionType", velocypack::Value(typeName));
-    queryResultBuilder->add("schema", qr.data->slice());
-    queryResultBuilder->close();
-
-    collectionSchemaArray->add(queryResultBuilder->slice());
+    if (colName.starts_with("_")) { continue; }
+    collectionSchemaArray->add(lookupCollection(colName, sampleNum, exampleNum));
   }
   collectionSchemaArray->close();
 
@@ -165,6 +114,23 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum) {
 
   _queryResult.data = std::move(resultBuilder);
   _queryResult.context = std::move(ctx);
+  return RestStatus::DONE;
+}
+
+RestStatus RestSchemaHandler::lookupSchemaCollection(
+    std::string const& colName, uint64_t sampleNum, uint64_t exampleNum) {
+  auto found = _vocbase.lookupCollection(colName);
+  if (found == nullptr) {
+    generateError(ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  "collection '" + colName + "' not found");
+    return RestStatus::DONE;
+  }
+
+  _queryResult.data = std::make_shared<velocypack::Builder>(
+    lookupCollection(colName, sampleNum, exampleNum));
+  _queryResult.context = std::make_shared<transaction::StandaloneContext>(
+    _vocbase, transaction::OperationOriginTestCase{});
   return RestStatus::DONE;
 }
 
@@ -190,6 +156,94 @@ const velocypack::Slice RestSchemaHandler::lookupGraph(
   return qr.data->slice();
 }
 
+const velocypack::Slice RestSchemaHandler::lookupCollection(std::string const& colName,
+    uint64_t sampleNum, uint64_t exampleNum) {
+  auto bindVars = std::make_shared<velocypack::Builder>();
+  bindVars->openObject();
+  bindVars->add("@collection", VPackValue(colName));
+  bindVars->add("sampleNum", VPackValue(sampleNum));
+  bindVars->close();
+
+  auto query = aql::Query::create(
+  std::make_shared<transaction::StandaloneContext>(
+    _vocbase, transaction::OperationOriginTestCase{}),
+    aql::QueryString{queryString}, bindVars,
+    aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()}
+    );
+
+  aql::QueryResult qr;
+  while (query->execute(qr) == aql::ExecutionState::WAITING) { }
+
+  auto resultBuilder = std::make_shared<velocypack::Builder>();
+  resultBuilder->openObject();
+  resultBuilder->add("collectionName", velocypack::Value(colName));
+
+  auto col = _vocbase.lookupCollection(colName);
+  if (col && col->type() == TRI_COL_TYPE_DOCUMENT) {
+    resultBuilder->add("collectionType", velocypack::Value("document"));
+    resultBuilder->add("numOfDocuments", getCount(colName));
+  } else {
+    resultBuilder->add("collectionType", velocypack::Value("edge"));
+    resultBuilder->add("numOfEdges", getCount(colName));
+  }
+  resultBuilder->add("schema", qr.data->slice());
+  resultBuilder->add("examples", getExamples(colName, exampleNum));
+  resultBuilder->close();
+
+  return resultBuilder->slice();
+};
+
+const velocypack::Slice RestSchemaHandler::getCount(std::string const& colName) {
+  const std::string queryStr = R"(
+    RETURN LENGTH(@@collection)
+  )";
+
+  auto bindVars = std::make_shared<velocypack::Builder>();
+  bindVars->openObject();
+  bindVars->add("@collection", velocypack::Value(colName));
+  bindVars->close();
+
+  auto query = aql::Query::create(
+    std::make_shared<transaction::StandaloneContext>(
+      _vocbase, transaction::OperationOriginTestCase{}),
+    aql::QueryString{queryStr}, bindVars,
+    aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()}
+  );
+
+  aql::QueryResult qr;
+  while (query->execute(qr) == aql::ExecutionState::WAITING) { }
+
+  auto arr = qr.data->slice();
+  if (arr.length() > 0)
+    return arr.at(0);
+
+  return qr.data->slice();
+}
+
+const velocypack::Slice RestSchemaHandler::getExamples(
+  std::string const& colName, uint64_t exampleNum) {
+  const std::string queryStr = R"(
+    FOR d IN @@collection LIMIT @exampleNum RETURN d
+  )";
+
+  auto bindVars = std::make_shared<velocypack::Builder>();
+  bindVars->openObject();
+  bindVars->add("@collection", velocypack::Value(colName));
+  bindVars->add("exampleNum", velocypack::Value(exampleNum));
+  bindVars->close();
+
+  auto query = aql::Query::create(
+    std::make_shared<transaction::StandaloneContext>(
+      _vocbase, transaction::OperationOriginTestCase{}),
+      aql::QueryString{queryStr}, bindVars,
+      aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()}
+  );
+
+  aql::QueryResult qr;
+  while (query->execute(qr) == aql::ExecutionState::WAITING) { }
+  return qr.data->slice();
+}
+
 RestStatus RestSchemaHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     generateError(_queryResult.result);
@@ -200,36 +254,38 @@ RestStatus RestSchemaHandler::handleQueryResult() {
   return RestStatus::DONE;
 }
 
-// sampleNum: How many samples to pick up from each collection
-uint64_t RestSchemaHandler::validateSampleNum() {
+uint64_t RestSchemaHandler::validateParameter(const std::string& param) {
   bool passed = false;
-  uint64_t sampleNum = 100;
-  auto const& val = _request->value("sampleNum", passed);
+  uint64_t numValue = 0;
+  if (param == "sampleNum") { numValue = 100; }
+  else if (param == "exampleNum") { numValue = 1; }
+  else { return numValue; }
+
+  auto const& val = _request->value(param, passed);
   if (passed) {
     if (val.empty() || !std::all_of(val.begin(), val.end(),
                                     [](char c) { return std::isdigit(c); })) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid parameter sampleNum, must be a positive integer");
+        std::format("Invalid value for {}: must contain only digits", param));
       return 0;
     }
     try {
-      unsigned long long userSampleNum = std::stoull(val);
-      if (userSampleNum == 0) {
+      unsigned long long userInput = std::stoull(val);
+      if (userInput == 0) {
         generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid parameter sampleNum, must be a positive integer");
+                      std::format("{} must be greater than 0", param));
         return 0;
       }
-
-      sampleNum = userSampleNum;
+      numValue = userInput;
     } catch (std::out_of_range&) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid parameter sampleNum, must be a positive integer");
+                    std::format("Value for {} is too large", param));
       return 0;
     } catch (...) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid parameter sampleNum, must be a positive integer");
+                    std::format("Unexpected error parsing {}", param));
       return 0;
     }
   }
-  return sampleNum;
+  return numValue;
 }

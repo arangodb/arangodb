@@ -18,23 +18,26 @@ public:
   RestSchemaHandler(ArangodServer& server,
                     GeneralRequest* request,
                     GeneralResponse* response,
-                    arangodb::aql::QueryRegistry* queryRegistry);
+                    aql::QueryRegistry* queryRegistry);
 
   RestStatus execute() override;
   RestStatus handleQueryResult() override;
 
 private:
   static const std::string queryString;
-  static const std::string graphQueryString;
 
-  futures::Future<RestStatus> lookupCollectionSchema(
-    std::string const& collection, uint64_t sampleNum);
-
-  RestStatus lookupSchema(uint64_t sampleNum);
+  RestStatus lookupSchema(uint64_t, uint64_t);
+  RestStatus lookupSchemaCollection(std::string const&, uint64_t, uint64_t);
+  RestStatus lookupSchemaGraph();
+  RestStatus lookupSchemaView();
 
   const velocypack::Slice lookupGraph(std::shared_ptr<transaction::StandaloneContext>);
 
-  uint64_t validateSampleNum();
+  const velocypack::Slice lookupCollection(std::string const&, uint64_t, uint64_t);
+
+  const velocypack::Slice getCount(std::string const&);
+  const velocypack::Slice getExamples(std::string const&, uint64_t);
+  uint64_t validateParameter(const std::string& param);
 };
 
 }  // namespace rest
