@@ -314,9 +314,6 @@ function configurationParametersSuite() {
       let cmd = api + "/knows_graph?nodeLabel=name,_key";
       let doc = arango.GET_RAW(cmd);
 
-      if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
-      }
-
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
       
@@ -349,9 +346,6 @@ function configurationParametersSuite() {
       let cmd = api + "/knows_graph?nodeLabel=foo";
       let doc = arango.GET_RAW(cmd);
 
-      if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
-      }
-
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
       
@@ -360,12 +354,30 @@ function configurationParametersSuite() {
       assertTrue(sampleNode.label.includes("(attribute not found)"));
      },
 
+    test_whitespace_separated_node_labels: function() {
+      let cmd = api + "/knows_graph?nodeLabel=name _key";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+      
+      // Space-separated labels indicate that both values should be taken into account
+      // The API should show both name and _key attributes
+      let sampleNode = doc.parsedBody.nodes[0];
+      
+      // Label should contain the name value (truncated with "...")
+      assertTrue(sampleNode.label.includes("name: "));
+      assertTrue(sampleNode.label.includes("..."));
+      
+      // Title should contain both name and _key attributes on separate lines
+      assertTrue(sampleNode.title.includes("name: "));
+      assertTrue(sampleNode.title.includes("_key: "));
+      assertTrue(sampleNode.title.includes("\n")); // Should have newline separating attributes
+    },
+
      test_nested_node_label: function() {
        let cmd = api + "/knows_graph?nodeLabel=profile.bio";
        let doc = arango.GET_RAW(cmd);
-
-       if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
-       }
 
        assertEqual(doc.code, 200);
        assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
@@ -414,9 +426,6 @@ function configurationParametersSuite() {
     test_edge_label_configuration: function() {
       let cmd = api + "/knows_graph?edgeLabel=vertex&edgeLabelByCollection=true";
       let doc = arango.GET_RAW(cmd);
-
-      if (doc.parsedBody.edges && doc.parsedBody.edges.length > 0) {
-      }
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('edges'));

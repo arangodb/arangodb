@@ -1107,11 +1107,14 @@ var buildAQLQueries = function (config, name, startVertex, multipleIds) {
         _key: v._key,
         _rev: v._rev`;
       
-      // Add node label attribute (treat as single attribute, not space-separated)
+      // Add node label attributes (handle space-separated labels)
       if (config.nodeLabel) {
-        const attrPath = config.nodeLabel.indexOf('.') > -1 ? `v.${config.nodeLabel}` : `v["${config.nodeLabel}"]`;
-        vertexDataQuery += `,
-        nodeLabel_0: ${attrPath}`;
+        const labelAttrs = config.nodeLabel.split(' ').filter(attr => attr.trim() !== '');
+        labelAttrs.forEach((attr, index) => {
+          const attrPath = attr.indexOf('.') > -1 ? `v.${attr}` : `v["${attr}"]`;
+          vertexDataQuery += `,
+        nodeLabel_${index}: ${attrPath}`;
+        });
       }
       
       // Add node size attribute
@@ -1252,24 +1255,44 @@ var truncate = function (str, n) {
 
 // Helper function to generate node object
 var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors, tmpObjNodes, nodesColorAttributes, nodesSizeValues) {
-  var notFoundString = config.nodeLabel + ": (attribute not found)";
   var label = "";
   var tooltipText = "";
 
   if (config.nodeLabel) {
-    // Original behavior: treat nodeLabel as a single attribute name, not space-separated
-    var singleAttrVal = node.nodeLabel_0; // Use pre-computed value from AQL
-    if (singleAttrVal !== undefined && singleAttrVal !== null) {
-      if (typeof singleAttrVal === 'string') {
-        label = config.nodeLabel + ": " + truncate(singleAttrVal, 16);
-        tooltipText = config.nodeLabel + ": " + singleAttrVal;
+    const labelAttrs = config.nodeLabel.split(' ').filter(attr => attr.trim() !== '');
+    var labelParts = [];
+    var tooltipParts = [];
+    
+    labelAttrs.forEach((attr, index) => {
+      var attrVal = node[`nodeLabel_${index}`]; // Use pre-computed value from AQL
+      var notFoundString = attr + ": (attribute not found)";
+      
+      if (attrVal !== undefined && attrVal !== null) {
+        if (typeof attrVal === 'string') {
+          labelParts.push(attr + ": " + attrVal);
+          tooltipParts.push(attr + ": " + attrVal);
+        } else {
+          labelParts.push(attr + ": " + JSON.stringify(attrVal));
+          tooltipParts.push(attr + ": " + JSON.stringify(attrVal));
+        }
       } else {
-        label = config.nodeLabel + ": " + truncate(JSON.stringify(singleAttrVal), 16);
-        tooltipText = config.nodeLabel + ": " + JSON.stringify(singleAttrVal);
+        labelParts.push(notFoundString);
+        tooltipParts.push(notFoundString);
       }
+    });
+    
+    if (labelParts.length === 0) {
+      // Fallback if no attributes were processed
+      label = node._key || node._id;
+      tooltipText = node._key || node._id;
+    } else if (labelParts.length === 1) {
+      // Single attribute case
+      label = truncate(labelParts[0], 35);
+      tooltipText = tooltipParts[0];
     } else {
-      label = notFoundString;  // Original behavior: just show "(attribute not found)"
-      tooltipText = notFoundString;
+      // Multiple attributes case
+      label = truncate(labelParts[0], 16) + "...";
+      tooltipText = tooltipParts.join('\n');
     }
   } else {
     label = node._key || node._id;
