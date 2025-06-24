@@ -1107,14 +1107,11 @@ var buildAQLQueries = function (config, name, startVertex, multipleIds) {
         _key: v._key,
         _rev: v._rev`;
       
-      // Add node label attributes
+      // Add node label attribute (treat as single attribute, not space-separated)
       if (config.nodeLabel) {
-        const labelAttrs = config.nodeLabel.trim().split(' ');
-        labelAttrs.forEach((attr, index) => {
-          const attrPath = attr.indexOf('.') > -1 ? `v.${attr}` : `v["${attr}"]`;
-          vertexDataQuery += `,
-        nodeLabel_${index}: ${attrPath}`;
-        });
+        const attrPath = config.nodeLabel.indexOf('.') > -1 ? `v.${config.nodeLabel}` : `v["${config.nodeLabel}"]`;
+        vertexDataQuery += `,
+        nodeLabel_0: ${attrPath}`;
       }
       
       // Add node size attribute
@@ -1228,7 +1225,6 @@ var executeGraphQueries = function (config, graph, aqlQuery, aqlQueries, limit) 
     // get all nodes and edges which are connected to the given start node
     try {
       if (aqlQueries.length === 0) {
-        db._explain(aqlQuery);
         cursor = AQL_EXECUTE(aqlQuery);
       } else {
         var x;
@@ -1256,53 +1252,24 @@ var truncate = function (str, n) {
 
 // Helper function to generate node object
 var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors, tmpObjNodes, nodesColorAttributes, nodesSizeValues) {
-  var notFoundString = "(attribute not found)";
+  var notFoundString = config.nodeLabel + ": (attribute not found)";
   var label = "";
   var tooltipText = "";
 
   if (config.nodeLabel) {
-    var nodeLabelArr = config.nodeLabel.trim().split(" ");
-    // in case multiple node labels are given
-    if (nodeLabelArr.length > 1) {
-      _.each(nodeLabelArr, function (attr, index) {
-        var attrVal = node[`nodeLabel_${index}`]; // Use pre-computed value from AQL
-        if (attrVal !== undefined) {
-          if (typeof attrVal === 'string') {
-            tooltipText += attr + ": " + attrVal + "\n";
-          } else {
-            tooltipText += attr + ": " + JSON.stringify(attrVal) + "\n";
-          }
-        } else {
-          label += attr + ": " + notFoundString;
-          tooltipText += attr + ": " + notFoundString + "\n";
-        }
-      });
-      // in case of multiple node labels just display the first one in the graph
-      var firstAttrVal = node.nodeLabel_0; // Use pre-computed value from AQL
-      if (firstAttrVal !== undefined) {
-        if (typeof firstAttrVal === 'string') {
-          label = nodeLabelArr[0] + ": " + truncate(firstAttrVal, 16) + " ...";
-        } else {
-          label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(firstAttrVal), 16) + " ...";
-        }
+    // Original behavior: treat nodeLabel as a single attribute name, not space-separated
+    var singleAttrVal = node.nodeLabel_0; // Use pre-computed value from AQL
+    if (singleAttrVal !== undefined && singleAttrVal !== null) {
+      if (typeof singleAttrVal === 'string') {
+        label = config.nodeLabel + ": " + truncate(singleAttrVal, 16);
+        tooltipText = config.nodeLabel + ": " + singleAttrVal;
       } else {
-        label = nodeLabelArr[0] + ": " + notFoundString + " ...";
+        label = config.nodeLabel + ": " + truncate(JSON.stringify(singleAttrVal), 16);
+        tooltipText = config.nodeLabel + ": " + JSON.stringify(singleAttrVal);
       }
     } else {
-      // in case of single node attribute given
-      var singleAttrVal = node.nodeLabel_0; // Use pre-computed value from AQL
-      if (singleAttrVal !== undefined) {
-        if (typeof singleAttrVal === 'string') {
-          label = nodeLabelArr[0] + ": " + truncate(singleAttrVal, 16);
-          tooltipText = nodeLabelArr[0] + ": " + singleAttrVal;
-        } else {
-          label = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
-          tooltipText = nodeLabelArr[0] + ": " + truncate(JSON.stringify(singleAttrVal), 16);
-        }
-      } else {
-        label = nodeLabelArr[0] + ": " + notFoundString;
-        tooltipText = nodeLabelArr[0] + ": " + notFoundString;
-      }
+      label = notFoundString;  // Original behavior: just show "(attribute not found)"
+      tooltipText = notFoundString;
     }
   } else {
     label = node._key || node._id;

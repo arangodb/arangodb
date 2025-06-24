@@ -54,6 +54,20 @@ function setupKnowsGraph() {
   assertTrue(graph !== null);
   assertNotUndefined(db._collection('persons'));
   assertNotUndefined(db._collection('knows'));
+  
+  // Add nested attributes to some vertices for testing nested labels
+  try {
+    db.persons.update('alice', {profile: {bio: 'Software Engineer', location: {city: 'Berlin', country: 'Germany'}}});
+    db.persons.update('bob', {profile: {bio: 'Data Scientist', location: {city: 'Munich', country: 'Germany'}}});
+    db.persons.update('charlie', {profile: {bio: 'Designer', location: {city: 'Hamburg', country: 'Germany'}}});
+    
+    // Add a very long description for testing label truncation
+    const longDescription = 'This is an extremely long description that should definitely be truncated when displayed as a node label in the graph visualization because it contains way too much text to be displayed in a reasonable manner and would make the graph unreadable if shown in full length. It continues with even more text to ensure that the truncation logic is properly tested and that we can verify both the truncated label and the full title are handled correctly by the API endpoint.';
+    db.persons.update('eve', {longDescription: longDescription});
+  } catch (e) {
+    // Ignore if already exists or other issues
+  }
+  
   return graph;
 }
 
@@ -69,11 +83,6 @@ function errorHandlingSuite() {
       let cmd = api + "/nonexistent_graph";
       let doc = arango.GET_RAW(cmd);
       
-      require("internal").print("=== NON-EXISTENT GRAPH ERROR TEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      require("internal").print("Response Body:", JSON.stringify(doc.parsedBody, null, 2));
-      
       assertEqual(doc.code, 400); // Fixed: API returns 400, not 404
       assertEqual(doc.headers['content-type'], contentType);
       assertTrue(doc.parsedBody['error']);
@@ -83,11 +92,6 @@ function errorHandlingSuite() {
     test_returns_error_for_invalid_path: function() {
       let cmd = api + "/knows_graph/invalid";
       let doc = arango.GET_RAW(cmd);
-      
-      require("internal").print("=== INVALID PATH ERROR TEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      require("internal").print("Response Body:", JSON.stringify(doc.parsedBody, null, 2));
       
       assertEqual(doc.code, 404);
       assertEqual(doc.headers['content-type'], contentType);
@@ -109,10 +113,6 @@ function basicFunctionalitySuite() {
       let cmd = api + "/knows_graph";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== BASIC REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      require("internal").print("Response Body:", JSON.stringify(doc.parsedBody, null, 2));
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
@@ -129,7 +129,6 @@ function basicFunctionalitySuite() {
 
       // Some vertices have less connections than others, Charlie and Dave are not connected with everyone
       const startVertex = doc.parsedBody.settings.startVertex._key;
-      require("internal").print("Start:", startVertex, "Edges: ", doc.parsedBody.edges.length);
 
       const expectedEdges =  ["charlie", "dave"].indexOf(startVertex) !== -1 ? 4 : 5;
       assertEqual(doc.parsedBody.nodes.length, 5);
@@ -188,12 +187,6 @@ function basicFunctionalitySuite() {
       let cmd = api + "/knows_graph?depth=1";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== DEPTH=1 REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      require("internal").print("Response Body Keys:", Object.keys(doc.parsedBody));
-      require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
-      require("internal").print("Edges Count:", doc.parsedBody.edges ? doc.parsedBody.edges.length : 'N/A');
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
@@ -203,7 +196,6 @@ function basicFunctionalitySuite() {
       // With depth=1, we expect fewer results than default
 
       const startVertex = doc.parsedBody.settings.startVertex._key;
-      require("internal").print("Start:", startVertex, "Nodes: ", doc.parsedBody.nodes.length);
 
       // Some vertices have less connections than others, Charlie and Dave are not connected with everyone
       let expectedNodes =  3;
@@ -223,15 +215,40 @@ function basicFunctionalitySuite() {
       assertEqual(doc.parsedBody.edges.length, expectedEdges, `Expected ${expectedEdges} edges, got ${doc.parsedBody.edges.length} for ${startVertex}`);
     },
 
+    test_long_label_truncation: function() {
+      let cmd = api + "/knows_graph?depth=1&nodeStart=persons/eve&nodeLabel=longDescription";
+      let doc = arango.GET_RAW(cmd);
+
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+      assertTrue(doc.parsedBody.hasOwnProperty('edges'));
+      
+      // Find the eve node with the long description
+      let eveNode = doc.parsedBody.nodes.find(n => n.id === "persons/eve");
+      assertTrue(eveNode !== undefined, "Should find the eve node in the results");
+      
+      
+      // The label should be truncated (contains "..." at the end)
+      assertTrue(eveNode.label.includes("longDescription: "));
+      assertTrue(eveNode.label.includes("..."), "Label should be truncated with '...'");
+      assertTrue(eveNode.label.length < 100, "Label should be significantly shorter than the full text");
+      
+      // The title should contain the full text
+      assertTrue(eveNode.title.includes("longDescription: "));
+      assertTrue(eveNode.title.length > 400, "Title should contain the full long description");
+      assertTrue(eveNode.title.includes("extremely long description"));
+      assertTrue(eveNode.title.includes("API endpoint"), "Title should contain the end of the long text");
+      
+      // Verify the start vertex is marked correctly
+      assertTrue(eveNode.hasOwnProperty('borderWidth'));
+      assertEqual(eveNode.borderWidth, 4);
+    },
+
     test_graph_with_limit_parameter: function() {
       let cmd = api + "/knows_graph?limit=2";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== LIMIT=2 REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
-      require("internal").print("Edges Count:", doc.parsedBody.edges ? doc.parsedBody.edges.length : 'N/A');
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
@@ -252,11 +269,6 @@ function basicFunctionalitySuite() {
         let cmd = api + "/knows_graph?nodeStart=" + encodeURIComponent(firstNodeId);
         let doc = arango.GET_RAW(cmd);
 
-        require("internal").print("=== NODE START REQUEST ===");
-        require("internal").print("URL:", cmd);
-        require("internal").print("Starting Node:", firstNodeId);
-        require("internal").print("Response Code:", doc.code);
-        require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
 
         assertEqual(doc.code, 200);
         assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
@@ -286,11 +298,7 @@ function configurationParametersSuite() {
       let cmd = api + "/knows_graph?nodeLabel=name";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== NODE LABEL REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
       if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
-        require("internal").print("Sample Node:", JSON.stringify(doc.parsedBody.nodes[0], null, 2));
       }
 
       assertEqual(doc.code, 200);
@@ -302,19 +310,83 @@ function configurationParametersSuite() {
       assertTrue(sampleNode.title.startsWith("name: "));
     },
 
+    test_multiple_node_labels: function() {
+      let cmd = api + "/knows_graph?nodeLabel=name,_key";
+      let doc = arango.GET_RAW(cmd);
+
+      if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
+      }
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+      
+      // The API treats "name,_key" as a single attribute name, not multiple attributes
+      // Since this attribute doesn't exist, it should show "(attribute not found)"
+      let sampleNode = doc.parsedBody.nodes[0];
+      assertTrue(sampleNode.label.includes("(attribute not found)"));
+    },
+
+    test_node_label_with_collection_name: function() {
+      let cmd = api + "/knows_graph?nodeLabel=name&nodeLabelByCollection=true";
+      let doc = arango.GET_RAW(cmd);
+
+      if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
+      }
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+      
+      // Check that node labels include collection name (appended with " - ")
+      let sampleNode = doc.parsedBody.nodes[0];
+      assertTrue(sampleNode.label.includes(" - persons"));
+      assertTrue(sampleNode.label.includes("name: "));
+      // Title should NOT include collection name
+      assertTrue(sampleNode.title.includes("name: "));
+      assertFalse(sampleNode.title.includes(" - persons"));
+    },
+
+    test_missing_node_label: function() {
+      let cmd = api + "/knows_graph?nodeLabel=foo";
+      let doc = arango.GET_RAW(cmd);
+
+      if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
+      }
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+      
+      // When attribute doesn't exist, the original API just shows "(attribute not found)"
+      let sampleNode = doc.parsedBody.nodes[0];
+      assertTrue(sampleNode.label.includes("(attribute not found)"));
+     },
+
+     test_nested_node_label: function() {
+       let cmd = api + "/knows_graph?nodeLabel=profile.bio";
+       let doc = arango.GET_RAW(cmd);
+
+       if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
+       }
+
+       assertEqual(doc.code, 200);
+       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+       
+       // Check that node labels show nested attribute values
+       let sampleNode = doc.parsedBody.nodes[0];
+       assertTrue(sampleNode.label.includes("profile.bio: "));
+       assertTrue(sampleNode.title.includes("profile.bio: "));
+       
+       // Find a node that should have the nested attribute (alice, bob, or charlie)
+       let nodeWithProfile = doc.parsedBody.nodes.find(n => 
+         n.label.includes('Software Engineer') || 
+         n.label.includes('Data Scientist') || 
+         n.label.includes('Designer')
+       );
+       assertTrue(nodeWithProfile !== undefined, "Should find at least one node with nested profile data");
+     },
+
     test_node_color_configuration: function() {
       let cmd = api + "/knows_graph?nodeColor=ff0000&nodeColorByCollection=true";
       let doc = arango.GET_RAW(cmd);
-
-      require("internal").print("=== NODE COLOR REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
-        require("internal").print("Sample Node Color Info:", {
-          color: doc.parsedBody.nodes[0].color,
-          group: doc.parsedBody.nodes[0].group
-        });
-      }
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
@@ -328,17 +400,6 @@ function configurationParametersSuite() {
     test_node_size_configuration: function() {
       let cmd = api + "/knows_graph?nodeSizeByEdges=true";
       let doc = arango.GET_RAW(cmd);
-
-      require("internal").print("=== NODE SIZE BY EDGES REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
-        require("internal").print("Sample Node Size Info:", {
-          size: doc.parsedBody.nodes[0].size,
-          value: doc.parsedBody.nodes[0].value,
-          nodeEdgesCount: doc.parsedBody.nodes[0].nodeEdgesCount
-        });
-      }
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
@@ -354,11 +415,7 @@ function configurationParametersSuite() {
       let cmd = api + "/knows_graph?edgeLabel=vertex&edgeLabelByCollection=true";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== EDGE LABEL REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
       if (doc.parsedBody.edges && doc.parsedBody.edges.length > 0) {
-        require("internal").print("Sample Edge:", JSON.stringify(doc.parsedBody.edges[0], null, 2));
       }
 
       assertEqual(doc.code, 200);
@@ -372,13 +429,6 @@ function configurationParametersSuite() {
     test_edge_color_configuration: function() {
       let cmd = api + "/knows_graph?edgeColor=00ff00&edgeColorByCollection=true";
       let doc = arango.GET_RAW(cmd);
-
-      require("internal").print("=== EDGE COLOR REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      if (doc.parsedBody.edges && doc.parsedBody.edges.length > 0) {
-        require("internal").print("Sample Edge Color:", doc.parsedBody.edges[0].color);
-      }
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('edges'));
@@ -394,13 +444,6 @@ function configurationParametersSuite() {
       layouts.forEach(function(layout) {
         let cmd = api + "/knows_graph?layout=" + layout;
         let doc = arango.GET_RAW(cmd);
-
-        require("internal").print("=== LAYOUT REQUEST: " + layout + " ===");
-        require("internal").print("URL:", cmd);
-        require("internal").print("Response Code:", doc.code);
-        if (doc.parsedBody.settings) {
-          require("internal").print("Layout Config:", doc.parsedBody.settings.configlayout);
-        }
 
         assertEqual(doc.code, 200);
         assertTrue(doc.parsedBody.hasOwnProperty('settings'));
@@ -422,12 +465,6 @@ function advancedFunctionalitySuite() {
       let cmd = api + "/knows_graph?mode=all&limit=10";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== ALL MODE REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Response Code:", doc.code);
-      require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
-      require("internal").print("Edges Count:", doc.parsedBody.edges ? doc.parsedBody.edges.length : 'N/A');
-
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
       assertTrue(doc.parsedBody.hasOwnProperty('edges'));
@@ -447,12 +484,6 @@ function advancedFunctionalitySuite() {
         let cmd = api + "/knows_graph?nodeStart=" + encodeURIComponent(nodeIds);
         let doc = arango.GET_RAW(cmd);
 
-        require("internal").print("=== MULTIPLE START NODES REQUEST ===");
-        require("internal").print("URL:", cmd);
-        require("internal").print("Start Nodes:", nodeIds);
-        require("internal").print("Response Code:", doc.code);
-        require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
-
         assertEqual(doc.code, 200);
         assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
         assertEqual(doc.parsedBody.nodes.length, 5);
@@ -468,16 +499,6 @@ function advancedFunctionalitySuite() {
       let customQuery = "FOR v, e, p IN 1..1 ANY 'persons/alice' GRAPH 'knows_graph' RETURN p";
       let cmd = api + "/knows_graph?query=" + encodeURIComponent(customQuery);
       let doc = arango.GET_RAW(cmd);
-
-      require("internal").print("=== CUSTOM QUERY REQUEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Custom Query:", customQuery);
-      require("internal").print("Response Code:", doc.code);
-      if (doc.code !== 200) {
-        require("internal").print("Error:", doc.parsedBody);
-      } else {
-        require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
-      }
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
@@ -497,10 +518,6 @@ function settingsAndMetadataSuite() {
     test_settings_structure: function() {
       let cmd = api + "/knows_graph";
       let doc = arango.GET_RAW(cmd);
-
-      require("internal").print("=== SETTINGS STRUCTURE TEST ===");
-      require("internal").print("Settings Keys:", Object.keys(doc.parsedBody.settings || {}));
-      require("internal").print("Settings Content:", JSON.stringify(doc.parsedBody.settings, null, 2));
 
       assertEqual(doc.code, 200);
       assertTrue(doc.parsedBody.hasOwnProperty('settings'));
@@ -558,12 +575,8 @@ function settingsAndMetadataSuite() {
       let cmd = api + "/knows_graph";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== NODE STRUCTURE TEST ===");
       if (doc.parsedBody.nodes && doc.parsedBody.nodes.length > 0) {
         let sampleNode = doc.parsedBody.nodes[0];
-        require("internal").print("Sample Node Keys:", Object.keys(sampleNode));
-        require("internal").print("Sample Node:", JSON.stringify(sampleNode, null, 2));
-        
         // Check all required node fields
         let requiredFields = ['id', 'label', 'size', 'value', 'sizeCategory', 'shape', 'color', 'font', 'title', 'colorAttributeFound', 'sortColor'];
         requiredFields.forEach(field => {
@@ -588,11 +601,8 @@ function settingsAndMetadataSuite() {
       let cmd = api + "/knows_graph";
       let doc = arango.GET_RAW(cmd);
 
-      require("internal").print("=== EDGE STRUCTURE TEST ===");
       if (doc.parsedBody.edges && doc.parsedBody.edges.length > 0) {
         let sampleEdge = doc.parsedBody.edges[0];
-        require("internal").print("Sample Edge Keys:", Object.keys(sampleEdge));
-        require("internal").print("Sample Edge:", JSON.stringify(sampleEdge, null, 2));
         
         // Check all required edge fields
         let requiredFields = ['id', 'source', 'from', 'label', 'target', 'to', 'color', 'font', 'length', 'size', 'colorAttributeFound', 'sortColor'];
@@ -740,11 +750,6 @@ function performanceTestSuite() {
     
     // Batch insert all edges
     edges.insert(allEdges);
-    
-    require("internal").print("=== PERFORMANCE GRAPH CREATED ===");
-    require("internal").print("Total vertices:", vertices.count());
-    require("internal").print("Total edges:", edges.count());
-    require("internal").print("Root vertex size (approx):", JSON.stringify(vertices.document(rootKey)).length, "bytes");
   }
 
   return {
@@ -759,14 +764,6 @@ function performanceTestSuite() {
 
       const endTime = Date.now();
       const executionTime = endTime - startTime;
-
-      require("internal").print("=== LARGE TREE PERFORMANCE TEST ===");
-      require("internal").print("URL:", cmd);
-      require("internal").print("Execution time:", executionTime, "ms");
-      require("internal").print("Response Code:", doc.code);
-      require("internal").print("Response size (approx):", JSON.stringify(doc.parsedBody).length, "bytes");
-      require("internal").print("Nodes Count:", doc.parsedBody.nodes ? doc.parsedBody.nodes.length : 'N/A');
-      require("internal").print("Edges Count:", doc.parsedBody.edges ? doc.parsedBody.edges.length : 'N/A');
 
       assertEqual(doc.code, 200);
       assertEqual(doc.headers['content-type'], contentType);
@@ -809,9 +806,6 @@ function performanceTestSuite() {
       // Verify start vertex is correctly set
       assertEqual(doc.parsedBody.settings.startVertex._id, "perf_vertices/root");
       assertEqual(doc.parsedBody.settings.startVertex._key, "root");
-      
-      require("internal").print("=== PERFORMANCE TEST COMPLETED SUCCESSFULLY ===");
-      require("internal").print("All", doc.parsedBody.nodes.length, "vertices and", doc.parsedBody.edges.length, "edges returned correctly");
     }
   };
 }
