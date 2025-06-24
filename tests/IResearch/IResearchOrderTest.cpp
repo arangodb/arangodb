@@ -51,7 +51,6 @@
 #include "RestServer/VectorIndexFeature.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
-#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Statistics/StatisticsFeature.h"
@@ -321,8 +320,6 @@ class IResearchOrderTest
     }
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);  // required for calculationVocbase
-    features.emplace_back(server.addFeature<arangodb::ApiRecordingFeature>(),
-                          false);
 
     for (auto& f : features) {
       f.first.prepare();

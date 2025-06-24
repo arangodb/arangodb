@@ -33,7 +33,6 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
-#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/VectorIndexFeature.h"
@@ -94,8 +93,6 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
                         true);  // required for IResearchAnalyzerFeature
   features.emplace_back(server.addFeature<arangodb::VectorIndexFeature>(),
                         true);  // required for IResearchAnalyzerFeature
-  features.emplace_back(server.addFeature<arangodb::ApiRecordingFeature>(),
-                        false);
 
   for (auto& f : features) {
     f.first.prepare();
