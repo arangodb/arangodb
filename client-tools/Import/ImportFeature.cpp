@@ -117,20 +117,20 @@ void ImportFeature::collectOptions(
   options->addOption(
       "--from-collection-prefix",
       "The collection name prefix to prepend to all values in the "
-      "`_from` attribute.",
+      "`_from` attribute that only specify a document key.",
       new StringParameter(&_fromCollectionPrefix));
 
   options->addOption(
       "--to-collection-prefix",
       "The collection name prefix to prepend to all values in the "
-      "`_to` attribute.",
+      "`_to` attribute that only specify a document key.",
       new StringParameter(&_toCollectionPrefix));
 
-  options->addOption("--overwrite-collection-prefix",
-                     "If the collection name is already prefixed, overwrite "
-                     "the prefix. Only useful in combination with "
-                     "`--from-collection-prefix` / `--to-collection-prefix`.",
-                     new BooleanParameter(&_overwriteCollectionPrefix));
+  options->addOption(
+      "--overwrite-collection-prefix",
+      "Force the `--from-collection-prefix` and `--to-collection-prefix`, "
+      "possibly replacing existing collection name prefixes.",
+      new BooleanParameter(&_overwriteCollectionPrefix));
 
   options->addOption(
       "--create-collection",
