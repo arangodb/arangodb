@@ -83,6 +83,41 @@ void ApiRecordingFeature::collectOptions(
       new UInt64Parameter(&_totalMemoryLimitAql, 1, 256000, 256000000000),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
                                           arangodb::options::Flags::Command));
+
+  options
+      ->addOption(
+          "--log.recording-api-enabled",
+          "Whether the recording API is enabled (true) or not (false), or "
+          "only enabled for superuser JWT (jwt).",
+          new StringParameter(&_apiSwitch))
+      .setLongDescription(R"(The recording API (`/_admin/server/api-calls`
+for API calls and `/_admin/server/aql-queries` for AQL queries provides access 
+to recorded API calls and AQL queries respectively. 
+Since this data might be sensitive depending on the context of 
+the deployment, this API needs to be secured properly. By default, the API is 
+accessible for admin users (administrative access to the `_system` database). 
+However, you can lock this down further.
+
+The possible values for this option are:
+
+ - `true`: The recording API is accessible for admin users.
+ - `jwt`: The recording API is accessible for the superuser only
+   (authentication with JWT token and empty username).
+ - `false`: The recording API is not accessible at all.)");
+}
+
+void ApiRecordingFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  if (_apiSwitch == "true" || _apiSwitch == "on" || _apiSwitch == "On") {
+    _apiEnabled = true;
+    _apiSwitch = "true";
+  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
+    _apiEnabled = true;
+    _apiSwitch = "jwt";
+  } else {
+    _apiEnabled = false;
+    _apiSwitch = "false";
+  }
 }
 
 void ApiRecordingFeature::prepare() {

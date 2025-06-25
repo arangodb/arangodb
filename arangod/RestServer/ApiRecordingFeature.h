@@ -115,6 +115,7 @@ class ApiRecordingFeature : public ArangodFeature {
   ~ApiRecordingFeature() override;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
   void stop() override final;
@@ -144,6 +145,9 @@ class ApiRecordingFeature : public ArangodFeature {
 
   void recordAQLQuery(std::string_view queryString, std::string_view database,
                       velocypack::SharedSlice bindParameters);
+
+  bool isAPIEnabled() const noexcept { return _apiEnabled; }
+  bool onlySuperUser() const noexcept { return _apiSwitch == "jwt"; }
 
  private:
   // Cleanup thread function
@@ -183,6 +187,10 @@ class ApiRecordingFeature : public ArangodFeature {
 
   // Metrics for measuring recordAAqlQuery performance
   metrics::Histogram<metrics::LogScale<double>>& _recordAqlCallTimes;
+
+  // API permission control
+  std::string _apiSwitch = "true";
+  bool _apiEnabled = true;
 };
 
 }  // namespace arangodb

@@ -38,6 +38,7 @@
 #include "RestServer/ApiRecordingFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/ExecContext.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/VocbaseInfo.h"
@@ -314,6 +315,28 @@ void RestAdminServerHandler::handleApiCalls() {
 
   auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
 
+  // Check if recording API is enabled
+  if (!apiRecordingFeature.isAPIEnabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "recording API is disabled");
+    return;
+  }
+
+  // Check permission level
+  if (apiRecordingFeature.onlySuperUser()) {
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need super user rights for recording API operations");
+      return;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights for recording API operations");
+      return;
+    }
+  }
+
   VPackBuilder builder;
   {
     VPackObjectBuilder guard(&builder);
@@ -337,7 +360,7 @@ void RestAdminServerHandler::handleAqlQueries() {
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
     return;
   }
-  if (!ServerState::instance()->isCoordinator() ||
+  if (!ServerState::instance()->isCoordinator() &&
       !ServerState::instance()->isSingleServer()) {
     generateError(
         Result(TRI_ERROR_NOT_IMPLEMENTED,
@@ -346,6 +369,28 @@ void RestAdminServerHandler::handleAqlQueries() {
   }
 
   auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
+
+  // Check if recording API is enabled
+  if (!apiRecordingFeature.isAPIEnabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "recording API is disabled");
+    return;
+  }
+
+  // Check permission level
+  if (apiRecordingFeature.onlySuperUser()) {
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need super user rights for recording API operations");
+      return;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights for recording API operations");
+      return;
+    }
+  }
 
   VPackBuilder builder;
   {
