@@ -48,10 +48,10 @@ public:
 
     auto customerQuery = R"(
       LET customers = [
-        {name: "Gilberto", age: 25, address: "San Francisco", isStudent: true},
-        {name: "Victor", age: "young", address: "Tokyo", isStudent: false},
-        {name: "Koichi", address: {city: "San Francisco", country: "USA"}},
-        {name: "Michael", age: 35, address: "Cologne"}
+        {name: "C1", age: 25, address: "San Francisco", isStudent: true},
+        {name: "C2", age: "young", address: "Tokyo", isStudent: false},
+        {name: "C3", address: {city: "San Francisco", country: "USA"}},
+        {name: "C4", age: 35, address: "Cologne"}
       ]
       FOR c IN customers INSERT c INTO testCustomers
     )";
@@ -59,10 +59,10 @@ public:
 
     auto productQuery = R"(
       LET products = [
-        {name: "drone", price: 499.98},
-        {name: "macBook", price: 1299.98, version: 14.5},
-        {name: "glasses", price: "expensive", color: "black"},
-        {name: "MS surface", price: 349, version: "5.5"}
+        {_key: "P1", name: "P1", price: 499.98},
+        {_key: "P2",name: "P2", price: 1299.98, version: 14.5},
+        {_key: "P3",name: "P3", price: "expensive", color: "black"},
+        {_key: "P4",name: "P4", price: 349, version: "5.5"}
       ]
       FOR p IN products INSERT p INTO testProducts
     )";
@@ -78,18 +78,6 @@ protected:
   static inline QueryRegistry* registry;
   static inline TRI_vocbase_t* vocbase;
 };
-
-// namespace {
-// arangodb::velocypack::SharedSlice operator"" _vpack(const char* json,
-//                                                     size_t len) {
-//   VPackOptions options;
-//   options.checkAttributeUniqueness = true;
-//   options.validateUtf8Strings = true;
-//   VPackParser parser(&options);
-//   parser.parse(json, len);
-//   return parser.steal()->sharedSlice();
-// }
-// }
 
 TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
   auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
@@ -107,7 +95,8 @@ TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
 TEST_F(RestSchemaHandlerTest, NotExistingCollectionReturns404) {
   auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
   fakeRequest->setRequestType(RequestType::GET);
-  fakeRequest->addSuffix("notExistingCol"); // _api/schema/testProducts
+  fakeRequest->addSuffix("collection");
+  fakeRequest->addSuffix("notExistingCol");
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
@@ -122,8 +111,9 @@ TEST_F(RestSchemaHandlerTest, NotExistingCollectionReturns404) {
 TEST_F(RestSchemaHandlerTest, TooManySuffixesReturns404) {
   auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
   fakeRequest->setRequestType(RequestType::GET);
-  fakeRequest->addSuffix("testProducts"); // _api/schema/testProducts
-  fakeRequest->addSuffix("extraCol"); // _api/schema/testProducts
+  fakeRequest->addSuffix("collection");
+  fakeRequest->addSuffix("testProducts");
+  fakeRequest->addSuffix("extraCol");
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
@@ -135,34 +125,11 @@ TEST_F(RestSchemaHandlerTest, TooManySuffixesReturns404) {
   EXPECT_EQ(testee->response()->responseCode(), ResponseCode::NOT_FOUND);
 }
 
-TEST_F(RestSchemaHandlerTest, SampleNum1ReturnsAllOptionalFalse) {
-  auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
-  fakeRequest->setRequestType(RequestType::GET);
-  fakeRequest->addSuffix("testCustomers");
-  fakeRequest->setRequestPath("sampleNum=1");
-
-  std::cout << fakeRequest->requestUrl() << std::endl;
-
-  auto fakeResponse = std::make_unique<GeneralResponseMock>();
-  auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(),
-      fakeResponse.release(), registry);
-
-  testee->execute();
-
-  fakeResponse.reset(
-      dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
-  std::cout << fakeResponse->_payload.toString() << std::endl;
-
-  EXPECT_EQ(fakeResponse->responseCode(), ResponseCode::OK);
-}
-
 TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
-  //auto& vocbase = server->getSystemDatabase(); // "_system"
-
   auto fakeRequest = std::make_unique<GeneralRequestMock>(*vocbase);
   fakeRequest->setRequestType(RequestType::GET);
-  fakeRequest->addSuffix("testProducts"); // _api/schema/testProducts
+  fakeRequest->addSuffix("collection");
+  fakeRequest->addSuffix("testProducts");
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
@@ -174,16 +141,22 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
 
-  auto expected = Parser::fromJson(R"json(
-    [
-      {"attribute":"_id","types":["string"],"optional":false},
-      {"attribute":"_key","types":["string"],"optional":false},
-      {"attribute":"color","types":["string"],"optional":true},
-      {"attribute":"name","types":["string"],"optional":false},
-      {"attribute":"price","types":["string","number"],"optional":false},
-      {"attribute":"version","types":["number","string"],"optional":true}
-    ]
-    )json");
+  std::cout << fakeResponse->_payload.toJson() << std::endl;
+
+  auto expected = Parser::fromJson(R"({
+    "collectionName": "testProducts",
+    "collectionType": "document",
+    "numOfDocuments": 4,
+    "schema": [{
+      "attribute": "_id", "types": ["string"], "optional": false}, {
+      "attribute": "_key", "types": ["string"], "optional":false}, {
+      "attribute": "color", "types": ["string"], "optional":true}, {
+      "attribute": "name", "types": ["string"], "optional":false}, {
+      "attribute": "price", "types": ["string", "number"], "optional": false}, {
+      "attribute": "version", "types": [ "number", "string"], "optional": true}],
+    "examples":[{
+      "_key": "P4", "_id": "testProducts/P4", "name": "P4", "price": 349, "version": "5.5"}]}
+  )");
 
   EXPECT_EQUAL_SLICES(fakeResponse->_payload.slice(), expected->slice());
 }

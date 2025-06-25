@@ -71,19 +71,14 @@ RestStatus RestSchemaHandler::execute() {
   auto const& suffix = _request->suffixes();
   switch (suffix.size()) {
     case 0:
-      lookupSchema(sampleNum, exampleNum);
-      break;
+      return lookupSchema(sampleNum, exampleNum);
     case 2:
-      if (suffix[0] == "collection") {
-        lookupSchemaCollection(suffix[1], sampleNum, exampleNum);
-        break;
-      }
-      if (suffix[0] == "graph") {
-        break;
-      }
-      if (suffix[0] == "view") {
-        break;
-      }
+      if (suffix[0] == "collection")
+        return lookupSchemaCollection(suffix[1], sampleNum, exampleNum);
+      if (suffix[0] == "graph")
+        return RestStatus::DONE;
+      if (suffix[0] == "view")
+        return RestStatus::DONE;
       [[fallthrough]]; // If suffix[0] is none of "collection", "graph" or "view", go to default
     default:
       generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
@@ -91,7 +86,6 @@ RestStatus RestSchemaHandler::execute() {
       "/schema/graph/<graphName>, or /schema/<viewName>");
       return RestStatus::DONE;
   }
-  return handleQueryResult();
 }
 
 RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum, uint64_t exampleNum) {
@@ -114,7 +108,7 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum, uint64_t exampleN
 
   _queryResult.data = std::move(resultBuilder);
   _queryResult.context = std::move(ctx);
-  return RestStatus::DONE;
+  return handleQueryResult();
 }
 
 RestStatus RestSchemaHandler::lookupSchemaCollection(
@@ -131,7 +125,7 @@ RestStatus RestSchemaHandler::lookupSchemaCollection(
     lookupCollection(colName, sampleNum, exampleNum));
   _queryResult.context = std::make_shared<transaction::StandaloneContext>(
     _vocbase, transaction::OperationOriginTestCase{});
-  return RestStatus::DONE;
+  return handleQueryResult();
 }
 
 const velocypack::Slice RestSchemaHandler::lookupGraph(
@@ -223,7 +217,7 @@ const velocypack::Slice RestSchemaHandler::getCount(std::string const& colName) 
 const velocypack::Slice RestSchemaHandler::getExamples(
   std::string const& colName, uint64_t exampleNum) {
   const std::string queryStr = R"(
-    FOR d IN @@collection LIMIT @exampleNum RETURN d
+    FOR d IN @@collection LIMIT @exampleNum RETURN UNSET(d, "_rev")
   )";
 
   auto bindVars = std::make_shared<velocypack::Builder>();
@@ -263,8 +257,8 @@ uint64_t RestSchemaHandler::validateParameter(const std::string& param) {
 
   auto const& val = _request->value(param, passed);
   if (passed) {
-    if (val.empty() || !std::all_of(val.begin(), val.end(),
-                                    [](char c) { return std::isdigit(c); })) {
+    if (!std::all_of(val.begin(), val.end(),
+      [](char c) { return std::isdigit(c); })) {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
         std::format("Invalid value for {}: must contain only digits", param));
       return 0;
