@@ -271,11 +271,15 @@ void Query::destroy() {
 /// ensure that Query objects are always created using shared_ptrs.
 /// Actually, this should really be a method of the `AqlFeature`, but
 /// we do not revisit all call sites and ensure that we have access
-/// to the `AqlFeature`. So this cleanup is for a later day. Therefore,
-/// we use the `server()` functionality in the `TRI_vocbase_t` in the
-/// `transaction::Context` to get access to the `AqlFeature` for now.
-/// Over time, one should have access to the `AqlFeature` to create
-/// a new `Query` object, but we are not there yet.
+/// to the `AqlFeature` now. So this cleanup is for a later
+/// day. Therefore, we use the `server()` functionality in the
+/// `TRI_vocbase_t` in the `transaction::Context` to get access to the
+/// `AqlFeature` for now. Over time, one should have access to the
+/// `AqlFeature` to create a new `Query` object, but we are not there
+/// yet. If you use AQL queries from within C++ code in the future,
+/// do not use this method, rather use `AqlFeature::createQuery`. Of
+/// course, you need to make sure to have access to the AqlFeature
+/// for this.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
