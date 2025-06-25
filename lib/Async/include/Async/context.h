@@ -32,7 +32,7 @@ namespace arangodb {
 /**
    Global context in arangodb
 
-   In an asyncronous coroutine we need to capture this context when suspending
+   In an asynchronous coroutine we need to capture this context when suspending
    and resetting it when resuming to make sure that the global variables are set
    correctly.
  */

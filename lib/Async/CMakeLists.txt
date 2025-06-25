@@ -21,5 +21,9 @@ target_link_libraries(arango_async INTERFACE
   arango_async_interface
   arango_basic_utils
 )
+target_link_libraries(arango_async PUBLIC
+  arango_inspection
+  arango_task_registry
+)
 
 add_subdirectory(Registry)

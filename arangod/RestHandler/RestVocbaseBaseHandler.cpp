@@ -153,13 +153,6 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
   TRI_ASSERT(request->requestContext());
 }
 
-auto RestVocbaseBaseHandler::prepareExecute(bool isContinue)
-    -> std::vector<std::shared_ptr<LogContext::Values>> {
-  auto values = RestHandler::prepareExecute(isContinue);
-  values.emplace_back(_scopeVocbaseValues);
-  return values;
-}
-
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;
 
 // returns the short id of the server which should handle this request

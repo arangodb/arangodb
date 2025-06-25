@@ -2,6 +2,7 @@ add_library(arango_inspection INTERFACE)
 
 target_link_libraries(arango_inspection
   INTERFACE
+    velocypack
     date_interface
     fmt::fmt)
 

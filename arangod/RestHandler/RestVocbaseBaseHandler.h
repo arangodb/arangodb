@@ -132,9 +132,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     _context.cancel();
   }
 
-  [[nodiscard]] auto prepareExecute(bool isContinue)
-      -> std::vector<std::shared_ptr<LogContext::Values>> override;
-
  protected:
   // returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
@@ -197,6 +194,15 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   futures::Future<std::shared_ptr<transaction::Context>>
   createTransactionContext(AccessMode::Type mode,
                            transaction::OperationOrigin operationOrigin) const;
+
+  [[nodiscard]] auto makeLogContextValue() const {
+    return RestHandler::makeLogContextValue()
+        .with<structuredParams::DatabaseName>(_vocbase.name());
+  }
+  [[nodiscard]] auto makeSharedLogContextValue() const
+      -> std::shared_ptr<LogContext::Values> override {
+    return makeLogContextValue().share();
+  }
 
  protected:
   // request context

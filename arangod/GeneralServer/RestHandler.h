@@ -29,6 +29,7 @@
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
 #include "Logger/LogContext.h"
+#include "Logger/LogStructuredParamsAllowList.h"
 #include "Metrics/GaugeCounterGuard.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
@@ -126,8 +127,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane determineRequestLane();
 
-  [[nodiscard]] virtual auto prepareExecute(bool isContinue)
-      -> std::vector<std::shared_ptr<LogContext::Values>>;
   virtual RestStatus execute();
   virtual futures::Future<futures::Unit> executeAsync();
   // No longer used
@@ -182,11 +181,41 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   auto runHandlerStateMachine() -> futures::Future<futures::Unit>;
 
-  [[nodiscard]] auto prepareEngine()
-      -> std::vector<std::shared_ptr<LogContext::Values>>;
+  void prepareEngine();
   /// @brief Executes the RestHandler
   auto executeEngine() -> async<void>;
   void compressResponse();
+
+  // Note that makeValue(), and .with<>(), return a ValueBuilder<...>. The
+  // template parameters of that type depend on the specific parameter names,
+  // as specified by .with<...>.
+  // Calling `.share()` on a ValueBuilder will return a generic, but
+  // immutable, `std::shared_ptr<Values>`.
+  //
+  // Therefore, to be able to
+  // 1) have derived classes add their own values to the ones provided by
+  //    their respective base classes (without having to re-list them
+  //    explicitly), and
+  // 2) provide a virtual function returning these values, so it can be called
+  //    in the base class (specifically in runHandlerStateMachine()),
+  //
+  // we need, for 1), this non-virtual function returning a ValueBuilder (with a
+  // specific type). Derived classes can implement a method with the same name,
+  // start with the builder returned by the same method of their superclass, add
+  // values and return the new builder.
+  //
+  // And for 2), each class needs to override the virtual function below
+  // (makeSharedLogContextValue()), calling its own makeLogContextValue().
+  [[nodiscard]] auto makeLogContextValue() const {
+    return LogContext::makeValue()
+        .with<structuredParams::UrlName>(_request->fullUrl())
+        .with<structuredParams::UserName>(_request->user());
+  }
+
+  [[nodiscard]] virtual auto makeSharedLogContextValue() const
+      -> std::shared_ptr<LogContext::Values> {
+    return makeLogContextValue().share();
+  }
 
  protected:
   // This alias allows the RestHandler and derived classes to add values to the
@@ -211,41 +240,27 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
-  requires requires(F f) {
-    { f() } -> std::same_as<RestStatus>;
-  }
-  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<void> {
-    auto fun = std::forward<F>(funArg);
-    auto state = fun();
-
-    while (state == RestStatus::WAITING) {
-      // Get the number of wakeups. We call fun() up to that many
-      // times before suspending again.
-      auto n = co_await _suspensionCounter.await();
-      for (auto i = 0; i < n && state == RestStatus::WAITING; ++i) {
-        state = fun();
-      }
+    requires requires(F f) {
+      { f() } -> std::same_as<RestStatus>;
     }
+  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<void> {
+    auto&& fun = std::forward<F>(funArg);
+    co_await arangodb::waitingFunToCoro(_suspensionCounter, [&]() -> std::optional<std::monostate> {
+      auto state = fun();
+      if (state == RestStatus::WAITING) {
+        return std::nullopt;
+      }
+      return std::monostate{};
+    });
     co_return;
   }
 
   template<typename F, typename T = std::invoke_result_t<F>::value_type>
-  requires requires(F f) {
-    { f() } -> std::same_as<std::optional<T>>;
-  }
-  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<T> {
-    auto fun = std::forward<F>(funArg);
-    auto res = fun();
-
-    while (!res.has_value()) {
-      // Get the number of wakeups. We call fun() up to that many
-      // times before suspending again.
-      auto n = co_await _suspensionCounter.await();
-      for (auto i = 0; i < n && !res.has_value(); ++i) {
-        res = fun();
-      }
+    requires requires(F f) {
+      { f() } -> std::same_as<std::optional<T>>;
     }
-    co_return std::move(res).value();
+  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<T> {
+    co_return co_await arangodb::waitingFunToCoro(_suspensionCounter, std::forward<F>(funArg));
   }
 
  private:
@@ -266,9 +281,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool _isAsyncRequest = false;
 
   RequestLane _lane;
-
-  // TODO we don't need the member any longer
-  std::shared_ptr<LogContext::Values> _logContextScopeValues;
 
  protected:
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;

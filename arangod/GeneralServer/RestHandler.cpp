@@ -66,11 +66,6 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
-      _logContextScopeValues(
-          LogContext::makeValue()
-              .with<structuredParams::UrlName>(_request->fullUrl())
-              .with<structuredParams::UserName>(_request->user())
-              .share()),
       _canceled(false) {
   if (server.hasFeature<GeneralServerFeature>() &&
       server.isEnabled<GeneralServerFeature>()) {
@@ -423,10 +418,11 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
     shutdownExecute(false);
   };
 
-  TRI_ASSERT(_state == HandlerState::PREPARE);
-  auto logContextValues = prepareEngine();
   auto const logScopeGuard =
-      LogContext::Accessor::ScopedValue(std::move(logContextValues));
+      LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
+
+  TRI_ASSERT(_state == HandlerState::PREPARE);
+  prepareEngine();
 
   if (_state == HandlerState::FAILED) {
     co_return fail();
@@ -455,8 +451,7 @@ auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-auto RestHandler::prepareEngine()
-    -> std::vector<std::shared_ptr<LogContext::Values>> {
+void RestHandler::prepareEngine() {
   // set end immediately so we do not get negative statistics
   _statistics.SET_REQUEST_START_END();
 
@@ -465,37 +460,23 @@ auto RestHandler::prepareEngine()
 
     Exception err(TRI_ERROR_REQUEST_CANCELED);
     handleError(err);
-    return {};
+    return;
   }
 
-  try {
-    auto logScope = prepareExecute(false);
-    _state = HandlerState::EXECUTE;
-    return logScope;
-  } catch (Exception const& ex) {
-    handleError(ex);
-  } catch (std::exception const& ex) {
-    Exception err(TRI_ERROR_INTERNAL, ex.what());
-    handleError(err);
-  } catch (...) {
-    Exception err(TRI_ERROR_INTERNAL);
-    handleError(err);
-  }
-
-  _state = HandlerState::FAILED;
-  return {};
-}
-
-auto RestHandler::prepareExecute(bool isContinue)
-    -> std::vector<std::shared_ptr<LogContext::Values>> {
-  return {_logContextScopeValues};
+  _state = HandlerState::EXECUTE;
 }
 
 void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 
-// Compatability function for old-style code that uses the
+// Compatibility function for old-style code that uses the
 // WAITING/wakeupHandler scheme for async execution.
-bool RestHandler::wakeupHandler() { return _suspensionCounter.notify(); }
+// The suspension counter is used as glue to connect a WAITING callee to a
+// coroutine caller. This method forwards the wakeup calls to it.
+// Note that notify returns true if it has resumed an awaiting coroutine, and
+// false if it just accounted for notify.
+// On the other end, wakeupHandler() returning false instructs
+// SharedQueryState::queueHandler() to reschedule before the next wakeup.
+bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
