@@ -154,7 +154,7 @@ function recordingAPIsSuite() {
       let queries = checkAqlQueriesRecording();
       found = false;
       for (let q of queries) {
-        if (q.queryString == cursorBody.query) {
+        if (q.queryString === cursorBody.query) {
           found = true;
           break;
         }
@@ -181,9 +181,9 @@ function recordingAPIsSuite() {
       checkApiCallsRecording();
       let queriesSeen = checkAqlQueriesRecording();
       for (let qq of queries) {
-        found = false;
+        let found = false;
         for (let q of queriesSeen) {
-          if (q.queryString == qq) {
+          if (q.queryString === qq) {
             found = true;
             break;
           }
