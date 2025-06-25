@@ -218,6 +218,51 @@ function recordingAPIsSuite() {
       let deleteResponse2 = arango.DELETE_RAW(aqlQueriesApi);
       assertEqual(deleteResponse2.code, internal.errors.ERROR_HTTP_METHOD_NOT_ALLOWED.code);
       assertTrue(deleteResponse2.parsedBody['error']);
+    },
+
+    test_large_bind_parameters_not_recorded: function () {
+      // Test that bind parameters larger than 1024 bytes are not included in recording
+      
+      // Create a large string parameter that's clearly over 1024 bytes in VelocyPack
+      // We'll use 2000 characters to be well over the limit
+      let largeString = 'x'.repeat(2000);
+      let largeArray = [];
+      for (let i = 0; i < 100; i++) {
+        largeArray.push(`large_item_${i}_with_some_extra_content_to_make_it_bigger`);
+      }
+      
+      let queryString = `FOR doc IN ${cn} FILTER doc.name == @name AND doc.value IN @values RETURN doc`;
+      let bindParameters = {
+        "name": largeString,
+        "values": largeArray
+      };
+
+      let cursorBody = {
+        "query": queryString,
+        "bindVars": bindParameters,
+        "count": false
+      };
+      
+      // Execute the query with large bind parameters
+      let cursorResponse = arango.POST_RAW(cursorApi, cursorBody);
+      assertEqual(cursorResponse.code, 201);
+      assertFalse(cursorResponse.parsedBody['error']);
+
+      // Check the recording - the query should be there but bindParameters should be empty
+      let queriesSeen = checkAqlQueriesRecording();
+      let found = false;
+      for (let q of queriesSeen) {
+        if (q.queryString === queryString) {
+          print(q)
+          found = true;
+          // Verify that bindParameters is empty due to size limit
+          assertTrue(typeof(q.bindParameters) === "object");
+          assertEqual(Object.keys(q.bindParameters).length, 0, 
+                     `Expected empty bindParameters for large query, but got: ${JSON.stringify(q.bindParameters)}`);
+          break;
+        }
+      }
+      assertTrue(found, `Did not find our query with large bind parameters in report: ${JSON.stringify(queriesSeen)}`);
     }
   };
 }
