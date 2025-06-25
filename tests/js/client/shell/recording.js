@@ -253,7 +253,6 @@ function recordingAPIsSuite() {
       let found = false;
       for (let q of queriesSeen) {
         if (q.queryString === queryString) {
-          print(q)
           found = true;
           // Verify that bindParameters is empty due to size limit
           assertTrue(typeof(q.bindParameters) === "object");
@@ -263,6 +262,85 @@ function recordingAPIsSuite() {
         }
       }
       assertTrue(found, `Did not find our query with large bind parameters in report: ${JSON.stringify(queriesSeen)}`);
+    },
+
+    test_query_recording_memory_limit: function () {
+      // Test that query recording has a memory limit and only keeps recent queries
+      
+      // Create a string of approximately 900 bytes for bind parameters
+      let largeString = 'x'.repeat(900);
+      
+      const totalQueries = 30000;
+      const firstBatch = 100;  // Check that first 100 queries are gone
+      const lastBatch = 100;   // Check that last 100 queries are present
+      
+      print(`Executing ${totalQueries} queries with large bind parameters...`);
+      
+      // Execute 30,000 queries, each with a unique identifier
+      for (let i = 0; i < totalQueries; i++) {
+        let uniqueQueryString = `FOR doc IN ${cn} FILTER doc.name == @name /* query_${i} */ RETURN doc`;
+        let bindParameters = {
+          "name": largeString
+        };
+
+        let cursorBody = {
+          "query": uniqueQueryString,
+          "bindVars": bindParameters,
+          "count": false
+        };
+        
+        let cursorResponse = arango.POST_RAW(cursorApi, cursorBody);
+        assertEqual(cursorResponse.code, 201);
+        assertFalse(cursorResponse.parsedBody['error']);
+        
+        // Print progress every 5000 queries
+        if ((i + 1) % 5000 === 0) {
+          print(`Executed ${i + 1} queries...`);
+        }
+      }
+      
+      print("Waiting 1 second before checking recording...");
+      internal.sleep(1);
+      
+      // Check the recording API
+      let queriesSeen = checkAqlQueriesRecording();
+      print(`Found ${queriesSeen.length} recorded queries`);
+      
+      // Verify that the first 100 queries are NOT found
+      let firstBatchFound = 0;
+      for (let i = 0; i < firstBatch; i++) {
+        let expectedQueryString = `FOR doc IN ${cn} FILTER doc.name == @name /* query_${i} */ RETURN doc`;
+        for (let q of queriesSeen) {
+          if (q.queryString === expectedQueryString) {
+            firstBatchFound++;
+            break;
+          }
+        }
+      }
+      
+      // Verify that the last 100 queries ARE found
+      let lastBatchFound = 0;
+      for (let i = totalQueries - lastBatch; i < totalQueries; i++) {
+        let expectedQueryString = `FOR doc IN ${cn} FILTER doc.name == @name /* query_${i} */ RETURN doc`;
+        for (let q of queriesSeen) {
+          if (q.queryString === expectedQueryString) {
+            lastBatchFound++;
+            break;
+          }
+        }
+      }
+      
+      print(`First batch found: ${firstBatchFound}/${firstBatch}, Last batch found: ${lastBatchFound}/${lastBatch}`);
+      
+      // We expect the first queries to be gone due to memory limit
+      assertTrue(firstBatchFound < firstBatch / 2, 
+                `Expected most of the first ${firstBatch} queries to be gone due to memory limit, but found ${firstBatchFound}`);
+      
+      // We expect the last queries to be present
+      assertTrue(lastBatchFound > lastBatch / 2, 
+                `Expected most of the last ${lastBatch} queries to be present, but only found ${lastBatchFound}`);
+      
+      print("Query recording memory limit test completed successfully");
     }
   };
 }
