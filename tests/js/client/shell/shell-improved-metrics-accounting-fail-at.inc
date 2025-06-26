@@ -24,7 +24,7 @@
 /// @author Jan Steemann
 /// @author Alexey Bakharew
 // //////////////////////////////////////////////////////////////////////////////
-let IM = global.instanceManager;
+var IM = global.instanceManager;
 
 (function () {
   'use strict';

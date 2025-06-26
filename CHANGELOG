@@ -4,6 +4,46 @@ devel
 * Fix BTS-2158: The `/_api/import` endpoint does not throw an error on an
   invalid type parameter value.
 
+* Fixes BTS-2155: Add startup options to control the grace periods after the
+  DiskUsage limit is reached.
+  - `--server.license-disk-usage-grace-period-readonly` (in seconds) defines
+    the warning duration until the server enters read-only mode. The default
+    and maximum value is 2 days.
+  - `--server.license-disk-usage-grace-period-shutdown` (in seconds) defines
+    the read-only grade period until the server shuts down. The default
+    and the maximum value is 2 days.
+
+* FE-611: Add support for experimental vector index to the collection Indexes view with "beta" label, shown only if --experimental-vector-index flag is enabled.
+
+* Add inner product metric for vector index and APPROX_NEAR_INNER_PRODUCT()
+  AQL function. The inner product metric is similar to cosine metric except
+  vectors are not normalized.
+  
+  Example of creating a vector index with inner product:
+  ```
+    db.<collection>.ensureIndex({
+      type: "vector",
+      fields: ["value"],
+      params: {
+        "metric": "innerProduct",
+        "dimension": 300,
+        "nLists": 100
+      }
+    });
+  ```
+  
+  Example of using the APPROX_NEAR_INNER_PRODUCT() function:
+  ```
+    FOR doc IN collection
+    SORT APPROX_NEAR_INNER_PRODUCT(doc.vector, @query_vector) DESC
+    LIMIT 10
+    RETURN doc
+  ```
+
+* Fix BTS-2151: Fix cosine similarity score in vector index returns score
+  bigger then one due to not being normalized. It is recommended to drop
+  all vector indexes that use cosine metric and create them again.
+
 * Updated ArangoDB Starter to v0.19.12.
 
 * Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable

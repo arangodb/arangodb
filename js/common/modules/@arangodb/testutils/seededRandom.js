@@ -51,5 +51,12 @@ function randomNumberGeneratorFloat(seed) {
   };
 }
 
+function randomInteger() {
+  const min = Number.MIN_SAFE_INTEGER;
+  const max = Number.MAX_SAFE_INTEGER;
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
 exports.randomNumberGeneratorInt = randomNumberGeneratorInt;
 exports.randomNumberGeneratorFloat = randomNumberGeneratorFloat;
+exports.randomInteger = randomInteger;
