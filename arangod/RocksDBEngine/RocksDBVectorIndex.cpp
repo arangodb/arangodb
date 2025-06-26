@@ -56,7 +56,6 @@
 #include "faiss/utils/distances.h"
 #include "faiss/index_io.h"
 #include "faiss/impl/io.h"
-#include "faiss/IndexIVFPQ.h"
 
 namespace arangodb {
 
@@ -74,6 +73,8 @@ faiss::MetricType metricToFaissMetric(SimilarityMetric const metric) {
       return faiss::MetricType::METRIC_L2;
     case SimilarityMetric::kCosine:
       return faiss::MetricType::METRIC_INNER_PRODUCT;
+    case SimilarityMetric::kInnerProduct:
+      return faiss::METRIC_INNER_PRODUCT;
   }
 }
 
@@ -201,15 +202,6 @@ struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
   RocksDBInvertedLists* rocksdbInvertedLists = nullptr;
 };
 
-RocksDBIndexIVFFlat createFaissIndex(auto& quantitizer,
-                                     auto& vectorDefinition) {
-  return std::visit(
-      [&vectorDefinition](auto& quant) {
-        return RocksDBIndexIVFFlat(&quant, vectorDefinition);
-      },
-      quantitizer);
-}
-
 #define LOG_VECTOR_INDEX(lid, level, topic) \
   LOG_TOPIC((lid), level, topic)            \
       << "[shard=" << _collection.name() << ", index=" << _iid.id() << "] "
@@ -272,6 +264,8 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
           case arangodb::SimilarityMetric::kL2:
             return std::make_unique<faiss::IndexFlatL2>(_definition.dimension);
           case arangodb::SimilarityMetric::kCosine:
+            return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
+          case arangodb::SimilarityMetric::kInnerProduct:
             return std::make_unique<faiss::IndexFlatIP>(_definition.dimension);
         }
       });
@@ -342,6 +336,7 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   searchParametersIvf.inverted_list_context = trx;
   _faissIndex->search(count, inputs.data(), topK, distances.data(),
                       labels.data(), &searchParametersIvf);
+
   // faiss returns squared distances for L2, square them so they are returned in
   // normal form
   if (_definition.metric == SimilarityMetric::kL2) {
@@ -441,9 +436,6 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
       << "Loaded " << counter << " vectors. Start training process on "
       << _definition.nLists << " centroids.";
 
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
-  }
   _faissIndex->train(counter, trainingData.data());
   LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
 
@@ -687,6 +679,10 @@ Result RocksDBVectorIndex::ingestVectors(
           }
           batch = prepareBatch();
         }
+      }
+      if (_definition.metric == SimilarityMetric::kCosine) {
+        faiss::fvec_renorm_L2(_definition.dimension, batch->docIds.size(),
+                              batch->vectors.data());
       }
 
       if (batch) {

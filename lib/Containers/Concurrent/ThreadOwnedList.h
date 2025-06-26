@@ -236,7 +236,7 @@ struct ThreadOwnedList
       current = next;
       next = next->next_to_free;
       // (9) - this load synchronizes with the store in (6) and (8)
-      if (current->previous.load(std::memory_order_release) != nullptr) {
+      if (current->previous.load(std::memory_order_acquire) != nullptr) {
         if (_metrics) {
           _metrics->decrement_ready_for_deletion_nodes();
         }
