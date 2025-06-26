@@ -100,10 +100,8 @@ function recordingAPIsSuite() {
     test_api_calls_endpoint_exists: function () {
       let doc = arango.GET_RAW(apiCallsApi);
       
-      // API should exist, but might be disabled or require different permissions
-      // We accept both success (200) and forbidden (403) as valid responses
-      // indicating the endpoint exists
-      assertTrue(doc.code === 200 || doc.code === 403 || doc.code === 404, 
+      // API should exist. We accept only success (200).
+      assertEqual(doc.code, 200,
                  `Expected API calls endpoint to exist, got ${doc.code}`);
       assertEqual(doc.headers['content-type'], contentType);
     },
@@ -111,9 +109,7 @@ function recordingAPIsSuite() {
     test_aql_queries_endpoint_exists: function () {
       let doc = arango.GET_RAW(aqlQueriesApi);
       
-      // API should exist, but might be disabled or require different permissions
-      // We accept both success (200) and forbidden (403) as valid responses
-      // indicating the endpoint exists
+      // API should exist. We accept only success (200).
       assertTrue(doc.code === 200 || doc.code === 403 || doc.code === 404,
                  `Expected AQL queries endpoint to exist, got ${doc.code}`);
       assertEqual(doc.headers['content-type'], contentType);
@@ -136,7 +132,7 @@ function recordingAPIsSuite() {
       if (cursorResponse.parsedBody['hasMore'] && cursorResponse.parsedBody['id']) {
         let cursorId = cursorResponse.parsedBody['id'];
         let nextBatchResponse = arango.POST_RAW(`${cursorApi}/${cursorId}`, "");
-        assertTrue(nextBatchResponse.code === 200 || nextBatchResponse.code === 404);
+        assertTrue(nextBatchResponse.code === 200);
       }
 
       // Now check the recording APIs, just for plausibility:
