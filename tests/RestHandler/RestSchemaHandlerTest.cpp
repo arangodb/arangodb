@@ -141,8 +141,6 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
 
-  std::cout << fakeResponse->_payload.toJson() << std::endl;
-
   auto expected = Parser::fromJson(R"({
     "collectionName": "testProducts",
     "collectionType": "document",

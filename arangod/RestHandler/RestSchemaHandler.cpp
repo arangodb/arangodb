@@ -169,9 +169,6 @@ RestStatus RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
   if (!getGraphAndCollections(graphName, resultBuilder, colSet))
     return RestStatus::DONE;
 
-  for (auto col : colSet)
-    std::cout << col << std::endl;
-
   velocypack::Builder colsBuilder;
   colsBuilder.openArray();
   for (auto& colName : colSet) {
