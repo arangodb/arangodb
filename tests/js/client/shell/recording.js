@@ -110,7 +110,7 @@ function recordingAPIsSuite() {
       let doc = arango.GET_RAW(aqlQueriesApi);
       
       // API should exist. We accept only success (200).
-      assertTrue(doc.code === 200 || doc.code === 403 || doc.code === 404,
+      assertEqual(doc.code, 200,
                  `Expected AQL queries endpoint to exist, got ${doc.code}`);
       assertEqual(doc.headers['content-type'], contentType);
     },
