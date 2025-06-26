@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2158: The `/_api/import` endpoint does not throw an error on an
+  invalid type parameter value.
+
 * Fixes BTS-2155: Add startup options to control the grace periods after the
   DiskUsage limit is reached.
   - `--server.license-disk-usage-grace-period-readonly` (in seconds) defines
