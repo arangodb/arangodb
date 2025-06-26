@@ -447,11 +447,10 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_await handleRebalance();
       co_return;
     } else if (command == ShardStatistics) {
-<<<<<<< HEAD
       handleShardStatistics();
       co_return;
     } else if (command == AgencyDiagnosis) {
-      handleAgencyDiagnosis();
+      co_await handleAgencyDiagnosis();
       co_return;
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
