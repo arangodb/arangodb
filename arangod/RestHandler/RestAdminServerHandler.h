@@ -54,6 +54,6 @@ class RestAdminServerHandler : public RestBaseHandler {
   void handleJWTSecretsReload();
   void handleEncryptionKeyRotation();
   void handleApiCalls();
-  void handleAqlQueries();
+  void handleAqlRecordedQueries();
 };
 }  // namespace arangodb

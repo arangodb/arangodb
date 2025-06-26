@@ -73,7 +73,7 @@ RestStatus RestAdminServerHandler::execute() {
   } else if (suffixes.size() == 1 && suffixes[0] == "api-calls") {
     handleApiCalls();
   } else if (suffixes.size() == 1 && suffixes[0] == "aql-queries") {
-    handleAqlQueries();
+    handleAqlRecordedQueries();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -354,7 +354,7 @@ void RestAdminServerHandler::handleApiCalls() {
   generateOk(rest::ResponseCode::OK, builder.slice());
 }
 
-void RestAdminServerHandler::handleAqlQueries() {
+void RestAdminServerHandler::handleAqlRecordedQueries() {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
