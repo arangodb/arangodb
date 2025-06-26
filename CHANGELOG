@@ -1,6 +1,9 @@
 devel
 -----
 
+* Add new API /_admin/server/aql-queries to show recently executed AQL queries.
+  This is per server and only available on coordinators and single servers.
+
 * Fix BTS-2158: The `/_api/import` endpoint does not throw an error on an
   invalid type parameter value.
 
