@@ -195,13 +195,16 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   createTransactionContext(AccessMode::Type mode,
                            transaction::OperationOrigin operationOrigin) const;
 
-  [[nodiscard]] auto makeLogContextValue() const {
-    return RestHandler::makeLogContextValue()
-        .with<structuredParams::DatabaseName>(_vocbase.name());
-  }
+ protected:
+  // Please see the comment in RestHandler::makeSharedLogContextValue() for
+  // some comments.
   [[nodiscard]] auto makeSharedLogContextValue() const
       -> std::shared_ptr<LogContext::Values> override {
-    return makeLogContextValue().share();
+    return LogContext::makeValue()
+        .with<structuredParams::UrlName>(_request->fullUrl())
+        .with<structuredParams::UserName>(_request->user())
+        .with<structuredParams::DatabaseName>(_vocbase.name())
+        .share();
   }
 
  protected:

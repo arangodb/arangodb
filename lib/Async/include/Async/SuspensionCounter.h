@@ -147,9 +147,9 @@ struct SuspensionCounter {
 // the async returned by waitingFunToCoro(). When a value (rather than nullopt)
 // is returned, it will be `co_return`ed by waitingFunToCoro().
 template<typename F, typename T = std::invoke_result_t<F>::value_type>
-  requires requires(F f) {
-    { f() } -> std::same_as<std::optional<T>>;
-  }
+requires requires(F f) {
+  { f() } -> std::same_as<std::optional<T>>;
+}
 [[nodiscard]] auto waitingFunToCoro(SuspensionCounter& suspensionCounter,
                                     F&& funArg) -> async<T> {
   auto&& fun = std::forward<F>(funArg);

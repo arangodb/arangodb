@@ -186,35 +186,21 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   auto executeEngine() -> async<void>;
   void compressResponse();
 
-  // Note that makeValue(), and .with<>(), return a ValueBuilder<...>. The
-  // template parameters of that type depend on the specific parameter names,
-  // as specified by .with<...>.
-  // Calling `.share()` on a ValueBuilder will return a generic, but
-  // immutable, `std::shared_ptr<Values>`.
-  //
-  // Therefore, to be able to
-  // 1) have derived classes add their own values to the ones provided by
-  //    their respective base classes (without having to re-list them
-  //    explicitly), and
-  // 2) provide a virtual function returning these values, so it can be called
-  //    in the base class (specifically in runHandlerStateMachine()),
-  //
-  // we need, for 1), this non-virtual function returning a ValueBuilder (with a
-  // specific type). Derived classes can implement a method with the same name,
-  // start with the builder returned by the same method of their superclass, add
-  // values and return the new builder.
-  //
-  // And for 2), each class needs to override the virtual function below
-  // (makeSharedLogContextValue()), calling its own makeLogContextValue().
-  [[nodiscard]] auto makeLogContextValue() const {
-    return LogContext::makeValue()
-        .with<structuredParams::UrlName>(_request->fullUrl())
-        .with<structuredParams::UserName>(_request->user());
-  }
-
+  // The ValueBuilder, as it is, is unsuitable for composition. By composition,
+  // I mean, for example, creating a builder in the base class with certain
+  // values, and reusing that and adding additional values in a subclass.
+  // This is because all temporary builders, as returned by .with<>() calls,
+  // must still live when .share() is called - the value returned by share is,
+  // however, no longer mutable or extensible.
+  // So when overriding this method, all values added here must also be added in
+  // the overridden method. And when changing this method, all derived methods
+  // have to be manually changed, too!
   [[nodiscard]] virtual auto makeSharedLogContextValue() const
       -> std::shared_ptr<LogContext::Values> {
-    return makeLogContextValue().share();
+    return LogContext::makeValue()
+        .with<structuredParams::UrlName>(_request->fullUrl())
+        .with<structuredParams::UserName>(_request->user())
+        .share();
   }
 
  protected:
@@ -240,27 +226,29 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // RestHandler::wakeupHandler() does that, and can be called e.g. by the
   // SharedQueryState's wakeup handler (for AQL-related code).
   template<typename F>
-    requires requires(F f) {
-      { f() } -> std::same_as<RestStatus>;
-    }
+  requires requires(F f) {
+    { f() } -> std::same_as<RestStatus>;
+  }
   [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<void> {
     auto&& fun = std::forward<F>(funArg);
-    co_await arangodb::waitingFunToCoro(_suspensionCounter, [&]() -> std::optional<std::monostate> {
-      auto state = fun();
-      if (state == RestStatus::WAITING) {
-        return std::nullopt;
-      }
-      return std::monostate{};
-    });
+    co_await arangodb::waitingFunToCoro(_suspensionCounter,
+                                        [&]() -> std::optional<std::monostate> {
+                                          auto state = fun();
+                                          if (state == RestStatus::WAITING) {
+                                            return std::nullopt;
+                                          }
+                                          return std::monostate{};
+                                        });
     co_return;
   }
 
   template<typename F, typename T = std::invoke_result_t<F>::value_type>
-    requires requires(F f) {
-      { f() } -> std::same_as<std::optional<T>>;
-    }
+  requires requires(F f) {
+    { f() } -> std::same_as<std::optional<T>>;
+  }
   [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<T> {
-    co_return co_await arangodb::waitingFunToCoro(_suspensionCounter, std::forward<F>(funArg));
+    co_return co_await arangodb::waitingFunToCoro(_suspensionCounter,
+                                                  std::forward<F>(funArg));
   }
 
  private:
