@@ -17,3 +17,11 @@ leak:snowball
 #  4 in v8::internal::FunctionCallbackArguments::Call(v8::internal::CallHandlerInfo) 
 # SUMMARY: AddressSanitizer: 139 byte(s) leaked in 2 allocation(s).
 leak:V8Buffer::New
+
+# This comes from LLVM implementation of OpenMP and should be safe
+# to ignore
+#Direct leak of 2539 byte(s) in 2 object(s) allocated from:
+#    #0 0x556858a6fe53 in malloc (/oskar/work/ArangoDB/build/bin/arangod+0x6067e53) (BuildId: 235541cd7653419e9c549befe2ec954b061b34ce)
+#    #1 0x55686603afdb in ___kmp_allocate_align(unsigned long, unsigned long, char const*, int) /llvm-toolchain-19-19.1.7~++20250114103332+cd708029e0b2/openmp/runtime/src/kmp_alloc.cpp:1947:25
+leak:___kmp_allocate_align
+leak:__kmp_init_nesting_mode
