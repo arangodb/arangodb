@@ -467,6 +467,11 @@ void crashHandlerThreadFunction() {
 /// - Windows and macOS are currently not supported.
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
+    // Log signal-specific information in the signal handler
+    logCrashInfo("signal handler invoked", signal, info, ucontext);
+    // Morally, we should do this after the work of the crash handler thread,
+    // however, for backwards compatibility, we keep it here as first thing.
+
     // Signal the dedicated crash handler thread (force trigger even if not
     // idle)
     ::crashHandlerState.store(arangodb::CrashHandlerState::CRASH_DETECTED,
@@ -474,9 +479,6 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
     // Busy wait for the dedicated thread to complete its work
     arangodb::CrashHandler::waitForCrashHandlerCompletion(true);
-
-    // Log signal-specific information in the signal handler
-    logCrashInfo("signal handler invoked", signal, info, ucontext);
 
     // Now log the backtrace from the crashed thread (only the crashed thread
     // can do this)
@@ -531,6 +533,11 @@ void CrashHandler::logBacktrace() {
 
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(std::string_view context) {
+  ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr,
+                 /*no context*/ nullptr);
+  // Morally, we should do this after the work of the crash handler thread,
+  // however, for backwards compatibility, we keep it here as first thing.
+
   // Log context information directly (this is a programmatic crash, not
   // signal-based)
   SmallString buffer;
@@ -547,8 +554,6 @@ void CrashHandler::crash(std::string_view context) {
   // Wait for the dedicated thread to complete its work
   CrashHandler::waitForCrashHandlerCompletion(false);
 
-  ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr,
-                 /*no context*/ nullptr);
   // Log backtrace from the current thread
   ::logBacktrace();
 
