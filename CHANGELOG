@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-636: bump crypto-js from 3.3.0 to 4.2.0
+
 * Updated ArangoDB Starter to v0.19.12.
 
 * Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
