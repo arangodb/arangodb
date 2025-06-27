@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-636: bump crypto-js from 3.3.0 to 4.2.0
+
 * Add new API /_admin/server/aql-queries to show recently executed AQL queries.
   This is per server and only available on coordinators and single servers.
 
