@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
+
 * Add new API /_admin/server/aql-queries to show recently executed AQL queries.
   This is per server and only available on coordinators and single servers.
 
