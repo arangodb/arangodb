@@ -76,7 +76,6 @@ void RestVersionHandler::getVersion(ArangodServer& server, bool allowInfo,
     result.add("version", VPackValue(ARANGODB_VERSION));
 
     if (includeDetails) {
-      TRI_ASSERT(false);
       addVersionDetails(server, result);
     }
   }
