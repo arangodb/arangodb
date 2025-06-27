@@ -96,7 +96,6 @@ class LogContext {
   struct EntryPtr;
 
   struct Values;
-  struct ValueBag;
 
   template<const char K[], class V>
   struct KeyValue {
@@ -362,16 +361,6 @@ struct LogContext::Values {
   virtual void visit(Visitor const&) const = 0;
 };
 
-struct LogContext::ValueBag : Values {
-  template<class... V>
-  explicit ValueBag(V&&... v) : _values(std::forward<V>(v)...) {}
-  virtual ~ValueBag() = default;
-  void visit(Visitor const&) const override;
-
- private:
-  std::vector<std::shared_ptr<LogContext::Values>> _values;
-};
-
 template<class Vals, const char... KeyValues[]>
 struct LogContext::ValuesImpl<Vals, LogContext::Keys<KeyValues...>> final
     : Values {
@@ -583,10 +572,6 @@ struct LogContext::Accessor::ScopedValue {
   explicit ScopedValue(std::shared_ptr<LogContext::Values> v) {
     appendEntry<std::shared_ptr<LogContext::Values>>(std::move(v));
   }
-  // TODO Maybe we should remove this constructor and have users create a
-  //      ValueBag themselves.
-  explicit ScopedValue(std::vector<std::shared_ptr<LogContext::Values>>&& vs)
-      : ScopedValue(std::make_shared<LogContext::ValueBag>(std::move(vs))) {}
 
   template<class KV, class Base, std::size_t Depth>
   explicit ScopedValue(ValueBuilder<KV, Base, Depth>&& v) {

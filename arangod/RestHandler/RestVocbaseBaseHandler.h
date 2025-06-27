@@ -213,10 +213,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   // the vocbase, managed by VocbaseContext
   TRI_vocbase_t& _vocbase;
-
- private:
-  // TODO we don't need the member any longer
-  std::shared_ptr<LogContext::Values> _scopeVocbaseValues;
 };
 
 }  // namespace arangodb

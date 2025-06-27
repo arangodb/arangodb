@@ -80,12 +80,6 @@ void LogContext::setCurrent(LogContext ctx) noexcept {
   _threadControlBlock._logContext = std::move(ctx);
 }
 
-void LogContext::ValueBag::visit(Visitor const& visitor) const {
-  for (auto& v : _values) {
-    v->visit(visitor);
-  }
-}
-
 LogContext::ThreadControlBlock::~ThreadControlBlock() noexcept {
   // The LogContext destructor will possibly release remaining entries to the
   // thread-local _entryCache. _entryCache is destroyed before _logContext.
