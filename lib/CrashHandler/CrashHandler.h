@@ -26,6 +26,15 @@
 #include <string_view>
 
 namespace arangodb {
+
+/// @brief States for the crash handler thread coordination
+enum class CrashHandlerState : int {
+  IDLE = 0,               ///< idle state, waiting for crashes
+  CRASH_DETECTED = 1,     ///< crash detected, handling in progress
+  HANDLING_COMPLETE = 2,  ///< crash handling complete
+  SHUTDOWN = 3            ///< shutdown requested
+};
+
 class CrashHandler {
  public:
   /// @brief log backtrace for current thread to logfile
@@ -57,6 +66,15 @@ class CrashHandler {
 
   /// @brief shuts down the crash handler thread
   static void shutdownCrashHandler();
+
+  /// @brief triggers the crash handler thread to handle a crash
+  /// @return true if successfully triggered, false if already in progress
+  static void triggerCrashHandler();
+
+  /// @brief waits for the crash handler thread to complete its work
+  /// @param busySpin if true, uses busy spinning (for signal handlers),
+  ///                 if false, uses sleep (for normal contexts)
+  static void waitForCrashHandlerCompletion(bool busySpin = false);
 };
 
 }  // namespace arangodb

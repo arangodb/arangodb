@@ -92,9 +92,9 @@ std::atomic<bool> killHard(false);
 std::atomic<char const*> stateString = nullptr;
 
 /// @brief atomic variable for coordinating between signal handler and crash
-/// handler thread 0 = idle, 1 = crash detected, 2 = handling complete, 3 =
-/// shutdown
-std::atomic<int> crashHandlerState(0);
+/// handler thread
+std::atomic<arangodb::CrashHandlerState> crashHandlerState(
+    arangodb::CrashHandlerState::IDLE);
 
 /// @brief dedicated crash handler thread
 std::unique_ptr<std::thread> crashHandlerThread = nullptr;
@@ -389,15 +389,16 @@ void crashHandlerThreadFunction() {
   using namespace std::chrono_literals;
 
   while (true) {
-    int state = crashHandlerState.load(std::memory_order_acquire);
+    arangodb::CrashHandlerState state =
+        crashHandlerState.load(std::memory_order_acquire);
 
     switch (state) {
-      case 0:  // idle state
+      case arangodb::CrashHandlerState::IDLE:
         // Sleep for ~333ms (3 times per second check)
         std::this_thread::sleep_for(333ms);
         break;
 
-      case 1: {  // crash detected
+      case arangodb::CrashHandlerState::CRASH_DETECTED: {
         // Handle the crash logging in this dedicated thread
         // We can safely do all the work here since we're not in a signal
         // handler
@@ -422,15 +423,18 @@ void crashHandlerThreadFunction() {
         }
 
         // Signal that we're done with crash handling
-        crashHandlerState.store(2, std::memory_order_release);
+        crashHandlerState.store(arangodb::CrashHandlerState::HANDLING_COMPLETE,
+                                std::memory_order_release);
         break;
       }
 
-      case 2:  // handling complete - nothing to do, wait for next state
+      case arangodb::CrashHandlerState::HANDLING_COMPLETE:
+        // handling complete - nothing to do, wait for next state
         std::this_thread::sleep_for(10ms);
         break;
 
-      case 3:  // shutdown requested
+      case arangodb::CrashHandlerState::SHUTDOWN:
+        // shutdown requested
         return;
 
       default:
@@ -463,17 +467,13 @@ void crashHandlerThreadFunction() {
 /// - Windows and macOS are currently not supported.
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    // Signal the dedicated crash handler thread
-    crashHandlerState.store(1, std::memory_order_release);
+    // Signal the dedicated crash handler thread (force trigger even if not
+    // idle)
+    ::crashHandlerState.store(arangodb::CrashHandlerState::CRASH_DETECTED,
+                              std::memory_order_release);
 
     // Busy wait for the dedicated thread to complete its work
-    while (crashHandlerState.load(std::memory_order_acquire) != 2) {
-      // Busy loop - we cannot use system calls in signal handler
-      // Use a small delay to avoid consuming too much CPU
-      for (int i = 0; i < 1000; ++i) {
-        arangodb::basics::cpu_relax();
-      }
-    }
+    arangodb::CrashHandler::waitForCrashHandlerCompletion(true);
 
     // Log signal-specific information in the signal handler
     logCrashInfo("signal handler invoked", signal, info, ucontext);
@@ -503,6 +503,27 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
 namespace arangodb {
 
+void CrashHandler::triggerCrashHandler() {
+  ::crashHandlerState.store(arangodb::CrashHandlerState::CRASH_DETECTED,
+                            std::memory_order_release);
+}
+
+void CrashHandler::waitForCrashHandlerCompletion(bool busySpin) {
+  while (::crashHandlerState.load(std::memory_order_acquire) !=
+         arangodb::CrashHandlerState::HANDLING_COMPLETE) {
+    if (busySpin) {
+      // Busy loop - we cannot use system calls in signal handler
+      // Use a small delay to avoid consuming too much CPU
+      for (int i = 0; i < 1000; ++i) {
+        arangodb::basics::cpu_relax();
+      }
+    } else {
+      // Normal context - can use system calls
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+}
+
 void CrashHandler::logBacktrace() {
   ::logBacktrace();
   Logger::flush();
@@ -521,14 +542,10 @@ void CrashHandler::crash(std::string_view context) {
   }
 
   // Signal the dedicated crash handler thread if it exists
-  int expected = 0;
-  if (::crashHandlerState.compare_exchange_strong(expected, 1,
-                                                  std::memory_order_release)) {
-    // Wait for the dedicated thread to complete its work
-    while (::crashHandlerState.load(std::memory_order_acquire) != 2) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-  }
+  CrashHandler::triggerCrashHandler();
+
+  // Wait for the dedicated thread to complete its work
+  CrashHandler::waitForCrashHandlerCompletion(false);
 
   ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr,
                  /*no context*/ nullptr);
@@ -601,7 +618,8 @@ void CrashHandler::installCrashHandler() {
   {
     std::lock_guard<std::mutex> lock(::crashHandlerThreadMutex);
     if (::crashHandlerThread == nullptr) {
-      ::crashHandlerState.store(0, std::memory_order_relaxed);
+      ::crashHandlerState.store(arangodb::CrashHandlerState::IDLE,
+                                std::memory_order_relaxed);
       ::crashHandlerThread =
           std::make_unique<std::thread>(::crashHandlerThreadFunction);
     }
@@ -674,7 +692,8 @@ void CrashHandler::shutdownCrashHandler() {
 
   if (::crashHandlerThread != nullptr) {
     // Signal the thread to shutdown
-    ::crashHandlerState.store(3, std::memory_order_release);
+    ::crashHandlerState.store(arangodb::CrashHandlerState::SHUTDOWN,
+                              std::memory_order_release);
 
     // Wait for the thread to finish
     if (::crashHandlerThread->joinable()) {
@@ -683,7 +702,8 @@ void CrashHandler::shutdownCrashHandler() {
 
     // Clean up
     ::crashHandlerThread.reset();
-    ::crashHandlerState.store(0, std::memory_order_relaxed);
+    ::crashHandlerState.store(arangodb::CrashHandlerState::IDLE,
+                              std::memory_order_relaxed);
   }
 }
 
