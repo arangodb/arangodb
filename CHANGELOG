@@ -1,6 +1,9 @@
 devel
 -----
 
+* Move crash handling to a separate thread, this is cleaner and does not
+  violate rules for signal and termination handlers.
+
 * Add new API /_admin/server/aql-queries to show recently executed AQL queries.
   This is per server and only available on coordinators and single servers.
 
