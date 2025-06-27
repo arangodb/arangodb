@@ -54,6 +54,9 @@ class CrashHandler {
 
   /// @brief installs the crash handler globally
   static void installCrashHandler();
+
+  /// @brief shuts down the crash handler thread
+  static void shutdownCrashHandler();
 };
 
 }  // namespace arangodb

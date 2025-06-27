@@ -226,6 +226,10 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
              "unknown type";
       ret = EXIT_FAILURE;
     }
+
+    // Shutdown the crash handler thread in a controlled manner
+    CrashHandler::shutdownCrashHandler();
+
     Logger::flush();
     return context.exit(ret);
   } catch (std::exception const& ex) {
