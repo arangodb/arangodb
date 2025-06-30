@@ -40,10 +40,7 @@ struct Context {
   std::shared_ptr<ExecContext const> _execContext;
   async_registry::CurrentRequester _requester;
   task_monitoring::Task* _task;
-  // Note that this is optional just because LogContext::clear is private,
-  // and operator= needs the LHS to be cleared. A simple change to LogContext
-  // could make this optional unnecessary.
-  std::optional<LogContext> _logContext;
+  LogContext _logContext;
 
   Context()
       : _execContext{ExecContext::currentAsShared()},
@@ -53,20 +50,8 @@ struct Context {
 
   Context(Context const& other) = delete;
   auto operator=(Context const& other) -> Context& = delete;
+  auto operator=(Context&& other) noexcept -> Context& = default;
   Context(Context&& other) = default;
-
-  auto operator=(Context&& other) noexcept -> Context& {
-    _execContext = std::move(other._execContext);
-    _requester = other._requester;
-    _task = other._task;
-    // See the comment on the _logContext member how to make this contortion
-    // unnecessary.
-    _logContext.reset();
-    _logContext = std::move(other._logContext);
-    other._logContext.reset();
-
-    return *this;
-  }
 
   auto set() -> void {
     ExecContext::set(_execContext);
@@ -74,7 +59,7 @@ struct Context {
       *async_registry::get_current_coroutine() = _requester;
     }
     *task_monitoring::get_current_task() = _task;
-    LogContext::setCurrent(*_logContext);
+    LogContext::setCurrent(_logContext);
   }
 
   auto update() -> void {
