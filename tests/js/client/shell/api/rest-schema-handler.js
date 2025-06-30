@@ -320,7 +320,7 @@ function restSchemaHandlerTestSuite() {
 
         testSchemaEndpointWithSampleNumEqualTo0: function () {
             const doc = arango.GET_RAW(api + "?sampleNum=0");
-            assertEqual(400, doc.code, "Expected HTTP 404 on sampleNum=0");
+            assertEqual(400, doc.code, "Expected HTTP 400 on sampleNum=0");
         },
 
         testSchemaGraphEndpoint: function () {
@@ -401,12 +401,15 @@ function restSchemaHandlerTestSuite() {
 
         testSchemaGraphEndpointWithNotExistingGraph: function () {
             const doc = arango.GET_RAW(api + "/graph/fake");
-            assertEqual(404, doc.code, "Expected HTTP 400 with a not exsting graph");
+            assertEqual(404, doc.code, "Expected HTTP 404 with a not exsting graph");
         },
 
-        testSchemaGraphEndpointWithNotExistingSuffix: function () {
-            const doc = arango.GET_RAW(api + "/fake/manufacture");
-            assertEqual(404, doc.code, "Expected HTTP 400 with a not exsting graph");
+        testSchemaEndpointWithLargerExampleNumThanActual: function () {
+            const doc = arango.GET_RAW(api + "/collection/customers?exampleNum=100");
+            assertEqual(200, doc.code, "Expected HTTP 200");
+            const body = doc.parsedBody;
+            assertTrue(Array.isArray(body.examples));
+            assertEqual(4, body.examples.length);
         },
     };
 }

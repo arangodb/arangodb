@@ -9,10 +9,14 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Graph/GraphManager.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchLinkHelper.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/vpack.h>
 #include <Basics/voc-errors.h>
+#include <IResearch/IResearchLink.h>
+#include <Utils/CollectionNameResolver.h>
 #include <VocBase/LogicalCollection.h>
 #include <VocBase/Methods/Collections.h>
 
@@ -67,8 +71,9 @@ RestStatus RestSchemaHandler::execute() {
   auto maybeExampleNum = validateParameter(
     "exampleNum", defaultExampleNum, true);
 
-  if (!maybeSampleNum || !maybeExampleNum)
+  if (!maybeSampleNum || !maybeExampleNum) {
     return RestStatus::DONE;
+  }
 
   uint64_t sampleNum = *maybeSampleNum;
   uint64_t exampleNum = *maybeExampleNum;
@@ -83,12 +88,15 @@ RestStatus RestSchemaHandler::execute() {
     case 0:
       return lookupSchema(sampleNum, exampleNum);
     case 2:
-      if (suffix[0] == "collection")
+      if (suffix[0] == "collection") {
         return lookupSchemaCollection(suffix[1], sampleNum, exampleNum);
-      if (suffix[0] == "graph")
+      }
+      if (suffix[0] == "graph") {
         return lookupSchemaGraph(suffix[1], sampleNum, exampleNum);
-      if (suffix[0] == "view")
-        return RestStatus::DONE;
+      }
+      if (suffix[0] == "view") {
+        return lookupSchemaView(suffix[1], sampleNum, exampleNum);
+      }
       [[fallthrough]]; // If suffix[0] is none of "collection", "graph" or "view", go to default
     default:
       generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
@@ -104,40 +112,23 @@ RestStatus RestSchemaHandler::handleQueryResult() {
     return RestStatus::DONE;
   }
   auto resultSlice = _queryResult.data->slice();
-  generateResult(ResponseCode::OK, resultSlice, _queryResult.context);
+  generateResult(ResponseCode::OK, resultSlice);
   return RestStatus::DONE;
 }
 
 RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum, uint64_t exampleNum) {
-  auto ctx = std::make_shared<transaction::StandaloneContext>(
-    _vocbase, transaction::OperationOriginTestCase{});
-
-  velocypack::Builder resultBuilder;
+  auto resultBuilder = std::make_shared<velocypack::Builder>();
   std::set<std::string> colSet;
-  resultBuilder.openObject();
+  resultBuilder->openObject();
 
-  if (!getAllGraphsAndCollections(resultBuilder, colSet))
+  if (!getAllGraphsAndCollections(*resultBuilder, colSet)) {
     return RestStatus::DONE;
-
-  auto collectionSchemaArray = std::make_shared<velocypack::Builder>();
-  collectionSchemaArray->openArray();
-  for (auto const& colName : colSet) {
-    if (colName.starts_with("_"))
-      continue;
-
-    velocypack::Builder tempBuilder;
-    if (!getCollection(colName, sampleNum, exampleNum, tempBuilder))
-      return RestStatus::DONE;
-    collectionSchemaArray->add(tempBuilder.sharedSlice());
   }
-  collectionSchemaArray->close();
 
-  resultBuilder.add("collections", collectionSchemaArray->slice());
+  getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  resultBuilder->close();
 
-  resultBuilder.close();
-
-  _queryResult.data = std::make_shared<velocypack::Builder>(resultBuilder);
-  _queryResult.context = std::move(ctx);
+  _queryResult.data = resultBuilder;
   return handleQueryResult();
 }
 
@@ -151,41 +142,69 @@ RestStatus RestSchemaHandler::lookupSchemaCollection(
     return RestStatus::DONE;
   }
 
-  velocypack::Builder tempBuilder;
-  if (!getCollection(colName, sampleNum, exampleNum, tempBuilder))
+  auto resultBuilder = std::make_shared<velocypack::Builder>();
+  resultBuilder->openObject();
+  if (!getCollection(colName, sampleNum, exampleNum, *resultBuilder)) {
     return RestStatus::DONE;
-  _queryResult.data = std::make_shared<velocypack::Builder>(tempBuilder);
-  _queryResult.context = std::make_shared<transaction::StandaloneContext>(
-    _vocbase, transaction::OperationOriginTestCase{});
+  }
+  resultBuilder->close();
+  _queryResult.data = resultBuilder;
   return handleQueryResult();
 }
 
 RestStatus RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
   uint64_t sampleNum, uint64_t exampleNum) {
-  velocypack::Builder resultBuilder;
+  auto resultBuilder = std::make_shared<velocypack::Builder>();
   std::set<std::string> colSet;
 
-  resultBuilder.openObject();
-  if (!getGraphAndCollections(graphName, resultBuilder, colSet))
+  resultBuilder->openObject();
+  if (!getGraphAndCollections(graphName, *resultBuilder, colSet)) {
     return RestStatus::DONE;
-
-  velocypack::Builder colsBuilder;
-  colsBuilder.openArray();
-  for (auto& colName : colSet) {
-    velocypack::Builder colBuilder;
-    if (!getCollection(colName, sampleNum, exampleNum, colBuilder))
-      return RestStatus::DONE;
-    colsBuilder.add(colBuilder.slice());
   }
-  colsBuilder.close();
 
-  resultBuilder.add("collections", colsBuilder.slice());
-  resultBuilder.close();
+  getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  resultBuilder->close();
 
-  _queryResult.data = std::make_shared<velocypack::Builder>(resultBuilder);
-  _queryResult.context = std::make_shared<transaction::StandaloneContext>(
-    _vocbase, transaction::OperationOriginTestCase{});
+  _queryResult.data = resultBuilder;
   return handleQueryResult();
+}
+
+RestStatus RestSchemaHandler::lookupSchemaView(std::string const& viewName,
+    uint64_t sampleNum, uint64_t exampleNum) {
+  auto resultBuilder = std::make_shared<velocypack::Builder>();
+  resultBuilder->openObject();
+
+  std::set<std::string> colSet;
+  if (!getViewAndCollections(viewName, *resultBuilder, colSet)) {
+    return RestStatus::DONE;
+  }
+
+  getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  resultBuilder->close();
+
+  _queryResult.data = resultBuilder;
+  return handleQueryResult();
+}
+
+bool RestSchemaHandler::getCollections(std::set<std::string> const& colSet,
+    uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colsBuilder) {
+  auto colsArrayBuilder = std::make_shared<velocypack::Builder>();
+  colsArrayBuilder->openArray();
+  for (auto const& colName : colSet) {
+    if (colName.starts_with("_")) {
+      continue;
+    }
+    velocypack::Builder colBuilder;
+    colBuilder.openObject();
+    if (!getCollection(colName, sampleNum, exampleNum, colBuilder)) {
+      return false;
+    }
+    colBuilder.close();
+    colsArrayBuilder->add(colBuilder.slice());
+  }
+  colsArrayBuilder->close();
+  colsBuilder.add("collections", colsArrayBuilder->slice());
+  return true;
 }
 
 bool RestSchemaHandler::getCollection(std::string const& colName,
@@ -215,8 +234,7 @@ bool RestSchemaHandler::getCollection(std::string const& colName,
     while (query->execute(qr) == aql::ExecutionState::WAITING) { }
   } catch (basics::Exception const& e) {
     generateError(ResponseCode::SERVER_ERROR, e.code(),
-      std::format("Schema query for {} threw: {}", colName, e.what())
-    );
+      std::format("Schema query for {} threw: {}", colName, e.what()));
     return false;
   }
 
@@ -233,22 +251,23 @@ bool RestSchemaHandler::getCollection(std::string const& colName,
     return false;
   }
 
-  colBuilder.openObject();
   colBuilder.add("collectionName", velocypack::Value(colName));
   auto col = _vocbase.lookupCollection(colName);
   if (col && col->type() == TRI_COL_TYPE_DOCUMENT) {
     colBuilder.add("collectionType", velocypack::Value("document"));
-    if (!getNumOfDocumentsOrEdges(colName, colBuilder))
+    if (!getNumOfDocumentsOrEdges(colName, colBuilder)) {
       return false;
+    }
   } else {
     colBuilder.add("collectionType", velocypack::Value("edge"));
-    if (!getNumOfDocumentsOrEdges(colName, colBuilder, false))
+    if (!getNumOfDocumentsOrEdges(colName, colBuilder, false)) {
       return false;
+    }
   }
   colBuilder.add("schema", qr.data->slice());
-  if (!getExamples(colName, exampleNum, colBuilder))
+  if (!getExamples(colName, exampleNum, colBuilder)) {
     return false;
-  colBuilder.close();
+  }
   return true;
 }
 
@@ -303,8 +322,9 @@ bool RestSchemaHandler::getGraphAndCollections(std::string const& graphName,
   }
   graphBuilder.add("graphs", slice);
 
-  if (!getConnectedCollections(graphName, colSet))
+  if (!getConnectedCollections(graphName, colSet)) {
     return false;
+  }
 
   return true;
 }
@@ -346,7 +366,6 @@ bool RestSchemaHandler::getAllGraphsAndCollections(
       std::string("Unexpected result shape for GRAPH query: not an array"));
     return false;
   }
-
   graphBuilder.add("graphs", slice);
 
   for (auto entry : velocypack::ArrayIterator(slice)) {
@@ -357,9 +376,84 @@ bool RestSchemaHandler::getAllGraphsAndCollections(
       return false;
     }
     auto graphName = nameSlice.copyString();
-    if (!getConnectedCollections(graphName, colSet))
+    if (!getConnectedCollections(graphName, colSet)) {
       return false;
+    }
   }
+  return true;
+}
+
+bool RestSchemaHandler::getViewAndCollections(std::string const& viewName,
+  velocypack::Builder& viewsBuilder, std::set<std::string>& colSet) {
+  auto view = CollectionNameResolver(_vocbase).getView(viewName);
+  if (!view) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return false;
+  }
+
+  velocypack::Builder dataBuilder;
+  dataBuilder.openObject();
+  auto res = view->properties(dataBuilder,
+                              LogicalDataSource::Serialization::Properties);
+  if (!res.ok()) {
+    generateError(res);
+    return false;
+  }
+  dataBuilder.close();
+
+  auto data = dataBuilder.slice();
+  if (!data.hasKey("links")) {
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+    return false;
+  }
+
+  velocypack::Builder linksBuilder;
+  linksBuilder.openArray();
+  for (auto li : velocypack::ObjectIterator(data.get("links"))) {
+    auto colName = li.key.copyString();
+    auto colValue = li.value;
+    if (!colValue.hasKey("fields")) {
+      generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return false;
+    }
+    velocypack::Builder fieldsBuilder;
+    fieldsBuilder.openArray();
+    for (auto fi : velocypack::ObjectIterator(colValue.get("fields"))) {
+      velocypack::Builder fieldBuilder;
+      fieldBuilder.openObject();
+      fieldBuilder.add("attribute", velocypack::Value(fi.key.copyString()));
+      if (!fi.value.hasKey("analyzers")) {
+        generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+        return false;
+      }
+      fieldBuilder.add("analyzers", fi.value.get("analyzers"));
+      fieldBuilder.close();
+      fieldsBuilder.add(fieldBuilder.slice());
+    }
+    fieldsBuilder.close();
+
+    velocypack::Builder colBuilder;
+    colBuilder.openObject();
+    colBuilder.add("collectionName", velocypack::Value(colName));
+    colSet.insert(colName);
+    colBuilder.add("fields", fieldsBuilder.slice());
+    colBuilder.close();
+    linksBuilder.add(colBuilder.slice());
+  }
+  linksBuilder.close();
+
+  velocypack::Builder viewBuilder;
+  viewBuilder.openObject();
+  viewBuilder.add("viewName", velocypack::Value(viewName));
+  viewBuilder.add("links", linksBuilder.slice());
+  viewBuilder.close();
+
+  velocypack::Builder viewsArrayBuilder;
+  viewsArrayBuilder.openArray();
+  viewsArrayBuilder.add(viewBuilder.slice());
+  viewsArrayBuilder.close();
+
+  viewsBuilder.add("views", viewsArrayBuilder.slice());
   return true;
 }
 
@@ -418,10 +512,12 @@ bool RestSchemaHandler::getNumOfDocumentsOrEdges(std::string const& colName,
     return false;
   }
 
-  if (isDocument)
+  if (isDocument) {
     builder.add("numOfDocuments", result.at(0));
-  else
+  }
+  else {
     builder.add("numOfEdges", result.at(0));
+  }
 
   return true;
 }
@@ -478,8 +574,9 @@ std::optional<uint64_t> RestSchemaHandler::validateParameter(
   bool passed = false;
 
   auto const& val = _request->value(param, passed);
-  if (!passed)
+  if (!passed) {
     return defaultValue;
+  }
 
   if (!std::all_of(val.begin(), val.end(), [](char c){ return std::isdigit(c); })) {
     generateError(ResponseCode::BAD,TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -530,9 +627,11 @@ bool RestSchemaHandler::getConnectedCollections(std::string const& graphName,
     return false;
   }
 
-  for (auto vertex : graphPtr->vertexCollections())
+  for (auto const& vertex : graphPtr->vertexCollections()) {
     colSet.insert(vertex);
-  for (auto& edge : graphPtr->edgeCollections())
+  }
+  for (auto const& edge : graphPtr->edgeCollections()) {
     colSet.insert(edge);
+  }
   return true;
 }

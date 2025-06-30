@@ -34,13 +34,18 @@ private:
     std::string const& colName, uint64_t sampleNum, uint64_t exampleNum);
   RestStatus lookupSchemaGraph(std::string const& graphName,
     uint64_t sampleNum, uint64_t exampleNum);
-  RestStatus lookupSchemaView();
+  RestStatus lookupSchemaView(std::string const& viewName,
+    uint64_t sampleNum, uint64_t exampleNum);
 
+  bool getCollections(std::set<std::string> const& colSet,
+    uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colsBuilder);
   bool getCollection(std::string const& colName,
     uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colBuilder);
   bool getGraphAndCollections(std::string const& graphName,
     velocypack::Builder& graphBuilder, std::set<std::string>& colSet);
   bool getAllGraphsAndCollections(velocypack::Builder& graphBuilder,
+    std::set<std::string>& colSet);
+  bool getViewAndCollections(std::string const& viewName, velocypack::Builder& colBuilder,
     std::set<std::string>& colSet);
 
   std::optional<uint64_t> validateParameter(const std::string& param,
