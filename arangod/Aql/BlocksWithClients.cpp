@@ -216,7 +216,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
    * - This indicates this lane is ready to skip and count.
    * - I do not think that this is possible in practice. Therefore this will be
    * asserted, but in prod handled like case 1.
-   * - As case 1 is slower then necceassy, but always correct.
+   * - As case 1 is slower then necessary, but always correct.
    *
    * Also NOTE: We are only doing this in the main query, not in subqueries. In
    * the main query we can simply return DONE with an empty block. For
