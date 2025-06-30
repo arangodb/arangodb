@@ -440,7 +440,7 @@ void AqlFunctionFeature::addGeometryConstructors() {
       FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer);
 
   // geometry types
-  add({"GEO_POINT", ".,.", flags, &functions::GeoPoint});
+  add({"GEO_POINT", ".,.|.", flags, &functions::GeoPoint});
   add({"GEO_MULTIPOINT", ".", flags, &functions::GeoMultiPoint});
   add({"GEO_POLYGON", ".", flags, &functions::GeoPolygon});
   add({"GEO_MULTIPOLYGON", ".", flags, &functions::GeoMultiPolygon});

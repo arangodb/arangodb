@@ -189,6 +189,35 @@ TEST_F(InvalidGeoJSONInputTest, bad_point_too_many_coordinates) {
   ASSERT_TRUE(geo::json::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
 }
 
+TEST_F(InvalidGeoJSONInputTest, bad_point_invalid_coordinate_count) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::POINT, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_four_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::POINT, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
 TEST_F(InvalidGeoJSONInputTest, bad_point_multiple_points) {
   {
     velocypack::ObjectBuilder object(&builder);
@@ -1228,6 +1257,23 @@ TEST_F(ValidGeoJSONInputTest, valid_point) {
     velocypack::ArrayBuilder coords(&builder, "coordinates");
     coords->add(VPackValue(0.0));
     coords->add(VPackValue(1.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::POINT, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parsePoint(vpack, point).ok());
+  ASSERT_EQ(0.0, point.lng().degrees());
+  ASSERT_EQ(1.0, point.lat().degrees());
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_point_with_z_coordinate) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(1.0));
+    coords->add(VPackValue(100.0));  // Z coordinate (elevation)
   }
   VPackSlice vpack = builder.slice();
 
