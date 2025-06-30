@@ -214,7 +214,7 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
    *
    * 3) Call with hardLimit = 0 and fullCount:
    * - This indicates this lane is ready to skip and count.
-   * - I do not think that this is possible in practice. Therefor this will be
+   * - I do not think that this is possible in practice. Therefore this will be
    * asserted, but in prod handled like case 1.
    * - As case 1 is slower then necceassy, but always correct.
    *
