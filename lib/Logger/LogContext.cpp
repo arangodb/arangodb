@@ -48,8 +48,9 @@ void LogContext::clear(EntryCache& cache) noexcept {
   //   we could do that here as well, if we assign the result to _tail at the
   //   end.
   // - instead of doing `_tail->decRefCnt() == 1`, it did
-  //   `t->_refCount.load(std::memory_order_relaxed) == 1 || t->decRefCnt() == 1`
-  //   . This could probably even be moved to decRefCnt().
+  //   `t->_refCount.load(std::memory_order_relaxed) == 1
+  //    || t->decRefCnt() == 1`. This could probably even be moved to
+  //   decRefCnt().
   // I decided to drop them, as I don't think they're worth the complication,
   // but still leave this note here instead.
 }
