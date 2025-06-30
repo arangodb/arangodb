@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
+  coordinates for Point geometries.
+
 * Add new API /_admin/server/aql-queries to show recently executed AQL queries.
   This is per server and only available on coordinators and single servers.
 
