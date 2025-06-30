@@ -55,12 +55,14 @@ struct SearchParameters {
 enum class SimilarityMetric : std::uint8_t {
   kL2,
   kCosine,
+  kInnerProduct,
 };
 
 template<class Inspector>
 inline auto inspect(Inspector& f, SimilarityMetric& x) {
-  return f.enumeration(x).values(SimilarityMetric::kL2, "l2",
-                                 SimilarityMetric::kCosine, "cosine");
+  return f.enumeration(x).values(
+      SimilarityMetric::kL2, "l2", SimilarityMetric::kCosine, "cosine",
+      SimilarityMetric::kInnerProduct, "innerProduct");
 }
 
 struct TrainedData {

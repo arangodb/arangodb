@@ -53,6 +53,68 @@ function import__testing_createCollectionSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////;
+// test empty/invalid import type parameters ;
+////////////////////////////////////////////////////////////////////////////////;
+function import_type_parameterSuite () {
+  let cn = "UnitTestsImport";
+  let cid;
+  return {
+    setUp: function() {
+      db._drop(cn);
+      cid = db._create(cn);
+    },
+
+    tearDown: function() {
+      db._drop(cn);
+    },
+
+    test_type_omitted: function() {
+      let cmd = api + `?collection=${cn}&createCollection=true`;
+      let body =  "[\"name\"]\n";
+      body += "[\"John\"]\n";
+      body += "[\"Jane\"]\n";
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['created'], 2);
+      assertEqual(doc.parsedBody['errors'], 0);
+      assertEqual(doc.parsedBody['empty'], 0);
+      assertEqual(doc.parsedBody['updated'], 0);
+      assertEqual(doc.parsedBody['ignored'], 0);
+    },
+
+    test_type_empty_string: function() {
+      let cmd = api + `?collection=${cn}&createCollection=true&type=`;
+      let body =  "[\"name\"]\n";
+      body += "[\"John\"]\n";
+      body += "[\"Jane\"]\n";
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 201);
+      assertFalse(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['created'], 2);
+      assertEqual(doc.parsedBody['errors'], 0);
+      assertEqual(doc.parsedBody['empty'], 0);
+      assertEqual(doc.parsedBody['updated'], 0);
+      assertEqual(doc.parsedBody['ignored'], 0);
+    },
+
+    test_type_invalid: function() {
+      let cmd = api + `?collection=${cn}&createCollection=true&type=hund`;
+      let body =  "[\"name\"]\n";
+      body += "[\"John\"]\n";
+      body += "[\"Jane\"]\n";
+      let doc = arango.POST_RAW(cmd, body);
+
+      assertEqual(doc.code, 400);
+      assertEqual(doc.parsedBody['errorNum'], 10);
+    },
+  };
+}
+
+
+////////////////////////////////////////////////////////////////////////////////;
 // import a JSON array of documents ;
 ////////////////////////////////////////////////////////////////////////////////;
 function import_self_contained_documentsSuite () {
@@ -1235,6 +1297,7 @@ function import_with_updateSuite () {
 }
 
 jsunity.run(import__testing_createCollectionSuite);
+jsunity.run(import_type_parameterSuite);
 jsunity.run(import_self_contained_documentsSuite);
 jsunity.run(import_self_contained_documentsSuite2);
 jsunity.run(import_attribute_names_and_dataSuite);

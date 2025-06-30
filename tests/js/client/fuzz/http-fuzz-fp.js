@@ -33,9 +33,11 @@ const IM = global.instanceManager;
 ////////////////////////////////////////////////////////////////////////////////
 function httpRequestsFuzzerTestSuite() {
   return {
+    setUpAll: function () {
+      IM.rememberConnection();
+    },
     testRandReqs: function () {
       // main expectation here is that the server does not crash!
-      IM.rememberConnection();
       try {
         IM.arangods.forEach(arangod => {
           print(`Connecting ${arangod.getProcessInfo([])}`);
@@ -73,7 +75,6 @@ function httpRequestsFuzzerTestSuite() {
 
     testReqWithSameSeed: function () {
       // main expectation here is that the server does not crash!
-      IM.rememberConnection();
       try {
         IM.arangods.forEach(arangod => {
           print(`Connecting ${arangod.getProcessInfo([])}`);

@@ -52,7 +52,7 @@ function WalCleanupSuite () {
     let seenNewFile = false;
     let minArchivedLogNumber = null;
     let maxArchivedLogNumber = null;
-    const timeout = versionHas('tsan')? 900 : 600;
+    const timeout = versionHas('tsan')? 1200 : 600;
     let time = require("internal").time;
     const start = time();
 

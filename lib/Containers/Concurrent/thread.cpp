@@ -33,3 +33,13 @@ auto ThreadId::current() noexcept -> ThreadId {
 auto ThreadId::name() -> std::string {
   return std::string{ThreadNameFetcher{posix_id}.get()};
 }
+
+auto ThreadInfo::current() noexcept -> containers::SharedPtr<ThreadInfo> {
+  struct Guard {
+    containers::SharedPtr<ThreadInfo> _info = containers::SharedPtr<ThreadInfo>(
+        arangodb::Thread::currentKernelThreadId(),
+        std::string{arangodb::ThreadNameFetcher{}.get()});
+  };
+  static thread_local auto guard = Guard{};
+  return guard._info;
+}
