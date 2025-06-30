@@ -68,6 +68,7 @@ struct Context {
       _requester = *async_registry::get_current_coroutine();
     }
     _task = *task_monitoring::get_current_task();
+    _logContext = LogContext::current();
   }
 
   ~Context() = default;
