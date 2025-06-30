@@ -683,7 +683,9 @@ inline LogContext& LogContext::operator=(LogContext const& r) noexcept {
   clear(controlBlock()._entryCache);
   TRI_ASSERT(_tail == nullptr);
   _tail = r._tail;
-  _tail->incRefCnt();
+  if (_tail != nullptr) {
+    _tail->incRefCnt();
+  }
   return *this;
 }
 
