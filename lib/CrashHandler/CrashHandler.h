@@ -72,9 +72,7 @@ class CrashHandler {
   static void triggerCrashHandler();
 
   /// @brief waits for the crash handler thread to complete its work
-  /// @param busySpin if true, uses busy spinning (for signal handlers),
-  ///                 if false, uses sleep (for normal contexts)
-  static void waitForCrashHandlerCompletion(bool busySpin = false);
+  static void waitForCrashHandlerCompletion();
 };
 
 }  // namespace arangodb

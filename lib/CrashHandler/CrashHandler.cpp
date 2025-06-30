@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/cpu-relax.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_SIGNAL_H
@@ -386,16 +385,18 @@ void logProcessInfo() {
 /// @brief dedicated thread function that monitors for crashes and handles
 /// logging
 void crashHandlerThreadFunction() {
-  using namespace std::chrono_literals;
-
   while (true) {
+    // Wait for the state to change from IDLE using C++20 atomic wait
+    arangodb::CrashHandlerState expectedState =
+        arangodb::CrashHandlerState::IDLE;
+    crashHandlerState.wait(expectedState, std::memory_order_acquire);
+
     arangodb::CrashHandlerState state =
         crashHandlerState.load(std::memory_order_acquire);
 
     switch (state) {
       case arangodb::CrashHandlerState::IDLE:
-        // Sleep for ~333ms (3 times per second check)
-        std::this_thread::sleep_for(333ms);
+        // Spurious wakeup or race condition, continue waiting
         break;
 
       case arangodb::CrashHandlerState::CRASH_DETECTED: {
@@ -422,25 +423,23 @@ void crashHandlerThreadFunction() {
           // Ignore exceptions in crash handling
         }
 
-        // Signal that we're done with crash handling
+        // Signal that we're done with crash handling and notify waiters
         crashHandlerState.store(arangodb::CrashHandlerState::HANDLING_COMPLETE,
                                 std::memory_order_release);
-        break;
+        crashHandlerState
+            .notify_all();  // tell the crashed thread to continue crashing
+        return;
       }
-
-      case arangodb::CrashHandlerState::HANDLING_COMPLETE:
-        // handling complete - nothing to do, wait for next state
-        std::this_thread::sleep_for(10ms);
-        break;
 
       case arangodb::CrashHandlerState::SHUTDOWN:
         // shutdown requested
         return;
 
-      default:
+      default: {
         // Unknown state, sleep briefly
-        std::this_thread::sleep_for(10ms);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
         break;
+      }
     }
   }
 }
@@ -474,11 +473,10 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
     // Signal the dedicated crash handler thread (force trigger even if not
     // idle)
-    ::crashHandlerState.store(arangodb::CrashHandlerState::CRASH_DETECTED,
-                              std::memory_order_release);
+    arangodb::CrashHandler::triggerCrashHandler();
 
     // Busy wait for the dedicated thread to complete its work
-    arangodb::CrashHandler::waitForCrashHandlerCompletion(true);
+    arangodb::CrashHandler::waitForCrashHandlerCompletion();
 
     // Now log the backtrace from the crashed thread (only the crashed thread
     // can do this)
@@ -508,20 +506,18 @@ namespace arangodb {
 void CrashHandler::triggerCrashHandler() {
   ::crashHandlerState.store(arangodb::CrashHandlerState::CRASH_DETECTED,
                             std::memory_order_release);
+  ::crashHandlerState.notify_all();
 }
 
-void CrashHandler::waitForCrashHandlerCompletion(bool busySpin) {
-  while (::crashHandlerState.load(std::memory_order_acquire) !=
-         arangodb::CrashHandlerState::HANDLING_COMPLETE) {
-    if (busySpin) {
-      // Busy loop - we cannot use system calls in signal handler
-      // Use a small delay to avoid consuming too much CPU
-      for (int i = 0; i < 1000; ++i) {
-        arangodb::basics::cpu_relax();
-      }
+void CrashHandler::waitForCrashHandlerCompletion() {
+  while (true) {
+    arangodb::CrashHandlerState currentState =
+        ::crashHandlerState.load(std::memory_order_acquire);
+    if (currentState == arangodb::CrashHandlerState::CRASH_DETECTED) {
+      // Wait for the state to change from the current state
+      ::crashHandlerState.wait(currentState, std::memory_order_acquire);
     } else {
-      // Normal context - can use system calls
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      return;
     }
   }
 }
@@ -552,7 +548,7 @@ void CrashHandler::crash(std::string_view context) {
   CrashHandler::triggerCrashHandler();
 
   // Wait for the dedicated thread to complete its work
-  CrashHandler::waitForCrashHandlerCompletion(false);
+  CrashHandler::waitForCrashHandlerCompletion();
 
   // Log backtrace from the current thread
   ::logBacktrace();
@@ -696,9 +692,10 @@ void CrashHandler::shutdownCrashHandler() {
   std::lock_guard<std::mutex> lock(::crashHandlerThreadMutex);
 
   if (::crashHandlerThread != nullptr) {
-    // Signal the thread to shutdown
+    // Signal the thread to shutdown and notify it
     ::crashHandlerState.store(arangodb::CrashHandlerState::SHUTDOWN,
                               std::memory_order_release);
+    ::crashHandlerState.notify_all();
 
     // Wait for the thread to finish
     if (::crashHandlerThread->joinable()) {
