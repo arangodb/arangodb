@@ -103,6 +103,28 @@ class GeneralConnection : public fuerte::Connection {
     return _state.load(std::memory_order_acquire);
   }
 
+  virtual std::string localEndpoint() const override final {
+    boost::asio::detail::socket_addr_type addr;
+    boost::system::error_code ec;
+
+    std::string endpoint;
+    endpoint.reserve(32);
+    _proto.getsockname(&addr, sizeof(addr), ec);
+    // http
+    endpoint.append(fuerte::to_string(_config._protocolType));
+    endpoint.push_back('+');
+    // tcp/ssl/unix
+    endpoint.append(fuerte::to_string(_config._socketType));
+    endpoint.append("://");
+    // domain name or IP (xxx.xxx.xxx.xxx)
+    endpoint.append(_config._host);
+    if (_config._socketType != SocketType::Unix) {
+      endpoint.push_back(':');
+      endpoint.append(_config._port);
+    }
+    return endpoint;
+  }
+
   /// The following public methods can be called from any thread:
 
   // Start an asynchronous request.
@@ -349,7 +371,7 @@ class GeneralConnection : public fuerte::Connection {
       if (me._failConnectAttempts > 0) {
         --me._failConnectAttempts;
       }
-#endif      
+#endif
 
       FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
       if (retries > 1 && ec != asio_ns::error::operation_aborted) {
@@ -377,7 +399,7 @@ class GeneralConnection : public fuerte::Connection {
         me.shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
-  
+
     // only if we are still in the connect phase, we want to schedule a timer
     // for the connect timeout. if the connect already failed and scheduled a
     // timer for the reconnect timeout, we do not want to mess with the timer here.
@@ -394,7 +416,7 @@ class GeneralConnection : public fuerte::Connection {
           if (me._proto.connectTimerRole == ConnectTimerRole::kConnect) {
             FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get() << "\n";
             me._proto.cancel();
-          } 
+          }
         }
       });
     }
