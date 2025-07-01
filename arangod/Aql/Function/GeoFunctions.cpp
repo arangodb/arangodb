@@ -589,9 +589,16 @@ AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
 
   AqlValue lon1 = aql::functions::extractFunctionParameterValue(parameters, 0);
   AqlValue lat1 = aql::functions::extractFunctionParameterValue(parameters, 1);
+  AqlValue z1 = aql::functions::extractFunctionParameterValue(parameters, 2);
 
   // non-numeric input
   if (!lat1.isNumber() || !lon1.isNumber()) {
+    registerWarning(expressionContext, "GEO_POINT",
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  if (!z1.isEmpty() && !z1.isNumber()) {
     registerWarning(expressionContext, "GEO_POINT",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
@@ -603,6 +610,11 @@ AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
   error |= failed;
   double lat1Value = lat1.toDouble(failed);
   error |= failed;
+  std::optional<double> z1Value;
+  if (!z1.isEmpty()) {
+    z1Value = z1.toDouble(failed);
+    error |= failed;
+  }
 
   if (error) {
     registerWarning(expressionContext, "GEO_POINT",
@@ -616,6 +628,9 @@ AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
   builder->add("coordinates", VPackValue(VPackValueType::Array));
   builder->add(VPackValue(lon1Value));
   builder->add(VPackValue(lat1Value));
+  if (z1Value.has_value()) {
+    builder->add(VPackValue(*z1Value));
+  }
   builder->close();
   builder->close();
 
