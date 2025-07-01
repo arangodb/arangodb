@@ -125,6 +125,10 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum, uint64_t exampleN
     return RestStatus::DONE;
   }
 
+  if (!getAllViewsAndCollections(*resultBuilder, colSet)) {
+    return RestStatus::DONE;
+  }
+
   getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
   resultBuilder->close();
 
@@ -171,13 +175,17 @@ RestStatus RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
 
 RestStatus RestSchemaHandler::lookupSchemaView(std::string const& viewName,
     uint64_t sampleNum, uint64_t exampleNum) {
-  auto resultBuilder = std::make_shared<velocypack::Builder>();
-  resultBuilder->openObject();
-
+  velocypack::Builder viewsArrBuilder;
+  viewsArrBuilder.openArray();
   std::set<std::string> colSet;
-  if (!getViewAndCollections(viewName, *resultBuilder, colSet)) {
+  if (!getViewAndCollections(viewName, viewsArrBuilder, colSet)) {
     return RestStatus::DONE;
   }
+  viewsArrBuilder.close();
+
+  auto resultBuilder = std::make_shared<velocypack::Builder>();
+  resultBuilder->openObject();
+  resultBuilder->add("views", viewsArrBuilder.slice());
 
   getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
   resultBuilder->close();
@@ -384,7 +392,7 @@ bool RestSchemaHandler::getAllGraphsAndCollections(
 }
 
 bool RestSchemaHandler::getViewAndCollections(std::string const& viewName,
-  velocypack::Builder& viewsBuilder, std::set<std::string>& colSet) {
+  velocypack::Builder& viewsArrBuilder, std::set<std::string>& colSet) {
   auto view = CollectionNameResolver(_vocbase).getView(viewName);
   if (!view) {
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
@@ -448,12 +456,28 @@ bool RestSchemaHandler::getViewAndCollections(std::string const& viewName,
   viewBuilder.add("links", linksBuilder.slice());
   viewBuilder.close();
 
-  velocypack::Builder viewsArrayBuilder;
-  viewsArrayBuilder.openArray();
-  viewsArrayBuilder.add(viewBuilder.slice());
-  viewsArrayBuilder.close();
+  viewsArrBuilder.add(viewBuilder.slice());
+  return true;
+}
 
-  viewsBuilder.add("views", viewsArrayBuilder.slice());
+bool RestSchemaHandler::getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
+    std::set<std::string>& colSet) {
+  std::vector<LogicalView::ptr> views;
+  LogicalView::enumerate(_vocbase, [&views](LogicalView::ptr const& view) -> bool {
+                           views.emplace_back(view);
+                           return true;
+                         });
+
+  velocypack::Builder viewsArrBuilder;
+  viewsArrBuilder.openArray();
+  for (auto view : views) {
+    if (!getViewAndCollections(view->name(), viewsArrBuilder, colSet)) {
+      generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+      return false;
+    }
+  }
+  viewsArrBuilder.close();
+  viewsBuilder.add("views", viewsArrBuilder.slice());
   return true;
 }
 

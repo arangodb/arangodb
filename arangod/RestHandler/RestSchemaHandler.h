@@ -47,6 +47,8 @@ private:
     std::set<std::string>& colSet);
   bool getViewAndCollections(std::string const& viewName, velocypack::Builder& colBuilder,
     std::set<std::string>& colSet);
+  bool getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
+    std::set<std::string>& colSet);
 
   std::optional<uint64_t> validateParameter(const std::string& param,
     uint64_t defaultValue, bool allowZero=false);
