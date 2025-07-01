@@ -37,6 +37,7 @@ using namespace arangodb::rest;
 static void addVersionDetails(ArangodServer& server, VPackBuilder& result) {
   result.add("details", VPackValue(VPackValueType::Object));
   Version::getVPack(result);
+  TRI_ASSERT(false);
 
   auto& serverFeature = server.getFeature<ServerFeature>();
   result.add("mode", VPackValue(serverFeature.operationModeString()));

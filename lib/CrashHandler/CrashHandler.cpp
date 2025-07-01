@@ -101,6 +101,32 @@ std::unique_ptr<std::thread> crashHandlerThread = nullptr;
 /// @brief mutex to protect thread creation/destruction
 std::mutex crashHandlerThreadMutex;
 
+// Static variables to store crash data for the dedicated crash handler thread
+/// @brief stores the crash context/reason
+static char const* crashContext = nullptr;
+
+/// @brief stores the signal number
+static int crashSignal = 0;
+
+/// @brief stores a pointer to the signal info
+static siginfo_t* crashSiginfo = nullptr;
+
+/// @brief stores a pointer to the user context
+static void* crashUcontext = nullptr;
+
+/// @brief mutex to protect crash data variables
+static std::mutex crashDataMutex;
+
+/// @brief stores crash data for later use by the crash handler thread
+void storeCrashData(char const* context, int signal, siginfo_t* info, void* ucontext) {
+  std::lock_guard<std::mutex> lock(crashDataMutex);
+  
+  crashContext = context;
+  crashSignal = signal;
+  crashSiginfo = info;
+  crashUcontext = ucontext;
+}
+
 /// @brief kills the process with the given signal
 [[noreturn]] void killProcess(int signal) {
   if (::killHard.load(std::memory_order_relaxed)) {
@@ -404,15 +430,21 @@ void crashHandlerThreadFunction() {
         // We can safely do all the work here since we're not in a signal
         // handler
         try {
-          // Log basic crash information (without signal details since we don't
-          // have them here)
+
+          // Log crash information using the stored data
+          {
+            std::lock_guard<std::mutex> lock(crashDataMutex);
+            logCrashInfo(crashContext, crashSignal, 
+                        crashSiginfo, 
+                        crashUcontext);
+          }
           SmallString buffer;
           buffer.append(
               "💥 Hello, this is the dedicated crash handler thread, I will "
               "make this unfortunate crash experience as agreeable as "
               "possible for you...");
           LOG_TOPIC("a7903", FATAL, arangodb::Logger::CRASH) << buffer.view();
-
+          
           // Log process information
           logProcessInfo();
 
@@ -466,10 +498,8 @@ void crashHandlerThreadFunction() {
 /// - Windows and macOS are currently not supported.
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
-    // Log signal-specific information in the signal handler
-    logCrashInfo("signal handler invoked", signal, info, ucontext);
-    // Morally, we should do this after the work of the crash handler thread,
-    // however, for backwards compatibility, we keep it here as first thing.
+    // Store crash data for the dedicated crash handler thread
+    storeCrashData("signal handler invoked", signal, info, ucontext);
 
     // Signal the dedicated crash handler thread (force trigger even if not
     // idle)
@@ -531,11 +561,9 @@ void CrashHandler::logBacktrace() {
 
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(std::string_view context) {
-  ::logCrashInfo(context, SIGABRT, /*no signal*/ nullptr,
-                 /*no context*/ nullptr);
-  // Morally, we should do this after the work of the crash handler thread,
-  // however, for backwards compatibility, we keep it here as first thing.
-
+  // Store crash data for the dedicated crash handler thread
+  ::storeCrashData(context.data(), SIGABRT, /*no signal*/ nullptr, /*no context*/ nullptr);
+  
   // Log context information directly (this is a programmatic crash, not
   // signal-based)
   SmallString buffer;
