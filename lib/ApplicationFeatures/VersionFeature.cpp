@@ -64,7 +64,7 @@ void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     }
 
     std::cout << builder.slice().toJson() << std::endl;
-    CrashHandler::shutdownCrashHandler();
+    // CrashHandler::shutdownCrashHandler();
     exit(EXIT_SUCCESS);
   }
 
@@ -74,7 +74,7 @@ void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
               << LGPLNotice << std::endl
               << std::endl
               << Version::getDetailed() << std::endl;
-    CrashHandler::shutdownCrashHandler();
+    // CrashHandler::shutdownCrashHandler();
     exit(EXIT_SUCCESS);
   }
 }

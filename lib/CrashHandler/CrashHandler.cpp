@@ -503,6 +503,8 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
 
 namespace arangodb {
 
+std::atomic<CrashHandler*> CrashHandler::_theCrashHandler;
+
 void CrashHandler::triggerCrashHandler() {
   ::crashHandlerState.store(arangodb::CrashHandlerState::CRASH_DETECTED,
                             std::memory_order_release);
@@ -684,6 +686,13 @@ void CrashHandler::installCrashHandler() {
     }
 
     CrashHandler::crash(buffer.view());
+  });
+
+  std::atexit([]() {
+    CrashHandler* ch = CrashHandler::_theCrashHandler;
+    if (ch != nullptr) {
+      ch->shutdownCrashHandler();
+    }
   });
 }
 

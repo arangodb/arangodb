@@ -58,7 +58,9 @@ constexpr auto kNonServerFeatures =
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    CrashHandler::installCrashHandler();
+    CrashHandler crashHandler;  // initializes the crash handler and starts its
+                                // thread the destructor will stop it.
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<arangodb::options::ProgramOptions>(
@@ -181,9 +183,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ShutdownFeature>(
               server,
 #ifdef USE_V8
-              std::array { ArangodServer::id<ScriptFeature>() }
+              std::array{ArangodServer::id<ScriptFeature>()}
 #else
-              std::array { ArangodServer::id<AgencyFeaturePhase>() }
+              std::array{ArangodServer::id<AgencyFeaturePhase>()}
 #endif
           );
         },
@@ -227,10 +229,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
       ret = EXIT_FAILURE;
     }
 
-    // Shutdown the crash handler thread in a controlled manner
-    CrashHandler::shutdownCrashHandler();
-
     Logger::flush();
+    // CrashHandler will be deactivated here automatically be its destructor
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
