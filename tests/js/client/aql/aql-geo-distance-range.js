@@ -258,11 +258,11 @@ function GeoDistanceRange() {
       }); 
     },
 
+    // BTS-2139 test with two and three coordinates
     testWithMixedCoordinates: function() {
       // Repeat the same tests but with mixed 2D and 3D coordinates
       // Results should be identical since Z coordinates are ignored
       const queries = [
-        // BTS-470 with mixed coordinates
         [`
           LET lines = GEO_MULTILINESTRING([
             [[ 6.537, 50.332, 100 ], [ 6.537, 50.376 ]],
@@ -329,7 +329,6 @@ function GeoDistanceRange() {
             RETURN MERGE(doc, { distance: GEO_DISTANCE(doc.location, lines)})  
           `, 2
         ],
-        // BTS-471 with mixed coordinates
         [
           `
           LET lines = GEO_MULTILINESTRING([
@@ -414,6 +413,7 @@ function GeoDistanceRange() {
       }); 
     },
 
+    // BTS-2139 accept z coordinates in geojson
     testZCoordinateIgnored: function() {
       // Test that Z coordinates are ignored in geo_distance calculations
       // Distance between points with same lat/lng should be 0 regardless of Z
@@ -434,6 +434,7 @@ function GeoDistanceRange() {
       assertEqual(distance2, 0);
     },
 
+    // BTS-2139 accept z coordinates in geojson
     testZCoordinateIgnored2: function() {
       // Test that Z coordinates are ignored in geo_distance calculations
       // Distance between points with same lat/lng should be 0 regardless of Z
