@@ -183,9 +183,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<ShutdownFeature>(
               server,
 #ifdef USE_V8
-              std::array{ArangodServer::id<ScriptFeature>()}
+              std::array { ArangodServer::id<ScriptFeature>() }
 #else
-              std::array{ArangodServer::id<AgencyFeaturePhase>()}
+              std::array { ArangodServer::id<AgencyFeaturePhase>() }
 #endif
           );
         },
