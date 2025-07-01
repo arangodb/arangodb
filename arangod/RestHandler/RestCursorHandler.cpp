@@ -567,19 +567,15 @@ async<void> RestCursorHandler::generateCursorResult(rest::ResponseCode code) {
   VPackBuilder builder;
   builder.openObject(/*unindexed*/ true);
 
-  auto r = Result();
-
-  co_await waitingFunToCoro([&]() {
+  auto r = co_await waitingFunToCoro([&]() -> std::optional<Result> {
     auto const [state, result] = _cursor->dump(builder);
 
     if (state == aql::ExecutionState::WAITING) {
-      TRI_ASSERT(r.ok());
-      return RestStatus::WAITING;
+      TRI_ASSERT(result.ok());
+      return std::nullopt;
     }
 
-    r = result;
-
-    return RestStatus::DONE;
+    return result;
   });
 
   if (_cursor->allowDirtyReads()) {
