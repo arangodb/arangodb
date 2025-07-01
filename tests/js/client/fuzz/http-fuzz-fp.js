@@ -38,7 +38,7 @@ function httpRequestsFuzzerTestSuite() {
     },
     tearDown: function () {
       IM.printNetstat();
-    }
+    },
     testRandReqs: function () {
       // main expectation here is that the server does not crash!
       try {
