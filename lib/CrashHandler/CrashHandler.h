@@ -28,6 +28,12 @@
 namespace arangodb {
 
 /// @brief States for the crash handler thread coordination
+/// The state of the dedicated crash handler starts with IDLE
+/// and moves to CRASH_DETECTED when a crash is detected. When the
+/// thread has handled the situation it goes to HANDLING_COMPLETE
+/// to indicate that the crashed thread can continue its crash.
+/// The only other state transition possible is on regular shutdown
+/// from IDLE to SHUTDOWN to let the thread exit gracefully.
 enum class CrashHandlerState : int {
   IDLE = 0,               ///< idle state, waiting for crashes
   CRASH_DETECTED = 1,     ///< crash detected, handling in progress
