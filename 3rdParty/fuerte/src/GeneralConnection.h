@@ -104,12 +104,12 @@ class GeneralConnection : public fuerte::Connection {
   }
 
   virtual std::string localEndpoint() const override final {
-    boost::asio::detail::socket_addr_type addr;
-    boost::system::error_code ec;
+    //boost::asio::detail::socket_addr_type addr;
+    //boost::system::error_code ec;
 
     std::string endpoint;
     endpoint.reserve(32);
-    _proto.getsockname(&addr, sizeof(addr), ec);
+    /// TODO _proto.getsockname(&addr, sizeof(addr), ec);
     // http
     endpoint.append(fuerte::to_string(_config._protocolType));
     endpoint.push_back('+');

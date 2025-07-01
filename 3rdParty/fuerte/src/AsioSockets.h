@@ -254,6 +254,13 @@ struct Socket<fuerte::SocketType::Ssl> {
         });
   }
 
+  std::string getConnectionName() {
+    asio_ns::detail::socket_addr_type addr;
+    boost::system::error_code ec;
+    asio_ns::detail::socket_ops::getsockname(socket.lowest_layer().get(), &addr, sizeof(addr), ec);
+
+  }
+
   bool isOpen() const {
     return socket.lowest_layer().is_open();
   }
