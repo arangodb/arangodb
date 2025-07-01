@@ -45,9 +45,9 @@ DECLARE_COUNTER(arangodb_async_thread_registries_total,
                 "Total number of threads that started asynchronous operations "
                 "since database creation");
 
-DECLARE_GAUGE(
-    arangodb_async_existing_thread_registries, std::uint64_t,
-    "Number of threads that started currently existing asynchronous operations");
+DECLARE_GAUGE(arangodb_async_existing_thread_registries, std::uint64_t,
+              "Number of threads that started currently existing asynchronous "
+              "operations");
 
 Feature::Feature(Server& server)
     : ArangodFeature{server, *this}, _async_mutex{_schedulerWrapper} {
