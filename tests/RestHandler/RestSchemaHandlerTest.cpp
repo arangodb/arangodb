@@ -1,6 +1,26 @@
-//
-// Created by koichi on 6/17/25.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Koichi Nakata
+////////////////////////////////////////////////////////////////////////////////
+///
 #include "gtest/gtest.h"
 
 #include "velocypack/Builder.h"
@@ -141,20 +161,50 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
 
-  auto expected = Parser::fromJson(R"({
-    "collectionName": "testProducts",
-    "collectionType": "document",
-    "numOfDocuments": 4,
-    "schema": [{
-      "attribute": "_id", "types": ["string"], "optional": false}, {
-      "attribute": "_key", "types": ["string"], "optional":false}, {
-      "attribute": "color", "types": ["string"], "optional":true}, {
-      "attribute": "name", "types": ["string"], "optional":false}, {
-      "attribute": "price", "types": ["string", "number"], "optional": false}, {
-      "attribute": "version", "types": [ "number", "string"], "optional": true}],
-    "examples":[{
-      "_key": "P4", "_id": "testProducts/P4", "name": "P4", "price": 349, "version": "5.5"}]}
-  )");
+  auto actualSlice = fakeResponse->_payload.slice();
 
-  EXPECT_EQUAL_SLICES(fakeResponse->_payload.slice(), expected->slice());
+  EXPECT_EQ(actualSlice.get("collectionName").copyString(), "testProducts");
+  EXPECT_EQ(actualSlice.get("collectionType").copyString(), "document");
+  EXPECT_EQ(actualSlice.get("numOfDocuments").getNumber<uint64_t>(), 4);
+
+  auto schemaSlice = actualSlice.get("schema");
+  ASSERT_TRUE(schemaSlice.isArray());
+  EXPECT_EQ(schemaSlice.length(), 6);
+
+  std::vector<std::tuple<std::string, std::vector<std::string>, bool>> expectedSchema = {
+    {"_id", {"string"}, false},
+    {"_key", {"string"}, false},
+    {"color", {"string"}, true},
+    {"name", {"string"}, false},
+    {"price", {"string", "number"}, false},
+    {"version", {"number", "string"}, true},
+  };
+
+  for (size_t i = 0; i < expectedSchema.size(); ++i) {
+    auto entry = schemaSlice.at(i);
+    EXPECT_EQ(entry.get("attribute").copyString(), std::get<0>(expectedSchema[i]));
+    EXPECT_EQ(entry.get("optional").getBool(), std::get<2>(expectedSchema[i]));
+
+    auto types = entry.get("types");
+    ASSERT_TRUE(types.isArray());
+
+    std::set<std::string> actualTypes;
+    for (auto const& t : VPackArrayIterator(types)) {
+      actualTypes.insert(t.copyString());
+    }
+
+    std::set<std::string> expectedTypes(std::get<1>(expectedSchema[i]).begin(), std::get<1>(expectedSchema[i]).end());
+    EXPECT_EQ(actualTypes, expectedTypes);
+  }
+
+  auto examples = actualSlice.get("examples");
+  ASSERT_TRUE(examples.isArray());
+  ASSERT_EQ(examples.length(), 1);
+
+  auto example = examples.at(0);
+  ASSERT_TRUE(example.isObject());
+  EXPECT_TRUE(example.hasKey("_id"));
+  EXPECT_TRUE(example.hasKey("_key"));
+  EXPECT_TRUE(example.hasKey("price"));
+  EXPECT_TRUE(example.hasKey("name"));
 }

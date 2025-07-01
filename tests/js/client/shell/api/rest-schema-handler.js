@@ -1,6 +1,29 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
 /* global db, arango, assertEqual, assertTrue */
 
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Koichi Nakata
+// //////////////////////////////////////////////////////////////////////////////
+
 'use strict';
 const gm = require("@arangodb/general-graph");
 const jsunity = require("jsunity");
@@ -15,9 +38,15 @@ function restSchemaHandlerTestSuite() {
     const enManufactured = "manufactured";
     const gnPurchaseHistory = "purchaseHistory";
     const gnManufacture = "manufacture";
+    const vnProductDescView = "productDescView";
+    const vnDescView = "descView";
     let colCustomer = null;
     let colProduct = null;
     let colCompany = null;
+    let pGraph = null;
+    let mGraph = null;
+    let productDescViewSearch = null;
+    let descViewSearch = null;
 
     return  {
         setUpAll: function () {
@@ -33,22 +62,29 @@ function restSchemaHandlerTestSuite() {
             gm._create(gnPurchaseHistory, [gm._relation(enPurchased, vnCustomer, vnProduct)]);
             gm._create(gnManufacture, [gm._relation(enManufactured, vnCompany, vnProduct)]);
 
-            colCustomer.save({_key: "C1", name: "C1", age: 25, address: "Milano"});
-            colCustomer.save({_key: "C2", name: "C2", age: "35", address: "San Francisco", isStudent: true});
-            colCustomer.save({_key: "C3", name: "C3", age: 55, address: {city: "Berlin", country: "Germany"}});
-            colCustomer.save({_key: "C4", name: "C4", age: "young", address: "Tokyo", isStudent: false});
+            colCustomer.save({_key: "C1", name: "C1", age: 25, address: "Milano", comment: "Is a teacher at a University in San Francisco and teaches finance"});
+            colCustomer.save({_key: "C2", name: "C2", age: "35", address: "San Francisco", isStudent: true, comment: "Has been working in financial industry for 5 years"});
+            colCustomer.save({_key: "C3", name: "C3", age: 55, address: {city: "Berlin", country: "Germany", comment: "Is a student at a University in San Francisco, major is financial"}});
+            colCustomer.save({_key: "C4", name: "C4", age: "young", address: "Tokyo", isStudent: false, comment: "Used to work in financial industry but now working as a teacher at school"});
 
-            colProduct.save({_key: "P1", name: "P1", price: 499.99, used: false});
-            colProduct.save({_key: "P2", name: "P2", price: "expensive"});
-            colProduct.save({_key: "P3", name: "P3", price: 1499, version: "14.5", used: true});
-            colProduct.save({_key: "P4", name: "P4", price: 2499, version: 1});
+            colProduct.save({_key: "P1", name: "P1", price: 499.99, used: false, description: "Made in Germany and new"});
+            colProduct.save({_key: "P2", name: "P2", price: "expensive", description: "Made in USA and new"});
+            colProduct.save({_key: "P3", name: "P3", price: 1499, version: "14.5", used: true, description: "Made in Italy and used"});
+            colProduct.save({_key: "P4", name: "P4", price: 2499, version: 1, description: "Made in Japan and used"});
 
             colCompany.save({_key: "E1", name: "E1", established: 1990, isPublic: true});
             colCompany.save({_key: "E2", name: "E2", established: "5/2025", isPublic: false});
             colCompany.save({_key: "E3", name: "E3", established: 1990});
 
-            let pGraph = gm._graph(gnPurchaseHistory);
-            let mGraph = gm._graph(gnManufacture);
+            pGraph = gm._graph(gnPurchaseHistory);
+            mGraph = gm._graph(gnManufacture);
+
+            productDescViewSearch = db._createView(vnProductDescView, "arangosearch", {
+                links: {products: {fields: {description: {analyzers: ["text_en"]}}}}});
+            descViewSearch = db._createView(vnDescView, "arangosearch", {
+                links: {products: {fields: {description: {analyzers: ["text_en"]}}},
+                        customers: {fields: {comment: {analyzers: ["text_en"]}}}}});
+
 
             function makePurchase(fromKey, toKey, date) {
                 pGraph.purchased.save({_from: `${vnCustomer}/${fromKey}`, _to: `${vnProduct}/${toKey}`, date});
@@ -68,6 +104,8 @@ function restSchemaHandlerTestSuite() {
         },
 
         tearDownAll: function () {
+            productDescViewSearch.drop();
+            descViewSearch.drop();
             gm._drop(gnPurchaseHistory);
             gm._drop(gnManufacture);
             db._drop(enPurchased);
@@ -199,6 +237,23 @@ function restSchemaHandlerTestSuite() {
             assertEqual("manufactured", mRel.collection);
             assertEqual("companies", mRel.from[0]);
             assertEqual("products", mRel.to[0]);
+
+            /* Check views */
+            const vProductDescView = body.views.find((v) => v.viewName === "productDescView");
+            assertTrue(Array.isArray(vProductDescView.links));
+            assertEqual("products", vProductDescView.links[0].collectionName);
+            assertTrue(Array.isArray(vProductDescView.links[0].fields));
+            assertEqual("description", vProductDescView.links[0].fields[0].attribute);
+            assertEqual("text_en", vProductDescView.links[0].fields[0].analyzers[0]);
+
+            const vDescView = body.views.find((v) => v.viewName === "descView");
+            assertEqual(2, vDescView.links.length);
+            const customersView = vDescView.links.find((v) => v.collectionName === "customers");
+            assertEqual("comment", customersView.fields[0].attribute);
+            assertEqual("text_en", customersView.fields[0].analyzers[0]);
+            const productsView = vDescView.links.find((v) => v.collectionName === "products");
+            assertEqual("description", productsView.fields[0].attribute);
+            assertEqual("text_en", productsView.fields[0].analyzers[0]);
         },
 
         testSchemaEndpointWithNegativeSampleNum: function () {
@@ -410,6 +465,39 @@ function restSchemaHandlerTestSuite() {
             const body = doc.parsedBody;
             assertTrue(Array.isArray(body.examples));
             assertEqual(4, body.examples.length);
+        },
+
+        testSchemaViewEndpoint: function () {
+            const doc = arango.GET_RAW(api + "/view/descView");
+            assertEqual(200, doc.code, "Expected HTTP 200");
+            const body = doc.parsedBody;
+            const vDesc = body.views[0];
+            assertTrue(Array.isArray(vDesc.links));
+            const vCustomers = vDesc.links.find((v) => v.collectionName === "customers");
+            assertEqual("comment", vCustomers.fields[0].attribute);
+            assertEqual("text_en", vCustomers.fields[0].analyzers[0]);
+            const vProducts = vDesc.links.find((v) => v.collectionName === "products");
+            assertEqual("description", vProducts.fields[0].attribute);
+            assertEqual("text_en", vProducts.fields[0].analyzers[0]);
+
+            const colls = body.collections;
+            assertEqual(2, colls.length);
+            const cCustomers = colls.find((c) => c.collectionName === "customers");
+            assertEqual(4, cCustomers.numOfDocuments);
+            assertEqual(7, cCustomers.schema.length);
+            const cProducts = colls.find((c) => c.collectionName === "products");
+            assertEqual(4, cProducts.numOfDocuments);
+            assertEqual(7, cProducts.schema.length);
+        },
+
+        testSchemaViewEndpointWithNotExistingView: function () {
+            const doc = arango.GET_RAW(api + "/view/fake");
+            assertEqual(404, doc.code, "Expected HTTP 404");
+        },
+
+        testSchemaViewEndpointWithEmptyViewName: function () {
+            const doc = arango.GET_RAW(api + "/view");
+            assertEqual(404, doc.code, "Expected HTTP 404");
         },
     };
 }

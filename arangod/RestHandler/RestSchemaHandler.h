@@ -1,6 +1,25 @@
-//
-// Created by koichi on 6/16/25.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Koichi Nakata
+////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
@@ -37,26 +56,26 @@ private:
   RestStatus lookupSchemaView(std::string const& viewName,
     uint64_t sampleNum, uint64_t exampleNum);
 
-  bool getCollections(std::set<std::string> const& colSet,
+  Result getCollections(std::set<std::string> const& colSet,
     uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colsBuilder);
-  bool getCollection(std::string const& colName,
+  Result getCollection(std::string const& colName,
     uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colBuilder);
-  bool getGraphAndCollections(std::string const& graphName,
+  Result getGraphAndCollections(std::string const& graphName,
     velocypack::Builder& graphBuilder, std::set<std::string>& colSet);
-  bool getAllGraphsAndCollections(velocypack::Builder& graphBuilder,
+  Result getAllGraphsAndCollections(velocypack::Builder& graphBuilder,
     std::set<std::string>& colSet);
-  bool getViewAndCollections(std::string const& viewName, velocypack::Builder& colBuilder,
+  Result getViewAndCollections(std::string const& viewName, velocypack::Builder& colBuilder,
     std::set<std::string>& colSet);
-  bool getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
+  Result getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
     std::set<std::string>& colSet);
 
   std::optional<uint64_t> validateParameter(const std::string& param,
     uint64_t defaultValue, bool allowZero=false);
-  bool getNumOfDocumentsOrEdges(std::string const& colName,
+  Result getNumOfDocumentsOrEdges(std::string const& colName,
     velocypack::Builder& builder, bool isDocument=true);
-  bool getExamples(std::string const& colName,
+  Result getExamples(std::string const& colName,
     uint64_t exampleNum, velocypack::Builder& builder);
-  bool getConnectedCollections(std::string const& graphName,
+  Result getConnectedCollections(std::string const& graphName,
     std::set<std::string>& colSet);
 };
 

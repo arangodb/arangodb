@@ -1,6 +1,25 @@
-//
-// Created by koichi on 6/17/25.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Koichi Nakata
+////////////////////////////////////////////////////////////////////////////////
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestHandler/RestSchemaHandler.h"
@@ -121,15 +140,20 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum, uint64_t exampleN
   std::set<std::string> colSet;
   resultBuilder->openObject();
 
-  if (!getAllGraphsAndCollections(*resultBuilder, colSet)) {
+  Result graphsRes = getAllGraphsAndCollections(*resultBuilder, colSet);
+  if (graphsRes.fail()) {
     return RestStatus::DONE;
   }
 
-  if (!getAllViewsAndCollections(*resultBuilder, colSet)) {
+  Result viewsRes = getAllViewsAndCollections(*resultBuilder, colSet);
+  if (viewsRes.fail()) {
     return RestStatus::DONE;
   }
 
-  getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  Result colsRes = getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  if (colsRes.fail()) {
+    return RestStatus::DONE;
+  }
   resultBuilder->close();
 
   _queryResult.data = resultBuilder;
@@ -140,15 +164,15 @@ RestStatus RestSchemaHandler::lookupSchemaCollection(
     std::string const& colName, uint64_t sampleNum, uint64_t exampleNum) {
   auto found = _vocbase.lookupCollection(colName);
   if (found == nullptr) {
-    generateError(ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  "collection '" + colName + "' not found");
+    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  std::format("Collection {} not found", colName));
     return RestStatus::DONE;
   }
 
   auto resultBuilder = std::make_shared<velocypack::Builder>();
   resultBuilder->openObject();
-  if (!getCollection(colName, sampleNum, exampleNum, *resultBuilder)) {
+  Result colRes = getCollection(colName, sampleNum, exampleNum, *resultBuilder);
+  if (colRes.fail()) {
     return RestStatus::DONE;
   }
   resultBuilder->close();
@@ -162,7 +186,8 @@ RestStatus RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
   std::set<std::string> colSet;
 
   resultBuilder->openObject();
-  if (!getGraphAndCollections(graphName, *resultBuilder, colSet)) {
+  Result graphRes = getGraphAndCollections(graphName, *resultBuilder, colSet);
+  if (graphRes.fail()){
     return RestStatus::DONE;
   }
 
@@ -178,7 +203,8 @@ RestStatus RestSchemaHandler::lookupSchemaView(std::string const& viewName,
   velocypack::Builder viewsArrBuilder;
   viewsArrBuilder.openArray();
   std::set<std::string> colSet;
-  if (!getViewAndCollections(viewName, viewsArrBuilder, colSet)) {
+  Result viewRes = getViewAndCollections(viewName, viewsArrBuilder, colSet);
+  if (viewRes.fail()) {
     return RestStatus::DONE;
   }
   viewsArrBuilder.close();
@@ -194,7 +220,7 @@ RestStatus RestSchemaHandler::lookupSchemaView(std::string const& viewName,
   return handleQueryResult();
 }
 
-bool RestSchemaHandler::getCollections(std::set<std::string> const& colSet,
+Result RestSchemaHandler::getCollections(std::set<std::string> const& colSet,
     uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colsBuilder) {
   auto colsArrayBuilder = std::make_shared<velocypack::Builder>();
   colsArrayBuilder->openArray();
@@ -204,24 +230,26 @@ bool RestSchemaHandler::getCollections(std::set<std::string> const& colSet,
     }
     velocypack::Builder colBuilder;
     colBuilder.openObject();
-    if (!getCollection(colName, sampleNum, exampleNum, colBuilder)) {
-      return false;
+    Result colRes = getCollection(colName, sampleNum, exampleNum, colBuilder);
+    if (colRes.fail()) {
+      return colRes;
     }
     colBuilder.close();
     colsArrayBuilder->add(colBuilder.slice());
   }
   colsArrayBuilder->close();
   colsBuilder.add("collections", colsArrayBuilder->slice());
-  return true;
+  return Result{};
 }
 
-bool RestSchemaHandler::getCollection(std::string const& colName,
+Result RestSchemaHandler::getCollection(std::string const& colName,
     uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colBuilder) {
   auto colPtr = _vocbase.lookupCollection(colName);
   if (!colPtr) {
-    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          std::format("Collection {} not found", colName));
-    return false;
+    Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::format("Collection {} not found", colName)};
+    generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   auto bindVars = std::make_shared<velocypack::Builder>();
@@ -241,45 +269,45 @@ bool RestSchemaHandler::getCollection(std::string const& colName,
   try {
     while (query->execute(qr) == aql::ExecutionState::WAITING) { }
   } catch (basics::Exception const& e) {
-    generateError(ResponseCode::SERVER_ERROR, e.code(),
-      std::format("Schema query for {} threw: {}", colName, e.what()));
-    return false;
+    Result res{e.code(),
+      std::format("Schema query for {} threw: {}", colName, e.what())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   if (qr.result.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, qr.result.errorNumber(),
+    Result res{qr.result.errorNumber(),
       std::format("Schema query failed for {}: {}",
-        colName, qr.result.errorMessage()));
-    return false;
+        colName, qr.result.errorMessage())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
   auto schemaSlice = qr.data->slice();
   if (!schemaSlice.isArray()) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-      std::format("Unexpected schema result for {}", colName));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::format("Unexpected schema result for {}", colName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   colBuilder.add("collectionName", velocypack::Value(colName));
-  auto col = _vocbase.lookupCollection(colName);
-  if (col && col->type() == TRI_COL_TYPE_DOCUMENT) {
-    colBuilder.add("collectionType", velocypack::Value("document"));
-    if (!getNumOfDocumentsOrEdges(colName, colBuilder)) {
-      return false;
-    }
-  } else {
-    colBuilder.add("collectionType", velocypack::Value("edge"));
-    if (!getNumOfDocumentsOrEdges(colName, colBuilder, false)) {
-      return false;
-    }
+  bool isDocument = (colPtr->type() == TRI_COL_TYPE_DOCUMENT);
+  colBuilder.add("collectionType",
+    isDocument ? velocypack::Value("document") : velocypack::Value("edge"));
+  Result numRes = getNumOfDocumentsOrEdges(colName, colBuilder, isDocument);
+  if (numRes.fail()) {
+    return numRes;
   }
+
   colBuilder.add("schema", qr.data->slice());
-  if (!getExamples(colName, exampleNum, colBuilder)) {
-    return false;
+  Result exRes = getExamples(colName, exampleNum, colBuilder);
+  if (exRes.fail()) {
+    return exRes;
   }
-  return true;
+  return Result{};
 }
 
-bool RestSchemaHandler::getGraphAndCollections(std::string const& graphName,
+Result RestSchemaHandler::getGraphAndCollections(std::string const& graphName,
   velocypack::Builder& graphBuilder, std::set<std::string>& colSet) {
   const std::string graphQueryString = R"(
     FOR g IN _graphs
@@ -305,39 +333,43 @@ bool RestSchemaHandler::getGraphAndCollections(std::string const& graphName,
   try {
     while (query->execute(qr) == aql::ExecutionState::WAITING) { }
   } catch (basics::Exception const& e) {
-    generateError(ResponseCode::SERVER_ERROR, e.code(),
-      std::format("Graph query for '{}' threw: {}", graphName, e.what()));
-    return false;
+    Result res{e.code(),
+      std::format("Graph query for '{}' threw: {}", graphName, e.what())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   if (qr.result.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, qr.result.errorNumber(),
+    Result res{qr.result.errorNumber(),
       std::format("Graph query failed for '{}': {}",
-        graphName, qr.result.errorMessage()));
-    return false;
+        graphName, qr.result.errorMessage())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   auto slice = qr.data->slice();
   if (!slice.isArray()) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-      std::format("Unexpected graph result shape for '{}'", graphName));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::format("Unexpected graph result shape for '{}'", graphName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
   if (slice.length() == 0) {
-    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_GRAPH_NOT_FOUND,
-      std::format("Graph not found: '{}'", graphName));
-    return false;
+    Result res{TRI_ERROR_GRAPH_NOT_FOUND,
+      std::format("Graph not found: '{}'", graphName)};
+    generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
+    return res;
   }
   graphBuilder.add("graphs", slice);
 
-  if (!getConnectedCollections(graphName, colSet)) {
-    return false;
+  Result connRes = getConnectedCollections(graphName, colSet);
+  if (connRes.fail()) {
+    return connRes;
   }
-
-  return true;
+  return Result{};
 }
 
-bool RestSchemaHandler::getAllGraphsAndCollections(
+Result RestSchemaHandler::getAllGraphsAndCollections(
   velocypack::Builder& graphBuilder, std::set<std::string>& colSet) {
   const std::string graphQueryString = R"(
     FOR g IN _graphs
@@ -356,63 +388,72 @@ bool RestSchemaHandler::getAllGraphsAndCollections(
   aql::QueryResult qr;
   try {
     while (query->execute(qr) == aql::ExecutionState::WAITING) { }
-  } catch (basics::Exception const& ex) {
-    generateError(ResponseCode::SERVER_ERROR, ex.code(),
-      std::format("Graph query threw exception: {}", ex.what()));
-    return false;
+  } catch (basics::Exception const& e) {
+    Result res{e.code(),
+      std::format("Graph query threw exception: {}", e.what())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   if (qr.result.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, qr.result.errorNumber(),
-      std::format("Graph query failed: {}", qr.result.errorMessage()));
-    return false;
+    Result res{qr.result.errorNumber(),
+      std::format("Graph query failed: {}", qr.result.errorMessage())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   auto slice = qr.data->slice();
   if (!slice.isArray()) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-      std::string("Unexpected result shape for GRAPH query: not an array"));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::string("Unexpected result shape for GRAPH query: not an array")};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
   graphBuilder.add("graphs", slice);
 
   for (auto entry : velocypack::ArrayIterator(slice)) {
     auto nameSlice = entry.get("name");
     if (!nameSlice.isString()) {
-      generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-        std::format("Graph entry missing or invalid name attribute: {}", entry.toJson()));
-      return false;
+      Result res{TRI_ERROR_INTERNAL,
+        std::format("Graph entry missing or invalid name attribute: {}", entry.toJson())};
+      generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+      return res;
     }
     auto graphName = nameSlice.copyString();
-    if (!getConnectedCollections(graphName, colSet)) {
-      return false;
+    Result connRes = getConnectedCollections(graphName, colSet);
+    if (connRes.fail()) {
+      return connRes;
     }
   }
-  return true;
+  return Result{};
 }
 
-bool RestSchemaHandler::getViewAndCollections(std::string const& viewName,
+Result RestSchemaHandler::getViewAndCollections(std::string const& viewName,
   velocypack::Builder& viewsArrBuilder, std::set<std::string>& colSet) {
   auto view = CollectionNameResolver(_vocbase).getView(viewName);
   if (!view) {
-    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return false;
+    Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+      std::format("View {} not found", viewName)};
+    generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   velocypack::Builder dataBuilder;
   dataBuilder.openObject();
-  auto res = view->properties(dataBuilder,
+  auto propRes = view->properties(dataBuilder,
                               LogicalDataSource::Serialization::Properties);
-  if (!res.ok()) {
-    generateError(res);
-    return false;
+  if (!propRes.ok()) {
+    generateError(ResponseCode::SERVER_ERROR, propRes.errorNumber(), propRes.errorMessage());
+    return propRes;
   }
   dataBuilder.close();
 
   auto data = dataBuilder.slice();
   if (!data.hasKey("links")) {
-    generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return false;
+    Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+               std::format("View {} has no links", viewName)};
+    generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   velocypack::Builder linksBuilder;
@@ -421,8 +462,10 @@ bool RestSchemaHandler::getViewAndCollections(std::string const& viewName,
     auto colName = li.key.copyString();
     auto colValue = li.value;
     if (!colValue.hasKey("fields")) {
-      generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      return false;
+      Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                 std::format("View {}: link {} missing fields", viewName, colName)};
+      generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
+      return res;
     }
     velocypack::Builder fieldsBuilder;
     fieldsBuilder.openArray();
@@ -431,8 +474,10 @@ bool RestSchemaHandler::getViewAndCollections(std::string const& viewName,
       fieldBuilder.openObject();
       fieldBuilder.add("attribute", velocypack::Value(fi.key.copyString()));
       if (!fi.value.hasKey("analyzers")) {
-        generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-        return false;
+        Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                   std::format("Link {} missing analyzers", viewName, colName)};
+        generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
+        return res;
       }
       fieldBuilder.add("analyzers", fi.value.get("analyzers"));
       fieldBuilder.close();
@@ -457,31 +502,34 @@ bool RestSchemaHandler::getViewAndCollections(std::string const& viewName,
   viewBuilder.close();
 
   viewsArrBuilder.add(viewBuilder.slice());
-  return true;
+  return Result{};
 }
 
-bool RestSchemaHandler::getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
+Result RestSchemaHandler::getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
     std::set<std::string>& colSet) {
   std::vector<LogicalView::ptr> views;
   LogicalView::enumerate(_vocbase, [&views](LogicalView::ptr const& view) -> bool {
                            views.emplace_back(view);
-                           return true;
-                         });
+                           return true;});
 
   velocypack::Builder viewsArrBuilder;
   viewsArrBuilder.openArray();
   for (auto view : views) {
-    if (!getViewAndCollections(view->name(), viewsArrBuilder, colSet)) {
-      generateError(ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-      return false;
+    TRI_ASSERT(view != nullptr);
+    if (!view) {
+      continue;
+    }
+    Result viewRes = getViewAndCollections(view->name(), viewsArrBuilder, colSet);
+    if (viewRes.fail()) {
+      return viewRes;
     }
   }
   viewsArrBuilder.close();
   viewsBuilder.add("views", viewsArrBuilder.slice());
-  return true;
+  return Result{};
 }
 
-bool RestSchemaHandler::getNumOfDocumentsOrEdges(std::string const& colName,
+Result RestSchemaHandler::getNumOfDocumentsOrEdges(std::string const& colName,
   velocypack::Builder& builder, bool isDocument) {
   const std::string queryStr{"RETURN LENGTH(@@collection)"};
 
@@ -501,52 +549,48 @@ bool RestSchemaHandler::getNumOfDocumentsOrEdges(std::string const& colName,
   try {
     while (query->execute(qr) == aql::ExecutionState::WAITING) { }
   } catch (basics::Exception const& e) {
-    generateError(ResponseCode::SERVER_ERROR, e.code(),
-      std::format("Count query for {} threw: {}",
-        colName, e.what()));
-    return false;
+    Result res{e.code(),
+    std::format("Count query for {} threw: {}", colName, e.what())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   if (qr.result.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, qr.result.errorNumber(),
-    std::format("Count query for {} failed: {}",
-      colName, qr.result.errorMessage()));
-    return false;
+    Result res{qr.result.errorNumber(),
+      std::format("Count query for {} failed: {}",
+        colName, qr.result.errorMessage())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   auto result = qr.data->slice();
-
   if (result.isNone() || !result.isArray()) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-    std::format("Count query did not return an array for {}", colName));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::format("Count query did not return an array for {}", colName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   if (result.length() == 0 || result.length() > 1) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-    std::format("Count query returned empty array or "
-                "invalid format of array for {}", colName));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::format("Count query returned invalid array size for {}", colName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   auto countSlice = result.at(0);
   if (!countSlice.isNumber()) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-    std::format("Count query returned non-numeric result for {}", colName));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::format("Count query returned non-numeric result for {}", colName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
-  if (isDocument) {
-    builder.add("numOfDocuments", result.at(0));
-  }
-  else {
-    builder.add("numOfEdges", result.at(0));
-  }
-
-  return true;
+  builder.add(isDocument ? "numOfDocuments" : "numOfEdges", countSlice);
+  return Result{};
 }
 
-bool RestSchemaHandler::getExamples(std::string const& colName,
+Result RestSchemaHandler::getExamples(std::string const& colName,
   uint64_t exampleNum, velocypack::Builder& builder) {
   const std::string queryStr = R"(
     FOR d IN @@collection LIMIT @exampleNum RETURN UNSET(d, "_rev")
@@ -569,28 +613,30 @@ bool RestSchemaHandler::getExamples(std::string const& colName,
   try {
     while (query->execute(qr) == aql::ExecutionState::WAITING) { }
   } catch (basics::Exception const& e) {
-    generateError(ResponseCode::SERVER_ERROR, e.code(),
-      std::format("Example query for {} threw: {}",
-        colName, e.what()));
-    return false;
+    Result res{e.code(),
+      std::format("Example query for {} threw: {}", colName, e.what())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   if (qr.result.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, qr.result.errorNumber(),
+    Result res{qr.result.errorNumber(),
       std::format("Example query failed for {}: {}",
-        colName, qr.result.errorMessage()));
-    return false;
+        colName, qr.result.errorMessage())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   auto result = qr.data->slice();
   if (result.isNone() || !result.isArray()) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-    std::format("Example query did not return an array for {}", colName));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::format("Example query did not return an array for {}", colName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   builder.add("examples", result);
-  return true;
+  return Result{};
 }
 
 std::optional<uint64_t> RestSchemaHandler::validateParameter(
@@ -628,27 +674,31 @@ std::optional<uint64_t> RestSchemaHandler::validateParameter(
   return userInput;
 }
 
-bool RestSchemaHandler::getConnectedCollections(std::string const& graphName,
+Result RestSchemaHandler::getConnectedCollections(std::string const& graphName,
   std::set<std::string>& colSet) {
   auto resultGraph = _graphManager.lookupGraphByName(graphName);
 
   if (resultGraph.fail()) {
+    Result res;
     if (resultGraph.errorNumber() == TRI_ERROR_GRAPH_NOT_FOUND) {
-      generateError(ResponseCode::NOT_FOUND, resultGraph.errorNumber(),
-        std::format("Graph {} not found", graphName));
+      res = Result{resultGraph.errorNumber(),
+        std::format("Graph {} not found", graphName)};
+      generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
     } else {
-      generateError(ResponseCode::SERVER_ERROR, resultGraph.errorNumber(),
+      res = Result{resultGraph.errorNumber(),
         std::format("Error looking up graph {}: ",
-          graphName, resultGraph.errorMessage()));
+          graphName, resultGraph.errorMessage())};
+      generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
     }
-    return false;
+    return res;
   }
 
   auto& graphPtr = resultGraph.get();
   if (!graphPtr) {
-    generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-      std::format("Graph lookup returned null pointer for {}", graphName));
-    return false;
+    Result res{TRI_ERROR_INTERNAL,
+      std::format("Graph lookup returned null pointer for {}", graphName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   for (auto const& vertex : graphPtr->vertexCollections()) {
@@ -657,5 +707,5 @@ bool RestSchemaHandler::getConnectedCollections(std::string const& graphName,
   for (auto const& edge : graphPtr->edgeCollections()) {
     colSet.insert(edge);
   }
-  return true;
+  return Result{};
 }
