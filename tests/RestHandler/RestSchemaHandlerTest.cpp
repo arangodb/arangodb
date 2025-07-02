@@ -52,7 +52,7 @@ using namespace arangodb::velocypack;
 
 class RestSchemaHandlerTest : public ::testing::Test {
 public:
-  static void SetUpTestCase() {
+  void SetUp() override {
     server = std::make_unique<MockRestAqlServer>();
     registry = QueryRegistryFeature::registry();
     vocbase = &server->getSystemDatabase();
@@ -88,9 +88,8 @@ public:
     )";
     tests::executeQuery(vocbase, productQuery);
   }
-  static void TearDownTestCase() {
+  void TearDown() override {
     server.reset();
-    delete registry;
   }
 
 protected:
