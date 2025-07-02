@@ -749,6 +749,9 @@ void CrashHandler::installCrashHandler() {
                                 std::memory_order_relaxed);
       ::crashHandlerThread =
           std::make_unique<std::jthread>(::crashHandlerThreadFunction);
+#ifdef TRI_HAVE_SYS_PRCTL_H
+      pthread_setname_np(::crashHandlerThread->native_handle(), "CrashHandler");
+#endif
     }
   }
 
