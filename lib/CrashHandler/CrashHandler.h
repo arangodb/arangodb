@@ -92,9 +92,13 @@ class CrashHandler {
 
   /// @brief triggers the crash handler thread to handle a crash
   /// @return true if successfully triggered, false if already in progress
+  /// This is used in the signal handlers and in the std::terminate handler
+  /// for assertion failures.
   static void triggerCrashHandler();
 
   /// @brief waits for the crash handler thread to complete its work
+  /// This is used in the signal handlers and in the std::terminate handler
+  /// for assertion failures.
   static void waitForCrashHandlerCompletion();
 
  private:
