@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
+
 * Fix BTS-2166: Fix a race during startup, where the async registry's metrics
   might be created before the scheduler starts its first thread. This is
   currently not known to cause any issues.
