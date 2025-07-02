@@ -103,26 +103,8 @@ class GeneralConnection : public fuerte::Connection {
     return _state.load(std::memory_order_acquire);
   }
 
-  virtual std::string localEndpoint() const override final {
-    //boost::asio::detail::socket_addr_type addr;
-    //boost::system::error_code ec;
-
-    std::string endpoint;
-    endpoint.reserve(32);
-    /// TODO _proto.getsockname(&addr, sizeof(addr), ec);
-    // http
-    endpoint.append(fuerte::to_string(_config._protocolType));
-    endpoint.push_back('+');
-    // tcp/ssl/unix
-    endpoint.append(fuerte::to_string(_config._socketType));
-    endpoint.append("://");
-    // domain name or IP (xxx.xxx.xxx.xxx)
-    endpoint.append(_config._host);
-    if (_config._socketType != SocketType::Unix) {
-      endpoint.push_back(':');
-      endpoint.append(_config._port);
-    }
-    return endpoint;
+  virtual std::string localEndpoint() override final {
+    return _proto.getConnectionName();
   }
 
   /// The following public methods can be called from any thread:
