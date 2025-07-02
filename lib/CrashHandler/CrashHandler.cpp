@@ -673,16 +673,6 @@ void CrashHandler::crash(std::string_view context) {
     ::backtraceBufferUsed.store(bytesWritten, std::memory_order_release);
   }
 
-  // Log context information directly (this is a programmatic crash, not
-  // signal-based)
-  SmallString buffer;
-  buffer.append("💥 Programmatic crash: ").append(context);
-  try {
-    LOG_TOPIC("a7904", FATAL, arangodb::Logger::CRASH) << buffer.view();
-  } catch (...) {
-    // ignore logging failures
-  }
-
   // Signal the dedicated crash handler thread if it exists
   CrashHandler::triggerCrashHandler();
 
