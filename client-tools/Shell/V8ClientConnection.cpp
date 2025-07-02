@@ -2813,6 +2813,7 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
     return kFuzzNotConnected;
   }
 
+  auto localEndpoint = getLocalEndpoint();
   auto req = fuzzer.createRequest();
   auto req_copy = *req;
 
@@ -2829,7 +2830,8 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
   }
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
-        << "connection closed after " << fuerte::v1::to_string(req_copy) << " from: " << getLocalEndpoint();
+        << "connection closed after " << fuerte::v1::to_string(req_copy)
+        << " from: " << localEndpoint;
     if (response) {
       LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
           << "Server responce: " << response;
