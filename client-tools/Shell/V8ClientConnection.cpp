@@ -206,7 +206,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         setCustomError(500, "unable to create connection");
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
-            << "' failed fatally";
+            << "' failed fatally from: " << newConnection->localEndpoint();
         return nullptr;
       }
 
@@ -237,7 +237,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
           setCustomError(_lastHttpReturnCode, errorMessage);
           LOG_TOPIC("9daab", DEBUG, arangodb::Logger::HTTPCLIENT)
               << "Connection attempt to endpoint '" << _client.endpoint()
-              << "' failed: " << errorMessage;
+              << "' failed: " << errorMessage << " from: " << newConnection->localEndpoint();
           return nullptr;
         }
       }
@@ -250,7 +250,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         setCustomError(503, msg);
         LOG_TOPIC("9daac", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
-            << "' failed: " << msg;
+            << "' failed: " << msg << " from: " << newConnection->localEndpoint();
         return nullptr;
       }
 
@@ -303,7 +303,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         _currentConnectionId.erase();
         LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
-            << "' failed: " << msg;
+            << "' failed: " << msg<< " from: " << newConnection->localEndpoint();
         return nullptr;
       } else {
         newConnection = _builder.connect(_loop);
@@ -1423,7 +1423,8 @@ static void ClientConnection_httpFuzzRequests(
     // during testing.
     LOG_TOPIC("39e50", WARN, arangodb::Logger::FIXME)
         << "fuzzer producing " << numReqs << " requests(s) with " << numIts
-        << " iteration(s) each, using seed " << fuzzer.getSeed();
+        << " iteration(s) each, using seed " << fuzzer.getSeed()
+        << " from: " << v8connection->getLocalEndpoint();
   }
   std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
 
@@ -2823,12 +2824,12 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
     rc = ec;
     if (rc != fu::Error::NoError) {
       LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME)
-          << "rc: " << static_cast<uint32_t>(rc);
+          << "rc: " << static_cast<uint32_t>(rc)<< " from: " << getLocalEndpoint();
     }
   }
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
-        << "connection closed after " << fuerte::v1::to_string(req_copy);
+        << "connection closed after " << fuerte::v1::to_string(req_copy) << " from: " << getLocalEndpoint();
     if (response) {
       LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
           << "Server responce: " << response;
