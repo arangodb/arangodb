@@ -34,8 +34,8 @@ export const FIELDS = [
     isRequired: true,
     options: [
       { label: "Cosine", value: "cosine" },
-      { label: "L2 (Euclidean)", value: "l2" },
-      { label: "Inner Product", value: "innerProduct" }
+      { label: "Inner Product", value: "innerProduct" },
+      { label: "L2 (Euclidean)", value: "l2" }
     ],
     tooltip: "Distance metric used for similarity search. Choose between Cosine similarity, Euclidean distance (L2), or Inner Product."
   },
