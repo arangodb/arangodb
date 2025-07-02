@@ -83,7 +83,9 @@ class FakeConnection final : public fuerte::Connection {
 
   void cancel() override {}
 
-  virtual std::string localEndpoint() override final { return "not implemented"; };
+  virtual std::string localEndpoint() override final {
+    return "not implemented";
+  };
 
  private:
   std::shared_ptr<std::vector<PreparedRequestResponse>> _responses;

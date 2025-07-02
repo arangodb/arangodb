@@ -65,7 +65,9 @@ struct DummyConnection final : public fuerte::Connection {
 
   fuerte::Connection::State _state = fuerte::Connection::State::Connected;
 
-  virtual std::string localEndpoint() override final { return "not implemented"; };
+  virtual std::string localEndpoint() override final {
+    return "not implemented";
+  };
 
   fuerte::Error _err = fuerte::Error::NoError;
   std::unique_ptr<fuerte::Response> _response;
