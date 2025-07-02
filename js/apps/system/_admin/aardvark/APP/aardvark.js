@@ -1286,8 +1286,12 @@ var generateNodeObject = function (node, config, nodeSize, sizeCategory, colors,
       label = node._key || node._id;
       tooltipText = node._key || node._id;
     } else if (labelParts.length === 1) {
-      // Single attribute case
-      label = truncate(labelParts[0], 35);
+      // Single attribute case - don't truncate for missing attributes, only for found ones
+      if (labelParts[0].includes("(attribute not found)")) {
+        label = labelParts[0]; // Don't truncate missing attribute messages
+      } else {
+        label = truncate(labelParts[0], 35);
+      }
       tooltipText = tooltipParts[0];
     } else {
       // Multiple attributes case
@@ -1402,7 +1406,7 @@ var processGraphData = function (cursor, config, colors, startVertex, multipleId
         if (config.edgeLabel && config.edgeLabel.length > 0) {
           // Use pre-computed edge label from AQL
           var edgeLabelValue = edge.edgeLabel;
-          if (edgeLabelValue !== undefined) {
+          if (edgeLabelValue !== undefined && edgeLabelValue !== null) {
             if (typeof edgeLabelValue === 'string') {
               edgeLabel = edgeLabelValue;
             } else {

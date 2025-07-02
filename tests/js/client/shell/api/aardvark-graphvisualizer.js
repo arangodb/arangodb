@@ -354,6 +354,19 @@ function configurationParametersSuite() {
       assertTrue(sampleNode.label.includes("(attribute not found)"));
      },
 
+    test_non_existing_attribute_format: function() {
+      let cmd = api + "/knows_graph?nodeLabel=nonExistentAttribute";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('nodes'));
+      
+      // When attribute doesn't exist, the API shows "attributeName: (attribute not found)"
+      let sampleNode = doc.parsedBody.nodes[0];
+      assertEqual(sampleNode.label, "nonExistentAttribute: (attribute not found)");
+      assertEqual(sampleNode.title, "nonExistentAttribute: (attribute not found)");
+    },
+
     test_whitespace_separated_node_labels: function() {
       let cmd = api + "/knows_graph?nodeLabel=name _key";
       let doc = arango.GET_RAW(cmd);
@@ -433,6 +446,18 @@ function configurationParametersSuite() {
       // When edgeLabelByCollection=true, edge labels should include collection name
       let sampleEdge = doc.parsedBody.edges[0];
       assertTrue(sampleEdge.label.includes(" - knows"));
+    },
+
+    test_non_existing_edge_attribute_format: function() {
+      let cmd = api + "/knows_graph?edgeLabel=nonExistentEdgeAttribute";
+      let doc = arango.GET_RAW(cmd);
+
+      assertEqual(doc.code, 200);
+      assertTrue(doc.parsedBody.hasOwnProperty('edges'));
+      
+      // When edge attribute doesn't exist, the API shows just "(attribute not found)"
+      let sampleEdge = doc.parsedBody.edges[0];
+      assertEqual(sampleEdge.label, "(attribute not found)");
     },
 
     test_edge_color_configuration: function() {
