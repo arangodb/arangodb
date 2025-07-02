@@ -255,10 +255,49 @@ struct Socket<fuerte::SocketType::Ssl> {
   }
 
   std::string getConnectionName() {
-    asio_ns::detail::socket_addr_type addr;
+    asio_ns::detail::socket_addr_type *sa = nullptr;
     boost::system::error_code ec;
-    asio_ns::detail::socket_ops::getsockname(socket.lowest_layer().get(), &addr, sizeof(addr), ec);
+    size_t salen = 0;
+    size_t addr_len;
+    int port;
+    const char *addr;
+    std::string endpoint;
+    endpoint.reserve(32);
+    asio_ns::detail::socket_ops::getsockname(socket.lowest_layer().native_handle(), sa, &salen, ec);
 
+
+    switch (sa->sa_family)
+    {
+    case BOOST_ASIO_OS_DEF(AF_INET):
+      if (salen != sizeof(asio_ns::detail::sockaddr_in4_type))
+      {
+        return "failed to convert address";
+      }
+      addr = reinterpret_cast<const char*>(
+        &reinterpret_cast<const asio_ns::detail::sockaddr_in4_type*>(sa)->sin_addr);
+      addr_len = sizeof(asio_ns::detail::in4_addr_type);
+      port = reinterpret_cast<const asio_ns::detail::sockaddr_in4_type*>(sa)->sin_port;
+      endpoint = std::string(addr, addr_len);
+      endpoint.append(":");
+      endpoint.append(std::to_string(port));
+      break;
+    case BOOST_ASIO_OS_DEF(AF_INET6):
+      if (salen != sizeof(asio_ns::detail::sockaddr_in6_type))
+      {
+        return "failed to convert address";
+      }
+      addr = reinterpret_cast<const char*>(
+        &reinterpret_cast<const asio_ns::detail::sockaddr_in6_type*>(sa)->sin6_addr);
+      addr_len = sizeof(asio_ns::detail::in6_addr_type);
+      port = reinterpret_cast<const asio_ns::detail::sockaddr_in6_type*>(sa)->sin6_port;
+      endpoint = std::string(addr, addr_len);
+      endpoint.append(":");
+      endpoint.append(std::to_string(port));
+      break;
+    default:
+      return "unsupported connection type";
+    }
+    return endpoint;
   }
 
   bool isOpen() const {
