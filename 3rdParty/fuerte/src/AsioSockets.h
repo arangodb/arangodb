@@ -103,7 +103,9 @@ std::string getConnectionNameS(SocketT& socket) {
   endpoint.reserve(32);
   asio_ns::detail::socket_ops::getsockname(socket.lowest_layer().native_handle(), sa, &salen, ec);
 
-
+  if (sa == nullptr) {
+    return "could not get name";
+  }
   switch (sa->sa_family)
   {
   case BOOST_ASIO_OS_DEF(AF_INET):
