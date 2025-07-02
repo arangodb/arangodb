@@ -140,7 +140,7 @@ std::string getConnectionNameS(SocketT& socket) {
     addr_len = sizeof(asio_ns::detail::in6_addr_type);
     port = reinterpret_cast<const asio_ns::detail::sockaddr_in6_type*>(&sa)->sin6_port;
     //endpoint = std::string(addr, addr_len);
-    for (int i = 0; i < addr_len; i++) {
+    for (uint8_t i = 0; i < addr_len; i++) {
       if (i > 0) {
         endpoint.append(":");
       }
