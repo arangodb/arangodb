@@ -505,6 +505,37 @@ void logProcessInfo() {
   LOG_TOPIC("ded81", INFO, arangodb::Logger::CRASH) << buffer.view();
 }
 
+void actuallyDumpCrashInfo() {
+  // Handle the crash logging in this dedicated thread
+  // We can safely do all the work here since we're not in a signal
+  // handler
+  try {
+    // Log crash information using the stored data
+    logCrashInfo(crashContext, crashSignal, crashSiginfo, crashUcontext);
+    SmallString buffer;
+    buffer.append(
+        "💥 Hello, this is the dedicated crash handler thread, I will "
+        "make this unfortunate crash experience as agreeable as "
+        "possible for you...");
+    LOG_TOPIC("a7903", FATAL, arangodb::Logger::CRASH) << buffer.view();
+
+    // Log process information
+    logProcessInfo();
+
+    // Log the backtrace that was acquired by the signal handler
+    size_t bytesUsed = ::backtraceBufferUsed.load(std::memory_order_acquire);
+    if (::backtraceBuffer != nullptr && bytesUsed > 0) {
+      logAcquiredBacktrace(::backtraceBuffer.get(), bytesUsed);
+    }
+
+    // Flush logs
+    arangodb::Logger::flush();
+
+  } catch (...) {
+    // Ignore exceptions in crash handling
+  }
+}
+
 /// @brief dedicated thread function that monitors for crashes and handles
 /// logging
 void crashHandlerThreadFunction() {
@@ -523,35 +554,7 @@ void crashHandlerThreadFunction() {
         break;
 
       case arangodb::CrashHandlerState::CRASH_DETECTED: {
-        // Handle the crash logging in this dedicated thread
-        // We can safely do all the work here since we're not in a signal
-        // handler
-        try {
-          // Log crash information using the stored data
-          logCrashInfo(crashContext, crashSignal, crashSiginfo, crashUcontext);
-          SmallString buffer;
-          buffer.append(
-              "💥 Hello, this is the dedicated crash handler thread, I will "
-              "make this unfortunate crash experience as agreeable as "
-              "possible for you...");
-          LOG_TOPIC("a7903", FATAL, arangodb::Logger::CRASH) << buffer.view();
-
-          // Log process information
-          logProcessInfo();
-
-          // Log the backtrace that was acquired by the signal handler
-          size_t bytesUsed =
-              ::backtraceBufferUsed.load(std::memory_order_acquire);
-          if (::backtraceBuffer != nullptr && bytesUsed > 0) {
-            logAcquiredBacktrace(::backtraceBuffer.get(), bytesUsed);
-          }
-
-          // Flush logs
-          arangodb::Logger::flush();
-
-        } catch (...) {
-          // Ignore exceptions in crash handling
-        }
+        actuallyDumpCrashInfo();
 
         // Signal that we're done with crash handling and notify waiters
         crashHandlerState.store(arangodb::CrashHandlerState::HANDLING_COMPLETE,
@@ -594,6 +597,14 @@ void crashHandlerThreadFunction() {
 
 void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
+    // Now let's check we are not the Logging thread:
+    arangodb::ThreadNameFetcher fetcher;
+    if (fetcher.get() == "Logging") {
+      // We cannot really log in here, since most likely we will be holding
+      // a mutex in the Logger, so directly kill the process.
+      killProcess(signal);
+    }
+
     // Store crash data for the dedicated crash handler thread
     storeCrashData("signal handler invoked", signal, info, ucontext);
 
@@ -605,12 +616,18 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
       ::backtraceBufferUsed.store(bytesWritten, std::memory_order_release);
     }
 
-    // Signal the dedicated crash handler thread (force trigger even if not
-    // idle)
-    arangodb::CrashHandler::triggerCrashHandler();
+    if (std::this_thread::get_id() == ::crashHandlerThread->get_id()) {
+      // In this case we cannot delegate to ourselves to do the actual
+      // dumping. So let's just do it ourselves:
+      actuallyDumpCrashInfo();
+    } else {
+      // Signal the dedicated crash handler thread (force trigger even if not
+      // idle)
+      arangodb::CrashHandler::triggerCrashHandler();
 
-    // Busy wait for the dedicated thread to complete its work
-    arangodb::CrashHandler::waitForCrashHandlerCompletion();
+      // Busy wait for the dedicated thread to complete its work
+      arangodb::CrashHandler::waitForCrashHandlerCompletion();
+    }
 
     // Final cleanup
     arangodb::Logger::flush();
