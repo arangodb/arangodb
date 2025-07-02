@@ -263,7 +263,7 @@ function arangosh (options) {
   let tmpMgr = new tmpDirMngr('arangosh_tests_pipe', options);
   let sh = new sanHandler(pu.ARANGOSH_BIN, options);
   sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0, sh.getSanOptions());
+  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, sh.getSanOptions());
   const deltaTime = time() - startTime;
 
   fs.writePipe(res.pid, "bla\n");
