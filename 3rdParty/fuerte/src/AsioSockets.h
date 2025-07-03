@@ -93,66 +93,13 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
 
 template <typename SocketT>
 std::string getConnectionNameS(SocketT& socket) {
-  asio_ns::detail::sockaddr_in6_type sa;
-  memset(&sa, 0, sizeof(sa));
-  boost::system::error_code ec;
-  size_t salen = sizeof(sa);
-  size_t addr_len;
-  int port;
-  const uint8_t *addr;
-  std::string endpoint;
-  endpoint.reserve(32);
-  asio_ns::detail::socket_ops::getsockname(
-    socket.lowest_layer().native_handle(),
-    reinterpret_cast<asio_ns::detail::socket_addr_type*>(&sa),
-    &salen, ec);
+    boost::system::error_code ec;
+    asio_ns::ip::tcp::endpoint local_endpoint = socket.lowest_layer().local_endpoint(ec);
 
-  switch (reinterpret_cast<asio_ns::detail::socket_addr_type*>(&sa)->sa_family)
-  {
-  case BOOST_ASIO_OS_DEF(AF_INET):
-    if (salen != sizeof(asio_ns::detail::sockaddr_in4_type))
-    {
-      return "failed to convert address";
+    if (ec) {
+        return "Error getting local endpoint: " + ec.message();
     }
-    addr = reinterpret_cast<const uint8_t*>(
-      &reinterpret_cast<const asio_ns::detail::sockaddr_in4_type*>(&sa)->sin_addr);
-    addr_len = sizeof(asio_ns::detail::in4_addr_type);
-    port = reinterpret_cast<const asio_ns::detail::sockaddr_in4_type*>(&sa)->sin_port;
-    if (addr_len == 4) {
-      endpoint.append(std::to_string(addr[0]));
-      endpoint.append(".");
-      endpoint.append(std::to_string(addr[1]));
-      endpoint.append(".");
-      endpoint.append(std::to_string(addr[2]));
-      endpoint.append(".");
-      endpoint.append(std::to_string(addr[3]));
-    }
-    endpoint.append(":");
-    endpoint.append(std::to_string(ntohs(port)));
-    break;
-  case BOOST_ASIO_OS_DEF(AF_INET6):
-    if (salen != sizeof(asio_ns::detail::sockaddr_in6_type))
-    {
-      return "failed to convert address";
-    }
-    addr = reinterpret_cast<const uint8_t*>(
-      &reinterpret_cast<const asio_ns::detail::sockaddr_in6_type*>(&sa)->sin6_addr);
-    addr_len = sizeof(asio_ns::detail::in6_addr_type);
-    port = reinterpret_cast<const asio_ns::detail::sockaddr_in6_type*>(&sa)->sin6_port;
-    //endpoint = std::string(addr, addr_len);
-    for (uint8_t i = 0; i < addr_len; i++) {
-      if (i > 0) {
-        endpoint.append(":");
-      }
-      endpoint.append(std::to_string(addr[i]));
-    }
-    endpoint.append(":y");
-    endpoint.append(std::to_string(ntohs(port)));
-    break;
-  default:
-    return "unsupported connection type";
-  }
-  return endpoint;
+    return local_endpoint.address().to_string() + ":" + std::to_string(local_endpoint.port());
 }
 }  // namespace
 
