@@ -47,6 +47,7 @@
 #include <asio/steady_timer.hpp>
 #include <asio/streambuf.hpp>
 #include <asio/write.hpp>
+#include <asio/detail/socket_ops.hpp>
 
 namespace asio_ns = asio;
 
@@ -57,6 +58,7 @@ namespace asio_ns = asio;
 #include <boost/asio/ssl.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/asio/detail/socket_ops.hpp>
 
 namespace boost { namespace asio {
 using error_code = boost::system::error_code;
