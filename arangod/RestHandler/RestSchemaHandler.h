@@ -35,48 +35,53 @@ class QueryRegistry;
 namespace rest {
 
 class RestSchemaHandler : public RestCursorHandler {
-public:
+ public:
   RestSchemaHandler(ArangodServer& server, GeneralRequest* request,
-                    GeneralResponse* response, aql::QueryRegistry* queryRegistry);
+                    GeneralResponse* response,
+                    aql::QueryRegistry* queryRegistry);
 
   RestStatus execute() override;
   RestStatus handleQueryResult() override;
 
-private:
+ private:
   static constexpr uint64_t defaultSampleNum = 100;
   static constexpr uint64_t defaultExampleNum = 1;
   static const std::string queryString;
   graph::GraphManager _graphManager;
 
   RestStatus lookupSchema(uint64_t sampleNum, uint64_t exampleNum);
-  RestStatus lookupSchemaCollection(
-    std::string const& colName, uint64_t sampleNum, uint64_t exampleNum);
-  RestStatus lookupSchemaGraph(std::string const& graphName,
-    uint64_t sampleNum, uint64_t exampleNum);
-  RestStatus lookupSchemaView(std::string const& viewName,
-    uint64_t sampleNum, uint64_t exampleNum);
+  RestStatus lookupSchemaCollection(std::string const& colName,
+                                    uint64_t sampleNum, uint64_t exampleNum);
+  RestStatus lookupSchemaGraph(std::string const& graphName, uint64_t sampleNum,
+                               uint64_t exampleNum);
+  RestStatus lookupSchemaView(std::string const& viewName, uint64_t sampleNum,
+                              uint64_t exampleNum);
 
-  Result getCollections(std::set<std::string> const& colSet,
-    uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colsBuilder);
-  Result getCollection(std::string const& colName,
-    uint64_t sampleNum, uint64_t exampleNum, velocypack::Builder& colBuilder);
+  Result getCollections(std::set<std::string> const& colSet, uint64_t sampleNum,
+                        uint64_t exampleNum, velocypack::Builder& colsBuilder);
+  Result getCollection(std::string const& colName, uint64_t sampleNum,
+                       uint64_t exampleNum, velocypack::Builder& colBuilder);
   Result getGraphAndCollections(std::string const& graphName,
-    velocypack::Builder& graphBuilder, std::set<std::string>& colSet);
+                                velocypack::Builder& graphBuilder,
+                                std::set<std::string>& colSet);
   Result getAllGraphsAndCollections(velocypack::Builder& graphBuilder,
-    std::set<std::string>& colSet);
-  Result getViewAndCollections(std::string const& viewName, velocypack::Builder& colBuilder,
-    std::set<std::string>& colSet);
+                                    std::set<std::string>& colSet);
+  Result getViewAndCollections(std::string const& viewName,
+                               velocypack::Builder& colBuilder,
+                               std::set<std::string>& colSet);
   Result getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
-    std::set<std::string>& colSet);
+                                   std::set<std::string>& colSet);
 
   std::optional<uint64_t> validateParameter(const std::string& param,
-    uint64_t defaultValue, bool allowZero=false);
+                                            uint64_t defaultValue,
+                                            bool allowZero = false);
   Result getNumOfDocumentsOrEdges(std::string const& colName,
-    velocypack::Builder& builder, bool isDocument=true);
-  Result getExamples(std::string const& colName,
-    uint64_t exampleNum, velocypack::Builder& builder);
+                                  velocypack::Builder& builder,
+                                  bool isDocument = true);
+  Result getExamples(std::string const& colName, uint64_t exampleNum,
+                     velocypack::Builder& builder);
   Result getConnectedCollections(std::string const& graphName,
-    std::set<std::string>& colSet);
+                                 std::set<std::string>& colSet);
 };
 
 }  // namespace rest

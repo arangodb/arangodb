@@ -51,13 +51,13 @@ using namespace arangodb::aql;
 using namespace arangodb::velocypack;
 
 class RestSchemaHandlerTest : public ::testing::Test {
-public:
+ public:
   void SetUp() override {
     server = std::make_unique<MockRestAqlServer>();
     registry = QueryRegistryFeature::registry();
     vocbase = &server->getSystemDatabase();
 
-    auto& vocbase = server->getSystemDatabase(); // "_system"
+    auto& vocbase = server->getSystemDatabase();  // "_system"
     std::shared_ptr<Builder> collectionJson;
     collectionJson = Parser::fromJson(R"({ "name": "testCustomers" })");
     vocbase.createCollection(collectionJson->slice());
@@ -88,11 +88,9 @@ public:
     )";
     tests::executeQuery(vocbase, productQuery);
   }
-  void TearDown() override {
-    server.reset();
-  }
+  void TearDown() override { server.reset(); }
 
-protected:
+ protected:
   static inline std::unique_ptr<MockRestAqlServer> server;
   static inline QueryRegistry* registry;
   static inline TRI_vocbase_t* vocbase;
@@ -104,11 +102,12 @@ TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
   fakeRequest->setRequestType(RequestType::POST);
 
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(),
-      fakeResponse.release(), registry);
+      server->server(), fakeRequest.release(), fakeResponse.release(),
+      registry);
   testee->execute();
 
-  EXPECT_EQ(testee->response()->responseCode(), ResponseCode::METHOD_NOT_ALLOWED);
+  EXPECT_EQ(testee->response()->responseCode(),
+            ResponseCode::METHOD_NOT_ALLOWED);
 }
 
 TEST_F(RestSchemaHandlerTest, NotExistingCollectionReturns404) {
@@ -119,8 +118,8 @@ TEST_F(RestSchemaHandlerTest, NotExistingCollectionReturns404) {
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(),
-      fakeResponse.release(), registry);
+      server->server(), fakeRequest.release(), fakeResponse.release(),
+      registry);
 
   testee->execute();
 
@@ -136,8 +135,8 @@ TEST_F(RestSchemaHandlerTest, TooManySuffixesReturns404) {
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(),
-      fakeResponse.release(), registry);
+      server->server(), fakeRequest.release(), fakeResponse.release(),
+      registry);
 
   testee->execute();
 
@@ -152,8 +151,8 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(),
-      fakeResponse.release(), registry);
+      server->server(), fakeRequest.release(), fakeResponse.release(),
+      registry);
 
   testee->execute();
 
@@ -170,18 +169,20 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
   ASSERT_TRUE(schemaSlice.isArray());
   EXPECT_EQ(schemaSlice.length(), 6);
 
-  std::vector<std::tuple<std::string, std::vector<std::string>, bool>> expectedSchema = {
-    {"_id", {"string"}, false},
-    {"_key", {"string"}, false},
-    {"color", {"string"}, true},
-    {"name", {"string"}, false},
-    {"price", {"string", "number"}, false},
-    {"version", {"number", "string"}, true},
-  };
+  std::vector<std::tuple<std::string, std::vector<std::string>, bool>>
+      expectedSchema = {
+          {"_id", {"string"}, false},
+          {"_key", {"string"}, false},
+          {"color", {"string"}, true},
+          {"name", {"string"}, false},
+          {"price", {"string", "number"}, false},
+          {"version", {"number", "string"}, true},
+      };
 
   for (size_t i = 0; i < expectedSchema.size(); ++i) {
     auto entry = schemaSlice.at(i);
-    EXPECT_EQ(entry.get("attribute").copyString(), std::get<0>(expectedSchema[i]));
+    EXPECT_EQ(entry.get("attribute").copyString(),
+              std::get<0>(expectedSchema[i]));
     EXPECT_EQ(entry.get("optional").getBool(), std::get<2>(expectedSchema[i]));
 
     auto types = entry.get("types");
@@ -192,7 +193,8 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
       actualTypes.insert(t.copyString());
     }
 
-    std::set<std::string> expectedTypes(std::get<1>(expectedSchema[i]).begin(), std::get<1>(expectedSchema[i]).end());
+    std::set<std::string> expectedTypes(std::get<1>(expectedSchema[i]).begin(),
+                                        std::get<1>(expectedSchema[i]).end());
     EXPECT_EQ(actualTypes, expectedTypes);
   }
 

@@ -1,5 +1,9 @@
 devel
 -----
+* Add new API GET /_api/schema to show graphs, views, collections along with
+  /_api/schema/graph/<graph-name>: Provides the graph and connected collections
+  /_api/schema/view/<view-name>: Displays the view and linked collections
+  /_api/schema/collection/<collection-name>: Gives the collection and schemas.
 
 * FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
 
