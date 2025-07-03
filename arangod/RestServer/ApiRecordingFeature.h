@@ -156,10 +156,10 @@ class ApiRecordingFeature : public ArangodFeature {
   bool _enabled{true};
 
   // Total memory limit for all ApiCallRecord lists combined
-  size_t _totalMemoryLimit{25600000};  // Default: ~25MB
+  size_t _totalMemoryLimit{25 * 1024 * 1024};  // Default: ~25MiB
 
   // Total memory limit for all AqlCallRecord lists combined
-  size_t _totalMemoryLimitAql{25600000};  // Default: ~25MB
+  size_t _totalMemoryLimitAql{25 * 1024 * 1024};  // Default: ~25MiB
 
   // Memory limit for one list of ApiCallRecords (calculated as
   // _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
