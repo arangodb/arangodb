@@ -938,14 +938,8 @@ class instanceManager {
   // on the coordinator. This is necessary if only the agency is running yet.
   checkInstanceAlive({skipHealthCheck = false} = {}) {
     this.arangods.forEach(arangod => { arangod.netstat = {'in':{}, 'out': {}};});
-    let obj = this;
     try {
-      netstat({platform: process.platform}, function (data) {
-        // skip server ports, we know what we bound.
-        if (data.state !== 'LISTEN') {
-          obj.arangods.forEach(arangod => arangod.checkNetstat(data));
-        }
-      });
+      this.gatherNetstat();
       if (!this.options.noStartStopLogs) {
         this.printNetstat();
       }
@@ -1425,6 +1419,15 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief check how many sockets the SUT uses
   // //////////////////////////////////////////////////////////////////////////////
+  gatherNetstat() {
+    let obj = this;
+    netstat({platform: process.platform}, function (data) {
+      // skip server ports, we know what we bound.
+      if (data.state !== 'LISTEN') {
+        obj.arangods.forEach(arangod => arangod.checkNetstat(data));
+      }
+    });
+  }
 
   getNetstat() {
     let ret = {};

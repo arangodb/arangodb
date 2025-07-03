@@ -37,6 +37,7 @@ function httpRequestsFuzzerTestSuite() {
       IM.rememberConnection();
     },
     tearDown: function () {
+      IM.gatherNetstat();
       IM.printNetstat();
     },
     testRandReqs: function () {
@@ -46,6 +47,7 @@ function httpRequestsFuzzerTestSuite() {
           print(`Connecting ${arangod.getProcessInfo([])}`);
           arangod.connect();
           arangod._disconnect();
+          IM.gatherNetstat();
           IM.printNetstat();
           for (let i = 0; i < 15; ++i) {
             let response = arango.fuzzRequests(25000, i);
@@ -84,6 +86,7 @@ function httpRequestsFuzzerTestSuite() {
           print(`Connecting ${arangod.getProcessInfo([])}`);
           arangod.connect();
           arangod._disconnect();
+          IM.gatherNetstat();
           IM.printNetstat();
           for (let i = 0; i < 10; ++i) {
             let response = arango.fuzzRequests(1, 10);
