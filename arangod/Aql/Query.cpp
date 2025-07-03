@@ -348,10 +348,7 @@ double Query::queryTime() const noexcept {
 
 double Query::executionTime() const noexcept {
   // This can return 0 if the query never entered execution phase
-  if (_startExecutionTime == 0) {
-    return 0;
-  }
-  TRI_ASSERT(_endExecutionTime > 0.0);
+  TRI_ASSERT((_startExecutionTime == 0) == (_endExecutionTime == 0.0));
   return _endExecutionTime - _startExecutionTime;
 }
 
@@ -753,6 +750,10 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         _executionPhase = ExecutionPhase::EXECUTE;
         trackExecutionStart();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        while (TRI_ShouldFailDebugging("Query::delayingExecutionPhase"));
+#endif
       }
         [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
