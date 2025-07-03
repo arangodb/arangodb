@@ -128,7 +128,7 @@ std::string getConnectionNameS(SocketT& socket) {
       endpoint.append(std::to_string(addr[3]));
     }
     endpoint.append(":");
-    endpoint.append(std::to_string(port));
+    endpoint.append(std::to_string(ntohs(port)));
     break;
   case BOOST_ASIO_OS_DEF(AF_INET6):
     if (salen != sizeof(asio_ns::detail::sockaddr_in6_type))
@@ -147,7 +147,7 @@ std::string getConnectionNameS(SocketT& socket) {
       endpoint.append(std::to_string(addr[i]));
     }
     endpoint.append(":y");
-    endpoint.append(std::to_string(port));
+    endpoint.append(std::to_string(ntohs(port)));
     break;
   default:
     return "unsupported connection type";
