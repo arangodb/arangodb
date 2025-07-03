@@ -79,16 +79,16 @@ auto inspect(Inspector& f, ApiCallRecord& record) {
 
 struct AqlQueryRecord {
   std::chrono::system_clock::time_point timeStamp;
-  std::string queryString;
+  std::string query;
   std::string database;
-  velocypack::SharedSlice bindParameters;
+  velocypack::SharedSlice bindVars;
 
-  AqlQueryRecord(std::string_view queryString, std::string_view database,
-                 velocypack::SharedSlice bindParameters)
+  AqlQueryRecord(std::string_view query, std::string_view database,
+                 velocypack::SharedSlice bindVars)
       : timeStamp(std::chrono::system_clock::now()),
-        queryString(queryString),
+        query(query),
         database(database),
-        bindParameters(std::move(bindParameters)) {}
+        bindVars(std::move(bindVars)) {}
 
   size_t memoryUsage() const noexcept;
 };
@@ -100,9 +100,8 @@ auto inspect(Inspector& f, AqlQueryRecord& record) {
   return f.object(record).fields(
       f.field("timeStamp", record.timeStamp)
           .transformWith(arangodb::inspection::TimeStampTransformer{}),
-      f.field("queryString", record.queryString),
-      f.field("database", record.database),
-      f.field("bindParameters", record.bindParameters));
+      f.field("query", record.query), f.field("database", record.database),
+      f.field("bindVars", record.bindVars));
 }
 
 class ApiRecordingFeature : public ArangodFeature {

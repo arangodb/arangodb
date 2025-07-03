@@ -39,8 +39,8 @@ size_t ApiCallRecord::memoryUsage() const noexcept {
 }
 
 size_t AqlQueryRecord::memoryUsage() const noexcept {
-  return sizeof(AqlQueryRecord) + queryString.size() + database.size() +
-         bindParameters.byteSize();
+  return sizeof(AqlQueryRecord) + query.size() + database.size() +
+         bindVars.byteSize();
 }
 
 ApiRecordingFeature::ApiRecordingFeature(Server& server)
