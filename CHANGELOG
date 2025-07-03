@@ -1,6 +1,14 @@
 devel
 -----
 
+* Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
+
+* FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
+
+* Fix BTS-2166: Fix a race during startup, where the async registry's metrics
+  might be created before the scheduler starts its first thread. This is
+  currently not known to cause any issues.
+
 * Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
   coordinates for Point geometries.
 
@@ -13448,7 +13456,7 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
 
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
+  Note: There is a [detailed description of all options](https://docs.arangodb.com/stable/operations/security/security-options/).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 
