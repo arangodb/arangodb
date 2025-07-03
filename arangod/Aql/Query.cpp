@@ -752,7 +752,8 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         trackExecutionStart();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-        while (TRI_ShouldFailDebugging("Query::delayingExecutionPhase"));
+        while (TRI_ShouldFailDebugging("Query::delayingExecutionPhase"))
+          ;
 #endif
       }
         [[fallthrough]];

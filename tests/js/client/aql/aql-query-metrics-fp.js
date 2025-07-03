@@ -32,7 +32,7 @@ const arangodb = require("@arangodb");
 const aql = arangodb.aql;
 const ERRORS = arangodb.errors;
 let IM = global.instanceManager;
-const {sleep} = require('internal');
+const {sleep, arango} = require('internal');
 
 function QueryMetricsTestSuite() {
 
