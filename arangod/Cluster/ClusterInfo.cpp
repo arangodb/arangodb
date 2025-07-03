@@ -3109,15 +3109,59 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   double const interval = getPollInterval();
   auto collections = getCollections(name);
 
+  // Get the list of healthy DB servers before starting, if a dbserver is
+  // not GOOD, then it will not remove its own entry in
+  // `/arango/Current/Databases/<dbname>/<dbservername>`, therefore, we would
+  // wait here forever. Therefore, we first check the list of healthy servers
+  // and only wait until the entries for these are gone.
+  // If a dbserver fails after this during the dropping of the database,
+  // we want to wait for it to come back and then remove its entry.
+  // Finally, if a dbserver happens to be not-GOOD during the initial
+  // check for the list of healthy servers, we do not wait for it, but
+  // this is not a problem since the whole entry will be deleted at the
+  // end of the drop database operation.
+  auto healthyDBServers = std::make_shared<containers::FlatHashSet<ServerID>>();
+  {
+    auto dbServers = getCurrentDBServers();
+    READ_LOCKER(readLocker, _serversProt.lock);
+    for (auto const& serverId : dbServers) {
+      if (auto it = _serversKnown.find(serverId); it != _serversKnown.end()) {
+        if (it->second.status == ServerHealth::kGood) {
+          healthyDBServers->emplace(serverId);
+        }
+      }
+    }
+  }
+
   auto dbServerResult =
       std::make_shared<std::atomic<std::optional<ErrorCode>>>(std::nullopt);
   // make capture explicit as callback might be called after the return
   // of this function. So beware of lifetime for captured objects!
   std::function<bool(VPackSlice result)> dbServerChanged =
-      [dbServerResult](VPackSlice result) {
+      [dbServerResult, healthyDBServers](VPackSlice result) {
         if (result.isNone() || result.isEmptyObject()) {
           dbServerResult->store(TRI_ERROR_NO_ERROR, std::memory_order_release);
+          return true;
         }
+
+        // Check if any of the healthy DB servers are still present in the
+        // result
+        if (result.isObject()) {
+          bool allHealthyServersGone = true;
+          for (auto const& entry : VPackObjectIterator(result)) {
+            ServerID serverId = entry.key.copyString();
+            if (healthyDBServers->contains(serverId)) {
+              allHealthyServersGone = false;
+              break;
+            }
+          }
+
+          if (allHealthyServersGone) {
+            dbServerResult->store(TRI_ERROR_NO_ERROR,
+                                  std::memory_order_release);
+          }
+        }
+
         return true;
       };
 

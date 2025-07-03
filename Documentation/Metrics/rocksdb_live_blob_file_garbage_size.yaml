@@ -1,5 +1,5 @@
 name: rocksdb_live_blob_file_garbage_size
-introducedIn: "3.12.2"
+introducedIn: "3.12.6"
 help: |
   Size of garbage in live RocksDB .blob files.
 unit: bytes

@@ -1,5 +1,5 @@
 from typing import Iterable, Any
-from asyncregistry.gdb_data import Promise, PromiseId, Thread
+from asyncregistry.gdb_data import Promise, PromiseId, ThreadInfo
 
 Id = str
 class Forest:
@@ -31,7 +31,7 @@ class Forest:
                 yield child
 
     @classmethod
-    def from_promises(cls, promises: Iterable[tuple[PromiseId, PromiseId, Any]]):
+    def from_promises(cls, promises: Iterable[tuple[PromiseId, ThreadInfo | PromiseId, Any]]):
         parents: [Id] = [] # all parents promise ids
         nodes: [Any] = [] # all nodes
         positions: {Id: int} = {} # lookup table for parent and node per promise id
@@ -42,7 +42,7 @@ class Forest:
             promise_id = str(promise.id)
             positions[promise_id] = count
             nodes.append(data)
-            if type(parent) == Thread:
+            if type(parent) == ThreadInfo:
                 parents.append(None)
                 roots.append(promise_id)
             else:

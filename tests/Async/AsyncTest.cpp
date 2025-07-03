@@ -1,6 +1,7 @@
 #include "Async/async.h"
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
+#include "Containers/Concurrent/shared.h"
 #include "Inspection/Format.h"
 #include "Inspection/JsonPrintInspector.h"
 #include "Utils/ExecContext.h"
@@ -153,7 +154,8 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
     wait.stop();
     EXPECT_EQ(InstanceCounterValue::instanceCounter, 0);
     EXPECT_EQ(promise_count_in_registry(), 0);
-    EXPECT_TRUE(std::holds_alternative<arangodb::basics::ThreadId>(
+    EXPECT_TRUE(std::holds_alternative<
+                arangodb::containers::SharedPtr<arangodb::basics::ThreadInfo>>(
         *arangodb::async_registry::get_current_coroutine()));
   }
 
@@ -529,8 +531,8 @@ TYPED_TEST(
     static auto waiter_fn(TestType test) -> async<void> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       auto fn = Functions::awaited_fn(test);
 
@@ -549,8 +551,8 @@ TYPED_TEST(
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       co_return;
     };
@@ -589,8 +591,8 @@ TYPED_TEST(
     static auto waiter_fn(TestType test) -> async<void> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       auto fn = Functions::awaited_fn(test);
       auto fn_2 = Functions::awaited_2_fn();
@@ -619,8 +621,8 @@ TYPED_TEST(
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       co_return;
     };
@@ -640,7 +642,8 @@ TYPED_TEST(AsyncTest,
     static auto awaited_fn(TestType test) -> async<void> {
       auto promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(promise.has_value());
-      EXPECT_TRUE(std::holds_alternative<basics::ThreadId>(promise->requester));
+      EXPECT_TRUE(
+          std::holds_alternative<basics::ThreadInfo>(promise->requester));
 
       co_await test->wait;
 
@@ -649,13 +652,13 @@ TYPED_TEST(AsyncTest,
     static auto waiter_fn(async<void>&& fn) -> async<void> {
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       co_await std::move(fn);
 
@@ -667,8 +670,8 @@ TYPED_TEST(AsyncTest,
       // waiter did not change
       waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       co_return;
     };
@@ -699,8 +702,8 @@ TYPED_TEST(
 
       auto waiter_promise = find_promise_by_name("waiter_fn");
       EXPECT_TRUE(waiter_promise.has_value());
-      EXPECT_TRUE(
-          std::holds_alternative<basics::ThreadId>(waiter_promise->requester));
+      EXPECT_TRUE(std::holds_alternative<basics::ThreadInfo>(
+          waiter_promise->requester));
 
       auto awaited_promise = find_promise_by_name("awaited_fn");
       EXPECT_TRUE(awaited_promise.has_value());
