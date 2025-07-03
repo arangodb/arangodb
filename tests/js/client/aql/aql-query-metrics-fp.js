@@ -31,6 +31,8 @@ const getMetricSingle = require("@arangodb/test-helper").getMetricSingle;
 const arangodb = require("@arangodb");
 const aql = arangodb.aql;
 const ERRORS = arangodb.errors;
+let IM = global.instanceManager;
+const {sleep} = require('internal');
 
 function QueryMetricsTestSuite() {
 
@@ -82,12 +84,36 @@ function QueryMetricsTestSuite() {
       assertEqual(aqlCurrentQueryMetric, 100);
 
       queries.forEach(function(cursor) {
-        for (var i = 1; i <= 100; ++i) {
+        for (let i = 1; i <= 100; ++i) {
           assertEqual(i, cursor.next());
           assertEqual(i !== 100, cursor.hasNext());
         }
         assertFalse(cursor.hasNext());
       });
+
+      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      assertEqual(aqlCurrentQueryMetric, 0);
+    },
+
+    testMetricAqlCurrentQueryFailurePoint: function () {
+      let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      assertEqual(aqlCurrentQueryMetric, 0);
+
+      IM.debugSetFailAt("Query::delayingExecutionPhase");
+
+      let data = { query: `RETURN 1`, options: { cache: false } };
+      const numberOfRunningQueries = 3;
+      for (let i = 0; i < numberOfRunningQueries; ++i) {
+        arango.POST("/_api/cursor", data, {"x-arango-async": "true"});
+      }
+
+      // This is needed to wait a bit for queries to enter execution phase
+      sleep(3);
+      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+      // Some other background queries might be executing
+      assertTrue(aqlCurrentQueryMetric >= numberOfRunningQueries);
+
+      IM.debugRemoveFailAt("Query::delayingExecutionPhase");
 
       aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
