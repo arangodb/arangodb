@@ -1,12 +1,8 @@
 devel
 -----
 
-<<<<<<< HEAD
 * Fix an integer underflow with gauge arangodb_aql_current_query.
 
-* Fix telemetry response, `n_vector` would be returned inconsistently. This always
-  returns the value, regardless if the vector index feature is enabled.
-=======
 * Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
 
 * FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
@@ -71,7 +67,6 @@ devel
 
 * Fix telemetry response, `n_vector` would be returned inconsistently. This
   always returns the value, regardless if the vector index feature is enabled.
->>>>>>> devel
 
 * Improved performance of document-search query in graph settings UI (BTS-2149)
 
