@@ -93,7 +93,7 @@ void ApiRecordingFeature::collectOptions(
       ->addOption(
           "--log.recording-api-enabled",
           "Whether the recording API is enabled (true) or not (false), or "
-          "only enabled for superusers (jwt).",
+          "only enabled for the superuser (jwt).",
           new StringParameter(&_apiSwitch))
       .setLongDescription(R"(The `/_admin/server/api-calls` and
 `/_admin/server/aql-queries` endpoints provide access to recorded API calls
@@ -102,11 +102,11 @@ and AQL queries respectively. They are referred to as the recording API.
 Since this data might be sensitive depending on the context of the deployment,
 these endpoints need to be properly secured. By default, the recording API is
 accessible for admin users (users with administrative access to the `_system`
-database). However, you can restrict it further to superusers or disable it
+database). However, you can restrict it further to the superuser or disable it
 altogether:
 
 - `true`: The recording API is accessible for admin users.
-- `jwt`: The recording API is accessible for superusers only
+- `jwt`: The recording API is accessible for the superuser only
   (authentication with JWT superuser token and empty username).
 - `false`: The recording API is not accessible at all.
 

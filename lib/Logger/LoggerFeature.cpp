@@ -394,7 +394,7 @@ contains a single character with the server's role. The roles are:
     options
         ->addOption("--log.api-enabled",
                     "Whether the log API is enabled (true) or not (false), or "
-                    "only enabled for superuser JWT (jwt).",
+                    "only enabled for the superuser (jwt).",
                     new StringParameter(&_apiSwitch))
         .setLongDescription(R"(Credentials are not written to log files.
 Nevertheless, some logged data might be sensitive depending on the context of
