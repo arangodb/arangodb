@@ -132,7 +132,8 @@ void ApiRecordingFeature::validateOptions(
 void ApiRecordingFeature::prepare() {
   // Calculate per-list memory limit
   _memoryPerApiRecordList = _totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS;
-  _memoryPerAqlRecordList = _totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS;
+  _memoryPerAqlRecordList =
+      _totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS;
 
   if (_enabledCalls) {
     _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(

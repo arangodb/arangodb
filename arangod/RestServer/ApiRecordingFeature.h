@@ -154,7 +154,7 @@ class ApiRecordingFeature : public ArangodFeature {
 
   // Whether or not to record recent API calls
   bool _enabledCalls{true};
-  
+
   // Whether or not to record recent AQL queries
   bool _enabledQueries{true};
 
