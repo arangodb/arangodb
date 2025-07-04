@@ -2347,7 +2347,25 @@ function ahuacatlFunctionsTestSuite () {
         [ 4, [ 2, 3, 5, 9 ], 50, "interpolation" ],
         [ 5, [ 2, 3, 5, 9, 11 ], 50, "interpolation" ],
         [ 11, [ 2, 3, 5, 9, 11 ], 100, "interpolation" ],
-        [ 5, [ 2, 3, null, 5, 9, 11, null ], 50, "interpolation" ]
+        [ 5, [ 2, 3, null, 5, 9, 11, null ], 50, "interpolation" ],
+        
+        // Regression tests for low percentiles (previously returned null incorrectly)
+        [ 1, [ 1, 2, 3, 4 ], 1, "rank" ],
+        [ 1, [ 1, 2, 3, 4 ], 1, "interpolation" ],
+        [ 1, [ 1, 2, 3, 4 ], 2, "rank" ],
+        [ 1, [ 1, 2, 3, 4 ], 2, "interpolation" ],
+        [ 1, [ 1, 2, 3, 4 ], 3, "rank" ],
+        [ 1, [ 1, 2, 3, 4 ], 3, "interpolation" ],
+        [ 10, [ 10, 20, 30, 40, 50 ], 1, "rank" ],
+        [ 10, [ 10, 20, 30, 40, 50 ], 1, "interpolation" ],
+        [ 10, [ 10, 20, 30, 40, 50 ], 2, "rank" ],
+        [ 10, [ 10, 20, 30, 40, 50 ], 2, "interpolation" ],
+        [ -5, [ -5, -3, -1, 1, 3, 5 ], 1, "rank" ],
+        [ -5, [ -5, -3, -1, 1, 3, 5 ], 1, "interpolation" ],
+        [ -5, [ -5, -3, -1, 1, 3, 5 ], 2, "rank" ],
+        [ -5, [ -5, -3, -1, 1, 3, 5 ], 2, "interpolation" ],
+        [ 0.1, [ 0.1, 0.2, 0.3, 0.4, 0.5 ], 1, "rank" ],
+        [ 0.1, [ 0.1, 0.2, 0.3, 0.4, 0.5 ], 1, "interpolation" ]
       ];
 
       data.forEach(function (value) {
@@ -2359,6 +2377,54 @@ function ahuacatlFunctionsTestSuite () {
           assertEqual(value[0].toFixed(4), actual[0].toFixed(4), value);
         }
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test percentile function with invalid inputs
+////////////////////////////////////////////////////////////////////////////////
+
+    testPercentileInvalid : function () {
+      // Test invalid percentile ranges
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], 0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], -1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], 101)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], 100.1)");
+      
+      // Test invalid method parameter
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], 50, \"invalid\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], 50, 123)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], 50, true)");
+      
+      // Test invalid array input
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PERCENTILE(null, 50)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PERCENTILE(123, 50)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PERCENTILE(\"string\", 50)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PERCENTILE(true, 50)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN PERCENTILE({}, 50)");
+      
+      // Test invalid percentile parameter
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], \"50\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], [50])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], {})");
+      
+      // Test wrong number of arguments
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PERCENTILE()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3])");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN PERCENTILE([1, 2, 3], 50, \"rank\", \"extra\")");
+      
+      // Test non-numeric arrays
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN PERCENTILE([\"a\", \"b\", \"c\"], 50)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN PERCENTILE([1, 2, \"c\"], 50)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN PERCENTILE([true, false], 50)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_ARITHMETIC_VALUE.code, "RETURN PERCENTILE([{}, []], 50)");
+      
+      // Test empty array
+      assertNull(getQueryResults("RETURN PERCENTILE([], 50)")[0]);
+      
+      // Test array with only null values
+      assertNull(getQueryResults("RETURN PERCENTILE([null, null, null], 50)")[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

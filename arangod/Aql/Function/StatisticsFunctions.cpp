@@ -410,7 +410,8 @@ AqlValue functions::Percentile(ExpressionContext* expressionContext,
       return numberValue(values[l - 1], true);
     }
     if (pos <= 0) {
-      return AqlValue(AqlValueHintNull());
+      // For very low percentiles, return the minimum value
+      return numberValue(values[0], true);
     }
 
     double const delta = idx - pos;
@@ -426,7 +427,8 @@ AqlValue functions::Percentile(ExpressionContext* expressionContext,
     return numberValue(values[l - 1], true);
   }
   if (pos <= 0) {
-    return AqlValue(AqlValueHintNull());
+    // For very low percentiles, return the minimum value
+    return numberValue(values[0], true);
   }
 
   return numberValue(values[static_cast<size_t>(pos) - 1], true);
