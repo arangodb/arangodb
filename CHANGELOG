@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix a bug in the PERCENTILE function in AQL, which gave the incorrect
+  result null for small percentiles. This fixes BTS-2169.
+
 * Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
 
 * FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
