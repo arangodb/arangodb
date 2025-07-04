@@ -438,8 +438,8 @@ size_t acquireBacktrace(char* buffer, size_t bufferSize) try {
 /// in a signal handler. Use `acquireBacktrace` above to get the backtrace
 /// in the signal handler and then this function in the dedicated
 /// CrashHandler thread to do the actual logging!
-void logAcquiredBacktrace(char const* buffer, size_t bufferSize) try {
-  if (buffer == nullptr || bufferSize == 0) {
+void logAcquiredBacktrace(std::string_view buffer) try {
+  if (buffer.empty()) {
     return;
   }
 
@@ -447,10 +447,10 @@ void logAcquiredBacktrace(char const* buffer, size_t bufferSize) try {
   size_t pos = 0;
   size_t lineStart = 0;
 
-  while (pos <= bufferSize) {
-    if (pos == bufferSize || buffer[pos] == '\n') {
+  while (pos <= buffer.size()) {
+    if (pos == buffer.size() || buffer[pos] == '\n') {
       if (pos > lineStart) {
-        std::string_view line(buffer + lineStart, pos - lineStart);
+        std::string_view line = buffer.substr(lineStart, pos - lineStart);
         if (lineStart == 0) {
           // First line is the header
           LOG_TOPIC("c962b", INFO, arangodb::Logger::CRASH) << line;
@@ -481,7 +481,7 @@ void logBacktrace() try {
 
   size_t bytesWritten = acquireBacktrace(tempBuffer.get(), tempBufferSize);
   if (bytesWritten > 0) {
-    logAcquiredBacktrace(tempBuffer.get(), bytesWritten);
+    logAcquiredBacktrace(std::string_view(tempBuffer.get(), bytesWritten));
   }
 } catch (...) {
 }
@@ -524,7 +524,8 @@ void actuallyDumpCrashInfo() {
     // Log the backtrace that was acquired by the signal handler
     size_t bytesUsed = ::backtraceBufferUsed.load(std::memory_order_acquire);
     if (::backtraceBuffer != nullptr && bytesUsed > 0) {
-      logAcquiredBacktrace(::backtraceBuffer.get(), bytesUsed);
+      logAcquiredBacktrace(
+          std::string_view(::backtraceBuffer.get(), bytesUsed));
     }
 
     // Flush logs
@@ -798,6 +799,8 @@ void CrashHandler::installCrashHandler() {
     // could not allocate memory for backtrace buffer.
     // this is not critical - we can still work without it
     ::backtraceBuffer.release();
+    LOG_TOPIC("25162", WARN, Logger::CRASH)
+        << "Could not allocate static memory for crash stack traces!";
   }
 
   // install signal handlers for the following signals
@@ -841,14 +844,14 @@ void CrashHandler::installCrashHandler() {
   });
 
   std::atexit([]() {
-    CrashHandler* ch = CrashHandler::_theCrashHandler;
+    auto* ch = CrashHandler::_theCrashHandler.exchange(nullptr);
     if (ch != nullptr) {
       ch->shutdownCrashHandler();
     }
   });
 
   std::at_quick_exit([]() {
-    CrashHandler* ch = CrashHandler::_theCrashHandler;
+    auto* ch = CrashHandler::_theCrashHandler.exchange(nullptr);
     if (ch != nullptr) {
       ch->shutdownCrashHandler();
     }
