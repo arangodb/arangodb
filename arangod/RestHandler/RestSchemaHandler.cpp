@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2025-2025 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -103,22 +102,65 @@ RestStatus RestSchemaHandler::execute() {
     return RestStatus::DONE;
   }
 
+  ExecContext const& exec = ExecContext::current();
+  // Permission:
+  // - /schema, /graph/*, /view/* -> require RW on DB
+  // - /collection/* -> require RO on DB + RW on collection
   auto const& suffix = _request->suffixes();
   switch (suffix.size()) {
-    case 0:
-      return lookupSchema(sampleNum, exampleNum);
-    case 2:
+    case 0: {
+      // /_api/schema path
+      if (!exec.canUseDatabase(auth::Level::RW)) {
+        generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                      "insufficient database permissions");
+        return RestStatus::DONE;
+      }
+      if (lookupSchema(sampleNum, exampleNum).fail()) {
+        return RestStatus::DONE;
+      }
+      return handleQueryResult();
+    }
+    case 2: {
       if (suffix[0] == "collection") {
-        return lookupSchemaCollection(suffix[1], sampleNum, exampleNum);
+        // /_api/schema/collection/<collection-name>
+        if (!exec.canUseDatabase(auth::Level::RO) ||
+            !exec.canUseCollection(suffix[1], auth::Level::RW)) {
+          generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                        "insufficient permissions on collection or database");
+          return RestStatus::DONE;
+        }
+        if (lookupSchemaCollection(suffix[1], sampleNum, exampleNum).fail()) {
+          return RestStatus::DONE;
+        }
+        return handleQueryResult();
       }
       if (suffix[0] == "graph") {
-        return lookupSchemaGraph(suffix[1], sampleNum, exampleNum);
+        // /_api/schema/graph/<graph-name>
+        if (!exec.canUseDatabase(auth::Level::RW)) {
+          generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                        "insufficient database permissions");
+          return RestStatus::DONE;
+        }
+        if (lookupSchemaGraph(suffix[1], sampleNum, exampleNum).fail()) {
+          return RestStatus::DONE;
+        }
+        return handleQueryResult();
       }
       if (suffix[0] == "view") {
-        return lookupSchemaView(suffix[1], sampleNum, exampleNum);
+        // /_api/schema/view/<view-name>
+        if (!exec.canUseDatabase(auth::Level::RW)) {
+          generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                        "insufficient database permissions");
+          return RestStatus::DONE;
+        }
+        if (lookupSchemaView(suffix[1], sampleNum, exampleNum).fail()) {
+          return RestStatus::DONE;
+        }
+        return handleQueryResult();
       }
       [[fallthrough]];  // If suffix[0] is none of "collection", "graph" or
-                        // "view", go to default
+      // "view", go to default
+    }
     default:
       generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                     "Illegal suffixes provided: must be /schema, "
@@ -138,7 +180,7 @@ RestStatus RestSchemaHandler::handleQueryResult() {
   return RestStatus::DONE;
 }
 
-RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum,
+Result RestSchemaHandler::lookupSchema(uint64_t sampleNum,
                                            uint64_t exampleNum) {
   auto resultBuilder = std::make_shared<velocypack::Builder>();
   std::set<std::string> colSet;
@@ -146,48 +188,48 @@ RestStatus RestSchemaHandler::lookupSchema(uint64_t sampleNum,
 
   Result graphsRes = getAllGraphsAndCollections(*resultBuilder, colSet);
   if (graphsRes.fail()) {
-    return RestStatus::DONE;
+    return graphsRes;
   }
 
   Result viewsRes = getAllViewsAndCollections(*resultBuilder, colSet);
   if (viewsRes.fail()) {
-    return RestStatus::DONE;
+    return viewsRes;
   }
 
   Result colsRes =
       getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
   if (colsRes.fail()) {
-    return RestStatus::DONE;
+    return colsRes;
   }
   resultBuilder->close();
 
   _queryResult.data = resultBuilder;
-  return handleQueryResult();
+  return Result{};
 }
 
-RestStatus RestSchemaHandler::lookupSchemaCollection(std::string const& colName,
+Result RestSchemaHandler::lookupSchemaCollection(std::string const& colName,
                                                      uint64_t sampleNum,
                                                      uint64_t exampleNum) {
   auto found = _vocbase.lookupCollection(colName);
   if (found == nullptr) {
-    generateError(ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  std::format("Collection {} not found", colName));
-    return RestStatus::DONE;
+    Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                  std::format("Collection {} not found", colName)};
+    generateError(ResponseCode::NOT_FOUND, res.errorNumber(), res.errorMessage());
+    return res;
   }
 
   auto resultBuilder = std::make_shared<velocypack::Builder>();
   resultBuilder->openObject();
   Result colRes = getCollection(colName, sampleNum, exampleNum, *resultBuilder);
   if (colRes.fail()) {
-    return RestStatus::DONE;
+    return colRes;
   }
   resultBuilder->close();
   _queryResult.data = resultBuilder;
-  return handleQueryResult();
+  return Result{};
 }
 
-RestStatus RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
+Result RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
                                                 uint64_t sampleNum,
                                                 uint64_t exampleNum) {
   auto resultBuilder = std::make_shared<velocypack::Builder>();
@@ -196,17 +238,17 @@ RestStatus RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
   resultBuilder->openObject();
   Result graphRes = getGraphAndCollections(graphName, *resultBuilder, colSet);
   if (graphRes.fail()) {
-    return RestStatus::DONE;
+    return graphRes;
   }
 
   getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
   resultBuilder->close();
 
   _queryResult.data = resultBuilder;
-  return handleQueryResult();
+  return Result{};
 }
 
-RestStatus RestSchemaHandler::lookupSchemaView(std::string const& viewName,
+Result RestSchemaHandler::lookupSchemaView(std::string const& viewName,
                                                uint64_t sampleNum,
                                                uint64_t exampleNum) {
   velocypack::Builder viewsArrBuilder;
@@ -214,7 +256,7 @@ RestStatus RestSchemaHandler::lookupSchemaView(std::string const& viewName,
   std::set<std::string> colSet;
   Result viewRes = getViewAndCollections(viewName, viewsArrBuilder, colSet);
   if (viewRes.fail()) {
-    return RestStatus::DONE;
+    return viewRes;
   }
   viewsArrBuilder.close();
 
@@ -226,7 +268,7 @@ RestStatus RestSchemaHandler::lookupSchemaView(std::string const& viewName,
   resultBuilder->close();
 
   _queryResult.data = resultBuilder;
-  return handleQueryResult();
+  return Result{};
 }
 
 Result RestSchemaHandler::getCollections(std::set<std::string> const& colSet,
@@ -482,62 +524,58 @@ Result RestSchemaHandler::getViewAndCollections(
   }
   dataBuilder.close();
 
+  velocypack::Builder viewBuilder;
+  viewBuilder.add(velocypack::Value(velocypack::ValueType::Object));
+  viewBuilder.add("viewName", velocypack::Value(viewName));
+  viewBuilder.add("links", velocypack::Value(velocypack::ValueType::Array));
   auto data = dataBuilder.slice();
-  if (!data.hasKey("links")) {
-    Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-               std::format("View {} has no links", viewName)};
-    generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
-
-  velocypack::Builder linksBuilder;
-  linksBuilder.openArray();
-  for (auto li : velocypack::ObjectIterator(data.get("links"))) {
-    auto colName = li.key.copyString();
-    auto colValue = li.value;
-    if (!colValue.hasKey("fields")) {
-      Result res{
-          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          std::format("View {}: link {} missing fields", viewName, colName)};
-      generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
-                    res.errorMessage());
-      return res;
-    }
-    velocypack::Builder fieldsBuilder;
-    fieldsBuilder.openArray();
-    for (auto fi : velocypack::ObjectIterator(colValue.get("fields"))) {
-      velocypack::Builder fieldBuilder;
-      fieldBuilder.openObject();
-      fieldBuilder.add("attribute", velocypack::Value(fi.key.copyString()));
-      if (!fi.value.hasKey("analyzers")) {
-        Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                   std::format("Link {} missing analyzers", viewName, colName)};
+  if (data.hasKey("links")) { // If not, linksBuilder will be an empty array
+    for (auto li : velocypack::ObjectIterator(data.get("links"))) {
+      auto colName = li.key.copyString();
+      auto colValue = li.value;
+      if (!colValue.hasKey("fields") || !colValue.hasKey("includeAllFields") || !colValue.hasKey("analyzers")) {
+        Result res{
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            std::format("View {}: link {} missing 'includeAllFields' or 'fields'",
+              viewName, colName)};
         generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
                       res.errorMessage());
         return res;
       }
-      fieldBuilder.add("analyzers", fi.value.get("analyzers"));
-      fieldBuilder.close();
-      fieldsBuilder.add(fieldBuilder.slice());
+      viewBuilder.add(velocypack::Value(velocypack::ValueType::Object));
+      viewBuilder.add("collectionName", velocypack::Value(colName));
+      viewBuilder.add("fields", velocypack::ValueType::Array);
+      std::set<std::string> includedAttrSet;
+      for (auto fi : velocypack::ObjectIterator(colValue.get("fields"))) {
+        viewBuilder.add(velocypack::Value(velocypack::ValueType::Object));
+        if (!fi.value.hasKey("analyzers")) {
+          Result res{
+              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+              std::format("Link {} missing analyzers", viewName, colName)};
+          generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
+                        res.errorMessage());
+          return res;
+        }
+        viewBuilder.add("attribute", velocypack::Value(fi.key.copyString()));
+        viewBuilder.add("analyzers", fi.value.get("analyzers"));
+        viewBuilder.close(); // Closing object -> {attribute: ***, analyzers: ***}
+        includedAttrSet.insert(fi.key.copyString());
+      }
+      if (colValue.get("includeAllFields").isTrue()) {
+        auto analyzersVal = colValue.get("analyzers");
+        Result attrRes = getAllAttributes(viewBuilder, colName, analyzersVal, includedAttrSet);
+        if (attrRes.fail()) {
+          return attrRes;
+        }
+      }
+
+      viewBuilder.close(); // Closing array -> fields: [{}, {}]
+      viewBuilder.close(); // Closing object -> {collectionName: ***, fields: []}
+      colSet.insert(colName);
     }
-    fieldsBuilder.close();
-
-    velocypack::Builder colBuilder;
-    colBuilder.openObject();
-    colBuilder.add("collectionName", velocypack::Value(colName));
-    colSet.insert(colName);
-    colBuilder.add("fields", fieldsBuilder.slice());
-    colBuilder.close();
-    linksBuilder.add(colBuilder.slice());
   }
-  linksBuilder.close();
-
-  velocypack::Builder viewBuilder;
-  viewBuilder.openObject();
-  viewBuilder.add("viewName", velocypack::Value(viewName));
-  viewBuilder.add("links", linksBuilder.slice());
-  viewBuilder.close();
+  viewBuilder.close(); // Closing array -> links: [{}, {}]
+  viewBuilder.close(); // Closing object -> {viewName: ***, links: []}
 
   viewsArrBuilder.add(viewBuilder.slice());
   return Result{};
@@ -767,6 +805,88 @@ Result RestSchemaHandler::getConnectedCollections(
   }
   for (auto const& edge : graphPtr->edgeCollections()) {
     colSet.insert(edge);
+  }
+  return Result{};
+}
+
+Result RestSchemaHandler::getAllAttributes(
+    velocypack::Builder& fieldsArrBuilder, std::string const& colName,
+    velocypack::Slice analyzersVal, std::set<std::string> const& includedAttrSet) {
+  std::set<std::string> attrSet;
+  Result attrRes = getAttributes(colName, attrSet);
+  if (attrRes.fail()) {
+    return attrRes;
+  }
+
+  for (auto const& attr : attrSet) {
+    if (!includedAttrSet.contains(attr)) {
+      fieldsArrBuilder.add(velocypack::Value(velocypack::ValueType::Object));
+      fieldsArrBuilder.add("attribute", attr);
+      fieldsArrBuilder.add("analyzers", analyzersVal);
+      fieldsArrBuilder.close();
+    }
+  }
+  return Result{};
+}
+
+Result RestSchemaHandler::getAttributes(std::string const& colName,
+  std::set<std::string>& attrSet) {
+  const std::string queryStr = R"(
+    RETURN UNIQUE(FLATTEN(
+      FOR d IN @@collection
+        LIMIT @sampleNum
+        RETURN ATTRIBUTES(d, true, false)
+    ))
+  )";
+
+  auto bindVars = std::make_shared<velocypack::Builder>();
+  bindVars->openObject();
+  bindVars->add("@collection", velocypack::Value(colName));
+  bindVars->add("sampleNum", velocypack::Value(100));
+  bindVars->close();
+
+  auto query = aql::Query::create(
+      std::make_shared<transaction::StandaloneContext>(
+          _vocbase, transaction::OperationOriginTestCase{}),
+      aql::QueryString{queryStr}, bindVars,
+      aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()});
+
+  aql::QueryResult qr;
+  try {
+    while (query->execute(qr) == aql::ExecutionState::WAITING) {
+    }
+  } catch (basics::Exception const& e) {
+    Result res{e.code(), std::format("Attribute query for {} threw: {}", colName,
+                                     e.what())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
+                  res.errorMessage());
+    return res;
+  }
+
+  if (qr.result.fail()) {
+    Result res{qr.result.errorNumber(),
+               std::format("Attribute query failed for {}: {}", colName,
+                           qr.result.errorMessage())};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
+                  res.errorMessage());
+    return res;
+  }
+
+  auto result = qr.data->slice();
+  if (result.isNone() || !result.isArray() || result.length() != 1 || !result.at(0).isArray()) {
+    Result res{
+      TRI_ERROR_INTERNAL,
+      std::format("Attribute query did not return a valid array for {}", colName)};
+    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
+                  res.errorMessage());
+    return res;
+  }
+  // result is an array of array: [["attr1", "attr2", "attr3"]]
+
+  for (auto const& attr : velocypack::ArrayIterator(result.at(0))) {
+    if (attr.isString()) {
+      attrSet.insert(attr.copyString());
+    }
   }
   return Result{};
 }

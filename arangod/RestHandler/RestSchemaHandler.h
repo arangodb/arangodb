@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2025-2025 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -49,12 +48,12 @@ class RestSchemaHandler : public RestCursorHandler {
   static const std::string queryString;
   graph::GraphManager _graphManager;
 
-  RestStatus lookupSchema(uint64_t sampleNum, uint64_t exampleNum);
-  RestStatus lookupSchemaCollection(std::string const& colName,
+  Result lookupSchema(uint64_t sampleNum, uint64_t exampleNum);
+  Result lookupSchemaCollection(std::string const& colName,
                                     uint64_t sampleNum, uint64_t exampleNum);
-  RestStatus lookupSchemaGraph(std::string const& graphName, uint64_t sampleNum,
+  Result lookupSchemaGraph(std::string const& graphName, uint64_t sampleNum,
                                uint64_t exampleNum);
-  RestStatus lookupSchemaView(std::string const& viewName, uint64_t sampleNum,
+  Result lookupSchemaView(std::string const& viewName, uint64_t sampleNum,
                               uint64_t exampleNum);
 
   Result getCollections(std::set<std::string> const& colSet, uint64_t sampleNum,
@@ -82,6 +81,12 @@ class RestSchemaHandler : public RestCursorHandler {
                      velocypack::Builder& builder);
   Result getConnectedCollections(std::string const& graphName,
                                  std::set<std::string>& colSet);
+  Result getAllAttributes(velocypack::Builder& fieldsArrBuilder,
+                          std::string const& colName,
+                          velocypack::Slice analyzersVal,
+                          std::set<std::string> const& includedAttrSet);
+
+  Result getAttributes(std::string const& colName, std::set<std::string>& attrSet);
 };
 
 }  // namespace rest

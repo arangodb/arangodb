@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2025-2025 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -35,11 +34,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
-#include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/Methods.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Logger/LogMacros.h"
 
 #include <IResearch/common.h>
