@@ -122,7 +122,7 @@ std::mutex crashHandlerThreadMutex;
 
 // Static variables to store crash data for the dedicated crash handler thread
 /// @brief stores the crash context/reason
-static char const* crashContext = nullptr;
+static std::string_view crashContext;
 
 /// @brief stores the signal number
 static int crashSignal = 0;
@@ -134,15 +134,14 @@ static siginfo_t* crashSiginfo = nullptr;
 static void* crashUcontext = nullptr;
 
 /// @brief stores crash data for later use by the crash handler thread
-void storeCrashData(char const* context, int signal, siginfo_t* info,
+void storeCrashData(std::string_view context, int signal, siginfo_t* info,
                     void* ucontext) {
   // We intentionally do not protect this by a mutex. After all, acquiring
-  // a mutex in a signal handler is not allowed. Furthermore, there is
-  // actual synchronization between the signal handler and the dedicated
+  // a mutex in a signal handler is not allowed. Rather, this is protected
+  // by the exchange method used on ::crashHandlerInvoked, which can only
+  // be successful for one crashing thread. And then, there is actual
+  // synchronization between the signal handler and the dedicated
   // CrashHandler thread through atomics, so this is in fact safe.
-  // We intentionally do not protect against two signal handlers running
-  // concurrently. We could do this using atomics, but choose not to
-  // for simplicity.
   crashContext = context;
   crashSignal = signal;
   crashSiginfo = info;
@@ -876,6 +875,8 @@ void CrashHandler::shutdownCrashHandler() {
     ::crashHandlerState.store(arangodb::CrashHandlerState::IDLE,
                               std::memory_order_relaxed);
   }
+
+  ::backtraceBuffer.reset();  // release memory
 }
 
 }  // namespace arangodb
