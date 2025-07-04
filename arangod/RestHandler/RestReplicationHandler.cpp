@@ -3762,19 +3762,11 @@ RequestLane RestReplicationHandler::lane() const {
       return RequestLane::CLUSTER_INTERNAL;
     }
     if (command == HoldReadLockCollection) {
-      if (_request->requestType() == RequestType::DELETE_REQ) {
-        // A deleting request here, will allow as to unlock
-        // the collection / shard in question.
-        // In case of a hard-lock this shard is actually blocking
-        // other operations. So let's hurry up with this.
-        return RequestLane::CLUSTER_INTERNAL;
-      }
-
       // This process will determine the start of a replication.
-      // It can be delayed a bit and can be queued after other write
-      // operations The follower is not in sync and requires to catch up
-      // anyways.
-      return RequestLane::SERVER_REPLICATION;
+      // This is a cluster-internal operation. Having any of the request
+      // in the lower lanes will delay this operation Since this there is a
+      // chain of operations that need to be done.
+      return RequestLane::CLUSTER_INTERNAL;
     }
 
     if (command == RemoveFollower || command == LoggerFollow ||
