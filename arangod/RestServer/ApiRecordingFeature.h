@@ -137,8 +137,8 @@ class ApiRecordingFeature : public ArangodFeature {
   template<typename F>
   requires std::is_invocable_v<F, AqlQueryRecord const&>
   void doForAqlQueryRecords(F&& callback) const {
-    if (_aqlCallRecord) {
-      _aqlCallRecord->forItems(std::forward<F>(callback));
+    if (_aqlQueryRecord) {
+      _aqlQueryRecord->forItems(std::forward<F>(callback));
     }
   }
 
@@ -153,27 +153,30 @@ class ApiRecordingFeature : public ArangodFeature {
   void cleanupLoop();
 
   // Whether or not to record recent API calls
-  bool _enabled{true};
+  bool _enabledCalls{true};
+  
+  // Whether or not to record recent AQL queries
+  bool _enabledQueries{true};
 
   // Total memory limit for all ApiCallRecord lists combined
-  size_t _totalMemoryLimit{25 * 1024 * 1024};  // Default: ~25MiB
+  size_t _totalMemoryLimitCalls{25 * 1024 * 1024};  // Default: ~25MiB
 
   // Total memory limit for all AqlCallRecord lists combined
-  size_t _totalMemoryLimitAql{25 * 1024 * 1024};  // Default: ~25MiB
+  size_t _totalMemoryLimitQueries{25 * 1024 * 1024};  // Default: ~25MiB
 
   // Memory limit for one list of ApiCallRecords (calculated as
-  // _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
+  // _totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS)
   size_t _memoryPerApiRecordList{100000};
 
-  // Memory limit for one list of AqlCallRecords (calculated as
-  // _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS)
+  // Memory limit for one list of AqlQueryRecords (calculated as
+  // _totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS)
   size_t _memoryPerAqlRecordList{100000};
 
   /// record of recent api calls:
   std::unique_ptr<arangodb::BoundedList<ApiCallRecord>> _apiCallRecord;
 
   // Record of recent AQL calls:
-  std::unique_ptr<arangodb::BoundedList<AqlQueryRecord>> _aqlCallRecord;
+  std::unique_ptr<arangodb::BoundedList<AqlQueryRecord>> _aqlQueryRecord;
 
   // Flag to control the cleanup thread
   std::atomic<bool> _stopCleanupThread{false};

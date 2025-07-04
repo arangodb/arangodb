@@ -65,47 +65,54 @@ void ApiRecordingFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.api-call-recording",
-      "Record recent API calls for debugging purposes (default: true).",
-      new BooleanParameter(&_enabled),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+      "Whether to record recent API calls for debugging purposes.",
+      new BooleanParameter(&_enabledCalls),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.api-recording-memory-limit",
-      "Memory limit for the list of ApiCallRecords.",
-      new UInt64Parameter(&_totalMemoryLimit, 1, 256 * 1024,
+      "Memory limit for the list of API call records.",
+      new UInt64Parameter(&_totalMemoryLimitCalls, 1, 256 * 1024,
                           256 * 1024 * 1024 * 1024),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options->addOption(
+      "--server.aql-query-recording",
+      "Whether to record recent AQL queries for debugging purposes.",
+      new BooleanParameter(&_enabledQueries),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.aql-recording-memory-limit",
-      "Memory limit for the list of AqlCallRecords.",
-      new UInt64Parameter(&_totalMemoryLimitAql, 1, 256 * 1024,
+      "Memory limit for the list of AQL query records.",
+      new UInt64Parameter(&_totalMemoryLimitQueries, 1, 256 * 1024,
                           256 * 1024 * 1024 * 1024),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
       ->addOption(
           "--log.recording-api-enabled",
           "Whether the recording API is enabled (true) or not (false), or "
-          "only enabled for superuser JWT (jwt).",
+          "only enabled for superusers (jwt).",
           new StringParameter(&_apiSwitch))
-      .setLongDescription(R"(The recording API (`/_admin/server/api-calls`
-for API calls and `/_admin/server/aql-queries` for AQL queries provides access 
-to recorded API calls and AQL queries respectively. 
-Since this data might be sensitive depending on the context of 
-the deployment, this API needs to be secured properly. By default, the API is 
-accessible for admin users (administrative access to the `_system` database). 
-However, you can lock this down further.
+      .setLongDescription(R"(The `/_admin/server/api-calls` and
+`/_admin/server/aql-queries` endpoints provide access to recorded API calls
+and AQL queries respectively. They are referred to as the recording API.
 
-The possible values for this option are:
+Since this data might be sensitive depending on the context of the deployment,
+these endpoints need to be properly secured. By default, the recording API is
+accessible for admin users (users with administrative access to the `_system`
+database). However, you can restrict it further to superusers or disable it
+altogether:
 
- - `true`: The recording API is accessible for admin users.
- - `jwt`: The recording API is accessible for the superuser only
-   (authentication with JWT token and empty username).
- - `false`: The recording API is not accessible at all.)");
+- `true`: The recording API is accessible for admin users.
+- `jwt`: The recording API is accessible for superusers only
+  (authentication with JWT superuser token and empty username).
+- `false`: The recording API is not accessible at all.
+
+Whether API calls and AQL queries are recorded is independent of this option.
+It is controlled by the `--server.api-call-recording` and
+`--server.aql-query-recording` startup options.)");
 }
 
 void ApiRecordingFeature::validateOptions(
@@ -124,20 +131,22 @@ void ApiRecordingFeature::validateOptions(
 
 void ApiRecordingFeature::prepare() {
   // Calculate per-list memory limit
-  _memoryPerApiRecordList = _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS;
-  _memoryPerAqlRecordList = _totalMemoryLimitAql / NUMBER_OF_AQL_RECORD_LISTS;
+  _memoryPerApiRecordList = _totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS;
+  _memoryPerAqlRecordList = _totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS;
 
-  if (_enabled) {
+  if (_enabledCalls) {
     _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
         _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
-    _aqlCallRecord = std::make_unique<BoundedList<AqlQueryRecord>>(
+  }
+  if (_enabledQueries) {
+    _aqlQueryRecord = std::make_unique<BoundedList<AqlQueryRecord>>(
         _memoryPerAqlRecordList, NUMBER_OF_AQL_RECORD_LISTS);
   }
 }
 
 void ApiRecordingFeature::start() {
   // Start the cleanup thread if enabled
-  if (_enabled) {
+  if (_enabledCalls || _enabledQueries) {
     _stopCleanupThread.store(false, std::memory_order_relaxed);
     _cleanupThread = std::jthread([this] { cleanupLoop(); });
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -157,7 +166,7 @@ void ApiRecordingFeature::stop() {
 void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
                                         std::string_view path,
                                         std::string_view database) {
-  if (!_enabled || !_apiCallRecord) {
+  if (!_enabledCalls || !_apiCallRecord) {
     return;
   }
 
@@ -179,14 +188,14 @@ void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
 void ApiRecordingFeature::recordAQLQuery(
     std::string_view queryString, std::string_view database,
     velocypack::SharedSlice bindParameters) {
-  if (!_enabled || !_aqlCallRecord) {
+  if (!_enabledQueries || !_aqlQueryRecord) {
     return;
   }
 
   // Start timing
   auto start = std::chrono::steady_clock::now();
 
-  _aqlCallRecord->prepend(
+  _aqlQueryRecord->prepend(
       AqlQueryRecord(queryString, database, std::move(bindParameters)));
 
   // End timing and record metrics
@@ -214,8 +223,8 @@ void ApiRecordingFeature::cleanupLoop() {
       apiCallCount = _apiCallRecord->clearTrash();
     }
 
-    if (_aqlCallRecord) {
-      aqlCallCount = _aqlCallRecord->clearTrash();
+    if (_aqlQueryRecord) {
+      aqlCallCount = _aqlQueryRecord->clearTrash();
     }
 
     auto duration = std::chrono::steady_clock::now() - start;
@@ -231,7 +240,7 @@ void ApiRecordingFeature::cleanupLoop() {
       }
       if (aqlCallCount > 0) {
         LOG_TOPIC("53627", TRACE, Logger::MEMORY)
-            << "Cleaned up " << aqlCallCount << " AQL call record lists in "
+            << "Cleaned up " << aqlCallCount << " AQL query record lists in "
             << nanoseconds.count() << " nanoseconds";
       }
       // Reset delay to minimum when trash was found

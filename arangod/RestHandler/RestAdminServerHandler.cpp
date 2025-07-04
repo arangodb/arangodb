@@ -364,7 +364,7 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
       !ServerState::instance()->isSingleServer()) {
     generateError(
         Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "API only available on coordinators and single servers"));
+               "API only available on Coordinators and single servers"));
     return;
   }
 

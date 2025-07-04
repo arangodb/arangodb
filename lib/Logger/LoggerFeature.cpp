@@ -411,7 +411,7 @@ The possible values for this option are:
 
  - `true`: The `/_admin/log` API is accessible for admin users.
  - `jwt`: The `/_admin/log` API is accessible for the superuser only
-   (authentication with JWT token and empty username).
+   (authentication with JWT superuser token and empty username).
  - `false`: The `/_admin/log` API is not accessible at all.)");
   }
 
