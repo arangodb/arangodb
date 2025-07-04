@@ -88,4 +88,5 @@ std::string Connection::endpoint() const {
   }
   return endpoint;
 }
+
 }}}  // namespace arangodb::fuerte::v1

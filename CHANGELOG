@@ -5,6 +5,8 @@ devel
   /_api/schema/view/<view-name>: Displays the sample schemas of view and linked collections
   /_api/schema/collection/<collection-name>: Gives the sampled schemas of collection and schemas.
 
+* Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
+
 * FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
 
 * Fix BTS-2166: Fix a race during startup, where the async registry's metrics
