@@ -49,12 +49,12 @@ class RestSchemaHandler : public RestCursorHandler {
   graph::GraphManager _graphManager;
 
   Result lookupSchema(uint64_t sampleNum, uint64_t exampleNum);
-  Result lookupSchemaCollection(std::string const& colName,
-                                    uint64_t sampleNum, uint64_t exampleNum);
+  Result lookupSchemaCollection(std::string const& colName, uint64_t sampleNum,
+                                uint64_t exampleNum);
   Result lookupSchemaGraph(std::string const& graphName, uint64_t sampleNum,
-                               uint64_t exampleNum);
+                           uint64_t exampleNum);
   Result lookupSchemaView(std::string const& viewName, uint64_t sampleNum,
-                              uint64_t exampleNum);
+                          uint64_t exampleNum);
 
   Result getCollections(std::set<std::string> const& colSet, uint64_t sampleNum,
                         uint64_t exampleNum, velocypack::Builder& colsBuilder);
@@ -81,12 +81,6 @@ class RestSchemaHandler : public RestCursorHandler {
                      velocypack::Builder& builder);
   Result getConnectedCollections(std::string const& graphName,
                                  std::set<std::string>& colSet);
-  Result getAllAttributes(velocypack::Builder& fieldsArrBuilder,
-                          std::string const& colName,
-                          velocypack::Slice analyzersVal,
-                          std::set<std::string> const& includedAttrSet);
-
-  Result getAttributes(std::string const& colName, std::set<std::string>& attrSet);
 };
 
 }  // namespace rest

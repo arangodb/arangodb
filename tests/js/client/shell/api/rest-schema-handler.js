@@ -25,6 +25,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
+
+const internal = require('internal');
+const sleep = internal.sleep;
+const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
+const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const gm = require("@arangodb/general-graph");
 const jsunity = require("jsunity");
 
@@ -80,7 +85,8 @@ function restSchemaHandlerTestSuite() {
             mGraph = gm._graph(gnManufacture);
 
             productDescViewSearch = db._createView(vnProductDescView, "arangosearch", {
-                links: {products: {fields: {description: {analyzers: ["text_en"]}}}}});
+                links: {products: {includeAllFields: true, analyzers: ["identity"],
+                        fields: {description: {analyzers: ["text_en"]}}}}});
             descViewSearch = db._createView(vnDescView, "arangosearch", {
                 links: {products: {fields: {description: {analyzers: ["text_en"]}}},
                         customers: {fields: {comment: {analyzers: ["text_en"]}}}}});
@@ -245,6 +251,7 @@ function restSchemaHandlerTestSuite() {
             assertTrue(Array.isArray(vProductDescView.links[0].fields));
             assertEqual("description", vProductDescView.links[0].fields[0].attribute);
             assertEqual("text_en", vProductDescView.links[0].fields[0].analyzers[0]);
+            assertEqual("identity", vProductDescView.links[0].allAttributeAnalyzers[0]);
 
             const vDescView = body.views.find((v) => v.viewName === "descView");
             assertEqual(2, vDescView.links.length);
@@ -498,6 +505,17 @@ function restSchemaHandlerTestSuite() {
         testSchemaViewEndpointWithEmptyViewName: function () {
             const doc = arango.GET_RAW(api + "/view");
             assertEqual(404, doc.code, "Expected HTTP 404");
+        },
+
+        testSchemaViewEndpointWithIncludeAllAttribute: function () {
+            const doc = arango.GET_RAW(api + "/view/productDescView");
+            assertEqual(200, doc.code, "Expected HTTP 200");
+            const body = doc.parsedBody;
+            const vDescView = body.views[0];
+            assertTrue(Array.isArray(vDescView.links));
+            assertEqual("description", vDescView.links[0].fields[0].attribute);
+            assertEqual("text_en", vDescView.links[0].fields[0].analyzers[0]);
+            assertEqual("identity", vDescView.links[0].allAttributeAnalyzers[0]);
         },
     };
 }
