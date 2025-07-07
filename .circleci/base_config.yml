@@ -336,7 +336,8 @@ jobs:
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
-              -DCMAKE_INSTALL_PREFIX=/ 
+              -DCMAKE_INSTALL_PREFIX=/ \
+              -DLLVM_ENABLE_ASSERTIONS=ON
       - run:
           name: Build
           command: |
