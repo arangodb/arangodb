@@ -47,6 +47,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
+#include "Assertions/Assert.h"
 #include "Assertions/ProdAssert.h"
 #include "Async/async.h"
 #include "Cluster/ClusterFeature.h"
@@ -263,6 +264,18 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
 
 /// @brief destroy the engine, frees all assigned blocks
 ExecutionEngine::~ExecutionEngine() {
+  TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+  }
+
+  TRI_ASSERT(std::count_if(_blocks.begin(), _blocks.end(),
+                           [](const auto& block) {
+                             return block->isPrefetchTaskActive();
+                           }) == 0)
+      << "Some async prefetch tasks were not destroyed before";
+  stopAsyncTasks();
+
   if (_sharedState) {  // ensure no async task is working anymore
     _sharedState->invalidate();
   }
@@ -602,7 +615,8 @@ struct DistributedQueryInstanciator final
                   << "killing query " << id
                   << " because participating DB server " << srvr
                   << " is unavailable, query string:" << qs
-                  << ", bind parameters: " << bp->slice().toJson();
+                  << ", bind parameters: "
+                  << ((bp != nullptr) ? bp->slice().toJson() : std::string());
               try {
                 methods::Queries::kill(df, vn, id);
               } catch (...) {
@@ -639,6 +653,9 @@ struct DistributedQueryInstanciator final
 
 std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
     SharedAqlItemBlockPtr&& items, size_t pos) {
+  // TODO (Tobias) I'm not sure this lock is really necessary here, I put it
+  //  here to keep similar behavior during a refactoring.
+  auto guard = getQuery().acquireLockGuard();
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -651,6 +668,23 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
     _initializeCursorCalled = true;
   }
   return res;
+}
+
+auto ExecutionEngine::executeRemoteCall(AqlCallStack const& executeCall,
+                                        std::string const& shardId)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  auto const rootNodeType = root()->getPlanNode()->getType();
+
+  // shardId is set IFF the root node is scatter or distribute
+  TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
+                                 rootNodeType == ExecutionNode::DISTRIBUTE));
+
+  auto guard = getQuery().acquireLockGuard();
+  if (shardId.empty()) {
+    return execute(executeCall);
+  } else {
+    return executeForClient(executeCall, shardId);
+  }
 }
 
 auto ExecutionEngine::execute(AqlCallStack const& stack)
@@ -957,6 +991,22 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 std::vector<arangodb::cluster::CallbackGuard>&
 ExecutionEngine::rebootTrackers() {
   return _rebootTrackers;
+}
+
+void ExecutionEngine::stopAsyncTasks() {
+  TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+  }
+
+  // We need to stop prefetch tasks in topological order so
+  // that after stopping tasks on a certain node there is no prefetch
+  // tasks running on any dependent which could start another on the
+  // current block.
+  // The blocks are pushed in a reversed topological order.
+  for (auto it = _blocks.rbegin(); it != _blocks.rend(); ++it) {
+    (*it)->stopAsyncTasks();
+  }
 }
 
 std::shared_ptr<SharedQueryState> const& ExecutionEngine::sharedState() const {

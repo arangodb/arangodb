@@ -37,6 +37,7 @@
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -367,7 +368,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string_view> IndexFactory::supportedIndexes() const {
-  return {
+  std::vector<std::string_view> enabledFeatures{
       "primary",
       "edge",
       "hash",
@@ -378,9 +379,12 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
       "fulltext",
       "mdi",
       "mdi-prefixed",
-      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
-      "vector",
-  };
+      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
+  if (_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+    enabledFeatures.push_back("vector");
+  }
+
+  return enabledFeatures;
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>

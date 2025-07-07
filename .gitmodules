@@ -35,3 +35,6 @@
 [submodule "3rdParty/faiss"]
 	path = 3rdParty/faiss
 	url = https://github.com/arangodb/faiss.git
+[submodule "3rdParty/lz4"]
+	path = 3rdParty/lz4
+	url = https://github.com/lz4/lz4.git

@@ -45,7 +45,7 @@ class QueryRegistry;
 struct QueryResult;
 }  // namespace aql
 
-template<typename T>
+template<typename>
 struct async;
 
 class Cursor;
@@ -61,11 +61,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   char const* name() const override { return "RestCursorHandler"; }
   RequestLane lane() const final;
 
-  void runHandler(
-      std::function<void(rest::RestHandler*)> responseCallback) override;
-  RestStatus execute() override;
-  futures::Future<futures::Unit> executeAsync() override;
-  RestStatus continueExecute() override;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   void cancel() final;
@@ -78,14 +74,13 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief register the query either as streaming cursor or in _query
   /// the query is not executed here.
   /// this method is also used by derived classes
-  auto registerQueryOrCursor(velocypack::Slice body,
-                             transaction::OperationOrigin operationOrigin)
-      -> async<void>;
+  async<void> registerQueryOrCursor(
+      velocypack::Slice body, transaction::OperationOrigin operationOrigin);
 
   /// @brief Process the query registered in _query.
   /// The function is repeatable, so whenever we need to WAIT
   /// in AQL we can post a handler calling this function again.
-  auto processQuery() -> async<void>;
+  async<void> processQuery();
 
   /// @brief returns the short id of the server which should handle this request
   ResultT<std::pair<std::string, bool>> forwardingTarget() override;
@@ -97,7 +92,7 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// guaranteed
   ///        to not be interrupted and is guaranteed to get a complete
   ///        queryResult.
-  virtual auto handleQueryResult() -> async<void>;
+  virtual async<void> handleQueryResult();
 
  private:
   /// @brief register the currently running query
@@ -113,20 +108,20 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   /// @brief append the contents of the cursor into the response body
   /// this function will also take care of the cursor and return it to the
   /// registry if required
-  auto generateCursorResult(rest::ResponseCode code) -> async<void>;
+  async<void> generateCursorResult(rest::ResponseCode code);
 
   /// @brief create a cursor and return the first results
-  auto createQueryCursor() -> async<void>;
+  async<void> createQueryCursor();
 
   /// @brief return the next results from an existing cursor
-  auto modifyQueryCursor() -> async<void>;
+  async<void> modifyQueryCursor();
 
   /// @brief dispose an existing cursor
   RestStatus deleteQueryCursor();
 
   /// @brief show last batch on retry if `allowRetry` flag is true, doesn't
   /// advance cursor
-  auto showLatestBatch() -> async<void>;
+  async<void> showLatestBatch();
 
   /// @brief look up cursor by id. side-effect: populates _cursor in case cursor
   /// was found. in case cursor was not found, writes an error into the response

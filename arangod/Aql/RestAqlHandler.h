@@ -46,14 +46,11 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
   RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                  QueryRegistry*);
-  ~RestAqlHandler();
+  ~RestAqlHandler() override = default;
 
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
-  RestStatus execute() override;
-  RestStatus continueExecute() override;
-  [[nodiscard]] auto prepareExecute(bool isContinue)
-      -> std::vector<std::shared_ptr<LogContext::Values>> override;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   class Route {
@@ -103,8 +100,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // set, then the root block of the stored query must be a ScatterBlock
   // and the shard ID is given as an additional argument to the ScatterBlock's
   // special API.
-  RestStatus useQuery(std::string const& operation,
-                      std::string const& idString);
+  auto useQuery(std::string const& operation, std::string const& idString)
+      -> async<void>;
 
   // POST method for /_api/aql/setup (internal)
   // Only available on DBServers in the Cluster.
@@ -132,21 +129,19 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   [[nodiscard]] futures::Future<futures::Unit> setupClusterQuery();
 
   // handle for useQuery
-  RestStatus handleUseQuery(std::string const&,
-                            arangodb::velocypack::Slice querySlice);
+  auto handleUseQuery(std::string const& operation,
+                      velocypack::Slice querySlice) -> async<void>;
 
   // handle query finalization for all engines
-  RestStatus handleFinishQuery(std::string const& idString);
+  auto handleFinishQuery(std::string const& idString) -> async<void>;
 
   // dig out vocbase from context and query from ID, handle errors
-  Result findEngine(std::string const& idString);
+  auto findEngine(std::string const& idString) -> async<Result>;
 
   // our query registry
   QueryRegistry* _queryRegistry;
 
   ExecutionEngine* _engine;
-
-  std::shared_ptr<LogContext::Values> _logContextQueryIdValue;
 };
 
 }  // namespace arangodb::aql

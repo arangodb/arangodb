@@ -26,6 +26,7 @@
 
 #pragma once
 
+#include "Basics/Exceptions.h"
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AqlCallStack.h"
@@ -349,12 +350,44 @@ ExecutionBlockImpl<Executor>::ExecutionBlockImpl(
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::~ExecutionBlockImpl() {
-  if (_prefetchTask && !_prefetchTask->isConsumed() &&
-      !_prefetchTask->tryClaim()) {
-    // some thread is still working on our prefetch task
-    // -> we need to wait for that task to finish first!
-    _prefetchTask->waitFor();
+  stopAsyncTasks();
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
+  if (_prefetchTask) {
+    // Double use diagnostics:
+    uint64_t userCount = _numberOfUsers.fetch_add(1, std::memory_order_relaxed);
+    if (userCount > 0) {
+      _logStacktrace.store(true, std::memory_order_relaxed);
+      LOG_TOPIC("52637", ERR, Logger::AQL)
+          << "ALERT: Double use of ExecutionBlock detected, "
+          << " Blockinfo: " << printBlockInfo()
+          << " Query ID: " << getQuery().id() << ", stacktrace:";
+      CrashHandler::logBacktrace();
+    }
+    auto guard = scopeGuard([&]() noexcept {
+      _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
+      if (_logStacktrace.load(std::memory_order_relaxed)) {
+        LOG_TOPIC("52638", WARN, Logger::AQL)
+            << "ALERT: Found _logStacktrace:"
+            << " Blockinfo: " << printBlockInfo()
+            << " Query ID: " << getQuery().id() << ", stacktrace:";
+        CrashHandler::logBacktrace();
+      }
+    });
+    if (!_prefetchTask->isConsumed() && !_prefetchTask->tryClaim()) {
+      // some thread is still working on our prefetch task
+      // -> we need to wait for that task to finish first!
+      _prefetchTask->waitFor();
+    }
   }
+}
+
+template<class Executor>
+bool ExecutionBlockImpl<Executor>::isPrefetchTaskActive() noexcept {
+  return _prefetchTask != nullptr &&
+         (!_prefetchTask->isConsumed() && !_prefetchTask->isFinished());
 }
 
 template<class Executor>
@@ -490,6 +523,27 @@ void ExecutionBlockImpl<Executor>::collectExecStats(ExecutionStats& stats) {
 template<class Executor>
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
+  // Double use diagnostics:
+  uint64_t userCount = _numberOfUsers.fetch_add(1, std::memory_order_relaxed);
+  if (userCount > 0) {
+    _logStacktrace.store(true, std::memory_order_relaxed);
+    LOG_TOPIC("52635", WARN, Logger::AQL)
+        << "ALERT: Double use of ExecutionBlock detected, "
+        << " Blockinfo: " << printBlockInfo()
+        << " Query ID: " << getQuery().id() << ", stacktrace:";
+    CrashHandler::logBacktrace();
+  }
+  auto waechter = scopeGuard([&]() noexcept {
+    _numberOfUsers.fetch_sub(1, std::memory_order_relaxed);
+    if (_logStacktrace.load(std::memory_order_relaxed)) {
+      LOG_TOPIC("52636", WARN, Logger::AQL)
+          << "ALERT: Found _logStacktrace:"
+          << " Blockinfo: " << printBlockInfo()
+          << " Query ID: " << getQuery().id() << ", stacktrace:";
+      CrashHandler::logBacktrace();
+    }
+  });
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool old = false;
   TRI_ASSERT(_isBlockInUse.compare_exchange_strong(old, true));
@@ -1036,12 +1090,18 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // At the moment we may spawn one task per execution node
 
       if (shouldSchedule) {
-        bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+        bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
             [block = this, task = _prefetchTask]() mutable {
               if (!task->tryClaimOrAbandon()) {
                 return;
               }
+
+              TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(100ms);
+              }
+
               // task is a copy of the PrefetchTask shared_ptr, and we will only
               // attempt to execute the task if we successfully claimed the
               // task. i.e., it does not matter if this task lingers around in
@@ -2510,6 +2570,11 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
 }
 
 template<class Executor>
+bool ExecutionBlockImpl<Executor>::PrefetchTask::isFinished() const noexcept {
+  return _state.load(std::memory_order_relaxed).status == Status::Finished;
+}
+
+template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
   auto state = _state.load(std::memory_order_relaxed);
   while (true) {
@@ -2570,16 +2635,41 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
+  uint64_t count = _numberWaiters.fetch_add(1, std::memory_order_relaxed);
+  if (count > 0) {
+    LOG_TOPIC("62515", WARN, Logger::AQL)
+        << "ALERT: Detected " << count + 1 << " waiters for a PrefetchTask, "
+        << " Blockinfo: " << _block.printBlockInfo()
+        << " Query ID: " << _block.getQuery().id() << ", stacktrace:";
+    CrashHandler::logBacktrace();
+    _logStacktrace.store(true, std::memory_order_relaxed);
+  }
   std::unique_lock<std::mutex> guard(_lock);
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (_state.load(std::memory_order_acquire).status == Status::Finished) {
-    return;
+  while (_state.load(std::memory_order_acquire).status != Status::Finished) {
+    std::cv_status s = _bell.wait_for(guard, std::chrono::milliseconds(1000));
+    if (s == std::cv_status::timeout) {
+      auto state = _state.load(std::memory_order_relaxed);
+      // We only log this if the status is not "InProgress", since
+      // this is the only one we expect when a timeout occurs!
+      if (state.status != Status::InProgress) {
+        LOG_TOPIC("62514", INFO, Logger::AQL)
+            << "Have waited for a second on an async prefetch task, "
+               "state is "
+            << (int)state.status << " abandoned: " << state.abandoned
+            << " Blockinfo: " << _block.printBlockInfo()
+            << " Query ID: " << _block.getQuery().id();
+      }
+    }
   }
-
-  _bell.wait(guard, [this]() {
-    // (2) - this acquire-load synchronizes with the release-store (3)
-    return _state.load(std::memory_order_acquire).status == Status::Finished;
-  });
+  count = _numberWaiters.fetch_sub(1, std::memory_order_relaxed);
+  if (_logStacktrace.load(std::memory_order_relaxed) == true) {
+    LOG_TOPIC("62516", WARN, Logger::AQL) << "ALERT: Found logStacktrace:";
+    CrashHandler::logBacktrace();
+    if (count == 0) {
+      _logStacktrace.store(false, std::memory_order_relaxed);
+    }
+  }
 }
 
 template<class Executor>

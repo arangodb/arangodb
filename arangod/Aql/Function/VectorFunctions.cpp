@@ -35,12 +35,33 @@ namespace arangodb::aql::functions {
 AqlValue ApproxNearCosine(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+      "Vector search could not be applied. Please ensure a vector index has "
+      "been created and that your query uses the correct syntax for vector "
+      "search.  Note that filtering is currently not supported "
+      "with vector search.");
 }
 
 AqlValue ApproxNearL2(ExpressionContext* expressionContext, AstNode const& node,
                       VPackFunctionParametersView parameters) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+      "Vector search could not be applied. Please ensure a vector index has "
+      "been created and that your query uses the correct syntax for vector "
+      "search.  Note that filtering is currently not supported "
+      "with vector search.");
+}
+
+AqlValue ApproxNearInnerProduct(ExpressionContext* expressionContext,
+                                AstNode const& node,
+                                VPackFunctionParametersView parameters) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+      "Vector search could not be applied. Please ensure a vector index has "
+      "been created and that your query uses the correct syntax for vector "
+      "search.  Note that filtering is currently not supported "
+      "with vector search.");
 }
 
 }  // namespace arangodb::aql::functions

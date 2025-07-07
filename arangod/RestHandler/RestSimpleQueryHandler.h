@@ -40,8 +40,8 @@ class RestSimpleQueryHandler : public RestCursorHandler {
   char const* name() const final { return "RestSimpleQueryHandler"; }
 
  private:
-  auto allDocuments() -> async<void>;
-  auto allDocumentKeys() -> async<void>;
-  auto byExample() -> async<void>;
+  async<void> allDocuments();
+  async<void> allDocumentKeys();
+  async<void> byExample();
 };
 }  // namespace arangodb

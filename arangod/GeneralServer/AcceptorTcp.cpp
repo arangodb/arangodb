@@ -132,8 +132,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
   auto handler = [self_ptr = weak_from_this(),
-                  asioSocket = std::move(asioSocket)](
-                     asio_ns::error_code const& ec) mutable {
+                  asioSocket](asio_ns::error_code const& ec) mutable {
     if (auto self = self_ptr.lock(); self != nullptr) {
       if (ec) {
         self->handleError(ec);
@@ -193,23 +192,26 @@ template<>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(
     std::shared_ptr<AsioSocket<SocketType::Ssl>> proto) {
   // io_context is single-threaded, no sync needed
-  auto* ptr = proto.get();
   proto->timer.expires_from_now(std::chrono::seconds(60));
-  proto->timer.async_wait([ptr](asio_ns::error_code const& ec) {
-    if (ec) {  // canceled
-      return;
-    }
-    ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
-  });
+  proto->timer.async_wait(
+      [weak_ptr = std::weak_ptr<AsioSocket<SocketType::Ssl>>(proto)](
+          asio_ns::error_code const& ec) {
+        if (ec) {  // canceled
+          return;
+        }
+        if (auto ptr = weak_ptr.lock(); ptr != nullptr) {
+          ptr->shutdown([](asio_ns::error_code const&) {});  // ignore error
+        }
+      });
 
   auto cb = [self_ptr = weak_from_this(),
-             as = std::move(proto)](asio_ns::error_code const& ec) mutable {
-    as->timer.cancel();
+             proto](asio_ns::error_code const& ec) mutable {
+    proto->timer.cancel();
     if (auto self = self_ptr.lock(); self != nullptr) {
       if (ec) {
         LOG_TOPIC("4c6b4", DEBUG, arangodb::Logger::COMMUNICATION)
             << "error during TLS handshake: '" << ec.message() << "'";
-        as.reset();  // ungraceful shutdown
+        proto.reset();  // ungraceful shutdown
         return;
       }
 
@@ -221,22 +223,22 @@ void AcceptorTcp<SocketType::Ssl>::performHandshake(
       info.serverAddress = self->_endpoint->host();
       info.serverPort = self->_endpoint->port();
 
-      info.clientAddress = as->peer.address().to_string();
-      info.clientPort = as->peer.port();
+      info.clientAddress = proto->peer.address().to_string();
+      info.clientPort = proto->peer.port();
 
       std::shared_ptr<CommTask> task;
-      if (tls_h2_negotiated(as->socket.native_handle())) {
+      if (tls_h2_negotiated(proto->socket.native_handle())) {
         task = std::make_shared<H2CommTask<SocketType::Ssl>>(
-            self->_server, std::move(info), std::move(as));
+            self->_server, std::move(info), std::move(proto));
       } else {
         task = std::make_shared<HttpCommTask<SocketType::Ssl>>(
-            self->_server, std::move(info), std::move(as));
+            self->_server, std::move(info), std::move(proto));
       }
 
       self->_server.registerTask(std::move(task));
     }
   };
-  ptr->handshake(withLogContext(std::move(cb)));
+  proto->handshake(withLogContext(std::move(cb)));
 }
 
 template<>
@@ -251,8 +253,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   auto& socket = asioSocket->socket.lowest_layer();
   auto& peer = asioSocket->peer;
   auto handler = [self_ptr = weak_from_this(),
-                  asioSocket = std::move(asioSocket)](
-                     asio_ns::error_code const& ec) mutable {
+                  asioSocket](asio_ns::error_code const& ec) mutable {
     if (auto self = self_ptr.lock(); self != nullptr) {
       if (ec) {
         self->handleError(ec);

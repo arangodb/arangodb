@@ -1,0 +1,30 @@
+set print pretty off
+
+run
+select-frame function main
+
+set $i = 0
+# how to get this number automatically?
+set $success = true
+
+while finished == false
+			continue
+			select-frame function main
+
+			set $real = $_as_string(test_registry)
+			set $expected = expected.c_str()
+
+			if !$_streq($real, $expected)
+				 printf "Mismatch\n"
+	 			 p $real
+	 			 p $expected
+				 set $success = false
+			end
+			set $i = $i + 1
+end
+
+if $success
+	 quit 0
+else
+	 quit 1
+end

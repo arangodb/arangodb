@@ -96,6 +96,7 @@ function IndexSuite() {
 
       let seenProgress = false;
       count = 0;
+      let progress_flow = [];
       while (true) {
         idxs = arango.GET(`/_api/index?collection=${cn}&withHidden=true`);
         assertTrue(idxs.hasOwnProperty("indexes"), idxs);
@@ -104,8 +105,9 @@ function IndexSuite() {
         let idx = idxs[1];
         assertEqual(idx.name, "progress", idx); // Check we have the right one!
         if (idx.hasOwnProperty("progress")) {
-          assertTrue(idx.progress >= progress, {idx, progress});
-          assertTrue(idx.isBuilding, idx);
+          progress_flow.push(idx.progress);
+          assertTrue(idx.progress >= progress, {idx, progress, progress_flow});
+          assertTrue(idx.isBuilding, { idx, progress_flow});
           progress = idx.progress;
           if (progress > 0 && !seenProgress) {
             // Only release index building once we have seen at least

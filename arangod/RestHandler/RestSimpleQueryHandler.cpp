@@ -66,7 +66,7 @@ auto RestSimpleQueryHandler::executeAsync() -> futures::Future<futures::Unit> {
   co_return;
 }
 
-auto RestSimpleQueryHandler::allDocuments() -> async<void> {
+async<void> RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -157,7 +157,7 @@ auto RestSimpleQueryHandler::allDocuments() -> async<void> {
 /// @brief return a cursor with all document keys from the collection
 //////////////////////////////////////////////////////////////////////////////
 
-auto RestSimpleQueryHandler::allDocumentKeys() -> async<void> {
+async<void> RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
@@ -261,7 +261,7 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
 /// @brief return a cursor with all documents matching the example
 //////////////////////////////////////////////////////////////////////////////
 
-auto RestSimpleQueryHandler::byExample() -> async<void> {
+async<void> RestSimpleQueryHandler::byExample() {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {

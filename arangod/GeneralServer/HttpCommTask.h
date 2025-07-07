@@ -97,6 +97,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
+  bool _urlCorrupt;
 };
 }  // namespace rest
 }  // namespace arangodb

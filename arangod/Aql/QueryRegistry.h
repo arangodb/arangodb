@@ -29,9 +29,12 @@
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
 #include "Futures/Promise.h"
+#include "Scheduler/Scheduler.h"
 
 #include <deque>
+#include <chrono>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 
 namespace arangodb {
@@ -170,7 +173,20 @@ class QueryRegistry {
     bool _finished = false;
 
     cluster::CallbackGuard _rebootTrackerCallbackGuard;
+
+    Scheduler::WorkHandle _destructionTrackingTask;
   };
+
+  struct QueryDestructionContext {
+    QueryId id;
+    std::string_view queryString;
+    ErrorCode errorCode;
+    bool finished;
+    Scheduler::WorkHandle scheduledHandle;
+  };
+
+  static void postQueryDestructionTrackingTask(
+      QueryId queryId, QueryInfo& queryInfoLifetimeExtension);
 
   struct EngineInfo final {
     EngineInfo(EngineInfo const&) = delete;
@@ -212,7 +228,8 @@ class QueryRegistry {
 
   auto lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
       -> QueryInfoMap::iterator;
-  void deleteQuery(QueryInfoMap::iterator queryMapIt);
+
+  std::unique_ptr<QueryInfo> deleteQuery(QueryInfoMap::iterator queryMapIt);
 
   /// @brief _queries, the actual map of maps for the registry
   /// maps from vocbase name to list queries

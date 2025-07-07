@@ -29,13 +29,30 @@ using namespace arangodb;
 
 thread_local LogContext::ThreadControlBlock LogContext::_threadControlBlock;
 
-void LogContext::clear(EntryCache& cache) {
-  if (_tail) {
+void LogContext::clear(EntryCache& cache) noexcept {
+  while (_tail) {
+    auto prev = _tail->_prev;
     if (_tail->decRefCnt() == 1) {
       _tail->release(cache);
+    } else {
+      _tail = nullptr;
+      break;
     }
-    _tail = nullptr;
+    _tail = prev;
   }
+  TRI_ASSERT(_tail == nullptr);
+
+  // Note (tobias): In a similar implementation of clear() in ~LogContext,
+  // there were two optimizations:
+  // - _tail was assigned to a local variable, and this used instead.
+  //   we could do that here as well, if we assign the result to _tail at the
+  //   end.
+  // - instead of doing `_tail->decRefCnt() == 1`, it did
+  //   `t->_refCount.load(std::memory_order_relaxed) == 1
+  //    || t->decRefCnt() == 1`. This could probably even be moved to
+  //   decRefCnt().
+  // I decided to drop them, as I don't think they're worth the complication,
+  // but still leave this note here instead.
 }
 
 LogContext::ScopedContext::ScopedContext(LogContext ctx) noexcept {
@@ -72,4 +89,12 @@ void LogContext::doVisit(Visitor const& visitor, Entry const* entry) const {
 
 void LogContext::setCurrent(LogContext ctx) noexcept {
   _threadControlBlock._logContext = std::move(ctx);
+}
+
+LogContext::ThreadControlBlock::~ThreadControlBlock() noexcept {
+  // The LogContext destructor will possibly release remaining entries to the
+  // thread-local _entryCache. _entryCache is destroyed before _logContext.
+  // Therefore it must be cleared here, otherwise it will release its entries to
+  // an already destructed EntryCache.
+  _logContext.clear(_entryCache);
 }

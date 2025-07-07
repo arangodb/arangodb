@@ -66,9 +66,11 @@ auto RestSimpleHandler::executeAsync() -> futures::Future<futures::Unit> {
     std::string const& prefix = _request->requestPath();
 
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      co_return co_await removeByKeys(body);
+      co_await removeByKeys(body);
+      co_return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      co_return co_await lookupByKeys(body);
+      co_await lookupByKeys(body);
+      co_return;
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
@@ -82,7 +84,7 @@ auto RestSimpleHandler::executeAsync() -> futures::Future<futures::Unit> {
   co_return;
 }
 
-auto RestSimpleHandler::removeByKeys(VPackSlice const& slice) -> async<void> {
+async<void> RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
   {
@@ -162,7 +164,7 @@ auto RestSimpleHandler::removeByKeys(VPackSlice const& slice) -> async<void> {
       transaction::OperationOriginREST{"removing documents by keys"});
 }
 
-auto RestSimpleHandler::handleQueryResult() -> async<void> {
+async<void> RestSimpleHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
@@ -248,7 +250,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                  _queryResult.context);
 }
 
-auto RestSimpleHandler::lookupByKeys(VPackSlice const& slice) -> async<void> {
+async<void> RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }

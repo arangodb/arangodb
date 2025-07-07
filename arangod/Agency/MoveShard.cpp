@@ -1032,38 +1032,46 @@ JOB_STATUS MoveShard::pendingLeader() {
         _snapshot, _database, shardsLikeMe,
         [this, &done](Slice plan, Slice current, std::string& planPath,
                       std::string& curPath) {
-          if (current.length() > 0 && current[0].copyString() == _to) {
-            if (plan.length() < 3) {
-              // This only happens for replicationFactor == 1, in which case
-              // there are exactly 2 servers in the Plan at this stage.
-              // But then we do not have to wait for any follower to get in
-              // sync.
-              ++done;
-            } else {
-              // New leader has assumed leadership, now check all but
-              // the old leader:
-              size_t found = 0;
-              for (size_t i = 1; i < plan.length() - 1; ++i) {
-                VPackSlice p = plan[i];
-                if (current.isArray()) {  // found is not incremented, we'll
-                                          // remain pending
-                  for (auto const& c : VPackArrayIterator(current)) {
-                    if (arangodb::basics::VelocyPackHelper::equal(p, c, true)) {
-                      ++found;
-                      break;
-                    }
-                  }
-                } else {
-                  LOG_TOPIC("3294e", WARN, Logger::SUPERVISION)
-                      << "failed to iterate through current shard servers "
-                         "for shard "
-                      << _shard << " or one of its clones";
-                  TRI_ASSERT(false);
-                  return;  // we don't increment done and remain PENDING
-                }
-              }
-              if (found >= plan.length() - 2) {
+          // If a collection with `distributedShardsLike` set to some other
+          // collection has been added after the `MoveShard` job has started,
+          // it is possible that its `Current` entry is not yet set. In this
+          // case `current` here will be a NoneShard. In this case, we simply
+          // want to not count this as done:
+          if (current.isArray()) {
+            if (current.length() > 0 && current[0].copyString() == _to) {
+              if (plan.length() < 3) {
+                // This only happens for replicationFactor == 1, in which case
+                // there are exactly 2 servers in the Plan at this stage.
+                // But then we do not have to wait for any follower to get in
+                // sync.
                 ++done;
+              } else {
+                // New leader has assumed leadership, now check all but
+                // the old leader:
+                size_t found = 0;
+                for (size_t i = 1; i < plan.length() - 1; ++i) {
+                  VPackSlice p = plan[i];
+                  if (current.isArray()) {  // found is not incremented, we'll
+                                            // remain pending
+                    for (auto const& c : VPackArrayIterator(current)) {
+                      if (arangodb::basics::VelocyPackHelper::equal(p, c,
+                                                                    true)) {
+                        ++found;
+                        break;
+                      }
+                    }
+                  } else {
+                    LOG_TOPIC("3294e", WARN, Logger::SUPERVISION)
+                        << "failed to iterate through current shard servers "
+                           "for shard "
+                        << _shard << " or one of its clones";
+                    TRI_ASSERT(false);
+                    return;  // we don't increment done and remain PENDING
+                  }
+                }
+                if (found >= plan.length() - 2) {
+                  ++done;
+                }
               }
             }
           }

@@ -55,7 +55,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
  public:
   RequestLane lane() const override final;
 
-  RestStatus execute() override;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
 
   // Never instantiate this.
   // Only specific implementations allowed

@@ -34,7 +34,6 @@
 #include "Logger/LogLevel.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
-#include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -42,6 +41,7 @@
 #include "RestServer/LogBufferFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <Async/async.h>
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -79,12 +79,12 @@ arangodb::Result RestAdminLogHandler::verifyPermitted() {
   return arangodb::Result();
 }
 
-RestStatus RestAdminLogHandler::execute() {
+auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto result = verifyPermitted();
   if (!result.ok()) {
     generateError(rest::ResponseCode::FORBIDDEN, result.errorNumber(),
                   result.errorMessage());
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto const& suffixes = _request->suffixes();
@@ -96,7 +96,7 @@ RestStatus RestAdminLogHandler::execute() {
       clearLogs();
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
       // reset log levels to defaults
-      handleLogLevel();
+      co_await handleLogLevel();
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
@@ -105,11 +105,11 @@ RestStatus RestAdminLogHandler::execute() {
     }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
-      return reportLogs(/*newFormat*/ false);
+      co_await reportLogs(/*newFormat*/ false);
     } else if (suffixes.size() == 1 && suffixes[0] == "entries") {
-      return reportLogs(/*newFormat*/ true);
+      co_await reportLogs(/*newFormat*/ true);
     } else if (suffixes.size() == 1 && suffixes[0] == "level") {
-      return handleLogLevel();
+      co_await handleLogLevel();
     } else if (suffixes.size() == 1 && suffixes[0] == "structured") {
       handleLogStructuredParams();
     } else {
@@ -121,7 +121,7 @@ RestStatus RestAdminLogHandler::execute() {
   } else if (type == rest::RequestType::PUT) {
     if (suffixes.size() == 1) {
       if (suffixes[0] == "level") {
-        return handleLogLevel();
+        co_await handleLogLevel();
       } else if (suffixes[0] == "structured") {
         handleLogStructuredParams();
       } else {
@@ -147,7 +147,7 @@ RestStatus RestAdminLogHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
-  return RestStatus::DONE;
+  co_return;
 }
 
 void RestAdminLogHandler::clearLogs() {
@@ -155,7 +155,7 @@ void RestAdminLogHandler::clearLogs() {
   generateOk(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());
 }
 
-RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
+auto RestAdminLogHandler::reportLogs(bool newFormat) -> async<void> {
   bool foundServerIdParameter;
   std::string const& serverId =
       _request->value("serverId", foundServerIdParameter);
@@ -178,7 +178,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
                       "unknown serverId supplied.");
-        return RestStatus::DONE;
+        co_return;
       }
 
       NetworkFeature const& nf = server().getFeature<NetworkFeature>();
@@ -192,18 +192,17 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       options.database = _request->databaseName();
       options.parameters = _request->parameters();
 
-      auto f = network::sendRequestRetry(
+      auto r = co_await network::sendRequestRetry(
           pool, "server:" + serverId, fuerte::RestVerb::Get,
           _request->requestPath(), VPackBuffer<uint8_t>{}, options);
-      return waitForFuture(std::move(f).thenValue(
-          [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
-               shared_from_this())](network::Response const& r) {
-            if (r.fail()) {
-              self->generateError(r.combinedResult());
-            } else {
-              self->generateResult(rest::ResponseCode::OK, r.slice());
-            }
-          }));
+
+      if (r.fail()) {
+        generateError(r.combinedResult());
+      } else {
+        generateResult(rest::ResponseCode::OK, r.slice());
+      }
+
+      co_return;
     }
   }
 
@@ -245,7 +244,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       absl::StrCat("unknown '", (found2 ? "level" : "upto"),
                                    "' log level: '", logLevel, "'"));
-        return RestStatus::DONE;
+        co_return;
       }
     }
   }
@@ -422,10 +421,10 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
   }                  // format end
 
   generateResult(rest::ResponseCode::OK, result.slice());
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestAdminLogHandler::handleLogLevel() {
+auto RestAdminLogHandler::handleLogLevel() -> async<void> {
   std::vector<std::string> const& suffixes = _request->suffixes();
   // was validated earlier
   TRI_ASSERT(!suffixes.empty());
@@ -433,7 +432,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
   if (suffixes[0] != "level") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                   "superfluous suffix, expecting /_admin/log/level");
-    return RestStatus::DONE;
+    co_return;
   }
 
   bool foundServerIdParameter;
@@ -458,7 +457,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
                       "unknown serverId supplied.");
-        return RestStatus::DONE;
+        co_return;
       }
 
       NetworkFeature const& nf = server().getFeature<NetworkFeature>();
@@ -492,21 +491,18 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
       });
 
       if (!body.has_value()) {
-        return RestStatus::DONE;  // error message from vpack parser
+        co_return;  // error message from vpack parser
       }
 
-      auto f = network::sendRequestRetry(pool, "server:" + serverId,
-                                         requestType, _request->requestPath(),
-                                         std::move(*body), options);
-      return waitForFuture(std::move(f).thenValue(
-          [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
-               shared_from_this())](network::Response const& r) {
-            if (r.fail()) {
-              self->generateError(r.combinedResult());
-            } else {
-              self->generateResult(rest::ResponseCode::OK, r.slice());
-            }
-          }));
+      auto r = co_await network::sendRequestRetry(
+          pool, "server:" + serverId, requestType, _request->requestPath(),
+          std::move(*body), options);
+      if (r.fail()) {
+        generateError(r.combinedResult());
+      } else {
+        generateResult(rest::ResponseCode::OK, r.slice());
+      }
+      co_return;
     }
   }
 
@@ -536,7 +532,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     bool parseSuccess = false;
     VPackSlice slice = this->parseVPackBody(parseSuccess);
     if (!parseSuccess) {
-      return RestStatus::DONE;  // error message generated in parseVPackBody
+      co_return;  // error message generated in parseVPackBody
     }
 
     if (slice.isString()) {
@@ -559,7 +555,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
       if (withAppenders) {
         AppendersLogLevelConfig config;
         if (!parseConfig(config)) {
-          return RestStatus::DONE;
+          co_return;
         }
 
         auto res = Logger::setLogLevel(config);
@@ -567,12 +563,12 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
           generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                         absl::StrCat("Failed to update log levels: ",
                                      res.errorMessage()));
-          return RestStatus::DONE;
+          co_return;
         }
       } else {
         LogLevels config;
         if (!parseConfig(config)) {
-          return RestStatus::DONE;
+          co_return;
         }
         Logger::setLogLevel(config);
       }
@@ -592,8 +588,6 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
-
-  return RestStatus::DONE;
 }
 
 void RestAdminLogHandler::handleLogStructuredParams() {

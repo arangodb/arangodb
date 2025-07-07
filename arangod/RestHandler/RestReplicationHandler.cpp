@@ -440,11 +440,11 @@ std::string const RestReplicationHandler::HoldReadLockCollection =
     "holdReadLockCollection";
 
 // main function that dispatches the different routes and commands
-RestStatus RestReplicationHandler::execute() {
+auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
   auto res = testPermissions();
   if (!res.ok()) {
     generateError(res);
-    return RestStatus::DONE;
+    co_return;
   }
   // extract the request type
   auto const type = _request->requestType();
@@ -465,7 +465,7 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
       handleCommandLoggerTickRanges();
     } else if (command == LoggerFirstTick) {
@@ -473,7 +473,7 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
       handleCommandLoggerFirstTick();
     } else if (command == LoggerFollow) {
@@ -481,7 +481,7 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
       // track the number of parallel invocations of the tailing API
       auto& rf = _vocbase.server().getFeature<ReplicationFeature>();
@@ -504,7 +504,8 @@ RestStatus RestReplicationHandler::execute() {
       if (ServerState::instance()->isCoordinator()) {
         handleUnforwardedTrampolineCoordinator();
       } else {
-        return waitForFuture(handleCommandBatch());
+        co_await handleCommandBatch();
+        co_return;
       }
     } else if (command == Inventory) {
       // get overview of collections and indexes followed by some extra data
@@ -541,7 +542,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
 
       if (type == rest::RequestType::POST) {
@@ -554,7 +555,8 @@ RestStatus RestReplicationHandler::execute() {
         // { "id": <context id - int>,
         //   "count": <number of documents in collection - int>
         // }
-        return waitForFuture(handleCommandCreateKeys());
+        co_await handleCommandCreateKeys();
+        co_return;
       } else if (type == rest::RequestType::GET) {
         // curl --dump -
         // 'http://localhost:5555/_db/_system/_api/replication/keys/123?collection=_users'
@@ -567,7 +569,7 @@ RestStatus RestReplicationHandler::execute() {
       }
     } else if (command == Revisions) {
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
 
       if (len > 1) {
@@ -575,7 +577,8 @@ RestStatus RestReplicationHandler::execute() {
         if (type == rest::RequestType::GET && subCommand == Tree) {
           handleCommandRevisionTree();
         } else if (type == rest::RequestType::POST && subCommand == Tree) {
-          return waitForFuture(handleCommandRebuildRevisionTree());
+          co_await handleCommandRebuildRevisionTree();
+          co_return;
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
         } else if (type == rest::RequestType::PUT && subCommand == Tree) {
           handleCommandCorruptRevisionTree();
@@ -612,7 +615,8 @@ RestStatus RestReplicationHandler::execute() {
         goto BAD_CALL;
       }
 
-      return waitForFuture(handleCommandRestoreCollection());
+      co_await handleCommandRestoreCollection();
+      co_return;
     } else if (command == RestoreIndexes) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -623,7 +627,8 @@ RestStatus RestReplicationHandler::execute() {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
       }
-      return waitForFuture(handleCommandRestoreData());
+      co_await handleCommandRestoreData();
+      co_return;
     } else if (command == RestoreView) {
       if (type != rest::RequestType::PUT) {
         goto BAD_CALL;
@@ -636,7 +641,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
 
       handleCommandSync();
@@ -647,7 +652,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
 
       handleCommandMakeFollower();
@@ -671,7 +676,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
 
       handleCommandApplierStart();
@@ -681,7 +686,7 @@ RestStatus RestReplicationHandler::execute() {
       }
 
       if (isCoordinatorError()) {
-        return RestStatus::DONE;
+        co_return;
       }
 
       handleCommandApplierStop();
@@ -717,7 +722,8 @@ RestStatus RestReplicationHandler::execute() {
         generateError(rest::ResponseCode::FORBIDDEN,
                       TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
-        return waitForFuture(handleCommandAddFollower());
+        co_await handleCommandAddFollower();
+        co_return;
       }
     } else if (command == RemoveFollower) {
       if (type != rest::RequestType::PUT) {
@@ -745,7 +751,8 @@ RestStatus RestReplicationHandler::execute() {
                       TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
       } else {
         if (type == rest::RequestType::POST) {
-          return waitForFuture(handleCommandHoldReadLockCollection());
+          co_await handleCommandHoldReadLockCollection();
+          co_return;
         } else if (type == rest::RequestType::DELETE_REQ) {
           handleCommandCancelHoldReadLockCollection();
         } else if (type == rest::RequestType::GET) {
@@ -759,7 +766,7 @@ RestStatus RestReplicationHandler::execute() {
                     std::string("invalid command '") + command + "'");
     }
 
-    return RestStatus::DONE;
+    co_return;
   }
 
 BAD_CALL:
@@ -771,7 +778,7 @@ BAD_CALL:
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
 
-  return RestStatus::DONE;
+  co_return;
 }
 
 Result RestReplicationHandler::testPermissions() {

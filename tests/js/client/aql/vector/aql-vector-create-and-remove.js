@@ -35,6 +35,8 @@ const {
     randomNumberGeneratorFloat,
 } = require("@arangodb/testutils/seededRandom");
 
+const { versionHas } = require("@arangodb/test-helper");
+
 const dbName = "vectorDB";
 const collName = "coll";
 const indexName = "vectorIndex";

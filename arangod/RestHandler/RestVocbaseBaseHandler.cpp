@@ -146,19 +146,8 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       _context(static_cast<VocbaseContext&>(*request->requestContext())),
-      _vocbase(_context.vocbase()),
-      _scopeVocbaseValues(
-          LogContext::makeValue()
-              .with<structuredParams::DatabaseName>(_vocbase.name())
-              .share()) {
+      _vocbase(_context.vocbase()) {
   TRI_ASSERT(request->requestContext());
-}
-
-auto RestVocbaseBaseHandler::prepareExecute(bool isContinue)
-    -> std::vector<std::shared_ptr<LogContext::Values>> {
-  auto values = RestHandler::prepareExecute(isContinue);
-  values.emplace_back(_scopeVocbaseValues);
-  return values;
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;

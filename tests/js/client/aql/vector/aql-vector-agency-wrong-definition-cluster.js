@@ -46,6 +46,7 @@ let {
 } = require('@arangodb/test-helper');
 
 let IM = global.instanceManager;
+const { versionHas } = require("@arangodb/test-helper");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

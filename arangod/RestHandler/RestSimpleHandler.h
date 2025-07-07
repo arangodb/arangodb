@@ -37,7 +37,7 @@ class RestSimpleHandler : public RestCursorHandler {
 
  public:
   auto executeAsync() -> futures::Future<futures::Unit> final;
-  char const* name() const final { return "RestSimpleHandler"; }
+  char const* name() const override final { return "RestSimpleHandler"; }
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,7 @@ class RestSimpleHandler : public RestCursorHandler {
   ///        queryResult.
   //////////////////////////////////////////////////////////////////////////////
 
-  auto handleQueryResult() -> async<void> final;
+  async<void> handleQueryResult() final;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle result of a remove-by-keys query
@@ -65,13 +65,13 @@ class RestSimpleHandler : public RestCursorHandler {
   /// @brief execute a batch remove operation
   //////////////////////////////////////////////////////////////////////////////
 
-  auto removeByKeys(VPackSlice const&) -> async<void>;
+  async<void> removeByKeys(VPackSlice const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief execute a batch lookup operation
   //////////////////////////////////////////////////////////////////////////////
 
-  auto lookupByKeys(VPackSlice const&) -> async<void>;
+  async<void> lookupByKeys(VPackSlice const&);
 
  private:
   //////////////////////////////////////////////////////////////////////////////

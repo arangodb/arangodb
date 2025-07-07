@@ -26,6 +26,7 @@
 
 const jsunity = require("jsunity");
 const { db } = require("@arangodb");
+const { waitForEstimatorSync } = require('@arangodb/test-helper');
 
 const database = "IndexCollectDatabase";
 const collection = "c";
@@ -85,6 +86,50 @@ function IndexCollectOptimizerTestSuite() {
           assertEqual(indexCollect.aggregations.length, 0);
         }
       }
+    },
+
+    testOptimizerRuleAppliesWhenSelectivityIsLowEnough: function () {
+      const c_new = db._create(collection + "1", { numberOfShards: 3 });
+
+      let docs = [];
+      // number of documents for single server n := 6000
+      // number of documents per shard for cluster n := 6000 / 3 = 2000
+      for (let l = 0; l < 6000; l++) {
+        docs.push({ a: l % 100 }); // number of distinct values k = 100
+      }
+      c_new.save(docs);
+      c_new.ensureIndex({ type: "persistent", fields: ["a"] });
+      waitForEstimatorSync();
+
+      // for optimizer rule to be applied k < n / log n
+      // single server k < 263
+      // cluster k < 689
+
+      // k := 100 distinct values, optimizer rule applies
+      let explain = db._createStatement(`FOR doc IN ${c_new.name()} COLLECT a = doc.a RETURN a`).explain();
+      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1);
+    },
+
+    testOptimerRuleDoesNotApplyWhenSelectivityIsTooHigh: function () {
+      const c_new = db._create(collection + "2", { numberOfShards: 2 });
+
+      let docs = [];
+      // number of documents for single server n := 6000
+      // number of documents per shard for cluster n := 6000 / 3 = 2000
+      for (let l = 0; l < 6000; l++) {
+        docs.push({ a: l % 1000 }); // number of different values k = 1000
+      }
+      c_new.save(docs);
+      c_new.ensureIndex({ type: "persistent", fields: ["a"] });
+      waitForEstimatorSync();
+
+      // for optimizer rule to be applied k < n / log n
+      // single server k < 263
+      // cluster k < 689
+
+      // k := 1000 distinct values, optimizer rule does not apply
+      let explain = db._createStatement(`FOR doc IN ${c_new.name()} COLLECT a = doc.a RETURN a`).explain();
+      assertFalse(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1);
     },
 
     testCollectOptions: function () {

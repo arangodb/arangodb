@@ -18,6 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+#include "Cluster/ServerState.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -36,6 +37,7 @@
 #include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
+#include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -152,16 +154,35 @@ bool selectivityIsLowEnough(IndexNode const& in) {
   // assume there are n documents in the collection and we have
   // k distinct features. A linear search is in O(n) while a distinct scan
   // requires O(k log n). So checking for k log n < n, it follows
-  // k / n < 1 / log n, where k / n is precisely the selectivity estimate.
-  double selectivity = index->selectivityEstimate();
+  // k / n < 1 / log n.
+  // We cannot easily know the number of distinct features k, but we know the
+  // index selectivity estimate k_index / n, which is an upper bound for k / n
+  // because the distinct fields for the collect need to be a prefix of the
+  // index fields.
+  double index_selectivity = index->selectivityEstimate();
   auto numberOfItems = in.estimateCost().estimatedNrItems;
 
-  double const requiredSelectivity = 1. / log(numberOfItems);
+  double requiredSelectivity;
+  if (ServerState::instance()->isSingleServer()) {
+    requiredSelectivity = 1. / log(numberOfItems);
+  } else {
+    // in cluster mode, we use the same equation as an approximation, although
+    // actually
+    // 1. each shard has its own selectivity estimate (the selectivity estimate
+    // used here is an average over all shards)
+    // 2. each shard includes a different number of documents (depending on the
+    // sharding strategy used)
+    // TODO compare the total costs of executing the optimized vs. the
+    // non-optimized execution node, which involves getting the selectivity
+    // estimate of each shard separately
+    requiredSelectivity =
+        1. / log(numberOfItems / index->collection().numberOfShards());
+  }
 
-  if (selectivity > requiredSelectivity) {
+  if (index_selectivity > requiredSelectivity) {
     LOG_RULE << "IndexNode " << in.id()
              << " not eligible - selectivity is too high, actual = "
-             << selectivity << " max allowed = " << requiredSelectivity;
+             << index_selectivity << " max allowed = " << requiredSelectivity;
     return false;
   }
 

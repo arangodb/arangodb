@@ -32,83 +32,226 @@ namespace std_coro = std;
 #endif
 #include <optional>
 
+#include "Async/context.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Promise.h"
 #include "Try.h"
 #include "Utils/ExecContext.h"
 
-/// This file contains helper classes and tools for coroutines. We use
-/// coroutines for asynchronous operations. Every function, method or
-/// closure which contains at least one of the keywords
-///  - co_await
-///  - co_yield
-///  - co_return
-/// is a coroutine and is thus compiled differently by the C++ compiler
-/// than normal. Essentially, the compiler creates a state machine for
-/// each such functions. All instances of co_await and co_yield are potential
-/// suspension points. The code before and after a co_await/co_yield can
-/// be executed by different threads!
-/// The return type of a coroutine plays a very special role. For us, it
-/// will usually be `Future<T>` for some type T. The code in this file
-/// uses this fact and essentially implements the magic for coroutines
-/// by providing a few helper classes. See below for details.
-
-/// See below at (*) for an explanation why we need this class
-/// `FutureAwaitable` here!
-
-namespace arangodb::futures {
-template<typename T>
-class Future;
+/// This file contains helper classes and tools for coroutines.
 
 template<typename T>
-struct FutureAwaitable {
-  [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
-  bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
-    // returning false resumes `coro`
-    _execContext = ExecContext::currentAsShared();
-    std::move(_future).thenFinal(
-        [coro, this](futures::Try<T>&& result) mutable noexcept {
-          _result = std::move(result);
-          if (_counter.fetch_sub(1) == 1) {
-            ExecContextScope exec(_execContext);
-            coro.resume();
-          }
-        });
-    return _counter.fetch_sub(1) != 1;
+struct future_promise;
+
+/**
+   Promise type for a future coroutine
+
+   The type holds two pieces of data:
+   - first an `arangodb::futures::Promise<T>` (not to be confused with the
+     promise_type!), and
+   - second an `arangodb::futures::Try<T>`
+   After all, we want that the coroutine "returns" an empty `Future<T>`
+   when it suspends, and it is supposed to set the return value (or
+   exception) via the corresponding `Promise<T>` object to trigger
+   potential callbacks which are attached to the Future<T>.
+ */
+template<typename T>
+struct future_promise_base {
+  using promise_type = future_promise<T>;
+
+  future_promise_base(std::source_location loc)
+      : promise{std::move(loc)}, context{} {
+    *arangodb::async_registry::get_current_coroutine() = {promise.id().value()};
   }
-  auto await_resume() -> T { return std::move(_result.value().get()); }
-  explicit FutureAwaitable(Future<T> fut) : _future(std::move(fut)) {}
+  ~future_promise_base() {}
 
- private:
-  std::atomic_uint8_t _counter{2};
-  Future<T> _future;
-  std::optional<futures::Try<T>> _result;
-  std::shared_ptr<ExecContext const> _execContext;
+  auto initial_suspend() noexcept {
+    promise.update_state(arangodb::async_registry::State::Running);
+    return std_coro::suspend_never{};
+  }
+  auto final_suspend() noexcept {
+    // TODO use symmetric transfer here
+    struct awaitable {
+      bool await_ready() noexcept { return false; }
+      bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
+        _promise->context.set();
+        // we have to destroy the coroutine frame before
+        // we resolve the promise
+        _promise->promise.setTry(std::move(_promise->result));
+        return false;
+      }
+      void await_resume() noexcept {}
+
+      promise_type* _promise;
+    };
+
+    return awaitable{static_cast<promise_type*>(this)};
+  }
+
+  template<typename U>
+  auto await_transform(
+      U&& co_awaited_expression,
+      std::source_location loc = std::source_location::current()) noexcept {
+    using inner_awaitable_type = decltype(arangodb::get_awaitable_object(
+        std::forward<U>(co_awaited_expression)));
+
+    struct awaitable {
+      bool await_ready() { return inner_awaitable.await_ready(); }
+      auto await_suspend(std::coroutine_handle<> handle) {
+        outer_promise->promise.update_state(
+            arangodb::async_registry::State::Suspended);
+        outer_promise->context.set();
+        return inner_awaitable.await_suspend(handle);
+      }
+      auto await_resume() {
+        auto old_state = outer_promise->promise.update_state(
+            arangodb::async_registry::State::Running);
+        if (old_state.has_value() &&
+            old_state.value() == arangodb::async_registry::State::Suspended) {
+          outer_promise->context.update();
+        }
+        myContext.set();
+        return inner_awaitable.await_resume();
+      }
+
+      promise_type* outer_promise;
+      inner_awaitable_type inner_awaitable;
+      arangodb::Context myContext;
+    };
+
+    // update promises in registry
+    if constexpr (arangodb::CanUpdateRequester<U>) {
+      co_awaited_expression.update_requester(promise.id());
+    }
+    promise.update_source_location(std::move(loc));
+
+    return awaitable{.outer_promise = static_cast<promise_type*>(this),
+                     .inner_awaitable = arangodb::get_awaitable_object(
+                         std::forward<U>(co_awaited_expression)),
+                     .myContext = arangodb::Context{}};
+  }
+
+  auto get_return_object() -> arangodb::futures::Future<T> {
+    return promise.getFuture();
+  }
+
+  auto unhandled_exception() noexcept {
+    result.set_exception(std::current_exception());
+    context.set();
+  }
+
+  arangodb::futures::Promise<T> promise;
+  arangodb::futures::Try<T> result;
+  arangodb::Context context;
 };
 
-/// See below at (*) for an explanation why we need this operator co_await
-/// here!
+template<typename T>
+struct future_promise : future_promise_base<T> {
+  future_promise(std::source_location loc = std::source_location::current())
+      : future_promise_base<T>(std::move(loc)) {}
+  auto return_value(
+      T const& t,
+      std::source_location loc = std::source_location::
+          current()) noexcept(std::is_nothrow_copy_constructible_v<T>) {
+    static_assert(std::is_copy_constructible_v<T>);
+    future_promise_base<T>::promise.update_state(
+        arangodb::async_registry::State::Resolved);
+    future_promise_base<T>::promise.update_source_location(std::move(loc));
+    future_promise_base<T>::result.emplace(t);
+  }
 
+  auto return_value(
+      T&& t, std::source_location loc = std::source_location::
+                 current()) noexcept(std::is_nothrow_move_constructible_v<T>) {
+    static_assert(std::is_move_constructible_v<T>);
+    future_promise_base<T>::promise.update_state(
+        arangodb::async_registry::State::Resolved);
+    future_promise_base<T>::promise.update_source_location(std::move(loc));
+    future_promise_base<T>::result.emplace(std::move(t));
+  }
+};
+
+template<>
+struct future_promise<arangodb::futures::Unit>
+    : future_promise_base<arangodb::futures::Unit> {
+  future_promise(std::source_location loc = std::source_location::current())
+      : future_promise_base<arangodb::futures::Unit>(std::move(loc)) {}
+  auto return_void(
+      std::source_location loc = std::source_location::current()) noexcept {
+    promise.update_state(arangodb::async_registry::State::Resolved);
+    promise.update_source_location(std::move(loc));
+    result.emplace();
+  }
+};
+
+/**
+   With this definition, Future<T> can be used as a coroutine
+ */
+template<typename T, typename... Args>
+struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
+  using promise_type = future_promise<T>;
+};
+
+/**
+   With this definition, Future<arangodb::futures::Unit> can be used as a
+   coroutine
+ */
+template<typename... Args>
+struct std_coro::coroutine_traits<
+    arangodb::futures::Future<arangodb::futures::Unit>, Args...> {
+  using promise_type = future_promise<arangodb::futures::Unit>;
+};
+
+namespace arangodb::futures {
+
+/**
+   Be able to call co_await on a future
+ */
 template<typename T>
 auto operator co_await(Future<T>&& f) noexcept {
-  return FutureAwaitable<T>{std::move(f)};
+  struct FutureAwaitable {
+    [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
+    bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+      std::move(_future).thenFinal(
+          [coro, this](futures::Try<T>&& result) mutable noexcept {
+            _result = std::move(result);
+            if (_counter.fetch_sub(1) == 1) {
+              coro.resume();
+            }
+          });
+      // returning false resumes `coro`
+      return _counter.fetch_sub(1) != 1;
+    }
+    auto await_resume() -> T { return std::move(_result.value().get()); }
+    explicit FutureAwaitable(Future<T> fut) : _future(std::move(fut)) {}
+
+   private:
+    std::atomic_uint8_t _counter{2};
+    Future<T> _future;
+    std::optional<futures::Try<T>> _result;
+  };
+
+  return FutureAwaitable{std::move(f)};
 }
 
+/**
+   Be able to call co_await on some transformation of a future
+
+   Transformations are defined below
+ */
 template<typename T, typename F>
 struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
-    // returning false resumes `coro`
-    _execContext = ExecContext::currentAsShared();
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) noexcept {
           _result = F::operator()(std::move(result));
           if (_counter.fetch_sub(1) == 1) {
-            ExecContextScope exec(_execContext);
             coro.resume();
           }
         });
+    // returning false resumes `coro`
     return _counter.fetch_sub(1) != 1;
   }
   using ResultType = std::invoke_result_t<F, futures::Try<T>&&>;
@@ -123,7 +266,6 @@ struct FutureTransformAwaitable : F {
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<ResultType> _result;
-  std::shared_ptr<ExecContext const> _execContext;
 };
 
 template<typename T>
@@ -154,269 +296,4 @@ auto asResult(Future<ResultT<T>>&& f) noexcept {
         return basics::catchToResult([&] { return res.get(); });
       }};
 }
-
 }  // namespace arangodb::futures
-
-/// For every coroutine, there must be a so-called `promise_type`, which
-/// is a helper class providing a few methods to configure the behaviour
-/// of the coroutine. This can either be a member type called `promise_type`
-/// of the return type of the coroutine, or, as in our case, it is determined
-/// using the `std_coro::coroutine_traits` template with template parameters
-/// using the return type (see
-///   https://en.cppreference.com/w/cpp/language/coroutines
-/// under "Promise") and then some. Since our return type for coroutines
-/// is `arangodb::futures::Future<T>`, we specialize this template here
-/// to configure our coroutines (for an explanation see below the class):
-
-template<typename T, typename... Args>
-struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
-  struct promise_type {
-    // For some reason, non-maintainer compilation fails with a linker error
-    // if these are missing or defaulted.
-    promise_type(std::source_location loc = std::source_location::current())
-        : promise{std::move(loc)},
-          requester{*arangodb::async_registry::get_current_coroutine()} {
-      *arangodb::async_registry::get_current_coroutine() = {promise.id()};
-    }
-    ~promise_type() {}
-
-    arangodb::futures::Promise<T> promise;
-    arangodb::futures::Try<T> result;
-    arangodb::async_registry::Requester requester;
-
-    auto initial_suspend() noexcept {
-      promise.update_state(arangodb::async_registry::State::Running);
-      return std_coro::suspend_never{};
-    }
-    auto final_suspend() noexcept {
-      // TODO use symmetric transfer here
-      struct awaitable {
-        bool await_ready() noexcept { return false; }
-        bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
-          *arangodb::async_registry::get_current_coroutine() =
-              _promise->requester;
-          // we have to destroy the coroutine frame before
-          // we resolve the promise
-          _promise->promise.setTry(std::move(_promise->result));
-          return false;
-        }
-        void await_resume() noexcept {}
-
-        promise_type* _promise;
-      };
-
-      return awaitable{this};
-    }
-
-    auto get_return_object() -> arangodb::futures::Future<T> {
-      return promise.getFuture();
-    }
-
-    auto return_value(
-        T const& t,
-        std::source_location loc = std::source_location::
-            current()) noexcept(std::is_nothrow_copy_constructible_v<T>) {
-      static_assert(std::is_copy_constructible_v<T>);
-      promise.update_state(arangodb::async_registry::State::Resolved);
-      promise.update_source_location(std::move(loc));
-      result.emplace(t);
-    }
-
-    auto return_value(
-        T&& t,
-        std::source_location loc = std::source_location::
-            current()) noexcept(std::is_nothrow_move_constructible_v<T>) {
-      static_assert(std::is_move_constructible_v<T>);
-      promise.update_state(arangodb::async_registry::State::Resolved);
-      promise.update_source_location(std::move(loc));
-      result.emplace(std::move(t));
-    }
-
-    auto unhandled_exception() noexcept {
-      result.set_exception(std::current_exception());
-      *arangodb::async_registry::get_current_coroutine() = requester;
-    }
-
-    template<typename U>
-    auto await_transform(
-        U&& co_awaited_expression,
-        std::source_location loc = std::source_location::current()) noexcept {
-      using inner_awaitable_type = decltype(arangodb::get_awaitable_object(
-          std::forward<U>(co_awaited_expression)));
-
-      struct awaitable {
-        bool await_ready() { return inner_awaitable.await_ready(); }
-        auto await_suspend(std::coroutine_handle<> handle) {
-          *arangodb::async_registry::get_current_coroutine() =
-              outer_promise->requester;
-          outer_promise->promise.update_state(
-              arangodb::async_registry::State::Suspended);
-          return inner_awaitable.await_suspend(handle);
-        }
-        auto await_resume() {
-          auto old_state = outer_promise->promise.update_state(
-              arangodb::async_registry::State::Running);
-          if (old_state.has_value() &&
-              old_state.value() == arangodb::async_registry::State::Suspended) {
-            outer_promise->requester =
-                *arangodb::async_registry::get_current_coroutine();
-          }
-          *arangodb::async_registry::get_current_coroutine() = {
-              outer_promise->promise.id()};
-          return inner_awaitable.await_resume();
-        }
-
-        promise_type* outer_promise;
-        inner_awaitable_type inner_awaitable;
-      };
-
-      // update promises in registry
-      if constexpr (arangodb::CanUpdateRequester<U>) {
-        co_awaited_expression.update_requester({promise.id()});
-      }
-      promise.update_source_location(std::move(loc));
-
-      return awaitable{this, arangodb::get_awaitable_object(
-                                 std::forward<U>(co_awaited_expression))};
-    }
-  };
-};
-
-/// (*) Explanation for the details:
-/// The `promise_type` holds two pieces of data:
-///  - first an `arangodb::futures::Promise<T>` (not to be confused with the
-///    promise_type!), and
-///  - second an `arangodb::futures::Try<T>`
-/// After all, we want that the coroutine "returns" an empty `Future<T>`
-/// when it suspends, and it is supposed to set the return value (or
-/// exception) via the corresponding `Promise<T>` object to trigger
-/// potential callbacks which are attached to the Future<T>.
-/// So how does this all work?
-/// When the coroutine is first called an object of type `promise_type`
-/// is contructed, which constructs its member `promise` of type
-/// `Promise<T>`. Then, early in the life of the coroutine, the method
-/// `get_return_object` is called, which builds an object of type
-/// `Future<T>` from the `promise` member, so that it is associated with
-/// the `promise` member. This is what will be returned when the coroutine
-/// is first suspended.
-/// Since `initial_suspend` returns `std_coro::suspend_never{}` no
-/// suspension happens before the first code of the coroutine is run.
-/// When the coroutine reaches a `co_await`, the expression behind it is
-/// first evaluated. It is then the "awaitable" object (unless there is
-/// a method `await_transform` in the current coroutines promise object,
-/// which we haven't). In most cases, this will be another `Future<T'>`
-/// which is returned from another coroutine.
-/// The "awaitable" is now transformed to an "awaiter". This is done by
-/// means of an `operator co_await` defined earlier in this file. It
-/// essentially wraps our `Future<T'>` into a `FutureAwaitable` class
-/// also defined above.
-/// The C++ coroutine framework will then cal methods on the "awaiter"
-/// for events to unfold: First it calls `await_ready` to see if we have
-/// to suspend after all. We always return `false` there.
-/// Then it calls `await_suspend` to suspend and later `await_resume` to
-/// resume. The `FutureAwaitable` class essentially attaches a closure
-/// to the `Future<T'>` which resumes the coroutine.
-
-/// The following is the version for return type `Future<Unit>`,
-/// corresponding to coroutines which return nothing. The differences
-/// are purely technical (`return_void` instead of `return_value`,
-/// basically).
-
-template<typename... Args>
-struct std_coro::coroutine_traits<
-    arangodb::futures::Future<arangodb::futures::Unit>, Args...> {
-  struct promise_type {
-    arangodb::futures::Promise<arangodb::futures::Unit> promise;
-    arangodb::futures::Try<arangodb::futures::Unit> result;
-    arangodb::async_registry::Requester requester;
-
-    promise_type(std::source_location loc = std::source_location::current())
-        : promise{std::move(loc)},
-          requester{*arangodb::async_registry::get_current_coroutine()} {
-      *arangodb::async_registry::get_current_coroutine() = {promise.id()};
-    }
-    auto initial_suspend() noexcept {
-      promise.update_state(arangodb::async_registry::State::Running);
-      return std_coro::suspend_never{};
-    }
-    auto final_suspend() noexcept {
-      // TODO use symmetric transfer here
-      struct awaitable {
-        bool await_ready() noexcept { return false; }
-        bool await_suspend(std::coroutine_handle<promise_type> self) noexcept {
-          *arangodb::async_registry::get_current_coroutine() =
-              _promise->requester;
-          // we have to destroy the coroutine frame before
-          // we resolve the promise
-          _promise->promise.setTry(std::move(_promise->result));
-          return false;
-        }
-        void await_resume() noexcept {}
-
-        promise_type* _promise;
-      };
-
-      return awaitable{this};
-    }
-
-    auto get_return_object()
-        -> arangodb::futures::Future<arangodb::futures::Unit> {
-      return promise.getFuture();
-    }
-
-    auto return_void(
-        std::source_location loc = std::source_location::current()) noexcept {
-      promise.update_state(arangodb::async_registry::State::Resolved);
-      promise.update_source_location(std::move(loc));
-      result.emplace();
-    }
-
-    auto unhandled_exception() noexcept {
-      result.set_exception(std::current_exception());
-      *arangodb::async_registry::get_current_coroutine() = requester;
-    }
-
-    template<typename U>
-    auto await_transform(
-        U&& co_awaited_expression,
-        std::source_location loc = std::source_location::current()) noexcept {
-      using inner_awaitable_type = decltype(arangodb::get_awaitable_object(
-          std::forward<U>(co_awaited_expression)));
-
-      struct awaitable {
-        bool await_ready() { return inner_awaitable.await_ready(); }
-        auto await_suspend(std::coroutine_handle<> handle) {
-          *arangodb::async_registry::get_current_coroutine() =
-              outer_promise->requester;
-          outer_promise->promise.update_state(
-              arangodb::async_registry::State::Suspended);
-          return inner_awaitable.await_suspend(handle);
-        }
-        auto await_resume() {
-          auto old_state = outer_promise->promise.update_state(
-              arangodb::async_registry::State::Running);
-          if (old_state.has_value() &&
-              old_state.value() == arangodb::async_registry::State::Suspended) {
-            outer_promise->requester =
-                *arangodb::async_registry::get_current_coroutine();
-          }
-          *arangodb::async_registry::get_current_coroutine() = {
-              outer_promise->promise.id()};
-          return inner_awaitable.await_resume();
-        }
-
-        promise_type* outer_promise;
-        inner_awaitable_type inner_awaitable;
-      };
-
-      // update promises in registry
-      if constexpr (arangodb::CanUpdateRequester<U>) {
-        co_awaited_expression.update_requester({promise.id()});
-      }
-      promise.update_source_location(std::move(loc));
-
-      return awaitable{this, arangodb::get_awaitable_object(
-                                 std::forward<U>(co_awaited_expression))};
-    }
-  };
-};
