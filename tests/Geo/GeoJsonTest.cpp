@@ -182,6 +182,36 @@ TEST_F(InvalidGeoJSONInputTest, bad_point_too_many_coordinates) {
     coords->add(VPackValue(0.0));
     coords->add(VPackValue(0.0));
     coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));  // 4 coordinates - this should be invalid
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::POINT, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_invalid_coordinate_count) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::POINT, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parsePoint(vpack, point).is(TRI_ERROR_BAD_PARAMETER));
+}
+
+TEST_F(InvalidGeoJSONInputTest, bad_point_four_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(0.0));
   }
   VPackSlice vpack = builder.slice();
 
@@ -261,12 +291,14 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipoint_extra_numbers_in_bad_points) {
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
     {
       velocypack::ArrayBuilder point(&builder);
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
   }
   VPackSlice vpack = builder.slice();
@@ -326,12 +358,14 @@ TEST_F(InvalidGeoJSONInputTest, bad_linestring_extra_numbers_in_bad_points) {
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
     {
       velocypack::ArrayBuilder point(&builder);
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
   }
   VPackSlice vpack = builder.slice();
@@ -411,12 +445,14 @@ TEST_F(InvalidGeoJSONInputTest,
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
     {
       velocypack::ArrayBuilder point(&builder);
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
   }
   VPackSlice vpack = builder.slice();
@@ -486,12 +522,14 @@ TEST_F(InvalidGeoJSONInputTest, bad_loop_extra_numbers_in_bad_points) {
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
     {
       velocypack::ArrayBuilder point(&builder);
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
       point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));  // 4 coordinates - invalid
     }
   }
   VPackSlice vpack = builder.slice();
@@ -626,24 +664,28 @@ TEST_F(InvalidGeoJSONInputTest, bad_polygon_extra_numbers_in_bad_points) {
         point->add(VPackValue(0.0));
         point->add(VPackValue(0.0));
         point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));  // 4 coordinates - invalid
       }
       {
         velocypack::ArrayBuilder point(&builder);
         point->add(VPackValue(1.0));
         point->add(VPackValue(0.0));
         point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));  // 4 coordinates - invalid
       }
       {
         velocypack::ArrayBuilder point(&builder);
         point->add(VPackValue(0.0));
         point->add(VPackValue(1.0));
         point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));  // 4 coordinates - invalid
       }
       {
         velocypack::ArrayBuilder point(&builder);
         point->add(VPackValue(0.0));
         point->add(VPackValue(0.0));
         point->add(VPackValue(0.0));
+        point->add(VPackValue(0.0));  // 4 coordinates - invalid
       }
     }
   }
@@ -973,24 +1015,28 @@ TEST_F(InvalidGeoJSONInputTest, bad_multipolygon_extra_numbers_in_bad_points) {
           point->add(VPackValue(0.0));
           point->add(VPackValue(0.0));
           point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));  // 4 coordinates - invalid
         }
         {
           velocypack::ArrayBuilder point(&builder);
           point->add(VPackValue(1.0));
           point->add(VPackValue(0.0));
           point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));  // 4 coordinates - invalid
         }
         {
           velocypack::ArrayBuilder point(&builder);
           point->add(VPackValue(0.0));
           point->add(VPackValue(1.0));
           point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));  // 4 coordinates - invalid
         }
         {
           velocypack::ArrayBuilder point(&builder);
           point->add(VPackValue(0.0));
           point->add(VPackValue(0.0));
           point->add(VPackValue(0.0));
+          point->add(VPackValue(0.0));  // 4 coordinates - invalid
         }
       }
     }
@@ -1228,6 +1274,40 @@ TEST_F(ValidGeoJSONInputTest, valid_point) {
     velocypack::ArrayBuilder coords(&builder, "coordinates");
     coords->add(VPackValue(0.0));
     coords->add(VPackValue(1.0));
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::POINT, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parsePoint(vpack, point).ok());
+  ASSERT_EQ(0.0, point.lng().degrees());
+  ASSERT_EQ(1.0, point.lat().degrees());
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_point_with_z_coordinate) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(1.0));
+    coords->add(VPackValue(100.0));  // Z coordinate (elevation)
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::POINT, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parsePoint(vpack, point).ok());
+  ASSERT_EQ(0.0, point.lng().degrees());
+  ASSERT_EQ(1.0, point.lat().degrees());
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_point_with_z_coordinate_negative) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Point"));
+    velocypack::ArrayBuilder coords(&builder, "coordinates");
+    coords->add(VPackValue(0.0));
+    coords->add(VPackValue(1.0));
+    coords->add(VPackValue(-100.0));  // Negative Z coordinate
   }
   VPackSlice vpack = builder.slice();
 
@@ -2196,6 +2276,48 @@ TEST_F(ValidGeoJSONInputTest, NestedHoles) {
   VPackSlice polyS = velocypack::Slice(poly->data());
   auto r = geo::json::parseRegion(polyS, shape, false);
   ASSERT_TRUE(r.ok()) << r.errorMessage();
+}
+
+TEST_F(ValidGeoJSONInputTest, valid_linestring_with_z_coordinates) {
+  {
+    velocypack::ObjectBuilder object(&builder);
+    object->add("type", VPackValue("Linestring"));
+    velocypack::ArrayBuilder points(&builder, "coordinates");
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(100.0));  // Z coordinate
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(200.0));  // Z coordinate
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(300.0));  // Z coordinate
+    }
+    {
+      velocypack::ArrayBuilder point(&builder);
+      point->add(VPackValue(0.0));
+      point->add(VPackValue(1.0));
+      point->add(VPackValue(400.0));  // Z coordinate
+    }
+  }
+  VPackSlice vpack = builder.slice();
+
+  ASSERT_EQ(geo::json::Type::LINESTRING, geo::json::type(vpack));
+  ASSERT_TRUE(geo::json::parseLinestring(vpack, line).ok());
+
+  ASSERT_EQ(4, line.num_vertices());
+  ASSERT_EQ(S2LatLng::FromDegrees(0.0, 0.0).ToPoint(), line.vertex(0));
+  ASSERT_EQ(S2LatLng::FromDegrees(0.0, 1.0).ToPoint(), line.vertex(1));
+  ASSERT_EQ(S2LatLng::FromDegrees(1.0, 1.0).ToPoint(), line.vertex(2));
+  ASSERT_EQ(S2LatLng::FromDegrees(1.0, 0.0).ToPoint(), line.vertex(3));
 }
 
 }  // namespace arangodb

@@ -2,7 +2,7 @@
  "info": {
   "description": "ArangoDB REST API Interface",
   "title": "ArangoDB",
-  "version": "3.12.5-devel"
+  "version": "3.12.6-devel"
  },
  "openapi": "3.1.0",
  "paths": {

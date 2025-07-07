@@ -227,10 +227,10 @@ ArangoDB 3 (https://www.arangodb.com)
   or JavaScript extensions.
 
 First Steps with ArangoDB:
-  https://www.arangodb.com/docs/stable/getting-started.html
+  https://docs.arangodb.com/stable/get-started/
 
 Upgrading ArangoDB:
-  https://www.arangodb.com/docs/stable/upgrading.html
+  https://docs.arangodb.com/stable/operations/upgrading/
 
 Upgrading ArangoDB database files:
   > /etc/init.d/arangodb3 upgrade

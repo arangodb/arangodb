@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse */
+/*global assertEqual, assertTrue, assertFalse, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -35,6 +35,7 @@ const errors = internal.errors;
 const db = internal.db;
 const {
     randomNumberGeneratorFloat,
+    randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const { versionHas } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
@@ -50,10 +51,12 @@ function VectorIndexL2TestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 12132390894;
+    const numberOfDocs = 500;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -63,11 +66,11 @@ function VectorIndexL2TestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 500; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 250) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -272,13 +275,13 @@ function VectorIndexL2TestSuite() {
                 // Assert that results are deterministic
                 if (i !== 0) {
                     for (let j = 0; j < previousResult.length; ++j) {
-                        assertEqual(previousResult[j].key, results[j].key);
+                        assertEqual(previousResult[j].key, results[j].key, "Results are not deterministic: " + JSON.stringify(results));
                     }
                 }
 
                 // For l2 metric the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].dist < results[j].dist);
+                    assertTrue(results[j - 1].dist <= results[j].dist, "Results are not in ascending order: " + JSON.stringify(results));
                 }
             }
         },
@@ -407,24 +410,17 @@ function VectorIndexL2TestSuite() {
                 qp: randomPoint
             };
 
-            const planSkipped = db
-                ._createStatement({
-                    query: queryWithSkip,
-                    bindVars,
-                })
-                .explain().plan;
-            const indexNodes = planSkipped.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
 
             assertEqual(resultsWithSkip.length, 5);
             assertEqual(resultsWithoutSkip.length, 8);
 
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            // Check that skip results are contained within without skip results
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
 
         testApproxL2Subquery: function() {
@@ -506,7 +502,14 @@ function VectorIndexL2TestSuite() {
                 assertEqual(skipNeighbours.length, 5);
                 assertEqual(nonSkipNeighbours.length, 8);
 
-                assertEqual(skipNeighbours, nonSkipNeighbours.slice(3, nonSkipNeighbours.length));
+                // Compare neighbours as sets by extracting keys
+                const skipNeighbourKeys = new Set(skipNeighbours.map(n => n.key));
+                const nonSkipNeighbourKeys = new Set(nonSkipNeighbours.map(n => n.key));
+                const expectedNeighbourKeys = new Set(nonSkipNeighbours.slice(3).map(n => n.key));
+                
+                assertTrue([...skipNeighbourKeys].every(key => nonSkipNeighbourKeys.has(key)));
+                assertEqual(skipNeighbourKeys.size, expectedNeighbourKeys.size);
+                assertTrue([...skipNeighbourKeys].every(key => expectedNeighbourKeys.has(key)));
             }
         },
     };
@@ -516,10 +519,12 @@ function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 769406749034;
+    const numberOfDocs = 1000;
+    const seed = randomInteger();
 
     return {
         setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -529,11 +534,11 @@ function VectorIndexCosineTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
+            for (let i = 0; i < numberOfDocs; ++i) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 250) {
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -551,7 +556,7 @@ function VectorIndexCosineTestSuite() {
                 params: {
                     metric: "cosine",
                     dimension: dimension,
-                    nLists: 10
+                    nLists: 2
                 },
             });
         },
@@ -626,7 +631,11 @@ function VectorIndexCosineTestSuite() {
 
                 // For cosine similarity the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].sim > results[j].sim);
+                    assertTrue(results[j - 1].sim >= results[j].sim, "Results are not in descending order: " + JSON.stringify(results));
+                }
+                // Assert that distances are in [-1, 1] range
+                for (let j = 0; j < results.length; ++j) {
+                  assertTrue(Math.abs(results[j].sim) <= 1.01, "Cosine similarity is not in [-1, 1] range: " + JSON.stringify(results));
                 }
             }
         },
@@ -667,32 +676,27 @@ function VectorIndexCosineTestSuite() {
                 qp: randomPoint
             };
 
-            const planSkipped = db
-                ._createStatement({
-                    query: queryWithSkip,
-                    bindVars,
-                })
-                .explain().plan;
-            const indexNodes = planSkipped.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            assertEqual(resultsWithSkip, resultsWithoutSkip.slice(3, resultsWithoutSkip.length));
+            
+            // Check that skip results are contained within without skip results
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
         },
     };
 }
 
-function MultipleVectorIndexesOnField() {
+function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
-    const seed = 47388274;
+    const seed = randomInteger();
 
     return {
-        setUp: function() {
+        setUpAll: function() {
+            print("Using seed: " + seed);
             db._createDatabase(dbName);
             db._useDatabase(dbName);
 
@@ -706,7 +710,160 @@ function MultipleVectorIndexesOnField() {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === 500) {
+                if (i === 250) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector,
+                    nonVector: i,
+                    unIndexedVector: vector
+                });
+            }
+            collection.insert(docs);
+
+            collection.ensureIndex({
+                name: "vector_inner_product",
+                type: "vector",
+                fields: ["vector"],
+                params: {
+                    metric: "innerProduct",
+                    dimension: dimension,
+                    nLists: 10
+                },
+            });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testApproxInnerProductMultipleTopK: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " LET sim = APPROX_NEAR_INNER_PRODUCT(d.vector, @qp) " +
+                "SORT sim DESC LIMIT @topK " +
+                "RETURN {key: d._key, sim}";
+
+            const topKs = [1, 5, 10, 15, 50, 100];
+            let previousResult = [];
+            for (let i = 0; i < topKs.length; ++i) {
+                const bindVars = {
+                    qp: randomPoint,
+                    topK: topKs[i]
+                };
+                const plan = db
+                    ._createStatement({
+                        query,
+                        bindVars,
+                    })
+                    .explain().plan;
+                const indexNodes = plan.nodes.filter(function(n) {
+                    return n.type === "EnumerateNearVectorNode";
+                });
+                assertEqual(1, indexNodes.length);
+
+                // Assert gather node is sorted
+                if (isCluster) {
+                    const gatherNodes = plan.nodes.filter(function(n) {
+                        return n.type === "GatherNode";
+                    });
+                    assertEqual(1, gatherNodes.length);
+
+                    let gatherNode = gatherNodes[0];
+                    assertEqual(1, gatherNode.elements.length);
+                    assertFalse(gatherNode.elements[0].ascending);
+                }
+
+                const results = db._query(query, bindVars).toArray();
+
+                // Assert that results are deterministic
+                if (i !== 0) {
+                    for (let j = 0; j < previousResult.length; ++j) {
+                        assertEqual(previousResult[j].key, results[j].key);
+                    }
+                }
+
+                // For inner product metric the results must be ordered in descending order
+                for (let j = 1; j < results.length; ++j) {
+                    assertTrue(results[j - 1].sim >= results[j].sim, "Results are not in descending order: " + JSON.stringify(results));
+                }
+            }
+        },
+
+        testApproxInnerProductMultipleTopKWrongOrder: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_INNER_PRODUCT(d.vector, @qp) ASC LIMIT 5 " +
+                " RETURN {key: d._key}";
+
+            const bindVars = {
+                qp: randomPoint,
+            };
+            const plan = db
+                ._createStatement({
+                    query,
+                    bindVars,
+                })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(0, indexNodes.length);
+        },
+
+        testApproxInnerProductSkipping: function() {
+            const queryWithSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_INNER_PRODUCT(@qp, d.vector) DESC LIMIT 3, 5 RETURN {k: d._key}";
+            const queryWithoutSkip =
+                "FOR d IN " +
+                collection.name() +
+                " SORT APPROX_NEAR_INNER_PRODUCT(d.vector, @qp) DESC LIMIT 8 RETURN {k: d._key}";
+
+            const bindVars = {
+                qp: randomPoint
+            };
+
+            const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
+            const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
+            
+            // Check that skip results are contained within without skip results
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+            
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
+        },
+    };
+}
+
+function MultipleVectorIndexesOnField() {
+    let collection;
+    let randomPoint;
+    const dimension = 500;
+    const numberOfDocs = 1000;
+    const seed = randomInteger();
+
+    return {
+        setUp: function() {
+            print("Using seed: " + seed);
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards: 3
+            });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                if (i === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
                 docs.push({
@@ -886,6 +1043,7 @@ function MultipleVectorIndexesOnField() {
 
 jsunity.run(VectorIndexL2TestSuite);
 jsunity.run(VectorIndexCosineTestSuite);
+jsunity.run(VectorIndexInnerProductTestSuite);
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();

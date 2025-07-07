@@ -200,7 +200,8 @@ template<bool Validation, bool GeoJson>
 bool parseImpl(velocypack::Slice vpack, S2LatLng& vertex) {
   TRI_ASSERT(vpack.isArray());
   velocypack::ArrayIterator jt{vpack};
-  if (Validation && ADB_UNLIKELY(jt.size() != 2)) {
+  // We ignore Z coordinate for now since it's not supported by S2
+  if (Validation && (jt.size() < 2 || jt.size() > 3)) [[unlikely]] {
     return false;
   }
   auto const first = *jt;

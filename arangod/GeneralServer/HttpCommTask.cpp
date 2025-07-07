@@ -108,6 +108,7 @@ int HttpCommTask<T>::on_message_began(llhttp_t* p) try {
   me->_shouldKeepAlive = false;
   me->_messageDone = false;
   me->_urlCorrupt = false;
+  me->_headerCorrupt = false;
 
   // acquire a new statistics entry for the request
   me->acquireRequestStatistics(1UL).SET_READ_START(TRI_microtime());
@@ -257,10 +258,12 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) {
     me->_messageDone = true;
     me->_request->parseUrl(me->_url.data(), me->_url.size());
     me->_urlCorrupt = false;
+    me->_headerCorrupt = false;
   } catch (...) {
     // the caller of this function is a C function, which doesn't know
     // exceptions. we must not let an exception escape from here.
     me->_urlCorrupt = true;
+    me->_headerCorrupt = false;
   }
   return HPE_PAUSED;
 }
@@ -272,7 +275,8 @@ HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
       _messageDone(false),
-      _urlCorrupt(false) {
+      _urlCorrupt(false),
+      _headerCorrupt(false) {
   this->_connectionStatistics.SET_HTTP();
 
   // initialize http parsing code
@@ -327,6 +331,9 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
         err = llhttp_execute(&_parser, data, datasize);
         if (err != HPE_OK) {
+          if (err == HPE_INVALID_HEADER_TOKEN) {
+            _headerCorrupt = true;
+          }
           ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
           TRI_ASSERT(diff >= 0);
           nparsed += static_cast<size_t>(diff);
@@ -343,6 +350,18 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     // And count it in the statistics:
     this->requestStatistics(1UL).ADD_RECEIVED_BYTES(nparsed);
 
+    if (_headerCorrupt) {
+      LOG_TOPIC("33324", WARN, Logger::REQUESTS)
+          << "request failed because of a corrupt header";
+      auto msgId = _request->messageId();
+      auto respContentType = _request->contentTypeResponse();
+      this->sendErrorResponse(rest::ResponseCode::BAD, respContentType, msgId,
+                              TRI_ERROR_HTTP_BAD_PARAMETER,
+                              "some header is corrupt");
+      _urlCorrupt = false;
+      _headerCorrupt = false;
+      return false;  // stop read loop
+    }
     if (_messageDone) {
       TRI_ASSERT(err == HPE_PAUSED);
       _messageDone = false;
@@ -357,6 +376,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
         processRequest();
       }
       _urlCorrupt = false;
+      _headerCorrupt = false;
       return false;  // stop read loop
     }
 
