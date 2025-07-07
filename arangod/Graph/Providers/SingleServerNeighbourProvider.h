@@ -24,6 +24,7 @@
 
 #include <s2/base/integral_types.h>
 #include "Aql/TraversalStats.h"
+#include "Basics/ResourceUsage.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -50,13 +51,31 @@ struct SingleServerNeighbourProvider {
       return sizeof(ExpansionInfo) + edgeData.size();
     }
   };
+  using NeighbourBatch = std::shared_ptr<std::vector<ExpansionInfo>>;
+  struct NeighbourCache {
+    using Neighbours =
+        containers::FlatHashMap<VertexType,       // vertex ID
+                                std::tuple<bool,  // true if all neighbours of
+                                                  // this vertex are in cache
+                                           std::vector<NeighbourBatch>>>;
 
-  // Contains the batched data we found previously on expansion:
-  using FoundVertexCache = containers::FlatHashMap<
-      VertexType,
-      std::tuple<bool,
-                 std::vector<std::shared_ptr<std::vector<ExpansionInfo>>>>>;
-  // tuple: true if this vertex in cache
+    NeighbourCache(ResourceMonitor& monitor) : _resourceMonitor{monitor} {}
+    ~NeighbourCache() { clear(); }
+    auto rearm(VertexType vertexId) -> bool;
+    auto update(NeighbourBatch const& batch, bool isLastBatch) -> void;
+    auto clear() -> void;
+    Neighbours _neighbours;
+
+    // iterator for a specific vertex (defined in _currentEntry)
+    auto next() -> std::optional<NeighbourBatch>;
+    auto hasMore() -> bool { return _finished == false; }
+    typename Neighbours::iterator _currentEntry;
+    std::optional<size_t> _currentBatchInCache =
+        0;                   // batch number in current entry
+    bool _finished = false;  // finished reading all batches of current entry
+    size_t _memoryUsageVertexCache = 0;
+    ResourceMonitor& _resourceMonitor;
+  };
 
   SingleServerNeighbourProvider(SingleServerBaseProviderOptions& opts,
                                 transaction::Methods* trx,
@@ -66,10 +85,6 @@ struct SingleServerNeighbourProvider {
   SingleServerNeighbourProvider(SingleServerNeighbourProvider&&) = default;
   SingleServerNeighbourProvider& operator=(
       SingleServerNeighbourProvider const&) = delete;
-  ~SingleServerNeighbourProvider() {
-    _resourceMonitor.decreaseMemoryUsage(_memoryUsageVertexCache);
-    _memoryUsageVertexCache = 0;
-  }
   auto next(SingleServerProvider<Step>& provider)
       -> std::shared_ptr<std::vector<ExpansionInfo>>;
   auto rearm(Step const& step) -> void;
@@ -80,15 +95,13 @@ struct SingleServerNeighbourProvider {
 
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
+
   std::optional<Step> _currentStep;
+  bool _useCache = false;
+
   size_t _rearmed = 0;
   size_t _readSomething = 0;
-  // TODO add vertex cache
-  std::optional<FoundVertexCache> _vertexCache;
-  std::optional<size_t> _currentBatchInCache = 0;
-  bool _finished = false;
-  size_t _memoryUsageVertexCache = 0;
-  ResourceMonitor& _resourceMonitor;
+  std::optional<NeighbourCache> _neighbourCache;
   arangodb::aql::TraversalStats
       _stats;  // TODO there is a problem with handing this provider a stats
                // reference, so currently it just creates a new one (which is
