@@ -353,7 +353,7 @@ AqlValue functions::Percentile(ExpressionContext* expressionContext,
   }
 
   double p = border.toDouble();
-  if (p <= 0.0 || p > 100.0) {
+  if (p < 0.0 || p > 100.0) {
     registerWarning(expressionContext, AFN,
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
     return AqlValue(AqlValueHintNull());
