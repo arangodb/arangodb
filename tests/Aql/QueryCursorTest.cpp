@@ -76,7 +76,7 @@ TEST_F(QueryCursorTest, resultCursorResultArrayIndexSingleBatch) {
       server->server(), fakeRequest.release(), fakeResponse.release(),
       registry);
 
-  testee->execute();
+  testee->executeAsync().wait();
 
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
@@ -110,7 +110,7 @@ TEST_F(QueryCursorTest, resultCursorResultArrayIndexTwoBatches) {
       server->server(), fakeRequest.release(), fakeResponse.release(),
       registry);
 
-  testee->execute();
+  testee->executeAsync().wait();
 
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
@@ -145,7 +145,7 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexSingleBatch) {
       server->server(), fakeRequest.release(), fakeResponse.release(),
       registry);
 
-  testee->execute();
+  testee->executeAsync().wait();
 
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
@@ -180,7 +180,7 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexTwoBatches) {
       server->server(), fakeRequest.release(), fakeResponse.release(),
       registry);
 
-  testee->execute();
+  testee->executeAsync().wait();
 
   fakeResponse.reset(
       dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
@@ -201,7 +201,7 @@ TEST_F(QueryCursorTest, streamingCursorResultArrayIndexTwoBatches) {
     auto restHandler = std::make_shared<arangodb::RestCursorHandler>(
         server->server(), fakeRequest.release(), fakeResponse.release(),
         registry);
-    restHandler->execute();
+    restHandler->executeAsync().wait();
     fakeResponse.reset(
         dynamic_cast<GeneralResponseMock*>(testee->stealResponse().release()));
   }

@@ -103,12 +103,17 @@ class ExecutionEngine {
   std::pair<ExecutionState, Result> initializeCursor(
       SharedAqlItemBlockPtr&& items, size_t pos);
 
+  auto executeRemoteCall(AqlCallStack const& stack, std::string const& shardId)
+      -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
+
   auto execute(AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
+ private:
   auto executeForClient(AqlCallStack const& stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
+ public:
   /// @brief whether or not initializeCursor was called
   bool initializeCursorCalled() const;
 

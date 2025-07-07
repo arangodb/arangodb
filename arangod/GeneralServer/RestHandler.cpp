@@ -25,9 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
-#include "Basics/RecursiveLocker.h"
-#include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
+#include "Basics/error.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -47,6 +46,8 @@
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
 
+#include <Agency/RestAgencyHandler.h>
+#include <Async/async.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/jwt.h>
 #include <velocypack/Exception.h>
@@ -65,11 +66,6 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
       _state(HandlerState::PREPARE),
       _trackedAsOngoingLowPrio(false),
       _lane(RequestLane::UNDEFINED),
-      _logContextScopeValues(
-          LogContext::makeValue()
-              .with<structuredParams::UrlName>(_request->fullUrl())
-              .with<structuredParams::UserName>(_request->user())
-              .share()),
       _canceled(false) {
   if (server.hasFeature<GeneralServerFeature>() &&
       server.isEnabled<GeneralServerFeature>()) {
@@ -413,70 +409,43 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
                             "of memory. Aborting.";
 }
 
-void RestHandler::runHandlerStateMachine() {
-  // _executionMutex has to be locked here
-  TRI_ASSERT(_sendResponseCallback);
+auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
+  auto fail = [&]() {
+    TRI_ASSERT(_state == HandlerState::FAILED);
+    _statistics.SET_REQUEST_END();
+    // Callback may stealStatistics!
+    _sendResponseCallback(this);
 
-  while (true) {
-    switch (_state) {
-      case HandlerState::PREPARE:
-        prepareEngine();
-        break;
+    shutdownExecute(false);
+  };
 
-      case HandlerState::EXECUTE: {
-        executeEngine(/*isContinue*/ false);
-        if (_state == HandlerState::PAUSED) {
-          shutdownExecute(false);
-          LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution " << this;
-          return;  // stop state machine
-        }
-        break;
-      }
+  auto const logScopeGuard =
+      LogContext::Accessor::ScopedValue(makeSharedLogContextValue());
 
-      case HandlerState::CONTINUED: {
-        executeEngine(/*isContinue*/ true);
-        if (_state == HandlerState::PAUSED) {
-          shutdownExecute(/*isFinalized*/ false);
-          LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
-              << "Pausing rest handler execution " << this;
-          return;  // stop state machine
-        }
-        break;
-      }
+  TRI_ASSERT(_state == HandlerState::PREPARE);
+  prepareEngine();
 
-      case HandlerState::PAUSED:
-        LOG_TOPIC("ae26f", DEBUG, Logger::COMMUNICATION)
-            << "Resuming rest handler execution " << this;
-        _state = HandlerState::CONTINUED;
-        break;
-
-      case HandlerState::FINALIZE:
-        _statistics.SET_REQUEST_END();
-
-        // shutdownExecute is noexcept
-        shutdownExecute(true);  // may not be moved down
-
-        _state = HandlerState::DONE;
-
-        // compress response if required
-        compressResponse();
-        // Callback may stealStatistics!
-        _sendResponseCallback(this);
-        break;
-
-      case HandlerState::FAILED:
-        _statistics.SET_REQUEST_END();
-        // Callback may stealStatistics!
-        _sendResponseCallback(this);
-
-        shutdownExecute(false);
-        return;
-
-      case HandlerState::DONE:
-        return;
-    }
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
   }
+  TRI_ASSERT(_state == HandlerState::EXECUTE);
+  co_await executeEngine();
+  if (_state == HandlerState::FAILED) {
+    co_return fail();
+  }
+
+  TRI_ASSERT(_state == HandlerState::FINALIZE);
+  _statistics.SET_REQUEST_END();
+
+  // shutdownExecute is noexcept
+  shutdownExecute(true);  // may not be moved down
+
+  _state = HandlerState::DONE;
+
+  // compress response if required
+  compressResponse();
+  // Callback may stealStatistics!
+  _sendResponseCallback(this);
 }
 
 // -----------------------------------------------------------------------------
@@ -495,73 +464,28 @@ void RestHandler::prepareEngine() {
     return;
   }
 
-  try {
-    prepareExecute(false);
-    _state = HandlerState::EXECUTE;
-    return;
-  } catch (Exception const& ex) {
-    handleError(ex);
-  } catch (std::exception const& ex) {
-    Exception err(TRI_ERROR_INTERNAL, ex.what());
-    handleError(err);
-  } catch (...) {
-    Exception err(TRI_ERROR_INTERNAL);
-    handleError(err);
-  }
-
-  _state = HandlerState::FAILED;
+  _state = HandlerState::EXECUTE;
 }
 
-void RestHandler::prepareExecute(bool isContinue) {
-  _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
-}
+void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 
-void RestHandler::shutdownExecute(bool isFinalized) noexcept {
-  LogContext::Current::popEntry(_logContextEntry);
-}
+// Compatibility function for old-style code that uses the
+// WAITING/wakeupHandler scheme for async execution.
+// The suspension counter is used as glue to connect a WAITING callee to a
+// coroutine caller. This method forwards the wakeup calls to it.
+// Note that notify returns true if it has resumed an awaiting coroutine, and
+// false if it just accounted for notify.
+// On the other end, wakeupHandler() returning false instructs
+// SharedQueryState::queueHandler() to reschedule before the next wakeup.
+bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
-/// Execute the rest handler state machine. Retry the wakeup,
-/// returns true if _state == PAUSED, false otherwise
-bool RestHandler::wakeupHandler() {
-  auto guard = std::unique_lock(_executionMutex);
-  auto const lockId = ++_lockOwnedById;
-  if (_state == HandlerState::PAUSED) {
-    try {
-      runHandlerStateMachine();
-    } catch (...) {
-      // There should be no exception thrown after the lock has been adopted by
-      // waitForFuture.
-      TRI_ASSERT(lockId == _lockOwnedById);
-      throw;
-    }
-    if (lockId != _lockOwnedById) {
-      guard.release();
-    }
-  }
-  return _state == HandlerState::PAUSED;
-}
-
-void RestHandler::executeEngine(bool isContinue) {
+auto RestHandler::executeEngine() -> async<void> {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
   ExecContextScope scope(
       basics::downCast<ExecContext>(_request->requestContext()));
 
   try {
-    RestStatus result = RestStatus::DONE;
-    if (isContinue) {
-      // only need to run prepareExecute() again when we are continuing
-      // otherwise prepareExecute() was already run in the PREPARE phase
-      prepareExecute(true);
-      result = continueExecute();
-    } else {
-      result = execute();
-    }
-
-    if (result == RestStatus::WAITING) {
-      _state = HandlerState::PAUSED;  // wait for someone to continue the state
-                                      // machine
-      return;
-    }
+    co_await executeAsync();
 
     if (_response == nullptr) {
       Exception err(TRI_ERROR_INTERNAL, "no response received from handler");
@@ -569,7 +493,7 @@ void RestHandler::executeEngine(bool isContinue) {
     }
 
     _state = HandlerState::FINALIZE;
-    return;
+    co_return;
   } catch (Exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("11928", WARN, arangodb::Logger::FIXME)
@@ -750,45 +674,6 @@ void RestHandler::generateError(arangodb::Result const& r) {
   generateError(code, r.errorNumber(), r.errorMessage());
 }
 
-RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
-  return waitForFuture(
-      std::move(f).thenValue([](futures::Unit) { return RestStatus::DONE; }));
-}
-
-RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
-  TRI_ASSERT(_executionMutex.is_locked());
-  if (f.isReady()) {             // fast-path out
-    f.result().throwIfFailed();  // just throw the error upwards
-    return f.waitAndGet();
-  }
-  // We adopt the _executionMutex. Setting this informs the function that locked
-  // it (either runHandler or wakeupHandler) about that.
-  auto const lockId = ++_lockOwnedById;
-  auto guard = std::unique_lock(_executionMutex, std::adopt_lock);
-  TRI_ASSERT(_executionCounter == 0);
-  _executionCounter = 2;
-  std::move(f).thenFinal(withLogContext(
-      [self = shared_from_this(), guard = std::move(guard),
-       lockId](futures::Try<RestStatus>&& t) mutable noexcept -> void {
-        TRI_ASSERT(lockId == self->_lockOwnedById);
-        if (t.hasException()) {
-          self->handleExceptionPtr(std::move(t).exception());
-          self->_followupRestStatus = RestStatus::DONE;
-        } else {
-          self->_followupRestStatus = t.get();
-          if (t.get() == RestStatus::WAITING) {
-            return;  // rest handler will be woken up externally
-          }
-        }
-        if (--self->_executionCounter == 0) {
-          // the wakeup handler will take the lock itself.
-          guard.unlock();
-          self->wakeupHandler();
-        }
-      }));
-  return --_executionCounter == 0 ? _followupRestStatus : RestStatus::WAITING;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -798,27 +683,55 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
+// Fallback implementation for old RestHandlers that implement execute() and
+// continueExecute() instead of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
+  auto state = execute();
+
+  // After ensuring that no execute() implementation still returns WAITING,
+  // this can be removed.
+  if (state == RestStatus::WAITING) {
+    co_await waitingFunToCoro(
+        std::bind(&std::decay_t<decltype(*this)>::continueExecute));
+  }
+}
+
+RestStatus RestHandler::execute() {
+  TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-RestStatus RestHandler::execute() { return waitForFuture(executeAsync()); }
-
 void RestHandler::runHandler(
     std::function<void(rest::RestHandler*)> responseCallback) {
-  TRI_ASSERT(_state == HandlerState::PREPARE);
   _sendResponseCallback = std::move(responseCallback);
-  auto guard = std::unique_lock(_executionMutex);
-  auto const lockId = ++_lockOwnedById;
-  try {
-    runHandlerStateMachine();
-  } catch (...) {
-    // There should be no exception thrown after the lock has been adopted by
-    // waitForFuture.
-    TRI_ASSERT(lockId == _lockOwnedById);
-    throw;
-  }
-  if (lockId != _lockOwnedById) {
-    guard.release();
-  }
+
+  runHandlerStateMachine().
+      // Swallow all exceptions. It would be desirable to guarantee no unhandled
+      // exceptions reach this point; so let's at least die in maintainer mode
+      // for now.
+      thenFinal([self = shared_from_this()](auto&& tryResult) noexcept {
+        try {
+          std::move(tryResult).throwIfFailed();
+        } catch (basics::Exception const& exception) {
+          LOG_TOPIC("e0b25", ERR, Logger::FIXME)
+              << "Uncaught exception in RestHandler " << self->name() << ": "
+              << "[" << exception.code() << "] " << exception.message()
+              << " (at " << exception.location() << ")";
+          TRI_ASSERT(false)
+              << "Uncaught exception in RestHandler " << self->name() << ": "
+              << "[" << exception.code() << "] " << exception.message()
+              << " (at " << exception.location() << ")";
+        } catch (std::exception const& exception) {
+          LOG_TOPIC("989d1", ERR, Logger::FIXME)
+              << "Uncaught exception in RestHandler " << self->name() << ": "
+              << exception.what();
+          TRI_ASSERT(false) << "Uncaught exception in RestHandler "
+                            << self->name() << ": " << exception.what();
+        } catch (...) {
+          LOG_TOPIC("99c0c", ERR, Logger::FIXME)
+              << "Uncaught exception in RestHandler " << self->name() << ".";
+          TRI_ASSERT(false)
+              << "Uncaught exception in RestHandler " << self->name() << ".";
+        }
+      });
 }

@@ -2035,7 +2035,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
 }
 
 velocypack::Options const& Query::vpackOptions() const {
-  return *(_transactionContext->getVPackOptions());
+  return *_transactionContext->getVPackOptions();
 }
 
 transaction::Methods& Query::trxForOptimization() {
