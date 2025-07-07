@@ -39,6 +39,10 @@ export const useQueryEditorHandlers = () => {
 
       const areParamsEqual = isEqual(parsedBindParamsMap, prevQueryBindParams);
       if (areParamsEqual) {
+        window.sessionStorage.setItem(
+          "cachedQuery",
+          JSON.stringify({ query: value, parameter: prevQueryBindParams })
+        );
         return prevQueryBindParams;
       }
 

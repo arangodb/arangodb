@@ -38,9 +38,6 @@
 #include "Cluster/UpdateCollection.h"
 #include "Cluster/UpdateReplicatedLogAction.h"
 
-#include "Logger/Logger.h"
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::maintenance;
 

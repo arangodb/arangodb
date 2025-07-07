@@ -15,6 +15,9 @@ parameters:
   arangosh_args:
     type: string
     default: ""
+  extra_args:
+    type: string
+    default: ""
   use-minimal-debug-info:
     type: boolean
     default: true
@@ -29,7 +32,7 @@ parameters:
     default: false
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:11"
+    default: "arangodb/ubuntubuildarangodb-devel:15"
   nightly:
     type: boolean
     default: false
@@ -189,6 +192,8 @@ jobs:
             else
               pip install pyyaml
               python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
+                --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
+                --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --ui "<< pipeline.parameters.ui >>" \
                 --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \

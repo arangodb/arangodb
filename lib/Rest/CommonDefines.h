@@ -40,6 +40,16 @@ enum class RequestType {
   ILLEGAL  // must be last
 };
 
+// Inspector for RequestType to allow serialization using the Inspection library
+template<class Inspector>
+auto inspect(Inspector& f, RequestType& type) {
+  return f.enumeration(type).values(
+      RequestType::DELETE_REQ, "DELETE", RequestType::GET, "GET",
+      RequestType::POST, "POST", RequestType::PUT, "PUT", RequestType::HEAD,
+      "HEAD", RequestType::PATCH, "PATCH", RequestType::OPTIONS, "OPTIONS",
+      RequestType::ILLEGAL, "ILLEGAL");
+}
+
 inline const char* requestToString(RequestType requestType) {
   switch (requestType) {
     case RequestType::DELETE_REQ:

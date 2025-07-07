@@ -36,55 +36,56 @@ class RestLogHandler : public RestVocbaseBaseHandler {
   RestLogHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
  public:
-  RestStatus execute() final;
+  auto executeAsync() -> futures::Future<futures::Unit> override;
   char const* name() const final { return "RestLogHandler"; }
   RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
 
  private:
-  RestStatus executeByMethod(replication2::ReplicatedLogMethods const& methods);
-  RestStatus handleGetRequest(
-      replication2::ReplicatedLogMethods const& methods);
-  RestStatus handlePostRequest(
-      replication2::ReplicatedLogMethods const& methods);
-  RestStatus handleDeleteRequest(
-      replication2::ReplicatedLogMethods const& methods);
+  auto executeByMethod(replication2::ReplicatedLogMethods const& methods)
+      -> async<void>;
+  auto handleGetRequest(replication2::ReplicatedLogMethods const& methods)
+      -> async<void>;
+  auto handlePostRequest(replication2::ReplicatedLogMethods const& methods)
+      -> async<void>;
+  auto handleDeleteRequest(replication2::ReplicatedLogMethods const& methods)
+      -> async<void>;
 
-  RestStatus handlePost(replication2::ReplicatedLogMethods const& methods,
-                        velocypack::Slice specSlice);
-  RestStatus handlePostInsert(replication2::ReplicatedLogMethods const& methods,
-                              replication2::LogId logId,
-                              velocypack::Slice payload);
-  RestStatus handlePostPing(replication2::ReplicatedLogMethods const& methods,
-                            replication2::LogId logId,
-                            velocypack::Slice payload);
-  RestStatus handlePostInsertMulti(
-      replication2::ReplicatedLogMethods const& methods,
-      replication2::LogId logId, velocypack::Slice payload);
-  RestStatus handlePostRelease(
-      replication2::ReplicatedLogMethods const& methods,
-      replication2::LogId logId);
-  RestStatus handlePostCompact(
-      replication2::ReplicatedLogMethods const& methods,
-      replication2::LogId logId);
+  auto handlePost(replication2::ReplicatedLogMethods const& methods,
+                  velocypack::Slice specSlice) -> async<void>;
+  auto handlePostInsert(replication2::ReplicatedLogMethods const& methods,
+                        replication2::LogId logId, velocypack::Slice payload)
+      -> async<void>;
+  auto handlePostPing(replication2::ReplicatedLogMethods const& methods,
+                      replication2::LogId logId, velocypack::Slice payload)
+      -> async<void>;
+  auto handlePostInsertMulti(replication2::ReplicatedLogMethods const& methods,
+                             replication2::LogId logId,
+                             velocypack::Slice payload) -> async<void>;
+  auto handlePostRelease(replication2::ReplicatedLogMethods const& methods,
+                         replication2::LogId logId) -> async<void>;
+  auto handlePostCompact(replication2::ReplicatedLogMethods const& methods,
+                         replication2::LogId logId) -> async<void>;
 
-  RestStatus handleGet(replication2::ReplicatedLogMethods const& methods);
-  RestStatus handleGetPoll(replication2::ReplicatedLogMethods const& methods,
-                           replication2::LogId);
-  RestStatus handleGetHead(replication2::ReplicatedLogMethods const& methods,
-                           replication2::LogId);
-  RestStatus handleGetTail(replication2::ReplicatedLogMethods const& methods,
-                           replication2::LogId);
-  RestStatus handleGetSlice(replication2::ReplicatedLogMethods const& methods,
-                            replication2::LogId);
-  RestStatus handleGetLocalStatus(
-      replication2::ReplicatedLogMethods const& methods, replication2::LogId);
-  RestStatus handleGetGlobalStatus(
-      replication2::ReplicatedLogMethods const& methods, replication2::LogId);
-  RestStatus handleGetCollectionStatus(
-      replication2::ReplicatedLogMethods const& methods, CollectionID cid);
-  RestStatus handleGetLog(replication2::ReplicatedLogMethods const& methods,
-                          replication2::LogId);
-  RestStatus handleGetEntry(replication2::ReplicatedLogMethods const& methods,
-                            replication2::LogId);
+  auto handleGet(replication2::ReplicatedLogMethods const& methods)
+      -> async<void>;
+  auto handleGetPoll(replication2::ReplicatedLogMethods const& methods,
+                     replication2::LogId) -> async<void>;
+  auto handleGetHead(replication2::ReplicatedLogMethods const& methods,
+                     replication2::LogId) -> async<void>;
+  auto handleGetTail(replication2::ReplicatedLogMethods const& methods,
+                     replication2::LogId) -> async<void>;
+  auto handleGetSlice(replication2::ReplicatedLogMethods const& methods,
+                      replication2::LogId) -> async<void>;
+  auto handleGetLocalStatus(replication2::ReplicatedLogMethods const& methods,
+                            replication2::LogId) -> async<void>;
+  auto handleGetGlobalStatus(replication2::ReplicatedLogMethods const& methods,
+                             replication2::LogId) -> async<void>;
+  auto handleGetCollectionStatus(
+      replication2::ReplicatedLogMethods const& methods, CollectionID cid)
+      -> async<void>;
+  auto handleGetLog(replication2::ReplicatedLogMethods const& methods,
+                    replication2::LogId) -> async<void>;
+  auto handleGetEntry(replication2::ReplicatedLogMethods const& methods,
+                      replication2::LogId) -> async<void>;
 };
 }  // namespace arangodb

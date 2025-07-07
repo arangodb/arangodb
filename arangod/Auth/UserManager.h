@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -56,10 +56,10 @@ class Handler;
 
 using UserMap = std::unordered_map<std::string, auth::User>;
 
-/// UserManager is the sole point of access for users and permissions
-/// stored in `_system/_users`. The permissions are cached locally if possible,
-/// to avoid unnecessary disk access. An instance of this should only
-/// exist on coordinators and single servers.
+// UserManager is the sole point of access for users and permissions
+// stored in `_system/_users`. The permissions are cached locally if possible,
+// to avoid unnecessary disk access. An instance of this should only
+// exist on coordinators and single servers.
 class UserManager {
  public:
   explicit UserManager(ArangodServer&);
@@ -68,48 +68,54 @@ class UserManager {
   typedef std::function<Result(auth::User&)> UserCallback;
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
 
-  /// Tells coordinator to reload its data. Only called in HeartBeat thread
+  // Tells coordinator to reload its data. Only called in HeartBeat thread
   void setGlobalVersion(uint64_t version) noexcept;
 
-  /// @brief reload user cache and token caches
+  // reload user cache and token caches
   void triggerLocalReload() noexcept;
 
-  /// @brief used for caching
+  // used for caching
   uint64_t globalVersion() const noexcept;
 
-  /// Trigger eventual reload on all other coordinators (and in TokenCache)
+  // Trigger eventual reload on all other coordinators (and in TokenCache)
   void triggerGlobalReload();
 
-  /// Trigger cache revalidation after user restore
+  // Trigger cache revalidation after user restore
   void triggerCacheRevalidation();
 
-  /// Create the root user with a default password, will fail if the user
-  /// already exists. Only ever call if you can guarantee to be in charge
+  // Create the root user with a default password, will fail if the user
+  // already exists. Only ever call if you can guarantee to be in charge
   void createRootUser();
 
   velocypack::Builder allUsers();
-  /// Add user from arangodb
+  // Add user from arangodb
   Result storeUser(bool replace, std::string const& user,
                    std::string const& pass, bool active,
                    velocypack::Slice extras);
 
-  /// Enumerate list of all users
+  // Enumerate list of all users
   Result enumerateUsers(std::function<bool(auth::User&)>&&,
                         bool retryOnConflict);
-  /// Update specific user
+
+  // Update specific user
   Result updateUser(std::string const& user, UserCallback&&);
-  /// Access user without modifying it
+
+  // Access user without modifying it
   Result accessUser(std::string const& user, ConstUserCallback&&);
 
-  /// @brief does this user exists in the db
+  // does this user exists in the db
   bool userExists(std::string const& user);
-  /// Serialize user into legacy format for REST API
+
+  // Serialize user into legacy format for REST API
   velocypack::Builder serializeUser(std::string const& user);
+
+  // Remove one user or all users
   Result removeUser(std::string const& user);
   Result removeAllUsers();
 
-  /// Convenience method to check a password
-  bool checkPassword(std::string const& username, std::string const& password);
+  // Convenience methods to check a password or access token
+  bool checkCredentials(std::string const& username, std::string const& token,
+                        std::string& un);
 
   auth::Level databaseAuthLevel(std::string const& username,
                                 std::string const& dbname,
@@ -119,34 +125,52 @@ class UserManager {
                                   std::string_view coll,
                                   bool configured = false);
 
+  // Return all access tokens of an user
+  Result accessTokens(std::string const& user, velocypack::Builder&);
+
+  // Delete an access tokens of an user
+  Result deleteAccessToken(std::string const& user, uint64_t id);
+
+  // Creates an access tokens for an user
+  Result createAccessToken(std::string const& user, std::string const& name,
+                           double validUntil, velocypack::Builder&);
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  /// Overwrite internally cached permissions, only use
-  /// for testing purposes
+  // Overwrite internally cached permissions, only use
+  // for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
 #endif
 
  private:
-  /// @brief load users and permissions from local database
+  bool checkPassword(std::string const& username, std::string const& password);
+  bool checkAccessToken(std::string const& username, std::string const& token,
+                        std::string& un);
+
+  // load users and permissions from local database
   void loadFromDB();
-  /// @brief store or replace user object
+
+  // store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
 
-  /// underlying application server
+  // extract the username from the access token
+  Result extractUsername(std::string const& token, std::string& username) const;
+
+  // underlying application server
   ArangodServer& _server;
 
-  /// Protected the sync process from db, always lock
-  /// before locking _userCacheLock
+  // Protected the sync process from db, always lock
+  // before locking _userCacheLock
   std::mutex _loadFromDBLock;
 
-  /// Protect the _userCache access
+  // Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;
 
-  /// @brief used to update caches
+  // used to update caches
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
   std::atomic<bool> _usersInitialized;
 
-  /// Caches permissions and other user info
+  // Caches permissions and other user info
   UserMap _userCache;
 };
 }  // namespace auth

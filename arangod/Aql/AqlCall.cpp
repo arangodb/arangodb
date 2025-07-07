@@ -302,3 +302,7 @@ auto aql::operator<<(std::ostream& out, AqlCall const& call) -> std::ostream& {
              << ", fullCount: " << std::boolalpha << call.fullCount
              << ", skipCount: " << call.getSkipCount() << " }";
 }
+
+auto aql::to_string(AqlCall const& call) -> std::string {
+  return call.toString();
+}

@@ -53,7 +53,7 @@ RestImportHandler::RestImportHandler(ArangodServer& server,
       _onDuplicateAction(DUPLICATE_ERROR),
       _ignoreMissing(false) {}
 
-RestStatus RestImportHandler::execute() {
+auto RestImportHandler::executeAsync() -> futures::Future<futures::Unit> {
   // set default value for onDuplicate
   _onDuplicateAction = DUPLICATE_ERROR;
 
@@ -99,14 +99,21 @@ RestStatus RestImportHandler::execute() {
       std::string const& documentType = _request->value("type", found);
 
       if (_request->contentType() == arangodb::ContentType::VPACK) {
-        return waitForFuture(createFromVPack(documentType));
+        co_await createFromVPack(documentType);
+        co_return;
       } else if (found &&
                  (documentType == "documents" || documentType == "array" ||
                   documentType == "list" || documentType == "auto")) {
-        return waitForFuture(createFromJson(documentType));
-      } else {
+        co_await createFromJson(documentType);
+        co_return;
+      } else if (!found || documentType == "") {
         // CSV
-        return waitForFuture(createFromKeyValueList());
+        co_await createFromKeyValueList();
+        co_return;
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "invalid value for 'type'");
+        co_return;
       }
     } break;
 
@@ -116,7 +123,7 @@ RestStatus RestImportHandler::execute() {
   }
 
   // this handler is done
-  return RestStatus::DONE;
+  co_return;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -14,9 +14,12 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
+  extra_args:
+    type: string
+    default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:11"
+    default: "arangodb/ubuntubuildarangodb-devel:15"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5b5ffda4
@@ -264,6 +267,7 @@ jobs:
           name: Build frontend
           command: |
             cd js/apps/system/_admin/aardvark/APP/react
+            tar -xJf /node_modules.tar.xz
             yarn install
             yarn build
       - persist_to_workspace:
@@ -355,7 +359,9 @@ jobs:
                 command: |
                   set -x
                   STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" VERSIONS)
+                  RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+" VERSIONS)
                   RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" VERSIONS)
+                  ARANGO_MAJOR_MINOR_VERSION=$(grep -Po "\K\d+\.\d+" ARANGO-VERSION)
                   arch="<<parameters.arch>>"
                   if test "$arch" == "x64"; then
                     arch="amd64"
@@ -363,7 +369,7 @@ jobs:
                   curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
                   chmod a+x build/bin/arangodb
                   if [ << parameters.enterprise >> = true ]; then
-                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/v$RCLONE_VERSION/rclone-arangodb-linux-$arch"
+                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
                     chmod a+x build/bin/rclone-arangodb
                   fi
       - when:

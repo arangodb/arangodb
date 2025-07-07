@@ -21,67 +21,76 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 #include "promise.h"
-#include <optional>
 
+#include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Async/Registry/registry_variable.h"
-#include "Async/Registry/thread_registry.h"
-#include "Basics/Thread.h"
-#include "Inspection/Format.h"
+#include "Containers/Concurrent/thread.h"
 
 using namespace arangodb::async_registry;
 
-auto ThreadId::current() noexcept -> ThreadId {
-  return ThreadId{.posix_id = arangodb::Thread::currentThreadId(),
-                  .kernel_id = arangodb::Thread::currentKernelThreadId()};
-}
-auto ThreadId::name() -> std::string {
-  return std::string{ThreadNameFetcher{posix_id}.get()};
-}
-
-auto Requester::current_thread() -> Requester { return {ThreadId::current()}; }
-
-Promise::Promise(Promise* next, std::shared_ptr<ThreadRegistry> registry,
-                 Requester requester, std::source_location entry_point)
-    : thread{registry->thread},
+Promise::Promise(CurrentRequester requester, std::source_location entry_point)
+    : owning_thread{basics::ThreadInfo::current()},
+      requester{
+          AtomicRequester::from(requester)},  // TODO hand this in via function
+      state{State::Running},
+      running_thread{basics::ThreadId::current()},
       source_location{entry_point.file_name(), entry_point.function_name(),
-                      entry_point.line()},
-      requester{requester},
-      registry{std::move(registry)},
-      next{next} {}
+                      entry_point.line()} {}
 
-auto Promise::mark_for_deletion() noexcept -> void {
-  registry->mark_for_deletion(this);
+auto arangodb::async_registry::get_current_coroutine() noexcept
+    -> CurrentRequester* {
+  struct Guard {
+    CurrentRequester identifier = {basics::ThreadInfo::current()};
+  };
+  // make sure that this is only created once on a thread
+  static thread_local auto current = Guard{};
+  return &current.identifier;
 }
 
 AddToAsyncRegistry::AddToAsyncRegistry(std::source_location loc)
-    : promise_in_registry{get_thread_registry().add_promise(
-          *get_current_coroutine(), std::move(loc))} {}
+    : node_in_registry{get_thread_registry().add([&]() {
+        return Promise{*get_current_coroutine(), std::move(loc)};
+      })} {}
+
 AddToAsyncRegistry::~AddToAsyncRegistry() {
-  if (promise_in_registry != nullptr) {
-    promise_in_registry->mark_for_deletion();
+  if (node_in_registry != nullptr) {
+    node_in_registry->list->mark_for_deletion(node_in_registry.get());
   }
 }
-auto AddToAsyncRegistry::update_requester(Requester new_requester) -> void {
-  if (promise_in_registry != nullptr) {
-    promise_in_registry->requester.store(new_requester);
+auto AddToAsyncRegistry::update_requester(std::optional<PromiseId> requester)
+    -> void {
+  if (node_in_registry != nullptr && requester.has_value()) {
+    node_in_registry->data.requester.store(requester.value().id);
   }
 }
-auto AddToAsyncRegistry::id() -> void* {
-  if (promise_in_registry != nullptr) {
-    return promise_in_registry->id();
+auto AddToAsyncRegistry::update_requester_to_current_thread() -> void {
+  if (node_in_registry != nullptr) {
+    node_in_registry->data.requester.store(basics::ThreadInfo::current());
+  }
+}
+auto AddToAsyncRegistry::id() -> std::optional<PromiseId> {
+  if (node_in_registry != nullptr) {
+    return {node_in_registry->data.id()};
   } else {
-    return nullptr;
+    return std::nullopt;
   }
 }
 auto AddToAsyncRegistry::update_source_location(std::source_location loc)
     -> void {
-  if (promise_in_registry != nullptr) {
-    promise_in_registry->source_location.line.store(loc.line());
+  if (node_in_registry != nullptr) {
+    node_in_registry->data.source_location.line.store(loc.line());
   }
 }
 auto AddToAsyncRegistry::update_state(State state) -> std::optional<State> {
-  if (promise_in_registry != nullptr) {
-    return promise_in_registry->state.exchange(state);
+  if (node_in_registry != nullptr) {
+    if (state == State::Running) {
+      node_in_registry->data.running_thread.store(basics::ThreadId::current(),
+                                                  std::memory_order_release);
+    } else {
+      node_in_registry->data.running_thread.store(std::nullopt,
+                                                  std::memory_order_release);
+    }
+    return node_in_registry->data.state.exchange(state);
   } else {
     return std::nullopt;
   }

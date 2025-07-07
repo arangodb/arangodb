@@ -162,7 +162,7 @@ class V8ClientConnection {
  private:
   std::shared_ptr<fuerte::Connection> createConnection(
       bool bypassCache = false);
-  std::shared_ptr<fuerte::Connection> acquireConnection();
+  std::shared_ptr<fuerte::Connection> acquireConnection(bool bypassCache);
 
   v8::Local<v8::Value> requestData(
       v8::Isolate* isolate, fuerte::RestVerb verb, std::string_view location,

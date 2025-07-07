@@ -905,8 +905,6 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 }
 
 RequestLane RestAqlHandler::lane() const {
-  TRI_ASSERT(!ServerState::instance()->isSingleServer());
-
   if (ServerState::instance()->isCoordinator()) {
     // continuation requests on coordinators will get medium priority,
     // so that they don't block query parts elsewhere

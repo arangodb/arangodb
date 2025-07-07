@@ -130,6 +130,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Executor/GroupedSortExecutorTest.cpp
   Aql/Executor/HashedCollectExecutorTest.cpp
   Aql/Executor/IdExecutorTest.cpp
+  Aql/Executor/IndexAggregateScanExecutorTest.cpp
   Aql/Executor/InsertExecutorTest.cpp
   Aql/Executor/LimitExecutorTest.cpp
   Aql/Executor/NoResultsExecutorTest.cpp
@@ -294,6 +295,8 @@ if (LINUX)
   endif ()
 endif ()
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}")
+
 add_executable(arangodbtests
   ${ARANGODB_TESTS_SOURCES})
 
@@ -324,10 +327,11 @@ endif()
 
 target_link_libraries(arangodbtests
   arango
-  arango_tests_async_registry_server
   arango_tests_basics
+  arango_tests_forest
   arango_tests_replication2
   arango_tests_replication2_pure
+  arango_tests_task_registry
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
@@ -416,6 +420,8 @@ endforeach()
 
 add_subdirectory(Actor)
 add_subdirectory(Async)
-add_subdirectory(AsyncRegistryServer)
+add_subdirectory(Containers)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
+add_subdirectory(TaskMonitoring)
+add_subdirectory(SystemMonitor)

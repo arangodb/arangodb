@@ -193,7 +193,7 @@ add_library(arango_basic_features STATIC
         ApplicationFeatures/ShutdownFeature.cpp
         ApplicationFeatures/TempFeature.cpp
         ApplicationFeatures/VersionFeature.cpp
-
+        ApplicationFeatures/ProcessEnvironmentFeature.cpp
 )
 target_link_libraries(arango_basic_features
   PUBLIC velocypack
@@ -279,6 +279,22 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_basic_http_client PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 endif()
 
+add_library(arango_basic_maskings STATIC
+      Maskings/AttributeMasking.cpp
+      Maskings/Collection.cpp
+      Maskings/MaskingFunction.cpp
+      Maskings/Maskings.cpp
+      Maskings/Path.cpp
+      Maskings/RandomMask.cpp
+      Maskings/RandomStringMask.cpp
+)
+target_link_libraries(arango_basic_maskings
+  PUBLIC velocypack
+         arango_basic_errors
+)
+target_include_directories(arango_basic_maskings PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
+
 add_library(arango_lightweight STATIC
         ApplicationFeatures/ApplicationFeature.cpp
         ApplicationFeatures/ApplicationServer.cpp
@@ -314,6 +330,7 @@ target_link_libraries(arango_lightweight
          absl::flat_hash_set
          absl::synchronization
          arango_async
+         arango_task_registry_global
   PRIVATE date_interface
           fmt
           arango_assertions
@@ -349,13 +366,6 @@ add_library(arango STATIC
   Basics/RocksDBUtils.cpp
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
-  Maskings/AttributeMasking.cpp
-  Maskings/Collection.cpp
-  Maskings/MaskingFunction.cpp
-  Maskings/Maskings.cpp
-  Maskings/Path.cpp
-  Maskings/RandomMask.cpp
-  Maskings/RandomStringMask.cpp
 )
 
 target_link_libraries(arango
@@ -431,6 +441,7 @@ endif()
 
 add_subdirectory(Actor)
 add_subdirectory(Async)
+add_subdirectory(Containers)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
 if (USE_V8)
@@ -441,3 +452,4 @@ add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
 add_subdirectory(Inspection)
 add_subdirectory(BuildId)
+add_subdirectory(TaskMonitoring)

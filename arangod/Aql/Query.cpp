@@ -62,6 +62,8 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/ApiRecordingFeature.h"
+#include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -268,31 +270,25 @@ void Query::destroy() {
 
 /// @brief factory function for creating a query. this must be used to
 /// ensure that Query objects are always created using shared_ptrs.
+/// Actually, this should really be a method of the `AqlFeature`, but
+/// we do not revisit all call sites and ensure that we have access
+/// to the `AqlFeature` now. So this cleanup is for a later
+/// day. Therefore, we use the `server()` functionality in the
+/// `TRI_vocbase_t` in the `transaction::Context` to get access to the
+/// `AqlFeature` for now. Over time, one should have access to the
+/// `AqlFeature` to create a new `Query` object, but we are not there
+/// yet. If you use AQL queries from within C++ code in the future,
+/// do not use this method, rather use `AqlFeature::createQuery`. Of
+/// course, you need to make sure to have access to the AqlFeature
+/// for this.
 std::shared_ptr<Query> Query::create(
     std::shared_ptr<transaction::Context> ctx, QueryString queryString,
     std::shared_ptr<velocypack::Builder> bindParameters, QueryOptions options,
     Scheduler* scheduler) {
-  TRI_ASSERT(ctx != nullptr);
-  // workaround to enable make_shared on a class with a protected constructor
-  struct MakeSharedQuery final : Query {
-    MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
-                    QueryString queryString,
-                    std::shared_ptr<velocypack::Builder> bindParameters,
-                    QueryOptions options, Scheduler* scheduler)
-        : Query{std::move(ctx), std::move(queryString),
-                std::move(bindParameters), std::move(options), scheduler} {}
-
-    ~MakeSharedQuery() final {
-      // Destroy this query, otherwise it's still
-      // accessible while the query is being destructed,
-      // which can result in a data race on the vptr
-      destroy();
-    }
-  };
-  TRI_ASSERT(ctx != nullptr);
-  return std::make_shared<MakeSharedQuery>(
-      std::move(ctx), std::move(queryString), std::move(bindParameters),
-      std::move(options), scheduler);
+  AqlFeature& aqlFeature = ctx->vocbase().server().getFeature<AqlFeature>();
+  return aqlFeature.createQuery(std::move(ctx), std::move(queryString),
+                                std::move(bindParameters), std::move(options),
+                                scheduler);
 }
 
 /// @brief return the user that started the query
@@ -391,6 +387,7 @@ bool Query::tryLoadPlanFromCache() {
       _resourceMonitor->increaseMemoryUsage(
           cacheEntry->serializedPlan.byteSize());
       _planSliceCopy = cacheEntry->serializedPlan;
+      _isCached = true;
 
       return true;
     }
@@ -713,6 +710,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               queryResult.data = cacheEntry->_queryResult;
               queryResult.extra = cacheEntry->_stats;
               queryResult.cached = true;
+              _isCached = true;
               // Note: cached queries were never done with dirty reads,
               // so we can always hand out the result here without extra
               // HTTP header.
@@ -968,6 +966,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           queryResult.v8Data = v8::Handle<v8::Array>::Cast(values);
           queryResult.extra = cacheEntry->_stats;
           queryResult.cached = true;
+          _isCached = true;
           return queryResult;
         }
         // if no permissions, fall through to regular querying
@@ -1879,6 +1878,14 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
   ensureExecutionTime();
+  // Before transaction is destroyed we should wait for all async tasks to
+  // finish so they don't use trx object. We do this only if this is a sync
+  // operation otherwise we do not want to stall the caller
+  if (sync) {
+    for (auto const& snippet : _snippets) {
+      snippet->stopAsyncTasks();
+    }
+  }
 
   {
     std::unique_lock<std::mutex> guard{_resultMutex};
@@ -2649,7 +2656,10 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   builder.add("stream", VPackValue(queryOptions().stream));
 
   // modification query yes/no?
-  builder.add("modificationQuery", VPackValue(isModificationQuery()));
+  // if the query is cached there is no _ast
+  if (!_isCached) {
+    builder.add("modificationQuery", VPackValue(isModificationQuery()));
+  }
 
 #if 0
   // TODO: currently does not work in cluster, as stats in cluster are only 

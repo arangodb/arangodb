@@ -158,7 +158,8 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
   std::string up;
   absl::Base64Unescape(secret, &up);
   std::string::size_type n = up.find(':', 0);
-  if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
+  // if password is an access token then username might be empty
+  if (n == std::string::npos || /* n == 0 || */ n + 1 > up.size()) {
     LOG_TOPIC("2a529", TRACE, arangodb::Logger::AUTHENTICATION)
         << "invalid authentication data found, cannot extract "
            "username/password";
@@ -167,8 +168,13 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
 
   std::string username = up.substr(0, n);
   std::string password = up.substr(n + 1);
+  std::string un;
+  bool authorized = _userManager->checkCredentials(username, password, un);
 
-  bool authorized = _userManager->checkPassword(username, password);
+  if (authorized) {
+    username = un;
+  }
+
   double expiry = _authTimeout;
   if (expiry > 0) {
     expiry += TRI_microtime();

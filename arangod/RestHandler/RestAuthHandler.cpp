@@ -101,12 +101,17 @@ RestStatus RestAuthHandler::execute() {
   VPackSlice usernameSlice = slice.get("username");
   VPackSlice passwordSlice = slice.get("password");
 
-  if (!usernameSlice.isString() || !passwordSlice.isString()) {
+  std::string username;
+  std::string password;
+
+  if (usernameSlice.isString() && passwordSlice.isString()) {
+    username = usernameSlice.copyString();
+    password = passwordSlice.copyString();
+  } else if (passwordSlice.isString()) {
+    password = passwordSlice.copyString();
+  } else {
     return badRequest();
   }
-
-  std::string username = usernameSlice.copyString();
-  std::string password = passwordSlice.copyString();
 
   bool isValid = false;
 
@@ -122,11 +127,12 @@ RestStatus RestAuthHandler::execute() {
     }
   });
 
-  if (um->checkPassword(username, password)) {
+  std::string un;
+  if (um->checkCredentials(username, password, un)) {
     VPackBuilder resultBuilder;
     {
       VPackObjectBuilder b(&resultBuilder);
-      resultBuilder.add("jwt", VPackValue(generateJwt(username)));
+      resultBuilder.add("jwt", VPackValue(generateJwt(un)));
     }
 
     isValid = true;

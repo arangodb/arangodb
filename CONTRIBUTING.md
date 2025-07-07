@@ -310,6 +310,19 @@ configuration files in `usr/etc/arangodb3/`, and so on.
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
+### Building Locally
+
+Recommended for Debian-based Linux. First, install dependencies:
+- `clang-19`
+- `libomp-19-dev`
+- `liblapack-dev`
+- `libopenblas-dev`
+- `cmake` (at least 3.21)
+- `libssl-dev`
+- `libstdc++-14-dev`
+
+After installing, follow the general build steps above.
+
 ### Building the Web Interface
 
 The web interface is also known as the Web UI, frontend, or _Aardvark_.

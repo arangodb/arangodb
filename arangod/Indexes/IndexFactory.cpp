@@ -37,6 +37,7 @@
 #include "Inspection/VPack.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -186,8 +187,12 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX == type) {
     // check if the parameters are the same
-    if (!basics::VelocyPackHelper::equal(lhs.get("params"), rhs.get("params"),
-                                         false)) {
+    UserVectorIndexDefinition leftDefinition;
+    UserVectorIndexDefinition rightDefinition;
+    velocypack::deserialize(lhs.get("params"), leftDefinition);
+    velocypack::deserialize(rhs.get("params"), rightDefinition);
+
+    if (leftDefinition != rightDefinition) {
       return false;
     }
   }
@@ -363,7 +368,7 @@ std::shared_ptr<Index> IndexFactory::prepareIndexFromSlice(
 
 /// same for both storage engines
 std::vector<std::string_view> IndexFactory::supportedIndexes() const {
-  return {
+  std::vector<std::string_view> enabledFeatures{
       "primary",
       "edge",
       "hash",
@@ -374,9 +379,12 @@ std::vector<std::string_view> IndexFactory::supportedIndexes() const {
       "fulltext",
       "mdi",
       "mdi-prefixed",
-      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE,
-      "vector",
-  };
+      arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE};
+  if (_server.getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+    enabledFeatures.push_back("vector");
+  }
+
+  return enabledFeatures;
 }
 
 std::vector<std::pair<std::string_view, std::string_view>>

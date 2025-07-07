@@ -28,8 +28,9 @@ export OPENSSLPATH=`echo $OPENSSLVERSION | sed 's/\.[0-9]*$//g'`
 [ "$ARCH" = "x86_64" -a ${OPENSSLPATH:0:1} = "3" ] && X86_64_SUFFIX=64
 
 cd /tmp
-wget https://www.openssl.org/source/openssl-$OPENSSLVERSION.tar.gz
-tar xzf openssl-$OPENSSLVERSION.tar.gz
+TARBALL=openssl-$OPENSSLVERSION.tar.gz
+curl -L --output $TARBALL https://www.openssl.org/source/$TARBALL
+tar xzf $TARBALL
 cd openssl-$OPENSSLVERSION
 ./config --prefix=/opt no-async no-dso
 make -j$(nproc)  || exit 1

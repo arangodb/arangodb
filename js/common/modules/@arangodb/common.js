@@ -560,7 +560,37 @@ exports.enterpriseLicenseVisibility = function() {
     default:
       return;
     }
-
+  } else if (license.hasOwnProperty("diskUsage")) {
+    if (!license.diskUsage.hasOwnProperty("status") ||
+        !license.diskUsage.hasOwnProperty("secondsUntilReadOnly") ||
+        !license.diskUsage.hasOwnProperty("secondsUntilShutDown") ||
+        !license.diskUsage.hasOwnProperty("bytesUsed") ||
+        !license.diskUsage.hasOwnProperty("bytesLimit")) {
+      return;
+    }
+    const currentTime = new Date();
+    switch (license.diskUsage.status) {
+      case "limit-reached":
+        let readonly = new Date(currentTime.getTime() + 1000 * (license.diskUsage.secondsUntilReadOnly));
+        console.warn("Your server has reached its disk usage limit of 100 GiB.");
+        console.warn("If you don't decrease the data size, the server will be restricted to read-only mode on " + readonly + ".");
+        console.warn("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license and continue using ArangoDB without limitations.");
+        return;
+      case "read-only":
+        let shutdown = new Date(currentTime.getTime() + 1000 * (license.diskUsage.secondsUntilShutDown));
+        console.error("Your server has been restricted to read-only mode due to violation of the 100 GiB data size limit.");
+        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license as soon as possible.");
+        console.error("Without a valid license the server will be shut down on " + shutdown + ".");
+        return;
+      case "shutdown":
+        console.error("The 100 GiB disk usage limit was reached and the server was put into the read-only mode after a grace period.");
+        console.error("The server will be shut down in 10 minutes.");
+        console.error("Please contact your ArangoDB sales representative or sales@arangodb.com to get a valid license.");
+        return;
+      case "good":
+      default:
+        return;
+    }
   }
 
 };

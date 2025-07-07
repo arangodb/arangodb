@@ -6,16 +6,13 @@ import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 
 export const QueryProfileResult = ({
-  index,
   queryResult
 }: {
-  index: number;
   queryResult: QueryResultType;
 }) => {
   return (
     <Box
       height="500px"
-      key={index}
       boxShadow="0 0 15px 0 rgba(0,0,0,0.2)"
       borderRadius="md"
       marginBottom="4"
@@ -24,7 +21,7 @@ export const QueryProfileResult = ({
       <Flex padding="2" alignItems="center">
         <ResultTypeBox queryResult={queryResult} />
         <Box marginLeft="auto">
-          <RemoveResultButton index={index} />
+          <RemoveResultButton asyncJobId={queryResult.asyncJobId} />
         </Box>
       </Flex>
       <ProfileResultDisplayJSON defaultValue={queryResult.result} />

@@ -460,6 +460,14 @@ static void makeHotbackupTransferJob(NodePtr& snapshot, size_t year, size_t id,
                         createNode(st.c_str()));
 }
 
+static void makeFinishedMoveShardJob(NodePtr& snapshot, size_t year,
+                                     std::string const& id, char const* job) {
+  std::string st = std::string(job) + "\"timeCreated\": \"" +
+                   std::to_string(year) + "-02-25T12:38:29Z\"\n}";
+  snapshot =
+      snapshot->placeAt("/Target/Finished/" + id, createNode(st.c_str()));
+}
+
 static void makeFailedMoveShardJob(NodePtr& snapshot, size_t year,
                                    std::string const& id, char const* job) {
   std::string st = std::string(job) + "\"timeCreated\": \"" +
@@ -1253,4 +1261,85 @@ TEST_F(SupervisionTestClass, dont_cleanup_non_expired_dbserver2) {
   auto map = arangodb::consensus::deletionCandidates(*snapshot, *transient,
                                                      "DBServers", 60);
   EXPECT_EQ(map.size(), 0);
+}
+TEST_F(SupervisionTestClass, only_cleanup_finished_job_after_one_hour) {
+  auto head = R"=(
+{
+  "timeFinished": ")=";
+  auto foot = R"=(",
+  "collection": "45",
+  "creator": "16020029",
+  "database": "d",
+  "fromServer": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
+  "isLeader": true,
+  "jobId": "0",
+  "remainsFollower": false,
+  "shard": "s46",
+  "timeStarted": "2024-12-09T10:22:22Z",
+  "toServer": "PRMR-9dd10e6b-c8d6-4007-b449-54c2e355e340",
+  "tryUndo": false,
+  "type": "moveShard",
+)=";
+
+  for (size_t i = 0; i < 1001; ++i) {
+    auto finishedJobStr =
+        head +
+        std::format(
+            "{:%Y-%m-%dT%H:%M:%SZ}",
+            floor<std::chrono::seconds>(std::chrono::system_clock::now() -
+                                        i * std::chrono::minutes(2))) +
+        foot;
+    makeFinishedMoveShardJob(_snapshot, 2024, std::to_string(i),
+                             finishedJobStr.c_str());
+  };
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      *_snapshot, envelope, true);
+
+  auto workItems = envelope->slice()[0];
+  EXPECT_TRUE(sthTodo);
+  EXPECT_TRUE(workItems.length() < 500);
+  EXPECT_TRUE(workItems.length() > 450);
+}
+
+TEST_F(SupervisionTestClass, only_cleanup_failed_job_after_one_hour) {
+  auto head = R"=(
+{
+  "timeFinished": ")=";
+  auto foot = R"=(",
+  "collection": "45",
+  "creator": "16020029",
+  "database": "d",
+  "fromServer": "PRMR-5e5faae8-6955-4cc9-88d6-d483486d6374",
+  "isLeader": true,
+  "jobId": "0",
+  "remainsFollower": false,
+  "shard": "s46",
+  "timeStarted": "2024-12-09T10:22:22Z",
+  "toServer": "PRMR-9dd10e6b-c8d6-4007-b449-54c2e355e340",
+  "tryUndo": false,
+  "type": "moveShard",
+)=";
+
+  for (size_t i = 0; i < 2001; ++i) {
+    auto finishedJobStr =
+        head +
+        std::format(
+            "{:%Y-%m-%dT%H:%M:%SZ}",
+            floor<std::chrono::seconds>(std::chrono::system_clock::now() -
+                                        i * std::chrono::minutes(2))) +
+        foot;
+    makeFailedMoveShardJob(_snapshot, 2024, std::to_string(i),
+                           finishedJobStr.c_str());
+  };
+
+  auto envelope = std::make_shared<VPackBuilder>();
+  bool sthTodo = arangodb::consensus::cleanupFinishedOrFailedJobsFunctional(
+      *_snapshot, envelope, false);
+
+  auto workItems = envelope->slice()[0];
+  EXPECT_TRUE(sthTodo);
+  EXPECT_TRUE(workItems.length() < 1000);
+  EXPECT_TRUE(workItems.length() > 950);
 }

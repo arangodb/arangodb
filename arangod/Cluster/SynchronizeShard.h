@@ -116,6 +116,9 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
 
   /// @brief end time (timestamp in seconds)
   std::chrono::time_point<std::chrono::steady_clock> _endTimeForAttempt;
+
+  /// @brief Used to decrement count exactly once:
+  std::once_flag _decrementOnce;
 };
 
 }  // namespace maintenance

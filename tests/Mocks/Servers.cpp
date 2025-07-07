@@ -507,10 +507,11 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
   std::vector<uint64_t> toCall;
   std::unordered_set<std::string> pc, cc;
   std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t> res;
+  consensus::index_t commitIndex;
 
   {
     std::lock_guard g(_storeLock);
-    ++_commitIndex;
+    commitIndex = ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
@@ -528,7 +529,7 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
     }
   }
 
-  triggerWaiting(_commitIndex);
+  triggerWaiting(commitIndex);
   invokeCallbacks(toCall);
   return res;
 }

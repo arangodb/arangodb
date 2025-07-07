@@ -27,6 +27,8 @@ type EditViewContextType = {
   setErrors: (errors: ValidationError[]) => void;
   onCopy: ({ selectedView }: { selectedView?: ViewPropertiesType }) => void;
   onDelete: () => void;
+  isFormDisabled: boolean;
+  setIsFormDisabled: (isFormDisabled: boolean) => void;
 };
 const EditViewContext = createContext<EditViewContextType>(
   {} as EditViewContextType
@@ -84,10 +86,10 @@ const EditViewProviderInner = ({
   changed: boolean;
   setChanged: (changed: boolean) => void;
 }) => {
-
   const { setValues, values } = useFormikContext<ViewPropertiesType>();
   const isAdminUser = useIsAdminUser();
   const [errors, setErrors] = useState<ValidationError[]>([]);
+  const [isFormDisabled, setIsFormDisabled] = useState(false);
 
   const handleCopy = ({
     selectedView
@@ -132,7 +134,9 @@ const EditViewProviderInner = ({
         onCopy: handleCopy,
         onDelete,
         isAdminUser,
-        isCluster: !!window.frontendConfig.isCluster
+        isCluster: !!window.frontendConfig.isCluster,
+        isFormDisabled,
+        setIsFormDisabled
       }}
     >
       {children}

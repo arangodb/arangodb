@@ -51,6 +51,9 @@ template<typename T>
 class Future;
 }  // namespace futures
 
+template<typename>
+struct async;
+
 class GeneralRequest;
 class RequestStatistics;
 class Result;

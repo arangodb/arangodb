@@ -482,23 +482,26 @@ void Collections::enumerate(
     TRI_vocbase_t* vocbase,
     std::function<void(std::shared_ptr<LogicalCollection> const&)> const&
         func) {
-  if (ServerState::instance()->isCoordinator()) {
-    auto& ci = vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-    std::vector<std::shared_ptr<LogicalCollection>> colls =
-        ci.getCollections(vocbase->name());
-
-    for (std::shared_ptr<LogicalCollection> const& c : colls) {
-      if (!c->deleted()) {
-        func(c);
-      }
-    }
-  } else {
-    for (auto const& c : vocbase->collections(false)) {
-      if (!c->deleted()) {
-        func(c);
-      }
-    }
+  auto const collections = getNotDeleted(*vocbase);
+  for (auto& collection : collections) {
+    func(collection);
   }
+}
+
+std::vector<std::shared_ptr<LogicalCollection>> Collections::getNotDeleted(
+    TRI_vocbase_t const& vocbase) {
+  std::vector<std::shared_ptr<LogicalCollection>> collections;
+  if (ServerState::instance()->isCoordinator()) {
+    auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+    collections = ci.getCollections(vocbase.name());
+  } else {
+    collections = vocbase.collections(false);
+  }
+  std::vector<std::shared_ptr<LogicalCollection>> result;
+  std::erase_if(collections, [](std::shared_ptr<LogicalCollection> const& c) {
+    return c->deleted();
+  });
+  return collections;
 }
 
 /*static*/ Result methods::Collections::lookup(  // find collection

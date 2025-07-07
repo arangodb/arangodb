@@ -49,9 +49,9 @@ function testSuite() {
         if (l.match(/^#/)) {
           return;
         }
-        assertNotMatch(/^.*[a-zA-Z\}]([0-9]+(\.[0-9]+)?)$/, l);
+        assertNotMatch(/^.*[a-zA-Z\}](-?[0-9]+(\.[0-9]+)?)$/, l);
         // whitespace is _required_ in this setup
-        assertMatch(/^.*[0-9a-zA-Z\}]\s+([0-9]+(\.[0-9]+)?)$/, l);
+        assertMatch(/^.*[0-9a-zA-Z\}]\s+(-?[0-9]+(\.[0-9]+)?)$/, l);
       });
     },
     

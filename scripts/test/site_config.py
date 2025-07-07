@@ -76,6 +76,16 @@ os.environ["TEMP"] = str(TEMP)
 os.environ["TMP"] = str(TEMP)
 
 
+for var in [
+        "CIRCLE_OIDC_TOKEN",
+        "AWS_DEFAULT_REGION",
+        "CIRCLE_OIDC_TOKEN_V2",
+        "SCCACHE_REGION",
+]:
+    if var in os.environ:
+        del os.environ[var]
+
+
 class SiteConfig:
     """this environment - adapted to oskar defaults"""
 

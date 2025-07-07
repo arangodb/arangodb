@@ -397,6 +397,9 @@ Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
                                      bool checkPermissions) {
   TRI_ASSERT(collection.id().isSet());
 
+  // read lock, need this already to call name() !
+  READ_LOCKER_EVENTUAL(locker, collection.statusLock());
+
   if (checkPermissions) {
     std::string const& dbName = _info.getName();
     if (!ExecContext::current().canUseCollection(dbName, collection.name(),
@@ -405,9 +408,6 @@ Result TRI_vocbase_t::loadCollection(LogicalCollection& collection,
                                        collection.name() + "'"};
     }
   }
-
-  // read lock
-  READ_LOCKER_EVENTUAL(locker, collection.statusLock());
 
   if (collection.deleted()) {
     return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,

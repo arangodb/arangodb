@@ -35,6 +35,8 @@
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
@@ -206,3 +208,7 @@ auto ExecutionBlock::printBlockInfo() const -> std::string const {
   return absl::StrCat(printTypeInfo(), " this=", (uintptr_t)this,
                       " id=", getPlanNode()->id().id());
 }
+
+auto ExecutionBlock::stopAsyncTasks() -> void {}
+
+auto ExecutionBlock::isPrefetchTaskActive() noexcept -> bool { return false; }

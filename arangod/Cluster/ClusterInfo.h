@@ -225,9 +225,16 @@ class ClusterInfo final {
   template<typename T>
   using ManagedVector = std::vector<T, ClusterInfoResourceAllocator<T>>;
 
+  template<typename K>
+  using FlatHashSet = containers::FlatHashSet<K, Hasher, KeyEqual,
+                                              ClusterInfoResourceAllocator<K>>;
+
   using DatabaseCollections = FlatMap<pmr::CollectionID, CollectionWithHash>;
   using AllCollections =
       FlatMapShared<pmr::DatabaseID, DatabaseCollections const>;
+  using DatabaseBlockers = FlatHashSet<pmr::CollectionID>;
+  using AllCollectionNameBlockers =
+      FlatMapShared<pmr::DatabaseID, DatabaseBlockers const>;
 
   using DatabaseCollectionsCurrent =
       FlatMapShared<pmr::CollectionID, CollectionInfoCurrent>;
@@ -1173,6 +1180,12 @@ class ClusterInfo final {
   // The Plan state:
   AllCollections _plannedCollections;     // from Plan/Collections/
   AllCollections _newPlannedCollections;  // TODO
+  // We need to track names of isBuilding data sources, because we must
+  // forbid the creation of data sources with names which do already exist.
+  // This is per database.
+  AllCollectionNameBlockers _collectionNameBlockers;
+  AllCollectionNameBlockers _newCollectionNameBlockers;
+
   // TODO is it ok to don't account value for _shards?
   FlatMapShared<pmr::CollectionID, std::vector<ShardID> const>
       _shards;  // from Plan/Collections/

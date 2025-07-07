@@ -25,7 +25,7 @@
 
 #include "gtest/gtest.h"
 
-#include <iostream>
+// just for debugging: #include <iostream>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -38,6 +38,7 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/UpgradeFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -110,9 +111,7 @@ class TestActionBasic : public ActionBase {
 
   bool first() override {
     // a pre action needs to push before setting _result
-    if (_preDesc) {
-      createPreAction(_preDesc);
-    } else if (0 == _iteration) {
+    if (0 == _iteration) {
       // time to set result?
       result(_resultCode);
     }  // if
@@ -146,11 +145,6 @@ class TestActionBasic : public ActionBase {
     //
     if (result().ok()) {
       more = 0 < _iteration--;
-
-      // if going to stop, see if a postAction is needed
-      if (!more && _postDesc) {
-        createPostAction(_postDesc);
-      }  // if
     } else {
       // !ok() ... always stop iteration
       more = false;
@@ -165,8 +159,6 @@ class TestActionBasic : public ActionBase {
  public:
   int _iteration;
   ErrorCode _resultCode;
-  std::shared_ptr<ActionDescription> _preDesc;
-  std::shared_ptr<ActionDescription> _postDesc;
   bool _reschedule;
 
 };  // TestActionBasic
@@ -190,43 +182,46 @@ class MaintenanceFeatureTestDBServer
   }
 };
 
-//
-//
-// Unit Tests start here
-//
-//
-class MaintenanceFeatureTestUnthreaded : public ::testing::Test {
+struct MaintenanceFeatureTestThreaded : ::testing::Test {
  protected:
   std::chrono::system_clock::time_point baseTime;
   std::chrono::system_clock::time_point noTime;
-  MaintenanceFeatureTestUnthreaded()
+  MaintenanceFeatureTestThreaded()
       : baseTime(std::chrono::system_clock::now()) {}
 
-  void SetUp() override {
-    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-        std::true_type{});
-    as.addFeature<arangodb::metrics::MetricsFeature>(
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::QueryRegistryFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
-            nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::EngineSelectorFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::metrics::ClusterMetricsFeature>(nullptr),
-        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
-            nullptr));
-  }
-
+ public:
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
   arangodb::ArangodServer as{po, nullptr};
+
+  void SetUp() override {
+    using namespace arangodb;
+    as.addFeature<application_features::GreetingsFeaturePhase>(
+        std::false_type{});
+    as.addFeature<metrics::MetricsFeature>(
+        LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+        LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+            nullptr),
+        LazyApplicationFeatureReference<ClusterFeature>(nullptr));
+  }
 };
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_0_times_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -235,9 +230,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
                                                  {"iterate_count", "0"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
+  tf.waitRegistryComplete();
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_TRUE(result.ok());  // well added
   ASSERT_TRUE(tf._recentAction->result().ok());
   ASSERT_EQ(0, tf._recentAction->getProgress());
   ASSERT_EQ(tf._recentAction->getState(), COMPLETE);
@@ -252,9 +248,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   ASSERT_LE(tf._recentAction->getStartTime(), tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_0_times_fail) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -264,9 +270,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
                                                  {"result_code", "1"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
+  tf.waitRegistryComplete();
 
-  ASSERT_FALSE(result.ok());
+  ASSERT_TRUE(result.ok());  // well added
   ASSERT_FALSE(tf._recentAction->result().ok());
   ASSERT_EQ(0, tf._recentAction->getProgress());
   ASSERT_EQ(tf._recentAction->getState(), FAILED);
@@ -283,9 +290,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_1_time_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -294,9 +311,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
                                                  {"iterate_count", "1"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
+  tf.waitRegistryComplete();
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_TRUE(result.ok());  // well added
   ASSERT_TRUE(tf._recentAction->result().ok());
   ASSERT_EQ(1, tf._recentAction->getProgress());
   ASSERT_EQ(tf._recentAction->getState(), COMPLETE);
@@ -313,9 +331,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_1_time_fail) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -325,9 +353,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
                                                  {"result_code", "1"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
+  tf.waitRegistryComplete();
 
-  ASSERT_FALSE(result.ok());
+  ASSERT_TRUE(result.ok());  // well added
   ASSERT_FALSE(tf._recentAction->result().ok());
   ASSERT_EQ(1, tf._recentAction->getProgress());
   ASSERT_EQ(tf._recentAction->getState(), FAILED);
@@ -346,9 +375,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_2_times_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+                                 //
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -357,7 +396,8 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
                                                  {"iterate_count", "2"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
+  tf.waitRegistryComplete();
 
   ASSERT_TRUE(result.ok());
   ASSERT_TRUE(tf._recentAction->result().ok());
@@ -378,9 +418,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_100_times_ok) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
+
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -389,9 +439,10 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
                                                  {"iterate_count", "100"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
+  tf.waitRegistryComplete();
 
-  ASSERT_TRUE(result.ok());
+  ASSERT_TRUE(result.ok());  // well added
   ASSERT_TRUE(tf._recentAction->result().ok());
   ASSERT_EQ(100, tf._recentAction->getProgress());
   ASSERT_EQ(tf._recentAction->getState(), COMPLETE);
@@ -410,9 +461,19 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
               tf._recentAction->getDoneTime());
 }
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
-  TestMaintenanceFeature tf(as);
+TEST_F(MaintenanceFeatureTestThreaded, iterate_action_100_times_fail) {
+  TestMaintenanceFeature& tf =
+      as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
+
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
+  std::thread th(&arangodb::ArangodServer::run, &as, 0, nullptr);
+
+  auto threadGuard = arangodb::scopeGuard([&]() noexcept {
+    as.beginShutdown();
+    th.join();
+  });
+
+  tf.setMaintenanceThreadsMax(arangodb::MaintenanceFeature::minThreadLimit);
 
   std::unique_ptr<ActionBase> action_base_ptr;
   action_base_ptr.reset(new TestActionBasic(
@@ -422,9 +483,9 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
                                                  {"result_code", "1"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), true);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
+  tf.waitRegistryComplete();
 
-  ASSERT_FALSE(result.ok());
   ASSERT_FALSE(tf._recentAction->result().ok());
   ASSERT_EQ(100, tf._recentAction->getProgress());
   ASSERT_EQ(tf._recentAction->getState(), FAILED);
@@ -442,26 +503,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
   ASSERT_TRUE(tf._recentAction->getLastStatTime() <=
               tf._recentAction->getDoneTime());
 }
-
-struct MaintenanceFeatureTestThreaded : ::testing::Test {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as{po, nullptr};
-
-  void SetUp() override {
-    using namespace arangodb;
-    as.addFeature<application_features::GreetingsFeaturePhase>(
-        std::false_type{});
-    as.addFeature<metrics::MetricsFeature>(
-        LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
-        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
-        LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
-        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
-            nullptr),
-        LazyApplicationFeatureReference<ClusterFeature>(nullptr));
-  }
-};
 
 TEST_F(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   TestMaintenanceFeature& tf =
@@ -486,7 +527,7 @@ TEST_F(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
                                                  {"result_code", "1"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -501,8 +542,7 @@ TEST_F(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
               std::map<std::string, std::string>{{"name", "TestActionBasic"},
                                                  {"iterate_count", "2"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
-  result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+  result = tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -517,8 +557,7 @@ TEST_F(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
                                                  {"iterate_count", "100"},
                                                  {"result_code", "1"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
-  result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+  result = tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_FALSE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -568,7 +607,7 @@ TEST_F(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
                                              {"preaction_result_code", "0"}},
           arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -626,7 +665,7 @@ TEST_F(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
                                              {"postaction_result_code", "0"}},
           arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -684,7 +723,7 @@ TEST_F(MaintenanceFeatureTestThreaded,
                                              {TestActionBasic::FAST_TRACK, ""}},
           arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -726,7 +765,7 @@ TEST_F(MaintenanceFeatureTestThreaded, action_delete) {
                                              {"postaction_result_code", "0"}},
           arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -789,7 +828,7 @@ TEST_F(MaintenanceFeatureTestThreaded,
                                                  {"reschedule", "true"}},
               arangodb::maintenance::NORMAL_PRIORITY, false)));
   arangodb::Result result =
-      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)), false);
+      tf.addAction(std::make_shared<Action>(std::move(action_base_ptr)));
 
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
@@ -821,27 +860,4 @@ TEST_F(MaintenanceFeatureTestThreaded,
 #if 0  // for debugging
   std::cout << tf.toVelocyPack().toJson() << std::endl;
 #endif
-}
-
-// temporarily disabled since it may hang
-TEST_F(MaintenanceFeatureTestDBServer, test_synchronize_shard_abort) {
-  auto& mf = server.getFeature<arangodb::MaintenanceFeature>();
-  mf.start();
-
-  std::shared_ptr<ActionDescription> description =
-      std::make_shared<ActionDescription>(
-          std::map<std::string, std::string>{{NAME, SYNCHRONIZE_SHARD},
-                                             {DATABASE, "_system"},
-                                             {COLLECTION, "tmp"},
-                                             {SHARD, "s1"},
-                                             {THE_LEADER, "PRMR-1"},
-                                             {SHARD_VERSION, "1"},
-                                             {FORCED_RESYNC, "false"}},
-          SYNCHRONIZE_PRIORITY, true);
-
-  // The following will execute the action right away:
-  auto res = mf.addAction(description, true /* executeNow */);
-  ASSERT_FALSE(res.ok());  // must have been aborted
-  mf.beginShutdown();
-  mf.stop();
 }

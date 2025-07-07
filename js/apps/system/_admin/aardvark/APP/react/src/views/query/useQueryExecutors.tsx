@@ -169,7 +169,7 @@ export const useQueryExecutors = ({
           asyncJobId: id,
           queryValue,
           queryBindParams,
-          type: "profile",
+          type: "explain",
           status: "error",
           errorMessage: message
         });

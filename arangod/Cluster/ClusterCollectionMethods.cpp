@@ -192,9 +192,11 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   double pollInterval = ci.getPollInterval();
   AgencyCallbackRegistry& callbackRegistry = ci.agencyCallbackRegistry();
 
-  // TODO Timeout?
   std::vector<std::string> collectionNames = writer.collectionNames();
-  while (true) {
+  // Retry for at most 60s:
+  auto startTime = std::chrono::steady_clock::now();
+  while (std::chrono::steady_clock::now() - startTime <
+         std::chrono::seconds(60)) {
     // TODO: Is this necessary?
     ci.loadCurrentDBServers();
     auto planVersion =
@@ -203,6 +205,54 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       return planVersion.result();
     }
     std::vector<ServerID> availableServers = ci.getCurrentDBServers();
+
+    // Now check if any of the to-be-created collections has
+    // `distributeShardsLike` set to a collection, which already exists.
+    // If so, we need to check if any of its shards currently have
+    // their leader asked to resign!
+    // Note that this might see a newer version of the plan than seen
+    // above! However, in that case our precondition below will fail
+    // anyway. Therefore, if this precondition does not fail, the plan
+    // version has not changed, and so the checks below here have indeed
+    // seen the same state, so we are good.
+    std::unordered_set<std::string> distributeShardsLikeColls;
+    auto const& colls = writer.collectionsToCreate();
+    for (auto const& c : colls) {
+      if (c.properties().distributeShardsLike.has_value()) {
+        distributeShardsLikeColls.insert(
+            c.properties().distributeShardsLike.value());
+      }
+    }
+    // If we have some, let's see if they are about to be generated or not:
+    if (!distributeShardsLikeColls.empty()) {
+      for (auto const& c : colls) {
+        auto const& name = c.getName();
+        distributeShardsLikeColls.erase(name);
+      }
+    }
+    // If we still have some, they must be existing collections and we must
+    // check that their leaders are not asked to resign:
+    if (!distributeShardsLikeColls.empty()) {
+      bool seenResignation = false;
+      for (auto const& c : distributeShardsLikeColls) {
+        auto coll = ci.getCollection(databaseName, c);
+        for (auto const& s : *coll->shardIds()) {
+          if (!s.second.empty() && s.second[0].starts_with("_")) {
+            seenResignation = true;
+          }
+        }
+      }
+      if (seenResignation) {
+        // In this case we must not proceed, or else the MoveShard job
+        // which is currently asking all leaders to resign is getting stuck.
+        // The outer retry loop will retry.
+        LOG_TOPIC("abbbe", INFO, Logger::CLUSTER)
+            << "Cannot create collection since a leader is being moved, "
+               "delaying for 1 second...";
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        continue;
+      }
+    }
 
     auto buildingTransaction = writer.prepareStartBuildingTransaction(
         databaseName, planVersion.get(), availableServers);
@@ -444,6 +494,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       // checked at the beginning of this retry loop
     }
   }
+  return {TRI_ERROR_CLUSTER_CREATE_COLLECTION_PRECONDITION_FAILED,
+          "Failed to create collection after 60 retries, giving up."};
 }
 
 Result impl(ClusterInfo& ci, ArangodServer& server,

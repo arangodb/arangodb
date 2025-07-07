@@ -317,46 +317,6 @@ add_subdirectory(taocpp-json)
 add_subdirectory(json-schema-validation)
 
 ################################################################################
-## faiss
-################################################################################
-
-find_package(Threads REQUIRED)
-find_package(ZLIB REQUIRED)
-if (STATIC_EXECUTABLES)
-  # These variables are used when linking BIN_ARANGOD
-  # and are specific for how we build our docker build
-  # containers
-  if (ARCH_AMD64)
-set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
-    set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/blas/libblas.a" CACHE PATH "BLAS static library path")
-  else ()
-    set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
-    set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/blas/libblas.a" CACHE PATH "BLAS static library path")
-  endif ()
-  message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
-
-  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
-
-  if (LIBOMP)
-      # TODO can we somehow avoid this and just set flags at arangod?
-      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fopenmp=libomp -L/opt/omp -llapack -lgfortran")
-  else ()
-    message(FATAL_ERROR "libomp.a not found in /opt/omp")
-  endif ()
-else()
-  set(BLA_STATIC Off)
-  set(BLA_VENDOR OpenBLAS)
-  find_package(OpenMP)
-  find_package(LAPACK)
-  find_package(BLAS)
-endif()
-
-set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
-set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
-set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
-add_subdirectory(faiss)
-
-################################################################################
 ## tzdata
 ################################################################################
 

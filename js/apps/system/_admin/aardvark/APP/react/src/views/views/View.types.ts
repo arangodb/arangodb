@@ -25,7 +25,7 @@ export type PrimarySortType = {
 };
 
 export type StoredValueType = {
-  fields: string[];
+  fields?: string[];
   compression: Compression;
   cache?: boolean;
 };

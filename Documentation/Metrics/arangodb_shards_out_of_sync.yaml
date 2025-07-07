@@ -7,9 +7,7 @@ type: gauge
 category: Replication
 complexity: simple
 exposedBy:
-  - coordinator
   - dbserver
-  - agent
 description: |
   Number of leader shards not fully replicated. This is counted for all
   shards for which this server is currently the leader. The number is

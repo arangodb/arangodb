@@ -35,38 +35,24 @@
 
 namespace arangodb {
 class LogicalCollection;
+template<typename>
+struct async;
 
 class RestIndexHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestIndexHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-  ~RestIndexHandler();
-
- public:
-  char const* name() const override final { return "RestIndexHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override;
-  RestStatus continueExecute() override;
-  void shutdownExecute(bool isFinalized) noexcept override;
+  char const* name() const final { return "RestIndexHandler"; }
+  RequestLane lane() const final { return RequestLane::CLIENT_SLOW; }
+  futures::Future<futures::Unit> executeAsync() final;
 
  private:
-  RestStatus getIndexes();
+  async<void> getIndexes();
   [[nodiscard]] futures::Future<futures::Unit> getSelectivityEstimates();
-  RestStatus createIndex();
-  RestStatus dropIndex();
-  RestStatus syncCaches();
-
-  void shutdownBackgroundThread();
+  async<void> createIndex();
+  async<void> dropIndex();
+  void syncCaches();
 
   std::shared_ptr<LogicalCollection> collection(std::string const& cName);
-
-  struct CreateInBackgroundData {
-    std::unique_ptr<std::thread> thread;
-    Result result;
-    arangodb::velocypack::Builder response;
-  };
-
-  std::mutex _mutex;
-  CreateInBackgroundData _createInBackgroundData;
 };
 }  // namespace arangodb

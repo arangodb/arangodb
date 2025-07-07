@@ -55,12 +55,14 @@ struct SearchParameters {
 enum class SimilarityMetric : std::uint8_t {
   kL2,
   kCosine,
+  kInnerProduct,
 };
 
 template<class Inspector>
 inline auto inspect(Inspector& f, SimilarityMetric& x) {
-  return f.enumeration(x).values(SimilarityMetric::kL2, "l2",
-                                 SimilarityMetric::kCosine, "cosine");
+  return f.enumeration(x).values(
+      SimilarityMetric::kL2, "l2", SimilarityMetric::kCosine, "cosine",
+      SimilarityMetric::kInnerProduct, "innerProduct");
 }
 
 struct TrainedData {
@@ -93,7 +95,14 @@ struct UserVectorIndexDefinition {
               }
               return inspection::Status::Success{};
             }),
-        f.field("metric", x.metric), f.field("nLists", x.nLists),
+        f.field("metric", x.metric),
+        f.field("nLists", x.nLists)
+            .invariant([](auto value) -> inspection::Status {
+              if (value < 1) {
+                return {"nLists must be 1 or greater!"};
+              }
+              return inspection::Status::Success{};
+            }),
         f.field("factory", x.factory),
         f.field("trainingIterations", x.trainingIterations)
             .fallback(kdefaultTrainingIterations),

@@ -28,6 +28,8 @@
 #include "Replication2/ReplicatedLog/LogLeader.h"
 #include "absl/strings/str_cat.h"
 
+#include <Async/async.h>
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 
@@ -37,25 +39,27 @@ RestLogInternalHandler::RestLogInternalHandler(ArangodServer& server,
     : RestVocbaseBaseHandler(server, req, resp) {}
 RestLogInternalHandler::~RestLogInternalHandler() = default;
 
-RestStatus RestLogInternalHandler::execute() {
+auto RestLogInternalHandler::executeAsync() -> futures::Future<futures::Unit> {
   // for now required admin access to the database
   if (!ExecContext::current().isSuperuser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
   if (suffixes.size() == 2) {
     if (suffixes[1] == "update-snapshot-status") {
-      return handleUpdateSnapshotStatus();
+      handleUpdateSnapshotStatus();
+      co_return;
     } else if (suffixes[1] == "append-entries") {
-      return handleAppendEntries();
+      co_await handleAppendEntries();
+      co_return;
     }
   }
 
@@ -63,49 +67,47 @@ RestStatus RestLogInternalHandler::execute() {
       rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
       "expect POST "
       "/_api/log-internal/<log-id>/[append-entries|update-snapshot-status]");
-  return RestStatus::DONE;
+  co_return;
 }
 
-RestStatus RestLogInternalHandler::handleAppendEntries() {
+auto RestLogInternalHandler::handleAppendEntries() -> async<void> {
   std::vector<std::string> const& suffixes = _request->suffixes();
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return;
   }
 
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
   auto request = replicated_log::AppendEntriesRequest::fromVelocyPack(body);
-  auto f = _vocbase.getReplicatedLogFollowerById(logId)
-               ->appendEntries(request)
-               .thenValue([this](replicated_log::AppendEntriesResult&& res) {
-                 VPackBuilder builder;
-                 res.toVelocyPack(builder);
-                 // TODO fix the result type here. Currently we always return
-                 // the error under the
-                 //      `result` field. Maybe we want to change the HTTP status
-                 //      code as well? Don't forget to update the deserializer
-                 //      that reads the response!
-                 generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
-               });
+  auto res =
+      co_await _vocbase.getReplicatedLogFollowerById(logId)->appendEntries(
+          request);
 
-  return waitForFuture(std::move(f));
+  VPackBuilder builder;
+  res.toVelocyPack(builder);
+  // TODO fix the result type here. Currently we always return the error under
+  //      the `result` field. Maybe we want to change the HTTP status code as
+  //      well? Don't forget to update the deserializer that reads the response!
+  generateOk(rest::ResponseCode::ACCEPTED, builder.slice());
+
+  co_return;
 }
 
-RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
+void RestLogInternalHandler::handleUpdateSnapshotStatus() {
   auto const& suffixes = _request->suffixes();
   auto maybeLogId = LogId::fromString(suffixes[0]);
   if (!maybeLogId.has_value()) {
     generateError(Result(TRI_ERROR_HTTP_BAD_PARAMETER,
                          absl::StrCat("Not a log id: ", suffixes[0])));
-    return RestStatus::DONE;
+    return;
   }
   auto logId = *maybeLogId;
   auto participant = _request->value("follower");
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {  // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    return;
   }
   auto report =
       velocypack::deserialize<replicated_log::SnapshotAvailableReport>(body);
@@ -117,5 +119,4 @@ RestStatus RestLogInternalHandler::handleUpdateSnapshotStatus() {
   } else {
     generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
   }
-  return RestStatus::DONE;
 }

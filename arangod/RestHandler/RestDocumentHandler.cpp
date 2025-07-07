@@ -29,7 +29,6 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -45,6 +44,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
+#include <Async/async.h>
 #include <thread>
 
 using namespace arangodb;
@@ -91,7 +91,7 @@ RequestLane RestDocumentHandler::lane() const {
   return RequestLane::CLIENT_SLOW;
 }
 
-RestStatus RestDocumentHandler::execute() {
+auto RestDocumentHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the sub-request type
   auto const type = _request->requestType();
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -106,24 +106,24 @@ RestStatus RestDocumentHandler::execute() {
   // execute one of the CRUD methods
   switch (type) {
     case rest::RequestType::DELETE_REQ:
-      return waitForFuture(removeDocument());
+      co_return co_await removeDocument();
     case rest::RequestType::GET:
-      return readDocument();
+      co_return co_await readDocument();
     case rest::RequestType::HEAD:
-      return checkDocument();
+      co_return co_await checkDocument();
     case rest::RequestType::POST:
-      return waitForFuture(insertDocument());
+      co_return co_await insertDocument();
     case rest::RequestType::PUT:
-      return replaceDocument();
+      co_return co_await replaceDocument();
     case rest::RequestType::PATCH:
-      return updateDocument();
+      co_return co_await updateDocument();
     default: {
       generateNotImplemented("ILLEGAL " + DOCUMENT_PATH);
     }
   }
 
   // this handler is done
-  return RestStatus::DONE;
+  co_return;
 }
 
 void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
@@ -153,7 +153,7 @@ void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
-futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
+async<void> RestDocumentHandler::insertDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 1) {
@@ -308,7 +308,7 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
 /// Either readSingleDocument or readAllDocuments.
 ////////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestDocumentHandler::readDocument() {
+async<void> RestDocumentHandler::readDocument() {
   size_t const len = _request->suffixes().size();
 
   switch (len) {
@@ -317,20 +317,19 @@ RestStatus RestDocumentHandler::readDocument() {
       generateError(rest::ResponseCode::NOT_FOUND,
                     TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                     "expecting GET /_api/document/<collection>/<key>");
-      return RestStatus::DONE;
+      co_return;
     case 2:
-      return waitForFuture(readSingleDocument(true));
+      co_return co_await readSingleDocument(true);
 
     default:
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
                     "expecting GET /_api/document/<collection>/<key>");
-      return RestStatus::DONE;
+      co_return;
   }
 }
 
-futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
-    bool generateBody) {
+async<void> RestDocumentHandler::readSingleDocument(bool generateBody) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   // split the document reference
@@ -439,33 +438,32 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
                    trx->transactionContextPtr()->getVPackOptions());
 }
 
-RestStatus RestDocumentHandler::checkDocument() {
+async<void> RestDocumentHandler::checkDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 2) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting HEAD /_api/document/<collection>/<key>");
-    return RestStatus::DONE;
+    co_return;
   }
 
-  return waitForFuture(readSingleDocument(false));
+  co_return co_await readSingleDocument(false);
 }
 
-RestStatus RestDocumentHandler::replaceDocument() {
+async<void> RestDocumentHandler::replaceDocument() {
   bool found;
   _request->value("onlyget", found);
   if (found) {
-    return waitForFuture(readManyDocuments());
+    co_return co_await readManyDocuments();
   }
-  return waitForFuture(modifyDocument(false));
+  co_return co_await modifyDocument(false);
 }
 
-RestStatus RestDocumentHandler::updateDocument() {
-  return waitForFuture(modifyDocument(true));
+async<void> RestDocumentHandler::updateDocument() {
+  co_return co_await modifyDocument(true);
 }
 
-futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
-    bool isPatch) {
+async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() > 2) {
@@ -668,7 +666,7 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
               opOptions.silent, rest::ResponseCode::CREATED);
 }
 
-futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
+async<void> RestDocumentHandler::removeDocument() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() < 1 || suffixes.size() > 2) {
@@ -809,7 +807,7 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
               opOptions.silent, rest::ResponseCode::OK);
 }
 
-futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
+async<void> RestDocumentHandler::readManyDocuments() {
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() != 1) {

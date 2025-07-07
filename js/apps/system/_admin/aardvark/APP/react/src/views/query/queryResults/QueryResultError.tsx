@@ -9,10 +9,9 @@ import { RemoveResultButton } from "./RemoveResultButton";
 import { ResultTypeBox } from "./ResultTypeBox";
 
 export const QueryResultError = ({
-  queryResult, index
+  queryResult
 }: {
   queryResult: QueryResultType<any>;
-  index: number;
 }) => {
   return (
     <Stack
@@ -30,7 +29,7 @@ export const QueryResultError = ({
           <Text>Query error: {queryResult.errorMessage}</Text>
         </Stack>
       </Alert>
-      <RemoveResultButton index={index} />
+      <RemoveResultButton asyncJobId={queryResult.asyncJobId} />
     </Stack>
   );
 };

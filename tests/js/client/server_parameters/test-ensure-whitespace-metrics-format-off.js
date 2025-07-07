@@ -50,7 +50,7 @@ function testSuite() {
           return;
         }
         if (l.includes('}')) {
-          assertMatch(/^.*\}([0-9]+(\.[0-9]+)?)$/, l);
+          assertMatch(/^.*\}(-?[0-9]+(\.[0-9]+)?)$/, l);
         } else {
           assertMatch(/^.*[0-9a-zA-Z]\s+([0-9]+(\.[0-9]+)?)$/, l);
         }

@@ -47,6 +47,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
+#include "Assertions/Assert.h"
 #include "Assertions/ProdAssert.h"
 #include "Async/async.h"
 #include "Cluster/ClusterFeature.h"
@@ -263,6 +264,18 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
 
 /// @brief destroy the engine, frees all assigned blocks
 ExecutionEngine::~ExecutionEngine() {
+  TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+  }
+
+  TRI_ASSERT(std::count_if(_blocks.begin(), _blocks.end(),
+                           [](const auto& block) {
+                             return block->isPrefetchTaskActive();
+                           }) == 0)
+      << "Some async prefetch tasks were not destroyed before";
+  stopAsyncTasks();
+
   if (_sharedState) {  // ensure no async task is working anymore
     _sharedState->invalidate();
   }
@@ -594,19 +607,24 @@ struct DistributedQueryInstanciator final
 
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
         TRI_ASSERT(!server.starts_with("server:"));
-        std::function<void(void)> f = [srvr = server, id = _query.id(),
-                                       vn = _query.vocbase().name(), &df]() {
-          LOG_TOPIC("d2554", INFO, Logger::QUERIES)
-              << "killing query " << id << " because participating DB server "
-              << srvr << " is unavailable";
-          try {
-            methods::Queries::kill(df, vn, id);
-          } catch (...) {
-            // it does not really matter if this fails.
-            // if the coordinator contacts the failed DB server next time, it
-            // will realize it has failed.
-          }
-        };
+        std::function<void(void)> f =
+            [srvr = server, id = _query.id(), vn = _query.vocbase().name(), &df,
+             qs = _query.queryString(),
+             bp = _query.bindParametersAsBuilder()]() {
+              LOG_TOPIC("d2554", INFO, Logger::QUERIES)
+                  << "killing query " << id
+                  << " because participating DB server " << srvr
+                  << " is unavailable, query string:" << qs
+                  << ", bind parameters: "
+                  << ((bp != nullptr) ? bp->slice().toJson() : std::string());
+              try {
+                methods::Queries::kill(df, vn, id);
+              } catch (...) {
+                // it does not really matter if this fails.
+                // if the coordinator contacts the failed DB server next time,
+                // it will realize it has failed.
+              }
+            };
 
         engine->rebootTrackers().emplace_back(ci.rebootTracker().callMeOnChange(
             {server, rebootId}, std::move(f),
@@ -953,6 +971,22 @@ void ExecutionEngine::collectExecutionStats(ExecutionStats& stats) {
 std::vector<arangodb::cluster::CallbackGuard>&
 ExecutionEngine::rebootTrackers() {
   return _rebootTrackers;
+}
+
+void ExecutionEngine::stopAsyncTasks() {
+  TRI_IF_FAILURE("AsyncPrefetch::blocksDestroyedOutOfOrder") {
+    using namespace std::chrono_literals;
+    std::this_thread::sleep_for(10ms);
+  }
+
+  // We need to stop prefetch tasks in topological order so
+  // that after stopping tasks on a certain node there is no prefetch
+  // tasks running on any dependent which could start another on the
+  // current block.
+  // The blocks are pushed in a reversed topological order.
+  for (auto it = _blocks.rbegin(); it != _blocks.rend(); ++it) {
+    (*it)->stopAsyncTasks();
+  }
 }
 
 std::shared_ptr<SharedQueryState> const& ExecutionEngine::sharedState() const {

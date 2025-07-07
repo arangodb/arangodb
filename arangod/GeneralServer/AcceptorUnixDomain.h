@@ -31,11 +31,20 @@
 
 namespace arangodb::rest {
 
-class AcceptorUnixDomain final : public Acceptor {
+class AcceptorUnixDomain
+    : public Acceptor,
+      public std::enable_shared_from_this<AcceptorUnixDomain> {
  public:
-  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx,
-                     Endpoint* endpoint)
-      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
+  static std::shared_ptr<AcceptorUnixDomain> make(rest::GeneralServer& server,
+                                                  rest::IoContext& ctx,
+                                                  Endpoint* endpoint) {
+    struct MakeShared : AcceptorUnixDomain {
+      MakeShared(rest::GeneralServer& server, rest::IoContext& ctx,
+                 Endpoint* endpoint)
+          : AcceptorUnixDomain(server, ctx, endpoint) {}
+    };
+    return std::make_shared<MakeShared>(server, ctx, endpoint);
+  }
 
  public:
   void open() override;
@@ -44,6 +53,9 @@ class AcceptorUnixDomain final : public Acceptor {
   void asyncAccept() override;
 
  private:
+  AcceptorUnixDomain(rest::GeneralServer& server, rest::IoContext& ctx,
+                     Endpoint* endpoint)
+      : Acceptor(server, ctx, endpoint), _acceptor(ctx.io_context) {}
   asio_ns::local::stream_protocol::acceptor _acceptor;
   /// @brief protects the _asioSocket
   std::mutex _mutex;

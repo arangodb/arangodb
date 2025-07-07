@@ -1,29 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /*global fail, assertTrue, assertFalse, assertEqual */
 
-// //////////////////////////////////////////////////////////////////////////////
-// / DISCLAIMER
-// /
-// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-// /
-// / Licensed under the Business Source License 1.1 (the "License");
-// / you may not use this file except in compliance with the License.
-// / You may obtain a copy of the License at
-// /
-// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
-// /
-// / Unless required by applicable law or agreed to in writing, software
-// / distributed under the License is distributed on an "AS IS" BASIS,
-// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// / See the License for the specific language governing permissions and
-// / limitations under the License.
-// /
-// / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Frank Celler
 /// @author Jan Steemann
-/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
-// //////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
@@ -36,10 +36,7 @@ const ERRORS = require('internal').errors;
 
 let IM = require('@arangodb/test-helper').getInstanceInfo();
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
+// test suite
 function AuthSuite() {
   'use strict';
   var baseUrl = function () {
@@ -52,10 +49,7 @@ function AuthSuite() {
 
   return {
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
+    // set up
     setUp: function () {
       arango.reconnect(arango.getEndpoint(), '_system', "root", "");
 
@@ -65,10 +59,7 @@ function AuthSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
+    // tear down
     tearDown: function () {
       // our test temporarily disables access to the user collection,
       // so our request to clear the failure points must be authenticated
@@ -214,10 +205,7 @@ function AuthSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test creating a new user
-    ////////////////////////////////////////////////////////////////////////////////
-
+    // test creating a new user
     testNewUser: function () {
       let expectUser = user;
       users.save(user, "foobar");
@@ -247,10 +235,7 @@ function AuthSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test creating a new user with empty password
-    ////////////////////////////////////////////////////////////////////////////////
-
+    // test creating a new user with empty password
     testEmptyPassword: function () {
       users.save(user, "");
       users.grantDatabase(user, db._name());
@@ -291,10 +276,7 @@ function AuthSuite() {
       assertTrue(db._collections().length > 0);
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test creating a new user with case sensitive password
-    ////////////////////////////////////////////////////////////////////////////////
-
+    // test creating a new user with case sensitive password
     testPasswordCase: function () {
       users.save(user, "FooBar");
       users.grantDatabase(user, db._name());
@@ -340,10 +322,7 @@ function AuthSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test creating a new user with colon in password
-    ////////////////////////////////////////////////////////////////////////////////
-
+    // test creating a new user with colon in password
     testColon: function () {
       users.save(user, "fuxx::bar");
       users.grantDatabase(user, db._name());
@@ -388,10 +367,7 @@ function AuthSuite() {
       }
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test creating a new user with special chars in password
-    ////////////////////////////////////////////////////////////////////////////////
-
+    // test creating a new user with special chars in password
     testSpecialChars: function () {
       users.save(user, ":\\abc'def:foobar@04. x-a");
       users.grantDatabase(user, db._name());
@@ -502,7 +478,7 @@ function AuthSuite() {
         body: JSON.stringify({"usern": user, "password": "foobar"}),
       });
       expect(res).to.be.an.instanceof(request.Response);
-      expect(res).to.have.property('statusCode', 400);
+      expect(res).to.have.property('statusCode', 401);
     },
 
     testAuthRequired: function () {
@@ -527,6 +503,337 @@ function AuthSuite() {
 
       expect(res).to.be.an.instanceof(request.Response);
       expect(res).to.have.property('statusCode', 200);
+    },
+
+    // access token and basic authentication
+    testAccessTokenBasic: function () {
+      const other = "other";
+      const pw1 = "foobar";
+      const version_url = `/_db/${other}/_api/version`;
+      const ok = 200;
+      const forbidden = 401;
+      const unauthorized = 403;
+      const conflict = 409;
+
+      try {
+        db._createDatabase("other");
+
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+
+        const auth = {
+          username: user,
+          password: pw1
+        };
+
+        // unknown user
+        {
+          const res = request.get(version_url, {auth: {username:"emil"}});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+
+        }
+
+        // correct username and password
+        {
+          const res = request.get(version_url, {auth});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+
+        // correct username and incorrect password
+        {
+          const res = request.get(version_url, {auth: {username: user, password: "emil"}});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+
+        // create an access token
+        const now = (new Date()) / 1000;
+
+        // with no authentication
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name: "testme", "valid_until": now + 100})
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+
+        // for wrong user
+        {
+          const res = request.post(`/_api/token/root`, {
+            body: JSON.stringify({name: "testme", "valid_until": now + 100}),
+            auth
+          });
+          expect(res).to.have.property('statusCode', unauthorized);
+        }
+
+        // finally correct parameters
+        const name = "testme";
+        const nowi = Math.floor(now + 100);
+        let id;
+        let token;
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": nowi}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.id).to.be.a('number');
+          expect(obj.name).to.be.equal(name);
+          expect(obj.valid_until).to.be.a('number');
+          expect(obj.created_at).to.be.a('number');
+          expect(obj.fingerprint).to.be.a('string');
+          expect(obj.active).to.be.equal(true);
+          expect(obj.token).to.be.a('string');
+
+          token = obj.token;
+          id = obj.id;
+          expect(obj.token.substr(0, 3)).to.be.equal("v1.");
+
+          const buf = new Buffer(token.substr(3), 'hex');
+          const unhex = buf.toString('utf8');
+          const json = JSON.parse(unhex);
+
+          expect(json.u).to.be.equal(user);
+          expect(json.e).to.be.equal(nowi);
+          expect(json.c).to.be.a('number');
+          expect(json.r).to.be.a('string');
+        }
+
+        // try to use token instead of password
+        {
+          const res = request.get(version_url, {auth: {username: user, password: token}});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+
+        // try to use token instead of password and empty username
+        {
+          const res = request.get(version_url, {auth: {username: "", password: token}});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+
+        // try to use token instead of password and wrong username
+        {
+          const res = request.get(version_url, {auth: {username: "emilxschlonz", password: token}});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+
+        // check token
+        {
+          const res = request.get(`/_api/token/${user}`, {
+            auth: {username: user, password: token}
+          });
+
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+
+          expect(obj).to.be.a('object');
+          expect(obj.tokens).to.be.a('array');
+          expect(obj.tokens.length).to.be.equal(1);
+          expect(obj.tokens[0]).to.be.a('object');
+          expect(obj.tokens[0].id).to.be.equal(id);
+        }
+
+        // delete token
+        {
+          const res = request.delete(`/_api/token/${user}/${id}`, {
+            auth: {username: user, password: token}
+          });
+
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+
+        // check token again, should fail
+        {
+          const res = request.get(`/_api/token/${user}`, {auth});
+
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+
+          expect(obj).to.be.a('object');
+          expect(obj.tokens).to.be.a('array');
+          expect(obj.tokens.length).to.be.equal(0);
+        }
+
+        // try to use token instead of password. should fail
+        {
+          const res = request.get(version_url, {auth: {username: user, password: token}});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
+    },
+
+    // access token and expiry
+    testAccessTokenExpiry: function () {
+      const other = "other";
+      const version_url = `/_db/${other}/_api/version`;
+      const pw1 = "foobar";
+      const ok = 200;
+      const forbidden = 401;
+      const unauthorized = 403;
+      const conflict = 409;
+
+      try {
+        db._createDatabase(other);
+
+        users.save(user, pw1);
+        users.grantDatabase(user, "other");
+        users.reload();
+
+        const auth = {
+          username: user,
+          password: pw1
+        };
+
+        // create an access token which has timed out
+        const now = (new Date()) / 1000;
+        const name = "testme";
+        const nowi = Math.floor(now - 1);
+        let id;
+        let token;
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": nowi}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.id).to.be.a('number');
+          expect(obj.name).to.be.equal(name);
+          expect(obj.valid_until).to.be.a('number');
+          expect(obj.created_at).to.be.a('number');
+          expect(obj.fingerprint).to.be.a('string');
+          expect(obj.active).to.be.equal(false);
+          expect(obj.token).to.be.a('string');
+
+          token = obj.token;
+          id = obj.id;
+          expect(obj.token.substr(0, 3)).to.be.equal("v1.");
+
+          const buf = new Buffer(token.substr(3), 'hex');
+          const unhex = buf.toString('utf8');
+          const json = JSON.parse(unhex);
+
+          expect(json.u).to.be.equal(user);
+          expect(json.e).to.be.equal(nowi);
+          expect(json.c).to.be.a('number');
+          expect(json.r).to.be.a('string');
+        }
+
+        // try to use token instead of password. should fail
+        {
+          const res = request.get(version_url, {auth: {username: user, password: token}});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+      } finally {
+        db._dropDatabase("other");
+      }
+    },
+
+    // access token and JWT
+    testAccessTokenJWT: function () {
+      const other = "other";
+      const pw1 = "foobar";
+      const auth_url = `/_open/auth`;
+      const ok = 200;
+      const forbidden = 401;
+      const unauthorized = 403;
+      const conflict = 409;
+
+      try {
+        db._createDatabase("other");
+
+        users.save(user, pw1);
+        users.grantDatabase(user, other);
+        users.reload();
+
+        const auth = {
+          username: user,
+          password: pw1
+        };
+
+        // create a token
+        const now = (new Date()) / 1000;
+        const name = "testme";
+        const nowi = Math.floor(now + 100);
+        let id;
+        let token;
+        {
+          const res = request.post(`/_api/token/${user}`, {
+            body: JSON.stringify({name, "valid_until": nowi}),
+            auth
+          });
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+          expect(res.body).to.be.an('string');
+          const obj = JSON.parse(res.body);
+          expect(obj.id).to.be.a('number');
+          expect(obj.name).to.be.equal(name);
+          expect(obj.valid_until).to.be.a('number');
+          expect(obj.created_at).to.be.a('number');
+          expect(obj.fingerprint).to.be.a('string');
+          expect(obj.active).to.be.equal(true);
+          expect(obj.token).to.be.a('string');
+
+          token = obj.token;
+          id = obj.id;
+          expect(obj.token.substr(0, 3)).to.be.equal("v1.");
+
+          const buf = new Buffer(token.substr(3), 'hex');
+          const unhex = buf.toString('utf8');
+          const json = JSON.parse(unhex);
+
+          expect(json.u).to.be.equal(user);
+          expect(json.e).to.be.equal(nowi);
+          expect(json.c).to.be.a('number');
+          expect(json.r).to.be.a('string');
+        }
+
+        // generate JWT with token
+        {
+          const res = request.post(auth_url, {body: JSON.stringify({username: user, password: token})});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+
+        // try to use token instead of password and empty username
+        {
+          const res = request.post(auth_url, {body: JSON.stringify({username: "", password: token})});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', ok);
+        }
+
+        // try to use token instead of password and wrong username
+        {
+          const res = request.post(auth_url, {body: JSON.stringify({username: "root", password: token})});
+          expect(res).to.be.an.instanceof(request.Response);
+          expect(res).to.have.property('statusCode', forbidden);
+        }
+      } finally {
+        db._dropDatabase(other);
+      }
     },
 
     testViaJS: function () {
@@ -760,10 +1067,7 @@ function UnauthorizedAccesSuite() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
+// executes the test suite
 jsunity.run(AuthSuite);
 jsunity.run(UnauthorizedAccesSuite);
 

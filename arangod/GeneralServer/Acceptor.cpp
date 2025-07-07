@@ -44,21 +44,19 @@ Acceptor::Acceptor(rest::GeneralServer& server, rest::IoContext& context,
       _open(false),
       _acceptFailures(0) {}
 
-std::unique_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
+std::shared_ptr<Acceptor> Acceptor::factory(rest::GeneralServer& server,
                                             rest::IoContext& context,
                                             Endpoint* endpoint) {
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
   if (endpoint->domainType() == Endpoint::DomainType::UNIX) {
-    return std::make_unique<AcceptorUnixDomain>(server, context, endpoint);
+    return AcceptorUnixDomain::make(server, context, endpoint);
   }
 #endif
   if (endpoint->encryption() == Endpoint::EncryptionType::SSL) {
-    return std::make_unique<AcceptorTcp<rest::SocketType::Ssl>>(server, context,
-                                                                endpoint);
+    return AcceptorTcp<rest::SocketType::Ssl>::make(server, context, endpoint);
   } else {
     TRI_ASSERT(endpoint->encryption() == Endpoint::EncryptionType::NONE);
-    return std::make_unique<AcceptorTcp<rest::SocketType::Tcp>>(server, context,
-                                                                endpoint);
+    return AcceptorTcp<rest::SocketType::Tcp>::make(server, context, endpoint);
   }
 }
 

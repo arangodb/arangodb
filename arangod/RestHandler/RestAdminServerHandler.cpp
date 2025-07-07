@@ -32,10 +32,13 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "Utils/ExecContext.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/VocbaseInfo.h"
@@ -67,6 +70,10 @@ RestStatus RestAdminServerHandler::execute() {
     handleJWTSecretsReload();
   } else if (suffixes.size() == 1 && suffixes[0] == "encryption") {
     handleEncryptionKeyRotation();
+  } else if (suffixes.size() == 1 && suffixes[0] == "api-calls") {
+    handleApiCalls();
+  } else if (suffixes.size() == 1 && suffixes[0] == "aql-queries") {
+    handleAqlRecordedQueries();
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
   }
@@ -298,3 +305,106 @@ void RestAdminServerHandler::handleEncryptionKeyRotation() {
   generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
 }
 #endif
+
+void RestAdminServerHandler::handleApiCalls() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+
+  auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
+
+  // Check if recording API is enabled
+  if (!apiRecordingFeature.isAPIEnabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "recording API is disabled");
+    return;
+  }
+
+  // Check permission level
+  if (apiRecordingFeature.onlySuperUser()) {
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need super user rights for recording API operations");
+      return;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights for recording API operations");
+      return;
+    }
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(VPackValue("calls"));
+    {
+      VPackArrayBuilder guard2(&builder);
+
+      // Use doForApiCallRecords to iterate through records
+      apiRecordingFeature.doForApiCallRecords(
+          [&builder](ApiCallRecord const& record) {
+            arangodb::velocypack::serialize(builder, record);
+          });
+    }
+  }
+  generateOk(rest::ResponseCode::OK, builder.slice());
+}
+
+void RestAdminServerHandler::handleAqlRecordedQueries() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+  if (!ServerState::instance()->isCoordinator() &&
+      !ServerState::instance()->isSingleServer()) {
+    generateError(
+        Result(TRI_ERROR_NOT_IMPLEMENTED,
+               "API only available on coordinators and single servers"));
+    return;
+  }
+
+  auto& apiRecordingFeature = server().getFeature<ApiRecordingFeature>();
+
+  // Check if recording API is enabled
+  if (!apiRecordingFeature.isAPIEnabled()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "recording API is disabled");
+    return;
+  }
+
+  // Check permission level
+  if (apiRecordingFeature.onlySuperUser()) {
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need super user rights for recording API operations");
+      return;
+    }
+  } else {
+    if (!ExecContext::current().isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights for recording API operations");
+      return;
+    }
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder guard(&builder);
+    builder.add(VPackValue("queries"));
+    {
+      VPackArrayBuilder guard2(&builder);
+
+      // Use doForAqlQueryRecords to iterate through records
+      apiRecordingFeature.doForAqlQueryRecords(
+          [&builder](AqlQueryRecord const& record) {
+            arangodb::velocypack::serialize(builder, record);
+          });
+    }
+  }
+  generateOk(rest::ResponseCode::OK, builder.slice());
+}

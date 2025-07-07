@@ -56,6 +56,10 @@ struct PlanCollectionEntry {
   // Remove the isBuilding flags, call it if we are completed
   void removeBuildingFlags();
 
+  UserInputCollectionProperties const& properties() const noexcept {
+    return _properties;
+  }
+
  private:
   UserInputCollectionProperties _properties{};
   std::optional<AgencyIsBuildingFlags> _buildingFlags{AgencyIsBuildingFlags{}};

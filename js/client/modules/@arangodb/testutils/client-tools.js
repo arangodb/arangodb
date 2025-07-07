@@ -151,6 +151,9 @@ class ConfigBuilder {
     return fs.read(this.config['log.file']);
   }
 
+  setDumpEnv() {
+    this.config['dump-env'] = true;
+  }
   setAuth(username, password) {
     if (username !== undefined) {
       this.config['server.username'] = username;
@@ -284,6 +287,9 @@ class ConfigBuilder {
 
 const createBaseConfigBuilder = function (type, options, instanceInfo, database = '_system') {
   const cfg = new ConfigBuilder(type);
+  if (options.extremeVerbosity) {
+    cfg.setDumpEnv();
+  }
   if (!options.jwtSecret) {
     cfg.setAuth(options.username, options.password);
   }
@@ -545,6 +551,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (addArgs !== undefined) {
     args = Object.assign(args, addArgs);
   }
+    
   let argv = toArgv(args);
   argv = argv.concat(['--', options.makedataDB],
                      moreargv, [

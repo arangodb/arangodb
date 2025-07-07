@@ -5,6 +5,7 @@ add_library(arango_tests_futures OBJECT
   TryTest.cpp)
 target_link_libraries(arango_tests_futures
   PRIVATE
+    arango
     arango_futures
     gtest
     velocypack

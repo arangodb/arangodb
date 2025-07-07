@@ -40,6 +40,7 @@
 #include <mutex>
 
 namespace arangodb {
+class ApiRecordingFeature;
 class AuthenticationFeature;
 class ConnectionStatistics;
 class GeneralRequest;
@@ -168,6 +169,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
  protected:
   GeneralServer& _server;
   GeneralServerFeature& _generalServerFeature;
+  ApiRecordingFeature& _apiRecordingFeature;
   ConnectionInfo _connectionInfo;
 
   ConnectionStatistics::Item _connectionStatistics;

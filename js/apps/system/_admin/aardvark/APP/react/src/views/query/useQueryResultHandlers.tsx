@@ -40,12 +40,8 @@ export const useQueryResultHandlers = () => {
       return newResults;
     });
   };
-  const onRemoveResult = (index: number) => {
-    setQueryResults(queryResults => {
-      const newResults = [...queryResults];
-      newResults.splice(index, 1);
-      return newResults;
-    });
+  const onRemoveResult = (asyncJobId: string) => {
+    setQueryResults((prev) => prev.filter(result => result.asyncJobId !== asyncJobId));
   };
   const onRemoveAllResults = async () => {
     const queriesToCancel = queryResults

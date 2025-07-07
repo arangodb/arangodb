@@ -6,8 +6,8 @@ add_executable(${BIN_ARANGODUMP}
 target_include_directories(${BIN_ARANGODUMP} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 
 target_link_libraries(${BIN_ARANGODUMP}
-  arango
   ${SYSTEM_LIBRARIES}
+  arango_basic_maskings
   boost_system
   boost_boost
   arango_shell

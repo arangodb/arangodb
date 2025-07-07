@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Context.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -40,10 +41,31 @@ RestBaseHandler::RestBaseHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
     : RestHandler(server, request, response), _potentialDirtyReads(false) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the body as VelocyPack
-////////////////////////////////////////////////////////////////////////////////
+bool RestBaseHandler::isAdminUser() const {
+  if (!ExecContext::isAuthEnabled()) {
+    return true;
+  }
+  return ExecContext::current().isAdminUser();
+}
 
+bool RestBaseHandler::isSelfUser(std::string const& user) const {
+  if (_request->authenticated() && user == _request->user()) {
+    return true;
+  }
+  if (!ExecContext::isAuthEnabled()) {
+    return true;
+  }
+  return false;
+}
+
+bool RestBaseHandler::canAccessUser(std::string const& user) const {
+  if (_request->authenticated() && user == _request->user()) {
+    return true;
+  }
+  return isAdminUser();
+}
+
+// parses the body as VelocyPack
 velocypack::Slice RestBaseHandler::parseVPackBody(bool& success) {
   try {
     success = true;
@@ -74,10 +96,7 @@ void RestBaseHandler::handleError(Exception const& ex) {
   generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
+// generates a result from VelocyPack
 template<typename Payload>
 void RestBaseHandler::generateResult(rest::ResponseCode code,
                                      Payload&& payload) {
@@ -97,10 +116,8 @@ void RestBaseHandler::generateResult(rest::ResponseCode code, Payload&& payload,
   }
   writeResult(std::forward<Payload>(payload), *options);
 }
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
 
+// generates a result from VelocyPack
 template<typename Payload>
 void RestBaseHandler::generateResult(
     rest::ResponseCode code, Payload&& payload,
@@ -112,9 +129,9 @@ void RestBaseHandler::generateResult(
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptions()));
 }
 
-/// convenience function akin to generateError,
-/// renders payload in 'result' field
-/// adds proper `error`, `code` fields
+// convenience function akin to generateError,
+// renders payload in 'result' field
+// adds proper `error`, `code` fields
 void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload,
                                  VPackOptions const& options) {
   resetResponse(code);
@@ -136,7 +153,7 @@ void RestBaseHandler::generateOk(rest::ResponseCode code, VPackSlice payload,
   }
 }
 
-/// Add `error` and `code` fields into your response
+// Add `error` and `code` fields into your response
 void RestBaseHandler::generateOk(rest::ResponseCode code,
                                  VPackBuilder const& payload) {
   resetResponse(code);
@@ -156,36 +173,24 @@ void RestBaseHandler::generateOk(rest::ResponseCode code,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a cancel message
-////////////////////////////////////////////////////////////////////////////////
-
+// generates a cancel message
 void RestBaseHandler::generateCanceled() {
   return generateError(rest::ResponseCode::GONE, TRI_ERROR_REQUEST_CANCELED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates not implemented
-////////////////////////////////////////////////////////////////////////////////
-
+// generates not implemented
 void RestBaseHandler::generateNotImplemented(std::string const& path) {
   generateError(rest::ResponseCode::NOT_IMPLEMENTED, TRI_ERROR_NOT_IMPLEMENTED,
                 "'" + path + "' not implemented");
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief generates forbidden
-////////////////////////////////////////////////////////////////////////////////
-
+// generates forbidden
 void RestBaseHandler::generateForbidden() {
   generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                 "operation forbidden");
 }
 
-//////////////////////////////////////////////////////////////////////////////
-/// @brief writes volocypack or json to response
-//////////////////////////////////////////////////////////////////////////////
-
+// writes volocypack or json to response
 template<typename Payload>
 void RestBaseHandler::writeResult(Payload&& payload,
                                   VPackOptions const& options) {

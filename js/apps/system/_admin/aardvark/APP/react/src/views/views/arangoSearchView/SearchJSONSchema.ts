@@ -134,7 +134,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
           properties: {
             fields: {
               type: "array",
-              nullable: false,
+              nullable: true,
               items: {
                 type: "string"
               }
@@ -149,7 +149,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
               nullable: true
             }
           },
-          required: ["fields", "compression"],
+          required: ["compression"],
           default: {
             compression: "lz4"
           },

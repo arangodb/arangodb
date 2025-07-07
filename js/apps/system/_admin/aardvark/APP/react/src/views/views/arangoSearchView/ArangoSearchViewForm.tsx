@@ -43,8 +43,9 @@ export const ArangoSearchViewForm = () => {
 };
 
 const LinksAccordionItem = () => {
+  const { isFormDisabled } = useEditViewContext();
   return (
-    <AccordionItem>
+    <AccordionItem isDisabled={isFormDisabled}>
       <AccordionButton>
         <Box flex="1" textAlign="left">
           Links
@@ -60,10 +61,10 @@ const LinksAccordionItem = () => {
 const GeneralAccordionItem = () => {
   const { fields } = useArangoSearchFieldsData();
   const generalFields = fields.filter(field => field.group === "general");
-  const { isAdminUser } = useEditViewContext();
+  const { isAdminUser, isFormDisabled } = useEditViewContext();
 
   return (
-    <AccordionItem>
+    <AccordionItem isDisabled={isFormDisabled}>
       <AccordionButton>
         <Box flex="1" textAlign="left">
           General
@@ -77,7 +78,7 @@ const GeneralAccordionItem = () => {
               <FormField
                 field={{
                   ...field,
-                  isDisabled: field.isDisabled || !isAdminUser
+                  isDisabled: field.isDisabled || !isAdminUser || isFormDisabled
                 }}
                 key={field.name}
               />
@@ -93,9 +94,9 @@ const ConsolidationPolicyAccordionItem = () => {
   const { tierConsolidationPolicyFields, bytesAccumConsolidationPolicyFields } =
     useArangoSearchFieldsData();
   const [policyTypeField] = useField("consolidationPolicy.type");
-  const { isAdminUser } = useEditViewContext();
+  const { isAdminUser, isFormDisabled } = useEditViewContext();
   return (
-    <AccordionItem>
+    <AccordionItem isDisabled={isFormDisabled}>
       <AccordionButton>
         <Box flex="1" textAlign="left">
           Consolidation Policy
@@ -111,7 +112,7 @@ const ConsolidationPolicyAccordionItem = () => {
             ? tierConsolidationPolicyFields.map(field => {
                 return (
                   <FormField
-                    field={{ ...field, isDisabled: !isAdminUser }}
+                    field={{ ...field, isDisabled: !isAdminUser || isFormDisabled}}
                     key={field.name}
                   />
                 );
@@ -121,7 +122,7 @@ const ConsolidationPolicyAccordionItem = () => {
             ? bytesAccumConsolidationPolicyFields.map(field => {
                 return (
                   <FormField
-                    field={{ ...field, isDisabled: !isAdminUser }}
+                    field={{ ...field, isDisabled: !isAdminUser || isFormDisabled }}
                     key={field.name}
                   />
                 );
@@ -147,9 +148,10 @@ const PrimarySortAccordionItem = () => {
   const primarySortCompressionLabel = compressionLabelsMap[primarySortCompressionField.value] ?? primarySortCompressionField.value;
   const isPrimarySortEmpty =
     primarySortField.value?.length === 0 || !primarySortField.value;
+  const { isFormDisabled } = useEditViewContext();
 
   return (
-    <AccordionItem>
+    <AccordionItem isDisabled={isFormDisabled}>
       <AccordionButton>
         <Box flex="1" textAlign="left">
           Primary Sort (Compression: {primarySortCompressionLabel}{primarySortCacheField.value ? ", cached" : ""})
@@ -185,8 +187,10 @@ const StoredValuesAccordionItem = () => {
   );
   const isStoredValuesEmpty =
     storedValuesField.value?.length === 0 || !storedValuesField.value;
+  const { isFormDisabled } = useEditViewContext();
+
   return (
-    <AccordionItem>
+    <AccordionItem isDisabled={isFormDisabled}>
       <AccordionButton>
         <Box flex="1" textAlign="left">
           Stored Values
@@ -199,11 +203,11 @@ const StoredValuesAccordionItem = () => {
           <Box padding="4">No fields set</Box>
         ) : (
           <FieldsGrid alignItems="start">
-            {storedValuesField.value?.map((item: any, index: number) => {
+            {storedValuesField.value?.map((item, index) => {
               return (
                 <React.Fragment key={index}>
                   <Stack direction="row" flexWrap="wrap">
-                    {item.fields.map((field: any) => {
+                    {item.fields?.map(field => {
                       return <Tag key={field}>{field}</Tag>;
                     })}
                   </Stack>

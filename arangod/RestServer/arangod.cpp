@@ -47,6 +47,9 @@ constexpr auto kNonServerFeatures =
 #endif
                ArangodServer::id<GeneralServerFeature>(),
                ArangodServer::id<GreetingsFeature>(),
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+               ArangodServer::id<ProcessEnvironmentFeature>(),
+#endif
                ArangodServer::id<HttpEndpointProvider>(),
                ArangodServer::id<LogBufferFeature>(),
                ArangodServer::id<ServerFeature>(),
@@ -94,6 +97,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<GreetingsFeaturePhase>(server,
                                                          std::false_type{});
         },
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        [&name](auto& server, TypeTag<ProcessEnvironmentFeature>) {
+          return std::make_unique<ProcessEnvironmentFeature>(server, name);
+        },
+#endif
         [&ret](auto& server, TypeTag<CheckVersionFeature>) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);

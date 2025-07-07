@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -30,7 +30,6 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
@@ -42,9 +41,7 @@
 
 namespace {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @return a collection exists in database or a wildcard was specified
-////////////////////////////////////////////////////////////////////////////////
+// a collection exists in database or a wildcard was specified
 arangodb::Result existsCollection(arangodb::ArangodServer& server,
                                   std::string const& database,
                                   std::string const& collection) {
@@ -111,20 +108,6 @@ RestStatus RestUsersHandler::execute() {
       generateError(ResponseCode::BAD, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       return RestStatus::DONE;
   }
-}
-
-bool RestUsersHandler::isAdminUser() const {
-  if (!ExecContext::isAuthEnabled()) {
-    return true;
-  }
-  return ExecContext::current().isAdminUser();
-}
-
-bool RestUsersHandler::canAccessUser(std::string const& user) const {
-  if (_request->authenticated() && user == _request->user()) {
-    return true;
-  }
-  return isAdminUser();
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -215,7 +198,7 @@ RestStatus RestUsersHandler::getRequest(auth::UserManager* um) {
   return RestStatus::DONE;
 }
 
-/// generate response for /_api/user/database?full=true/false
+// generate response for /_api/user/database?full=true/false
 void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
                                               std::string const& username,
                                               bool full) {
@@ -269,7 +252,7 @@ void RestUsersHandler::generateDatabaseResult(auth::UserManager* um,
   }
 }
 
-/// helper to create(0), replace(1), update(2) a user
+// helper to create(0), replace(1), update(2) a user
 static Result StoreUser(auth::UserManager* um, int mode,
                         std::string const& user, VPackSlice json) {
   std::string passwd;
@@ -349,7 +332,8 @@ RestStatus RestUsersHandler::postRequest(auth::UserManager* um) {
     if (s.isString()) {
       password = s.copyString();
     }
-    if (um->checkPassword(user, password)) {
+    std::string un;
+    if (um->checkCredentials(user, password, un)) {
       generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);

@@ -150,15 +150,16 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'sanOptions': {},
     'isInstrumented': isInstrumented,
     'haveFailAt': haveFailAt, // silent option - automatically set only.
-    'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
+    'oneTestTimeout': (isInstrumented? 40 : 15) * 60,
   });
 
   tu.CopyIntoList(optionsDocumentation, [
-    'SUT instrumented binaries',
+    ' SUT instrumented binaries',
     '   - `sanitizer`: if set the programs are run with enabled sanitizer',
     '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
     '     and need longer timeouts',
     '   - `isCov`: doubles oneTestTimeot value if set to true',
+    ''
   ]);
   optionHandlers.push(function(options) {
     // fiddle in suppressions for sanitizers if not already set from an
@@ -171,7 +172,11 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     // scripts/unittest as well. according to @dothebart it must be
     // present in both code locations.
     if (options.isSan) {
-      ['asan', 'lsan', 'ubsan', 'tsan'].forEach(whichSan => {
+      let sans = ['asan', 'lsan', 'ubsan'];
+      if (versionHas('tsan')) {
+        sans = ['tsan'];
+      }
+      sans.forEach(whichSan => {
         let fileName = whichSan + "_arangodb_suppressions.txt";
         let fullNameSup = `${fs.join(fs.makeAbsolute(''), fileName)}`;
         let sanOpt = `${whichSan.toUpperCase()}_OPTIONS`;
@@ -185,12 +190,12 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
               options.sanOptions[sanOpt][pair[0]] = pair[1];
             }
           });
+          if (fs.exists(fileName)) {
+            options.sanOptions[sanOpt]['suppressions'] = fullNameSup;
+          }
         }
         else {
           options.sanOptions[sanOpt] = {};
-        }
-        if (fs.exists(fileName)) {
-          options.sanOptions[sanOpt]['suppressions'] = fullNameSup;
         }
       });
     }

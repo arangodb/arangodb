@@ -92,6 +92,10 @@ class GeneralServerFeature final : public ArangodFeature {
 
   metrics::Gauge<std::uint64_t>& _currentRequestsSize;
 
+  [[nodiscard]] bool startedListening() const noexcept {
+    return _startedListening;
+  }
+
  private:
   // build HTTP server(s)
   void buildServers();
@@ -104,9 +108,7 @@ class GeneralServerFeature final : public ArangodFeature {
 
   double _keepAliveTimeout = 300.0;
   uint64_t _telemetricsMaxRequestsPerInterval;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   bool _startedListening;
-#endif
   bool _allowEarlyConnections;
   bool _handleContentEncodingForUnauthenticatedRequests;
   bool _enableTelemetrics;
