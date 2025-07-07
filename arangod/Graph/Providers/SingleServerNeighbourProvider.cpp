@@ -35,6 +35,69 @@
 using namespace arangodb::graph;
 
 template<class Step>
+auto SingleServerNeighbourProvider<Step>::NeighbourCache::rearm(
+    VertexType vertexId) -> bool {
+  _finished = false;
+  auto it = _neighbours.find(vertexId);
+  if (it != _neighbours.end()) {
+    _currentEntry = it;
+    // cache can only be used if vertex in cache includes all its neighbours
+    if (std::get<0>(it->second)) {
+      return true;
+    }
+    return false;
+  }
+  auto const& [iter, _inserted] = _neighbours.insert(  // insert empty
+      {vertexId,
+       std::make_tuple(
+           false, std::vector<std::shared_ptr<std::vector<ExpansionInfo>>>{})});
+  _currentEntry = iter;
+  return false;
+}
+
+template<class Step>
+auto SingleServerNeighbourProvider<Step>::NeighbourCache::next()
+    -> std::optional<NeighbourBatch> {
+  TRI_ASSERT(_currentEntry != _neighbours.end());
+  auto& batches = std::get<1>(_currentEntry->second);
+  TRI_ASSERT(_currentBatchInCache != std::nullopt);
+  // give next batch
+  auto batch = *_currentBatchInCache;
+  if (batch + 1 == batches.size()) {
+    _finished = true;  // there are no more batches for vertex in the cache
+  } else {
+    _currentBatchInCache = batch + 1;  // next time give next batch
+  }
+  TRI_ASSERT(batch < batches.size());
+  return batches[batch];
+}
+
+template<class Step>
+auto SingleServerNeighbourProvider<Step>::NeighbourCache::update(
+    NeighbourBatch const& batch, bool isLastBatch) -> void {
+  TRI_ASSERT(_currentEntry != _neighbours.end());
+  auto& vec = std::get<1>(_currentEntry->second);
+  vec.emplace_back(batch);
+  if (isLastBatch) {
+    std::get<0>(_currentEntry->second) =
+        true;  // cache for this vertex finished
+  }
+  size_t newMemoryUsage = 0;
+  for (auto const& neighbour : *batch) {
+    newMemoryUsage += neighbour.size();
+  }
+  _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
+  _memoryUsageVertexCache += newMemoryUsage;
+}
+
+template<class Step>
+auto SingleServerNeighbourProvider<Step>::NeighbourCache::clear() -> void {
+  _neighbours.clear();
+  _resourceMonitor.decreaseMemoryUsage(_memoryUsageVertexCache);
+  _memoryUsageVertexCache = 0;
+}
+
+template<class Step>
 SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
     SingleServerBaseProviderOptions& opts, transaction::Methods* trx,
     ResourceMonitor& resourceMonitor, aql::TraversalStats& stats)
@@ -42,23 +105,26 @@ SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
           resourceMonitor, trx, opts.tmpVar(), opts.indexInformations().first,
           opts.indexInformations().second, opts.expressionContext(),
           /*requiresFullDocument*/ opts.hasWeightMethod(), opts.useCache())},
-      _resourceMonitor{resourceMonitor},
       _stats{}  // TODO should hand in stats here to use it as a reference
 {
   if (opts.indexInformations().second.empty()) {
     // If we have depth dependent filters, we must not use the cache,
     // otherwise, we do:
-    _vertexCache.emplace();
+    _neighbourCache.emplace(resourceMonitor);
   }
 }
 template<class Step>
 auto SingleServerNeighbourProvider<Step>::rearm(Step const& step) -> void {
   _currentStep = step;
   auto const& vertex = step.getVertex();
-  TRI_ASSERT(_cursor != nullptr);
-  _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
-  ++_rearmed;
-  _finished = false;
+  if (_neighbourCache && _neighbourCache->rearm(vertex.getID())) {
+    _useCache = true;
+  } else {
+    _useCache = false;
+    TRI_ASSERT(_cursor != nullptr);
+    _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
+    ++_rearmed;
+  }
 }
 template<class Step>
 auto SingleServerNeighbourProvider<Step>::next(
@@ -67,68 +133,31 @@ auto SingleServerNeighbourProvider<Step>::next(
   TRI_ASSERT(_currentStep != std::nullopt);
   TRI_ASSERT(hasMore(_currentStep->getDepth()));
 
-  typename FoundVertexCache::iterator vertexInCache;
-  auto const& vertex = _currentStep->getVertex();
-  if (_vertexCache.has_value()) {
-    auto it = _vertexCache->find(vertex.getID());
-    // cache can only be used if vertex in cache includes all its neighbours
-    if (it != _vertexCache->end()) {
-      if (std::get<0>(it->second)) {
-        TRI_ASSERT(_currentBatchInCache != std::nullopt);
-        auto batch = *_currentBatchInCache;
-        if (batch + 1 == std::get<1>(it->second).size()) {
-          _finished =
-              true;  // there are no more batches for vertex in the cache
-        } else {
-          _currentBatchInCache = batch + 1;  // next time give next batch
-        }
-        TRI_ASSERT(batch < std::get<1>(it->second).size());
-        return (std::get<1>(it->second))[batch];
-      }
-      vertexInCache = it;
-    } else {
-      auto const& [iter, _inserted] = _vertexCache->insert(  // insert empty
-          {vertex.getID(),
-           std::make_tuple(
-               false,
-               std::vector<std::shared_ptr<std::vector<ExpansionInfo>>>{})});
-      vertexInCache = iter;
+  if (_useCache) {
+    TRI_ASSERT(_neighbourCache != std::nullopt);
+    if (auto batch = _neighbourCache->next(); batch != std::nullopt) {
+      return *batch;
     }
   }
 
-  std::shared_ptr<std::vector<ExpansionInfo>> newNeighbours =
-      std::make_shared<std::vector<ExpansionInfo>>();
+  NeighbourBatch newNeighbours = std::make_shared<std::vector<ExpansionInfo>>();
   _cursor->readAll(
       provider, _stats, _currentStep->getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
         ++_readSomething;
         newNeighbours->emplace_back(std::move(eid), edge, cursorID);
       });
-  if (_vertexCache.has_value()) {
-    size_t newMemoryUsage = 0;
-    for (auto const& neighbour : *newNeighbours) {
-      newMemoryUsage += neighbour.size();
-    }
-    _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
-    _memoryUsageVertexCache += newMemoryUsage;
-
-    auto& vec = std::get<1>(vertexInCache->second);
-    vec.emplace_back(newNeighbours);
-    if (!hasMore(_currentStep->getDepth())) {
-      std::get<0>(vertexInCache->second) =
-          true;  // cache for this vertex finished
-    }
+  if (_neighbourCache.has_value()) {
+    _neighbourCache->update(newNeighbours, !hasMore(_currentStep->getDepth()));
   }
   return newNeighbours;
 }
 
 template<typename Step>
 auto SingleServerNeighbourProvider<Step>::clear() -> void {
-  if (_vertexCache.has_value()) {
-    _vertexCache->clear();
+  if (_neighbourCache.has_value()) {
+    _neighbourCache->clear();
   }
-  _resourceMonitor.decreaseMemoryUsage(_memoryUsageVertexCache);
-  _memoryUsageVertexCache = 0;
 
   LOG_TOPIC("65261", TRACE, Logger::GRAPHS)
       << "Rearmed edge index cursor: " << _rearmed
@@ -152,7 +181,11 @@ auto SingleServerNeighbourProvider<Step>::hasDepthSpecificLookup(
 
 template<typename Step>
 auto SingleServerNeighbourProvider<Step>::hasMore(uint64_t depth) -> bool {
-  return _cursor->hasMore(depth) && !_finished;
+  if (_useCache) {
+    TRI_ASSERT(_neighbourCache != std::nullopt);
+    return _neighbourCache->hasMore();
+  }
+  return _cursor->hasMore(depth);
 }
 
 template struct arangodb::graph::SingleServerNeighbourProvider<
