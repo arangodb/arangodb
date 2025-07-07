@@ -98,7 +98,7 @@
     "@types/underscore": "^1.11.4",
     "compression-webpack-plugin": "^10.0.0",
     "html-loader": "^4.2.0",
-    "http-proxy-middleware": "^2.0.6",
+    "http-proxy-middleware": "^2.0.9",
     "imports-loader": "^4.0.1",
     "patch-package": "^6.5.1",
     "querystring-es3": "^0.2.1",
