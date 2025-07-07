@@ -115,6 +115,9 @@ struct AsyncAgencyCommPoolMock final : public network::ConnectionPool {
           _mock(mock),
           _endpoint(std::move(endpoint)) {}
 
+    virtual std::string localEndpoint() override final {
+      return "not implemented";
+    };
     std::size_t requestsLeft() const override { return 1; }
     State state() const override {
       return fuerte::Connection::State::Connected;

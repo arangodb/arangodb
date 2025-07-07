@@ -54,6 +54,10 @@ struct AsyncAgencyStorePoolConnection final
   void sendRequest(std::unique_ptr<arangodb::fuerte::Request> req,
                    arangodb::fuerte::RequestCallback cb) override;
 
+  virtual std::string localEndpoint() override final {
+    return "not implemented";
+  };
+
   arangodb::AgencyCache& _cache;
   std::string _endpoint;
 };
