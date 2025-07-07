@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-636: bump moment from 2.18.1 to 2.30.1 (latest version)
+
 * Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
 
 * FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
