@@ -59,11 +59,30 @@ class ScatterExecutor {
     auto execute(AqlCallStack const& callStack, ExecutionState upstreamState)
         -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
+    auto remainingRows() const -> uint64_t;
+
+    /**
+     * @brief Check if we have received a hard limit
+     * @return true if we have received a hard limit
+     */
+    auto gotHardLimit() const -> bool;
+
+    /**
+     * @brief Reset the hard limit
+     */
+    auto resetHardLimit() -> void;
+
+    /**
+     * @brief Set hard limit has been seen.
+     */
+    auto setSeenHardLimit() -> void;
+
    private:
     std::deque<std::tuple<SharedAqlItemBlockPtr, SkipResult>> _queue;
     // This is unique_ptr to get away with everything being forward declared...
     std::unique_ptr<ExecutionBlock> _executor;
     bool _executorHasMore;
+    bool _gotHardLimit = false;
   };
 
   explicit ScatterExecutor(Infos const&);

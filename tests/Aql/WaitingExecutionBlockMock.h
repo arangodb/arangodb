@@ -90,6 +90,10 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
              arangodb::aql::SharedAqlItemBlockPtr>
   execute(arangodb::aql::AqlCallStack const& stack) override;
 
+  auto remainingRows() const -> uint64_t;
+
+  auto getLastCall() const -> arangodb::aql::AqlCall;
+
  private:
   // Implementation of execute
   std::tuple<arangodb::aql::ExecutionState, arangodb::aql::SkipResult,
@@ -108,6 +112,7 @@ class WaitingExecutionBlockMock final : public arangodb::aql::ExecutionBlock {
   typename arangodb::aql::ScatterExecutor::ClientBlockData _blockData;
   std::function<void()> _wakeUpCallback;
   std::function<void()> _executeCallback;
+  arangodb::aql::AqlCall _lastCall;
 };
 }  // namespace aql
 

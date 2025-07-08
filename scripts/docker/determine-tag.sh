@@ -1,5 +1,5 @@
-#!/bin/sh
-
+#!/bin/bash
+set -x
 image=$1
 arch=$2
 

@@ -73,8 +73,8 @@ function recordingAPIsSuite() {
     for (let query of doc.parsedBody.result.queries) {
       assertTrue(typeof(query.timeStamp) === "string");
       assertTrue(typeof(query.database) === "string");
-      assertTrue(typeof(query.queryString) === "string");
-      assertTrue(typeof(query.bindParameters) === "object");
+      assertTrue(typeof(query.query) === "string");
+      assertTrue(typeof(query.bindVars) === "object");
     }
     return doc.parsedBody.result.queries;
   }
@@ -150,7 +150,7 @@ function recordingAPIsSuite() {
       let queries = checkAqlQueriesRecording();
       found = false;
       for (let q of queries) {
-        if (q.queryString === cursorBody.query) {
+        if (q.query === cursorBody.query) {
           found = true;
           break;
         }
@@ -179,7 +179,7 @@ function recordingAPIsSuite() {
       for (let qq of queries) {
         let found = false;
         for (let q of queriesSeen) {
-          if (q.queryString === qq) {
+          if (q.query === qq) {
             found = true;
             break;
           }
@@ -227,15 +227,15 @@ function recordingAPIsSuite() {
         largeArray.push(`large_item_${i}_with_some_extra_content_to_make_it_bigger`);
       }
       
-      let queryString = `FOR doc IN ${cn} FILTER doc.name == @name AND doc.value IN @values RETURN doc`;
-      let bindParameters = {
+      let query = `FOR doc IN ${cn} FILTER doc.name == @name AND doc.value IN @values RETURN doc`;
+      let bindVars = {
         "name": largeString,
         "values": largeArray
       };
 
       let cursorBody = {
-        "query": queryString,
-        "bindVars": bindParameters,
+        "query": query,
+        "bindVars": bindVars,
         "count": false
       };
       
@@ -244,16 +244,16 @@ function recordingAPIsSuite() {
       assertEqual(cursorResponse.code, 201);
       assertFalse(cursorResponse.parsedBody['error']);
 
-      // Check the recording - the query should be there but bindParameters should be empty
+      // Check the recording - the query should be there but bindVars should be empty
       let queriesSeen = checkAqlQueriesRecording();
       let found = false;
       for (let q of queriesSeen) {
-        if (q.queryString === queryString) {
+        if (q.query === query) {
           found = true;
-          // Verify that bindParameters is empty due to size limit
-          assertTrue(typeof(q.bindParameters) === "object");
-          assertEqual(Object.keys(q.bindParameters).length, 0, 
-                     `Expected empty bindParameters for large query, but got: ${JSON.stringify(q.bindParameters)}`);
+          // Verify that bindVars is empty due to size limit
+          assertTrue(typeof(q.bindVars) === "object");
+          assertEqual(Object.keys(q.bindVars).length, 0, 
+                     `Expected empty bindVars for large query, but got: ${JSON.stringify(q.bindVars)}`);
           break;
         }
       }
@@ -275,13 +275,13 @@ function recordingAPIsSuite() {
       // Execute 30,000 queries, each with a unique identifier
       for (let i = 0; i < totalQueries; i++) {
         let uniqueQueryString = `FOR doc IN ${cn} FILTER doc.name == @name /* query_${i} */ RETURN doc`;
-        let bindParameters = {
+        let bindVars = {
           "name": largeString
         };
 
         let cursorBody = {
           "query": uniqueQueryString,
-          "bindVars": bindParameters,
+          "bindVars": bindVars,
           "count": false
         };
         
@@ -307,7 +307,7 @@ function recordingAPIsSuite() {
       for (let i = 0; i < firstBatch; i++) {
         let expectedQueryString = `FOR doc IN ${cn} FILTER doc.name == @name /* query_${i} */ RETURN doc`;
         for (let q of queriesSeen) {
-          if (q.queryString === expectedQueryString) {
+          if (q.query === expectedQueryString) {
             firstBatchFound++;
             break;
           }
@@ -319,7 +319,7 @@ function recordingAPIsSuite() {
       for (let i = totalQueries - lastBatch; i < totalQueries; i++) {
         let expectedQueryString = `FOR doc IN ${cn} FILTER doc.name == @name /* query_${i} */ RETURN doc`;
         for (let q of queriesSeen) {
-          if (q.queryString === expectedQueryString) {
+          if (q.query === expectedQueryString) {
             lastBatchFound++;
             break;
           }
