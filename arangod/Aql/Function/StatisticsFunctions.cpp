@@ -352,6 +352,16 @@ AqlValue functions::Percentile(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  // For 3.12.6, we have in fact changed the behavior to bring it in
+  // line with what the NIST (National Institute of Standards and Technology)
+  // recommends here:
+  //   https://www.itl.nist.gov/div898/handbook/prc/section2/prc262.htm
+  // There is no absolute consensus in the literature as to how the percentile
+  // function should behave. In particular, we wanted that the function
+  // returns sensible numerical values for the full range of percentiles
+  // from 0% to 100% and only returns `null` and a warning outside.
+  // Our previous implementation was a mixture of different methods
+  // which we considered to be a bug (after customers complained).
   double p = border.toDouble();
   if (p < 0.0 || p > 100.0) {
     registerWarning(expressionContext, AFN,
