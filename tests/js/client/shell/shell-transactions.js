@@ -1638,6 +1638,7 @@ function transactionOperationsSuite () {
       c1.document("baz");
 
       assertEqual(trx.collection(cn1).exists("baz"), false);
+      trx.abort();
     },
 
     // //////////////////////////////////////////////////////////////////////////////

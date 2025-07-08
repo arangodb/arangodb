@@ -89,9 +89,9 @@ class permissionsRunner extends trs.runInArangoshRunner {
         fs.makeDirectoryRecursive(instanceRoot);
         let testResultJson = fs.join(rootDir, 'testresult.json');;
         process.env['RESULT'] = testResultJson;
-
+        process.env['instanceRoot'] = instanceRoot;
         let content = fs.read(f);
-        content = `(function(){ const getOptions = true; ${content} 
+        content = `(function(){ const getOptions = true;${content}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
         let testOptions = executeScript(content, true, f);
 
