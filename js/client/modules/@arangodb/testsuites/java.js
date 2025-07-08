@@ -110,9 +110,7 @@ function javaDriver (options) {
 arangodb.password=${this.options.password}
 arangodb.acquireHostList=true
 `;
-      print(propertiesFileContent)
       let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
-      print(propertiesFileName)
       fs.write(propertiesFileName, propertiesFileContent);
       let args = [
         'verify',
