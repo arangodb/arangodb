@@ -93,6 +93,9 @@ class Connection : public std::enable_shared_from_this<Connection> {
   /// @brief endpoint we are connected to
   std::string endpoint() const;
 
+  /// @brief endpoint which we connect from
+  virtual std::string localEndpoint() = 0;
+
  protected:
   Connection(detail::ConnectionConfiguration const& conf) : _config(conf) {}
 

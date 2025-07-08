@@ -106,9 +106,13 @@ auto RestImportHandler::executeAsync() -> futures::Future<futures::Unit> {
                   documentType == "list" || documentType == "auto")) {
         co_await createFromJson(documentType);
         co_return;
-      } else {
+      } else if (!found || documentType == "") {
         // CSV
         co_await createFromKeyValueList();
+        co_return;
+      } else {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "invalid value for 'type'");
         co_return;
       }
     } break;

@@ -69,10 +69,11 @@ def parse_arguments():
         "base_config", help="file containing the circleci base config", type=str
     )
     parser.add_argument(
-        "definitions", help="file containing the test definitions", type=str
+        "definitions", help="file containing the test definitions", type=str, nargs='*'
     )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
+    parser.add_argument("-d", "--default-container", type=str, help="default container to be used")
     parser.add_argument(
         "--ui", type=str, help="whether to run UI test [off|on|only|community]"
     )
@@ -165,7 +166,7 @@ def validate_flags(flags):
         raise Exception("`full` and `!full` specified for the same test")
 
 
-def read_definition_line(line):
+def read_definition_line(line, testfile_definitions):
     """parse one test definition line"""
     bits = line.split()
     if len(bits) < 1:
@@ -213,6 +214,7 @@ def read_definition_line(line):
         "args": args,
         "arangosh_args": arangosh_args,
         "params": params,
+        "testfile_definitions": testfile_definitions,
     }
 
 
@@ -220,13 +222,18 @@ def read_definitions(filename):
     """read test definitions txt"""
     tests = []
     has_error = False
+    testfile_definitions = {}
     with open(filename, "r", encoding="utf-8") as filep:
         for line_no, line in enumerate(filep):
             line = line.strip()
-            if line.startswith("#") or len(line) == 0:
+            if len(line) == 0:
+                continue
+            elif line.startswith("#"):
+                if line[2] == '{':
+                    testfile_definitions = json.loads(line[2:])
                 continue  # ignore comments
             try:
-                test = read_definition_line(line)
+                test = read_definition_line(line, testfile_definitions)
                 test["lineNumber"] = line_no
                 tests.append(test)
             except Exception as exc:
@@ -361,6 +368,17 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
     if buckets != 1:
         job["buckets"] = buckets
 
+    if test['testfile_definitions'] != {}:
+        job['docker_image'] = args.default_container.replace(
+            ':', test['testfile_definitions']['container_suffix'])
+        job['driver-git-repo'] = test['testfile_definitions']['second_repo']
+        job['driver-git-branch'] = test['testfile_definitions']['branch']
+        job['init_driver_repo_command'] = test['testfile_definitions']['init_command']
+    else:
+        job['docker_image'] = args.default_container
+        job['driver-git-repo'] = ""
+        job['driver-git-branch'] = ""
+        job['init_driver_repo_command'] = ""
     return {"run-linux-tests": job}
 
 
@@ -407,6 +425,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
         "GraphTestSuite",
         "QueryTestSuite",
         "AnalyzersTestSuite",
+        "AnalyzersTestSuite2",
         "DatabaseTestSuite",
         "LogInTestSuite",
         "DashboardTestSuite",
@@ -630,17 +649,24 @@ def main():
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
         arangosh_args = args.arangosh_args
+        if not arangosh_args:
+            args.arangosh_args = ""
+            arangosh_args = ""
         if arangosh_args in ["A", ""]:
             args.arangosh_args = []
         else:
             args.arangosh_args = arangosh_args[1:].split(' ')
-        if args.extra_args in ["A", ""]:
+        if not args.extra_args:
+            args.extra_args = []
+        elif args.extra_args in ["A", ""]:
             args.extra_args = []
         else:
             args.extra_args = args.extra_args[1:].split(' ')
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
-        tests = read_definitions(args.definitions)
+        tests = []
+        for one_definition in args.definitions:
+            tests += read_definitions(one_definition)
         # if args.validate_only:
         #    return  # nothing left to do
         with open(args.base_config, "r", encoding="utf-8") as instream:
@@ -650,7 +676,8 @@ def main():
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
-        sys.exit(1)
+        #sys.exit(1)
+        raise exc
 
 
 if __name__ == "__main__":

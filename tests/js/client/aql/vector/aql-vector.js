@@ -275,13 +275,13 @@ function VectorIndexL2TestSuite() {
                 // Assert that results are deterministic
                 if (i !== 0) {
                     for (let j = 0; j < previousResult.length; ++j) {
-                        assertEqual(previousResult[j].key, results[j].key);
+                        assertEqual(previousResult[j].key, results[j].key, "Results are not deterministic: " + JSON.stringify(results));
                     }
                 }
 
                 // For l2 metric the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].dist <= results[j].dist);
+                    assertTrue(results[j - 1].dist <= results[j].dist, "Results are not in ascending order: " + JSON.stringify(results));
                 }
             }
         },
@@ -420,7 +420,7 @@ function VectorIndexL2TestSuite() {
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
             
-            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
 
         testApproxL2Subquery: function() {
@@ -631,11 +631,11 @@ function VectorIndexCosineTestSuite() {
 
                 // For cosine similarity the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].sim >= results[j].sim);
+                    assertTrue(results[j - 1].sim >= results[j].sim, "Results are not in descending order: " + JSON.stringify(results));
                 }
                 // Assert that distances are in [-1, 1] range
                 for (let j = 0; j < results.length; ++j) {
-                  assertTrue(Math.abs(results[j].sim) <= 1.01);
+                  assertTrue(Math.abs(results[j].sim) <= 1.01, "Cosine similarity is not in [-1, 1] range: " + JSON.stringify(results));
                 }
             }
         },
@@ -787,7 +787,7 @@ function VectorIndexInnerProductTestSuite() {
 
                 // For inner product metric the results must be ordered in descending order
                 for (let j = 1; j < results.length; ++j) {
-                    assertTrue(results[j - 1].sim >= results[j].sim);
+                    assertTrue(results[j - 1].sim >= results[j].sim, "Results are not in descending order: " + JSON.stringify(results));
                 }
             }
         },
@@ -835,7 +835,7 @@ function VectorIndexInnerProductTestSuite() {
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
             
-            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
     };
 }
