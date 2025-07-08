@@ -8,6 +8,21 @@
   This situation could only be reached if the async-prefetch optimizer rule
   is active, which can only be applied on read-only queries.
 
+* Fix BTS-2152 Overfetch input on prallel Traversals. For queries like this:
+  
+  FOR x IN largeCollection
+    FOR v IN 1 OUTBOUND x edges {parallelism: 4}
+      LIMIT 10
+      RETURN v
+  
+  Before this bugfix we would always enumerate largeCollection in full,
+  even though a small portion of the collection would have sufficed.
+  This is now handled better. We now enumerate only the necessary amount
+  of batches required to fulfill the limit.
+  This also improves cluster queries (replace the traversal with another FOR loop)
+  which had the same behaviour and are now enumerating less unused
+  intermediate results.
+
 * Add option --database.auto-upgrade-full-compaction to run a full RocksDB
   compaction on database upgrade.
 
