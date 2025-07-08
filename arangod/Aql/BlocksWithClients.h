@@ -128,6 +128,19 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
   auto executeForClient(AqlCallStack stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> override;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+
+  /**
+   * @brief Get the number of rows remaining for a client
+   * TEST ONLY feature. This number should never be a concern for production
+   * code.
+   *
+   * @param clientId The client ID
+   * @return The number of rows remaining for the client
+   */
+  auto remainingRowsForClient(std::string const& clientId) const -> uint64_t;
+#endif
+
  private:
   /**
    * @brief Actual implementation of Execute.
@@ -141,10 +154,21 @@ class BlocksWithClientsImpl : public ExecutionBlock, public BlocksWithClients {
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   /**
+   * @brief Send hardLimit to the dependency
+   *  This can only be called after all clients have requested a hardLimit.
+   *
+   * @param stack The AqlCallStack we need this for outside subqueries
+   * @return ExecutionState upstream state, can be WAITING or DONE
+   */
+  auto hardLimitDependency(AqlCallStack stack) -> ExecutionState;
+
+  /**
    * @brief Load more data from upstream and distribute it into _clientBlockData
    *
    */
   auto fetchMore(AqlCallStack stack) -> ExecutionState;
+
+  auto allLanesComplete() const noexcept -> bool;
 
  protected:
   /// @brief getClientId: get the number <clientId> (used internally)
