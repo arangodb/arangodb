@@ -10,7 +10,7 @@ def branch_ascii(hierarchy: int, continuations: list) -> str:
     ascii = [" " for x in range(2*hierarchy+2)] + [branching_symbol(hierarchy, continuations[-1] if len(continuations) > 0 else None)] + [" "]
     for continuation in continuations:
         if continuation < hierarchy:
-            ascii[2*continuation] = "│"
+            ascii[2*continuation+2] = "│"
     return ''.join(ascii)
     
 class Stacktrace(object):
@@ -26,7 +26,7 @@ class Stacktrace(object):
         ascii = branch_ascii(hierarchy, self.stack)
             
         # push current but not if already on stack
-        if len(self.stack) == 0 or hierarchy != self.stack[0]:
+        if len(self.stack) == 0 or hierarchy != self.stack[-1]:
             self.stack.append(hierarchy)
 
         self.lines.append((ascii, promise))

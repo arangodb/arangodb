@@ -417,9 +417,8 @@ function VectorIndexFullCountCollectionWithSmallAmountOfDocs() {
     };
 }
 
-if (!versionHas("arm")) {
-  jsunity.run(VectorIndexFullCountTestSuite);
-  jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
-  jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
-}
+jsunity.run(VectorIndexFullCountTestSuite);
+jsunity.run(VectorIndexFullCountWithNotEnoughNListsTestSuite);
+jsunity.run(VectorIndexFullCountCollectionWithSmallAmountOfDocs);
+
 return jsunity.done();

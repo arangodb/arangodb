@@ -263,8 +263,7 @@ function VectorIndexInvalidDefinitionInAgencyTest() {
     };
 }
 
-if (!versionHas("arm")) {
-  jsunity.run(VectorIndexCorrectDefinitionInAgencyTest);
-  jsunity.run(VectorIndexInvalidDefinitionInAgencyTest);
-}
+jsunity.run(VectorIndexCorrectDefinitionInAgencyTest);
+jsunity.run(VectorIndexInvalidDefinitionInAgencyTest);
+
 return jsunity.done();

@@ -93,7 +93,7 @@ else
   SE_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS + $NRAGENTS ))
 fi
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
-ENDPOINT=localhost
+ENDPOINT=0.0.0.0
 ADDRESS=${ADDRESS:-localhost}
 
 if [ -z "$JWT_SECRET" ];then
@@ -165,6 +165,8 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
       --log.force-direct false 
       --log.level $LOG_LEVEL_AGENCY 
       --server.descriptors-minimum 0 
+      --network.compression-method lz4
+      --network.compress-request-threshold 1
 EOM
 
     AGENCY_OPTIONS="$AGENCY_OPTIONS $AUTHENTICATION $SSLKEYFILE $ENCRYPTION"
@@ -245,6 +247,10 @@ start() {
       --database.check-version false
       --database.upgrade-check false
       --experimental-vector-index true
+      --rocksdb.enable-statistics true
+      --network.compression-method lz4
+      --network.compress-request-threshold 1
+      --http.compress-response-threshold 1
       $REPLICATION_VERSION_PARAM
 EOM
 

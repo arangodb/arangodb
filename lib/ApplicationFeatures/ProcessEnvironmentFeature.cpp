@@ -22,18 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ProcessEnvironmentFeature.h"
-#include "Basics/ArangoGlobalContext.h"
-#include "CrashHandler/CrashHandler.h"
-#include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Thread.h"
-#include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
-#include "ProgramOptions/Section.h"
 
 using namespace arangodb::options;
 extern char** environ;
@@ -51,7 +44,6 @@ void ProcessEnvironmentFeature::collectOptions(
 
 void ProcessEnvironmentFeature::prepare() {
   if (_dumpEnv) {
-    // Maybe Replace with TRI_ASSERT, I  leave that to you
     if (environ == nullptr) {
       return;
     }

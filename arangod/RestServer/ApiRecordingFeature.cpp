@@ -38,10 +38,17 @@ size_t ApiCallRecord::memoryUsage() const noexcept {
   return sizeof(ApiCallRecord) + path.size() + database.size();
 }
 
+size_t AqlQueryRecord::memoryUsage() const noexcept {
+  return sizeof(AqlQueryRecord) + query.size() + database.size() +
+         bindVars.byteSize();
+}
+
 ApiRecordingFeature::ApiRecordingFeature(Server& server)
     : ArangodFeature{server, *this},
       _recordApiCallTimes(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_api_recording_call_time{})) {
+          arangodb_api_recording_call_time{})),
+      _recordAqlCallTimes(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_recording_call_time{})) {
   setOptional(false);
   startsAfter<application_features::GreetingsFeaturePhase>();
 }
@@ -58,32 +65,93 @@ void ApiRecordingFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addOption(
       "--server.api-call-recording",
-      "Record recent API calls for debugging purposes (default: true).",
-      new BooleanParameter(&_enabled),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+      "Whether to record recent API calls for debugging purposes.",
+      new BooleanParameter(&_enabledCalls),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--server.api-recording-memory-limit",
-      "Memory limit for the list of ApiCallRecords.",
-      new UInt64Parameter(&_totalMemoryLimit, 1, 256000, 256000000000),
-      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon,
-                                          arangodb::options::Flags::Command));
+      "Size limit for the list of API call records.",
+      new UInt64Parameter(&_totalMemoryLimitCalls, 1,
+                          256 * (std::size_t{1} << 10),  // Min: 256 KiB
+                          256 * (std::size_t{1} << 30)   // Max: 256 GiB
+                          ),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options->addOption(
+      "--server.aql-query-recording",
+      "Whether to record recent AQL queries for debugging purposes.",
+      new BooleanParameter(&_enabledQueries),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options->addOption(
+      "--server.aql-recording-memory-limit",
+      "Size limit for the list of AQL query records.",
+      new UInt64Parameter(&_totalMemoryLimitQueries, 1,
+                          256 * (std::size_t{1} << 10),  // Min: 256 KiB
+                          256 * (std::size_t{1} << 30)   // Max: 256 GiB
+                          ),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options
+      ->addOption(
+          "--log.recording-api-enabled",
+          "Whether the recording API is enabled (true) or not (false), or "
+          "only enabled for the superuser (jwt).",
+          new StringParameter(&_apiSwitch))
+      .setLongDescription(R"(The `/_admin/server/api-calls` and
+`/_admin/server/aql-queries` endpoints provide access to recorded API calls
+and AQL queries respectively. They are referred to as the recording API.
+
+Since this data might be sensitive depending on the context of the deployment,
+these endpoints need to be properly secured. By default, the recording API is
+accessible for admin users (users with administrative access to the `_system`
+database). However, you can restrict it further to the superuser or disable it
+altogether:
+
+- `true`: The recording API is accessible for admin users.
+- `jwt`: The recording API is accessible for the superuser only
+  (authentication with JWT superuser token and empty username).
+- `false`: The recording API is not accessible at all.
+
+Whether API calls and AQL queries are recorded is independent of this option.
+It is controlled by the `--server.api-call-recording` and
+`--server.aql-query-recording` startup options.)");
+}
+
+void ApiRecordingFeature::validateOptions(
+    std::shared_ptr<options::ProgramOptions> options) {
+  if (_apiSwitch == "true" || _apiSwitch == "on" || _apiSwitch == "On") {
+    _apiEnabled = true;
+    _apiSwitch = "true";
+  } else if (_apiSwitch == "jwt" || _apiSwitch == "JWT") {
+    _apiEnabled = true;
+    _apiSwitch = "jwt";
+  } else {
+    _apiEnabled = false;
+    _apiSwitch = "false";
+  }
 }
 
 void ApiRecordingFeature::prepare() {
   // Calculate per-list memory limit
-  _memoryPerApiRecordList = _totalMemoryLimit / NUMBER_OF_API_RECORD_LISTS;
+  _memoryPerApiRecordList = _totalMemoryLimitCalls / NUMBER_OF_API_RECORD_LISTS;
+  _memoryPerAqlRecordList =
+      _totalMemoryLimitQueries / NUMBER_OF_AQL_RECORD_LISTS;
 
-  if (_enabled) {
+  if (_enabledCalls) {
     _apiCallRecord = std::make_unique<BoundedList<ApiCallRecord>>(
         _memoryPerApiRecordList, NUMBER_OF_API_RECORD_LISTS);
+  }
+  if (_enabledQueries) {
+    _aqlQueryRecord = std::make_unique<BoundedList<AqlQueryRecord>>(
+        _memoryPerAqlRecordList, NUMBER_OF_AQL_RECORD_LISTS);
   }
 }
 
 void ApiRecordingFeature::start() {
   // Start the cleanup thread if enabled
-  if (_enabled) {
+  if (_enabledCalls || _enabledQueries) {
     _stopCleanupThread.store(false, std::memory_order_relaxed);
     _cleanupThread = std::jthread([this] { cleanupLoop(); });
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -103,7 +171,7 @@ void ApiRecordingFeature::stop() {
 void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
                                         std::string_view path,
                                         std::string_view database) {
-  if (!_enabled || !_apiCallRecord) {
+  if (!_enabledCalls || !_apiCallRecord) {
     return;
   }
 
@@ -122,6 +190,28 @@ void ApiRecordingFeature::recordAPICall(arangodb::rest::RequestType requestType,
   _recordApiCallTimes.count(static_cast<double>(elapsed));
 }
 
+void ApiRecordingFeature::recordAQLQuery(
+    std::string_view queryString, std::string_view database,
+    velocypack::SharedSlice bindParameters) {
+  if (!_enabledQueries || !_aqlQueryRecord) {
+    return;
+  }
+
+  // Start timing
+  auto start = std::chrono::steady_clock::now();
+
+  _aqlQueryRecord->prepend(
+      AqlQueryRecord(queryString, database, std::move(bindParameters)));
+
+  // End timing and record metrics
+  auto end = std::chrono::steady_clock::now();
+  int64_t elapsed =
+      std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+
+  // Record in histogram (seconds)
+  _recordAqlCallTimes.count(static_cast<double>(elapsed));
+}
+
 void ApiRecordingFeature::cleanupLoop() {
   // Initialize delay values
   constexpr std::chrono::milliseconds MIN_DELAY{1};
@@ -131,16 +221,33 @@ void ApiRecordingFeature::cleanupLoop() {
   while (!_stopCleanupThread.load(std::memory_order_relaxed)) {
     // Get the trash and measure the time
     auto start = std::chrono::steady_clock::now();
-    size_t count = _apiCallRecord->clearTrash();
+    size_t apiCallCount = 0;
+    size_t aqlCallCount = 0;
+
+    if (_apiCallRecord) {
+      apiCallCount = _apiCallRecord->clearTrash();
+    }
+
+    if (_aqlQueryRecord) {
+      aqlCallCount = _aqlQueryRecord->clearTrash();
+    }
 
     auto duration = std::chrono::steady_clock::now() - start;
     auto nanoseconds =
         std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
 
-    if (count > 0) {
-      LOG_TOPIC("53626", TRACE, Logger::MEMORY)
-          << "Cleaned up " << count << " API call record lists in "
-          << nanoseconds.count() << " nanoseconds";
+    size_t totalCount = apiCallCount + aqlCallCount;
+    if (totalCount > 0) {
+      if (apiCallCount > 0) {
+        LOG_TOPIC("53626", TRACE, Logger::MEMORY)
+            << "Cleaned up " << apiCallCount << " API call record lists in "
+            << nanoseconds.count() << " nanoseconds";
+      }
+      if (aqlCallCount > 0) {
+        LOG_TOPIC("53627", TRACE, Logger::MEMORY)
+            << "Cleaned up " << aqlCallCount << " AQL query record lists in "
+            << nanoseconds.count() << " nanoseconds";
+      }
       // Reset delay to minimum when trash was found
       currentDelay = MIN_DELAY;
     } else {

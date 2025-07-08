@@ -69,7 +69,13 @@ const testPaths = {
 function javaDriver (options) {
   class runInJavaTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
-      super(options, testname, ...optionalArgs);
+      let opts = {'password': 'testjava'};
+      if (options.cluster) {
+        // tests lean on JWT enabled components
+        opts = _.clone(tu.testClientJwtAuthInfo);
+      }
+      _.defaults(opts, options);
+      super(opts, testname, ...optionalArgs);
       this.info = "runInJavaTest";
     }
     runOneTest(file) {
@@ -89,23 +95,48 @@ function javaDriver (options) {
 
       // strip i.e. http:// from the URL to conform with what the driver expects:
       let rx = /.*:\/\//gi;
+      //let args = [
+      //  'test', '-U',
+      //  '-Dgroups=api',
+      //  '-Dtest.useProvidedDeployment=true',
+      //  '-Dtest.arangodb.version='+ db._version(),
+      //  `-Dtest.arangodb.isEnterprise=${isEnterprise()? 'true' : 'false'}`,
+      //  '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
+      //  '-Dtest.arangodb.authentication=root:',
+      //  '-Dtest.arangodb.topology=' + topology,
+      //  '-Dallure.results.directory=' + testResultsDir
+      //];
+      let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
+arangodb.password=${this.options.password}
+arangodb.acquireHostList=true
+`;
+      let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
+      fs.write(propertiesFileName, propertiesFileContent);
       let args = [
-        'test', '-U',
-        '-Dgroups=api',
-        '-Dtest.useProvidedDeployment=true',
-        '-Dtest.arangodb.version='+ db._version(),
-        '-Dtest.arangodb.isEnterprise=' + isEnterprise()? 'true' : 'false',
-        '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
-        '-Dtest.arangodb.authentication=root:',
-        '-Dtest.arangodb.topology=' + topology,
-        '-Dallure.results.directory=' + testResultsDir
+        'verify',
+        '-am',
+        '-pl',
+        'test-functional',
+        '-Dgpg.skip',
+        '-Dmaven.javadoc.skip',
+        '-Dssl=false',
+        // TODO? '-Dnative=<<parameters.native>>'
       ];
+//          name: Test
+//          command: |
+//            mvn verify -am -pl test-functional -Dgpg.skip -Dmaven.javadoc.skip \
+//              -Dssl=<<parameters.ssl>> \
+//              -Dnative=<<parameters.native>> \
+//              <<parameters.args>>
+//
+      /// todo: willi@bruecklinux:~/src/arangodb-java-driver/test-functional/src/test/resources$ cat arangodb.properties 
+
 
       if (this.options.testCase) {
         args.push('-Dtest=' + this.options.testCase);
         args.push('-DfailIfNoTests=false'); // if we don't specify this, errors will occur.
       }
-      if (this.options.hasOwnProperty('javaOptions')) {
+      if (this.options.javaOptions !== '') {
         for (var key in this.options.javaOptions) {
           args.push('-D' + key + '=' + this.options.javaOptions[key]);
         }
@@ -247,4 +278,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['java_driver'] = javaDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
+  tu.CopyIntoObject(opts, {
+    'javaOptions': '',
+    'javasource': '../arangodb-java-driver',
+  });
 };

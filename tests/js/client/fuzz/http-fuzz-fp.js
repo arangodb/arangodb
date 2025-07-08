@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertTrue, assertEqual, arango*/
+/*global assertTrue, assertEqual, arango, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,82 +26,122 @@
 
 const jsunity = require("jsunity");
 const internal = require('internal');
+const IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Http Request Fuzzer suite
 ////////////////////////////////////////////////////////////////////////////////
 function httpRequestsFuzzerTestSuite() {
   return {
+    setUpAll: function () {
+      IM.rememberConnection();
+    },
+    tearDown: function () {
+      IM.gatherNetstat();
+      IM.printNetstat();
+    },
     testRandReqs: function () {
       // main expectation here is that the server does not crash!
-      for (let i = 0; i < 15; ++i) {
-        let response = arango.fuzzRequests(25000, i);
-        assertTrue(response.hasOwnProperty("seed"));
-        assertTrue(response.hasOwnProperty("totalRequests"));
-        let numReqs = response["totalRequests"];
-        let tempSum = 0;
-        for (const [key, value] of Object.entries(response)) {
-          if (key !== "totalRequests" && key !== "seed") {
-            if (key === "returnCodes") {
-              for (const [, innerValue] of Object.entries(response[key])) {
-                tempSum += innerValue;
+      try {
+        IM.arangods.forEach(arangod => {
+          print(`Connecting ${arangod.getProcessInfo([])}`);
+          arangod.connect();
+          arangod._disconnect();
+          IM.gatherNetstat();
+          IM.printNetstat();
+          for (let i = 0; i < 15; ++i) {
+            let response = arango.fuzzRequests(25000, i);
+            assertTrue(response.hasOwnProperty("seed"));
+            assertTrue(response.hasOwnProperty("totalRequests"));
+            let numReqs = response["totalRequests"];
+            let tempSum = 0;
+            for (const [key, value] of Object.entries(response)) {
+              if (key !== "totalRequests" && key !== "seed") {
+                if (key === "returnCodes") {
+                  for (const [, innerValue] of Object.entries(response[key])) {
+                    tempSum += innerValue;
+                  }
+                } else {
+                  tempSum += value;
+                }
               }
-            } else {
-              tempSum += value;
+            }
+            assertEqual(numReqs, tempSum);
+            if (IM.options.cluster) {
+              IM.reconnectMe();
+              IM.checkClusterAlive();
             }
           }
-        }
-        assertEqual(numReqs, tempSum);
+          IM.reconnectMe();
+        });
+      } finally {
+        IM.reconnectMe();
       }
     },
 
     testReqWithSameSeed: function () {
       // main expectation here is that the server does not crash!
-      for (let i = 0; i < 10; ++i) {
-        let response = arango.fuzzRequests(1, 10);
-        assertTrue(response.hasOwnProperty("seed"));
-        let seed = response["seed"];
-        assertTrue(response.hasOwnProperty("totalRequests"));
-        let numReqs = response["totalRequests"];
-        let tempSum = 0;
-        let keysAndValues1 = new Map();
-        for (const [key, value] of Object.entries(response)) {
-          if (key !== "totalRequests" && key !== "seed") {
-            if (key === "returnCodes") {
-              for (const [innerKey, innerValue] of Object.entries(response[key])) {
-                keysAndValues1.set(innerKey, innerValue);
-                tempSum += innerValue;
+      try {
+        IM.arangods.forEach(arangod => {
+          print(`Connecting ${arangod.getProcessInfo([])}`);
+          arangod.connect();
+          arangod._disconnect();
+          IM.gatherNetstat();
+          IM.printNetstat();
+          for (let i = 0; i < 10; ++i) {
+            let response = arango.fuzzRequests(1, 10);
+            assertTrue(response.hasOwnProperty("seed"));
+            let seed = response["seed"];
+            assertTrue(response.hasOwnProperty("totalRequests"));
+            let numReqs = response["totalRequests"];
+            let tempSum = 0;
+            let keysAndValues1 = new Map();
+            for (const [key, value] of Object.entries(response)) {
+              if (key !== "totalRequests" && key !== "seed") {
+                if (key === "returnCodes") {
+                  for (const [innerKey, innerValue] of Object.entries(response[key])) {
+                    keysAndValues1.set(innerKey, innerValue);
+                    tempSum += innerValue;
+                  }
+                } else {
+                  tempSum += value;
+                  keysAndValues1.set(key, value);
+                }
               }
-            } else {
-              tempSum += value;
-              keysAndValues1.set(key, value);
             }
-          }
-        }
-        assertEqual(numReqs, tempSum);
+            assertEqual(numReqs, tempSum);
 
-        let newResponse = arango.fuzzRequests(1, 10, seed);
-        assertEqual(response, newResponse);
-        assertTrue(response.hasOwnProperty("seed"));
-        assertTrue(response.hasOwnProperty("totalRequests"));
-        let numReqs2 = response["totalRequests"];
-        let tempSum2 = 0;
-        for (const [key, value] of Object.entries(response)) {
-          if (key !== "totalRequests" && key !== "seed") {
-            if (key === "returnCodes") {
-              for (const [innerKey, innerValue] of Object.entries(response[key])) {
-                tempSum2 += innerValue;
-                assertEqual(keysAndValues1.get(innerKey), innerValue);
+            let newResponse = arango.fuzzRequests(1, 10, seed);
+            assertEqual(response, newResponse);
+            assertTrue(response.hasOwnProperty("seed"));
+            assertTrue(response.hasOwnProperty("totalRequests"));
+            let numReqs2 = response["totalRequests"];
+            let tempSum2 = 0;
+            for (const [key, value] of Object.entries(response)) {
+              if (key !== "totalRequests" && key !== "seed") {
+                if (key === "returnCodes") {
+                  for (const [innerKey, innerValue] of Object.entries(response[key])) {
+                    tempSum2 += innerValue;
+                    assertEqual(keysAndValues1.get(innerKey), innerValue);
+                  }
+                } else {
+                  tempSum2 += value;
+                  assertEqual(keysAndValues1.get(key), value);
+                }
               }
-            } else {
-              tempSum2 += value;
-              assertEqual(keysAndValues1.get(key), value);
+            }
+            assertEqual(numReqs, numReqs2);
+            assertEqual(tempSum, tempSum2);
+            assertEqual(numReqs2, tempSum2);
+            if (IM.options.cluster) {
+              IM.reconnectMe();
+              IM.checkClusterAlive();
             }
           }
-        }
-        assertEqual(numReqs, numReqs2);
-        assertEqual(tempSum, tempSum2);
-        assertEqual(numReqs2, tempSum2);
+          IM.reconnectMe();
+        });
+      } finally {
+        IM.reconnectMe();
       }
     },
   };

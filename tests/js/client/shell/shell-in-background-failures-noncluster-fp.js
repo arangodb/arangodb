@@ -47,7 +47,7 @@ function IndexInBackgroundFailuresSuite () {
 
     let timeout = 600;
     if (versionHas('asan') || versionHas('tsan') || versionHas('coverage')) {
-      timeout *= 10;
+      timeout *= 20;
     }
 
     let newFiles = 0;
@@ -103,6 +103,7 @@ function IndexInBackgroundFailuresSuite () {
     // background index creation has started.
     testPurgeWalWhileBackgroundIndexing : function () {
       // arbitrary documents to fill up WAL files
+      
       let docs = [];
       for (let i = 0; i < 5000; ++i) {
         docs.push({ value1: "testmann" + i, value2: i, value3: internal.genRandomAlphaNumbers(100) });
@@ -140,7 +141,8 @@ function IndexInBackgroundFailuresSuite () {
 
       // wait until index is there...
       let tries = 0;
-      while (++tries < 300) {
+      const maxRetries = versionHas('tsan') ? 600 : 300;
+      while (++tries < maxRetries) {
         res = arango.PUT_RAW("/_api/job/" + id, "");
         if (res.code === 201 || res.code >= 400) {
           break;

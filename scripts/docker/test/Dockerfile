@@ -20,7 +20,7 @@ RUN apt-get update && \
     7zip gdb tzdata curl jq binutils gcc \
     llvm-${CLANG_VERSION} libatomic1 net-tools \
     libc6 libstdc++6 \
-    libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran wget \
+    libomp-${CLANG_VERSION}-dev liblapack-dev libopenblas-dev gfortran wget sed \
     python3 python3-pip && \
     apt-get autoremove -y --purge && \
     apt-get clean -y && \
@@ -35,7 +35,19 @@ RUN if [ "$arch" = "amd64" ]; then \
         strip -s promtool && \
         mv promtool /usr/local/bin/promtool; \
     fi
-
-RUN wget -O /sbin/rclone-arangodb https://github.com/arangodb/oskar/raw/master/rclone/v1.62.2/rclone-arangodb-linux-$arch && chmod +x /sbin/rclone-arangodb
+COPY VERSIONS .
+COPY ARANGO-VERSION .
+RUN \
+  if [ "$arch" = "amd64" ]; then \
+    arch="amd64"; \
+  else \
+    arch="arm64"; \
+  fi; \
+RCLONE_REV="v$(grep RCLONE_VERSION VERSIONS|sed -e 's;RCLONE_VERSION ";;' -e 's;";;')"; \
+GO_VERSION="golang-$(grep RCLONE_GO VERSIONS|sed -e 's;RCLONE_GO ";;' -e 's;";;')"; \
+ARANGO_VERSION="$(sed -e "s;.[0-9]*-devel;;" < ARANGO-VERSION)"; \
+echo "https://github.com/arangodb/rclone-arangodb/releases/download/${GO_VERSION}/${GO_VERSION}_${ARANGO_VERSION}_${RCLONE_REV}_rclone-arangodb-linux-$arch"; \
+wget -O /sbin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/${GO_VERSION}/${GO_VERSION}_${ARANGO_VERSION}_${RCLONE_REV}_rclone-arangodb-linux-$arch" && \
+ chmod +x /sbin/rclone-arangodb
 
 CMD [ "bash" ]
