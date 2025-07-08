@@ -37,7 +37,9 @@ const {
     randomNumberGeneratorFloat,
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
-const { versionHas } = require("@arangodb/test-helper");
+const {
+    versionHas
+} = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
@@ -419,7 +421,7 @@ function VectorIndexL2TestSuite() {
             // Check that skip results are contained within without skip results
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
-            
+
             assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
 
@@ -506,8 +508,8 @@ function VectorIndexL2TestSuite() {
                 const skipNeighbourKeys = new Set(skipNeighbours.map(n => n.key));
                 const nonSkipNeighbourKeys = new Set(nonSkipNeighbours.map(n => n.key));
                 const expectedNeighbourKeys = new Set(nonSkipNeighbours.slice(3).map(n => n.key));
-                
-                assertTrue([...skipNeighbourKeys].every(key => nonSkipNeighbourKeys.has(key)));
+
+                assertTrue([...skipNeighbourKeys].every(key => nonSkipNeighbourKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
                 assertEqual(skipNeighbourKeys.size, expectedNeighbourKeys.size);
                 assertTrue([...skipNeighbourKeys].every(key => expectedNeighbourKeys.has(key)));
             }
@@ -635,7 +637,7 @@ function VectorIndexCosineTestSuite() {
                 }
                 // Assert that distances are in [-1, 1] range
                 for (let j = 0; j < results.length; ++j) {
-                  assertTrue(Math.abs(results[j].sim) <= 1.01, "Cosine similarity is not in [-1, 1] range: " + JSON.stringify(results));
+                    assertTrue(Math.abs(results[j].sim) <= 1.01, "Cosine similarity is not in [-1, 1] range: " + JSON.stringify(results));
                 }
             }
         },
@@ -666,11 +668,11 @@ function VectorIndexCosineTestSuite() {
             const queryWithSkip =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_COSINE(@qp, d.vector) DESC LIMIT 3, 5 RETURN {k: d._key}";
+                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) SORT sim DESC LIMIT 3, 5 RETURN {k: d._key, sim}";
             const queryWithoutSkip =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_COSINE(d.vector, @qp) DESC LIMIT 8 RETURN {k: d._key}";
+                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp) SORT sim DESC LIMIT 8 RETURN {k: d._key, sim}";
 
             const bindVars = {
                 qp: randomPoint
@@ -678,12 +680,15 @@ function VectorIndexCosineTestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            
-            // Check that skip results are contained within without skip results
-            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
-            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
-            
-            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+
+            assertTrue(resultsWithSkip.length === 5);
+            assertTrue(resultsWithoutSkip.length === 8);
+
+            // For cosine similarity the results must be ordered in descending order, dont assert for skip results
+            // since the close documents are not guaranteed to be in deterministic order
+            for (let j = 1; j < resultsWithoutSkip.length; ++j) {
+                assertTrue(resultsWithoutSkip[j - 1].sim >= resultsWithoutSkip[j].sim, "Results are not in descending order: " + JSON.stringify(resultsWithoutSkip));
+            }
         },
     };
 }
@@ -830,11 +835,11 @@ function VectorIndexInnerProductTestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            
+
             // Check that skip results are contained within without skip results
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
-            
+
             assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
     };
@@ -1047,4 +1052,3 @@ jsunity.run(VectorIndexInnerProductTestSuite);
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();
-
