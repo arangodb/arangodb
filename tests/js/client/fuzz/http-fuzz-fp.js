@@ -36,6 +36,10 @@ function httpRequestsFuzzerTestSuite() {
     setUpAll: function () {
       IM.rememberConnection();
     },
+    tearDown: function () {
+      IM.gatherNetstat();
+      IM.printNetstat();
+    },
     testRandReqs: function () {
       // main expectation here is that the server does not crash!
       try {
@@ -43,6 +47,8 @@ function httpRequestsFuzzerTestSuite() {
           print(`Connecting ${arangod.getProcessInfo([])}`);
           arangod.connect();
           arangod._disconnect();
+          IM.gatherNetstat();
+          IM.printNetstat();
           for (let i = 0; i < 15; ++i) {
             let response = arango.fuzzRequests(25000, i);
             assertTrue(response.hasOwnProperty("seed"));
@@ -80,6 +86,8 @@ function httpRequestsFuzzerTestSuite() {
           print(`Connecting ${arangod.getProcessInfo([])}`);
           arangod.connect();
           arangod._disconnect();
+          IM.gatherNetstat();
+          IM.printNetstat();
           for (let i = 0; i < 10; ++i) {
             let response = arango.fuzzRequests(1, 10);
             assertTrue(response.hasOwnProperty("seed"));
