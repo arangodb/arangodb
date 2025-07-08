@@ -4,6 +4,8 @@ devel
 * Fix a bug in the PERCENTILE function in AQL, which gave the incorrect
   result null for small percentiles. This fixes BTS-2169.
 
+* FE-636: remove axios (unused dependency)
+
 * FE-636: bump moment from 2.18.1 to 2.30.1 (latest version)
 
 * Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
