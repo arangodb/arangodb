@@ -20,26 +20,26 @@
 /// @author Koichi Nakata
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
-#include "RestHandler/RestSchemaHandler.h"
-#include "Aql/QueryRegistry.h"
 #include "Aql/Query.h"
-#include "Transaction/StandaloneContext.h"
-#include "Transaction/OperationOrigin.h"
+#include "Aql/QueryRegistry.h"
+#include "Basics/voc-errors.h"
+#include "Futures/Utilities.h"
 #include "Graph/GraphManager.h"
-#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
+#include "IResearch/IResearchView.h"
 #include "Logger/LogMacros.h"
+#include "RestHandler/RestSchemaHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "Transaction/Methods.h"
+#include "Transaction/OperationOrigin.h"
+#include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/vpack.h>
-#include <Basics/voc-errors.h>
-#include <IResearch/IResearchLink.h>
-#include <Utils/CollectionNameResolver.h>
-#include <VocBase/LogicalCollection.h>
-#include <VocBase/Methods/Collections.h>
-#include "RestServer/DatabaseFeature.h"
-#include "Utils/CollectionNameResolver.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -48,29 +48,35 @@ namespace {
 constexpr std::string_view moduleName("graph management");
 }
 
-const std::string RestSchemaHandler::queryString = R"(
-    LET docs = (
+const std::string RestSchemaHandler::queryStr = R"(
+    LET samples = (
       FOR d IN @@collection
         SORT RAND()
         LIMIT @sampleNum
-        RETURN d
+        RETURN UNSET(d, "_rev")
     )
+    LET total = LENGTH(samples)
 
-    LET total = LENGTH(docs)
-
-    FOR d IN docs
-      LET keys = ATTRIBUTES(d)
-      FOR key IN keys
-        FILTER key != "_rev"
-        COLLECT attribute = key
-        AGGREGATE
-          count = COUNT(d),
-          types = UNIQUE(TYPENAME(d[key]))
-        RETURN {
-          attribute,
-          types,
-          optional: count < total
-        }
+    LET schemas = (
+      FOR d IN samples
+        LET keys = ATTRIBUTES(d)
+        FOR key IN keys
+          FILTER key != "_rev"
+          COLLECT attribute = key
+          AGGREGATE
+            count = COUNT(d),
+            types = UNIQUE(TYPENAME(d[key]))
+          RETURN {
+            attribute,
+            types,
+            optional: count < total
+          }
+    )
+    RETURN {
+      num: LENGTH(@@collection),
+      schemas: schemas,
+      examples: SLICE(samples, 0, @exampleNum)
+    }
     )";
 
 RestSchemaHandler::RestSchemaHandler(ArangodServer& server,
@@ -197,8 +203,9 @@ Result RestSchemaHandler::lookupSchema(uint64_t sampleNum,
   if (viewsRes.fail()) {
     return viewsRes;
   }
+
   Result colsRes =
-      getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+      getAllCollections(colSet, sampleNum, exampleNum, *resultBuilder);
   if (colsRes.fail()) {
     return colsRes;
   }
@@ -210,15 +217,7 @@ Result RestSchemaHandler::lookupSchema(uint64_t sampleNum,
 Result RestSchemaHandler::lookupSchemaCollection(std::string const& colName,
                                                  uint64_t sampleNum,
                                                  uint64_t exampleNum) {
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto vocbasePtr = dbFeature.useDatabase(_vocbase.name());
-  if (!vocbasePtr) {
-    Result res{TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, "Database not found"};
-    generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
-  auto found = CollectionNameResolver(*vocbasePtr).getCollection(colName);
+  auto found = CollectionNameResolver(_vocbase).getCollection(colName);
   if (found == nullptr) {
     Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                std::format("Collection {} not found", colName)};
@@ -250,7 +249,11 @@ Result RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
     return graphRes;
   }
 
-  getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  Result colsRes =
+      getAllCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  if (colsRes.fail()) {
+    return colsRes;
+  }
   resultBuilder->close();
 
   _queryResult.data = resultBuilder;
@@ -273,49 +276,21 @@ Result RestSchemaHandler::lookupSchemaView(std::string const& viewName,
   resultBuilder->openObject();
   resultBuilder->add("views", viewsArrBuilder.slice());
 
-  getCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  Result colsRes =
+      getAllCollections(colSet, sampleNum, exampleNum, *resultBuilder);
+  if (colsRes.fail()) {
+    return colsRes;
+  }
   resultBuilder->close();
 
   _queryResult.data = resultBuilder;
   return Result{};
 }
 
-Result RestSchemaHandler::getCollections(std::set<std::string> const& colSet,
-                                         uint64_t sampleNum,
-                                         uint64_t exampleNum,
-                                         velocypack::Builder& colsBuilder) {
-  auto colsArrayBuilder = std::make_shared<velocypack::Builder>();
-  colsArrayBuilder->openArray();
-  for (auto const& colName : colSet) {
-    if (colName.starts_with("_")) {
-      continue;
-    }
-    velocypack::Builder colBuilder;
-    colBuilder.openObject();
-    Result colRes = getCollection(colName, sampleNum, exampleNum, colBuilder);
-    if (colRes.fail()) {
-      return colRes;
-    }
-    colBuilder.close();
-    colsArrayBuilder->add(colBuilder.slice());
-  }
-  colsArrayBuilder->close();
-  colsBuilder.add("collections", colsArrayBuilder->slice());
-  return Result{};
-}
-
 Result RestSchemaHandler::getCollection(std::string const& colName,
                                         uint64_t sampleNum, uint64_t exampleNum,
                                         velocypack::Builder& colBuilder) {
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto vocbasePtr = dbFeature.useDatabase(_vocbase.name());
-  if (!vocbasePtr) {
-    Result res{TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, "Database not found"};
-    generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
-  auto colPtr = CollectionNameResolver(*vocbasePtr).getCollection(colName);
+  auto colPtr = CollectionNameResolver(_vocbase).getCollection(colName);
   if (!colPtr) {
     Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                std::format("Collection {} not found", colName)};
@@ -328,12 +303,13 @@ Result RestSchemaHandler::getCollection(std::string const& colName,
   bindVars->openObject();
   bindVars->add("@collection", VPackValue(colName));
   bindVars->add("sampleNum", VPackValue(sampleNum));
+  bindVars->add("exampleNum", VPackValue(exampleNum));
   bindVars->close();
 
   auto query = aql::Query::create(
       std::make_shared<transaction::StandaloneContext>(
           _vocbase, transaction::OperationOriginTestCase{}),
-      aql::QueryString{queryString}, bindVars,
+      aql::QueryString{queryStr}, bindVars,
       aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()});
 
   aql::QueryResult qr;
@@ -356,29 +332,54 @@ Result RestSchemaHandler::getCollection(std::string const& colName,
                   res.errorMessage());
     return res;
   }
-  auto schemaSlice = qr.data->slice();
-  if (!schemaSlice.isArray()) {
-    Result res{TRI_ERROR_INTERNAL,
-               std::format("Unexpected schema result for {}", colName)};
-    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
+
+  auto dataArr = qr.data->slice();
+  TRI_ASSERT(dataArr.isArray() && dataArr.length() > 0);
+  auto data = dataArr[0];
+  TRI_ASSERT(data.isObject() && data.hasKey("num") && data.hasKey("schemas") &&
+             data.hasKey("examples"));
+
   colBuilder.add("collectionName", velocypack::Value(colName));
-
-  bool isDocument = (colPtr->type() == TRI_COL_TYPE_DOCUMENT);
-  if (isDocument) {
-    colBuilder.add("collectionType", "document");
+  if (colPtr->type() == TRI_COL_TYPE_DOCUMENT) {
+    colBuilder.add("collectionType", velocypack::Value("document"));
+    colBuilder.add("numOfDocuments", data.get("num"));
   } else {
-    colBuilder.add("collectionType", "edge");
+    colBuilder.add("collectionType", velocypack::Value("edge"));
+    colBuilder.add("numOfEdges", data.get("num"));
   }
-  getNumOfDocumentsOrEdges(colName, colBuilder, isDocument);
 
-  colBuilder.add("schema", qr.data->slice());
-  Result exRes = getExamples(colName, exampleNum, colBuilder);
-  if (exRes.fail()) {
-    return exRes;
+  Result indexRes = getIndexes(colName, colBuilder);
+  if (indexRes.fail()) {
+    return indexRes;
   }
+
+  colBuilder.add("schema", data.get("schemas"));
+  colBuilder.add("examples", data.get("examples"));
+
+  return Result{};
+}
+
+Result RestSchemaHandler::getAllCollections(std::set<std::string> const& colSet,
+                                            uint64_t sampleNum,
+                                            uint64_t exampleNum,
+                                            velocypack::Builder& colsBuilder) {
+  auto colsArrayBuilder = std::make_shared<velocypack::Builder>();
+  colsArrayBuilder->openArray();
+  for (auto const& colName : colSet) {
+    if (colName.starts_with("_")) {
+      continue;
+    }
+    velocypack::Builder colBuilder;
+    colBuilder.openObject();
+    Result colRes = getCollection(colName, sampleNum, exampleNum, colBuilder);
+    if (colRes.fail()) {
+      return colRes;
+    }
+    colBuilder.close();
+    colsArrayBuilder->add(colBuilder.slice());
+  }
+  colsArrayBuilder->close();
+  colsBuilder.add("collections", colsArrayBuilder->slice());
   return Result{};
 }
 
@@ -427,14 +428,8 @@ Result RestSchemaHandler::getGraphAndCollections(
   }
 
   auto slice = qr.data->slice();
-  if (!slice.isArray()) {
-    Result res{
-        TRI_ERROR_INTERNAL,
-        std::format("Unexpected graph result shape for '{}'", graphName)};
-    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
+  TRI_ASSERT(slice.isArray());
+
   if (slice.length() == 0) {
     Result res{TRI_ERROR_GRAPH_NOT_FOUND,
                std::format("Graph not found: '{}'", graphName)};
@@ -488,14 +483,7 @@ Result RestSchemaHandler::getAllGraphsAndCollections(
   }
 
   auto slice = qr.data->slice();
-  if (!slice.isArray()) {
-    Result res{
-        TRI_ERROR_INTERNAL,
-        std::string("Unexpected result shape for GRAPH query: not an array")};
-    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
+  TRI_ASSERT(slice.isArray());
   graphBuilder.add("graphs", slice);
 
   for (auto entry : velocypack::ArrayIterator(slice)) {
@@ -550,31 +538,17 @@ Result RestSchemaHandler::getViewAndCollections(
     for (auto li : velocypack::ObjectIterator(data.get("links"))) {
       auto colName = li.key.copyString();
       auto colValue = li.value;
-      if (!colValue.hasKey("fields") || !colValue.hasKey("includeAllFields") ||
-          !colValue.hasKey("analyzers")) {
-        Result res{
-            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-            std::format(
-                "View {}: link {} missing 'includeAllFields' or 'fields'",
-                viewName, colName)};
-        generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
-                      res.errorMessage());
-        return res;
-      }
+      TRI_ASSERT(colValue.isObject() && colValue.hasKey("fields") &&
+                 colValue.hasKey("includeAllFields") &&
+                 colValue.hasKey("analyzers"));
       viewBuilder.add(velocypack::Value(velocypack::ValueType::Object));
       viewBuilder.add("collectionName", velocypack::Value(colName));
       viewBuilder.add("fields", velocypack::ValueType::Array);
       std::set<std::string> includedAttrSet;
       for (auto fi : velocypack::ObjectIterator(colValue.get("fields"))) {
         viewBuilder.add(velocypack::Value(velocypack::ValueType::Object));
-        if (!fi.value.hasKey("analyzers")) {
-          Result res{
-              TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-              std::format("Link {} missing analyzers", viewName, colName)};
-          generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
-                        res.errorMessage());
-          return res;
-        }
+        TRI_ASSERT(fi.value.hasKey("analyzers"));
+
         viewBuilder.add("attribute", velocypack::Value(fi.key.copyString()));
         viewBuilder.add("analyzers", fi.value.get("analyzers"));
         viewBuilder
@@ -624,127 +598,49 @@ Result RestSchemaHandler::getAllViewsAndCollections(
   return Result{};
 }
 
-Result RestSchemaHandler::getNumOfDocumentsOrEdges(std::string const& colName,
-                                                   velocypack::Builder& builder,
-                                                   bool isDocument) {
-  auto methods =
-      transaction::Methods{std::make_shared<transaction::StandaloneContext>(
-          _vocbase, transaction::OperationOriginTestCase{})};
-
-  auto beginRes = methods.begin();
-  if (beginRes.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, beginRes.errorNumber(),
-                  beginRes.errorMessage());
-    return beginRes;
+Result RestSchemaHandler::getIndexes(std::string const& colName,
+                                     velocypack::Builder& builder) {
+  auto colPtr = CollectionNameResolver(_vocbase).getCollection(colName);
+  if (!colPtr) {
+    Result res{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+               std::format("Collection {} not found", colName)};
+    generateError(ResponseCode::NOT_FOUND, res.errorNumber(),
+                  res.errorMessage());
+    return res;
+  }
+  velocypack::Builder indexesBuilder;
+  Result indexRes = methods::Indexes::getAll(*colPtr, Index::makeFlags(), false,
+                                             indexesBuilder)
+                        .waitAndGet();
+  if (indexRes.fail()) {
+    generateError(ResponseCode::SERVER_ERROR, indexRes.errorNumber(),
+                  indexRes.errorMessage());
+    return indexRes;
   }
 
-  auto countRes = methods.count(colName, transaction::CountType::kTryCache, {});
-  if (countRes.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, countRes.errorNumber(),
-                  countRes.errorMessage());
-    return countRes.result;
-  }
+  builder.add("indexes", velocypack::Value(velocypack::ValueType::Array));
+  auto indexesData = indexesBuilder.slice();
+  TRI_ASSERT(indexesData.isArray());
+  for (auto ind : VPackArrayIterator(indexesData)) {
+    TRI_ASSERT(ind.isObject() && ind.get("fields").isArray() &&
+               ind.get("name").isString() && ind.get("sparse").isBoolean() &&
+               ind.get("type").isString() && ind.get("unique").isBoolean());
 
-  auto finishRes = methods.finish(countRes.result);
-  if (finishRes.fail()) {
-    generateError(ResponseCode::SERVER_ERROR, finishRes.errorNumber(),
-                  finishRes.errorMessage());
-    return finishRes;
-  }
-
-  builder.add(isDocument ? "numOfDocuments" : "numOfEdges", countRes.slice());
-  return Result{};
-}
-
-Result RestSchemaHandler::getExamples(std::string const& colName,
-                                      uint64_t exampleNum,
-                                      velocypack::Builder& builder) {
-  const std::string queryStr = R"(
-    FOR d IN @@collection LIMIT @exampleNum RETURN UNSET(d, "_rev")
-  )";
-
-  auto bindVars = std::make_shared<velocypack::Builder>();
-  bindVars->openObject();
-  bindVars->add("@collection", velocypack::Value(colName));
-  bindVars->add("exampleNum", velocypack::Value(exampleNum));
-  bindVars->close();
-
-  auto query = aql::Query::create(
-      std::make_shared<transaction::StandaloneContext>(
-          _vocbase, transaction::OperationOriginTestCase{}),
-      aql::QueryString{queryStr}, bindVars,
-      aql::QueryOptions{velocypack::Parser::fromJson("{}")->slice()});
-
-  aql::QueryResult qr;
-  try {
-    while (query->execute(qr) == aql::ExecutionState::WAITING) {
+    const auto indType = ind.get("type").stringView();
+    if (indType != "primary" && indType != "edge") {
+      builder.add(velocypack::Value(velocypack::ValueType::Object));
+      builder.add("fields", ind.get("fields"));
+      builder.add("name", ind.get("name").stringView());
+      builder.add("sparse", ind.get("sparse").getBoolean());
+      builder.add("type", ind.get("type").stringView());
+      builder.add("unique", ind.get("unique").getBoolean());
+      builder.close();  // Closing Json Object -> {fields: ***, name: ***, ...}
     }
-  } catch (basics::Exception const& e) {
-    Result res{e.code(), std::format("Example query for {} threw: {}", colName,
-                                     e.what())};
-    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
-                  res.errorMessage());
-    return res;
   }
+  builder
+      .close();  // Closing Json Array -> indexes: [{fields: ***, ...}, {}, {}]
 
-  if (qr.result.fail()) {
-    Result res{qr.result.errorNumber(),
-               std::format("Example query failed for {}: {}", colName,
-                           qr.result.errorMessage())};
-    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
-
-  auto result = qr.data->slice();
-  if (result.isNone() || !result.isArray()) {
-    Result res{
-        TRI_ERROR_INTERNAL,
-        std::format("Example query did not return an array for {}", colName)};
-    generateError(ResponseCode::SERVER_ERROR, res.errorNumber(),
-                  res.errorMessage());
-    return res;
-  }
-
-  builder.add("examples", result);
   return Result{};
-}
-
-std::optional<uint64_t> RestSchemaHandler::validateParameter(
-    const std::string& param, uint64_t defaultValue, bool allowZero) {
-  bool passed = false;
-
-  auto const& val = _request->value(param, passed);
-  if (!passed) {
-    return defaultValue;
-  }
-
-  if (!std::all_of(val.begin(), val.end(),
-                   [](char c) { return std::isdigit(c); })) {
-    generateError(
-        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-        std::format("Invalid value for {}: must contain only digits", param));
-    return std::nullopt;
-  }
-
-  unsigned long long userInput = 0;
-  try {
-    userInput = std::stoull(val);
-  } catch (std::out_of_range&) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::format("Value for {} is too large", param));
-    return std::nullopt;
-  } catch (...) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::format("Unexpected error parsing {}", param));
-    return std::nullopt;
-  }
-  if (userInput == 0 && !allowZero) {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  std::format("{} must be greater than 0", param));
-    return std::nullopt;
-  }
-  return userInput;
 }
 
 Result RestSchemaHandler::getConnectedCollections(
@@ -785,4 +681,41 @@ Result RestSchemaHandler::getConnectedCollections(
     colSet.insert(edge);
   }
   return Result{};
+}
+
+std::optional<uint64_t> RestSchemaHandler::validateParameter(
+    const std::string& param, uint64_t defaultValue, bool allowZero) {
+  bool passed = false;
+
+  auto const& val = _request->value(param, passed);
+  if (!passed) {
+    return defaultValue;
+  }
+
+  if (!std::all_of(val.begin(), val.end(),
+                   [](char c) { return std::isdigit(c); })) {
+    generateError(
+        ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+        std::format("Invalid value for {}: must contain only digits", param));
+    return std::nullopt;
+  }
+
+  unsigned long long userInput = 0;
+  try {
+    userInput = std::stoull(val);
+  } catch (std::out_of_range&) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::format("Value for {} is too large", param));
+    return std::nullopt;
+  } catch (...) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::format("Unexpected error parsing {}", param));
+    return std::nullopt;
+  }
+  if (userInput == 0 && !allowZero) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  std::format("{} must be greater than 0", param));
+    return std::nullopt;
+  }
+  return userInput;
 }

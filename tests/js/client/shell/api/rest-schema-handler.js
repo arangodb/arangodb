@@ -4,8 +4,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// / Copyright 2025-2025 ArangoDB GmbH, Cologne, Germany
 // /
 // / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
@@ -26,497 +25,599 @@
 
 'use strict';
 
-const internal = require('internal');
-const sleep = internal.sleep;
-const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
-const contentType = forceJson ? "application/json" :  "application/x-velocypack";
 const gm = require("@arangodb/general-graph");
 const jsunity = require("jsunity");
 
 let api = "/_api/schema";
 
 function restSchemaHandlerTestSuite() {
-    const vnCustomer = "customers";
-    const vnProduct = "products";
-    const vnCompany = "companies";
-    const enPurchased = "purchased";
-    const enManufactured = "manufactured";
-    const gnPurchaseHistory = "purchaseHistory";
-    const gnManufacture = "manufacture";
-    const vnProductDescView = "productDescView";
-    const vnDescView = "descView";
-    let colCustomer = null;
-    let colProduct = null;
-    let colCompany = null;
-    let pGraph = null;
-    let mGraph = null;
-    let productDescViewSearch = null;
-    let descViewSearch = null;
+    const COLLECTION_CUSTOMERS = 'customers';
+    const COLLECTION_PRODUCTS = 'products';
+    const COLLECTION_COMPANIES = 'companies';
 
-    return  {
+    const EDGE_PURCHASED = 'purchased';
+    const EDGE_MANUFACTURED = 'manufactured';
+
+    const GRAPH_PURCHASE_HISTORY = 'purchaseHistory';
+    const GRAPH_MANUFACTURE = 'manufacture';
+
+    const VIEW_PRODUCT_DESCRIPTION = 'productDescView';
+    const VIEW_DESCRIPTION = 'descView';
+
+    let customersCollection;
+    let productsCollection;
+    let companiesCollection;
+
+    let purchaseHistoryGraph;
+    let manufactureGraph;
+
+    let productDescriptionArangoSearch;
+    let descriptionArangoSearch;
+
+    return {
         setUpAll: function () {
-            db._drop(vnCustomer);
-            db._drop(vnProduct);
-            db._drop(vnCompany);
-            db._drop(enPurchased);
-            db._drop(enManufactured);
+            db._drop(COLLECTION_CUSTOMERS);
+            db._drop(COLLECTION_PRODUCTS);
+            db._drop(COLLECTION_COMPANIES);
+            db._drop(EDGE_PURCHASED);
+            db._drop(EDGE_MANUFACTURED);
 
-            colCustomer = db._create(vnCustomer);
-            colProduct = db._create(vnProduct);
-            colCompany = db._create(vnCompany);
-            gm._create(gnPurchaseHistory, [gm._relation(enPurchased, vnCustomer, vnProduct)]);
-            gm._create(gnManufacture, [gm._relation(enManufactured, vnCompany, vnProduct)]);
+            customersCollection = db._create(COLLECTION_CUSTOMERS);
+            productsCollection = db._create(COLLECTION_PRODUCTS);
+            companiesCollection = db._create(COLLECTION_COMPANIES);
 
-            colCustomer.save({_key: "C1", name: "C1", age: 25, address: "Milano", comment: "Is a teacher at a University in San Francisco and teaches finance"});
-            colCustomer.save({_key: "C2", name: "C2", age: "35", address: "San Francisco", isStudent: true, comment: "Has been working in financial industry for 5 years"});
-            colCustomer.save({_key: "C3", name: "C3", age: 55, address: {city: "Berlin", country: "Germany", comment: "Is a student at a University in San Francisco, major is financial"}});
-            colCustomer.save({_key: "C4", name: "C4", age: "young", address: "Tokyo", isStudent: false, comment: "Used to work in financial industry but now working as a teacher at school"});
-
-            colProduct.save({_key: "P1", name: "P1", price: 499.99, used: false, description: "Made in Germany and new"});
-            colProduct.save({_key: "P2", name: "P2", price: "expensive", description: "Made in USA and new"});
-            colProduct.save({_key: "P3", name: "P3", price: 1499, version: "14.5", used: true, description: "Made in Italy and used"});
-            colProduct.save({_key: "P4", name: "P4", price: 2499, version: 1, description: "Made in Japan and used"});
-
-            colCompany.save({_key: "E1", name: "E1", established: 1990, isPublic: true});
-            colCompany.save({_key: "E2", name: "E2", established: "5/2025", isPublic: false});
-            colCompany.save({_key: "E3", name: "E3", established: 1990});
-
-            pGraph = gm._graph(gnPurchaseHistory);
-            mGraph = gm._graph(gnManufacture);
-
-            productDescViewSearch = db._createView(vnProductDescView, "arangosearch", {
-                links: {products: {includeAllFields: true, analyzers: ["identity"],
-                        fields: {description: {analyzers: ["text_en"]}}}}});
-            descViewSearch = db._createView(vnDescView, "arangosearch", {
-                links: {products: {fields: {description: {analyzers: ["text_en"]}}},
-                        customers: {fields: {comment: {analyzers: ["text_en"]}}}}});
+            gm._create(
+                GRAPH_PURCHASE_HISTORY,
+                [ gm._relation(EDGE_PURCHASED, COLLECTION_CUSTOMERS, COLLECTION_PRODUCTS) ]
+            );
+            gm._create(
+                GRAPH_MANUFACTURE,
+                [ gm._relation(EDGE_MANUFACTURED, COLLECTION_COMPANIES, COLLECTION_PRODUCTS) ]
+            );
 
 
-            function makePurchase(fromKey, toKey, date) {
-                pGraph.purchased.save({_from: `${vnCustomer}/${fromKey}`, _to: `${vnProduct}/${toKey}`, date});
+            customersCollection.save({
+                _key: 'C1', name: 'C1', age: 25, address: 'Milano',
+                comment: 'Is a teacher at a University in San Francisco and teaches finance'
+            });
+            customersCollection.save({
+                _key: 'C2', name: 'C2', age: '35', address: 'San Francisco', isStudent: true,
+                comment: 'Has been working in financial industry for 5 years'
+            });
+            customersCollection.save({
+                _key: 'C3', name: 'C3', age: 55,
+                address: { city: 'Berlin', country: 'Germany'},
+                comment: 'Is a student at a University in San Francisco, major is financial'
+            });
+            customersCollection.save({
+                _key: 'C4', name: 'C4', age: 'young', address: 'Tokyo', isStudent: false,
+                comment: 'Used to work in financial industry but now working as a teacher at school'
+            });
+
+            productsCollection.save({ _key: 'P1', name: 'P1', price: 499.99, used: false, description: 'Made in Germany and new' });
+            productsCollection.save({ _key: 'P2', name: 'P2', price: 'expensive', description: 'Made in USA and new' });
+            productsCollection.save({ _key: 'P3', name: 'P3', price: 1499, version: '14.5', used: true, description: 'Made in Italy and used' });
+            productsCollection.save({ _key: 'P4', name: 'P4', price: 2499, version: 1, description: 'Made in Japan and used' });
+
+            companiesCollection.save({ _key: 'E1', name: 'E1', established: 1990, isPublic: true });
+            companiesCollection.save({ _key: 'E2', name: 'E2', established: '5/2025', isPublic: false });
+            companiesCollection.save({ _key: 'E3', name: 'E3', established: 1990 });
+
+            purchaseHistoryGraph = gm._graph(GRAPH_PURCHASE_HISTORY);
+            manufactureGraph = gm._graph(GRAPH_MANUFACTURE);
+
+            productDescriptionArangoSearch = db._createView(
+                VIEW_PRODUCT_DESCRIPTION,
+                'arangosearch',
+                { links: { products: {
+                    includeAllFields: true, analyzers: ['identity'],
+                            fields: { description: { analyzers: ['text_en'] } }
+                } } }
+            );
+            descriptionArangoSearch = db._createView(
+                VIEW_DESCRIPTION,
+                'arangosearch',
+                { links: {
+                        products: { fields: { description: { analyzers: ['text_en'] } } },
+                        customers: { fields: { comment: { analyzers: ['text_en'] } } }
+                    }
+                }
+            );
+
+            function createPurchaseEdge(customerKey, productKey, purchaseDate) {
+                purchaseHistoryGraph[EDGE_PURCHASED].save({
+                    _from: `${COLLECTION_CUSTOMERS}/${customerKey}`,
+                    _to:   `${COLLECTION_PRODUCTS}/${productKey}`,
+                    date: purchaseDate
+                });
             }
 
-            function makeManufacture(fromKey, toKey, amount) {
-                mGraph.manufactured.save({_from: `${vnCompany}/${fromKey}`, _to:   `${vnProduct}/${toKey}`, amount});
+            function createManufactureEdge(companyKey, productKey, amount) {
+                manufactureGraph[EDGE_MANUFACTURED].save({
+                    _from: `${COLLECTION_COMPANIES}/${companyKey}`,
+                    _to:   `${COLLECTION_PRODUCTS}/${productKey}`,
+                    amount: amount
+                });
             }
 
-            makePurchase("C1", "P1", "5/25/2025");
-            makePurchase("C2", "P2", "6/01/2025");
-            makePurchase("C3", "P3", "1/25/2025");
-            makePurchase("C4", "P4", "4/25/2025");
+            createPurchaseEdge('C1', 'P1', '5/25/2025');
+            createPurchaseEdge('C2', 'P2', '6/01/2025');
+            createPurchaseEdge('C3', 'P3', '1/25/2025');
+            createPurchaseEdge('C4', 'P4', '4/25/2025');
 
-            makeManufacture("E1", "P1", 1000);
-            makeManufacture("E2", "P2",   10);
+            createManufactureEdge('E1', 'P1', 1000);
+            createManufactureEdge('E2', 'P2', 10);
+
+            productsCollection.ensureIndex({ name: "proInd", type: "persistent", fields: ["price"]});
+            customersCollection.ensureIndex({ name: "cusInd", type: "geo", fields: ["address"]});
         },
 
         tearDownAll: function () {
-            productDescViewSearch.drop();
-            descViewSearch.drop();
-            gm._drop(gnPurchaseHistory);
-            gm._drop(gnManufacture);
-            db._drop(enPurchased);
-            db._drop(enManufactured);
-            db._drop(vnCustomer);
-            db._drop(vnProduct);
-            db._drop(vnCompany);
+            productsCollection.dropIndex("proInd")
+            customersCollection.dropIndex("cusInd");
+            productDescriptionArangoSearch.drop();
+            descriptionArangoSearch.drop();
+            gm._drop(GRAPH_PURCHASE_HISTORY);
+            gm._drop(GRAPH_MANUFACTURE);
+
+            db._drop(EDGE_PURCHASED);
+            db._drop(EDGE_MANUFACTURED);
+            db._drop(COLLECTION_CUSTOMERS);
+            db._drop(COLLECTION_PRODUCTS);
+            db._drop(COLLECTION_COMPANIES);
         },
 
-        testSchemaEndpointWithNoParameters: function () {
+        test_GetSchemaWithoutParameters_ShouldReturn200AndAllSchemas: function () {
             const doc = arango.GET_RAW(api);
             const body = doc.parsedBody;
 
-            assertEqual(200, doc.code);
-            assertTrue(Array.isArray(body.collections));
-            assertTrue(Array.isArray(body.graphs));
+            assertEqual(200, doc.code, 'Expected HTTP 200 for schema endpoint without query parameters');
+            assertTrue(Array.isArray(body.collections), 'collections should be an array');
+            assertTrue(Array.isArray(body.graphs), 'graphs should be an array');
+            assertTrue(Array.isArray(body.views), 'views should be an array');
 
-            // Find collections by name
-            const findCollection = (name) =>
-                body.collections.find((col) => col.collectionName === name);
+            const findCollection = name => body.collections.find(col => col.collectionName === name);
 
             const assertAttribute = (schema, attrName, expectedTypes, optional) => {
-                const attr = schema.find((a) => a.attribute === attrName);
-                assertTrue(attr, `Attribute '${attrName}' not found`);
-                expectedTypes.forEach((type) => {
-                    assertTrue(attr.types.includes(type), `'${attrName}' missing type '${type}'`);
+                const attr = schema.find(a => a.attribute === attrName);
+                assertTrue(attr, `Attribute '${attrName}' not found in schema`);
+                expectedTypes.forEach(type => {
+                    assertTrue(
+                        attr.types.includes(type),
+                        `Attribute '${attrName}' missing expected type '${type}'`
+                    );
                 });
-                assertEqual(optional, attr.optional, `'${attrName}' optional mismatch`);
+                assertEqual(
+                    optional,
+                    attr.optional,
+                    `Attribute '${attrName}' optional flag expected ${optional}`
+                );
             };
 
-            /* Check collection products */
-            const products = findCollection("products");
-            assertEqual("document", products.collectionType);
-            assertEqual(4, products.numOfDocuments);
-            const pschema = products.schema;
-            assertAttribute(pschema, "_id",    ["string"], false);
-            assertAttribute(pschema, "_key",   ["string"], false);
-            assertAttribute(pschema, "name",   ["string"], false);
-            assertAttribute(pschema, "price",  ["number", "string"], false);
-            assertAttribute(pschema, "used",   ["bool"], true);
-            assertAttribute(pschema, "version",["string", "number"], true);
+            const products = findCollection('products');
+            assertTrue(products, 'products collection should exist');
+            assertEqual('document', products.collectionType, 'products should be a document collection');
+            assertEqual(4, products.numOfDocuments, 'products should contain 4 documents')
+            assertTrue(Array.isArray(products.indexes), 'indexes should be an array');
+            assertTrue(Array.isArray(products.indexes[0].fields), 'fields should be an array');
+            assertEqual('price', products.indexes[0].fields[0], 'fields should be price');
+            assertEqual('false', products.indexes[0].sparse, 'sparse should be false');
+            assertEqual('persistent', products.indexes[0].type, 'type should be persistent');
+            assertEqual('false', products.indexes[0].unique, 'unique should be false');
+            assertAttribute(products.schema, '_id', ['string'], false);
+            assertAttribute(products.schema, '_key', ['string'], false);
+            assertAttribute(products.schema, 'name', ['string'], false);
+            assertAttribute(products.schema, 'price', ['number', 'string'], false);
+            assertAttribute(products.schema, 'used', ['bool'], true);
+            assertAttribute(products.schema, 'version', ['string', 'number'], true);
+            assertTrue(
+                products.examples[0]._id.startsWith('products/'),
+                'Example product _id should start with "products/"'
+            );
 
-            const exampleProduct = products.examples[0];
-            assertTrue(exampleProduct._id.startsWith("products/"));
+            const companies = findCollection('companies');
+            assertTrue(companies, 'companies collection should exist');
+            assertEqual('document', companies.collectionType, 'companies should be a document collection');
+            assertEqual(3, companies.numOfDocuments, 'companies should contain 3 documents');
+            assertAttribute(companies.schema, '_id', ['string'], false);
+            assertAttribute(companies.schema, '_key', ['string'], false);
+            assertAttribute(companies.schema, 'name', ['string'], false);
+            assertAttribute(companies.schema, 'established', ['number', 'string'], false);
+            assertAttribute(companies.schema, 'isPublic', ['bool'], true);
+            assertTrue(
+                companies.examples[0]._id.startsWith('companies/'),
+                'Example company _id should start with "companies/"'
+            );
 
-            /* Check collection companies */
-            const companies = findCollection("companies");
-            assertEqual("document", products.collectionType);
-            assertEqual(3, companies.numOfDocuments);
-            const comschema = companies.schema;
-            assertAttribute(comschema, "_id",    ["string"], false);
-            assertAttribute(comschema, "_key",   ["string"], false);
-            assertAttribute(comschema, "name",   ["string"], false);
-            assertAttribute(comschema, "established",  ["number", "string"], false);
-            assertAttribute(comschema, "isPublic",   ["bool"], true);
+            const customers = findCollection('customers');
+            assertTrue(customers, 'customers collection should exist');
+            assertEqual('document', customers.collectionType, 'customers should be a document collection');
+            assertEqual(4, customers.numOfDocuments, 'customers should contain 4 documents');
+            assertTrue(Array.isArray(customers.indexes), 'indexes should be an array');
+            assertTrue(Array.isArray(customers.indexes[0].fields), 'fields should be an array');
+            assertEqual('address', customers.indexes[0].fields[0], 'fields should be address');
+            assertEqual('geo', customers.indexes[0].type, 'type should be geo');
+            assertEqual('true', customers.indexes[0].sparse, 'sparse should be true')
+            assertEqual('false', customers.indexes[0].unique, 'unique should be false')
+            assertAttribute(customers.schema, '_id', ['string'], false);
+            assertAttribute(customers.schema, '_key', ['string'], false);
+            assertAttribute(customers.schema, 'address', ['string', 'object'], false);
+            assertAttribute(customers.schema, 'age', ['string', 'number'], false);
+            assertAttribute(customers.schema, 'isStudent', ['bool'], true);
+            assertAttribute(customers.schema, 'name', ['string'], false);
+            assertTrue(
+                customers.examples[0]._id.startsWith('customers/'),
+                'Example customer _id should start with "customers/"'
+            );
 
-            const exampleCompany = companies.examples[0];
-            assertTrue(exampleCompany._id.startsWith("companies/"));
+            const purchased = findCollection('purchased');
+            assertTrue(purchased, 'purchased edge collection should exist');
+            assertEqual('edge', purchased.collectionType, 'purchased should be an edge collection');
+            assertEqual(4, purchased.numOfEdges, 'purchased should contain 4 edges');
+            assertAttribute(purchased.schema, '_from', ['string'], false);
+            assertAttribute(purchased.schema, '_to', ['string'], false);
+            assertAttribute(purchased.schema, '_id', ['string'], false);
+            assertAttribute(purchased.schema, '_key', ['string'], false);
+            assertAttribute(purchased.schema, 'date', ['string'], false);
+            assertTrue(
+                purchased.examples[0]._id.startsWith('purchased/'),
+                'Example purchased _id should start with "purchased/"'
+            );
+            assertTrue(
+                purchased.examples[0]._from.startsWith('customers/'),
+                'Purchased edge _from should start with "customers/"'
+            );
+            assertTrue(
+                purchased.examples[0]._to.startsWith('products/'),
+                'Purchased edge _to should start with "products/"'
+            );
 
-            /* Check collection customers */
-            const customers = findCollection("customers");
-            assertEqual("document", customers.collectionType);
-            assertEqual(4, customers.numOfDocuments);
+            const manufactured = findCollection('manufactured');
+            assertTrue(manufactured, 'manufactured edge collection should exist');
+            assertEqual('edge', manufactured.collectionType, 'manufactured should be an edge collection');
+            assertEqual(2, manufactured.numOfEdges, 'manufactured should contain 2 edges');
+            assertAttribute(manufactured.schema, '_from', ['string'], false);
+            assertAttribute(manufactured.schema, '_to', ['string'], false);
+            assertAttribute(manufactured.schema, '_id', ['string'], false);
+            assertAttribute(manufactured.schema, '_key', ['string'], false);
+            assertAttribute(manufactured.schema, 'amount', ['number'], false);
+            assertTrue(
+                manufactured.examples[0]._id.startsWith('manufactured/'),
+                'Example manufactured _id should start with "manufactured/"'
+            );
+            assertTrue(
+                manufactured.examples[0]._from.startsWith('companies/'),
+                'Manufactured edge _from should start with "companies/"'
+            );
+            assertTrue(
+                manufactured.examples[0]._to.startsWith('products/'),
+                'Manufactured edge _to should start with "products/"'
+            );
 
-            const cschema = customers.schema;
-            assertAttribute(cschema, "_id",       ["string"], false);
-            assertAttribute(cschema, "_key",      ["string"], false);
-            assertAttribute(cschema, "address",   ["string", "object"], false);
-            assertAttribute(cschema, "age",       ["string", "number"], false);
-            assertAttribute(cschema, "isStudent", ["bool"], true);
-            assertAttribute(cschema, "name",      ["string"], false);
+            assertEqual(2, body.graphs.length, 'There should be exactly 2 graphs');
+            const pGraph = body.graphs.find(g => g.name === 'purchaseHistory');
+            assertTrue(pGraph, 'purchaseHistory graph should exist');
+            assertEqual(1, pGraph.relations.length, 'purchaseHistory should have 1 relation');
+            assertEqual(pGraph.relations[0].collection, 'purchased', 'Relation collection name mismatch');
+            assertEqual(pGraph.relations[0].from[0], 'customers', 'Graph from vertex mismatch');
+            assertEqual(pGraph.relations[0].to[0], 'products', 'Graph to vertex mismatch');
 
-            const exampleCustomer = customers.examples[0];
-            assertTrue(exampleCustomer._id.startsWith("customers/"));
+            const mGraph = body.graphs.find(g => g.name === 'manufacture');
+            assertTrue(mGraph, 'manufacture graph should exist');
+            assertEqual(1, mGraph.relations.length, 'manufacture should have 1 relation');
+            assertEqual(mGraph.relations[0].collection, 'manufactured', 'Relation collection name mismatch');
+            assertEqual(mGraph.relations[0].from[0], 'companies', 'Graph from vertex mismatch');
+            assertEqual(mGraph.relations[0].to[0], 'products', 'Graph to vertex mismatch');
 
-            /* Check collection purchased */
-            const purchased = findCollection("purchased");
-            assertEqual("edge", purchased.collectionType);
-            assertEqual(4, purchased.numOfEdges);
+            const prodView = body.views.find(v => v.viewName === 'productDescView');
+            assertTrue(prodView, 'productDescView should exist');
+            assertTrue(Array.isArray(prodView.links), 'Links for productDescView should be an array');
+            assertEqual(prodView.links[0].collectionName, 'products', 'View link collection name mismatch');
+            assertTrue(Array.isArray(prodView.links[0].fields), 'View link fields should be an array');
+            assertEqual(prodView.links[0].fields[0].attribute, 'description', 'View field attribute mismatch');
+            assertEqual(prodView.links[0].fields[0].analyzers[0], 'text_en', 'View field analyzer mismatch');
+            assertEqual(prodView.links[0].allAttributeAnalyzers[0], 'identity', 'View allAttributeAnalyzers mismatch');
 
-            const eschema = purchased.schema;
-            assertAttribute(eschema, "_from", ["string"], false);
-            assertAttribute(eschema, "_to",   ["string"], false);
-            assertAttribute(eschema, "_id",   ["string"], false);
-            assertAttribute(eschema, "_key",  ["string"], false);
-            assertAttribute(eschema, "date",  ["string"], false);
-
-            const exampleEdge = purchased.examples[0];
-            assertTrue(exampleEdge._id.startsWith("purchased/"));
-            assertTrue(exampleEdge._from.startsWith("customers/"));
-            assertTrue(exampleEdge._to.startsWith("products/"));
-
-            /* Check collection purchased */
-            const manufactured = findCollection("manufactured");
-            assertEqual("edge", manufactured.collectionType);
-            assertEqual(2, manufactured.numOfEdges);
-
-            const mschema = manufactured.schema;
-            assertAttribute(mschema, "_from", ["string"], false);
-            assertAttribute(mschema, "_to",   ["string"], false);
-            assertAttribute(mschema, "_id",   ["string"], false);
-            assertAttribute(mschema, "_key",  ["string"], false);
-            assertAttribute(mschema, "amount",  ["number"], false);
-
-            const exampleManufactured = manufactured.examples[0];
-            assertTrue(exampleManufactured._id.startsWith("manufactured/"));
-            assertTrue(exampleManufactured._from.startsWith("companies/"));
-            assertTrue(exampleManufactured._to.startsWith("products/"));
-
-
-            /* Check graphs */
-            assertTrue(Array.isArray(body.graphs), "graphs must be an array");
-            assertEqual(2, body.graphs.length, "Expected 2 graphs for graphs");
-
-            const pGraph = body.graphs.find((g) => g.name === "purchaseHistory");
-            assertEqual("purchaseHistory", pGraph.name);
-            assertEqual(1, pGraph.relations.length);
-
-            const pRel = pGraph.relations[0];
-            assertEqual("purchased", pRel.collection);
-            assertEqual("customers", pRel.from[0]);
-            assertEqual("products", pRel.to[0]);
-
-            const mGraph = body.graphs.find((g) => g.name === "manufacture");
-            assertEqual("manufacture", mGraph.name);
-            assertEqual(1, mGraph.relations.length);
-
-            const mRel = mGraph.relations[0];
-            assertEqual("manufactured", mRel.collection);
-            assertEqual("companies", mRel.from[0]);
-            assertEqual("products", mRel.to[0]);
-
-            /* Check views */
-            const vProductDescView = body.views.find((v) => v.viewName === "productDescView");
-            assertTrue(Array.isArray(vProductDescView.links));
-            assertEqual("products", vProductDescView.links[0].collectionName);
-            assertTrue(Array.isArray(vProductDescView.links[0].fields));
-            assertEqual("description", vProductDescView.links[0].fields[0].attribute);
-            assertEqual("text_en", vProductDescView.links[0].fields[0].analyzers[0]);
-            assertEqual("identity", vProductDescView.links[0].allAttributeAnalyzers[0]);
-
-            const vDescView = body.views.find((v) => v.viewName === "descView");
-            assertEqual(2, vDescView.links.length);
-            const customersView = vDescView.links.find((v) => v.collectionName === "customers");
-            assertEqual("comment", customersView.fields[0].attribute);
-            assertEqual("text_en", customersView.fields[0].analyzers[0]);
-            const productsView = vDescView.links.find((v) => v.collectionName === "products");
-            assertEqual("description", productsView.fields[0].attribute);
-            assertEqual("text_en", productsView.fields[0].analyzers[0]);
+            const descView = body.views.find(v => v.viewName === 'descView');
+            assertTrue(descView, 'descView should exist');
+            assertEqual(descView.links.length, 2, 'descView should have 2 links');
         },
 
-        testSchemaEndpointWithNegativeSampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=-1");
+        test_InvalidSampleNumValues_ShouldReturn400: function () {
+            [
+                '?sampleNum=-1',
+                '?sampleNum=12.3',
+                '?sampleNum=abc',
+                '?sampleNum=999999999999999999999999999999'
+            ].forEach(param => {
+                const doc = arango.GET_RAW(api + param);
+                assertEqual(400, doc.code, `Expected HTTP 400 for invalid sampleNum '${param}'`);
+                assertTrue(doc.parsedBody.error, 'Error flag should be true for invalid sampleNum');
+            });
+        },
+
+        test_InvalidExampleNumValues_ShouldReturn400: function () {
+            [
+                '?exampleNum=-1',
+                '?exampleNum=12.3',
+                '?exampleNum=abc',
+                '?exampleNum=999999999999999999999999999999'
+            ].forEach(param => {
+                const doc = arango.GET_RAW(api + param);
+                assertEqual(400, doc.code, `Expected HTTP 400 for invalid exampleNum '${param}'`);
+                assertTrue(doc.parsedBody.error, 'Error flag should be true for invalid exampleNum');
+            });
+        },
+
+        test_EmptySampleNum_ShouldReturn200: function () {
+            const doc = arango.GET_RAW(api + '?sampleNum=');
+            assertEqual(200, doc.code, 'Empty sampleNum should default to valid response');
+        },
+
+        test_EmptyExampleNum_ShouldReturn200: function () {
+            const doc = arango.GET_RAW(api + '?exmapleNum=');
+            assertEqual(200, doc.code, 'Empty exampleNum should default to valid response');
+        },
+
+        test_ExampleNumGreaterThanSampleNum_ShouldReturn400: function () {
+            const doc = arango.GET_RAW(api + '?sampleNum=10&exampleNum=20');
+            assertEqual(400, doc.code, 'exampleNum greater than sampleNum should return 400');
+            assertTrue(doc.parsedBody.error, 'Error flag should be true when exampleNum > sampleNum');
+        },
+
+        test_ValidExampleNum_ShouldReturnCorrectExampleCount: function () {
+            const doc = arango.GET_RAW(api + '?sampleNum=10&exampleNum=3');
+            const products = doc.parsedBody.collections.find(c => c.collectionName === 'products');
+            assertEqual(200, doc.code, 'Valid exampleNum should return HTTP 200');
+            assertTrue(products, 'products collection should be present');
+            assertEqual(
+                products.examples.length,
+                3,
+                'Expected exactly 3 examples for products when exampleNum=3'
+            );
+        },
+
+        test_GetSchemaWithSampleNumOnly_ShouldReturnSchemasWithNoOptionalAttributes: function () {
+            // This test wants to verify that "optional" field logic is correct;
+            // if sampleNum = 1, all "optional" should be false.
+            const doc = arango.GET_RAW(api + '?sampleNum=1');
             const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error, "Expected error in response body");
-        },
+            assertEqual(200, doc.code, 'Expected HTTP 200 for sampleNum=1');
+            assertTrue(Array.isArray(body.collections), 'collections must be an array');
 
-        testSchemaEndpointWithFloatingSampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=12.3");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error, "Expected error in response body");
-        },
-
-        testSchemaEndpointWithNonNumericSampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=abc");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error);
-        },
-
-        testSchemaEndpointWithEmptySampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=");
-            assertEqual(200, doc.code);
-        },
-
-        testSchemaEndpointWithHugeSampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=999999999999999999999999999999");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error);
-        },
-
-        testSchemaEndpointWithNegativeExampleNum: function () {
-            const doc = arango.GET_RAW(api + "?exampleNum=-1");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error, "Expected error in response body");
-        },
-
-        testSchemaEndpointWithFloatingExampleNum: function () {
-            const doc = arango.GET_RAW(api + "?exampleNum=12.3");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error, "Expected error in response body");
-        },
-
-        testSchemaEndpointWithNonNumericExampleNum: function () {
-            const doc = arango.GET_RAW(api + "?exampleNum=abc");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error);
-        },
-
-        testSchemaEndpointWithEmptyExampleNum: function () {
-            const doc = arango.GET_RAW(api + "?exampleNum=");
-            assertEqual(200, doc.code);
-        },
-
-        testSchemaEndpointWithHugeExampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=999999999999999999999999999999");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error);
-        },
-
-        testSchemaEndpointWithExampleNumIsLargerThanSampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=10&exampleNum=20");
-            const body = doc.parsedBody;
-            assertEqual(400, doc.code);
-            assertTrue(body.error);
-        },
-
-        testSchemaEndpointWithValidExampleNum: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=10&exampleNum=3");
-            const body = doc.parsedBody;
-            assertEqual(200, doc.code);
-            const products = body.collections.find(c => c.collectionName === "products");
-            assertTrue(products, "products collection not found");
-            assertEqual(3, products.examples.length, "Expected 3 product examples");
-        },
-
-        testSchemaEndpointWithSampleNumOnly: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=1");
-            const body = doc.parsedBody;
-
-            assertEqual(200, doc.code);
-            assertTrue(Array.isArray(body.collections), "collections must be an array");
-
-            body.collections.forEach((collection) => {
-                assertTrue(Array.isArray(collection.schema), `schema must be array in ${collection.collectionName}`);
-
-                collection.schema.forEach((attribute) => {
-                    assertEqual(false, attribute.optional,
-                        `Attribute '${attribute.attribute}' in '${collection.collectionName}' was marked optional`);
+            body.collections.forEach(collection => {
+                assertTrue(
+                    Array.isArray(collection.schema),
+                    `schema must be an array in '${collection.collectionName}'`
+                );
+                collection.schema.forEach(attribute => {
+                    assertEqual(
+                        false,
+                        attribute.optional,
+                        `Attribute '${attribute.attribute}' in '${collection.collectionName}' should not be optional`
+                    );
                 });
             });
         },
 
-        testSchemaEndpointWithNotExistingCollection: function () {
-            const doc = arango.GET_RAW(api + "/collection/fake");
-            assertEqual(404, doc.code);
+        test_GetSchemaNonExistingCollection_ShouldReturn404: function () {
+            const doc = arango.GET_RAW(api + '/collection/fake');
+            assertEqual(404, doc.code, 'Expected HTTP 404 for non-existing collection');
         },
 
-        testSchemaEndpointWithExampleNumEqualTo0: function () {
-            const doc = arango.GET_RAW(api + "?exampleNum=0");
-            assertEqual(200, doc.code, "Expected HTTP 200 on exampleNum=0");
+        test_ExampleNumZero_ShouldReturnNoExamples: function () {
+            const doc = arango.GET_RAW(api + '?exampleNum=0');
+            assertEqual(200, doc.code, 'Expected HTTP 200 for exampleNum=0');
             const body = doc.parsedBody;
-            assertTrue(Array.isArray(body.collections), "Expected 'collections' to be an array");
-            body.collections.forEach(function(coll) {
-                assertTrue(Array.isArray(coll.examples),
-                    "Expected 'examples' to be an array for " + coll.collectionName);
-                assertEqual(0, coll.examples.length,
-                    "Expected zero examples for " + coll.collectionName);
+            assertTrue(
+                Array.isArray(body.collections),
+                'collections should be an array'
+            );
+
+            body.collections.forEach(coll => {
+                assertTrue(
+                    Array.isArray(coll.examples),
+                    `examples for '${coll.collectionName}' should be an array`
+                );
+                assertEqual(
+                    0,
+                    coll.examples.length,
+                    `Expected 0 examples for '${coll.collectionName}'`
+                );
             });
         },
 
-        testSchemaEndpointWithSampleNumEqualTo0: function () {
-            const doc = arango.GET_RAW(api + "?sampleNum=0");
-            assertEqual(400, doc.code, "Expected HTTP 400 on sampleNum=0");
+        test_SampleNumZero_ShouldReturn400: function () {
+            const doc = arango.GET_RAW(api + '?sampleNum=0');
+            assertEqual(400, doc.code, 'Expected HTTP 400 for sampleNum=0');
         },
 
-        testSchemaGraphEndpoint: function () {
-            const doc = arango.GET_RAW(api + "/graph/purchaseHistory");
-            assertEqual(200, doc.code, "Expected HTTP 200 on graph/purchaseHistory");
+        test_GetGraphByName_ShouldReturnGraphSchema: function () {
+            const doc = arango.GET_RAW(api + '/graph/purchaseHistory');
+            assertEqual(200, doc.code, 'Expected HTTP 200 for graph/purchaseHistory');
             const body = doc.parsedBody;
-            const findCollection = (name) =>
-                body.collections.find((col) => col.collectionName === name);
-
+            const findCollection = name =>
+                body.collections.find(col => col.collectionName === name);
             const assertAttribute = (schema, attrName, expectedTypes, optional) => {
-                const attr = schema.find((a) => a.attribute === attrName);
-                assertTrue(!!attr, `Attribute '${attrName}' not found`);
-                expectedTypes.forEach((type) => {
-                    assertTrue(attr.types.includes(type),
-                        `'${attrName}' missing type '${type}'`);
+                const attr = schema.find(a => a.attribute === attrName);
+                assertTrue(
+                    !!attr,
+                    `Attribute '${attrName}' not found in schema for graph endpoint`
+                );
+                expectedTypes.forEach(type => {
+                    assertTrue(
+                        attr.types.includes(type),
+                        `Attribute '${attrName}' missing type '${type}' in graph schema`
+                    );
                 });
-                assertEqual(optional, attr.optional,
-                    `'${attrName}' optional mismatch`);
+                assertEqual(
+                    optional,
+                    attr.optional,
+                    `Attribute '${attrName}' optional flag expected ${optional} in graph schema`
+                );
             };
 
-            const products = findCollection("products");
-            assertTrue(products, "products collection missing");
-            assertEqual("document", products.collectionType);
+            // Validate products in graph
+            const products = findCollection('products');
+            assertTrue(products, 'products collection missing in graph response');
+            assertEqual('document', products.collectionType);
             assertEqual(4, products.numOfDocuments);
-            const pschema = products.schema;
-            assertAttribute(pschema, "_id",    ["string"], false);
-            assertAttribute(pschema, "_key",   ["string"], false);
-            assertAttribute(pschema, "name",   ["string"], false);
-            assertAttribute(pschema, "price",  ["number","string"], false);
-            assertAttribute(pschema, "used",   ["bool"], true);
-            assertAttribute(pschema, "version",["number","string"], true);
-            const exampleProduct = products.examples[0];
-            assertTrue(exampleProduct._id.startsWith("products/"),
-                "exampleProduct._id malformed");
+            assertAttribute(products.schema, '_id', ['string'], false);
+            assertAttribute(products.schema, '_key', ['string'], false);
+            assertAttribute(products.schema, 'name', ['string'], false);
+            assertAttribute(products.schema, 'price', ['number','string'], false);
+            assertAttribute(products.schema, 'used', ['bool'], true);
+            assertAttribute(products.schema, 'version', ['number','string'], true);
+            assertTrue(
+                products.examples[0]._id.startsWith('products/'),
+                'Example product _id malformed in graph response'
+            );
 
-            const customers = findCollection("customers");
-            assertTrue(customers, "customers collection missing");
-            assertEqual("document", customers.collectionType);
+            // Validate customers in graph
+            const customers = findCollection('customers');
+            assertTrue(customers, 'customers collection missing in graph response');
+            assertEqual('document', customers.collectionType);
             assertEqual(4, customers.numOfDocuments);
-            const cschema = customers.schema;
-            assertAttribute(cschema, "_id",       ["string"], false);
-            assertAttribute(cschema, "_key",      ["string"], false);
-            assertAttribute(cschema, "address",   ["string","object"], false);
-            assertAttribute(cschema, "age",       ["string","number"], false);
-            assertAttribute(cschema, "isStudent", ["bool"], true);
-            assertAttribute(cschema, "name",      ["string"], false);
-            const exampleCustomer = customers.examples[0];
-            assertTrue(exampleCustomer._id.startsWith("customers/"),
-                "exampleCustomer._id malformed");
+            assertAttribute(customers.schema, '_id', ['string'], false);
+            assertAttribute(customers.schema, '_key', ['string'], false);
+            assertAttribute(customers.schema, 'address', ['string','object'], false);
+            assertAttribute(customers.schema, 'age', ['string','number'], false);
+            assertAttribute(customers.schema, 'isStudent', ['bool'], true);
+            assertAttribute(customers.schema, 'name', ['string'], false);
 
-            const purchased = findCollection("purchased");
-            assertTrue(purchased, "purchased collection missing");
-            assertEqual("edge", purchased.collectionType);
+            // Validate purchased edges in graph
+            const purchased = findCollection('purchased');
+            assertTrue(purchased, 'purchased edge collection missing in graph response');
+            assertEqual('edge', purchased.collectionType);
             assertEqual(4, purchased.numOfEdges);
-            const eschema = purchased.schema;
-            assertAttribute(eschema, "_from", ["string"], false);
-            assertAttribute(eschema, "_to",   ["string"], false);
-            assertAttribute(eschema, "_id",   ["string"], false);
-            assertAttribute(eschema, "_key",  ["string"], false);
-            assertAttribute(eschema, "date",  ["string"], false);
-            const exampleEdge = purchased.examples[0];
-            assertTrue(exampleEdge._id.startsWith("purchased/"),
-                "exampleEdge._id malformed");
-            assertTrue(exampleEdge._from.startsWith("customers/"),
-                "exampleEdge._from malformed");
-            assertTrue(exampleEdge._to.startsWith("products/"),
-                "exampleEdge._to malformed");
+            assertAttribute(purchased.schema, '_from', ['string'], false);
+            assertAttribute(purchased.schema, '_to', ['string'], false);
+            assertAttribute(purchased.schema, '_id', ['string'], false);
+            assertAttribute(purchased.schema, '_key', ['string'], false);
+            assertAttribute(purchased.schema, 'date', ['string'], false);
 
-            const graph = body.graphs.find((g) => g.name === "purchaseHistory");
-            assertTrue(graph, "purchaseHistory graph missing");
-            assertEqual("purchaseHistory", graph.name);
+            const graph = body.graphs.find(g => g.name === 'purchaseHistory');
+            assertTrue(graph, 'purchaseHistory graph missing');
             assertEqual(1, graph.relations.length);
-            const rel = graph.relations[0];
-            assertEqual("purchased", rel.collection);
-            assertEqual("customers", rel.from[0]);
-            assertEqual("products", rel.to[0]);
+            assertEqual(graph.relations[0].collection, 'purchased');
+            assertEqual(graph.relations[0].from[0], 'customers');
+            assertEqual(graph.relations[0].to[0], 'products');
         },
 
-        testSchemaGraphEndpointWithNotExistingGraph: function () {
-            const doc = arango.GET_RAW(api + "/graph/fake");
-            assertEqual(404, doc.code, "Expected HTTP 404 with a not exsting graph");
+        test_GetGraphNonExisting_ShouldReturn404: function () {
+            const doc = arango.GET_RAW(api + '/graph/fake');
+            assertEqual(404, doc.code, 'Expected HTTP 404 for non-existing graph');
         },
 
-        testSchemaEndpointWithLargerExampleNumThanActual: function () {
-            const doc = arango.GET_RAW(api + "/collection/customers?exampleNum=100");
-            assertEqual(200, doc.code, "Expected HTTP 200");
+        test_CollectionExamplesClamp_ShouldClampExamplesToCollectionSize: function () {
+            const doc = arango.GET_RAW(api + '/collection/customers?exampleNum=100');
+            assertEqual(200, doc.code, 'Expected HTTP 200 when exampleNum exceeds document count');
             const body = doc.parsedBody;
-            assertTrue(Array.isArray(body.examples));
-            assertEqual(4, body.examples.length);
+            assertTrue(
+                Array.isArray(body.examples),
+                'examples should be an array for single-collection endpoint'
+            );
+            assertEqual(
+                4,
+                body.examples.length,
+                'Expected examples length clamped to 4 when exampleNum > actual documents'
+            );
         },
 
-        testSchemaViewEndpoint: function () {
-            const doc = arango.GET_RAW(api + "/view/descView");
-            assertEqual(200, doc.code, "Expected HTTP 200");
+        test_GetViewByName_ShouldReturnViewAndCollectionSchemas: function () {
+            const doc = arango.GET_RAW(api + '/view/descView');
+            assertEqual(200, doc.code, 'Expected HTTP 200 for view/descView');
             const body = doc.parsedBody;
             const vDesc = body.views[0];
-            assertTrue(Array.isArray(vDesc.links));
-            const vCustomers = vDesc.links.find((v) => v.collectionName === "customers");
-            assertEqual("comment", vCustomers.fields[0].attribute);
-            assertEqual("text_en", vCustomers.fields[0].analyzers[0]);
-            const vProducts = vDesc.links.find((v) => v.collectionName === "products");
-            assertEqual("description", vProducts.fields[0].attribute);
-            assertEqual("text_en", vProducts.fields[0].analyzers[0]);
+            assertTrue(
+                Array.isArray(vDesc.links),
+                'View links should be an array for descView'
+            );
+            const vCustomers = vDesc.links.find(v => v.collectionName === 'customers');
+            assertEqual(
+                'comment',
+                vCustomers.fields[0].attribute,
+                'View field attribute mismatch for customers in descView'
+            );
+            assertEqual(
+                'text_en',
+                vCustomers.fields[0].analyzers[0],
+                'View field analyzer mismatch for customers in descView'
+            );
+
+            const vProducts = vDesc.links.find(v => v.collectionName === 'products');
+            assertEqual(
+                'description',
+                vProducts.fields[0].attribute,
+                'View field attribute mismatch for products in descView'
+            );
+            assertEqual(
+                'text_en',
+                vProducts.fields[0].analyzers[0],
+                'View field analyzer mismatch for products in descView'
+            );
 
             const colls = body.collections;
-            assertEqual(2, colls.length);
-            const cCustomers = colls.find((c) => c.collectionName === "customers");
-            assertEqual(4, cCustomers.numOfDocuments);
-            assertEqual(7, cCustomers.schema.length);
-            const cProducts = colls.find((c) => c.collectionName === "products");
-            assertEqual(4, cProducts.numOfDocuments);
-            assertEqual(7, cProducts.schema.length);
+            assertEqual(2, colls.length, 'Expected 2 collections in view response');
+            const cCustomers = colls.find(c => c.collectionName === 'customers');
+            assertEqual(
+                4,
+                cCustomers.numOfDocuments,
+                'Expected 4 documents for customers in view collections'
+            );
+            assertEqual(
+                7,
+                cCustomers.schema.length,
+                'Expected schema length of 7 for customers in view collections'
+            );
+            const cProducts = colls.find(c => c.collectionName === 'products');
+            assertEqual(
+                4,
+                cProducts.numOfDocuments,
+                'Expected 4 documents for products in view collections'
+            );
+            assertEqual(
+                7,
+                cProducts.schema.length,
+                'Expected schema length of 7 for products in view collections'
+            );
         },
 
-        testSchemaViewEndpointWithNotExistingView: function () {
-            const doc = arango.GET_RAW(api + "/view/fake");
-            assertEqual(404, doc.code, "Expected HTTP 404");
+        test_GetViewNonExisting_ShouldReturn404: function () {
+            const doc = arango.GET_RAW(api + '/view/fake');
+            assertEqual(404, doc.code, 'Expected HTTP 404 for non-existing view');
         },
 
-        testSchemaViewEndpointWithEmptyViewName: function () {
-            const doc = arango.GET_RAW(api + "/view");
-            assertEqual(404, doc.code, "Expected HTTP 404");
+        test_GetViewEmptyName_ShouldReturn404: function () {
+            const doc = arango.GET_RAW(api + '/view');
+            assertEqual(404, doc.code, 'Expected HTTP 404 for empty view name');
         },
 
-        testSchemaViewEndpointWithIncludeAllAttribute: function () {
-            const doc = arango.GET_RAW(api + "/view/productDescView");
-            assertEqual(200, doc.code, "Expected HTTP 200");
+        test_GetViewIncludeAllFieldsTrue_ShouldReturnAnalyzersForAllAttributes: function () {
+            const doc = arango.GET_RAW(api + '/view/productDescView');
+            assertEqual(200, doc.code, 'Expected HTTP 200 for view/productDescView');
             const body = doc.parsedBody;
-            const vDescView = body.views[0];
-            assertTrue(Array.isArray(vDescView.links));
-            assertEqual("description", vDescView.links[0].fields[0].attribute);
-            assertEqual("text_en", vDescView.links[0].fields[0].analyzers[0]);
-            assertEqual("identity", vDescView.links[0].allAttributeAnalyzers[0]);
-        },
+            const vProdView = body.views[0];
+            assertTrue(
+                Array.isArray(vProdView.links),
+                'View links should be an array for productDescView'
+            );
+            assertEqual(
+                'description',
+                vProdView.links[0].fields[0].attribute,
+                'View field attribute mismatch for productDescView'
+            );
+            assertEqual(
+                'text_en',
+                vProdView.links[0].fields[0].analyzers[0],
+                'View field analyzer mismatch for productDescView'
+            );
+            assertEqual(
+                'identity',
+                vProdView.links[0].allAttributeAnalyzers[0],
+                'View allAttributeAnalyzers mismatch for productDescView'
+            );
+        }
     };
 }
 

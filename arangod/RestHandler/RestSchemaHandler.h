@@ -45,7 +45,7 @@ class RestSchemaHandler : public RestCursorHandler {
  private:
   static constexpr uint64_t defaultSampleNum = 100;
   static constexpr uint64_t defaultExampleNum = 1;
-  static const std::string queryString;
+  static const std::string queryStr;
   graph::GraphManager _graphManager;
 
   Result lookupSchema(uint64_t sampleNum, uint64_t exampleNum);
@@ -56,31 +56,31 @@ class RestSchemaHandler : public RestCursorHandler {
   Result lookupSchemaView(std::string const& viewName, uint64_t sampleNum,
                           uint64_t exampleNum);
 
-  Result getCollections(std::set<std::string> const& colSet, uint64_t sampleNum,
-                        uint64_t exampleNum, velocypack::Builder& colsBuilder);
   Result getCollection(std::string const& colName, uint64_t sampleNum,
                        uint64_t exampleNum, velocypack::Builder& colBuilder);
+  Result getAllCollections(std::set<std::string> const& colSet,
+                           uint64_t sampleNum, uint64_t exampleNum,
+                           velocypack::Builder& colsBuilder);
+
   Result getGraphAndCollections(std::string const& graphName,
                                 velocypack::Builder& graphBuilder,
                                 std::set<std::string>& colSet);
   Result getAllGraphsAndCollections(velocypack::Builder& graphBuilder,
                                     std::set<std::string>& colSet);
+
   Result getViewAndCollections(std::string const& viewName,
                                velocypack::Builder& colBuilder,
                                std::set<std::string>& colSet);
   Result getAllViewsAndCollections(velocypack::Builder& viewsBuilder,
                                    std::set<std::string>& colSet);
 
+  Result getIndexes(std::string const& colName, velocypack::Builder& builder);
+  Result getConnectedCollections(std::string const& graphName,
+                                 std::set<std::string>& colSet);
+
   std::optional<uint64_t> validateParameter(const std::string& param,
                                             uint64_t defaultValue,
                                             bool allowZero = false);
-  Result getNumOfDocumentsOrEdges(std::string const& colName,
-                                  velocypack::Builder& builder,
-                                  bool isDocument = true);
-  Result getExamples(std::string const& colName, uint64_t exampleNum,
-                     velocypack::Builder& builder);
-  Result getConnectedCollections(std::string const& graphName,
-                                 std::set<std::string>& colSet);
 };
 
 }  // namespace rest

@@ -159,6 +159,10 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
   EXPECT_EQ(actualSlice.get("collectionType").copyString(), "document");
   EXPECT_EQ(actualSlice.get("numOfDocuments").getNumber<uint64_t>(), 4);
 
+  auto indexesSlice = actualSlice.get("indexes");
+  ASSERT_TRUE(indexesSlice.isArray());
+  EXPECT_EQ(indexesSlice.length(), 0);
+
   auto schemaSlice = actualSlice.get("schema");
   ASSERT_TRUE(schemaSlice.isArray());
   EXPECT_EQ(schemaSlice.length(), 6);
