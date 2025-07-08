@@ -72,8 +72,10 @@ void ApiRecordingFeature::collectOptions(
   options->addOption(
       "--server.api-recording-memory-limit",
       "Size limit for the list of API call records.",
-      new UInt64Parameter(&_totalMemoryLimitCalls, 1, 256 * 1024,
-                          256 * 1024 * 1024 * 1024),
+      new UInt64Parameter(&_totalMemoryLimitCalls, 1,
+                          256 * (std::size_t{1} << 10),  // Min: 256 KiB
+                          256 * (std::size_t{1} << 30)   // Max: 256 GiB
+                          ),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
@@ -85,8 +87,10 @@ void ApiRecordingFeature::collectOptions(
   options->addOption(
       "--server.aql-recording-memory-limit",
       "Size limit for the list of AQL query records.",
-      new UInt64Parameter(&_totalMemoryLimitQueries, 1, 256 * 1024,
-                          256 * 1024 * 1024 * 1024),
+      new UInt64Parameter(&_totalMemoryLimitQueries, 1,
+                          256 * (std::size_t{1} << 10),  // Min: 256 KiB
+                          256 * (std::size_t{1} << 30)   // Max: 256 GiB
+                          ),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
