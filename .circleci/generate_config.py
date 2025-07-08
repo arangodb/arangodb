@@ -407,6 +407,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
         "GraphTestSuite",
         "QueryTestSuite",
         "AnalyzersTestSuite",
+        "AnalyzersTestSuite2",
         "DatabaseTestSuite",
         "LogInTestSuite",
         "DashboardTestSuite",
