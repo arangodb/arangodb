@@ -54,6 +54,9 @@ function restSchemaHandlerTestSuite() {
     let productDescriptionArangoSearch;
     let descriptionArangoSearch;
 
+    let prodIndex;
+    let cusIndex;
+
     return {
         setUpAll: function () {
             db._drop(COLLECTION_CUSTOMERS);
@@ -148,13 +151,13 @@ function restSchemaHandlerTestSuite() {
             createManufactureEdge('E1', 'P1', 1000);
             createManufactureEdge('E2', 'P2', 10);
 
-            productsCollection.ensureIndex({ name: "proInd", type: "persistent", fields: ["price"]});
-            customersCollection.ensureIndex({ name: "cusInd", type: "geo", fields: ["address"]});
+            prodIndex = productsCollection.ensureIndex({ name: "proInd", type: "persistent", fields: ["price"]});
+            cusIndex = customersCollection.ensureIndex({ name: "cusInd", type: "geo", fields: ["address"]});
         },
 
         tearDownAll: function () {
-            productsCollection.dropIndex("proInd")
-            customersCollection.dropIndex("cusInd");
+            productsCollection.dropIndex(prodIndex);
+            customersCollection.dropIndex(cusIndex);
             productDescriptionArangoSearch.drop();
             descriptionArangoSearch.drop();
             gm._drop(GRAPH_PURCHASE_HISTORY);
@@ -197,7 +200,7 @@ function restSchemaHandlerTestSuite() {
             const products = findCollection('products');
             assertTrue(products, 'products collection should exist');
             assertEqual('document', products.collectionType, 'products should be a document collection');
-            assertEqual(4, products.numOfDocuments, 'products should contain 4 documents')
+            assertEqual(4, products.numOfDocuments, 'products should contain 4 documents');
             assertTrue(Array.isArray(products.indexes), 'indexes should be an array');
             assertTrue(Array.isArray(products.indexes[0].fields), 'fields should be an array');
             assertEqual('price', products.indexes[0].fields[0], 'fields should be price');
@@ -237,8 +240,8 @@ function restSchemaHandlerTestSuite() {
             assertTrue(Array.isArray(customers.indexes[0].fields), 'fields should be an array');
             assertEqual('address', customers.indexes[0].fields[0], 'fields should be address');
             assertEqual('geo', customers.indexes[0].type, 'type should be geo');
-            assertEqual('true', customers.indexes[0].sparse, 'sparse should be true')
-            assertEqual('false', customers.indexes[0].unique, 'unique should be false')
+            assertEqual('true', customers.indexes[0].sparse, 'sparse should be true');
+            assertEqual('false', customers.indexes[0].unique, 'unique should be false');
             assertAttribute(customers.schema, '_id', ['string'], false);
             assertAttribute(customers.schema, '_key', ['string'], false);
             assertAttribute(customers.schema, 'address', ['string', 'object'], false);
