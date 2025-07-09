@@ -99,24 +99,45 @@ function QueryMetricsTestSuite() {
       let aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
       assertEqual(aqlCurrentQueryMetric, 0);
 
-      IM.debugSetFailAt("Query::delayingExecutionPhase");
+      try {
+        IM.debugSetFailAt("Query::delayingExecutionPhase");
+        const data = { query: `RETURN 1`, options: { cache: false } };
+        const numberOfRunningQueries = 3;
+        let cursorsIds = [];
+        // Launch queries
+        for (let i = 0; i < numberOfRunningQueries; ++i) {
+          let res = arango.POST_RAW("/_api/cursor", JSON.stringify(data), {"x-arango-async": "store"});
+          assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
+          cursorsIds.push(res.headers["x-arango-async-id"]);
+        }
 
-      let data = { query: `RETURN 1`, options: { cache: false } };
-      const numberOfRunningQueries = 3;
-      for (let i = 0; i < numberOfRunningQueries; ++i) {
-        arango.POST("/_api/cursor", data, {"x-arango-async": "true"});
+        // Wait for queries to enter execution phase with timeout
+        const maxIterations = 100; // 10 seconds with 0.1s sleep
+        let iterations = 0;
+        while (iterations < maxIterations) {
+          aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+          if (aqlCurrentQueryMetric >= numberOfRunningQueries) {
+            break;
+          }
+          sleep(0.1); // Small sleep to avoid busy waiting
+          iterations++;
+        }
+
+        IM.debugRemoveFailAt("Query::delayingExecutionPhase");
+        // Some other background queries might be executing
+        assertTrue(aqlCurrentQueryMetric >= numberOfRunningQueries, 
+                   `Expected at least ${numberOfRunningQueries} running queries, but got ${aqlCurrentQueryMetric} after 10s timeout`);
+
+        // Make sure that the queries are cleaned
+        for (let i = 0; i < numberOfRunningQueries; ++i) {
+          arango.PUT_RAW('/_api/job/' + cursorsIds[i], "");
+        }
+
+        aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+        assertEqual(aqlCurrentQueryMetric, 0);
+      } finally {
+        IM.debugRemoveFailAt("Query::delayingExecutionPhase");
       }
-
-      // This is needed to wait a bit for queries to enter execution phase
-      sleep(3);
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
-      // Some other background queries might be executing
-      assertTrue(aqlCurrentQueryMetric >= numberOfRunningQueries);
-
-      IM.debugRemoveFailAt("Query::delayingExecutionPhase");
-
-      aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
-      assertEqual(aqlCurrentQueryMetric, 0);
     },
   };
 }
