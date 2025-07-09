@@ -686,17 +686,10 @@ function VectorIndexCosineTestSuite() {
             assertTrue(resultsWithSkip.length === 5);
             assertTrue(resultsWithoutSkip.length === 8);
 
-            // For cosine similarity the results must be ordered in descending order, dont assert for skip results
-            // since the close documents are not guaranteed to be in deterministic order
-/*            for (let j = 1; j < resultsWithoutSkip.length; ++j) {*/
-                /*assertTrue(resultsWithoutSkip[j - 1].sim >= resultsWithoutSkip[j].sim, "Results are not in descending order: " + JSON.stringify(resultsWithoutSkip));*/
-            /*}*/
-
-            // Check that skip results are contained within without skip results
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
 
-            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skipping not deterministic with not skipping: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
     };
 }
