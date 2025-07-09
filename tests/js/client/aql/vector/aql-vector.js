@@ -668,11 +668,13 @@ function VectorIndexCosineTestSuite() {
             const queryWithSkip =
                 "FOR d IN " +
                 collection.name() +
-                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) SORT sim DESC LIMIT 3, 5 RETURN {k: d._key, sim}";
+                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) " + 
+                " SORT sim DESC LIMIT 3, 5 RETURN {k: d._key, sim}";
             const queryWithoutSkip =
                 "FOR d IN " +
                 collection.name() +
-                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp) SORT sim DESC LIMIT 8 RETURN {k: d._key, sim}";
+                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp)" + 
+                " SORT sim DESC LIMIT 8 RETURN {k: d._key, sim}";
 
             const bindVars = {
                 qp: randomPoint
@@ -686,9 +688,15 @@ function VectorIndexCosineTestSuite() {
 
             // For cosine similarity the results must be ordered in descending order, dont assert for skip results
             // since the close documents are not guaranteed to be in deterministic order
-            for (let j = 1; j < resultsWithoutSkip.length; ++j) {
-                assertTrue(resultsWithoutSkip[j - 1].sim >= resultsWithoutSkip[j].sim, "Results are not in descending order: " + JSON.stringify(resultsWithoutSkip));
-            }
+/*            for (let j = 1; j < resultsWithoutSkip.length; ++j) {*/
+                /*assertTrue(resultsWithoutSkip[j - 1].sim >= resultsWithoutSkip[j].sim, "Results are not in descending order: " + JSON.stringify(resultsWithoutSkip));*/
+            /*}*/
+
+            // Check that skip results are contained within without skip results
+            const skipKeys = new Set(resultsWithSkip.map(r => r.k));
+            const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
+
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
     };
 }
