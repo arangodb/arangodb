@@ -183,11 +183,12 @@ QueryStreamCursor::QueryStreamCursor(
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterTrxSetup") {
     QueryStreamCursor::debugKillQuery();
   }
-  TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
 
   // ensures the cursor is cleaned up as soon as the outer transaction ends
   // otherwise we just get issues because we might still try to use the trx
   TRI_ASSERT(trx.status() == transaction::Status::RUNNING || _query->killed());
+
+  _query->trackExecutionStart();
   // things break if the Query outlives a V8 transaction
   _stateChangeCb = [this](transaction::Methods& /*trx*/,
                           transaction::Status status) {

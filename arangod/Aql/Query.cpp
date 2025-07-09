@@ -46,6 +46,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
+#include "Assertions/Assert.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
@@ -206,6 +207,7 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
                                                scheduler)) {}
 
 Query::~Query() {
+  TRI_ASSERT(!_isExecuting);
   if (!_planSliceCopy.isNone()) {
     _resourceMonitor->decreaseMemoryUsage(_planSliceCopy.byteSize());
   }
@@ -334,13 +336,19 @@ TransactionId Query::transactionId() const noexcept {
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
 
-double Query::executionTime() const noexcept {
+double Query::queryTime() const noexcept {
   // should only be called once _endTime has been set
   TRI_ASSERT(_endTime > 0.0);
   return _endTime - _startTime;
 }
 
-void Query::ensureExecutionTime() noexcept {
+double Query::executionTime() const noexcept {
+  // This can return 0 if the query never entered execution phase
+  TRI_ASSERT((_startExecutionTime == 0) == (_endExecutionTime == 0.0));
+  return _endExecutionTime - _startExecutionTime;
+}
+
+void Query::ensureEndTime() noexcept {
   if (_endTime == 0.0) {
     _endTime = currentSteadyClockValue();
     TRI_ASSERT(_endTime > 0.0);
@@ -737,12 +745,19 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         queryResult.data->openArray(/*unindexed*/ true);
 
         _executionPhase = ExecutionPhase::EXECUTE;
+        trackExecutionStart();
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        while (TRI_ShouldFailDebugging("Query::delayingExecutionPhase"))
+          ;
+#endif
       }
         [[fallthrough]];
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(queryResult.data != nullptr);
         TRI_ASSERT(queryResult.data->isOpenArray());
         TRI_ASSERT(_trx != nullptr);
+        // We should do this only once
 
         if (useQueryCache && (isModificationQuery() || !_warnings.empty() ||
                               !_ast->root()->isCacheable())) {
@@ -799,6 +814,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           }
 
           if (state == ExecutionState::DONE) {
+            trackExecutionEnd();
             break;
           }
         }
@@ -917,7 +933,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       << " this: " << (uintptr_t)this;
 
   QueryResultV8 queryResult;
-
   try {
     bool useQueryCache = canUseResultsCache();
 
@@ -985,6 +1000,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       ExecutionState state = ExecutionState::HASMORE;
       SkipResult skipped;
       SharedAqlItemBlockPtr value;
+      trackExecutionStart();
       while (state != ExecutionState::DONE) {
         std::tie(state, skipped, value) = engine->execute(::defaultStack);
         // We cannot trigger a skip operation from here
@@ -1044,11 +1060,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
         }
       }
 
+      trackExecutionEnd();
       builder->close();
     } catch (...) {
       LOG_TOPIC("8a6bf", DEBUG, Logger::QUERIES)
           << elapsedSince(_startTime) << " got an exception executing "
           << " this: " << (uintptr_t)this;
+      trackExecutionEnd();
       throw;
     }
 
@@ -1139,7 +1157,7 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
       executionStats.setPeakMemoryUsage(_resourceMonitor->peak());
-      executionStats.setExecutionTime(executionTime());
+      executionStats.setExecutionTime(queryTime());
       executionStats.setIntermediateCommits(
           _trx->state()->numIntermediateCommits());
       for (auto& engine : _snippets) {
@@ -1226,11 +1244,10 @@ QueryResult Query::explain() {
         b.add(VPackValue("stats"));
         {
           // optimizer statistics
-          ensureExecutionTime();
+          ensureEndTime();
           VPackObjectBuilder guard(&b, /*unindexed*/ true);
           Optimizer::Stats::toVelocyPackForCachedPlan(b);
           b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
-          b.add("executionTime", VPackValue(executionTime()));
         }
         result.planCacheKey = _planCacheKey->hash();
       }
@@ -1403,11 +1420,11 @@ QueryResult Query::explain() {
       b.add(VPackValue("stats"));
       {
         // optimizer statistics
-        ensureExecutionTime();
+        ensureEndTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
-        b.add("executionTime", VPackValue(executionTime()));
+        b.add("executionTime", VPackValue(queryTime()));
       }
     }
   } catch (Exception const& ex) {
@@ -1693,8 +1710,7 @@ void Query::logAtEnd() const {
         << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
         << " failed with exit code " << result().errorNumber() << ": "
-        << result().errorMessage()
-        << ", took: " << Logger::FIXED(executionTime());
+        << result().errorMessage() << ", took: " << Logger::FIXED(queryTime());
   } else {
     LOG_TOPIC("e0b7c", WARN, Logger::QUERIES)
         << "AQL " << (queryOptions().stream ? "streaming " : "") << "query '"
@@ -1704,7 +1720,28 @@ void Query::logAtEnd() const {
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
         << " used more memory than configured memory usage alerting threshold "
         << feature.peakMemoryUsageThreshold()
-        << ", took: " << Logger::FIXED(executionTime());
+        << ", took: " << Logger::FIXED(queryTime());
+  }
+}
+
+void Query::trackExecutionStart() noexcept {
+  // We should do this only once
+  if (!_isExecuting) {
+    _startExecutionTime = currentSteadyClockValue();
+    auto& queryRegistryFeature =
+        vocbase().server().getFeature<QueryRegistryFeature>();
+    queryRegistryFeature.trackQueryStart();
+    _isExecuting = true;
+  }
+}
+
+void Query::trackExecutionEnd() noexcept {
+  if (_isExecuting) {
+    _endExecutionTime = currentSteadyClockValue();
+    auto& queryRegistryFeature =
+        vocbase().server().getFeature<QueryRegistryFeature>();
+    queryRegistryFeature.trackQueryEnd(executionTime());
+    _isExecuting = false;
   }
 }
 
@@ -1847,7 +1884,6 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(bool sync) {
-  ensureExecutionTime();
   // Before transaction is destroyed we should wait for all async tasks to
   // finish so they don't use trx object. We do this only if this is a sync
   // operation otherwise we do not want to stall the caller
@@ -1856,6 +1892,7 @@ ExecutionState Query::cleanupPlanAndEngine(bool sync) {
       snippet->stopAsyncTasks();
     }
   }
+  trackExecutionEnd();
 
   {
     std::unique_lock<std::mutex> guard{_resultMutex};
@@ -1925,7 +1962,7 @@ void Query::handlePostProcessing(QueryList& querylist) {
                          : querylist.slowQueryThreshold();
 
   bool isSlowQuery = (querylist.trackSlowQueries() &&
-                      executionTime() >= threshold && threshold >= 0.0);
+                      queryTime() >= threshold && threshold >= 0.0);
   if (isSlowQuery) {
     // yes.
     try {
@@ -1935,7 +1972,7 @@ void Query::handlePostProcessing(QueryList& querylist) {
 
       auto& queryRegistryFeature =
           vocbase().server().getFeature<QueryRegistryFeature>();
-      queryRegistryFeature.trackSlowQuery(executionTime());
+      queryRegistryFeature.trackSlowQuery(queryTime());
       logSlow(options);
 
       querylist.trackSlow(buildQuerySlice());
@@ -1955,11 +1992,11 @@ void Query::handlePostProcessing(QueryList& querylist) {
 }
 
 void Query::handlePostProcessing() {
+  // For queries which do not enter execution phase at all
+  // we need to ensure the existance of endTime because it is needed
+  // later on
+  ensureEndTime();
   // elapsed time since query start
-  auto& queryRegistryFeature =
-      vocbase().server().getFeature<QueryRegistryFeature>();
-  queryRegistryFeature.trackQueryEnd(executionTime());
-
   if (!queryOptions().skipAudit &&
       ServerState::instance()->isSingleServerOrCoordinator()) {
     try {
@@ -2525,10 +2562,6 @@ void Query::instantiatePlan(velocypack::Slice snippets) {
   }
 
   _queryProfile->registerInQueryList();
-
-  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
-  feature.trackQueryStart();
-
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
@@ -2542,7 +2575,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
     return (isCurrent ? state() : QueryExecutionState::ValueType::FINISHED);
   });
 
-  double elapsed = (isCurrent ? elapsedSince(startTime()) : executionTime());
+  double elapsed = (isCurrent ? elapsedSince(startTime()) : queryTime());
 
   double now = TRI_microtime();
   // we calculate the query start timestamp as the current time minus
@@ -2670,7 +2703,7 @@ void Query::logSlow(QuerySerializationOptions const& options) const {
       << ", id: " << id() << ", token: QRY" << id()
       << ", peak memory usage: " << resourceMonitor().peak()
       << ", exit code: " << result().errorNumber()
-      << ", took: " << Logger::FIXED(executionTime()) << " s";
+      << ", took: " << Logger::FIXED(queryTime()) << " s";
 }
 
 std::function<void(velocypack::Builder&)>
