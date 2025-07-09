@@ -558,7 +558,7 @@ function VectorIndexCosineTestSuite() {
                 params: {
                     metric: "cosine",
                     dimension: dimension,
-                    nLists: 2
+                    nLists: 10
                 },
             });
         },
