@@ -2128,18 +2128,38 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
-  std::vector<futures::Future<Result>> futures;
-  futures.reserve(serverQueryIds.size());
-  auto ss = query.sharedState();
-  TRI_ASSERT(ss != nullptr);
-
+  auto futureResponses = std::vector<futures::Future<network::Response>>{};
+  futureResponses.reserve(serverQueryIds.size());
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
     TRI_ASSERT(!server.starts_with("server:"));
 
+    auto f = network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Delete,
+        absl::StrCat("/_api/aql/finish/", queryId), body, options);
+
+    futureResponses.emplace_back(std::move(f));
+  }
+
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(serverQueryIds.size());
+  for (auto&& future : futureResponses) {
+    if (query.executeCallerWaiting() ==
+        QueryContext::ExecuteCallerWaiting::Synchronously) {
+      // The caller is waiting synchronously. Because of that, skipScheduler is
+      // set for the network requests sent here. Which means the network thread
+      // will resolve the promise(s) without going through the scheduler. We
+      // must avoid executing arbitrary code on the network thread, and
+      // therefore have to wait here before calling `.thenValue` or
+      // `co_await`ing the response-future. The caller will be waiting
+      // synchronously anyway.
+      future.wait();
+    }
+
+    auto ss = query.sharedState();
+    TRI_ASSERT(ss != nullptr);
+
     auto f =
-        network::sendRequestRetry(
-            pool, "server:" + server, fuerte::RestVerb::Delete,
-            absl::StrCat("/_api/aql/finish/", queryId), body, options)
+        std::move(future)
             .thenValue([ss, &query](network::Response&& res) mutable -> Result {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
@@ -2187,7 +2207,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
                             "unhandled query shutdown exception");
             });
 
-    futures.push_back(std::move(f));
+    futures.emplace_back(std::move(f));
   }
 
   return futures::collectAll(std::move(futures))

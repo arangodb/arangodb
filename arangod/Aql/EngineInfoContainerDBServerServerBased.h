@@ -155,7 +155,7 @@ class EngineInfoContainerDBServerServerBased {
    * (remoteNodeId:shardId)
    * -> queryid.
    */
-  std::vector<futures::Future<network::Response>> cleanupEngines(
+  futures::Future<std::vector<futures::Try<network::Response>>> cleanupEngines(
       ErrorCode errorCode, std::string const& dbname,
       aql::ServerQueryIdList& serverQueryIds) const;
 
