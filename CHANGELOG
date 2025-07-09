@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2171: Reduce the amount of code executed on dedicated network threads,
+  which might have reduced its throughput or delayed processing of other network
+  responses.
+
 * Improved the endpoint used by the Graph visulaizer tool to run
   a better performing query. This should help on larger graphs
   having more, not displayed data.
