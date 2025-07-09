@@ -5,6 +5,8 @@ devel
   /_api/schema/view/<view-name>: Displays the sample schemas of view and linked collections
   /_api/schema/collection/<collection-name>: Gives the sampled schemas of collection and schemas.
 
+* Fix an integer underflow with gauge arangodb_aql_current_query.
+
 * Improved the endpoint used by the Graph visulaizer tool to run
   a better performing query. This should help on larger graphs
   having more, not displayed data.
