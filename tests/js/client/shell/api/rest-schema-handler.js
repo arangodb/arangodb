@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global db, arango, assertEqual, print, assertTrue */
+/* global db, arango, assertEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -145,7 +145,8 @@ function restSchemaHandlerTestSuite() {
                 VIEW_PRODUCT_DESCRIPTION,
                 'arangosearch',
                 { links: { products: {
-                    includeAllFields: true, analyzers: ['identity'],
+                            includeAllFields: true,
+                            analyzers: ['identity'],
                             fields: { description: { analyzers: ['text_en'] } }
                 } } }
             );
@@ -195,6 +196,7 @@ function restSchemaHandlerTestSuite() {
 
             assertEqual(200, doc.code, 'Expected HTTP 200 for schema endpoint without query parameters');
             assertTrue(Array.isArray(body.collections), 'collections should be an array');
+            // Want to ensure there are no duplicated collections listed, and all the collections are listed
             assertEqual(11, body.collections.length, 'collections should contain 11 objects');
             assertTrue(Array.isArray(body.graphs), 'graphs should be an array');
             assertTrue(Array.isArray(body.views), 'views should be an array');
@@ -205,16 +207,11 @@ function restSchemaHandlerTestSuite() {
                 const attr = schema.find(a => a.attribute === attrName);
                 assertTrue(attr, `Attribute '${attrName}' not found in schema`);
                 expectedTypes.forEach(type => {
-                    assertTrue(
-                        attr.types.includes(type),
-                        `Attribute '${attrName}' missing expected type '${type}'`
-                    );
+                    assertTrue(attr.types.includes(type),
+                        `Attribute '${attrName}' missing expected type '${type}'`);
                 });
-                assertEqual(
-                    optional,
-                    attr.optional,
-                    `Attribute '${attrName}' optional flag expected ${optional}`
-                );
+                assertEqual(optional, attr.optional,
+                    `Attribute '${attrName}' optional flag expected ${optional}`);
             };
 
             const products = findCollection('products');
@@ -233,10 +230,8 @@ function restSchemaHandlerTestSuite() {
             assertAttribute(products.schema, 'price', ['number', 'string'], false);
             assertAttribute(products.schema, 'used', ['bool'], true);
             assertAttribute(products.schema, 'version', ['string', 'number'], true);
-            assertTrue(
-                products.examples[0]._id.startsWith('products/'),
-                'Example product _id should start with "products/"'
-            );
+            assertTrue(products.examples[0]._id.startsWith('products/'),
+                'Example product _id should start with "products/"');
 
             const companies = findCollection('companies');
             assertTrue(companies, 'companies collection should exist');
@@ -247,10 +242,8 @@ function restSchemaHandlerTestSuite() {
             assertAttribute(companies.schema, 'name', ['string'], false);
             assertAttribute(companies.schema, 'established', ['number', 'string'], false);
             assertAttribute(companies.schema, 'isPublic', ['bool'], true);
-            assertTrue(
-                companies.examples[0]._id.startsWith('companies/'),
-                'Example company _id should start with "companies/"'
-            );
+            assertTrue(companies.examples[0]._id.startsWith('companies/'),
+                'Example company _id should start with "companies/"');
 
             const customers = findCollection('customers');
             assertTrue(customers, 'customers collection should exist');
@@ -268,10 +261,8 @@ function restSchemaHandlerTestSuite() {
             assertAttribute(customers.schema, 'age', ['string', 'number'], false);
             assertAttribute(customers.schema, 'isStudent', ['bool'], true);
             assertAttribute(customers.schema, 'name', ['string'], false);
-            assertTrue(
-                customers.examples[0]._id.startsWith('customers/'),
-                'Example customer _id should start with "customers/"'
-            );
+            assertTrue(customers.examples[0]._id.startsWith('customers/'),
+                'Example customer _id should start with "customers/"');
 
             const purchased = findCollection('purchased');
             assertTrue(purchased, 'purchased edge collection should exist');
@@ -282,18 +273,12 @@ function restSchemaHandlerTestSuite() {
             assertAttribute(purchased.schema, '_id', ['string'], false);
             assertAttribute(purchased.schema, '_key', ['string'], false);
             assertAttribute(purchased.schema, 'date', ['string'], false);
-            assertTrue(
-                purchased.examples[0]._id.startsWith('purchased/'),
-                'Example purchased _id should start with "purchased/"'
-            );
-            assertTrue(
-                purchased.examples[0]._from.startsWith('customers/'),
-                'Purchased edge _from should start with "customers/"'
-            );
-            assertTrue(
-                purchased.examples[0]._to.startsWith('products/'),
-                'Purchased edge _to should start with "products/"'
-            );
+            assertTrue(purchased.examples[0]._id.startsWith('purchased/'),
+                'Example purchased _id should start with "purchased/"');
+            assertTrue(purchased.examples[0]._from.startsWith('customers/'),
+                'Purchased edge _from should start with "customers/"');
+            assertTrue(purchased.examples[0]._to.startsWith('products/'),
+                'Purchased edge _to should start with "products/"');
 
             const manufactured = findCollection('manufactured');
             assertTrue(manufactured, 'manufactured edge collection should exist');
@@ -304,18 +289,12 @@ function restSchemaHandlerTestSuite() {
             assertAttribute(manufactured.schema, '_id', ['string'], false);
             assertAttribute(manufactured.schema, '_key', ['string'], false);
             assertAttribute(manufactured.schema, 'amount', ['number'], false);
-            assertTrue(
-                manufactured.examples[0]._id.startsWith('manufactured/'),
-                'Example manufactured _id should start with "manufactured/"'
-            );
-            assertTrue(
-                manufactured.examples[0]._from.startsWith('companies/'),
-                'Manufactured edge _from should start with "companies/"'
-            );
-            assertTrue(
-                manufactured.examples[0]._to.startsWith('products/'),
-                'Manufactured edge _to should start with "products/"'
-            );
+            assertTrue(manufactured.examples[0]._id.startsWith('manufactured/'),
+                'Example manufactured _id should start with "manufactured/"');
+            assertTrue(manufactured.examples[0]._from.startsWith('companies/'),
+                'Manufactured edge _from should start with "companies/"');
+            assertTrue(manufactured.examples[0]._to.startsWith('products/'),
+                'Manufactured edge _to should start with "products/"');
 
             assertEqual(2, body.graphs.length, 'There should be exactly 2 graphs');
             const pGraph = body.graphs.find(g => g.name === 'purchaseHistory');
@@ -359,12 +338,37 @@ function restSchemaHandlerTestSuite() {
             assertEqual(descView.links.length, 2, 'descView should have 2 links');
         },
 
+        test_WrongHttpMethod_ShouldReturn404: function() {
+            let body = { fake : "fake" };
+            paths.forEach(path => {
+                const url = api + path;
+                [
+                    { name: "POST",    fn: () => arango.POST_RAW(url, body) },
+                    { name: "PUT",     fn: () => arango.PUT_RAW(url, body) },
+                    { name: "PATCH",   fn: () => arango.PATCH_RAW(url, body) },
+                    { name: "DELETE",  fn: () => arango.DELETE_RAW(url) }
+                ].forEach(({ name, fn }) => {
+                    const doc = fn();
+                    assertTrue(doc.code === 404 || doc.code === 405,
+                        `Expected HTTP 404 or 405 for wrong http method for ${name}`);
+                });
+            });
+        },
+
         test_TooManySuffixes_ShouldReturn404: function() {
             let tooManySuffixes = ['/collection/products/fake', '/graph/purchaseHistory/fake', '/view/descView/fake'];
             tooManySuffixes.forEach(path => {
                 const doc = arango.GET_RAW(api + path);
                 assertEqual(404, doc.code, `Expected HTTP 404 for too many suffixes`);
             });
+        },
+
+        test_PathWithoutNames_ShouldReturn404: function() {
+          let pathWithoutNames = ['/collection', '/graph', '/view'];
+          pathWithoutNames.forEach(path => {
+              const doc = arango.GET_RAW(api + path);
+              assertEqual(404, doc.code, 'Expected HTTP 404 for paths without names');
+          });
         },
 
         test_InvalidSampleNumValues_ShouldReturn400: function () {
@@ -426,11 +430,8 @@ function restSchemaHandlerTestSuite() {
             const products = doc.parsedBody.collections.find(c => c.collectionName === 'products');
             assertEqual(200, doc.code, 'Valid exampleNum should return HTTP 200');
             assertTrue(products, 'products collection should be present');
-            assertEqual(
-                products.examples.length,
-                3,
-                'Expected exactly 3 examples for products when exampleNum=3'
-            );
+            assertEqual(products.examples.length, 3,
+                'Expected exactly 3 examples for products when exampleNum=3');
         },
 
         test_GetSchemaWithSampleNumOne_ShouldReturnSchemasWithNoOptionalAttributes: function () {
@@ -443,16 +444,11 @@ function restSchemaHandlerTestSuite() {
                 assertTrue(Array.isArray(body.collections), 'collections must be an array');
 
                 body.collections.forEach(collection => {
-                    assertTrue(
-                        Array.isArray(collection.schema),
-                        `schema must be an array in '${collection.collectionName}'`
-                    );
+                    assertTrue(Array.isArray(collection.schema),
+                        `schema must be an array in '${collection.collectionName}'`);
                     collection.schema.forEach(attribute => {
-                        assertEqual(
-                            false,
-                            attribute.optional,
-                            `Attribute '${attribute.attribute}' in '${collection.collectionName}' should not be optional`
-                        );
+                        assertEqual(false, attribute.optional,
+                            `Attribute '${attribute.attribute}' in '${collection.collectionName}' should not be optional`);
                     });
                 });
 
@@ -600,10 +596,8 @@ function restSchemaHandlerTestSuite() {
             assertAttribute(products.schema, 'price', ['number','string'], false);
             assertAttribute(products.schema, 'used', ['bool'], true);
             assertAttribute(products.schema, 'version', ['number','string'], true);
-            assertTrue(
-                products.examples[0]._id.startsWith('products/'),
-                'Example product _id malformed in graph response'
-            );
+            assertTrue(products.examples[0]._id.startsWith('products/'),
+                'Example product _id malformed in graph response');
 
             // Validate customers in graph
             const customers = findCollection('customers');
@@ -628,6 +622,7 @@ function restSchemaHandlerTestSuite() {
             assertAttribute(purchased.schema, '_key', ['string'], false);
             assertAttribute(purchased.schema, 'date', ['string'], false);
 
+            // Validate edge definitions
             const graph = body.graphs.find(g => g.name === 'purchaseHistory');
             assertTrue(graph, 'purchaseHistory graph missing');
             assertEqual(1, graph.relations.length);
@@ -647,10 +642,12 @@ function restSchemaHandlerTestSuite() {
             assertTrue(graph, 'manufacture graph missing');
             assertEqual(2, graph.relations.length);
 
+            // Check manufactured's relation
             const manufacturedRel = graph.relations.find(r => r.collection === 'manufactured');
             assertEqual(manufacturedRel.from[0], 'companies', 'Graph from vertex mismatch');
             assertEqual(manufacturedRel.to[0], 'products', 'Graph to vertex mismatch');
 
+            // Check contains's relation
             const containsRel = graph.relations.find(v => v.collection === 'contains');
             assertEqual(2, containsRel.from.length, 'from vertex of contains should include 2 objects');
             assertTrue(containsRel.from.includes('products'), 'products must be in from vertex');
@@ -659,6 +656,7 @@ function restSchemaHandlerTestSuite() {
             assertTrue(containsRel.to.includes('materials'), 'materials must be in to vertex');
             assertTrue(containsRel.to.includes('specialMaterials'), 'specialMaterials must be in to vertex');
 
+            // Check orphan collections
             assertEqual(2, graph.orphans.length, 'orphan should be 2');
             assertTrue(graph.orphans.includes('logs'), 'orphans should contains logs');
             assertTrue(graph.orphans.includes('specialLogs'), 'orphans should contains specialLogs');
@@ -673,15 +671,10 @@ function restSchemaHandlerTestSuite() {
             const doc = arango.GET_RAW(api + '/collection/customers?exampleNum=100');
             assertEqual(200, doc.code, 'Expected HTTP 200 when exampleNum exceeds document count');
             const body = doc.parsedBody;
-            assertTrue(
-                Array.isArray(body.examples),
-                'examples should be an array for single-collection endpoint'
-            );
-            assertEqual(
-                4,
-                body.examples.length,
-                'Expected examples length clamped to 4 when exampleNum > actual documents'
-            );
+            assertTrue(Array.isArray(body.examples),
+                'examples should be an array for single-collection endpoint');
+            assertEqual(4, body.examples.length,
+                'Expected examples length clamped to 4 when exampleNum > actual documents');
         },
 
         test_GetViewByName_ShouldReturnViewAndCollectionSchemas: function () {
@@ -689,58 +682,37 @@ function restSchemaHandlerTestSuite() {
             assertEqual(200, doc.code, 'Expected HTTP 200 for view/descView');
             const body = doc.parsedBody;
             const vDesc = body.views[0];
-            assertTrue(
-                Array.isArray(vDesc.links),
-                'View links should be an array for descView'
-            );
+            assertTrue(Array.isArray(vDesc.links),
+                'View links should be an array for descView');
+
+            assertEqual(2, vDesc.links.length, `There should be 2 links`);
+
             const vCustomers = vDesc.links.find(v => v.collectionName === 'customers');
-            assertEqual(
-                'comment',
-                vCustomers.fields[0].attribute,
-                'View field attribute mismatch for customers in descView'
-            );
-            assertEqual(
-                'text_en',
-                vCustomers.fields[0].analyzers[0],
-                'View field analyzer mismatch for customers in descView'
-            );
+            assertEqual('comment', vCustomers.fields[0].attribute,
+                'View field attribute mismatch for customers in descView');
+            assertEqual('text_en', vCustomers.fields[0].analyzers[0],
+                'View field analyzer mismatch for customers in descView');
 
             const vProducts = vDesc.links.find(v => v.collectionName === 'products');
-            assertEqual(
-                'description',
-                vProducts.fields[0].attribute,
-                'View field attribute mismatch for products in descView'
-            );
-            assertEqual(
-                'text_en',
-                vProducts.fields[0].analyzers[0],
-                'View field analyzer mismatch for products in descView'
-            );
+            assertEqual('description', vProducts.fields[0].attribute,
+                'View field attribute mismatch for products in descView');
+            assertEqual('text_en', vProducts.fields[0].analyzers[0],
+                'View field analyzer mismatch for products in descView');
 
             const colls = body.collections;
             assertEqual(2, colls.length, 'Expected 2 collections in view response');
+
             const cCustomers = colls.find(c => c.collectionName === 'customers');
-            assertEqual(
-                4,
-                cCustomers.numOfDocuments,
-                'Expected 4 documents for customers in view collections'
-            );
-            assertEqual(
-                7,
-                cCustomers.schema.length,
-                'Expected schema length of 7 for customers in view collections'
-            );
+            assertEqual(4, cCustomers.numOfDocuments,
+                'Expected 4 documents for customers in view collections');
+            assertEqual(7, cCustomers.schema.length,
+                'Expected schema length of 7 for customers in view collections');
+
             const cProducts = colls.find(c => c.collectionName === 'products');
-            assertEqual(
-                4,
-                cProducts.numOfDocuments,
-                'Expected 4 documents for products in view collections'
-            );
-            assertEqual(
-                7,
-                cProducts.schema.length,
-                'Expected schema length of 7 for products in view collections'
-            );
+            assertEqual(4, cProducts.numOfDocuments,
+                'Expected 4 documents for products in view collections');
+            assertEqual(7, cProducts.schema.length,
+                'Expected schema length of 7 for products in view collections');
         },
 
         test_GetViewNonExisting_ShouldReturn404: function () {
@@ -748,35 +720,21 @@ function restSchemaHandlerTestSuite() {
             assertEqual(404, doc.code, 'Expected HTTP 404 for non-existing view');
         },
 
-        test_GetViewEmptyName_ShouldReturn404: function () {
-            const doc = arango.GET_RAW(api + '/view');
-            assertEqual(404, doc.code, 'Expected HTTP 404 for empty view name');
-        },
-
         test_GetViewIncludeAllFieldsTrue_ShouldReturnAnalyzersForAllAttributes: function () {
             const doc = arango.GET_RAW(api + '/view/productDescView');
             assertEqual(200, doc.code, 'Expected HTTP 200 for view/productDescView');
             const body = doc.parsedBody;
             const vProdView = body.views[0];
-            assertTrue(
-                Array.isArray(vProdView.links),
-                'View links should be an array for productDescView'
-            );
-            assertEqual(
-                'description',
-                vProdView.links[0].fields[0].attribute,
-                'View field attribute mismatch for productDescView'
-            );
-            assertEqual(
-                'text_en',
-                vProdView.links[0].fields[0].analyzers[0],
-                'View field analyzer mismatch for productDescView'
-            );
-            assertEqual(
-                'identity',
-                vProdView.links[0].allAttributeAnalyzers[0],
-                'View allAttributeAnalyzers mismatch for productDescView'
-            );
+            assertTrue(Array.isArray(vProdView.links),
+                'View links should be an array for productDescView');
+
+            assertEqual(1, vProdView.links.length, 'There should be only 1 link');
+            assertEqual('description', vProdView.links[0].fields[0].attribute,
+                'View field attribute mismatch for productDescView');
+            assertEqual('text_en', vProdView.links[0].fields[0].analyzers[0],
+                'View field analyzer mismatch for productDescView');
+            assertEqual('identity', vProdView.links[0].allAttributeAnalyzers[0],
+                'View allAttributeAnalyzers mismatch for productDescView');
         }
     };
 }
