@@ -5,6 +5,14 @@ devel
   violate rules for signal and termination handlers.
 
 * Fix BTS-2152 Overfetch input on parallel traversals. For queries like this:
+
+* Fix an integer underflow with gauge arangodb_aql_current_query.
+
+* Improved the endpoint used by the Graph visulaizer tool to run
+  a better performing query. This should help on larger graphs
+  having more, not displayed data.
+
+* Fix BTS-2152 Overfetch input on prallel Traversals. For queries like this:
   
   FOR x IN largeCollection
     FOR v IN 1 OUTBOUND x edges {parallelism: 4}
