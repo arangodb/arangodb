@@ -151,12 +151,16 @@ class TestGraph {
     };
     this.debug = false;
   }
-  
+
   hasProjectionPayload() {
     return this.addProjectionPayload;
   }
 
   create() {
+    const startTime = Date.now();
+    const estimatedVertices = this.edges.length > 0 ? new Set(this.edges.map(e => [e[0], e[1]]).flat()).size : 0;
+    print(`[${new Date().toISOString()}] Creating graph: ${this.graphName} (${this.edges.length} edges, estimated ${estimatedVertices} vertices)`);
+
     switch (this.testVariant) {
       case TestVariants.SingleServer: {
         cgm._create(this.name(), [this.eRel], [this.on], {});
@@ -229,6 +233,9 @@ class TestGraph {
       }
     }
 
+    const graphSetupTime = Date.now() - startTime;
+    print(`[${new Date().toISOString()}] Graph structure created: ${this.graphName} (${graphSetupTime}ms)`);
+
     let vertexSharding = [];
     if (isCluster && (this.testVariant !== TestVariants.EnterpriseGraph) && (this.testVariant !== TestVariants.DisjointEnterpriseGraph)) {
       // Only create proper smart/vertex sharding settings in cluster mode
@@ -239,9 +246,15 @@ class TestGraph {
       vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
     }
 
-    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload);
+    print(`[${new Date().toISOString()}] Filling graph data: ${this.graphName} (vertices and edges)`);
+    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload, this.debug);
+
+    print(`[${new Date().toISOString()}] Creating index on edge collection: ${this.en}`);
     db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
-    
+
+    const totalTime = Date.now() - startTime;
+    print(`[${new Date().toISOString()}] Graph creation completed: ${this.graphName} (total time: ${totalTime}ms)`);
+
     if (this.debug) {
       print("First 10 vertices in graph " + this.graphName + ":");
       const first10Vertices = Object.entries(this.verticesByName).slice(0, 10);
@@ -332,9 +345,13 @@ class TestGraph {
    *                       key and the second the smart attribute.
    * @param addProjectionPayload Boolean flag, to define if we should add heavy payload to vertices and edges
    *                             in order to test projections
+   * @param debug Boolean flag to enable detailed batch progress logging
    * @private
    */
-  static _fillGraph(gn, edges, vc, ec, unconnectedVertices, vertexSharding = [], addProjectionPayload = false) {
+  static _fillGraph(gn, edges, vc, ec, unconnectedVertices, vertexSharding = [], addProjectionPayload = false, debug = false) {
+    const fillStartTime = Date.now();
+    print(`[${new Date().toISOString()}] Starting _fillGraph for ${gn}: ${edges.length} edges, ${unconnectedVertices.length} unconnected vertices`);
+
     const vertices = new Map(vertexSharding);
     for (const edge of edges) {
       if (!vertices.has(edge[0])) {
@@ -349,6 +366,10 @@ class TestGraph {
         vertices.set(v, null);
       }
     }
+
+    const vertexMapTime = Date.now() - fillStartTime;
+    print(`[${new Date().toISOString()}] Vertex mapping completed for ${gn}: ${vertices.size} total vertices (${vertexMapTime}ms)`);
+
 
     function* payloadGenerator() {
       // Just some hardcoded repeated payload.
@@ -404,12 +425,19 @@ class TestGraph {
 
       // Process vertices in smaller batches to reduce memory pressure
       const VERTEX_BATCH_SIZE = 10000; // Reduced from 100k to 10k
+      const vertexStartTime = Date.now();
+      print(`[${new Date().toISOString()}] Processing vertices for ${gn}: ${toSave.length} vertices in batches of ${VERTEX_BATCH_SIZE}`);
+
       for (let i = 0; i < toSave.length; i += VERTEX_BATCH_SIZE) {
         const batch = toSave.slice(i, i + VERTEX_BATCH_SIZE);
         const batchKeys = keys.slice(i, i + VERTEX_BATCH_SIZE);
-        if (this.debug) {
-          print(`Saving vertex batch ${i} of ${toSave.length}`);
+        const batchNum = Math.floor(i / VERTEX_BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(toSave.length / VERTEX_BATCH_SIZE);
+
+        if (debug) {
+          print(`[${new Date().toISOString()}] Saving vertex batch ${batchNum}/${totalBatches} (${batch.length} vertices, ${i}-${i + batch.length - 1})`);
         }
+
         vc.save(batch).forEach((d, idx) => {
           verticesByName[batchKeys[idx]] = d._id;
           return null;
@@ -418,6 +446,10 @@ class TestGraph {
         batch.length = 0;
         batchKeys.length = 0;
       }
+
+      const vertexProcessTime = Date.now() - vertexStartTime;
+      print(`[${new Date().toISOString()}] Vertex processing completed for ${gn}: ${toSave.length} vertices (${vertexProcessTime}ms)`);
+
       // Clear the full arrays after processing
       toSave.length = 0;
       keys.length = 0;
@@ -425,9 +457,14 @@ class TestGraph {
 
     // Process edges in smaller batches to reduce memory pressure
     const EDGE_BATCH_SIZE = 10000; // Reduced from 100k to 10k
+    const edgeStartTime = Date.now();
+    print(`[${new Date().toISOString()}] Processing edges for ${gn}: ${edges.length} edges in batches of ${EDGE_BATCH_SIZE}`);
+
     let edgeDocs = [];
     let currentBatch = [];
     let currentBatchSize = 0;
+    let edgeCount = 0;
+    let batchNum = 0;
 
     // Process edges in a streaming fashion
     for (const [v, w, weight] of edges) {
@@ -436,7 +473,7 @@ class TestGraph {
         _to: verticesByName[w],
         secondFrom: verticesByName[v]
       };
-      
+
       if (weight && typeof weight === 'number') {
         edge[graphWeightAttribute] = weight;
         edge[graphIndexedAttribute] = weight;
@@ -450,12 +487,16 @@ class TestGraph {
 
       currentBatch.push(edge);
       currentBatchSize++;
+      edgeCount++;
 
       // When batch is full, save it and clear memory
       if (currentBatchSize >= EDGE_BATCH_SIZE) {
-        if (this.debug) {
-          print(`Saving edge batch of size ${currentBatchSize}`);
+        batchNum++;
+        const totalBatches = Math.ceil(edges.length / EDGE_BATCH_SIZE);
+        if (debug) {
+          print(`[${new Date().toISOString()}] Saving edge batch ${batchNum}/${totalBatches} (${currentBatchSize} edges, total processed: ${edgeCount})`);
         }
+
         ec.save(currentBatch);
         currentBatch = [];
         currentBatchSize = 0;
@@ -464,11 +505,19 @@ class TestGraph {
 
     // Save any remaining edges
     if (currentBatch.length > 0) {
-      if (this.debug) {
-        print(`Saving final edge batch of size ${currentBatch.length}`);
+      batchNum++;
+      const totalBatches = Math.ceil(edges.length / EDGE_BATCH_SIZE);
+      if (debug) {
+        print(`[${new Date().toISOString()}] Saving final edge batch ${batchNum}/${totalBatches} (${currentBatch.length} edges)`);
       }
+
       ec.save(currentBatch);
     }
+
+    const edgeProcessTime = Date.now() - edgeStartTime;
+    const totalFillTime = Date.now() - fillStartTime;
+    print(`[${new Date().toISOString()}] Edge processing completed for ${gn}: ${edges.length} edges (${edgeProcessTime}ms)`);
+    print(`[${new Date().toISOString()}] _fillGraph completed for ${gn}: total time ${totalFillTime}ms`);
 
     return verticesByName;
   }
@@ -899,12 +948,12 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
 const generateNodeNames = (count) => {
   const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
   const nodes = [];
-  
+
   // First add single letter nodes
   for (let i = 0; i < Math.min(count, alphabet.length); i++) {
     nodes.push(alphabet[i]);
   }
-  
+
   // If we need more nodes, add two-letter combinations
   if (count > alphabet.length) {
     for (let i = 0; i < alphabet.length && nodes.length < count; i++) {
@@ -913,7 +962,7 @@ const generateNodeNames = (count) => {
       }
     }
   }
-  
+
   return nodes;
 };
 
@@ -943,7 +992,7 @@ const generateCompleteGraphEdges = (nodes) => {
 const hugeCompleteGraphNodes = generateNodeNames(100);
 const hugeCompleteGraphEdges = generateCompleteGraphEdges(hugeCompleteGraphNodes);
 
-protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph", 
+protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph",
   hugeCompleteGraphEdges,
   [1, 2, 5],
   [
@@ -965,7 +1014,7 @@ protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph",
 /*
  * Grid Graph Structure (1000x1000)
  * Each node connects to its right and bottom neighbors
- * 
+ *
  * 1 → 2 → 3 → ... → 1000
  * ↓   ↓   ↓         ↓
  * 1001 → 1002 → 1003 → ... → 2000
@@ -979,7 +1028,7 @@ protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph",
 const generateGridGraph = (width, height) => {
   const nodes = [];
   const edges = [];
-  
+
   // Generate node names as simple numbers
   const getNodeName = (row, col) => {
     // Calculate node number: row * width + col + 1
@@ -992,12 +1041,12 @@ const generateGridGraph = (width, height) => {
     for (let col = 0; col < width; col++) {
       const nodeName = getNodeName(row, col);
       nodes.push(nodeName);
-      
+
       // Connect to right neighbor
       if (col < width - 1) {
         edges.push([nodeName, getNodeName(row, col + 1), 1]);
       }
-      
+
       // Connect to bottom neighbor
       if (row < height - 1) {
         edges.push([nodeName, getNodeName(row + 1, col), 1]);

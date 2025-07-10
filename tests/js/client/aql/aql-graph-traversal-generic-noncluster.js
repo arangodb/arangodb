@@ -43,13 +43,34 @@ function graphTraversalGenericGeneralGraphStandaloneSuite() {
   const suite = {
     setUpAll: function () {
       try {
+        const startTime = Date.now();
         const numGraphs = _.sumBy(_.values(testGraphs), g => _.keys(g).length);
-        console.info(`Creating ${numGraphs} graphs, this might take a few seconds.`);
-        _.each(testGraphs, function (graphs) {
+        const graphsByType = _.mapValues(testGraphs, g => _.keys(g).length);
+
+        print(`[${new Date().toISOString()}] ========== GRAPH CREATION STARTED ==========`);
+        print(`[${new Date().toISOString()}] Creating ${numGraphs} graphs total:`);
+        _.each(graphsByType, (count, type) => {
+          if (count > 0) {
+            print(`[${new Date().toISOString()}]   - ${type}: ${count} graphs`);
+          }
+        });
+
+        let graphCount = 0;
+        _.each(testGraphs, function (graphs, protoGraphName) {
+          if (_.keys(graphs).length > 0) {
+            print(`[${new Date().toISOString()}] Creating ${protoGraphName} graphs (${_.keys(graphs).length} variations)...`);
+          }
           _.each(graphs, function (graph) {
+            graphCount++;
+            print(`[${new Date().toISOString()}] [${graphCount}/${numGraphs}] Starting: ${graph.name()}`);
             graph.create();
+            print(`[${new Date().toISOString()}] [${graphCount}/${numGraphs}] Completed: ${graph.name()}`);
           });
         });
+
+        const totalTime = Date.now() - startTime;
+        print(`[${new Date().toISOString()}] ========== GRAPH CREATION COMPLETED ==========`);
+        print(`[${new Date().toISOString()}] All ${numGraphs} graphs created successfully in ${totalTime}ms (${(totalTime/1000).toFixed(1)}s)`);
       } catch (e) {
         console.error(e);
         console.error(e.stack);
