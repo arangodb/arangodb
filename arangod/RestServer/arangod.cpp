@@ -230,7 +230,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
     }
 
     Logger::flush();
-    // CrashHandler will be deactivated here automatically be its destructor
+    // CrashHandler will be deactivated here automatically by its destructor
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
