@@ -73,7 +73,7 @@ set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if(NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "5")
+  set(ARANGODB_VERSION_PATCH "6")
   set(ARANGODB_VERSION_RELEASE_TYPE "devel")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -198,10 +198,6 @@ endif()
 # enable Enterprise Edition features
 set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
-
-# we want the following definitions to be in effect for both rocksdb and arangodb
-add_definitions("-DNROCKSDB_THREAD_STATUS")
-add_definitions("-DROCKSDB_SUPPORT_THREAD_LOCAL")
 
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
@@ -1034,26 +1030,29 @@ if(STATIC_EXECUTABLES)
   if(ARCH_AMD64)
     set(LAPACK_LIBRARIES "/usr/lib/x86_64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
     set(BLAS_LIBRARIES "/usr/lib/x86_64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
+    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/x86_64-linux-gnu/13/libgomp.a")
   else()
     set(LAPACK_LIBRARIES "/usr/lib/aarch64-linux-gnu/lapack/liblapack.a" CACHE PATH "LAPACK static library path")
     set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
+    set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/aarch64-linux-gnu/13/libgomp.a")
   endif()
   message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
 
-  find_library(LIBOMP omp PATHS /opt/omp NO_DEFAULT_PATH)
-
-  if(LIBOMP)
-    message(STATUS "Using hardcoded paths '-fopenmp=libomp -L/opt/omp -llapack -lgfortran'")
-  else()
-    message(FATAL_ERROR "libomp.a not found in /opt/omp")
-  endif()
+  # Setting this is necessary because we want to bind to gcc static library
+  # since the LLVM OpenMP implementation fails in our CI
+  # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
+  set(OpenMP_C_FLAGS "-fopenmp=libgomp")
+  set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
+  set(OpenMP_C_LIB_NAMES "gomp;pthread")
+  set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
+  set(OpenMP_pthread_LIBRARY "pthread")
 
   # TODO avoid hard coded paths
-  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libomp -L/opt/omp -llapack -lgfortran")
+  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -L/opt/omp -llapack -lgfortran")
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
-  find_package(OpenMP)
+  find_package(OpenMP REQUIRED)
   find_package(LAPACK)
   find_package(BLAS)
 

@@ -59,6 +59,7 @@
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
+#include <fuerte/helper.h>
 #include <v8.h>
 
 #include <velocypack/Builder.h>
@@ -155,26 +156,26 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
     std::string oldConnectionId = _currentConnectionId;
     _currentConnectionId = id;
     // check if we have a connection for that endpoint in our cache
-    auto it = _connectionCache.find(id);
-    auto iit = _connectionBuilderCache.find(id);
-    if (it != _connectionCache.end() && (*it).second.get() == nullptr) {
-      _connectionCache.erase(it);
-      _connectionBuilderCache.erase(iit);
-    } else if (it != _connectionCache.end()) {
-      std::shared_ptr<fu::Connection> oldConnection;
-      auto haveOld = (_connection &&
-                      _connection->state() == fu::Connection::State::Connected);
-      if (haveOld) {
-        _connection.swap(oldConnection);
-      }
-      auto c = (*it).second;
-      // cache hit. remove the connection from the cache and return it!
-      _connectedBuilder = (*iit).second;
-      _connectionCache.erase(it);
-      if (haveOld) {
-        _connectionCache.emplace(oldConnectionId, oldConnection);
-      }
-      if (!bypassCache) {
+    if (!bypassCache) {
+      auto it = _connectionCache.find(id);
+      auto iit = _connectionBuilderCache.find(id);
+      if (it != _connectionCache.end() && (*it).second.get() == nullptr) {
+        _connectionCache.erase(it);
+        _connectionBuilderCache.erase(iit);
+      } else if (it != _connectionCache.end()) {
+        std::shared_ptr<fu::Connection> oldConnection;
+        auto haveOld = (_connection && _connection->state() ==
+                                           fu::Connection::State::Connected);
+        if (haveOld) {
+          _connection.swap(oldConnection);
+        }
+        auto c = (*it).second;
+        // cache hit. remove the connection from the cache and return it!
+        _connectedBuilder = (*iit).second;
+        _connectionCache.erase(it);
+        if (haveOld) {
+          _connectionCache.emplace(oldConnectionId, oldConnection);
+        }
         return std::make_pair(c, true);
       }
     }
@@ -205,7 +206,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         setCustomError(500, "unable to create connection");
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
-            << "' failed fatally";
+            << "' failed fatally from: " << newConnection->localEndpoint();
         return nullptr;
       }
 
@@ -236,7 +237,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
           setCustomError(_lastHttpReturnCode, errorMessage);
           LOG_TOPIC("9daab", DEBUG, arangodb::Logger::HTTPCLIENT)
               << "Connection attempt to endpoint '" << _client.endpoint()
-              << "' failed: " << errorMessage;
+              << "' failed: " << errorMessage
+              << " from: " << newConnection->localEndpoint();
           return nullptr;
         }
       }
@@ -249,7 +251,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         setCustomError(503, msg);
         LOG_TOPIC("9daac", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
-            << "' failed: " << msg;
+            << "' failed: " << msg
+            << " from: " << newConnection->localEndpoint();
         return nullptr;
       }
 
@@ -302,7 +305,8 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         _currentConnectionId.erase();
         LOG_TOPIC("9daad", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
-            << "' failed: " << msg;
+            << "' failed: " << msg
+            << " from: " << newConnection->localEndpoint();
         return nullptr;
       } else {
         newConnection = _builder.connect(_loop);
@@ -312,14 +316,15 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
   return nullptr;
 }
 
-std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection() {
+std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
+    bool bypassCache) {
   std::lock_guard<std::recursive_mutex> guard(_lock);
 
   _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
   if (!_connection || (_connection->state() == fu::Connection::State::Closed)) {
-    return createConnection();
+    return createConnection(bypassCache);
   }
   return _connection;
 }
@@ -1421,7 +1426,8 @@ static void ClientConnection_httpFuzzRequests(
     // during testing.
     LOG_TOPIC("39e50", WARN, arangodb::Logger::FIXME)
         << "fuzzer producing " << numReqs << " requests(s) with " << numIts
-        << " iteration(s) each, using seed " << fuzzer.getSeed();
+        << " iteration(s) each, using seed " << fuzzer.getSeed()
+        << " from: " << v8connection->getLocalEndpoint();
   }
   std::unordered_map<uint32_t, uint32_t> fuzzReturnCodesCount;
 
@@ -2805,12 +2811,14 @@ void setResultMessage(v8::Isolate* isolate, v8::Local<v8::Context> context,
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
-  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  std::shared_ptr<fu::Connection> connection = acquireConnection(true);
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     return kFuzzNotConnected;
   }
 
+  auto localEndpoint = getLocalEndpoint();
   auto req = fuzzer.createRequest();
+  auto req_copy = *req;
 
   fu::Error rc = fu::Error::NoError;
   std::unique_ptr<fu::Response> response;
@@ -2818,6 +2826,20 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
     response = connection->sendRequest(std::move(req));
   } catch (fu::Error const& ec) {
     rc = ec;
+    if (rc != fu::Error::NoError) {
+      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME)
+          << "rc: " << static_cast<uint32_t>(rc)
+          << " from: " << getLocalEndpoint();
+    }
+  }
+  if (!connection || connection->state() == fu::Connection::State::Closed) {
+    LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
+        << "connection closed after " << fuerte::v1::to_string(req_copy)
+        << " from: " << localEndpoint;
+    if (response) {
+      LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
+          << "Server responce: " << response;
+    }
   }
 
   if (rc == fu::Error::ConnectionClosed) {
@@ -2855,7 +2877,7 @@ again:
     return v8::Undefined(isolate);
   }
 
-  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  std::shared_ptr<fu::Connection> connection = acquireConnection(false);
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");
@@ -2932,7 +2954,7 @@ again:
     return v8::Undefined(isolate);
   }
 
-  std::shared_ptr<fu::Connection> connection = acquireConnection();
+  std::shared_ptr<fu::Connection> connection = acquireConnection(false);
   if (!connection || connection->state() == fu::Connection::State::Closed) {
     TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT,
                                  "not connected");

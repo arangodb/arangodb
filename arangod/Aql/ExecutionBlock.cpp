@@ -210,3 +210,5 @@ auto ExecutionBlock::printBlockInfo() const -> std::string const {
 }
 
 auto ExecutionBlock::stopAsyncTasks() -> void {}
+
+auto ExecutionBlock::isPrefetchTaskActive() noexcept -> bool { return false; }

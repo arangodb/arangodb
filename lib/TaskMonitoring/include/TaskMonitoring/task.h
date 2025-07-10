@@ -122,7 +122,6 @@ struct TaskInRegistry {
 
   std::string const name;
   std::atomic<State> state;
-  std::atomic<bool> isDeleted = false;
   ParentTask parent;
   std::optional<basics::ThreadId>
       running_thread;  // proably has to also be atomic because

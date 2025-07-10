@@ -62,6 +62,9 @@ bool checkFunctionNameMatchesIndexMetric(
     case SimilarityMetric::kCosine: {
       return functionName == "APPROX_NEAR_COSINE";
     }
+    case SimilarityMetric::kInnerProduct: {
+      return functionName == "APPROX_NEAR_INNER_PRODUCT";
+    }
   }
 }
 
@@ -95,6 +98,8 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
   return outVariable == attributeAccessResult.first;
 }
 
+// We return nullptr for AstNode if the check has failed, in that case the bool
+// is meaningless
 std::pair<AstNode const*, bool> getApproxNearExpression(
     auto const* sortNode, std::unique_ptr<ExecutionPlan>& plan,
     std::shared_ptr<Index> const& vectorIndex) {
@@ -107,6 +112,10 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
   auto const& sortField = sortFields[0];
   bool ascending = sortField.ascending;
 
+  // Check if the SORT node has a correct order:
+  // L2: ASC
+  // Cosine: DESC
+  // InnerProduct: DESC
   switch (vectorIndex->getVectorIndexDefinition().metric) {
     // L2 metric can only be in ascending order
     case SimilarityMetric::kL2:
@@ -116,6 +125,11 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
       break;
     // Cosine similarity can only be in descending order
     case SimilarityMetric::kCosine:
+      if (sortField.ascending) {
+        return {nullptr, ascending};
+      }
+      break;
+    case SimilarityMetric::kInnerProduct:
       if (sortField.ascending) {
         return {nullptr, ascending};
       }

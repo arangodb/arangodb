@@ -27,12 +27,16 @@
 #include "RestServer/AqlFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Cluster/ServerState.h"
 #include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/ApiRecordingFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb::application_features;
 
@@ -113,6 +117,65 @@ void AqlFeature::stop() {
         << " feature leases to be released";
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
   }
+}
+
+ApiRecordingFeature* AqlFeature::apiRecordingFeature() {
+  // This can return `nullptr` if there is no ApiRecordingFeature, as it is
+  // for example the case in Tests.
+  if (_apiRecordingFeature == nullptr) {
+    if (server().hasFeature<arangodb::ApiRecordingFeature>()) {
+      _apiRecordingFeature =
+          &(server().getFeature<arangodb::ApiRecordingFeature>());
+    }
+  }
+  return _apiRecordingFeature;
+}
+
+std::shared_ptr<arangodb::aql::Query> AqlFeature::createQuery(
+    std::shared_ptr<arangodb::transaction::Context> ctx,
+    arangodb::aql::QueryString queryString,
+    std::shared_ptr<velocypack::Builder> bindParameters,
+    arangodb::aql::QueryOptions options, Scheduler* scheduler) {
+  TRI_ASSERT(ctx != nullptr);
+  // workaround to enable make_shared on a class with a protected constructor
+  struct MakeSharedQuery final : arangodb::aql::Query {
+    MakeSharedQuery(std::shared_ptr<transaction::Context> ctx,
+                    arangodb::aql::QueryString queryString,
+                    std::shared_ptr<velocypack::Builder> bindParameters,
+                    arangodb::aql::QueryOptions options, Scheduler* scheduler)
+        : Query{std::move(ctx), std::move(queryString),
+                std::move(bindParameters), std::move(options), scheduler} {}
+
+    ~MakeSharedQuery() final {
+      // Destroy this query, otherwise it's still
+      // accessible while the query is being destructed,
+      // which can result in a data race on the vptr
+      destroy();
+    }
+  };
+  TRI_ASSERT(ctx != nullptr);
+
+  // Record the Query:
+  arangodb::ApiRecordingFeature* apiRecordingFeat = apiRecordingFeature();
+  if (apiRecordingFeat != nullptr &&
+      (arangodb::ServerState::instance()->isCoordinator() ||
+       arangodb::ServerState::instance()->isSingleServer())) {
+    velocypack::SharedSlice bindParamsCopy;
+    if (bindParameters != nullptr && !bindParameters->isEmpty() &&
+        !bindParameters->slice().isNone() &&
+        bindParameters->slice().byteSize() < 1024) {
+      bindParamsCopy = velocypack::SharedSlice(bindParameters->bufferRef());
+    } else {
+      VPackBuilder builder;
+      { VPackObjectBuilder guard(&builder); }
+      bindParamsCopy = velocypack::SharedSlice{*builder.steal()};
+    }
+    apiRecordingFeat->recordAQLQuery(
+        queryString.string(), ctx->vocbase().name(), std::move(bindParamsCopy));
+  }
+  return std::make_shared<MakeSharedQuery>(
+      std::move(ctx), std::move(queryString), std::move(bindParameters),
+      std::move(options), scheduler);
 }
 
 }  // namespace arangodb

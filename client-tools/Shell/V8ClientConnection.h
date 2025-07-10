@@ -98,6 +98,13 @@ class V8ClientConnection {
   std::string const& role() const { return _role; }
   std::string endpointSpecification() const;
 
+  std::string getLocalEndpoint() {
+    if (_connection) {
+      return _connection->localEndpoint();
+    } else {
+      return "not connected";
+    }
+  }
   ArangoshServer& server();
 
   v8::Handle<v8::Value> getData(
@@ -162,7 +169,7 @@ class V8ClientConnection {
  private:
   std::shared_ptr<fuerte::Connection> createConnection(
       bool bypassCache = false);
-  std::shared_ptr<fuerte::Connection> acquireConnection();
+  std::shared_ptr<fuerte::Connection> acquireConnection(bool bypassCache);
 
   v8::Local<v8::Value> requestData(
       v8::Isolate* isolate, fuerte::RestVerb verb, std::string_view location,

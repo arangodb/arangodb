@@ -47,7 +47,7 @@ class ProcessEnvironmentFeature final
   void prepare() override final;
 
  private:
-  bool _dumpEnv;
+  bool _dumpEnv{false};
 };
 #endif
 }  // namespace arangodb

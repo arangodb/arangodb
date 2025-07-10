@@ -73,74 +73,25 @@ auto TaskInRegistry::snapshot() -> TaskSnapshot {
 
 namespace {
 /**
-   Marks itself for deletion and all finishes parent nodes that do not have any
-   other children.
+   Marks itself for deletion and deletes a parent reference.
 
-   Loops over the hierarchy of parents of the given node. This function makes
-   sure that these hierarchies are all marked for deletion together and can
-   therefore be deleted in the next garbage collection run. Otherwise, a parent
-   exists as long as its last child is not garbage collected because the child
-   owns a shared reference to the parent, requiring as many garbage collection
-   cycles as hierarchy levels to cleanup the given hierarchy.
-
-   Some examples:
-
-   If there are dependencies like (A └ B means A is parent of B)
-     node_A
-     └ node_B
-       └ node (input to this function)
-   and all of these nodes do not have any other references and are therefore
-   finished, then this function makes sure that all of these node are marked for
-   deletion.
-
-   If we have dependencies like
-     node_A
-     ├ node_B
-     └ node_C
-       └ node (input to this function)
-   with node_C and node beeing finished, this function will mark node_C and node
-   for deletion but neither node_B nor node_A, independent of their state.
+   Deleting the parent reference makes sure that
+   a parent can directly be marked for deletion when all its children are
+   marked. Otherwise, we need to wait for the garbage collection to delete the
+   references, possibly requiring several garbage collection cycles to delete
+   all hierarchy levels.
  */
 auto mark_finished_nodes_for_deletion(Node* node) {
-  auto current_node = node;
-  while (true) {
-    auto specific_node =
-        reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
-            current_node);
+  auto specific_node =
+      reinterpret_cast<containers::ThreadOwnedList<TaskInRegistry>::Node*>(
+          node);
 
-    // make sure that we don't mark a node twice for deletion
-    auto expected = false;
-    if (not specific_node->data.isDeleted.compare_exchange_strong(
-            expected, true, std::memory_order_acq_rel)) {
-      break;
-    }
+  // get rid of parent task and delete a shared reference
+  specific_node->data.parent = {RootTask{}};
 
-    // do not continue if node does not have a parent
-    auto& parent = specific_node->data.parent;
-    if (not std::holds_alternative<NodeReference>(parent)) {
-      specific_node->list->mark_for_deletion(specific_node);
-      break;
-    }
-    // do not continue if node is not the only child of parent
-    // if child is the only reference to parent, parent is not running any more
-    // (there is no Task that holds another shared reference) so no new children
-    // can be added to the parent
-    auto& parent_ref = std::get<NodeReference>(parent);
-    if (parent_ref.use_count() != 1) {
-      // if we miss decrement updates here, it does not matter:
-      // miss 2 -> 1: parent mark for deletion is done by the other child
-      // miss 1 -> 0: loop once more but exit early because isDeleted==true
-      specific_node->list->mark_for_deletion(specific_node);
-      break;
-    }
-
-    // continue with parent node
-    current_node = parent_ref.get();
-
-    // mark node for deletion needs to be last action on specific_node, because
-    // then a garbage collection run can destroy the node at any time
-    specific_node->list->mark_for_deletion(specific_node);
-  }
+  // mark node for deletion needs to be last action on specific_node, because
+  // then a garbage collection run can destroy the node at any time
+  specific_node->list->mark_for_deletion(specific_node);
 }
 }  // namespace
 

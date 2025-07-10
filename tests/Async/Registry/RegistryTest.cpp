@@ -22,8 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include "Async/Registry/promise.h"
 #include "Async/Registry/registry_variable.h"
+#include "Containers/Concurrent/shared.h"
+#include "Containers/Concurrent/thread.h"
+#include "Basics/Thread.h"
 
 #include <gtest/gtest.h>
+#include <optional>
 #include <source_location>
 #include <thread>
 
@@ -41,17 +45,20 @@ auto promises_in_registry() -> std::vector<PromiseSnapshot> {
 
 struct MyPromise : public AddToAsyncRegistry {
   basics::SourceLocationSnapshot source_location;
-  basics::ThreadId thread;
+  basics::ThreadId thread_id;
+  containers::SharedPtr<basics::ThreadInfo> thread;
   MyPromise(std::source_location loc = std::source_location::current())
       : AddToAsyncRegistry{loc},
         source_location{basics::SourceLocationSnapshot::from(std::move(loc))},
-        thread{basics::ThreadId::current()} {}
+        thread_id{basics::ThreadId::current()},
+        thread{basics::ThreadInfo::current()} {}
   auto snapshot(State state = State::Running) -> PromiseSnapshot {
-    return PromiseSnapshot{.id = id(),
-                           .thread = thread,
-                           .source_location = source_location,
-                           .requester = {thread},
-                           .state = state};
+    return PromiseSnapshot{.id = id().value(),
+                           .owning_thread = thread.get_ref().value(),
+                           .requester = {thread.get_ref().value()},
+                           .state = state,
+                           .thread = thread_id,
+                           .source_location = source_location};
   }
 };
 
@@ -131,4 +138,54 @@ TEST_F(
 
   get_thread_registry().garbage_collect();
   EXPECT_EQ(promises_in_registry(), (std::vector<PromiseSnapshot>{}));
+}
+
+TEST_F(AsyncRegistryTest, sets_running_thread_to_current_thread_when_running) {
+  auto promise = MyPromise{};
+  auto all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises.size(), 1);
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
+
+  promise.update_state(State::Suspended);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Suspended);
+  EXPECT_EQ(all_promises[0].thread, std::nullopt);
+
+  promise.update_state(State::Running);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
+
+  promise.update_state(State::Resolved);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Resolved);
+  EXPECT_EQ(all_promises[0].thread, std::nullopt);
+
+  promise.update_state(State::Running);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
+
+  promise.update_state(State::Deleted);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Deleted);
+  EXPECT_EQ(all_promises[0].thread, std::nullopt);
+
+  promise.update_state(State::Running);
+  all_promises = promises_in_registry();
+  EXPECT_EQ(all_promises[0].state, State::Running);
+  EXPECT_EQ(all_promises[0].thread, basics::ThreadId::current());
+}
+
+TEST_F(AsyncRegistryTest, inpection_works_on_after_thread_was_deleted) {
+  PromiseSnapshot promise_snapshot;
+  std::ignore = std::jthread([&promise_snapshot]() {
+    auto promise = MyPromise{};
+    promise_snapshot = promise.snapshot();
+  });
+
+  // we just make sure that we can still inspect the promise (and it does not
+  // crash the system), although the thread the promise was created on is gone
+  EXPECT_NE(fmt::format("{}", inspection::json(promise_snapshot)), "");
 }

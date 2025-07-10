@@ -54,24 +54,6 @@ struct MyTask : public Task {
 
 struct TaskRegistryTest : ::testing::Test {
   void TearDown() override {
-    // garbage collection has to run at most twice in order to clean everything
-    // up on the current thread:
-    // - when a child task scope is deleted, the child's task-in-registry is
-    //   marked for deletion
-    // - at this point its parent task scope can still exist, therefore it is
-    //   not marked for deletion inside the child task scope destructor
-    // - when then the parent task scope is deleted, the parent's
-    //   task-in-registry is still referenced by the child's task-in-registry
-    //   (which is not yet deleted), therefore it is not yet marked for deletion
-
-    // the first gc run destroys the child's task-in-registry
-    // which destroys the last reference to the parent's task-in-registry, which
-    // is therfore marked for deletion (together with all remaining
-    // task-in-registries higher up in the hierarchy that are not referenced by
-    // any other tasks)
-    get_thread_registry().garbage_collect();
-    // the second gc run destroys the parent's task-in-registry (and possibly
-    // other marked for deletion items)
     get_thread_registry().garbage_collect();
     EXPECT_EQ(get_all_tasks().size(), 0);
   }

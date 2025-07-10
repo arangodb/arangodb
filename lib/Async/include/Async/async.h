@@ -27,7 +27,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
 
   async_promise_base(std::source_location loc)
       : async_registry::AddToAsyncRegistry{std::move(loc)}, _context{} {
-    *async_registry::get_current_coroutine() = {id()};
+    *async_registry::get_current_coroutine() = {id().value()};
   }
 
   std::suspend_never initial_suspend() noexcept {
@@ -74,7 +74,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
         auto old_state =
             outer_promise->update_state(async_registry::State::Running);
         if (old_state.value() == async_registry::State::Suspended) {
-          outer_promise->_context = Context{};
+          outer_promise->_context.update();
         }
         myContext.set();
         return inner_awaitable.await_resume();
@@ -86,7 +86,7 @@ struct async_promise_base : async_registry::AddToAsyncRegistry {
 
     // update promises in registry
     if constexpr (CanUpdateRequester<U>) {
-      co_awaited_expression.update_requester({this->id()});
+      co_awaited_expression.update_requester(this->id());
     }
     update_source_location(loc);
 
@@ -181,10 +181,18 @@ struct [[nodiscard]] async {
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
 
-  auto update_requester(async_registry::Requester waiter) {
-    _handle.promise().update_requester(waiter);
+  auto update_requester(std::optional<async_registry::PromiseId> waiter) {
+    if (_handle) {
+      _handle.promise().update_requester(waiter);
+    }
   }
-  auto id() -> void* { return _handle.promise().id(); }
+  auto id() -> std::optional<async_registry::PromiseId> {
+    if (_handle) {
+      return _handle.promise().id();
+    } else {
+      return std::nullopt;
+    }
+  }
 
   ~async() { reset(); }
 
