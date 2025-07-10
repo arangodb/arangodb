@@ -184,10 +184,14 @@ const localHelper = {
     }
 
     // Wait for a reasonable time to verify the query is long-running, then kill it
-    // We'll wait for firstExecutionTime + small buffer, then kill to test the kill functionality
-    const killAttemptTime = firstExecutionTime + Math.min(VERIFICATION_TIME_BUFFER / 2, 2.0); // Kill after first exec time + max 2 seconds
+    // Use adaptive timing: kill at a percentage of the first query's execution time
+    // This adapts to both single server (~8s) and cluster (~3s) environments
+    const killAttemptRatio = 0.6; // Kill at 60% of first query time
+    const minKillTime = 1.0; // Minimum 1 second to ensure query has started
+    const killAttemptTime = Math.max(firstExecutionTime * killAttemptRatio, minKillTime);
     if (debug) {
       this.debugPrint("Will attempt to kill query at:", killAttemptTime, "seconds");
+      this.debugPrint("Kill timing: firstExecutionTime(" + firstExecutionTime + ") * ratio(" + killAttemptRatio + ") = " + (firstExecutionTime * killAttemptRatio) + ", using max with minKillTime(" + minKillTime + ")");
     }
 
     const startVerification = Date.now();
@@ -209,7 +213,7 @@ const localHelper = {
         }
 
         assertTrue(false,
-          `Query completed naturally in ${secondExecutionTime}s before kill attempt. This test requires a query that runs longer than ${killAttemptTime}s to properly test the kill functionality.`);
+          `Query completed naturally in ${secondExecutionTime}s before kill attempt at ${killAttemptTime}s. This test requires a query that runs longer than the kill attempt time to properly test the kill functionality.`);
       }
 
       internal.sleep(1);
@@ -266,7 +270,7 @@ const localHelper = {
       }
 
       assertTrue(false,
-        `Query completed naturally in ${secondExecutionTime}s just before kill attempt. This test requires a query that runs longer to properly test the kill functionality.`);
+        `Query completed naturally in ${secondExecutionTime}s just before kill attempt at ${killAttemptTime}s. This test requires a query that runs longer to properly test the kill functionality.`);
     }
   }
 };
