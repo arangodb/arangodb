@@ -103,6 +103,9 @@ std::string const RestVocbaseBaseHandler::INDEX_PATH = "/_api/index";
 std::string const RestVocbaseBaseHandler::REPLICATION_PATH =
     "/_api/replication";
 
+// schema path
+std::string const RestVocbaseBaseHandler::SCHEMA_PATH = "/_api/schema";
+
 // simple query all path
 std::string const RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH =
     "/_api/simple/all";

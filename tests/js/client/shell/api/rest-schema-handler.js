@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global db, arango, assertEqual, assertTrue */
+/* global db, arango, assertEqual, print, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,14 +29,22 @@ const gm = require("@arangodb/general-graph");
 const jsunity = require("jsunity");
 
 let api = "/_api/schema";
+let paths = ["", "/collection/products", "/graph/purchaseHistory", "/view/descView"];
+let pathsExceptCol = ["", "/graph/purchaseHistory", "/view/descView"];
 
 function restSchemaHandlerTestSuite() {
     const COLLECTION_CUSTOMERS = 'customers';
     const COLLECTION_PRODUCTS = 'products';
+    const COLLECTION_SPECIAL_PRODUCTS = 'specialProducts';
     const COLLECTION_COMPANIES = 'companies';
+    const COLLECTION_MATERIALS = "materials";
+    const COLLECTION_SPECIAL_MATERIALS = "specialMaterials";
+    const COLLECTION_LOGS = "logs";
+    const COLLECTION_SPECIAL_LOGS = "specialLogs";
 
     const EDGE_PURCHASED = 'purchased';
     const EDGE_MANUFACTURED = 'manufactured';
+    const EDGE_CONTAINS = 'contains';
 
     const GRAPH_PURCHASE_HISTORY = 'purchaseHistory';
     const GRAPH_MANUFACTURE = 'manufacture';
@@ -57,13 +65,29 @@ function restSchemaHandlerTestSuite() {
     let prodIndex;
     let cusIndex;
 
+    function tearDown() {
+        try { productDescriptionArangoSearch.drop(); } catch (e) {}
+        try { descriptionArangoSearch.drop(); } catch (e) {}
+
+        try { gm._drop(GRAPH_PURCHASE_HISTORY); } catch (e) {}
+        try { gm._drop(GRAPH_MANUFACTURE); } catch (e) {}
+
+        db._drop(EDGE_PURCHASED);
+        db._drop(EDGE_MANUFACTURED);
+        db._drop(EDGE_CONTAINS);
+        db._drop(COLLECTION_CUSTOMERS);
+        db._drop(COLLECTION_PRODUCTS);
+        db._drop(COLLECTION_SPECIAL_PRODUCTS);
+        db._drop(COLLECTION_COMPANIES);
+        db._drop(COLLECTION_MATERIALS);
+        db._drop(COLLECTION_SPECIAL_MATERIALS);
+        db._drop(COLLECTION_LOGS);
+        db._drop(COLLECTION_SPECIAL_LOGS);
+    }
+
     return {
         setUpAll: function () {
-            db._drop(COLLECTION_CUSTOMERS);
-            db._drop(COLLECTION_PRODUCTS);
-            db._drop(COLLECTION_COMPANIES);
-            db._drop(EDGE_PURCHASED);
-            db._drop(EDGE_MANUFACTURED);
+            tearDown();
 
             customersCollection = db._create(COLLECTION_CUSTOMERS);
             productsCollection = db._create(COLLECTION_PRODUCTS);
@@ -71,11 +95,19 @@ function restSchemaHandlerTestSuite() {
 
             gm._create(
                 GRAPH_PURCHASE_HISTORY,
-                [ gm._relation(EDGE_PURCHASED, COLLECTION_CUSTOMERS, COLLECTION_PRODUCTS) ]
+                [ gm._relation(EDGE_PURCHASED, COLLECTION_CUSTOMERS, COLLECTION_PRODUCTS) ],
+                [ COLLECTION_LOGS ] // Orphan collection
             );
             gm._create(
-                GRAPH_MANUFACTURE,
-                [ gm._relation(EDGE_MANUFACTURED, COLLECTION_COMPANIES, COLLECTION_PRODUCTS) ]
+                GRAPH_MANUFACTURE, [
+                    gm._relation(EDGE_MANUFACTURED, COLLECTION_COMPANIES, COLLECTION_PRODUCTS),
+                    gm._relation(EDGE_CONTAINS, [
+                        COLLECTION_PRODUCTS, COLLECTION_SPECIAL_PRODUCTS
+                        ], [
+                        COLLECTION_MATERIALS, COLLECTION_SPECIAL_MATERIALS
+                    ])
+                ],
+                [ COLLECTION_LOGS, COLLECTION_SPECIAL_LOGS ] // Orphan collections
             );
 
 
@@ -155,20 +187,7 @@ function restSchemaHandlerTestSuite() {
             cusIndex = customersCollection.ensureIndex({ name: "cusInd", type: "geo", fields: ["address"]});
         },
 
-        tearDownAll: function () {
-            productsCollection.dropIndex(prodIndex);
-            customersCollection.dropIndex(cusIndex);
-            productDescriptionArangoSearch.drop();
-            descriptionArangoSearch.drop();
-            gm._drop(GRAPH_PURCHASE_HISTORY);
-            gm._drop(GRAPH_MANUFACTURE);
-
-            db._drop(EDGE_PURCHASED);
-            db._drop(EDGE_MANUFACTURED);
-            db._drop(COLLECTION_CUSTOMERS);
-            db._drop(COLLECTION_PRODUCTS);
-            db._drop(COLLECTION_COMPANIES);
-        },
+        tearDownAll: tearDown,
 
         test_GetSchemaWithoutParameters_ShouldReturn200AndAllSchemas: function () {
             const doc = arango.GET_RAW(api);
@@ -176,6 +195,7 @@ function restSchemaHandlerTestSuite() {
 
             assertEqual(200, doc.code, 'Expected HTTP 200 for schema endpoint without query parameters');
             assertTrue(Array.isArray(body.collections), 'collections should be an array');
+            assertEqual(11, body.collections.length, 'collections should contain 11 objects');
             assertTrue(Array.isArray(body.graphs), 'graphs should be an array');
             assertTrue(Array.isArray(body.views), 'views should be an array');
 
@@ -304,13 +324,26 @@ function restSchemaHandlerTestSuite() {
             assertEqual(pGraph.relations[0].collection, 'purchased', 'Relation collection name mismatch');
             assertEqual(pGraph.relations[0].from[0], 'customers', 'Graph from vertex mismatch');
             assertEqual(pGraph.relations[0].to[0], 'products', 'Graph to vertex mismatch');
+            assertEqual(1, pGraph.orphans.length, 'orphan should be just 1');
+            assertEqual(pGraph.orphans[0], 'logs', 'orphan should be logs');
 
             const mGraph = body.graphs.find(g => g.name === 'manufacture');
             assertTrue(mGraph, 'manufacture graph should exist');
-            assertEqual(1, mGraph.relations.length, 'manufacture should have 1 relation');
-            assertEqual(mGraph.relations[0].collection, 'manufactured', 'Relation collection name mismatch');
-            assertEqual(mGraph.relations[0].from[0], 'companies', 'Graph from vertex mismatch');
-            assertEqual(mGraph.relations[0].to[0], 'products', 'Graph to vertex mismatch');
+            assertEqual(2, mGraph.relations.length, 'manufacture should have 2 relation');
+            const manufacturedRel = mGraph.relations.find(v => v.collection === 'manufactured');
+            assertEqual(manufacturedRel.from[0], 'companies', 'Graph from vertex mismatch');
+            assertEqual(manufacturedRel.to[0], 'products', 'Graph to vertex mismatch');
+            const containsRel = mGraph.relations.find(v => v.collection === 'contains');
+            assertEqual(2, containsRel.from.length, 'from vertex of contains should include 2 objects');
+            assertTrue(containsRel.from.includes('products'), 'products must be in from vertex');
+            assertTrue(containsRel.from.includes('specialProducts'), 'specialProducts must be in to vertex');
+            assertEqual(2, containsRel.to.length, 'to vertex of contains should include 2 objects');
+            assertTrue(containsRel.to.includes('materials'), 'materials must be in to vertex');
+            assertTrue(containsRel.to.includes('specialMaterials'), 'specialMaterials must be in to vertex');
+            assertEqual(2, mGraph.orphans.length, 'orphan should be 2');
+            assertTrue(mGraph.orphans.includes('logs'), 'orphans should contains logs');
+            assertTrue(mGraph.orphans.includes('specialLogs'), 'orphans should contains specialLogs');
+
 
             const prodView = body.views.find(v => v.viewName === 'productDescView');
             assertTrue(prodView, 'productDescView should exist');
@@ -326,46 +359,66 @@ function restSchemaHandlerTestSuite() {
             assertEqual(descView.links.length, 2, 'descView should have 2 links');
         },
 
+        test_TooManySuffixes_ShouldReturn404: function() {
+            let tooManySuffixes = ['/collection/products/fake', '/graph/purchaseHistory/fake', '/view/descView/fake'];
+            tooManySuffixes.forEach(path => {
+                const doc = arango.GET_RAW(api + path);
+                assertEqual(404, doc.code, `Expected HTTP 404 for too many suffixes`);
+            });
+        },
+
         test_InvalidSampleNumValues_ShouldReturn400: function () {
-            [
+            let invalidParams = [
                 '?sampleNum=-1',
                 '?sampleNum=12.3',
                 '?sampleNum=abc',
                 '?sampleNum=999999999999999999999999999999'
-            ].forEach(param => {
-                const doc = arango.GET_RAW(api + param);
-                assertEqual(400, doc.code, `Expected HTTP 400 for invalid sampleNum '${param}'`);
-                assertTrue(doc.parsedBody.error, 'Error flag should be true for invalid sampleNum');
+            ];
+            paths.forEach(path => {
+                invalidParams.forEach(param => {
+                    const doc = arango.GET_RAW(api + path + param);
+                    assertEqual(400, doc.code, `Expected HTTP 400 for invalid sampleNum '${param}' for path '${path}'`);
+                    assertTrue(doc.parsedBody.error, 'Error flag should be true for invalid sampleNum');
+                });
             });
         },
 
         test_InvalidExampleNumValues_ShouldReturn400: function () {
-            [
+            let invalidParams = [
                 '?exampleNum=-1',
                 '?exampleNum=12.3',
                 '?exampleNum=abc',
                 '?exampleNum=999999999999999999999999999999'
-            ].forEach(param => {
-                const doc = arango.GET_RAW(api + param);
-                assertEqual(400, doc.code, `Expected HTTP 400 for invalid exampleNum '${param}'`);
-                assertTrue(doc.parsedBody.error, 'Error flag should be true for invalid exampleNum');
+            ];
+            paths.forEach(path => {
+                invalidParams.forEach(param => {
+                    const doc = arango.GET_RAW(api + path + param);
+                    assertEqual(400, doc.code, `Expected HTTP 400 for invalid exampleNum '${param}' for path '${path}'`);
+                    assertTrue(doc.parsedBody.error, 'Error flag should be true for invalid exampleNum');
+                });
             });
         },
 
         test_EmptySampleNum_ShouldReturn200: function () {
-            const doc = arango.GET_RAW(api + '?sampleNum=');
-            assertEqual(200, doc.code, 'Empty sampleNum should default to valid response');
+            paths.forEach(path => {
+                const doc = arango.GET_RAW(api + path+ '?sampleNum=');
+                assertEqual(200, doc.code, 'Empty sampleNum should default to valid response');
+            });
         },
 
         test_EmptyExampleNum_ShouldReturn200: function () {
-            const doc = arango.GET_RAW(api + '?exmapleNum=');
-            assertEqual(200, doc.code, 'Empty exampleNum should default to valid response');
+            paths.forEach(path => {
+                const doc = arango.GET_RAW(api + path + '?exmapleNum=');
+                assertEqual(200, doc.code, 'Empty exampleNum should default to valid response');
+            });
         },
 
         test_ExampleNumGreaterThanSampleNum_ShouldReturn400: function () {
-            const doc = arango.GET_RAW(api + '?sampleNum=10&exampleNum=20');
-            assertEqual(400, doc.code, 'exampleNum greater than sampleNum should return 400');
-            assertTrue(doc.parsedBody.error, 'Error flag should be true when exampleNum > sampleNum');
+            paths.forEach(path => {
+                const doc = arango.GET_RAW(api + path + '?sampleNum=10&exampleNum=20');
+                assertEqual(400, doc.code, 'exampleNum greater than sampleNum should return 400');
+                assertTrue(doc.parsedBody.error, 'Error flag should be true when exampleNum > sampleNum');
+            });
         },
 
         test_ValidExampleNum_ShouldReturnCorrectExampleCount: function () {
@@ -380,26 +433,136 @@ function restSchemaHandlerTestSuite() {
             );
         },
 
-        test_GetSchemaWithSampleNumOnly_ShouldReturnSchemasWithNoOptionalAttributes: function () {
+        test_GetSchemaWithSampleNumOne_ShouldReturnSchemasWithNoOptionalAttributes: function () {
             // This test wants to verify that "optional" field logic is correct;
             // if sampleNum = 1, all "optional" should be false.
-            const doc = arango.GET_RAW(api + '?sampleNum=1');
-            const body = doc.parsedBody;
-            assertEqual(200, doc.code, 'Expected HTTP 200 for sampleNum=1');
-            assertTrue(Array.isArray(body.collections), 'collections must be an array');
+            pathsExceptCol.forEach(path => {
+                const doc = arango.GET_RAW(api + path + '?sampleNum=1');
+                const body = doc.parsedBody;
+                assertEqual(200, doc.code, 'Expected HTTP 200 for sampleNum=1');
+                assertTrue(Array.isArray(body.collections), 'collections must be an array');
 
-            body.collections.forEach(collection => {
-                assertTrue(
-                    Array.isArray(collection.schema),
-                    `schema must be an array in '${collection.collectionName}'`
-                );
-                collection.schema.forEach(attribute => {
-                    assertEqual(
-                        false,
-                        attribute.optional,
-                        `Attribute '${attribute.attribute}' in '${collection.collectionName}' should not be optional`
+                body.collections.forEach(collection => {
+                    assertTrue(
+                        Array.isArray(collection.schema),
+                        `schema must be an array in '${collection.collectionName}'`
                     );
+                    collection.schema.forEach(attribute => {
+                        assertEqual(
+                            false,
+                            attribute.optional,
+                            `Attribute '${attribute.attribute}' in '${collection.collectionName}' should not be optional`
+                        );
+                    });
                 });
+
+            });
+        },
+
+        test_ExampleNumZero_ShouldReturnNoExamples: function () {
+            pathsExceptCol.forEach(path => {
+                const doc = arango.GET_RAW(api + path + '?exampleNum=0');
+                assertEqual(200, doc.code, 'Expected HTTP 200 for exampleNum=0');
+                const body = doc.parsedBody;
+                assertTrue(Array.isArray(body.collections),'collections should be an array');
+
+                body.collections.forEach(coll => {
+                    assertTrue(Array.isArray(coll.examples),
+                        `examples for '${coll.collectionName}' should be an array`);
+                    assertEqual(0, coll.examples.length, `Expected 0 examples for '${coll.collectionName}'`);
+                });
+            });
+        },
+
+        test_SampleNumZero_ShouldReturn400: function () {
+            paths.forEach(path => {
+                const doc = arango.GET_RAW(api + path + '?sampleNum=0');
+                assertEqual(400, doc.code, 'Expected HTTP 400 for sampleNum=0');
+            });
+        },
+
+        test_GetProductsDocument_ShouldReturnCollectionSchema: function () {
+            const doc = arango.GET_RAW(api + '/collection/products');
+            assertEqual(200, doc.code, 'Expected HTTP 200 for GET /collection/products');
+
+            const body = doc.parsedBody;
+
+            assertEqual("products", body.collectionName, 'collectionName should be "products"');
+            assertEqual("document", body.collectionType, 'collectionType should be "document"');
+            assertEqual(4, body.numOfDocuments, 'numOfDocuments should be 4');
+
+            assertTrue(Array.isArray(body.indexes), 'indexes should be an array');
+            const index = body.indexes.find(idx => idx.name === "proInd");
+            assertEqual(["price"], index.fields, "fields for index 'proInd' should be price");
+            assertEqual("persistent", index.type, "type for index 'proInd' should be persistent");
+            assertEqual(false, index.unique, "unique for index 'proInd' should be false");
+            assertEqual(false, index.sparse, "sparse for index 'proInd' should be false");
+
+            assertTrue(Array.isArray(body.schema), 'schema should be an array');
+            const attrMap = {};
+            body.schema.forEach(attr => { attrMap[attr.attribute] = attr; });
+            const expectedSchema = {
+                "_id": { types: ["string"], optional: false },
+                "_key": { types: ["string"], optional: false },
+                "description": { types: ["string"], optional: false },
+                "name": { types: ["string"], optional: false },
+                "price": { types: ["string","number"], optional: false },
+                "used": { types: ["bool"], optional: true },
+                "version":{ types: ["string","number"], optional: true }
+            };
+            Object.entries(expectedSchema).forEach(([attrName, expected]) => {
+                const actual = attrMap[attrName];
+                assertEqual(expected.types.sort(), actual.types.sort(),
+                    `Types for ${attrName} should be ${expected.types}`);
+                assertEqual(expected.optional, actual.optional,
+                    `Optional for ${attrName} should be ${expected.optional}`);
+            });
+
+            assertTrue(Array.isArray(body.examples), 'examples should be an array');
+            assertTrue(body.examples.length > 0, 'examples array should have at least one element');
+            body.examples.forEach(e => {
+                assertTrue(e._id.startsWith('products/'),
+                    'Example product _id malformed in graph response');
+            });
+        },
+
+        test_GetCollectionPurchased_ShouldReturnEdgeCollectionSchema: function () {
+            const doc = arango.GET_RAW(api + '/collection/purchased');
+            assertEqual(200, doc.code, 'Expected HTTP 200 for GET /collection/purchased');
+
+            const body = doc.parsedBody;
+
+            assertEqual("purchased", body.collectionName, 'collectionName should be "purchased"');
+            assertEqual("edge", body.collectionType, 'collectionType should be "edge"');
+            assertEqual(4, body.numOfEdges, 'numOfEdges should be 4');
+
+            assertTrue(Array.isArray(body.indexes) && body.indexes.length === 0,
+                'indexes should be an empty array');
+            assertTrue(Array.isArray(body.schema), 'schema should be an array');
+
+            const attrMap = {};
+            body.schema.forEach(attr => { attrMap[attr.attribute] = attr; });
+            const expectedSchema = {
+                "_from": { types: ["string"], optional: false },
+                "_id": { types: ["string"], optional: false },
+                "_key": { types: ["string"], optional: false },
+                "_to": { types: ["string"], optional: false },
+                "date": { types: ["string"], optional: false}
+            };
+            Object.entries(expectedSchema).forEach(([attrName, expected]) => {
+                const actual = attrMap[attrName];
+                assertEqual(expected.types.sort(), actual.types.sort(),
+                    `Types for attribute ${attrName} should be ${expected.types}`);
+                assertEqual(expected.optional, actual.optional,
+                    `Optional flag for attribute ${attrName} should be ${expected.optional}`);
+            });
+
+            assertTrue(Array.isArray(body.examples), 'examples should be an array');
+            assertTrue(body.examples.length > 0, 'examples array should have at least one element');
+            body.examples.forEach(e => {
+                assertTrue(e._from.startsWith('customers/'));
+                assertTrue(e._to.startsWith('products/'));
+                assertTrue(e._id.startsWith('purchased/'));
             });
         },
 
@@ -408,34 +571,7 @@ function restSchemaHandlerTestSuite() {
             assertEqual(404, doc.code, 'Expected HTTP 404 for non-existing collection');
         },
 
-        test_ExampleNumZero_ShouldReturnNoExamples: function () {
-            const doc = arango.GET_RAW(api + '?exampleNum=0');
-            assertEqual(200, doc.code, 'Expected HTTP 200 for exampleNum=0');
-            const body = doc.parsedBody;
-            assertTrue(
-                Array.isArray(body.collections),
-                'collections should be an array'
-            );
-
-            body.collections.forEach(coll => {
-                assertTrue(
-                    Array.isArray(coll.examples),
-                    `examples for '${coll.collectionName}' should be an array`
-                );
-                assertEqual(
-                    0,
-                    coll.examples.length,
-                    `Expected 0 examples for '${coll.collectionName}'`
-                );
-            });
-        },
-
-        test_SampleNumZero_ShouldReturn400: function () {
-            const doc = arango.GET_RAW(api + '?sampleNum=0');
-            assertEqual(400, doc.code, 'Expected HTTP 400 for sampleNum=0');
-        },
-
-        test_GetGraphByName_ShouldReturnGraphSchema: function () {
+        test_GetPurchaseHistoryGraph_ShouldReturnGraphSchema: function () {
             const doc = arango.GET_RAW(api + '/graph/purchaseHistory');
             assertEqual(200, doc.code, 'Expected HTTP 200 for graph/purchaseHistory');
             const body = doc.parsedBody;
@@ -443,19 +579,12 @@ function restSchemaHandlerTestSuite() {
                 body.collections.find(col => col.collectionName === name);
             const assertAttribute = (schema, attrName, expectedTypes, optional) => {
                 const attr = schema.find(a => a.attribute === attrName);
-                assertTrue(
-                    !!attr,
-                    `Attribute '${attrName}' not found in schema for graph endpoint`
-                );
+                assertTrue(!!attr, `Attribute '${attrName}' not found in schema for graph endpoint`);
                 expectedTypes.forEach(type => {
-                    assertTrue(
-                        attr.types.includes(type),
-                        `Attribute '${attrName}' missing type '${type}' in graph schema`
-                    );
+                    assertTrue(attr.types.includes(type),
+                        `Attribute '${attrName}' missing type '${type}' in graph schema`);
                 });
-                assertEqual(
-                    optional,
-                    attr.optional,
+                assertEqual(optional, attr.optional,
                     `Attribute '${attrName}' optional flag expected ${optional} in graph schema`
                 );
             };
@@ -505,6 +634,34 @@ function restSchemaHandlerTestSuite() {
             assertEqual(graph.relations[0].collection, 'purchased');
             assertEqual(graph.relations[0].from[0], 'customers');
             assertEqual(graph.relations[0].to[0], 'products');
+            assertTrue(Array.isArray(graph.orphans), 'orphans should be an array');
+            assertEqual('logs', graph.orphans[0], 'orphans should be logs');
+        },
+
+        test_ManufactureGraph_ShouldReturnGraphSchema: function () {
+            const doc = arango.GET_RAW(api + '/graph/manufacture');
+            assertEqual(200, doc.code, 'Expected HTTP 200 for graph/manufacture');
+            const body = doc.parsedBody;
+
+            const graph = body.graphs.find(g => g.name === 'manufacture');
+            assertTrue(graph, 'manufacture graph missing');
+            assertEqual(2, graph.relations.length);
+
+            const manufacturedRel = graph.relations.find(r => r.collection === 'manufactured');
+            assertEqual(manufacturedRel.from[0], 'companies', 'Graph from vertex mismatch');
+            assertEqual(manufacturedRel.to[0], 'products', 'Graph to vertex mismatch');
+
+            const containsRel = graph.relations.find(v => v.collection === 'contains');
+            assertEqual(2, containsRel.from.length, 'from vertex of contains should include 2 objects');
+            assertTrue(containsRel.from.includes('products'), 'products must be in from vertex');
+            assertTrue(containsRel.from.includes('specialProducts'), 'specialProducts must be in to vertex');
+            assertEqual(2, containsRel.to.length, 'to vertex of contains should include 2 objects');
+            assertTrue(containsRel.to.includes('materials'), 'materials must be in to vertex');
+            assertTrue(containsRel.to.includes('specialMaterials'), 'specialMaterials must be in to vertex');
+
+            assertEqual(2, graph.orphans.length, 'orphan should be 2');
+            assertTrue(graph.orphans.includes('logs'), 'orphans should contains logs');
+            assertTrue(graph.orphans.includes('specialLogs'), 'orphans should contains specialLogs');
         },
 
         test_GetGraphNonExisting_ShouldReturn404: function () {

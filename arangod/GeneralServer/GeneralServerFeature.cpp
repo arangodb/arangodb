@@ -695,7 +695,7 @@ void GeneralServerFeature::defineRemainingHandlers(
       queryRegistry);
 
   f.addPrefixHandler(
-      "/_api/schema",
+      RestVocbaseBaseHandler::SCHEMA_PATH,
       RestHandlerCreator<RestSchemaHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
 

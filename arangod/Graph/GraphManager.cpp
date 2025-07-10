@@ -349,6 +349,36 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
   return {Graph::fromPersistence(_vocbase, result.slice())};
 }
 
+ResultT<std::vector<std::unique_ptr<Graph>>> GraphManager::lookupAllGraphs()
+    const {
+  VPackBuilder graphsBuilder;
+  Result res = readGraphs(graphsBuilder);
+  if (res.fail()) {
+    std::stringstream ss;
+    ss << "while looking up all graphs: " << res.errorMessage();
+    res.reset(res.errorNumber(), ss.str());
+    return {res};
+  }
+
+  VPackSlice graphs = graphsBuilder.slice();
+  if (!graphs.isObject() || !graphs.hasKey("graphs") ||
+      !graphs.get("graphs").isArray()) {
+    return Result{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
+                  "readGraphs() returned malformed data"};
+  }
+
+  std::vector<std::unique_ptr<Graph>> out;
+  for (auto g : VPackArrayIterator(graphs.get("graphs"))) {
+    auto gPtr = Graph::fromPersistence(_vocbase, g);
+    if (!gPtr) {
+      return Result{TRI_ERROR_INTERNAL,
+                    "Graph::fromPersistence failed for one of the graphs"};
+    }
+    out.emplace_back(std::move(gPtr));
+  }
+  return out;
+}
+
 OperationResult GraphManager::createGraph(VPackSlice document,
                                           bool waitForSync) const {
   OperationOptions options(ExecContext::current());
