@@ -1,5 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
-/*global assertTrue, instanceManager */
+/*global assertTrue, instanceManager, print */
 
 "use strict";
 
