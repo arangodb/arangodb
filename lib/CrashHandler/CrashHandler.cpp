@@ -336,13 +336,15 @@ size_t acquireBacktrace(char* buffer, size_t bufferSize) try {
   };
 
   // Write header
-  SmallString headerBuffer;
-  headerBuffer.append("Backtrace of thread ");
-  headerBuffer.appendUInt64(arangodb::Thread::currentThreadNumber());
-  headerBuffer.append(" [").append(currentThreadName).append("]\n");
+  {
+    SmallString headerBuffer;
+    headerBuffer.append("Backtrace of thread ");
+    headerBuffer.appendUInt64(arangodb::Thread::currentThreadNumber());
+    headerBuffer.append(" [").append(currentThreadName).append("]\n");
 
-  if (!safeAppend(headerBuffer.view())) {
-    return totalWritten;
+    if (!safeAppend(headerBuffer.view())) {
+      return totalWritten;
+    }
   }
 
   // The address of the program headers of the executable.
@@ -621,8 +623,10 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
       // dumping. So let's just do it ourselves:
       actuallyDumpCrashInfo();
     } else {
+      static_assert(decltype(::crashHandlerState)::is_always_lock_free);
       // Signal the dedicated crash handler thread (force trigger even if not
-      // idle)
+      // idle), due to this static assertion we know that it is allowed to
+      // use `notify_all` here in the signal handler.
       arangodb::CrashHandler::triggerCrashHandler();
 
       // Busy wait for the dedicated thread to complete its work
