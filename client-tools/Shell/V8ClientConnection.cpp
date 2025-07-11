@@ -390,9 +390,13 @@ void V8ClientConnection::connect() {
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
   _builder.endpoint(_client.endpoint());
-  // check jwtSecret first, as it is empty by default,
+  // check jwtToken first, then jwtSecret, as they are empty by default,
   // but username defaults to "root" in most configurations
-  if (!_client.jwtSecret().empty()) {
+  TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
+  if (!_client.jwtToken().empty()) {
+    _builder.jwtToken(_client.jwtToken());
+    _builder.authenticationType(fu::AuthenticationType::Jwt);
+  } else if (!_client.jwtSecret().empty()) {
     _builder.jwtToken(
         fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
@@ -412,9 +416,13 @@ void V8ClientConnection::reconnect() {
   _databaseName = _client.databaseName();
   _builder.endpoint(_client.endpoint());
   _forceJson = _client.forceJson();
-  // check jwtSecret first, as it is empty by default,
+  // check jwtToken first, then jwtSecret, as they are empty by default,
   // but username defaults to "root" in most configurations
-  if (!_client.jwtSecret().empty()) {
+  TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
+  if (!_client.jwtToken().empty()) {
+    _builder.jwtToken(_client.jwtToken());
+    _builder.authenticationType(fu::AuthenticationType::Jwt);
+  } else if (!_client.jwtSecret().empty()) {
     _builder.jwtToken(
         fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
