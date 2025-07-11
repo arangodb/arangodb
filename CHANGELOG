@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix logging of the request body when compression is present.
+
 * Fix an integer underflow with gauge arangodb_aql_current_query.
 
 * Improved the endpoint used by the Graph visulaizer tool to run
