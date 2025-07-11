@@ -606,8 +606,17 @@ arangodb::Result triggerFoxxHeal(
   std::string foxxHealUrl = "/_api/foxx/_local/heal";
   response.reset(httpClient.request(arangodb::rest::RequestType::POST,
                                     foxxHealUrl, body.c_str(), body.length()));
-  return arangodb::HttpResponseChecker::check(
+  auto res = arangodb::HttpResponseChecker::check(
       httpClient.getErrorMessage(), response.get(), "trigger self heal", body,
+      arangodb::HttpResponseChecker::PayloadType::JSON);
+  if (res.fail()) {
+    return res;
+  }
+  std::string foxxHealUrl = "/_admin/routing/reload";
+  response.reset(httpClient.request(arangodb::rest::RequestType::POST,
+                                    foxxHealUrl, body.c_str(), body.length()));
+  return arangodb::HttpResponseChecker::check(
+      httpClient.getErrorMessage(), response.get(), "trigger reload routing", body,
       arangodb::HttpResponseChecker::PayloadType::JSON);
 }
 
