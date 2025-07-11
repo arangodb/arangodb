@@ -423,10 +423,14 @@ class TestGraph {
         keys.push(vertexKey);
       }
 
-      // Process vertices in smaller batches to reduce memory pressure
-      const VERTEX_BATCH_SIZE = 10000; // Reduced from 100k to 10k
+      // Process vertices in smaller batches to reduce memory pressure and get more frequent progress updates
+      const VERTEX_BATCH_SIZE = 5000; // Optimized for large graphs
       const vertexStartTime = Date.now();
       print(`[${new Date().toISOString()}] Processing vertices for ${gn}: ${toSave.length} vertices in batches of ${VERTEX_BATCH_SIZE}`);
+
+      if (toSave.length > 100000) {
+        print(`[${new Date().toISOString()}] Large vertex count detected - progress updates every 10 batches (~${VERTEX_BATCH_SIZE * 10} vertices)`);
+      }
 
       for (let i = 0; i < toSave.length; i += VERTEX_BATCH_SIZE) {
         const batch = toSave.slice(i, i + VERTEX_BATCH_SIZE);
@@ -434,8 +438,9 @@ class TestGraph {
         const batchNum = Math.floor(i / VERTEX_BATCH_SIZE) + 1;
         const totalBatches = Math.ceil(toSave.length / VERTEX_BATCH_SIZE);
 
-        if (debug) {
-          print(`[${new Date().toISOString()}] Saving vertex batch ${batchNum}/${totalBatches} (${batch.length} vertices, ${i}-${i + batch.length - 1})`);
+        // Progress update every 10 batches or on debug mode
+        if (debug || (batchNum % 10 === 0)) {
+          print(`[${new Date().toISOString()}] Saving vertex batch ${batchNum}/${totalBatches} (${batch.length} vertices, processed: ${i + batch.length}/${toSave.length})`);
         }
 
         vc.save(batch).forEach((d, idx) => {
@@ -455,10 +460,14 @@ class TestGraph {
       keys.length = 0;
     }
 
-    // Process edges in smaller batches to reduce memory pressure
-    const EDGE_BATCH_SIZE = 10000; // Reduced from 100k to 10k
+    // Process edges in smaller batches to reduce memory pressure and get more frequent progress updates
+    const EDGE_BATCH_SIZE = 5000; // Optimized for large graphs
     const edgeStartTime = Date.now();
     print(`[${new Date().toISOString()}] Processing edges for ${gn}: ${edges.length} edges in batches of ${EDGE_BATCH_SIZE}`);
+
+    if (edges.length > 100000) {
+      print(`[${new Date().toISOString()}] Large edge count detected - progress updates every 10 batches (~${EDGE_BATCH_SIZE * 10} edges)`);
+    }
 
     let edgeDocs = [];
     let currentBatch = [];
@@ -493,8 +502,10 @@ class TestGraph {
       if (currentBatchSize >= EDGE_BATCH_SIZE) {
         batchNum++;
         const totalBatches = Math.ceil(edges.length / EDGE_BATCH_SIZE);
-        if (debug) {
-          print(`[${new Date().toISOString()}] Saving edge batch ${batchNum}/${totalBatches} (${currentBatchSize} edges, total processed: ${edgeCount})`);
+
+        // Progress update every 10 batches or on debug mode
+        if (debug || (batchNum % 10 === 0)) {
+          print(`[${new Date().toISOString()}] Saving edge batch ${batchNum}/${totalBatches} (${currentBatchSize} edges, total processed: ${edgeCount}/${edges.length})`);
         }
 
         ec.save(currentBatch);
@@ -507,9 +518,9 @@ class TestGraph {
     if (currentBatch.length > 0) {
       batchNum++;
       const totalBatches = Math.ceil(edges.length / EDGE_BATCH_SIZE);
-      if (debug) {
-        print(`[${new Date().toISOString()}] Saving final edge batch ${batchNum}/${totalBatches} (${currentBatch.length} edges)`);
-      }
+
+      // Always show final batch completion
+      print(`[${new Date().toISOString()}] Saving final edge batch ${batchNum}/${totalBatches} (${currentBatch.length} edges)`);
 
       ec.save(currentBatch);
     }
