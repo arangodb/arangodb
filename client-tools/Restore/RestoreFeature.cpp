@@ -614,10 +614,11 @@ arangodb::Result triggerFoxxHeal(
   }
   std::string reloadRoutingUrl = "/_admin/routing/reload";
   response.reset(httpClient.request(arangodb::rest::RequestType::POST,
-                                    reloadRoutingUrl, body.c_str(), body.length()));
+                                    reloadRoutingUrl, body.c_str(),
+                                    body.length()));
   return arangodb::HttpResponseChecker::check(
-      httpClient.getErrorMessage(), response.get(), "trigger reload routing", body,
-      arangodb::HttpResponseChecker::PayloadType::JSON);
+      httpClient.getErrorMessage(), response.get(), "trigger reload routing",
+      body, arangodb::HttpResponseChecker::PayloadType::JSON);
 }
 
 arangodb::Result processInputDirectory(
