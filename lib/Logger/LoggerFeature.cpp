@@ -394,7 +394,7 @@ contains a single character with the server's role. The roles are:
     options
         ->addOption("--log.api-enabled",
                     "Whether the log API is enabled (true) or not (false), or "
-                    "only enabled for superuser JWT (jwt).",
+                    "only enabled for the superuser (jwt).",
                     new StringParameter(&_apiSwitch))
         .setLongDescription(R"(Credentials are not written to log files.
 Nevertheless, some logged data might be sensitive depending on the context of
@@ -404,14 +404,12 @@ with log files is recommended.
 
 Since the database server offers an API to control logging and query logging
 data, this API has to be secured properly. By default, the API is accessible
-for admin users (administrative access to the `_system` database). However,
-you can lock this down further.
-
-The possible values for this option are:
+for admin users (administrative access to the `_system` database).
+However, you can restrict it further to the superuser or disable it altogether:
 
  - `true`: The `/_admin/log` API is accessible for admin users.
  - `jwt`: The `/_admin/log` API is accessible for the superuser only
-   (authentication with JWT token and empty username).
+   (authentication with JWT superuser token and empty username).
  - `false`: The `/_admin/log` API is not accessible at all.)");
   }
 

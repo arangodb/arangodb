@@ -10,7 +10,7 @@ type Vector = {
   fields: string[];
   name?: string;
   params: {
-    metric: "cosine" | "l2" | string;
+    metric: "cosine" | "l2" | "innerProduct" | string;
     dimension: number;
     nLists: number;
     defaultNProbe?: number;

@@ -1,6 +1,50 @@
 devel
 -----
 
+* Move crash handling to a separate thread, this is cleaner and does not
+  violate rules for signal and termination handlers.
+
+* Fix an integer underflow with gauge arangodb_aql_current_query.
+
+* Improved the endpoint used by the Graph visulaizer tool to run
+  a better performing query. This should help on larger graphs
+  having more, not displayed data.
+
+* Fix BTS-2152 Overfetch input on prallel Traversals. For queries like this:
+  
+  FOR x IN largeCollection
+    FOR v IN 1 OUTBOUND x edges {parallelism: 4}
+      LIMIT 10
+      RETURN v
+  
+  Before this bugfix we would always enumerate largeCollection in full,
+  even though a small portion of the collection would have sufficed.
+  This is now handled better. We now enumerate only the necessary amount
+  of batches required to fulfill the limit.
+  This also improves cluster queries (replace the traversal with another FOR loop)
+  which had the same behaviour and are now enumerating less unused
+  intermediate results.
+
+* Fix a bug in the PERCENTILE function in AQL, which gave the incorrect
+  result null for small percentiles. This fixes BTS-2169.
+
+* FE-636: remove axios (unused dependency)
+
+* FE-636: bump moment from 2.18.1 to 2.30.1 (latest version)
+
+* Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
+
+* FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
+
+* Fix BTS-2166: Fix a race during startup, where the async registry's metrics
+  might be created before the scheduler starts its first thread. This is
+  currently not known to cause any issues.
+
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
+  coordinates for Point geometries.
+
+* FE-636: bump crypto-js from 3.3.0 to 4.2.0
+
 * Add new API /_admin/server/aql-queries to show recently executed AQL queries.
   This is per server and only available on coordinators and single servers.
 
@@ -47,11 +91,6 @@ devel
   bigger then one due to not being normalized. It is recommended to drop
   all vector indexes that use cosine metric and create them again.
 
-* Updated ArangoDB Starter to v0.19.12.
-
-* Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
-  dependencies.
-
 * Fix BTS-2150: Make dropDatabase API work even if there are leftover entries in
   /arango/Current/Databases/<dbname>.
 
@@ -77,6 +116,15 @@ devel
   The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
   obsoleted.
 
+
+3.12.5 (2025-06-18)
+-------------------
+
+* Updated ArangoDB Starter to v0.19.12.
+
+* Rebuilt included rclone v1.65.2 with go1.23.10 and non-vulnerable
+  dependencies.
+
 * Fix a possible crash when requesting the async registry:
   Does now not request the thread name of a potentially destroyed thread.
 
@@ -84,8 +132,8 @@ devel
 
 * Add detection of two threads waiting for a PrefetchTask concurrently.
 
-* Add visibility into the state if a thread waits for more than a second
-  on a PrefetchTask (and does not see InProgress).
+* Add visibility into the state if a thread waits for more than a second on a
+  PrefetchTask (and does not see InProgress).
 
 * Fix a memory leak in LogContext, which could leak entries which are still, and
   only, used by a thread-local LogContext when that thread is destroyed.
@@ -101,7 +149,7 @@ devel
 * Improved the error message displayed when the APPROX_NEAR function fails to
   apply a vector index.
  
-* upgrade LZ4 to 1.10.0
+* Upgrade LZ4 to 1.10.0
 
 * Fix BTS-2135: A global lock on the query registry was in some cases
   unnecessarily held for the full duration of query destruction.
@@ -109,17 +157,16 @@ devel
 
 * Stabilize a test concerning write concern.
 
-* Fix BTS-2112: If the URL in an HTTP request is corrupt, don't just close
-  the connection, rather, return a proper HTTP 400 BAD response. This was
-  found by fuzzing.
+* Fix BTS-2112: If the URL in an HTTP request is corrupt, don't just close the
+  connection, rather, return a proper HTTP 400 BAD response. This was found by
+  fuzzing.
 
-* Fix BTS-2106: A MoveShard operation could get stuck if a new collection
-  with `distributeShardsLike` was created at the wrong moment when the leader
-  of a shard group was currently being asked to resign.
+* Fix BTS-2106: A MoveShard operation could get stuck if a new collection with
+  `distributeShardsLike` was created at the wrong moment when the leader of a
+  shard group was currently being asked to resign.
 
-* Fix BTS-2093: A MoveShard operation could fail and leave locks unreleased
-  if a new collection with `distributeShardsLike` was created at the wrong
-  moment.
+* Fix BTS-2093: A MoveShard operation could fail and leave locks unreleased if a
+  new collection with `distributeShardsLike` was created at the wrong moment.
 
 * Updated ArangoDB Starter to v0.19.11.
 
@@ -127,16 +174,15 @@ devel
   coordinator in two different threads) creates two collections with the same
   name in the same database (different collection ID).
 
-
-* Fix a crash when bind parameters are not set and killing of a query
-  is logged (no version with this bug was ever released!).
+* Fix a crash when bind parameters are not set and killing of a query is logged
+  (no version with this bug was ever released!).
 
 * Switched to customized (instead of official) forked rclone v1.65.2 built with
   go1.23.8 to avoid CVEs.
 
-* Fix BTS-2119: The optimization rule `async-prefetch` could cause
-  crashes when a query aborts early, e.g. due to a runtime error,
-  the query being killed, or the memory limit being reached. 
+* Fix BTS-2119: The optimization rule `async-prefetch` could cause crashes when
+  a query aborts early, e.g. due to a runtime error, the query being killed, or
+  the memory limit being reached. 
 
 * Upgraded OpenSSL to 3.5.0.
 
@@ -145,8 +191,8 @@ devel
 * Remove overeager assert, only relevant for testing.
 
 * Implement license changes: The Community Edition without a license now has a
-  100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode after
-  a grace period, and shutdown after an additional grace period.
+  100 GiB disk usage limit. Exceeding it will put ArangoDB in read-only mode
+  after a grace period, and shutdown after an additional grace period.
 
 * Add visibility for recent api calls via a new API /_admin/server/api-calls.
 
@@ -157,9 +203,9 @@ devel
 * Simplify Maintenance by removing unused features.
 
 * Fix BTS-2100: Due to a priority inversion it was possible that a lot of
-  scheduled SynchronizeShard actions blocked higher priority 
-  TakeoverShardLeadership actions in the cluster Maintenance. This
-  could lead to service interruption during upgrades and after failovers.
+  scheduled SynchronizeShard actions blocked higher priority
+  TakeoverShardLeadership actions in the cluster Maintenance. This could lead to
+  service interruption during upgrades and after failovers.
 
 * FE-538: fix frontend build warnings.
 
@@ -176,15 +222,14 @@ devel
 * Fix vector index comparison in maintenance, which causes loop with agency and
   dbservers.
 
-* Added support for access tokens. Access token can be used instead of
-  a password. However, the recommended way is to generate a JWT token
-  using /_open/auth.
+* Added support for access tokens. Access token can be used instead of a
+  password. However, the recommended way is to generate a JWT token using
+  /_open/auth.
 
-* Fix a bug in the index API /_api/index?withHidden=true, which can lead to
-  two problems: (1) A newly created index is potentially not shown in
-  the very moment when it is finished. (2) A newly created index is
-  shown twice in the result, once with `isBuilding: true` and once
-  without. This fixes BTS-2044.
+* Fix a bug in the index API /_api/index?withHidden=true, which can lead to two
+  problems: (1) A newly created index is potentially not shown in the very
+  moment when it is finished. (2) A newly created index is shown twice in the
+  result, once with `isBuilding: true` and once without. This fixes BTS-2044.
 
 * Introduces first changes for the new disk usage-based license.
 
@@ -193,8 +238,8 @@ devel
 * Fixed CMakeLists.txt: lib*omp is not required for arangosh. Removed this
   reference.
 
-* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL
-  query to hang and block a thread.
+* BTS-2087: Fix a concurrency bug that can lead the cleanup of an AQL query to
+  hang and block a thread.
 
 * The agency supervision is clearing "finished" jobs too quickly from
   Target/Finished and Failed. They will be forthwith be kept for at least 1h.
@@ -13442,7 +13487,7 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
 
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
+  Note: There is a [detailed description of all options](https://docs.arangodb.com/stable/operations/security/security-options/).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

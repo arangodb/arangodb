@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const db = internal.db;
 const versionHas = require("@arangodb/test-helper").versionHas;
+const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 let IM = global.instanceManager;
 
 function IndexInBackgroundFailuresSuite () {
@@ -46,7 +47,7 @@ function IndexInBackgroundFailuresSuite () {
     }
 
     let timeout = 600;
-    if (versionHas('asan') || versionHas('tsan') || versionHas('coverage')) {
+    if (isInstrumented) {
       timeout *= 20;
     }
 
@@ -141,7 +142,7 @@ function IndexInBackgroundFailuresSuite () {
 
       // wait until index is there...
       let tries = 0;
-      const maxRetries = versionHas('tsan') ? 600 : 300;
+      const maxRetries = isInstrumented ? 600 : 300;
       while (++tries < maxRetries) {
         res = arango.PUT_RAW("/_api/job/" + id, "");
         if (res.code === 201 || res.code >= 400) {
