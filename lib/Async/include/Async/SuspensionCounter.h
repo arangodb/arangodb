@@ -136,7 +136,7 @@ struct SuspensionCounter {
 
 // waitingFunToCoro() is an adapter to map a WAITING-style function to a
 // coroutine. A WAITING-style function achieves asynchronous execution by
-// returning some kind of WAITING value to suspend, and are expected to be
+// returning some kind of WAITING value to suspend, and is expected to be
 // called again when a wakeup is triggered by some callback in order to resume.
 //
 // The caller must make sure to translate every wakeup to a call to `notify()`
