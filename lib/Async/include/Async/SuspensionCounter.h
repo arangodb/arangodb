@@ -113,7 +113,7 @@ struct SuspensionCounter {
         _suspensionCounter->_c = c;
         auto counter = std::int64_t{};
         // Try to transition from 0 to -1 (unsignaled to suspended). If it
-        // succeeds, the coroutine will be suspended. Otherwise, we have been
+        // fails, the coroutine will be resumed because we have been
         // notified since await_ready() was called, and the coroutine will not
         // be suspended.
 
