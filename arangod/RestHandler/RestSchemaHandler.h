@@ -128,18 +128,11 @@ class RestSchemaHandler : public RestCursorHandler {
   Result getIndexes(LogicalCollection const& col, velocypack::Builder& builder);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief helper method to populate a set with names of collections
-  /// connected by a graph
-  //////////////////////////////////////////////////////////////////////////////
-  Result getConnectedCollections(std::string const& graphName,
-                                 std::set<std::string>& colSet);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief helper method to parse, validate and default numeric query params
   //////////////////////////////////////////////////////////////////////////////
-  std::optional<uint64_t> validateParameter(const std::string& param,
-                                            uint64_t defaultValue,
-                                            bool allowZero = false);
+  ResultT<uint64_t> validateParameter(const std::string& param,
+                                      uint64_t defaultValue,
+                                      bool allowZero = false);
 };
 
 }  // namespace rest

@@ -363,14 +363,17 @@ ResultT<std::vector<std::unique_ptr<Graph>>> GraphManager::lookupAllGraphs()
   VPackSlice graphs = graphsBuilder.slice();
   if (!graphs.isObject() || !graphs.hasKey("graphs") ||
       !graphs.get("graphs").isArray()) {
+    TRI_ASSERT(graphs.isObject() && graphs.hasKey("graphs") && graphs.get("graphs").isArray());
     return Result{TRI_ERROR_GRAPH_INTERNAL_DATA_CORRUPT,
                   "readGraphs() returned malformed data"};
   }
 
   std::vector<std::unique_ptr<Graph>> out;
+  out.reserve(graphs.get("graphs").length());
   for (auto g : VPackArrayIterator(graphs.get("graphs"))) {
     auto gPtr = Graph::fromPersistence(_vocbase, g);
     if (!gPtr) {
+      TRI_ASSERT(gPtr);
       return Result{TRI_ERROR_INTERNAL,
                     "Graph::fromPersistence failed for one of the graphs"};
     }

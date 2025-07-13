@@ -349,8 +349,9 @@ function restSchemaHandlerTestSuite() {
                     { name: "DELETE",  fn: () => arango.DELETE_RAW(url) }
                 ].forEach(({ name, fn }) => {
                     const doc = fn();
+                    //assertEqual(405, doc.code, 'Wrong HTTP method should return 405');
                     assertTrue(doc.code === 404 || doc.code === 405,
-                        `Expected HTTP 404 or 405 for wrong http method for ${name}`);
+                        'Wrong HTTP method should return 404 or 405');
                 });
             });
         },
