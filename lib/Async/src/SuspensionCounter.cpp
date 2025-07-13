@@ -32,12 +32,12 @@ bool SuspensionCounter::notify() {
       // one and resume the coroutine.
 
       // (1) This acquire-CAS synchronizes-with the release-CAS (2)
-      // This ensures that _c is visible.
+      // This ensures that _coroHandle is visible.
       if (_counter.compare_exchange_weak(counter, 1, std::memory_order_acquire,
                                          std::memory_order_relaxed)) {
         // Note that this can throw, in principle, if unhandled_exception()
         // throws.
-        _c.resume();
+        _coroHandle.resume();
         return true;
       }
       // CAS failed, counter was modified by another thread, retry
@@ -62,15 +62,15 @@ std::int64_t SuspensionCounter::Awaitable::await_resume() const noexcept {
 
 bool SuspensionCounter::Awaitable::await_suspend(
     std::coroutine_handle<> c) noexcept {
-  _suspensionCounter->_c = c;
+  _suspensionCounter->_coroHandle = c;
   auto counter = std::int64_t{0};
   // Try to transition from 0 to -1 (unsignaled to suspended). If it
   // fails, the coroutine will be resumed because we have been
   // notified since await_ready() was called, and the coroutine will not
   // be suspended.
 
-  // _suspensionCounter->_c needs to be visible when `_c.resume()` is
-  // called, therefore:
+  // _suspensionCounter->_coroHandle needs to be visible when
+  // `_coroHandle.resume()` is called, therefore:
   // (2) This release-CAS synchronizes-with the acquire-CAS (1)
   return _suspensionCounter->_counter.compare_exchange_strong(
       counter, -1, std::memory_order_release, std::memory_order_relaxed);

@@ -84,7 +84,7 @@ struct SuspensionCounter {
   auto await() -> Awaitable;
 
   std::atomic<std::int64_t> _counter{0};
-  std::coroutine_handle<> _c;
+  std::coroutine_handle<> _coroHandle;
 };
 
 // waitingFunToCoro() is an adapter to map a WAITING-style function to a
