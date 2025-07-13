@@ -472,10 +472,9 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 // WAITING/wakeupHandler scheme for async execution.
 // The suspension counter is used as glue to connect a WAITING callee to a
 // coroutine caller. This method forwards the wakeup calls to it.
-// Note that notify returns true if it has resumed an awaiting coroutine, and
-// false if it just accounted for notify.
-// On the other end, wakeupHandler() returning false instructs
-// SharedQueryState::queueHandler() to reschedule before the next wakeup.
+// It returns false if it has resumed an awaiting coroutine.
+// Returning false in turn instructs SharedQueryState::queueHandler() to
+// reschedule before the next wakeup.
 bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
