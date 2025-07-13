@@ -53,7 +53,13 @@ bool SuspensionCounter::notify() {
 }
 
 bool SuspensionCounter::Awaitable::await_ready() const noexcept {
-  return _suspensionCounter->_counter.load(std::memory_order_relaxed) > 0;
+  auto counter =
+      _suspensionCounter->_counter.load(std::memory_order_relaxed) > 0;
+  TRI_ASSERT(counter >= 0)
+      << "SuspensionCounter::await() called in a suspended state: This means "
+         "await() is called while a previously acquired Awaitable still "
+         "exists (and is suspended).";
+  return counter;
 }
 
 std::int64_t SuspensionCounter::Awaitable::await_resume() const noexcept {
