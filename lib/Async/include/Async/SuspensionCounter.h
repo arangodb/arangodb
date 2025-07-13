@@ -69,66 +69,19 @@ namespace arangodb {
 struct SuspensionCounter {
   // Returns true if a call has resulted in an awaiting coroutine being resumed,
   // and false otherwise.
-  [[nodiscard]] bool notify() {
-    auto counter = _counter.load(std::memory_order_relaxed);
-    do {
-      if (counter == -1) {
-        // A suspended coroutine is waiting. (Try to) set the notify counter to
-        // one and resume the coroutine.
+  [[nodiscard]] bool notify();
 
-        // (1) This acquire-CAS synchronizes-with the release-CAS (2)
-        // This ensures that _c is visible.
-        if (_counter.compare_exchange_weak(counter, 1,
-                                           std::memory_order_acquire,
-                                           std::memory_order_relaxed)) {
-          // Note that this can throw, in principle, if unhandled_exception()
-          // throws.
-          _c.resume();
-          return true;
-        }
-        // CAS failed, counter was modified by another thread, retry
-      } else {
-        // No coroutine is waiting, just increase the counter.
-        if (_counter.compare_exchange_weak(counter, counter + 1,
-                                           std::memory_order_relaxed)) {
-          return false;
-        }
-        // CAS failed, counter was modified by another thread, retry
-      }
-    } while (true);
-  }
+  struct Awaitable {
+    [[nodiscard]] bool await_ready() const noexcept;
 
-  auto await() {
-    struct Awaitable {
-      [[nodiscard]] bool await_ready() const noexcept {
-        return _suspensionCounter->_counter.load(std::memory_order_relaxed) > 0;
-      }
+    [[nodiscard]] std::int64_t await_resume() const noexcept;
 
-      [[nodiscard]] std::int64_t await_resume() const noexcept {
-        return _suspensionCounter->_counter.exchange(0,
-                                                     std::memory_order_relaxed);
-      }
+    [[nodiscard]] bool await_suspend(std::coroutine_handle<> c) noexcept;
 
-      [[nodiscard]] bool await_suspend(std::coroutine_handle<> c) noexcept {
-        _suspensionCounter->_c = c;
-        auto counter = std::int64_t{0};
-        // Try to transition from 0 to -1 (unsignaled to suspended). If it
-        // fails, the coroutine will be resumed because we have been
-        // notified since await_ready() was called, and the coroutine will not
-        // be suspended.
+    SuspensionCounter* _suspensionCounter;
+  };
 
-        // _suspensionCounter->_c needs to be visible when `_c.resume()` is
-        // called, therefore:
-        // (2) This release-CAS synchronizes-with the acquire-CAS (1)
-        return _suspensionCounter->_counter.compare_exchange_strong(
-            counter, -1, std::memory_order_release, std::memory_order_relaxed);
-      }
-
-      SuspensionCounter* _suspensionCounter;
-    };
-
-    return Awaitable{this};
-  }
+  auto await() -> Awaitable;
 
   std::atomic<std::int64_t> _counter{0};
   std::coroutine_handle<> _c;
