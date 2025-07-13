@@ -111,7 +111,7 @@ struct SuspensionCounter {
 
       [[nodiscard]] bool await_suspend(std::coroutine_handle<> c) noexcept {
         _suspensionCounter->_c = c;
-        auto counter = std::int64_t{};
+        auto counter = std::int64_t{0};
         // Try to transition from 0 to -1 (unsignaled to suspended). If it
         // fails, the coroutine will be resumed because we have been
         // notified since await_ready() was called, and the coroutine will not
