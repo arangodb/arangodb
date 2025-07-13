@@ -676,7 +676,7 @@ auto ExecutionEngine::executeRemoteCall(AqlCallStack const& executeCall,
 
   // clientId is set IFF the root node is scatter or distribute
   TRI_ASSERT(clientId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
-                                 rootNodeType == ExecutionNode::DISTRIBUTE));
+                                  rootNodeType == ExecutionNode::DISTRIBUTE));
 
   auto guard = getQuery().acquireLockGuard();
   if (clientId.empty()) {
