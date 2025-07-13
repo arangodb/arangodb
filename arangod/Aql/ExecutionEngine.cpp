@@ -670,19 +670,19 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
 }
 
 auto ExecutionEngine::executeRemoteCall(AqlCallStack const& executeCall,
-                                        std::string const& shardId)
+                                        std::string const& clientId)
     -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
   auto const rootNodeType = root()->getPlanNode()->getType();
 
-  // shardId is set IFF the root node is scatter or distribute
-  TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
+  // clientId is set IFF the root node is scatter or distribute
+  TRI_ASSERT(clientId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
                                  rootNodeType == ExecutionNode::DISTRIBUTE));
 
   auto guard = getQuery().acquireLockGuard();
-  if (shardId.empty()) {
+  if (clientId.empty()) {
     return execute(executeCall);
   } else {
-    return executeForClient(executeCall, shardId);
+    return executeForClient(executeCall, clientId);
   }
 }
 

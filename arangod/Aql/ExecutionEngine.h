@@ -100,7 +100,11 @@ class ExecutionEngine {
   std::pair<ExecutionState, Result> initializeCursor(
       SharedAqlItemBlockPtr&& items, size_t pos);
 
-  auto executeRemoteCall(AqlCallStack const& stack, std::string const& shardId)
+  // A call from a particular client: The root node of this snippet is a
+  // Scatter or Distribute node, and the second parameter helps to distinguish
+  // the branch from which the call originated. A client was originally
+  // identified with a shard, but now corresponds to a particular DBServer.
+  auto executeRemoteCall(AqlCallStack const& stack, std::string const& clientId)
       -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>;
 
   auto execute(AqlCallStack const& stack)
