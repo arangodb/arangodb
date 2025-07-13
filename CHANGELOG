@@ -1,6 +1,9 @@
 devel
 -----
 
+* Internal change: The common entry point for rest handlers is now a coroutine,
+  simplifying asynchronous rest handlers.
+
 * Move crash handling to a separate thread, this is cleaner and does not
   violate rules for signal and termination handlers.
 
