@@ -151,9 +151,7 @@ requires requires(F f) {
   { f() } -> std::same_as<std::optional<T>>;
 }
 [[nodiscard]] auto waitingFunToCoro(SuspensionCounter& suspensionCounter,
-                                    F&& funArg) -> async<T> {
-  auto&& fun = std::forward<F>(funArg);
-
+                                    F&& fun) -> async<T> {
   auto res = fun();
   while (!res.has_value()) {
     // Get the number of wakeups. We call fun() up to that many

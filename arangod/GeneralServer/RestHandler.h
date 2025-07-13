@@ -228,8 +228,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   requires requires(F f) {
     { f() } -> std::same_as<RestStatus>;
   }
-  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<void> {
-    auto&& fun = std::forward<F>(funArg);
+  [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<void> {
     co_await arangodb::waitingFunToCoro(_suspensionCounter,
                                         [&]() -> std::optional<std::monostate> {
                                           auto state = fun();
@@ -245,9 +244,9 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   requires requires(F f) {
     { f() } -> std::same_as<std::optional<T>>;
   }
-  [[nodiscard]] auto waitingFunToCoro(F&& funArg) -> async<T> {
+  [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<T> {
     co_return co_await arangodb::waitingFunToCoro(_suspensionCounter,
-                                                  std::forward<F>(funArg));
+                                                  std::forward<F>(fun));
   }
 
  private:
