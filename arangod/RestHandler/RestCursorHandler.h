@@ -74,8 +74,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
       velocypack::Slice body, transaction::OperationOrigin operationOrigin);
 
   /// @brief Process the query registered in _query.
-  /// The function is repeatable, so whenever we need to WAIT
-  /// in AQL we can post a handler calling this function again.
   async<void> processQuery();
 
   /// @brief returns the short id of the server which should handle this request
