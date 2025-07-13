@@ -682,17 +682,12 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
-// Fallback implementation for old RestHandlers that implement execute() and
-// continueExecute() instead of executeAsync().
+// Fallback implementation for old RestHandlers that implement execute() instead
+// of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
-
-  // After ensuring that no execute() implementation still returns WAITING,
-  // this can be removed.
-  if (state == RestStatus::WAITING) {
-    co_await waitingFunToCoro(
-        std::bind(&std::decay_t<decltype(*this)>::continueExecute));
-  }
+  TRI_ASSERT(state != RestStatus::WAITING);
+  return {};
 }
 
 RestStatus RestHandler::execute() {

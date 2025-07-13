@@ -127,12 +127,11 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane determineRequestLane();
 
+  // TODO execute() should be changed to return void, as it must not return
+  //      WAITING anymore.
   virtual RestStatus execute();
   virtual futures::Future<futures::Unit> executeAsync();
-  // No longer used
-  [[deprecated]] static RestStatus continueExecute() {
-    return RestStatus::DONE;
-  }
+
   virtual void shutdownExecute(bool isFinalized) noexcept;
 
   // you might need to implement this in your handler
