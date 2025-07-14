@@ -35,7 +35,8 @@ const internal = require("internal");
 const {errors, wait} = internal;
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
-const {getServersByType, deriveTestSuite, getUrlById} = require('@arangodb/test-helper-common');
+const {getServersByType, deriveTestSuite, getUrlById, versionHas } = require('@arangodb/test-helper-common');
+const isCov = versionHas('coverage');
 const request = require('@arangodb/request');
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
@@ -136,7 +137,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           console.info("Replication up and running!");
           break;
         }
-        wait(0.5);
+        wait(isCov ? 10 : 0.5);
         arangoClusterInfoFlush();
       }
       if (count > 120) {
@@ -170,7 +171,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         console.info("Incomplete moveShard completed!");
         break;
       }
-      wait(0.5);
+      wait(isCov ? 10 : 0.5);
       arangoClusterInfoFlush();
     }
     if (count > 120) {
@@ -331,7 +332,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
               "Success: Server " + id + " cleaned out after " + (600 - count) + " seconds");
           break;
         }
-        wait(1.0);
+        wait(isCov ? 10 : 1.0);
       }
 
       if (!ok) {
@@ -346,7 +347,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       for (var i = fromCollNr; i <= toCollNr; ++i) {
 
         while (--count > 0) {
-          wait(1.0);
+          wait(isCov ? 10 : 1.0);
           arangoClusterInfoFlush();
           var servers = findCollectionServers(dbn, c[i].name());
           if (servers.indexOf(id) === -1) {
@@ -428,7 +429,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
             + JSON.stringify(body));
         return false;
       }
-      wait(1.0);
+      wait(isCov ? 10 : 1.0);
     }
   }
 
@@ -470,7 +471,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
             + JSON.stringify(body));
         return false;
       }
-      wait(1.0);
+      wait(isCov ? 10 : 1.0);
     }
   }
 
@@ -534,7 +535,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           }
         }
         console.log("Collection probe unsuccessful for replicationFactor=", numberOfDBServers, " count=", count);
-        wait(0.5);
+        wait(isCov ? 10 : 0.5);
       }
       console.error("Could not successfully create collection probe for 60s, giving up!");
       return false;
@@ -586,7 +587,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
             + JSON.stringify(body));
         return false;
       }
-      wait(1.0);
+      wait(isCov ? 10 : 1.0);
     }
   }
 
@@ -652,7 +653,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         console.log("Job not yet detected by coordinator");
       }
 
-      wait(1.0);
+      wait(isCov ? 10 : 1.0);
     }
     console.error("Failed to cancel job" + id + ", job not visible to coordinator.");
     return false;
@@ -749,7 +750,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
             "ToDo jobs:", Object.keys(state.ToDo).length,
             "Pending jobs:", Object.keys(state.Pending).length);
       }
-      wait(1.0);
+      wait(isCov ? 10 : 1.0);
     }
     return false;
   }
@@ -765,7 +766,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       if (getServerRebootId(server) !== oldRebootId) {
         return;
       }
-      wait(1.0);
+      wait(isCov ? 10 : 1.0);
     }
     assertTrue(count > 0);
   }
@@ -819,7 +820,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           return;
         }
         console.log("Waiting for 5 dbservers to be present:", JSON.stringify(dbservers));
-        wait(1.0);
+        wait(isCov ? 10 : 1.0);
       }
       assertTrue(false, "Timeout waiting for 5 dbservers.");
     },
@@ -1139,7 +1140,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       while (true) {
         state = agency.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State;
         assertEqual(state.Timestamp, first.Timestamp);
-        wait(5.0);
+        wait(isCov ? 15 : 5.0);
         if (new Date().getTime() > waitUntil) {
           break;
         }
@@ -1259,11 +1260,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         assertEqual(result.statusCode, 202);
         let id = JSON.parse(result.body).id;
         while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
-          wait(0.1);
+          wait(isCov ? 10 : 0.1);
         }
         assertTrue(cancelAgencyJob(id));
         while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
-          wait(0.1);
+          wait(isCov ? 10 : 0.1);
         }
         var job = queryAgencyJob(result.json.id);
         assertEqual(job.status, "Failed");
@@ -1296,7 +1297,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         assertEqual(result.statusCode, 202);
         let id = JSON.parse(result.body).id;
         while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
-          wait(0.1);
+          wait(isCov ? 10 : 0.1);
         }
         assertTrue(maintenanceMode("on"));
         assertEqual(queryAgencyJob(result.json.id).status, "Pending");
@@ -1307,7 +1308,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         c = [];
         assertTrue(maintenanceMode("off"));
         while (queryAgencyJob(result.json.id).status === "Finish") { // wait for job to finish
-          wait(0.1);
+          wait(isCov ? 10 : 0.1);
         }
         var job = queryAgencyJob(result.json.id);
         assertEqual(job.status, "Failed");
@@ -1340,7 +1341,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       assertTrue(cancelAgencyJob(id));
       assertTrue(maintenanceMode("off"));
       while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to be killed
-        wait(0.1);
+        wait(isCov ? 10 : 0.1);
       }
       var job = queryAgencyJob(result.json.id);
       assertEqual(job.status, "Failed");
@@ -1375,11 +1376,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         assertEqual(result.statusCode, 202);
         let id = JSON.parse(result.body).id;
         while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
-          wait(0.1);
+          wait(isCov ? 10 : 0.1);
         }
         assertTrue(cancelAgencyJob(id));
         while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
-          wait(0.1);
+          wait(isCov ? 10 : 0.1);
         }
         var job = queryAgencyJob(result.json.id);
         assertEqual(job.status, "Failed");

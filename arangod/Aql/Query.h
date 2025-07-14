@@ -536,7 +536,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // the consequence is that _ast is nullptr
   bool _isCached{false};
 
-  bool _isExecuting{false};
+  std::atomic<bool> _isExecuting{false};
 };
 
 }  // namespace aql
