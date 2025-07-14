@@ -170,12 +170,7 @@ function AuthSuite() {
       users.grantDatabase(user, '_system', 'rw');
       users.reload();
 
-      try {
-        // connection will fail, but it will effectively set the username
-        // for all follow-up requests (which is what we need)
-        arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
-      } catch (err) {
-      }
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
 
       users.revokeDatabase(user, '_system');
       try {

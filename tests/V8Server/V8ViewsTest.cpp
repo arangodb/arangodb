@@ -176,10 +176,26 @@ class V8ViewsTest
   ViewFactory viewFactory;
 
   V8ViewsTest() {
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
     arangodb::tests::v8Init();  // on-time initialize V8
+
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->loadUserCacheAndStartUpdateThread();
+    }
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
+  }
+
+  ~V8ViewsTest() override {
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->shutdown();
+    }
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
   }
 };
 

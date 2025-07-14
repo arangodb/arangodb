@@ -229,7 +229,7 @@ function testSuite() {
         }
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
         // note: this should actually work, but currently doesn't TODO
-        assertTrue([500, 503].indexOf(aliveStatus.status) !== -1, JSON.stringify(aliveStatus));
+        assertTrue(aliveStatus.status === 401, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 

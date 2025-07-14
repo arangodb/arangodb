@@ -274,13 +274,13 @@ void BootstrapFeature::start() {
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
 #ifdef USE_V8
-  bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
-                   server().isEnabled<V8DealerFeature>() &&
-                   server().getFeature<V8DealerFeature>().isEnabled();
+  bool const v8Enabled = server().hasFeature<V8DealerFeature>() &&
+                         server().isEnabled<V8DealerFeature>() &&
+                         server().getFeature<V8DealerFeature>().isEnabled();
 #endif
   TRI_ASSERT(vocbase.get() != nullptr);
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  ServerState::RoleEnum const role = ServerState::instance()->getRole();
 
   if (ServerState::isRunningInCluster(role)) {
     // the coordinators will race to perform the cluster initialization.
@@ -348,6 +348,13 @@ void BootstrapFeature::start() {
 
   // Start service properly:
   ServerState::setServerMode(ServerState::Mode::DEFAULT);
+
+  if (ServerState::isSingleServerOrCoordinator(role)) {
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    if (um != nullptr) {
+      um->loadUserCacheAndStartUpdateThread();
+    }
+  }
 
   if (!databaseFeature.upgrade()) {
     LOG_TOPIC("cf3f4", INFO, arangodb::Logger::FIXME)

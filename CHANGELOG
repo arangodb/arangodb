@@ -1,6 +1,12 @@
 devel
 -----
 
+* Add a separate thread to the UserManger to handle the load of the user-cache asynchronously.
+  This pre-loads the user-cache as fast as possible (as soon as the global version changes)
+  Also, compared to the old version, this allows the read-only operation to work on the user-cache 
+  for longer and block each other while trying to load a new version. On a high load environment this also 
+  means a more responsive UserManger. 
+
 * Move crash handling to a separate thread, this is cleaner and does not
   violate rules for signal and termination handlers.
 

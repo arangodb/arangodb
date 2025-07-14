@@ -36,8 +36,23 @@ namespace arangodb {
 namespace tests {
 namespace auth_info_test {
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+
 class UserManagerClusterTest : public ::testing::Test {
  public:
+  UserManagerClusterTest() {
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
+    TRI_AddFailurePointDebugging("UserManager::failDBLookup");
+    auto um = _server.getFeature<AuthenticationFeature>().userManager();
+    um->loadUserCacheAndStartUpdateThread();
+  }
+
+  ~UserManagerClusterTest() {
+    auto um = _server.getFeature<AuthenticationFeature>().userManager();
+    um->shutdown();
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
+    TRI_RemoveFailurePointDebugging("UserManager::failDBLookup");
+  }
   mocks::MockCoordinator _server{"CRDN_0001"};
 
  protected:
@@ -76,70 +91,61 @@ class UserManagerClusterTest : public ::testing::Test {
   }
 };
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-namespace {
-static char const* FailureOnLoadDB = "UserManager::performDBLookup";
-}
-
-TEST_F(UserManagerClusterTest, regression_forgotten_update) {
-  /* The following order of events did lead to a missing update:
-   * 1. um->triggerLocalReload();
-   * 2. um->triggerGlobalReload();
-   * 3. heartbeat
-   * 4. um->loadFromDB();
-   *
-   * 1. and 2. moved internal versions forward two times
-   * 3. heartbeat resets one of the movings
-   * 4. Does not perform the actual load, as the heartbeat reset indicates
-   * everything is okay.
-   */
-
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
-  auto um = userManager();
-  // If for some reason this EXPECT ever triggers, we can
-  // inject either the AgencyValue into the UserManager
-  // or vice-versa. This is just an assertion that we
-  // expect everything to start at default (1).
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  um->triggerLocalReload();
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  um->triggerGlobalReload();
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  /*
-   * This is the correct test here, the heartbeat has
-   * a side-effect, but that is simply untestable in the
-   * current design. So the only thing i could
-   * fall back to is to assert that the UserVersions in the agency
-   * do stay aligned.
-   *
-   * this->simulateOneHeartbeat();
-   */
-  // This needs to trigger a reload from DB
-  try {
-    um->userExists("unknown user");
-    FAIL();
-  } catch (arangodb::basics::Exception const& e) {
-    // This Execption indicates that we got past the version
-    // checks and would contact DBServer now.
-    // This is not under test here, we only want to test that we load
-    // the plan
-    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
-  } catch (...) {
-    FAIL();
-  }
-}
+// This test is not really applicable anymore.
+// Neither triggerGlobalReload or triggerLocal reload are incrementing the
+// _internalVersion Only the underlying UpdateCacheThread does.
+// TODO(listunov): Remove Test
+// TEST_F(UserManagerClusterTest, regression_forgotten_update) {
+//  /* The following order of events did lead to a missing update:
+//   * 1. um->triggerLocalReload();
+//   * 2. um->triggerGlobalReload();
+//   * 3. heartbeat
+//   * 4. um->loadFromDB();
+//   *
+//   * 1. and 2. moved internal versions forward two times
+//   * 3. heartbeat resets one of the movings
+//   * 4. Does not perform the actual load, as the heartbeat reset indicates
+//   * everything is okay.
+//   */
+//
+//  auto um = userManager();
+//  // If for some reason this EXPECT ever triggers, we can
+//  // inject either the AgencyValue into the UserManager
+//  // or vice-versa. This is just an assertion that we
+//  // expect everything to start at default (1).
+//  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+//
+//  um->triggerLocalReload();
+//  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+//
+//  um->triggerCacheRevalidation();
+//  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+//
+//  /*
+//   * This is the correct test here, the heartbeat has
+//   * a side-effect, but that is simply untestable in the
+//   * current design. So the only thing i could
+//   * fall back to is to assert that the UserVersions in the agency
+//   * do stay aligned.
+//   *
+//   * this->simulateOneHeartbeat();
+//   */
+//  // This needs to trigger a reload from DB
+//  try {
+//    um->userExists("unknown user");
+//    FAIL();
+//  } catch (arangodb::basics::Exception const& e) {
+//    // This Execption indicates that we got past the version
+//    // checks and would contact DBServer now.
+//    // This is not under test here, we only want to test that we load
+//    // the plan
+//    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
+//  } catch (...) {
+//    FAIL();
+//  }
+//}
 
 TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager
@@ -166,10 +172,6 @@ TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
 
 TEST_F(UserManagerClusterTest,
        triggerLocalReloadShouldNotUpdateClusterVersion) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager
@@ -203,10 +205,6 @@ TEST_F(UserManagerClusterTest,
 }
 
 TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager

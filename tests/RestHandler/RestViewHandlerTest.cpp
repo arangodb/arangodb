@@ -113,14 +113,32 @@ class RestViewHandlerTest
   ViewFactory viewFactory;
 
   RestViewHandlerTest() {
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->loadUserCacheAndStartUpdateThread();
+    }
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
+  }
+
+  ~RestViewHandlerTest() override {
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->shutdown();
+    }
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
   }
 };
 
 TEST_F(RestViewHandlerTest, test_auth) {
   // test create
   {
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -148,8 +166,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     };
     auto execContext = std::make_shared<ExecContext>();
     arangodb::ExecContextScope execContextScope(execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
 
     auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
         userManager, [](arangodb::auth::UserManager* ptr) -> void {

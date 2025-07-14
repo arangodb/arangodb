@@ -39,6 +39,7 @@
 #include "Auth/Handler.h"
 #endif
 
+#include <thread>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -63,7 +64,13 @@ using UserMap = std::unordered_map<std::string, auth::User>;
 class UserManager {
  public:
   explicit UserManager(ArangodServer&);
-  ~UserManager() = default;
+  ~UserManager();
+
+  /*
+   * This will first try to load the initial userCache and afterward start the
+   * internal update thread. This is blocking, it will repeat until it succeeds.
+   */
+  void loadUserCacheAndStartUpdateThread() noexcept;
 
   typedef std::function<Result(auth::User&)> UserCallback;
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
@@ -80,7 +87,8 @@ class UserManager {
   // Trigger eventual reload on all other coordinators (and in TokenCache)
   void triggerGlobalReload();
 
-  // Trigger cache revalidation after user restore
+  // Will trigger a local and a global reload and block until the lates version
+  // is loaded.
   void triggerCacheRevalidation();
 
   // Create the root user with a default password, will fail if the user
@@ -139,6 +147,13 @@ class UserManager {
   // Overwrite internally cached permissions, only use
   // for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
+
+  // this is only needed in unittest this
+  // will shutdown the running thread on demand
+  // its needed because the failure point can be deactivated before the thread
+  // is finished and can lead to calls on the server that are not initialized
+  // properly in the unit-test environment
+  void shutdown();
 #endif
 
  private:
@@ -147,7 +162,12 @@ class UserManager {
                         std::string& un);
 
   // load users and permissions from local database
-  void loadFromDB();
+  uint64_t loadFromDB();
+
+  // This function is basically just to replicate some of the behaviour
+  // for test that was previously in the loadFromDB call, that is now in
+  // a seperate thread
+  void checkIfUserDataIsAvailable();
 
   // store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
@@ -158,10 +178,6 @@ class UserManager {
   // underlying application server
   ArangodServer& _server;
 
-  // Protected the sync process from db, always lock
-  // before locking _userCacheLock
-  std::mutex _loadFromDBLock;
-
   // Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;
 
@@ -169,6 +185,7 @@ class UserManager {
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
   std::atomic<bool> _usersInitialized;
+  std::unique_ptr<std::jthread> _userCacheUpdateThread;
 
   // Caches permissions and other user info
   UserMap _userCache;
