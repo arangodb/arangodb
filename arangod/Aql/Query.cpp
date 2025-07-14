@@ -342,8 +342,9 @@ double Query::queryTime() const noexcept {
   return _endTime - _startTime;
 }
 
-double Query::executionTime() const noexcept {
+double Query::executionTime() noexcept {
   // This can return 0 if the query never entered execution phase
+  std::lock_guard guard(_executionTimeMtx);
   TRI_ASSERT((_startExecutionTime == 0) == (_endExecutionTime == 0.0));
   return _endExecutionTime - _startExecutionTime;
 }
@@ -1424,6 +1425,8 @@ QueryResult Query::explain() {
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
+        // Even though there is a execution time this remains to be called
+        // executionTime for backwards compatibility reasons
         b.add("executionTime", VPackValue(queryTime()));
       }
     }

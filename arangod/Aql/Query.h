@@ -182,7 +182,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   double startTime() const noexcept;
 
   // return only the execution time of the query, can be 0
-  double executionTime() const noexcept;
+  double executionTime() noexcept;
 
   /// @brief return the total execution time of the query (until
   /// the start of finalize)
@@ -457,11 +457,15 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   double _endTime;
 
   /// @brief query execution phase start time (steady clock value)
-  double _startExecutionTime;
+  std::atomic<double> _startExecutionTime;
 
   /// @brief query execution end time (steady clock value), only
   /// set once the execution phase ends
-  double _endExecutionTime;
+  std::atomic<double> _endExecutionTime;
+
+  /// @brief mutex that protects the substraction between
+  /// _endExecutionTime and _startExecutionTime
+  std::mutex _executionTimeMtx;
 
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
