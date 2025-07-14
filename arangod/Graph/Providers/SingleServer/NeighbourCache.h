@@ -22,11 +22,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include "Basics/ResourceUsage.h"
 #include "Graph/Providers/SingleServer/ExpansionInfo.h"
 #include "Graph/Providers/TypeAliases.h"
 
 namespace arangodb::graph {
+
+struct NeighbourCache;
+
+struct NeighbourIterator {
+  NeighbourIterator(std::vector<NeighbourBatch>& batches)
+      : _batches{batches},
+        _nextOutputBatch{
+            std::optional<typename std::vector<NeighbourBatch>::iterator>{
+                batches.begin()}} {}
+  auto next() -> std::optional<NeighbourBatch>;
+  auto hasMore() -> bool { return _nextOutputBatch != _batches.end(); }
+
+  std::vector<NeighbourBatch> const& _batches;
+  std::optional<typename std::vector<NeighbourBatch>::iterator>
+      _nextOutputBatch;  // current batch in vertex
+};
 
 struct NeighbourCache {
   using Neighbours =
@@ -35,22 +50,14 @@ struct NeighbourCache {
                                                 // this vertex are in cache
                                          std::vector<NeighbourBatch>>>;
 
-  NeighbourCache(ResourceMonitor& monitor) : _resourceMonitor{monitor} {}
   ~NeighbourCache() { clear(); }
-  auto rearm(VertexType vertexId) -> bool;
-  auto update(NeighbourBatch const& batch, bool isLastBatch) -> void;
-  auto clear() -> void;
-  Neighbours _neighbours;
+  auto rearm(VertexType vertexId) -> std::optional<NeighbourIterator>;
+  auto update(NeighbourBatch const& batch, bool isLastBatch = false) -> size_t;
+  auto clear() -> size_t;
 
-  // iterator for a specific vertex (defined in _currentEntry)
-  auto next() -> std::optional<NeighbourBatch>;
-  auto hasMore() -> bool { return _finished == false; }
+  Neighbours _neighbours;
   typename Neighbours::iterator _currentEntry;
-  std::optional<size_t> _currentBatchInCache =
-      0;                   // batch number in current entry
-  bool _finished = false;  // finished reading all batches of current entry
   size_t _memoryUsageVertexCache = 0;
-  ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace arangodb::graph

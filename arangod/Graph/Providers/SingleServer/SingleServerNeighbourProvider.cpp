@@ -43,23 +43,28 @@ SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
           resourceMonitor, trx, opts.tmpVar(), opts.indexInformations().first,
           opts.indexInformations().second, opts.expressionContext(),
           /*requiresFullDocument*/ opts.hasWeightMethod(), opts.useCache())},
+      _resourceMonitor{resourceMonitor},
       _stats{}  // TODO should hand in stats here to use it as a reference
 {
   if (opts.indexInformations().second.empty()) {
     // If we have depth dependent filters, we must not use the cache,
     // otherwise, we do:
-    _neighbourCache.emplace(resourceMonitor);
+    _neighbourCache.emplace();
   }
 }
 template<class Step>
 auto SingleServerNeighbourProvider<Step>::rearm(Step const& step) -> void {
   _currentStep = step;
   auto const& vertex = step.getVertex();
-  if (_neighbourCache && _neighbourCache->rearm(vertex.getID())) {
-    _useCache = true;
+  if (_neighbourCache) {
+    auto iterator = _neighbourCache->rearm(vertex.getID());
+    if (iterator) {
+      _neighbourCacheIterator.emplace(std::move(iterator.value()));
+      return;
+    }
   } else {
-    _useCache = false;
     TRI_ASSERT(_cursor != nullptr);
+    _neighbourCacheIterator = std::nullopt;
     _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
     ++_rearmed;
   }
@@ -71,9 +76,9 @@ auto SingleServerNeighbourProvider<Step>::next(
   TRI_ASSERT(_currentStep != std::nullopt);
   TRI_ASSERT(hasMore(_currentStep->getDepth()));
 
-  if (_useCache) {
+  if (_neighbourCacheIterator) {
     TRI_ASSERT(_neighbourCache != std::nullopt);
-    if (auto batch = _neighbourCache->next(); batch != std::nullopt) {
+    if (auto batch = _neighbourCacheIterator->next(); batch != std::nullopt) {
       return *batch;
     }
   }
@@ -86,7 +91,9 @@ auto SingleServerNeighbourProvider<Step>::next(
         newNeighbours->emplace_back(std::move(eid), edge, cursorID);
       });
   if (_neighbourCache.has_value()) {
-    _neighbourCache->update(newNeighbours, !hasMore(_currentStep->getDepth()));
+    auto memoryUsage = _neighbourCache->update(
+        newNeighbours, !hasMore(_currentStep->getDepth()));
+    _resourceMonitor.increaseMemoryUsage(memoryUsage);
   }
   return newNeighbours;
 }
@@ -94,7 +101,8 @@ auto SingleServerNeighbourProvider<Step>::next(
 template<typename Step>
 auto SingleServerNeighbourProvider<Step>::clear() -> void {
   if (_neighbourCache.has_value()) {
-    _neighbourCache->clear();
+    auto memoryUsage = _neighbourCache->clear();
+    _resourceMonitor.decreaseMemoryUsage(memoryUsage);
   }
 
   LOG_TOPIC("65261", TRACE, Logger::GRAPHS)
@@ -119,9 +127,8 @@ auto SingleServerNeighbourProvider<Step>::hasDepthSpecificLookup(
 
 template<typename Step>
 auto SingleServerNeighbourProvider<Step>::hasMore(uint64_t depth) -> bool {
-  if (_useCache) {
-    TRI_ASSERT(_neighbourCache != std::nullopt);
-    return _neighbourCache->hasMore();
+  if (_neighbourCacheIterator) {
+    return _neighbourCacheIterator->hasMore();
   }
   return _cursor->hasMore(depth);
 }
