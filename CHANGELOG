@@ -1,6 +1,9 @@
 devel
 -----
 
+* Move crash handling to a separate thread, this is cleaner and does not
+  violate rules for signal and termination handlers.
+
 * Fix an integer underflow with gauge arangodb_aql_current_query.
 
 * Improved the endpoint used by the Graph visulaizer tool to run
