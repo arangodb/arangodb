@@ -25,42 +25,39 @@
 
 using namespace arangodb::graph;
 
-auto NeighbourCache::rearm(VertexType vertexId) -> bool {
-  _finished = false;
+auto NeighbourCache::rearm(VertexType vertexId)
+    -> std::optional<NeighbourIterator> {
   auto it = _neighbours.find(vertexId);
   if (it != _neighbours.end()) {
     _currentEntry = it;
     // cache can only be used if vertex in cache includes all its neighbours
     if (std::get<0>(it->second)) {
-      return true;
+      auto& batches = std::get<1>(it->second);
+      return NeighbourIterator{batches};
     }
-    return false;
+    return std::nullopt;
   }
   auto const& [iter, _inserted] = _neighbours.insert(  // insert empty
       {vertexId,
        std::make_tuple(
            false, std::vector<std::shared_ptr<std::vector<ExpansionInfo>>>{})});
   _currentEntry = iter;
-  return false;
+  return std::nullopt;
 }
 
-auto NeighbourCache::next() -> std::optional<NeighbourBatch> {
-  TRI_ASSERT(_currentEntry != _neighbours.end());
-  auto& batches = std::get<1>(_currentEntry->second);
-  TRI_ASSERT(_currentBatchInCache != std::nullopt);
+auto NeighbourIterator::next() -> std::optional<NeighbourBatch> {
+  TRI_ASSERT(_nextOutputBatch != std::nullopt);
   // give next batch
-  auto batch = *_currentBatchInCache;
-  if (batch + 1 == batches.size()) {
-    _finished = true;  // there are no more batches for vertex in the cache
-  } else {
-    _currentBatchInCache = batch + 1;  // next time give next batch
+  if (!hasMore()) {
+    return std::nullopt;
   }
-  TRI_ASSERT(batch < batches.size());
-  return batches[batch];
+  auto value = *_nextOutputBatch;
+  _nextOutputBatch = value + 1;
+  return *value;
 }
 
 auto NeighbourCache::update(NeighbourBatch const& batch, bool isLastBatch)
-    -> void {
+    -> size_t {
   TRI_ASSERT(_currentEntry != _neighbours.end());
   auto& vec = std::get<1>(_currentEntry->second);
   vec.emplace_back(batch);
@@ -72,12 +69,13 @@ auto NeighbourCache::update(NeighbourBatch const& batch, bool isLastBatch)
   for (auto const& neighbour : *batch) {
     newMemoryUsage += neighbour.size();
   }
-  _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
   _memoryUsageVertexCache += newMemoryUsage;
+  return newMemoryUsage;
 }
 
-auto NeighbourCache::clear() -> void {
+auto NeighbourCache::clear() -> size_t {
   _neighbours.clear();
-  _resourceMonitor.decreaseMemoryUsage(_memoryUsageVertexCache);
+  auto memoryUsage = _memoryUsageVertexCache;
   _memoryUsageVertexCache = 0;
+  return memoryUsage;
 }

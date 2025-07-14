@@ -58,11 +58,12 @@ struct SingleServerNeighbourProvider {
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
 
   std::optional<Step> _currentStep;
-  bool _useCache = false;
+  std::optional<NeighbourIterator> _neighbourCacheIterator;
 
   size_t _rearmed = 0;
   size_t _readSomething = 0;
   std::optional<NeighbourCache> _neighbourCache;
+  ResourceMonitor& _resourceMonitor;
   arangodb::aql::TraversalStats
       _stats;  // TODO there is a problem with handing this provider a stats
                // reference, so currently it just creates a new one (which is
