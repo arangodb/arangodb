@@ -686,7 +686,7 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
   TRI_ASSERT(state != RestStatus::WAITING);
-  return {};
+  co_return;
 }
 
 RestStatus RestHandler::execute() {
