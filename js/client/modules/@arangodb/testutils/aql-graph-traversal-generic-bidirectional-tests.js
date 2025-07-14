@@ -330,7 +330,7 @@ function testHugeCompleteGraphKPathsLongRunning(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.hugeCompleteGraph.name()));
   
   const queryString = `
-    FOR path IN 1..999 ANY K_PATHS "${testGraph.vertex('A')}" TO "${testGraph.vertex('B')}"
+    FOR path IN 1..999 ANY K_PATHS "${testGraph.vertex('0')}" TO "${testGraph.vertex('999')}"
     GRAPH ${testGraph.name()}
     OPTIONS {useCache: false}
     RETURN path

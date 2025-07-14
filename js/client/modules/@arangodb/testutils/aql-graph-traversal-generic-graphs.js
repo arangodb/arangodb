@@ -955,28 +955,6 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
   ]
 );
 
-// Generate node names
-const generateNodeNames = (count) => {
-  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const nodes = [];
-
-  // First add single letter nodes
-  for (let i = 0; i < Math.min(count, alphabet.length); i++) {
-    nodes.push(alphabet[i]);
-  }
-
-  // If we need more nodes, add two-letter combinations
-  if (count > alphabet.length) {
-    for (let i = 0; i < alphabet.length && nodes.length < count; i++) {
-      for (let j = 0; j < alphabet.length && nodes.length < count; j++) {
-        nodes.push(alphabet[i] + alphabet[j]);
-      }
-    }
-  }
-
-  return nodes;
-};
-
 // Generate edges for complete graph
 const generateCompleteGraphEdges = (nodes) => {
   const edges = [];
@@ -992,15 +970,23 @@ const generateCompleteGraphEdges = (nodes) => {
   return edges;
 };
 
-// Create the huge complete graph with 100 nodes
+// Create the huge complete graph with 1000 nodes
 /*
  *        B
  *     ↙↗ ↑  ↖↘
  *   A   ← →   C       // Demonstration of the complete graph
- *     ↖↘ ↓  ↙↗        // Note: Consists out of 100 nodes
+ *     ↖↘ ↓  ↙↗        // Note: Consists out of 1000 nodes with numeric keys
  *        D
  */
-const hugeCompleteGraphNodes = generateNodeNames(100);
+const generateNumericNodeNames = (count) => {
+  const nodes = [];
+  for (let i = 0; i < count; i++) {
+    nodes.push(i.toString());
+  }
+  return nodes;
+};
+
+const hugeCompleteGraphNodes = generateNumericNodeNames(1000);
 const hugeCompleteGraphEdges = generateCompleteGraphEdges(hugeCompleteGraphNodes);
 
 protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph",
