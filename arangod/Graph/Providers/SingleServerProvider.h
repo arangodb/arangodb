@@ -30,7 +30,7 @@
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
-#include "Graph/Providers/SingleServerNeighbourProvider.h"
+#include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"

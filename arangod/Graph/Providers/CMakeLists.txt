@@ -1,6 +1,7 @@
 target_sources(arango_graph PRIVATE
   ClusterProvider.cpp
-  SingleServerProvider.cpp
-  SingleServerNeighbourProvider.cpp
   BaseProviderOptions.cpp
+  SingleServerProvider.cpp
   ProviderTracer.cpp)
+
+add_subdirectory(SingleServer)
