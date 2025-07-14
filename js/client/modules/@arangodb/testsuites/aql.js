@@ -33,6 +33,7 @@ const functionsDocumentation = {
   'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
   'shell_client_aql': 'AQL tests in the client',
   'shell_client_aql_vector': 'AQL tests in the client with vector index feature enabled',
+  'shell_client_aql_generic_graph': 'AQL tests in the client with generic graph creation',
   'shell_server_only': 'server specific tests',
   'shell_client_transaction': 'transaction tests',
   'shell_client_replication2_recovery': 'replication2 cluster recovery tests',
@@ -60,6 +61,7 @@ const testPaths = {
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_aql_vector': [ tu.pathForTesting('client/aql/vector') ],
+  'shell_client_aql_generic_graph': [ tu.pathForTesting('client/aql/graph') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
   'shell_client_traffic': [ tu.pathForTesting('client/shell/traffic') ],
@@ -242,6 +244,28 @@ function shellClientAqlVector (options) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: shell_client_aql_generic_graph
+// //////////////////////////////////////////////////////////////////////////////
+
+function shellClientAqlGenericGraph(options) {
+  // Note: Created due to the fact that we're generating multiple big graphs in
+  //       this test suite. We need to be able to run this test suite in more
+  //       controlled environment. Also, based on those graphs, we run a lot of
+  //       different graph related tests. It is estimated that this test suite
+  //       consumes time for graph creation and AQL based graph tests.
+
+  let name = 'shell_client_aql_generic_graph';
+  let testCases = tu.scanTestPaths(testPaths.shell_client_aql_generic_graph, options);
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: shell_client_traffic
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -312,6 +336,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_client_multi'] = shellClientMulti;
   testFns['shell_client_aql'] = shellClientAql;
   testFns['shell_client_aql_vector'] = shellClientAqlVector;
+  testFns['shell_client_aql_generic_graph'] = shellClientAqlGenericGraph;
   testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;
