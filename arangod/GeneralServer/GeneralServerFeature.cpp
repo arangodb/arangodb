@@ -694,10 +694,10 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
 
-  f.addPrefixHandler(
-      RestVocbaseBaseHandler::SCHEMA_PATH,
-      RestHandlerCreator<RestSchemaHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+  // f.addPrefixHandler(
+  //     RestVocbaseBaseHandler::SCHEMA_PATH,
+  //     RestHandlerCreator<RestSchemaHandler>::createData<aql::QueryRegistry*>,
+  //     queryRegistry);
 
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
@@ -718,6 +718,9 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::VIEW_PATH,
                      RestHandlerCreator<RestViewHandler>::createNoData);
+
+  f.addPrefixHandler(RestVocbaseBaseHandler::SCHEMA_PATH,
+                     RestHandlerCreator<RestSchemaHandler>::createNoData);
 
   if (::arangodb::replication2::EnableReplication2 && cluster.isEnabled()) {
     f.addPrefixHandler(std::string{StaticStrings::ApiLogExternal},

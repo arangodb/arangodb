@@ -350,8 +350,8 @@ function restSchemaHandlerTestSuite() {
                 ].forEach(({ name, fn }) => {
                     const doc = fn();
                     //assertEqual(405, doc.code, 'Wrong HTTP method should return 405');
-                    assertTrue(doc.code === 404 || doc.code === 405,
-                        'Wrong HTTP method should return 404 or 405');
+                    assertTrue(doc.code === 405,
+                        'Wrong HTTP method should return 405');
                 });
             });
         },

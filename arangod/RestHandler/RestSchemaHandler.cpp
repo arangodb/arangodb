@@ -80,9 +80,8 @@ const std::string RestSchemaHandler::_queryStr = R"(
 
 RestSchemaHandler::RestSchemaHandler(ArangodServer& server,
                                      GeneralRequest* request,
-                                     GeneralResponse* response,
-                                     aql::QueryRegistry* queryRegistry)
-    : RestCursorHandler(server, request, response, queryRegistry),
+                                     GeneralResponse* response)
+    : RestVocbaseBaseHandler(server, request, response),
       _graphManager(_vocbase, transaction::OperationOriginREST{::moduleName}),
       _nameResolver(_vocbase) {}
 
@@ -97,13 +96,11 @@ RestStatus RestSchemaHandler::execute() {
   auto exampleRes = validateParameter("exampleNum", defaultExampleNum, true);
 
   if (sampleRes.fail()) {
-    generateError(ResponseCode::BAD, sampleRes.errorNumber(),
-                  sampleRes.errorMessage());
+    generateError(sampleRes.result());
     return RestStatus::DONE;
   }
   if (exampleRes.fail()) {
-    generateError(ResponseCode::BAD, sampleRes.errorNumber(),
-                  sampleRes.errorMessage());
+    generateError(exampleRes.result());
     return RestStatus::DONE;
   }
 
@@ -133,7 +130,8 @@ RestStatus RestSchemaHandler::execute() {
         generateError(schemaRes);
         return RestStatus::DONE;
       }
-      return handleQueryResult();
+      generateResult(ResponseCode::OK, _queryResult->slice());
+      return RestStatus::DONE;
     }
     case 2: {
       if (suffix[0] == "collection") {
@@ -150,7 +148,8 @@ RestStatus RestSchemaHandler::execute() {
           generateError(colRes);
           return RestStatus::DONE;
         }
-        return handleQueryResult();
+        generateResult(ResponseCode::OK, _queryResult->slice());
+        return RestStatus::DONE;
       }
       if (suffix[0] == "graph") {
         // /_api/schema/graph/<graph-name>
@@ -164,7 +163,8 @@ RestStatus RestSchemaHandler::execute() {
           generateError(graphRes);
           return RestStatus::DONE;
         }
-        return handleQueryResult();
+        generateResult(ResponseCode::OK, _queryResult->slice());
+        return RestStatus::DONE;
       }
       if (suffix[0] == "view") {
         // /_api/schema/view/<view-name>
@@ -178,7 +178,8 @@ RestStatus RestSchemaHandler::execute() {
           generateError(viewRes);
           return RestStatus::DONE;
         }
-        return handleQueryResult();
+        generateResult(ResponseCode::OK, _queryResult->slice());
+        return RestStatus::DONE;
       }
       [[fallthrough]];  // If suffix[0] is none of "collection", "graph" or
       // "view", go to default
@@ -190,16 +191,6 @@ RestStatus RestSchemaHandler::execute() {
                     "/schema/graph/<graphName>, or /schema/<viewName>");
       return RestStatus::DONE;
   }
-}
-
-RestStatus RestSchemaHandler::handleQueryResult() {
-  if (_queryResult.result.fail()) {
-    generateError(_queryResult.result);
-    return RestStatus::DONE;
-  }
-  auto resultSlice = _queryResult.data->slice();
-  generateResult(ResponseCode::OK, resultSlice);
-  return RestStatus::DONE;
 }
 
 Result RestSchemaHandler::lookupSchema(uint64_t sampleNum,
@@ -224,7 +215,7 @@ Result RestSchemaHandler::lookupSchema(uint64_t sampleNum,
     return colsRes;
   }
   resultBuilder->close();
-  _queryResult.data = resultBuilder;
+  _queryResult = resultBuilder;
   return Result{};
 }
 
@@ -244,7 +235,7 @@ Result RestSchemaHandler::lookupSchemaCollection(std::string const& colName,
     return colRes;
   }
   resultBuilder->close();
-  _queryResult.data = resultBuilder;
+  _queryResult = resultBuilder;
   return Result{};
 }
 
@@ -275,7 +266,7 @@ Result RestSchemaHandler::lookupSchemaGraph(std::string const& graphName,
   }
   resultBuilder->close();
 
-  _queryResult.data = resultBuilder;
+  _queryResult = resultBuilder;
   return Result{};
 }
 
@@ -299,7 +290,7 @@ Result RestSchemaHandler::lookupSchemaView(std::string const& viewName,
   }
   resultBuilder->close();
 
-  _queryResult.data = resultBuilder;
+  _queryResult = resultBuilder;
   return Result{};
 }
 
@@ -473,7 +464,7 @@ Result RestSchemaHandler::getViewAndCollections(
   viewBuilder.add("links", velocypack::Value(velocypack::ValueType::Array));
   auto data = dataBuilder.slice();
   if (data.hasKey("links")) {  // If not, linksBuilder will be an empty array
-    for (auto li : velocypack::ObjectIterator(data.get("links"))) {
+    for (auto const& li : velocypack::ObjectIterator(data.get("links"))) {
       auto colName = li.key.copyString();
       auto colValue = li.value;
       TRI_ASSERT(colValue.isObject() && colValue.hasKey("fields") &&
@@ -483,7 +474,7 @@ Result RestSchemaHandler::getViewAndCollections(
       viewBuilder.add("collectionName", velocypack::Value(colName));
       viewBuilder.add("fields", velocypack::ValueType::Array);
       std::set<std::string> includedAttrSet;
-      for (auto fi : velocypack::ObjectIterator(colValue.get("fields"))) {
+      for (auto const& fi : velocypack::ObjectIterator(colValue.get("fields"))) {
         viewBuilder.add(velocypack::Value(velocypack::ValueType::Object));
         TRI_ASSERT(fi.value.hasKey("analyzers"));
 

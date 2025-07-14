@@ -34,14 +34,14 @@ class QueryRegistry;
 }
 namespace rest {
 
-class RestSchemaHandler : public RestCursorHandler {
+class RestSchemaHandler : public RestVocbaseBaseHandler {
  public:
   RestSchemaHandler(ArangodServer& server, GeneralRequest* request,
-                    GeneralResponse* response,
-                    aql::QueryRegistry* queryRegistry);
+                    GeneralResponse* response);
 
+  char const* name() const override { return "RestSchemaHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;
-  RestStatus handleQueryResult() override;
 
  private:
   static constexpr uint64_t defaultSampleNum = 100;
@@ -49,6 +49,7 @@ class RestSchemaHandler : public RestCursorHandler {
   static const std::string _queryStr;
   graph::GraphManager _graphManager;
   CollectionNameResolver _nameResolver;
+  std::shared_ptr<velocypack::Builder> _queryResult;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Called by /_api/schema to show graphs, views and collections

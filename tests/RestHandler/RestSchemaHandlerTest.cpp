@@ -96,8 +96,7 @@ TEST_F(RestSchemaHandlerTest, WrongHttpRequest) {
   fakeRequest->setRequestType(RequestType::POST);
 
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+      server->server(), fakeRequest.release(), fakeResponse.release());
   testee->execute();
 
   EXPECT_EQ(testee->response()->responseCode(),
@@ -112,8 +111,7 @@ TEST_F(RestSchemaHandlerTest, NotExistingCollectionReturns404) {
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+      server->server(), fakeRequest.release(), fakeResponse.release());
 
   testee->execute();
 
@@ -129,8 +127,7 @@ TEST_F(RestSchemaHandlerTest, TooManySuffixesReturns404) {
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+      server->server(), fakeRequest.release(), fakeResponse.release());
 
   testee->execute();
 
@@ -145,8 +142,7 @@ TEST_F(RestSchemaHandlerTest, CollectionProductReturnsOK) {
 
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
   auto testee = std::make_shared<RestSchemaHandler>(
-      server->server(), fakeRequest.release(), fakeResponse.release(),
-      registry);
+      server->server(), fakeRequest.release(), fakeResponse.release());
 
   testee->execute();
 
