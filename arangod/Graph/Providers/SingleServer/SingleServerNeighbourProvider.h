@@ -27,56 +27,17 @@
 #include "Basics/ResourceUsage.h"
 #include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
-#include "Graph/EdgeDocumentToken.h"
+#include "Graph/Providers/SingleServer/NeighbourCache.h"
 
 namespace arangodb::graph {
+
+struct ExpansionInfo;
+struct NeighbourCache;
 
 struct SingleServerBaseProviderOptions;
 
 template<class Step>
 struct SingleServerNeighbourProvider {
-  struct ExpansionInfo {
-    EdgeDocumentToken eid;
-    std::vector<uint8_t> edgeData;  // keeps allocation
-    size_t cursorId;
-    ExpansionInfo(EdgeDocumentToken eid, VPackSlice edge, size_t cursorId)
-        : eid(eid), cursorId(cursorId) {
-      edgeData.resize(edge.byteSize());
-      memcpy(edgeData.data(), edge.start(), edge.byteSize());
-    }
-    ExpansionInfo(ExpansionInfo const& other) = delete;
-    ExpansionInfo(ExpansionInfo&& other) = default;
-    VPackSlice edge() const noexcept { return VPackSlice(edgeData.data()); }
-    size_t size() const noexcept {
-      return sizeof(ExpansionInfo) + edgeData.size();
-    }
-  };
-  using NeighbourBatch = std::shared_ptr<std::vector<ExpansionInfo>>;
-  struct NeighbourCache {
-    using Neighbours =
-        containers::FlatHashMap<VertexType,       // vertex ID
-                                std::tuple<bool,  // true if all neighbours of
-                                                  // this vertex are in cache
-                                           std::vector<NeighbourBatch>>>;
-
-    NeighbourCache(ResourceMonitor& monitor) : _resourceMonitor{monitor} {}
-    ~NeighbourCache() { clear(); }
-    auto rearm(VertexType vertexId) -> bool;
-    auto update(NeighbourBatch const& batch, bool isLastBatch) -> void;
-    auto clear() -> void;
-    Neighbours _neighbours;
-
-    // iterator for a specific vertex (defined in _currentEntry)
-    auto next() -> std::optional<NeighbourBatch>;
-    auto hasMore() -> bool { return _finished == false; }
-    typename Neighbours::iterator _currentEntry;
-    std::optional<size_t> _currentBatchInCache =
-        0;                   // batch number in current entry
-    bool _finished = false;  // finished reading all batches of current entry
-    size_t _memoryUsageVertexCache = 0;
-    ResourceMonitor& _resourceMonitor;
-  };
-
   SingleServerNeighbourProvider(SingleServerBaseProviderOptions& opts,
                                 transaction::Methods* trx,
                                 ResourceMonitor& resourceMonitor,
