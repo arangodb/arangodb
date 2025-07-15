@@ -4,6 +4,51 @@ devel
 * During AQL setup, the Coordinator will no longer block threads while waiting
   for DBServers to finish the query instantiation.
 
+* Internal change: The common entry point for rest handlers is now a coroutine,
+  simplifying asynchronous rest handlers.
+
+* Move crash handling to a separate thread, this is cleaner and does not
+  violate rules for signal and termination handlers.
+
+* Fix an integer underflow with gauge arangodb_aql_current_query.
+
+* Improved the endpoint used by the Graph visulaizer tool to run
+  a better performing query. This should help on larger graphs
+  having more, not displayed data.
+
+* Fix BTS-2152 Overfetch input on prallel Traversals. For queries like this:
+  
+  FOR x IN largeCollection
+    FOR v IN 1 OUTBOUND x edges {parallelism: 4}
+      LIMIT 10
+      RETURN v
+  
+  Before this bugfix we would always enumerate largeCollection in full,
+  even though a small portion of the collection would have sufficed.
+  This is now handled better. We now enumerate only the necessary amount
+  of batches required to fulfill the limit.
+  This also improves cluster queries (replace the traversal with another FOR loop)
+  which had the same behaviour and are now enumerating less unused
+  intermediate results.
+
+* Fix a bug in the PERCENTILE function in AQL, which gave the incorrect
+  result null for small percentiles. This fixes BTS-2169.
+
+* FE-636: remove axios (unused dependency)
+
+* FE-636: bump moment from 2.18.1 to 2.30.1 (latest version)
+
+* Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
+
+* FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
+
+* Fix BTS-2166: Fix a race during startup, where the async registry's metrics
+  might be created before the scheduler starts its first thread. This is
+  currently not known to cause any issues.
+
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
+  coordinates for Point geometries.
+
 * FE-636: bump crypto-js from 3.3.0 to 4.2.0
 
 * Add new API /_admin/server/aql-queries to show recently executed AQL queries.
@@ -13448,7 +13493,7 @@ v3.5.0-rc.1 (2019-05-14)
   - `--javascript.endpoints-whitelist`: control accessible endpoints in JavaScript
   - `--javascript.files-whitelist`: control file access in JavaScript
 
-  Note: There is a [detailed description of all options](https://www.arangodb.com/docs/devel/security-security-options.html).
+  Note: There is a [detailed description of all options](https://docs.arangodb.com/stable/operations/security/security-options/).
 
 * Prevented arangod from making a call to www.arangodb.com at startup.
 

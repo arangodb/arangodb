@@ -75,6 +75,9 @@ parameters:
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
+  config-definitions: #dummy. we don't need this here but are required to.
+    type: string
+    default: tests/test-definitions.txt
 
 commands:
   checkout-arangodb:
@@ -469,8 +472,6 @@ jobs:
             docker push << parameters.tag >>
 
   run-linux-tests:
-    docker:
-      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       suiteName:
         type: string
@@ -492,9 +493,26 @@ jobs:
       timeLimit:
         type: integer
         default: 1800
+      driver-git-repo:
+        type: string
+        default: ""
+      driver-git-branch:
+        type: string
+        default: ""
+      init_driver_repo_command:
+        type: string
+        default: ""
+      docker_image:
+        type: string
+        default: "<< pipeline.parameters.test-docker-image >>"
+    docker:
+      - image: << parameters.docker_image >>
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - attach_workspace:
           at: .
       - run:
@@ -526,6 +544,7 @@ jobs:
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
+            set -x
             mkdir work
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
@@ -548,14 +567,23 @@ jobs:
             if command -v promtool &> /dev/null; then
               export PROMTOOL_PATH=`command -v promtool`
             fi
-
+            if test -n "<< parameters.driver-git-repo >>"; then
+              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+              ( \
+                cd .. ; \
+                git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>; \
+                cd $(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
+                 << parameters.init_driver_repo_command >>
+              )
+            fi
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
-            python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
+            python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
+              --suiteName '<< parameters.suiteName >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs ' << parameters.extraArgs >>'
+              --extraArgs '<< parameters.extraArgs >>'
       - run:
           name: Copy test results
           when: always

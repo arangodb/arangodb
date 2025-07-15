@@ -473,10 +473,9 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {}
 // WAITING/wakeupHandler scheme for async execution.
 // The suspension counter is used as glue to connect a WAITING callee to a
 // coroutine caller. This method forwards the wakeup calls to it.
-// Note that notify returns true if it has resumed an awaiting coroutine, and
-// false if it just accounted for notify.
-// On the other end, wakeupHandler() returning false instructs
-// SharedQueryState::queueHandler() to reschedule before the next wakeup.
+// It returns false if it has resumed an awaiting coroutine.
+// Returning false in turn instructs SharedQueryState::queueHandler() to
+// reschedule before the next wakeup.
 bool RestHandler::wakeupHandler() { return !_suspensionCounter.notify(); }
 
 auto RestHandler::executeEngine() -> async<void> {
@@ -683,17 +682,12 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   _response->reset(code);
 }
 
-// Fallback implementation for old RestHandlers that implement execute() and
-// continueExecute() instead of executeAsync().
+// Fallback implementation for old RestHandlers that implement execute() instead
+// of executeAsync().
 futures::Future<futures::Unit> RestHandler::executeAsync() {
   auto state = execute();
-
-  // After ensuring that no execute() implementation still returns WAITING,
-  // this can be removed.
-  if (state == RestStatus::WAITING) {
-    co_await waitingFunToCoro(
-        std::bind(&std::decay_t<decltype(*this)>::continueExecute));
-  }
+  TRI_ASSERT(state != RestStatus::WAITING);
+  co_return;
 }
 
 RestStatus RestHandler::execute() {

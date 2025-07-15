@@ -105,11 +105,8 @@ class SiteConfig:
         elif "timeLimit" in os.environ:
             self.timeout = int(os.environ["timeLimit"])
 
-        san_mode = os.environ.get("SAN_MODE") or "<na>"
-        if san_mode == "alubsan":
-            self.timeout *= 3
-        elif san_mode == "tsan":
-            self.timeout *= 6
+        self.san_mode = os.environ.get("SAN_MODE") or "<na>"
+        self.adjust_timeout(self.timeout)
 
         self.small_machine = False
         self.extra_args = []
@@ -119,7 +116,6 @@ class SiteConfig:
             )
             self.small_machine = True
             self.port_offset = 400
-            self.timeout *= 4
         self.no_threads = psutil.cpu_count()
         self.available_slots = round(self.no_threads * 2)  # logical=False)
         self.max_load = self.no_threads * 0.9
@@ -135,7 +131,6 @@ class SiteConfig:
         self.is_asan = "SAN" in os.environ and os.environ["SAN"] == "On"
         self.is_aulsan = self.is_asan and os.environ["SAN_MODE"] == "AULSan"
         self.is_gcov = "COVERAGE" in os.environ and os.environ["COVERAGE"] == "On"
-        logging.info("Timeout is set to %d - san_mode is %s", self.timeout, san_mode)
         san_gcov_msg = ""
         if self.is_asan or self.is_gcov:
             san_gcov_msg = " - SAN "
@@ -151,8 +146,9 @@ class SiteConfig:
             # self.timeout *= 1.5
             self.loop_sleep *= 2
             self.max_load /= 2
-        self.deadline = datetime.now() + timedelta(seconds=self.timeout)
-        self.hard_deadline = datetime.now() + timedelta(seconds=self.timeout + 660)
+        self.deadline = 0
+        self.hard_deadline = 0
+        self.set_deadline(self.timeout)
         bin_dir = (build_dir / "bin").resolve()
         socket_count = "was not allowed to see socket counts!"
         try:
@@ -198,6 +194,27 @@ class SiteConfig:
         self.portbase = 7000
         if "PORTBASE" in os.environ:
             self.portbase = int(os.environ["PORTBASE"])
+
+    def adjust_timeout(self, new_timeout):
+        """ configure a new timeout """
+        if self.san_mode == "alubsan":
+            new_timeout *= 3
+        elif self.san_mode == "tsan":
+            new_timeout *= 6
+        if psutil.cpu_count(logical=False) <= 12:
+            new_timeout *= 4
+        self.timeout =max(new_timeout, self.timeout)
+
+    def set_deadline(self, timeout):
+        """ calculate deadline from timeout """
+        self.deadline = datetime.now() + timedelta(seconds=timeout)
+        self.hard_deadline = datetime.now() + timedelta(seconds=timeout + 660)
+
+    def extend_deadline(self, new_timeout):
+        """ maybe we need a new timeout? """
+        if self.timeout < new_timeout:
+            self.adjust_timeout(new_timeout)
+            self.set_deadline(new_timeout)
 
     def get_overload(self):
         """estimate whether the system is overloaded"""

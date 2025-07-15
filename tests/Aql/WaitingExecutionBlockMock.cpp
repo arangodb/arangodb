@@ -113,6 +113,7 @@ WaitingExecutionBlockMock::initializeCursor(
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 WaitingExecutionBlockMock::execute(AqlCallStack const& stack) {
+  _lastCall = stack.peek();
   traceExecuteBegin(stack);
   auto res = executeWithoutTrace(stack);
   traceExecuteEnd(res);
@@ -213,4 +214,12 @@ void WaitingExecutionBlockMock::executeCallback() {
   if (_executeCallback) {
     _executeCallback();
   }
+}
+
+auto WaitingExecutionBlockMock::remainingRows() const -> uint64_t {
+  return _blockData.remainingRows();
+}
+
+auto WaitingExecutionBlockMock::getLastCall() const -> arangodb::aql::AqlCall {
+  return _lastCall;
 }
