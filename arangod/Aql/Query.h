@@ -463,10 +463,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// set once the execution phase ends
   std::atomic<double> _endExecutionTime;
 
-  /// @brief mutex that protects the substraction between
-  /// _endExecutionTime and _startExecutionTime
-  std::mutex _executionTimeMtx;
-
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
 
