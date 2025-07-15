@@ -120,6 +120,7 @@ arangodb.acquireHostList=true
         '-Dgpg.skip',
         '-Dmaven.javadoc.skip',
         '-Dssl=false',
+        '-Dmaven.test.skip=false'
         // TODO? '-Dnative=<<parameters.native>>'
       ];
 //          name: Test
@@ -146,7 +147,8 @@ arangodb.acquireHostList=true
       }
       let start = Date();
       let status = true;
-      const rc = executeExternalAndWait('mvn', args, false, 0, [], this.options.javasource);
+      const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
+      const rc = executeExternalAndWait('/usr/bin/pwd', [], false, 0, [], cwd);
       if (rc.exit !== 0) {
         status = false;
       }
