@@ -49,7 +49,9 @@ RestStatus RestAuthReloadHandler::execute() {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
     um->triggerLocalReload();
-    um->triggerGlobalReload();  // noop except on coordinator
+    um->triggerGlobalReload();
+    // TODO switch to revalidation?
+    // TODO should we wait here?
   }
 
   VPackBuilder result;

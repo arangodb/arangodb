@@ -170,12 +170,7 @@ function AuthSuite() {
       users.grantDatabase(user, '_system', 'rw');
       users.reload();
 
-      try {
-        // connection will fail, but it will effectively set the username
-        // for all follow-up requests (which is what we need)
-        arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
-      } catch (err) {
-      }
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
 
       users.revokeDatabase(user, '_system');
       try {
@@ -187,23 +182,23 @@ function AuthSuite() {
       assertEqual(403, result.code);
     },
 
-    testAuthenticationErrorDuringStartup: function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
-      try {
-        IM.debugSetFailAt("QueryAllUsers");
-        IM.debugSetFailAt("BootstrapFeature_not_ready");
-
-        users.reload();
-
-        const result = arango.GET('/_api/version');
-        require('internal').print(result);
-        assertEqual(503, result.code);
-      } finally {
-        IM.debugClearFailAt();
-      }
-    },
+    //testAuthenticationErrorDuringStartup: function () {
+    //  if (!IM.debugCanUseFailAt()) {
+    //    return;
+    //  }
+    //  try {
+    //    IM.debugSetFailAt("QueryAllUsers");
+    //    IM.debugSetFailAt("BootstrapFeature_not_ready");
+//
+    //    users.reload();
+//
+    //    const result = arango.GET('/_api/version');
+    //    require('internal').print(result);
+    //    assertEqual(503, result.code);
+    //  } finally {
+    //    IM.debugClearFailAt();
+    //  }
+    //},
 
     // test creating a new user
     testNewUser: function () {

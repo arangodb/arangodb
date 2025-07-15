@@ -36,14 +36,30 @@ namespace arangodb {
 namespace tests {
 namespace auth_info_test {
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+
 class UserManagerClusterTest : public ::testing::Test {
  public:
+  UserManagerClusterTest() {
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
+    TRI_AddFailurePointDebugging("UserManager::failDBLookup");
+  }
+
+  ~UserManagerClusterTest() {
+    auto um = _server.getFeature<AuthenticationFeature>().userManager();
+    um->shutdown();
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
+    TRI_RemoveFailurePointDebugging("UserManager::failDBLookup");
+  }
   mocks::MockCoordinator _server{"CRDN_0001"};
 
  protected:
   auth::UserManager* userManager() {
     auto um = _server.getFeature<AuthenticationFeature>().userManager();
-    TRI_ASSERT(um != nullptr);
+    TRI_ASSERT(um !=
+               nullptr);  // starting the thread that populates the user cache
+    // Start the DB load in the separate thread
+    um->setGlobalVersion(1);
     return um;
   }
 
@@ -76,11 +92,6 @@ class UserManagerClusterTest : public ::testing::Test {
   }
 };
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-namespace {
-static char const* FailureOnLoadDB = "UserManager::performDBLookup";
-}
-
 TEST_F(UserManagerClusterTest, regression_forgotten_update) {
   /* The following order of events did lead to a missing update:
    * 1. um->triggerLocalReload();
@@ -93,10 +104,6 @@ TEST_F(UserManagerClusterTest, regression_forgotten_update) {
    * 4. Does not perform the actual load, as the heartbeat reset indicates
    * everything is okay.
    */
-
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
 
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
@@ -136,10 +143,6 @@ TEST_F(UserManagerClusterTest, regression_forgotten_update) {
 }
 
 TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager
@@ -166,10 +169,6 @@ TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
 
 TEST_F(UserManagerClusterTest,
        triggerLocalReloadShouldNotUpdateClusterVersion) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager
@@ -203,10 +202,6 @@ TEST_F(UserManagerClusterTest,
 }
 
 TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager

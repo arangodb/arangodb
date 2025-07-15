@@ -48,6 +48,14 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// This is only needed for the test
+// Where we need to enforce reloading the user manager
+// while executing the query.
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Auth/UserManager.h"
+#endif
+
 #include <fuerte/connection.h>
 #include <fuerte/message.h>
 #include <fuerte/requests.h>
@@ -256,6 +264,17 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
   auto buffer = serializeExecuteCallBody(stack);
   this->traceExecuteRequest(VPackSlice(buffer.data()), stack);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_IF_FAILURE("RemoteBlock::forceReloadUserManager") {
+    if (ServerState::instance()->isCoordinator()) {
+      auto* um = AuthenticationFeature::instance()->userManager();
+      if (um != nullptr) {
+        um->triggerLocalReload();
+      }
+    }
+  }
+#endif
+
   auto res =
       sendAsyncRequest(fuerte::RestVerb::Put, RestAqlHandler::Route::execute(),
                        std::move(buffer), std::move(guard));
@@ -401,6 +420,25 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
         // `this` is only valid as long as sharedState is valid.
         // So we must execute this under sharedState's mutex.
         sqs->executeAndWakeup([&]() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+          TRI_IF_FAILURE("RemoteExecutor::UnblockSchedulerMediumQueue") {
+            // When we get a response on the query, we passed user updates
+            // to the coordinator.
+            // We need to remove the failure point here, so that the
+            // continueation can take place.
+
+            if (ServerState::instance()->isDBServer()) {
+              auto collectionNames = _engine->getQuery().collectionNames();
+              // All system collections only have a single shard, so we can just
+              // check the size, and have a high enough chance that we are in
+              // our test query.
+              if (collectionNames.size() > 1) {
+                TRI_RemoveFailurePointDebugging("BlockSchedulerMediumQueue");
+              }
+            }
+          }
+#endif
+
           auto result = basics::catchToResultT([&]() { return &resp.get(); });
 
           std::lock_guard<std::mutex> guard(_communicationMutex);

@@ -795,6 +795,18 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
                                    rootNodeType == ExecutionNode::DISTRIBUTE));
 
+    TRI_IF_FAILURE("RestAqlHandler::BlockSchedulerMediumQueue") {
+      if (ServerState::instance()->isDBServer()) {
+        auto collectionNames = _engine->getQuery().collectionNames();
+        // All system collections only have a single shard, so we can just check
+        // the size, and have a high enough chance that we are in our test
+        // query.
+        if (collectionNames.size() > 1) {
+          TRI_AddFailurePointDebugging("BlockSchedulerMediumQueue");
+        }
+      }
+    }
+
     if (shardId.empty()) {
       std::tie(state, skipped, items) =
           _engine->execute(executeCall.callStack());

@@ -97,6 +97,8 @@
 
 namespace {
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+
 struct TestIndex : public arangodb::Index {
   TestIndex(arangodb::IndexId id, arangodb::LogicalCollection& collection,
             arangodb::velocypack::Slice const& definition)
@@ -442,6 +444,7 @@ class IResearchAnalyzerFeatureTest
   arangodb::SystemDatabaseFeature* sysDatabaseFeature{};
 
   IResearchAnalyzerFeatureTest() : server(false) {
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
     arangodb::tests::init();
 
     server.addFeature<arangodb::QueryRegistryFeature>(
@@ -468,22 +471,27 @@ class IResearchAnalyzerFeatureTest
     auto* userManager = authFeature.userManager();
     if (userManager != nullptr) {
       userManager->removeAllUsers();
+      userManager->shutdown();
     }
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
+  }
+
+  arangodb::auth::UserManager* userManager() {
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    auto* userManager = authFeature.userManager();
+    return userManager;
   }
 
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    ASSERT_NE(authFeature, nullptr);
-    auto* userManager = authFeature->userManager();
-    ASSERT_NE(userManager, nullptr);
+    auto* um = userManager();
+    ASSERT_NE(um, nullptr);
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
     user.grantCollection("testVocbase", "*", col);
     arangodb::auth::UserMap userMap;
     userMap.emplace("testUser", std::move(user));
-    userManager->setAuthInfo(
-        std::move(userMap));  // set user map to avoid loading
-                              // configuration from system database
+    um->setAuthInfo(std::move(userMap));  // set user map to avoid loading
+                                          // configuration from system database
   }
 
   std::shared_ptr<arangodb::ExecContext> getLoggedInContext() const {
@@ -5363,3 +5371,5 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_TRUE(f.validate().ok());
   }
 }
+
+#endif  // ARANGODB_ENABLE_FAILURE_TESTS

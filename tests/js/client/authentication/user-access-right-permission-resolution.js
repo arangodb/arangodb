@@ -113,47 +113,47 @@ function PermissionResolutionSuite () {
 /// @brief test creating a new user
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAcessLevelFallbacks : function () {
-      for (const user of userSet) {
-        createUser(user);
+  testAcessLevelFallbacks : function () {
+    for (const user of userSet) {
+      createUser(user);
 
-        let permission = users.permission(user.name, '_system');
-        assertEqual(permission, user.db.permission, 'Expected different permission for _system');
+      let permission = users.permission(user.name, '_system');
+      assertEqual(permission, user.db.permission, 'Expected different permission for _system');
 
-        permission = users.permission(user.name, '_system', colName);
-        assertEqual(permission, user.col.permission);
+      permission = users.permission(user.name, '_system', colName);
+      assertEqual(permission, user.col.permission);
 
 
-        users.revokeCollection(user.name, '_system', colName);
-        users.reload();
+      users.revokeCollection(user.name, '_system', colName);
+      users.reload();
 
-        permission = users.permission(user.name, "_system", colName);
-        let fullPermission = users.permissionFull(user.name);
+      permission = users.permission(user.name, "_system", colName);
+      let fullPermission = users.permissionFull(user.name);
 
-        let actual = fullPermission["_system"].collections[colName];
-        assertEqual(actual, "undefined");
-        
-        if (user.db.name !== "*") {
-          // This should mirror our current fallbacks
-          if (user.col.name === "*") {
-            assertEqual(permission, user.col.permission);
-          } else {
-            assertEqual(permission, user.db.permission);
-          }
-        } else {
+      let actual = fullPermission["_system"].collections[colName];
+      assertEqual(actual, "undefined");
+
+      if (user.db.name !== "*") {
+        // This should mirror our current fallbacks
+        if (user.col.name === "*") {
           assertEqual(permission, user.col.permission);
+        } else {
+          assertEqual(permission, user.db.permission);
         }
-
-        users.revokeDatabase(user.name, user.db.name);
-        users.reload();
-
-        let result = users.permissionFull(user.name);
-        const dbPerm = result['*'].permission;
-        permission = users.permission(user.name, user.db.name);
-
-        assertEqual(permission, dbPerm, 'Expected different permission for _system');
-        removeUser(user);
+      } else {
+        assertEqual(permission, user.col.permission);
       }
+
+      users.revokeDatabase(user.name, user.db.name);
+      users.reload();
+
+      let result = users.permissionFull(user.name);
+      const dbPerm = result['*'].permission;
+      permission = users.permission(user.name, user.db.name);
+
+      assertEqual(permission, dbPerm, 'Expected different permission for _system');
+      removeUser(user);
+    }
   },
 
   testUndefinedAuthLevels: function() {

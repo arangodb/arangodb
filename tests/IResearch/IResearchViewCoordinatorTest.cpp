@@ -103,6 +103,8 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
+
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
@@ -114,7 +116,14 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     ASSERT_EQ("testDatabase", vocbase->name());
   }
 
-  ~IResearchViewCoordinatorTest() = default;
+  ~IResearchViewCoordinatorTest() {
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->shutdown();
+    }
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
+  };
 };
 
 #ifdef USE_ENTERPRISE
