@@ -147,7 +147,12 @@ arangodb.acquireHostList=true
       }
       let start = Date();
       let status = true;
+      print(this.options.javasource);
+      print(fs.makeAbsolute(this.options.javasource));
+      print(fs.makeAbsolute("."));
+      print(fs.normalize(fs.makeAbsolute(this.options.javasource)));
       const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
+      print(cwd)
       const rc = executeExternalAndWait('pwd', [], false, 0, [], cwd);
       if (rc.exit !== 0) {
         status = false;
