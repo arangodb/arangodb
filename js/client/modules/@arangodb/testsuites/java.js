@@ -146,7 +146,7 @@ arangodb.acquireHostList=true
       }
       let start = Date();
       let status = true;
-      const rc = executeExternalAndWait('mvn', args, false, undefined, this.options.javasource);
+      const rc = executeExternalAndWait('mvn', args, false, 0, [], this.options.javasource);
       if (rc.exit !== 0) {
         status = false;
       }
