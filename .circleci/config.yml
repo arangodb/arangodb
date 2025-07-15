@@ -214,7 +214,7 @@ jobs:
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
-                --test-branches "<<config-definitions-branches>>" \
+                --test-branches "<<parameters.config-definitions-branches>>" \
                 -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
             fi
 
