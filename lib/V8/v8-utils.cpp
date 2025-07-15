@@ -4504,20 +4504,17 @@ static void JS_ExecuteExternal(
 
   auto workingDirectory = FileUtils::currentDirectory().result();
   std::string subProcessWorkingDirectory = workingDirectory;
-  LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME) << workingDirectory;
 
   if (5 <= args.Length()) {
-    TRI_Utf8ValueNFC name(isolate, args[5]);
+    TRI_Utf8ValueNFC name(isolate, args[4]);
     if (*name == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
     }
 
     subProcessWorkingDirectory = std::string(*name, name.length());
-    LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME) << subProcessWorkingDirectory;
   }
   ExternalId external;
   if (subProcessWorkingDirectory != workingDirectory) {
-    LOG_TOPIC("xyxxx", ERR, arangodb::Logger::FIXME) << subProcessWorkingDirectory;
     FileUtils::changeDirectory(subProcessWorkingDirectory);
   }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes,
@@ -4776,7 +4773,7 @@ static void JS_ExecuteExternalAndWait(
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (5 <= args.Length()) {
-    TRI_Utf8ValueNFC name(isolate, args[4]);
+    TRI_Utf8ValueNFC name(isolate, args[5]);
     if (*name == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
     }
