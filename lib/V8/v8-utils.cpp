@@ -4504,6 +4504,7 @@ static void JS_ExecuteExternal(
 
   auto workingDirectory = FileUtils::currentDirectory().result();
   std::string subProcessWorkingDirectory = workingDirectory;
+  LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME) << workingDirectory;
 
   if (5 <= args.Length()) {
     TRI_Utf8ValueNFC name(isolate, args[5]);
@@ -4512,9 +4513,11 @@ static void JS_ExecuteExternal(
     }
 
     subProcessWorkingDirectory = std::string(*name, name.length());
+    LOG_TOPIC("49465", ERR, arangodb::Logger::FIXME) << subProcessWorkingDirectory;
   }
   ExternalId external;
   if (subProcessWorkingDirectory != workingDirectory) {
+    LOG_TOPIC("xyxxx", ERR, arangodb::Logger::FIXME) << subProcessWorkingDirectory;
     FileUtils::changeDirectory(subProcessWorkingDirectory);
   }
   TRI_CreateExternalProcess(*name, arguments, additionalEnv, usePipes,
