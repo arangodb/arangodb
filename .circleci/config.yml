@@ -204,7 +204,8 @@ jobs:
             else
               set -x
               pip install pyyaml
-              python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
+              python3 ".circleci/generate_config.py" \
+                --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --default-container "<< pipeline.parameters.test-docker-image >>" \
@@ -215,7 +216,9 @@ jobs:
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
                 --test-branches "<<parameters.config-definitions-branches>>" \
-                -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+                -o continuation_config.yml \
+                ./.circleci/base_config.yml \
+                << parameters.definitions >>
             fi
 
       - continuation/continue:

@@ -71,9 +71,9 @@ def parse_arguments():
     parser.add_argument(
         "definitions", help="file containing the test definitions", type=str, nargs='*'
     )
-    parser.add_argument("-o", "--output", type=str, help="filename of the output")
+    parser.add_argument("-o", "--output", type=str, required=True, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
-    parser.add_argument("-d", "--default-container", type=str, help="default container to be used")
+    parser.add_argument("-d", "--default-container", type=str, required=True, help="default container to be used")
     parser.add_argument("-b", "--test-branches", type=str, help="colon separated list of test-definition-prefix=branch")
     parser.add_argument(
         "--ui", type=str, help="whether to run UI test [off|on|only|community]"
@@ -674,7 +674,7 @@ def main():
                 try:
                     for branch_name_pair in args.test_branches.split(":"):
                         (name, branch) = branch_name_pair.split("=")
-                        if one_definition.startswith(name):
+                        if one_definition.find(name) >= 0:
                             override_branch = branch
                 except Exception as ex:
                     raise Exception(f"Syntax error in --test-branches: {branch_name_pair} must be 'name=branch:name2=branch2'") from ex
