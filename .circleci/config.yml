@@ -66,6 +66,9 @@ parameters:
   config-definitions:
     type: string
     default: tests/test-definitions.txt
+  config-definitions-branches:
+    type: string
+    default: ""
 # our defined job, and its steps
 jobs:
   # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
@@ -141,6 +144,9 @@ jobs:
       default-enterprise-branch:
         type: string
         default: "devel"
+      config-definitions-branches:
+        type: string
+        default: ""
     steps:
       - run:
           name: Print pipeline parameters
@@ -208,6 +214,7 @@ jobs:
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
+                --test-branches "<<config-definitions-branches>>" \
                 -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
             fi
 
@@ -228,6 +235,7 @@ workflows:
             - check-build-trigger
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
+          config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
             #"tests/test-definitions.txt tests/go-test-definitions.txt tests/arangojs-test-definitions.txt"
             # tests/java-test-definitions.txt"
             # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
