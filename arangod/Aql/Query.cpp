@@ -342,7 +342,7 @@ double Query::queryTime() const noexcept {
   return _endTime - _startTime;
 }
 
-double Query::executionTime() noexcept {
+double Query::executionTime() const noexcept {
   // This can return 0 if the query never entered execution phase
   TRI_ASSERT((_startExecutionTime == 0) == (_endExecutionTime == 0.0));
   return _endExecutionTime - _startExecutionTime;

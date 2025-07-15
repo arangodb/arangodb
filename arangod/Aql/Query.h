@@ -182,7 +182,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   double startTime() const noexcept;
 
   // return only the execution time of the query, can be 0
-  double executionTime() noexcept;
+  double executionTime() const noexcept;
 
   /// @brief return the total execution time of the query (until
   /// the start of finalize)
