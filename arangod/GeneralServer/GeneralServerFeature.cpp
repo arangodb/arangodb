@@ -694,11 +694,6 @@ void GeneralServerFeature::defineRemainingHandlers(
       RestHandlerCreator<RestSimpleHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
 
-  // f.addPrefixHandler(
-  //     RestVocbaseBaseHandler::SCHEMA_PATH,
-  //     RestHandlerCreator<RestSchemaHandler>::createData<aql::QueryRegistry*>,
-  //     queryRegistry);
-
 #ifdef USE_V8
   if (server().isEnabled<V8DealerFeature>()) {
     // the tasks feature depends on V8. only enable it if JavaScript is enabled
