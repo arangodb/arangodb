@@ -389,7 +389,7 @@ void auth::UserManager::createRootUser() {
   }
   readGuard.unlock();
 
-  triggerCacheRevalidation();
+  triggerGlobalReload();
 }
 
 VPackBuilder auth::UserManager::allUsers() {
