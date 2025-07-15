@@ -563,6 +563,7 @@ void HttpCommTask<T>::doProcessRequest() {
     // Log HTTP headers:
     this->logRequestHeaders("http", _request->headers());
   }
+  this->_generalServerFeature.countHttp1Request(_request->rawPayload().size());
 
   // store origin header for later use
   _origin = _request->header(StaticStrings::Origin);
@@ -600,7 +601,6 @@ void HttpCommTask<T>::doProcessRequest() {
   {
     // no need to increase memory usage here!
     std::string_view body = _request->rawPayload();
-    this->_generalServerFeature.countHttp1Request(body.size());
 
     if (isTraceLoggingEnabled && !body.empty()) {
       this->logRequestBody("http", _request->contentType(), body);
