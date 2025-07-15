@@ -85,6 +85,8 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
+#include "Basics/PhysicalMemory.h"
+#include "resource_manager.hpp"
 
 #include <absl/strings/str_cat.h>
 
@@ -1104,6 +1106,12 @@ void IResearchFeature::validateOptions(
 
 void IResearchFeature::prepare() {
   TRI_ASSERT(isEnabled());
+
+  // Set memory limits for IResearchFeature to 50% of available memory.
+  auto physicalMem = static_cast<size_t>(PhysicalMemory::getValue());
+  irs::IResearchMemoryManager::GetInstance()->SetMemoryLimit(physicalMem / 2);
+  LOG_TOPIC("462d7", INFO, arangodb::iresearch::TOPIC) << "Setting IResearch memory limit to " <<
+    physicalMem / 2;
 
   // load all known codecs
   ::irs::formats::init();
