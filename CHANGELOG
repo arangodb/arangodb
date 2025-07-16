@@ -772,6 +772,9 @@ v3.11.5 (2023-11-09)
 v3.11.4 (2023-10-04)
 --------------------
 
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
+  coordinates for Point geometries.
+
 * Fix updating of collection properties (schema) when the collection has a view
   on top.
 
