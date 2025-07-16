@@ -21,11 +21,9 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
-#include <s2/base/integral_types.h>
-#include "Basics/ResourceUsage.h"
-#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
+
+#include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
 #include "Graph/Providers/SingleServer/ExpansionInfo.h"
 #include "Logger/LogMacros.h"
 
@@ -38,14 +36,12 @@ using namespace arangodb::graph;
 template<class Step>
 SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
     SingleServerBaseProviderOptions& opts, transaction::Methods* trx,
-    ResourceMonitor& resourceMonitor, aql::TraversalStats& stats)
+    ResourceMonitor& resourceMonitor)
     : _cursor{std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
           resourceMonitor, trx, opts.tmpVar(), opts.indexInformations().first,
           opts.indexInformations().second, opts.expressionContext(),
           /*requiresFullDocument*/ opts.hasWeightMethod(), opts.useCache())},
-      _resourceMonitor{resourceMonitor},
-      _stats{}  // TODO should hand in stats here to use it as a reference
-{
+      _resourceMonitor{resourceMonitor} {
   if (opts.indexInformations().second.empty()) {
     // If we have depth dependent filters, we must not use the cache,
     // otherwise, we do:
@@ -53,39 +49,41 @@ SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
   }
 }
 template<class Step>
-auto SingleServerNeighbourProvider<Step>::rearm(Step const& step) -> void {
+auto SingleServerNeighbourProvider<Step>::rearm(Step const& step,
+                                                aql::TraversalStats& stats)
+    -> void {
   _currentStep = step;
   auto const& vertex = step.getVertex();
   if (_neighbourCache) {
     auto iterator = _neighbourCache->rearm(vertex.getID());
     if (iterator) {
-      _neighbourCacheIterator.emplace(std::move(iterator.value()));
+      _currentStepNeighbourCacheIterator.emplace(std::move(iterator.value()));
       return;
     }
-  } else {
-    TRI_ASSERT(_cursor != nullptr);
-    _neighbourCacheIterator = std::nullopt;
-    _cursor->rearm(vertex.getID(), step.getDepth(), _stats);
-    ++_rearmed;
   }
+  TRI_ASSERT(_cursor != nullptr);
+  _currentStepNeighbourCacheIterator = std::nullopt;
+  _cursor->rearm(vertex.getID(), step.getDepth(), stats);
+  ++_rearmed;
 }
 template<class Step>
 auto SingleServerNeighbourProvider<Step>::next(
-    SingleServerProvider<Step>& provider)
+    SingleServerProvider<Step>& provider, aql::TraversalStats& stats)
     -> std::shared_ptr<std::vector<ExpansionInfo>> {
   TRI_ASSERT(_currentStep != std::nullopt);
   TRI_ASSERT(hasMore(_currentStep->getDepth()));
 
-  if (_neighbourCacheIterator) {
+  if (_currentStepNeighbourCacheIterator) {
     TRI_ASSERT(_neighbourCache != std::nullopt);
-    if (auto batch = _neighbourCacheIterator->next(); batch != std::nullopt) {
+    if (auto batch = _currentStepNeighbourCacheIterator->next();
+        batch != std::nullopt) {
       return *batch;
     }
   }
 
   NeighbourBatch newNeighbours = std::make_shared<std::vector<ExpansionInfo>>();
   _cursor->readAll(
-      provider, _stats, _currentStep->getDepth(),
+      provider, stats, _currentStep->getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
         ++_readSomething;
         newNeighbours->emplace_back(std::move(eid), edge, cursorID);
@@ -127,9 +125,12 @@ auto SingleServerNeighbourProvider<Step>::hasDepthSpecificLookup(
 
 template<typename Step>
 auto SingleServerNeighbourProvider<Step>::hasMore(uint64_t depth) -> bool {
-  if (_neighbourCacheIterator) {
-    return _neighbourCacheIterator->hasMore();
+  if (_neighbourCache) {
+    if (_currentStepNeighbourCacheIterator) {
+      return _currentStepNeighbourCacheIterator->hasMore();
+    }
   }
+  TRI_ASSERT(_cursor != nullptr);
   return _cursor->hasMore(depth);
 }
 

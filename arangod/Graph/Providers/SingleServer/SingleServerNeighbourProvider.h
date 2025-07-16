@@ -40,15 +40,15 @@ template<class Step>
 struct SingleServerNeighbourProvider {
   SingleServerNeighbourProvider(SingleServerBaseProviderOptions& opts,
                                 transaction::Methods* trx,
-                                ResourceMonitor& resourceMonitor,
-                                aql::TraversalStats& stats);
+                                ResourceMonitor& resourceMonitor);
   SingleServerNeighbourProvider(SingleServerNeighbourProvider const&) = delete;
   SingleServerNeighbourProvider(SingleServerNeighbourProvider&&) = default;
   SingleServerNeighbourProvider& operator=(
       SingleServerNeighbourProvider const&) = delete;
-  auto next(SingleServerProvider<Step>& provider)
+  ~SingleServerNeighbourProvider() { clear(); }
+  auto next(SingleServerProvider<Step>& provider, aql::TraversalStats& stats)
       -> std::shared_ptr<std::vector<ExpansionInfo>>;
-  auto rearm(Step const& step) -> void;
+  auto rearm(Step const& step, aql::TraversalStats& stats) -> void;
   auto clear() -> void;
   auto prepareIndexExpressions(aql::Ast* ast) -> void;
   auto hasDepthSpecificLookup(uint64_t depth) const noexcept -> bool;
@@ -58,16 +58,12 @@ struct SingleServerNeighbourProvider {
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
 
   std::optional<Step> _currentStep;
-  std::optional<NeighbourIterator> _neighbourCacheIterator;
+  std::optional<NeighbourIterator> _currentStepNeighbourCacheIterator;
 
   size_t _rearmed = 0;
   size_t _readSomething = 0;
   std::optional<NeighbourCache> _neighbourCache;
   ResourceMonitor& _resourceMonitor;
-  arangodb::aql::TraversalStats
-      _stats;  // TODO there is a problem with handing this provider a stats
-               // reference, so currently it just creates a new one (which is
-               // never used)
 };
 
 }  // namespace arangodb::graph

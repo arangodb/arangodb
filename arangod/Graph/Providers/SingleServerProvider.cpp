@@ -82,11 +82,13 @@ SingleServerProvider<Step>::SingleServerProvider(
       _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
-      _cache(_trx.get(), &queryContext, resourceMonitor, _stats,
+      _cache(_trx.get(), &queryContext, resourceMonitor,
+             _stats,  // this stats is not used in cache, methods on cache hand
+                      // in stats themselves
              _opts.collectionToShardMap(), _opts.getVertexProjections(),
              _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{},
-      _neighbours{_opts, _trx.get(), _monitor, _stats} {}
+      _neighbours{_opts, _trx.get(), _monitor} {}
 
 template<class Step>
 auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth,
@@ -121,10 +123,10 @@ auto SingleServerProvider<Step>::expand(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
 
-  _neighbours.rearm(step);
+  _neighbours.rearm(step, _stats);
   // TODO return each batch of neighbours instead of iterating over all of them
   while (_neighbours.hasMore(step.getDepth())) {
-    auto batch = _neighbours.next(*this);
+    auto batch = _neighbours.next(*this, _stats);
     for (auto const& neighbour : *batch) {
       VPackSlice edge = neighbour.edge();
       VertexType id = _cache.persistString(([&]() -> auto {
