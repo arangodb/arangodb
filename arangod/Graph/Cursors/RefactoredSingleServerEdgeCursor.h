@@ -106,9 +106,9 @@ class RefactoredSingleServerEdgeCursor {
   using Callback = std::function<void(EdgeDocumentToken&&,
                                       arangodb::velocypack::Slice, size_t)>;
 
-  void readAll(SingleServerProvider<StepType>& provider,
-               aql::TraversalStats& stats, size_t depth,
-               Callback const& callback);
+  void readNext(uint64_t batchSize, SingleServerProvider<StepType>& provider,
+                aql::TraversalStats& stats, size_t depth,
+                Callback const& callback);
 
   void prepareIndexExpressions(aql::Ast* ast);
 

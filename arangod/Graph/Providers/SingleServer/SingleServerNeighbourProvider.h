@@ -40,7 +40,8 @@ template<class Step>
 struct SingleServerNeighbourProvider {
   SingleServerNeighbourProvider(SingleServerBaseProviderOptions& opts,
                                 transaction::Methods* trx,
-                                ResourceMonitor& resourceMonitor);
+                                ResourceMonitor& resourceMonitor,
+                                uint64_t batchSize);
   SingleServerNeighbourProvider(SingleServerNeighbourProvider const&) = delete;
   SingleServerNeighbourProvider(SingleServerNeighbourProvider&&) = default;
   SingleServerNeighbourProvider& operator=(
@@ -64,6 +65,7 @@ struct SingleServerNeighbourProvider {
   size_t _readSomething = 0;
   std::optional<NeighbourCache> _neighbourCache;
   ResourceMonitor& _resourceMonitor;
+  const uint64_t _batchSize;
 };
 
 }  // namespace arangodb::graph
