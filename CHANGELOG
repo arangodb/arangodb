@@ -6,6 +6,8 @@ devel
   race condition in the asynchrounous query execution which would cause
   the kill process of the query to get stuck. This race was one
   of the root causes for a stall which was fixed in BTS-2135 previously.
+  This situation could only be reached if the async-prefetch optimizer rule
+  is active, which can only be applied on read-only queries.
 
 * Fix logging of the request body when compression is present.
 
