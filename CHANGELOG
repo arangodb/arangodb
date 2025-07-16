@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add option --database.auto-upgrade-full-compaction to run a full RocksDB
+  compaction on database upgrade. This is needed for a quicker cluster
+  upgrade.
+
 * Fix logging of the request body when compression is present.
 
 * Move crash handling to a separate thread, this is cleaner and does not
