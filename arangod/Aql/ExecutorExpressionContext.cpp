@@ -28,17 +28,27 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
+#include <Basics/GlobalResourceMonitor.h>
 #include <absl/strings/str_cat.h>
 
 using namespace arangodb::aql;
 
+// ExecutorExpressionContext::ExecutorExpressionContext(
+//     arangodb::transaction::Methods& trx, QueryContext& context,
+//     AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+//     std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
+//     : QueryExpressionContext(trx, context, cache),
+//       _inputRow(inputRow),
+//       _varsToRegister(varsToRegister) {}
+
 ExecutorExpressionContext::ExecutorExpressionContext(
-    arangodb::transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
-    : QueryExpressionContext(trx, context, cache),
-      _inputRow(inputRow),
-      _varsToRegister(varsToRegister) {}
+  transaction::Methods& trx, QueryContext& context,
+  AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+  std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
+  : QueryExpressionContext(trx, context, cache),
+    _inputRow(inputRow),
+    _varsToRegister(varsToRegister),
+    _resourceMonitor(std::make_shared<ResourceMonitor>(GlobalResourceMonitor::instance())){}
 
 void ExecutorExpressionContext::adjustInputRow(
     InputAqlItemRow const& inputRow) noexcept {
@@ -66,4 +76,9 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
             absl::StrCat("variable not found '", variable->name,
                          "' in ExecutorExpressionContext"));
       });
+}
+
+arangodb::ResourceMonitor& ExecutorExpressionContext::getResourceMonitor()
+    const {
+  return *_resourceMonitor;
 }

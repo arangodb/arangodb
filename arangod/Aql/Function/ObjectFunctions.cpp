@@ -37,6 +37,8 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -44,6 +46,7 @@
 #include <velocypack/Slice.h>
 
 #include <vector>
+#include <Aql/ExecutorExpressionContext.h>
 
 using namespace arangodb;
 
@@ -126,6 +129,45 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 AqlValue mergeParameters(ExpressionContext* expressionContext,
                          aql::functions::VPackFunctionParametersView parameters,
                          char const* funcName, bool recursive) {
+  try {
+    auto const& ctxType = typeid(*expressionContext).name();
+    LOG_DEVEL << "ExpressionContext dynamic type: " << ctxType;
+  } catch (...) {}
+  auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
+  ResourceMonitor* monitor = nullptr;
+  if (execCtx) {
+    monitor = &execCtx->getResourceMonitor();
+  }
+  bool monitored = false;
+
+  auto increaseMemoryUsage = [&](uint64_t byte) {
+    if (monitor) {
+      monitor->increaseMemoryUsage(byte);
+      LOG_DEVEL << "Memory increased by: " << byte;
+      LOG_DEVEL << "Current: " << monitor->current();
+      LOG_DEVEL << "Limit: " << monitor->memoryLimit();
+      LOG_DEVEL << "Peak: " << monitor->peak();
+      monitored = true;
+    }
+  };
+
+  auto decreaseMemoryUsage = [&](uint64_t byte) {
+    if (monitor) {
+      monitor->decreaseMemoryUsage(byte);
+      LOG_DEVEL << "Memory decreased by: " << byte;
+      LOG_DEVEL << "Current: " << monitor->current();
+      LOG_DEVEL << "Limit: " << monitor->memoryLimit();
+      LOG_DEVEL << "Peak: " << monitor->peak();
+      monitored = true;
+    }
+  };
+
+  auto resetResourceMonitor = [&]() {
+    if (monitor && monitored) {
+      monitor->clear();
+    }
+  };
+
   size_t const n = parameters.size();
 
   if (n == 0) {
@@ -162,10 +204,12 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         }
       }
 
+      LOG_DEVEL << "Single array without recursion was called";
       // then we output the object
       {
         VPackObjectBuilder ob(&builder);
         for (auto const& [k, v] : attributes) {
+          increaseMemoryUsage(k.length() * sizeof(char) + v.valueByteSize());
           builder.add(k, v);
         }
       }
@@ -175,18 +219,23 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
       builder.openObject();
       builder.close();
       // merge in all other arguments
+      LOG_DEVEL << "Single array with recursion was called";
       for (VPackSlice it : VPackArrayIterator(initialSlice)) {
         if (!it.isObject()) {
           aql::functions::registerInvalidArgumentWarning(expressionContext,
                                                          funcName);
           return AqlValue(AqlValueHintNull());
         }
+        auto before = builder.buffer()->byteSize();
+        increaseMemoryUsage(it.valueByteSize());
         builder = velocypack::Collection::merge(builder.slice(), it,
                                                 /*mergeObjects*/ recursive,
                                                 /*nullMeansRemove*/ false);
+        auto actual = builder.buffer()->byteSize() - before;
+        decreaseMemoryUsage(it.valueByteSize() - actual);
       }
     }
-
+    resetResourceMonitor();
     return AqlValue(builder.slice(), builder.size());
   }
 
@@ -196,6 +245,8 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   }
 
   // merge in all other arguments
+  LOG_DEVEL << "Multiple objs was called";
+  increaseMemoryUsage(initialSlice.valueByteSize());
   for (size_t i = 1; i < n; ++i) {
     AqlValue const& param =
         aql::functions::extractFunctionParameterValue(parameters, i);
@@ -208,16 +259,20 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(param);
-
+    auto before = initialSlice.valueByteSize();
+    increaseMemoryUsage(slice.valueByteSize());
     builder = velocypack::Collection::merge(initialSlice, slice,
                                             /*mergeObjects*/ recursive,
                                             /*nullMeansRemove*/ false);
     initialSlice = builder.slice();
+    auto actual = initialSlice.valueByteSize() - before;
+    decreaseMemoryUsage(slice.valueByteSize() - actual);
   }
   if (n == 1) {
     // only one parameter. now add original document
     builder.add(initialSlice);
   }
+  resetResourceMonitor();
   return AqlValue(builder.slice(), builder.size());
 }
 

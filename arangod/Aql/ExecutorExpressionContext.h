@@ -39,10 +39,15 @@ class InputAqlItemRow;
 
 class ExecutorExpressionContext final : public QueryExpressionContext {
  public:
+  // ExecutorExpressionContext(
+  //     transaction::Methods& trx, QueryContext& context,
+  //     AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+  //     std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
+
   ExecutorExpressionContext(
-      transaction::Methods& trx, QueryContext& context,
-      AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
+    transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister);
 
   ~ExecutorExpressionContext() override = default;
 
@@ -50,11 +55,13 @@ class ExecutorExpressionContext final : public QueryExpressionContext {
                             bool& mustDestroy) const override;
 
   void adjustInputRow(InputAqlItemRow const& inputRow) noexcept;
+  ResourceMonitor& getResourceMonitor() const;
 
  private:
   /// @brief temporary storage for expression data context
   std::reference_wrapper<InputAqlItemRow const> _inputRow;
   std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
+  std::shared_ptr<ResourceMonitor> _resourceMonitor;
 };
 
 }  // namespace aql
