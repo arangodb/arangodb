@@ -86,7 +86,8 @@ SingleServerProvider<Step>::SingleServerProvider(
              _opts.collectionToShardMap(), _opts.getVertexProjections(),
              _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{},
-      _neighbours{_opts, _trx.get(), _monitor} {}
+      // TODO not sure if batch size (now 1000) should come from somewhere
+      _neighbours{_opts, _trx.get(), _monitor, 1000} {}
 
 template<class Step>
 auto SingleServerProvider<Step>::startVertex(VertexType vertex, size_t depth,
