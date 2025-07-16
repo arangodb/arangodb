@@ -52,7 +52,7 @@ shell_client_aql buckets=19 priority=250  single
 
 # C++ unit tests are executed in single env
 gtest_iresearch !coverage priority=1000 parallelity=3 size=medium single
-gtest_arangodb !coverage priority=1000 parallelity=3 size=large single
+gtest_arangodb !coverage priority=1000 parallelity=3 size=medium+ single
 
 # Fuerte tests are executed in single env
 fuerte !coverage priority=500 single suffix=http
@@ -107,11 +107,11 @@ shell_client_aql_vector priority=1000 size=medium+ cluster buckets=1 -- --dumpAg
 importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
 importing,export name=import_export parallelity=3 size=small single -- --dumpAgencyOnError true
 hot_backup enterprise single size=medium -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
-hot_backup enterprise cluster size=large parallelity=5 -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
+hot_backup enterprise cluster size=medium+ parallelity=5 -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=10 size=large cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=10 size=medium+ cluster -- --dumpAgencyOnError true
 server_permissions priority=1000 parallelity=5 size=small buckets=2 -- --dumpAgencyOnError true
 server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
@@ -127,14 +127,14 @@ dump_jwt size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vecto
 dump_multiple_same single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_multiple_same cluster size=medium parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_multiple_two single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple_two cluster size=large parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two cluster size=medium+ parallelity=5 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_non_parallel size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_maskings  enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_encrypted enterprise size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_mixed_single_cluster size=large -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_mixed_single_cluster size=medium+ -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_mixed_cluster_single suffix=vpack size=medium -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
-dump_mixed_single_cluster suffix=vpack size=large -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+dump_mixed_single_cluster suffix=vpack size=medium+ -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes single size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 dump_with_crashes full cluster size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
