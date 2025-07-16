@@ -304,12 +304,18 @@ function GenericQueryKillSuite() { // can be either default or stream
       // stuck it is a success.
     } finally {
       // Clean up the test collection
-      db._drop(testCollectionName);
+      try {
+        db._drop(testCollectionName);
+      } catch (e) {
+        // If this does not work we cannot do much about it test would be red.
+        // Important here is that the failurePoint is removed. Otherwise we
+        // actively deactivated async prefetch and would block LOW prio lane
+        // for all following tests.
+      }
       try {
         global.instanceManager.debugRemoveFailAt(failurePointName);
       } catch (e) {
-        // We cannot throw in finally.
-        console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable`);
+        console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable. Expect sever issues after this test as effectively the Low priority lane is potentially starting blocked threads.`);
       }
     }
   };
