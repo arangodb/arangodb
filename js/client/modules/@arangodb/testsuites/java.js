@@ -77,6 +77,8 @@ function javaDriver (options) {
       super(opts, testname, ...optionalArgs);
       this.info = "runInJavaTest";
     }
+    checkSutCleannessBefore() {}
+    checkSutCleannessAfter() { return true; }
     runOneTest(file) {
       print(this.instanceManager.setPassvoid());
       let topology;
