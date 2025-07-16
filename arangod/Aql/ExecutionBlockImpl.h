@@ -378,7 +378,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * 
    * An additional note on stopping the query early: In this case
    * we now have at least two concurrent operations, the cleannup
-   * which will eventually destrruct all objects in the query, and
+   * which will eventually destruct all objects in the query, and
    * an async prefetch task.
    * This stop process now needs to ensure that the prefetchTask is
    * either completed or will not be started.
