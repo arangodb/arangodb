@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add agency diagnosis API: `/_admin/cluster/agencyDiagnosis`.
+
 * Fix logging of the request body when compression is present.
 
 * Move crash handling to a separate thread, this is cleaner and does not
