@@ -144,7 +144,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << " will perform database auto-upgrade and immediately restart.";
   }
   if (_upgrade && !_upgradeCheck) {
-    LOG_TOPIC("47698", FATAL, arangodb::Logger::ENGINES)
+    LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
