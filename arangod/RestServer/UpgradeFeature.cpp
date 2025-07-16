@@ -43,6 +43,8 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/RestartAction.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/vocbase.h"
 
@@ -57,6 +59,7 @@ UpgradeFeature::UpgradeFeature(Server& server, int* result,
     : ArangodFeature{server, *this},
       _upgrade(false),
       _upgradeCheck(true),
+      _upgradeFullCompaction(false),
       _result(result),
       _nonServerFeatures(nonServerFeatures) {
   setOptional(false);
@@ -99,6 +102,20 @@ in the `VERSION` file, the server refuses to start.)");
       "--database.upgrade-check", "Skip the database upgrade if set to false.",
       new BooleanParameter(&_upgradeCheck),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
+
+  options
+      ->addOption("--database.auto-upgrade-full-compaction",
+                  "Perform a full RocksDB compaction after database upgrade.",
+                  new BooleanParameter(&_upgradeFullCompaction))
+      .setLongDescription(R"(If this option is specified together with 
+--database.auto-upgrade, the server will perform a full RocksDB compaction 
+after the database upgrade has completed successfully but before shutting down.
+
+This performs a complete compaction of all column families with both 
+changeLevel and compactBottomMostLevel options enabled, which can help 
+optimize the database files after an upgrade.
+
+The server will exit with an error code if the compaction fails.)");
 }
 
 static int upgradeRestart() {
@@ -129,6 +146,13 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
+  }
+
+  if (_upgradeFullCompaction && !_upgrade) {
+    LOG_TOPIC("47699", FATAL, arangodb::Logger::FIXME)
+        << "cannot specify '--database.auto-upgrade-full-compaction true' "
+           "without '--database.auto-upgrade true'";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
   }
 
@@ -253,6 +277,12 @@ void UpgradeFeature::start() {
     }
   }
 
+  // perform full compaction if requested
+  if (_upgrade && _upgradeFullCompaction &&
+      !ServerState::instance()->isCoordinator()) {
+    performFullCompaction();
+  }
+
   // and force shutdown
   if (_upgrade || init.isInitDatabase() || init.restoreAdmin()) {
     if (init.isInitDatabase()) {
@@ -337,6 +367,30 @@ void UpgradeFeature::upgradeLocalDatabase() {
   // and return from the context
   LOG_TOPIC("01a03", TRACE, arangodb::Logger::FIXME)
       << "finished database init/upgrade";
+}
+
+void UpgradeFeature::performFullCompaction() {
+  LOG_TOPIC("e8f45", INFO, arangodb::Logger::FIXME)
+      << "starting full RocksDB compaction after upgrade";
+
+  TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
+  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
+
+  // Perform full compaction with both changeLevel and compactBottomMostLevel
+  // enabled This matches the behavior of the /_admin/compact API with
+  // bottomMost=true and changeLevels=true
+  Result res = engine.compactAll(true, true);
+
+  if (res.fail()) {
+    LOG_TOPIC("e8f46", FATAL, arangodb::Logger::FIXME)
+        << "full RocksDB compaction after upgrade failed: "
+        << res.errorMessage();
+    *_result = EXIT_FAILURE;
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_FAILED);
+  }
+
+  LOG_TOPIC("e8f47", INFO, arangodb::Logger::FIXME)
+      << "full RocksDB compaction after upgrade completed successfully";
 }
 
 }  // namespace arangodb
