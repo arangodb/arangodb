@@ -375,7 +375,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * to `Finished`, then fetches the result and sets `state` to `Consumed`.
    * This is necessary to avoid waiting for a task that has already been
    * consumed.
-   * 
+   *
    * An additional note on stopping the query early: In this case
    * we now have at least two concurrent operations, the cleannup
    * which will eventually destruct all objects in the query, and
