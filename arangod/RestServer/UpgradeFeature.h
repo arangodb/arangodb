@@ -57,7 +57,7 @@ class UpgradeFeature final : public ArangodFeature {
 
  private:
   void upgradeLocalDatabase();
-  void performFullCompaction();
+  Result performFullCompaction();
 
  private:
   friend struct methods::Upgrade;  // to allow access to '_tasks'

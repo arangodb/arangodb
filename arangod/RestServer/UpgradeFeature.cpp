@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
 #include "Basics/exitcodes.h"
+#include "Basics/voc-errors.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
@@ -143,14 +144,14 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << " will perform database auto-upgrade and immediately restart.";
   }
   if (_upgrade && !_upgradeCheck) {
-    LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("47698", FATAL, arangodb::Logger::ENGINES)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
   }
 
   if (_upgradeFullCompaction && !_upgrade) {
-    LOG_TOPIC("47699", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("47699", FATAL, arangodb::Logger::ENGINES)
         << "cannot specify '--database.auto-upgrade-full-compaction true' "
            "without '--database.auto-upgrade true'";
     FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
@@ -280,7 +281,12 @@ void UpgradeFeature::start() {
   // perform full compaction if requested
   if (_upgrade && _upgradeFullCompaction &&
       !ServerState::instance()->isCoordinator()) {
-    performFullCompaction();
+    Result res = performFullCompaction();
+    if (res.fail()) {
+      *_result = EXIT_FAILURE;
+      server().beginShutdown();
+      return;
+    }
   }
 
   // and force shutdown
@@ -369,8 +375,8 @@ void UpgradeFeature::upgradeLocalDatabase() {
       << "finished database init/upgrade";
 }
 
-void UpgradeFeature::performFullCompaction() {
-  LOG_TOPIC("e8f45", INFO, arangodb::Logger::FIXME)
+Result UpgradeFeature::performFullCompaction() {
+  LOG_TOPIC("e8f45", INFO, arangodb::Logger::ENGINES)
       << "starting full RocksDB compaction after upgrade";
 
   TRI_ASSERT(server().hasFeature<EngineSelectorFeature>());
@@ -382,15 +388,15 @@ void UpgradeFeature::performFullCompaction() {
   Result res = engine.compactAll(true, true);
 
   if (res.fail()) {
-    LOG_TOPIC("e8f46", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("e8f46", FATAL, arangodb::Logger::ENGINES)
         << "full RocksDB compaction after upgrade failed: "
         << res.errorMessage();
-    *_result = EXIT_FAILURE;
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_FAILED);
+    return res;
   }
 
-  LOG_TOPIC("e8f47", INFO, arangodb::Logger::FIXME)
+  LOG_TOPIC("e8f47", INFO, arangodb::Logger::ENGINES)
       << "full RocksDB compaction after upgrade completed successfully";
+  return {};
 }
 
 }  // namespace arangodb
