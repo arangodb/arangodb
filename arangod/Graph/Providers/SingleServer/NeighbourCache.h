@@ -67,9 +67,6 @@ struct NeighbourCache {
                                                 // this vertex are in cache
                                          std::vector<NeighbourBatch>>>;
 
-  NeighbourCache(ResourceMonitor& monitor) : _resourceMonitor{monitor} {}
-  ~NeighbourCache() { clear(); }
-
   /**
      Defines the vertex that the cache should handle
 
@@ -87,13 +84,38 @@ struct NeighbourCache {
      Last batch needs to identify itself to let the cache know that the current
      vertex entry is complete and can in a subsequent cache request be read.
    */
-  auto update(NeighbourBatch const& batch, bool isLastBatch = false) -> void;
-  auto clear() -> void;
+  template<typename Monitor>
+  auto update(NeighbourBatch const& batch, Monitor& monitor,
+              bool isLastBatch = false) -> void {
+    TRI_ASSERT(_currentEntry !=
+               _neighbours.end());  // current entry exists in cache
+    TRI_ASSERT(std::get<0>(_currentEntry->second) ==
+               false);  // current entry is not yet complete
+    auto& vec = std::get<1>(_currentEntry->second);
+    vec.emplace_back(batch);
+    if (isLastBatch) {
+      std::get<0>(_currentEntry->second) =
+          true;  // cache for this vertex finished
+    }
+    size_t newMemoryUsage = 0;
+    for (auto const& neighbour : *batch) {
+      newMemoryUsage += neighbour.size();
+    }
+    monitor.increaseMemoryUsage(newMemoryUsage);
+    _memoryUsageVertexCache += newMemoryUsage;
+  }
+
+  template<typename Monitor>
+  auto clear(Monitor& monitor) -> void {
+    monitor.decreaseMemoryUsage(_memoryUsageVertexCache);
+    _neighbours.clear();
+    _currentEntry = _neighbours.begin();
+    _memoryUsageVertexCache = 0;
+  }
 
   Neighbours _neighbours;
   typename Neighbours::iterator _currentEntry;
   size_t _memoryUsageVertexCache = 0;
-  ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace arangodb::graph

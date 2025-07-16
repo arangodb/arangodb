@@ -42,11 +42,12 @@ SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
           resourceMonitor, trx, opts.tmpVar(), opts.indexInformations().first,
           opts.indexInformations().second, opts.expressionContext(),
           /*requiresFullDocument*/ opts.hasWeightMethod(), opts.useCache())},
-      _batchSize{batchSize} {
+      _batchSize{batchSize},
+      _resourceMonitor{resourceMonitor} {
   if (opts.indexInformations().second.empty()) {
     // If we have depth dependent filters, we must not use the cache,
     // otherwise, we do:
-    _neighbourCache.emplace(resourceMonitor);
+    _neighbourCache.emplace();
   }
 }
 template<class Step>
@@ -90,7 +91,8 @@ auto SingleServerNeighbourProvider<Step>::next(
         newNeighbours->emplace_back(std::move(eid), edge, cursorID);
       });
   if (_neighbourCache.has_value()) {
-    _neighbourCache->update(newNeighbours, !hasMore(_currentStep->getDepth()));
+    _neighbourCache->update(newNeighbours, _resourceMonitor,
+                            !hasMore(_currentStep->getDepth()));
   }
   return newNeighbours;
 }
@@ -98,7 +100,7 @@ auto SingleServerNeighbourProvider<Step>::next(
 template<typename Step>
 auto SingleServerNeighbourProvider<Step>::clear() -> void {
   if (_neighbourCache.has_value()) {
-    _neighbourCache->clear();
+    _neighbourCache->clear(_resourceMonitor);
   }
 
   LOG_TOPIC("65261", TRACE, Logger::GRAPHS)

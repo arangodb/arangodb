@@ -28,8 +28,14 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
+struct MyMonitor {
+  auto increaseMemoryUsage(std::uint64_t value) -> void {}
+  auto decreaseMemoryUsage(std::uint64_t value) -> void {}
+};
+
 TEST(SingleServerNeighbourCacheTest,
      gives_vertex_batches_that_were_added_to_cache) {
+  auto monitor = MyMonitor{};
   auto cache = NeighbourCache{};
   auto vertex = velocypack::HashedStringRef{"abc", 3};
 
@@ -42,7 +48,7 @@ TEST(SingleServerNeighbourCacheTest,
       EdgeDocumentToken{DataSourceId{4}, LocalDocumentId{8}}, VPackSlice{}, 0});
   auto first_batch =
       std::make_shared<std::vector<ExpansionInfo>>(std::move(vec));
-  cache.update(first_batch);
+  cache.update(first_batch, monitor);
   ASSERT_EQ(cache.rearm(vertex), std::nullopt);
 
   // add another batch to vertex in cache and make this the last batch for this
@@ -52,12 +58,12 @@ TEST(SingleServerNeighbourCacheTest,
       EdgeDocumentToken{DataSourceId{5}, LocalDocumentId{9}}, VPackSlice{}, 0});
   auto second_batch =
       std::make_shared<std::vector<ExpansionInfo>>(std::move(vec));
-  cache.update(second_batch, true);
+  cache.update(second_batch, monitor, true);
 
   auto iterator = cache.rearm(vertex);
   ASSERT_TRUE(iterator != std::nullopt);
 
-  // // now get items
+  // now get items
   ASSERT_EQ(*iterator->next(), first_batch);
   ASSERT_EQ(*iterator->next(), second_batch);
   ASSERT_EQ(iterator->next(), std::nullopt);
@@ -70,7 +76,7 @@ TEST(SingleServerNeighbourCacheTest,
       EdgeDocumentToken{DataSourceId{4}, LocalDocumentId{8}}, VPackSlice{}, 0});
   auto first_batch_for_new_vertex =
       std::make_shared<std::vector<ExpansionInfo>>(std::move(vec));
-  cache.update(first_batch_for_new_vertex, true);
+  cache.update(first_batch_for_new_vertex, monitor, true);
 
   auto another_iterator = cache.rearm(another_vertex);
   ASSERT_TRUE(another_iterator != std::nullopt);

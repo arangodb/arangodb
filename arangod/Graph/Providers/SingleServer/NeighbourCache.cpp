@@ -55,30 +55,3 @@ auto NeighbourCache::rearm(VertexType vertexId)
   _currentEntry = iter;
   return std::nullopt;
 }
-
-auto NeighbourCache::update(NeighbourBatch const& batch, bool isLastBatch)
-    -> void {
-  TRI_ASSERT(_currentEntry !=
-             _neighbours.end());  // current entry exists in cache
-  TRI_ASSERT(std::get<0>(_currentEntry->second) ==
-             false);  // current entry is not yet complete
-  auto& vec = std::get<1>(_currentEntry->second);
-  vec.emplace_back(batch);
-  if (isLastBatch) {
-    std::get<0>(_currentEntry->second) =
-        true;  // cache for this vertex finished
-  }
-  size_t newMemoryUsage = 0;
-  for (auto const& neighbour : *batch) {
-    newMemoryUsage += neighbour.size();
-  }
-  _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
-  _memoryUsageVertexCache += newMemoryUsage;
-}
-
-auto NeighbourCache::clear() -> void {
-  _resourceMonitor.decreaseMemoryUsage(_memoryUsageVertexCache);
-  _neighbours.clear();
-  _currentEntry = _neighbours.begin();
-  _memoryUsageVertexCache = 0;
-}

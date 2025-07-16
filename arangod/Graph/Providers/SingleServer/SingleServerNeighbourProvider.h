@@ -98,6 +98,7 @@ struct SingleServerNeighbourProvider {
 
   std::optional<NeighbourCache> _neighbourCache;
   const uint64_t _batchSize;
+  ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace arangodb::graph
