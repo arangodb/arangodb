@@ -36,6 +36,16 @@ struct NeighbourCache;
 
 struct SingleServerBaseProviderOptions;
 
+/**
+   Provides neighbours of a given step in batches
+
+   Before doing anything with this provider, you need to specify the step for
+   which vertex the provider should get the neighbours: do this via rearm.
+
+   Read neighbours are saved in a cache. If the neighbours of a step are
+   requested for more than one time, the cached neighbours are used instead of
+   reading them from disk again.
+ */
 template<class Step>
 struct SingleServerNeighbourProvider {
   SingleServerNeighbourProvider(SingleServerBaseProviderOptions& opts,
@@ -47,22 +57,45 @@ struct SingleServerNeighbourProvider {
   SingleServerNeighbourProvider& operator=(
       SingleServerNeighbourProvider const&) = delete;
   ~SingleServerNeighbourProvider() { clear(); }
+
+  /**
+     Gives the next _batchSize neighbours for _currentStep
+   */
   auto next(SingleServerProvider<Step>& provider, aql::TraversalStats& stats)
       -> std::shared_ptr<std::vector<ExpansionInfo>>;
+
+  /**
+     (Re)defines the step for which vertex the provider should
+     provide neighbours
+   */
   auto rearm(Step const& step, aql::TraversalStats& stats) -> void;
+
+  /**
+     Clears cache and statistics variables
+   */
   auto clear() -> void;
+
   auto prepareIndexExpressions(aql::Ast* ast) -> void;
   auto hasDepthSpecificLookup(uint64_t depth) const noexcept -> bool;
+
+  /**
+     Is true if now all neighbours of _currentStep have been provided yet via
+     next
+   */
   auto hasMore(uint64_t depth) -> bool;
 
  private:
   std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
 
   std::optional<Step> _currentStep;
+  // if we can use the cache for the current step, this iterator is set and we
+  // iterate over this iterator the get the batches via next
   std::optional<NeighbourIterator> _currentStepNeighbourCacheIterator;
 
+  // statistics variables
   size_t _rearmed = 0;
   size_t _readSomething = 0;
+
   std::optional<NeighbourCache> _neighbourCache;
   ResourceMonitor& _resourceMonitor;
   const uint64_t _batchSize;

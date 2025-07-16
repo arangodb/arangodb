@@ -29,6 +29,9 @@ namespace arangodb::graph {
 
 struct NeighbourCache;
 
+/**
+   Iterator over neighbour batches of a specific vertex in the cache
+ */
 struct NeighbourIterator {
   NeighbourIterator(std::vector<NeighbourBatch>& batches)
       : _batches{batches},
@@ -43,6 +46,19 @@ struct NeighbourIterator {
       _nextOutputBatch;  // current batch in vertex
 };
 
+/**
+   Caches neighbours of vertices
+
+   You need to call rearm first to define the vertex you want to handle in the
+   following. If the cache includes all neighbours of the given vertex, the
+   cache can be used and rearm returns an iterator of the neighbours. If the
+   cache cannot be used for this vertex, rearm remembers the vertex and
+   subsequent calls to update will update the neighbours for this vertex in the
+   cache.
+
+   A vertex cache entry can only be used when the entry includes all neighbours
+   of the vertex.
+ */
 struct NeighbourCache {
   using Neighbours =
       containers::FlatHashMap<VertexType,       // vertex ID
@@ -51,7 +67,24 @@ struct NeighbourCache {
                                          std::vector<NeighbourBatch>>>;
 
   ~NeighbourCache() { clear(); }
+
+  /**
+     Defines the vertex that the cache should handle
+
+     If the cache includes all neighbours of the given vertex, the
+   cache can be used and rearm returns an iterator of the neighbours. If the
+   cache cannot be used for this vertex, rearm remembers the vertex and
+   subsequent calls to update will update the neighbours for this vertex in the
+   cache.
+   */
   auto rearm(VertexType vertexId) -> std::optional<NeighbourIterator>;
+
+  /**
+     Add batch to current vertex in cache
+
+     Last batch needs to identify itself to let the cache know that the current
+     vertex entry is complete and can in a subsequent cache request be read.
+   */
   auto update(NeighbourBatch const& batch, bool isLastBatch = false) -> size_t;
   auto clear() -> size_t;
 

@@ -123,7 +123,9 @@ auto SingleServerProvider<Step>::expand(
       << "<SingleServerProvider> Expanding " << vertex.getID();
 
   _neighbours.rearm(step, _stats);
-  // TODO return each batch of neighbours instead of iterating over all of them
+
+  // TODO (in a later PR) return each batch of neighbours instead of iterating
+  // over all of them
   while (_neighbours.hasMore(step.getDepth())) {
     auto batch = _neighbours.next(*this, _stats);
     for (auto const& neighbour : *batch) {
