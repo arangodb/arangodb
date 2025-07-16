@@ -1731,10 +1731,10 @@ void Query::trackExecutionStart() noexcept {
   double expectedTime{0};
   if (_startExecutionTime.compare_exchange_strong(expectedTime,
                                                   currentSteadyClockValue())) {
-    _isExecuting = true;
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryStart();
+    _isExecuting = true;
   }
 }
 
