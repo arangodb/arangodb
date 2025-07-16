@@ -70,8 +70,8 @@ class TraverserCacheTest : public ::testing::Test {
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
     _monitor = &query->resourceMonitor();
     traverserCache = std::make_unique<RefactoredTraverserCache>(
-        trx.get(), query.get(), query->resourceMonitor(), stats,
-        collectionToShardMap, _vertexProjections, _edgeProjections,
+        trx.get(), query.get(), query->resourceMonitor(), collectionToShardMap,
+        _vertexProjections, _edgeProjections,
         /*produceVertices*/ true);
   }
 

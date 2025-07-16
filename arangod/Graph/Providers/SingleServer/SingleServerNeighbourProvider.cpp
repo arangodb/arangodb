@@ -21,10 +21,11 @@
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Graph/Steps/SingleServerProviderStep.h"
+#include "SingleServerNeighbourProvider.h"
 
-#include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
+#include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/SingleServer/ExpansionInfo.h"
+#include "Graph/Steps/SingleServerProviderStep.h"
 #include "Logger/LogMacros.h"
 
 #ifdef USE_ENTERPRISE
