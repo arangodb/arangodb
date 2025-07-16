@@ -289,7 +289,7 @@ function GenericQueryKillSuite() { // can be either default or stream
                             LET calculated = doc.nonExistentAttr1 + doc.nonExistentAttr2
                             FILTER calculated < 10
                             RETURN { calculated }`;
-      let cursor = db._query(streamingQuery, null, null, {profile: 3, stream: true});
+      let cursor = db._query(streamingQuery, null, {batchSize: 1000}, {stream: true});
       
       // Read one batch from the streaming cursor
       let batch = cursor.next();
