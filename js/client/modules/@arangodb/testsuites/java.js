@@ -69,7 +69,10 @@ const testPaths = {
 function javaDriver (options) {
   class runInJavaTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
-      let opts = {'password': 'testjava'};
+      let opts = {
+        'password': 'testjava',
+        'username': 'root',
+      };
       if (options.cluster) {
         // tests lean on JWT enabled components
         opts = _.clone(tu.testClientJwtAuthInfo);
@@ -79,6 +82,7 @@ function javaDriver (options) {
       this.info = "runInJavaTest";
     }
     runOneTest(file) {
+      print(this.instanceManager.setPassvoid());
       let topology;
       let testResultsDir = fs.join(this.instanceManager.rootDir, 'javaresults');
       let results = {
@@ -120,7 +124,8 @@ arangodb.acquireHostList=true
         '-Dgpg.skip',
         '-Dmaven.javadoc.skip',
         '-Dssl=false',
-        '-Dmaven.test.skip=false'
+        '-Dmaven.test.skip=false',
+        '-DskipStatefulTests',
         // TODO? '-Dnative=<<parameters.native>>'
       ];
 //          name: Test
@@ -134,8 +139,8 @@ arangodb.acquireHostList=true
 
 
       if (this.options.testCase) {
-        args.push('-Dtest=' + this.options.testCase);
-        args.push('-DfailIfNoTests=false'); // if we don't specify this, errors will occur.
+        args.push('-Dit.test=' + this.options.testCase);
+        args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
       }
       if (this.options.javaOptions !== '') {
         for (var key in this.options.javaOptions) {

@@ -200,6 +200,19 @@ class instanceManager {
       }
     });
   }
+  setPassvoid() {
+    if (!arango.isConnected()) {
+      throw new Error('connecting the database failed');
+    }
+    try {
+      return require('org/arangodb/users').save(this.options.username, this.options.password);
+    } catch (ex) {
+      if (ex.errorNum === errors.ERROR_USER_DUPLICATE.code) {
+        return require('org/arangodb/users').update(this.options.username, this.options.password);
+      }
+      throw ex;
+    }
+  }
   getTypeToUrlsMap() {
     let ret = new Map();
     this.instanceRoles.forEach(role => {
