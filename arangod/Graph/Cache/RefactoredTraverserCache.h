@@ -65,7 +65,6 @@ class RefactoredTraverserCache {
   RefactoredTraverserCache(
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
       arangodb::ResourceMonitor& resourceMonitor,
-      arangodb::aql::TraversalStats& stats,
       MonitoredCollectionToShardMap const& collectionToShardMap,
       arangodb::aql::Projections const& vertexProjections,
       arangodb::aql::Projections const& edgeProjections, bool produceVertices);

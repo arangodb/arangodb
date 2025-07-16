@@ -83,8 +83,6 @@ SingleServerProvider<Step>::SingleServerProvider(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
       _cache(_trx.get(), &queryContext, resourceMonitor,
-             _stats,  // this stats is not used in cache, methods on cache hand
-                      // in stats themselves
              _opts.collectionToShardMap(), _opts.getVertexProjections(),
              _opts.getEdgeProjections(), _opts.produceVertices()),
       _stats{},
