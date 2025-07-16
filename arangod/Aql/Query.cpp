@@ -1728,9 +1728,10 @@ void Query::logAtEnd() const {
 
 void Query::trackExecutionStart() noexcept {
   // We should do this only once
-  bool expected = false;
-  if (_isExecuting.compare_exchange_strong(expected, true)) {
-    _startExecutionTime = currentSteadyClockValue();
+  double expectedTime{0};
+  if (_startExecutionTime.compare_exchange_strong(expectedTime,
+                                                  currentSteadyClockValue())) {
+    _isExecuting = true;
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryStart();
