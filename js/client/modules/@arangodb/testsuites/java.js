@@ -69,13 +69,10 @@ const testPaths = {
 function javaDriver (options) {
   class runInJavaTest extends testRunnerBase {
     constructor(options, testname, ...optionalArgs) {
-      //if (options.cluster) {
-        // tests lean on JWT enabled components
       let opts = _.clone(tu.testClientJwtAuthInfo);
       opts['password'] = 'testjava';
       opts['username'] = 'root';
-      print(opts)
-      //}
+      opts['arangodConfig'] = 'arangod-auth.conf';
       _.defaults(opts, options);
       super(opts, testname, ...optionalArgs);
       this.info = "runInJavaTest";

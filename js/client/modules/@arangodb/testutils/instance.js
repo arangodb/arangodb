@@ -322,6 +322,9 @@ class instance {
     }
 
     let config = 'arangod-' + this.instanceRole + '.conf';
+    if (this.options.arangodConfig !== undefined) {
+      config = this.options.arangodConfig;
+    }
     this.args = _.defaults(this.args, {
       'configuration': fs.join(pu.CONFIG_DIR, config),
       'define': 'TOP_DIR=' + pu.TOP_DIR,
@@ -334,11 +337,6 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
-    if (this.options.password !== "") {
-      this.args['server.authentication'] = true;
-    } else {
-      this.args['server.authentication'] = false;
-    }
     if (this.options.extremeVerbosity) {
       this.args['dump-env'] = true;
     }
@@ -1557,6 +1555,7 @@ exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
+    'arangodConfig': undefined, // undocumented, internal use only. Override the automatic configuration choice
     'enableAliveMonitor': true,
     'maxLogFileSize': 500 * 1024,
     'skipLogAnalysis': true,
