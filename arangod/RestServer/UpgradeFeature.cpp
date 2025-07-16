@@ -278,9 +278,13 @@ void UpgradeFeature::start() {
   // perform full compaction if requested
   if (_upgrade && _upgradeFullCompaction &&
       !ServerState::instance()->isCoordinator()) {
-    Result res = performFullCompaction();
+    Result res = catchToResult([&]() { return performFullCompaction(); });
     if (res.fail()) {
-      *_result = EXIT_FAILURE;
+      LOG_TOPIC("e8f46", FATAL, arangodb::Logger::ENGINES)
+          << "full RocksDB compaction after upgrade failed: "
+          << "errorNumber: " << res.errorNumber()
+          << ", message: " << res.errorMessage();
+      *_result = TRI_EXIT_FULL_COMPACTION_FAILED;
       server().beginShutdown();
       return;
     }
@@ -383,11 +387,7 @@ Result UpgradeFeature::performFullCompaction() {
   // enabled This matches the behavior of the /_admin/compact API with
   // bottomMost=true and changeLevels=true
   Result res = engine.compactAll(true, true);
-
   if (res.fail()) {
-    LOG_TOPIC("e8f46", FATAL, arangodb::Logger::ENGINES)
-        << "full RocksDB compaction after upgrade failed: "
-        << res.errorMessage();
     return res;
   }
 
