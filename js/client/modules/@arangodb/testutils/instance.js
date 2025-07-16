@@ -334,6 +334,11 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
+    if (this.options.password !== "") {
+      this.args['server.authentication'] = true;
+    } else {
+      this.args['server.authentication'] = false;
+    }
     if (this.options.extremeVerbosity) {
       this.args['dump-env'] = true;
     }
