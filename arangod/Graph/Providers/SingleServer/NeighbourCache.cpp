@@ -57,7 +57,7 @@ auto NeighbourCache::rearm(VertexType vertexId)
 }
 
 auto NeighbourCache::update(NeighbourBatch const& batch, bool isLastBatch)
-    -> size_t {
+    -> void {
   TRI_ASSERT(_currentEntry !=
              _neighbours.end());  // current entry exists in cache
   TRI_ASSERT(std::get<0>(_currentEntry->second) ==
@@ -72,14 +72,13 @@ auto NeighbourCache::update(NeighbourBatch const& batch, bool isLastBatch)
   for (auto const& neighbour : *batch) {
     newMemoryUsage += neighbour.size();
   }
+  _resourceMonitor.increaseMemoryUsage(newMemoryUsage);
   _memoryUsageVertexCache += newMemoryUsage;
-  return newMemoryUsage;
 }
 
-auto NeighbourCache::clear() -> size_t {
+auto NeighbourCache::clear() -> void {
+  _resourceMonitor.decreaseMemoryUsage(_memoryUsageVertexCache);
   _neighbours.clear();
   _currentEntry = _neighbours.begin();
-  auto memoryUsage = _memoryUsageVertexCache;
   _memoryUsageVertexCache = 0;
-  return memoryUsage;
 }

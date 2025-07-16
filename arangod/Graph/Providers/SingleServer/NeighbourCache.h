@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Basics/ResourceUsage.h"
 #include "Graph/Providers/SingleServer/ExpansionInfo.h"
 #include "Graph/Providers/TypeAliases.h"
 
@@ -66,6 +67,7 @@ struct NeighbourCache {
                                                 // this vertex are in cache
                                          std::vector<NeighbourBatch>>>;
 
+  NeighbourCache(ResourceMonitor& monitor) : _resourceMonitor{monitor} {}
   ~NeighbourCache() { clear(); }
 
   /**
@@ -85,12 +87,13 @@ struct NeighbourCache {
      Last batch needs to identify itself to let the cache know that the current
      vertex entry is complete and can in a subsequent cache request be read.
    */
-  auto update(NeighbourBatch const& batch, bool isLastBatch = false) -> size_t;
-  auto clear() -> size_t;
+  auto update(NeighbourBatch const& batch, bool isLastBatch = false) -> void;
+  auto clear() -> void;
 
   Neighbours _neighbours;
   typename Neighbours::iterator _currentEntry;
   size_t _memoryUsageVertexCache = 0;
+  ResourceMonitor& _resourceMonitor;
 };
 
 }  // namespace arangodb::graph

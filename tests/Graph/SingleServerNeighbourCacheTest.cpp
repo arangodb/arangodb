@@ -64,7 +64,7 @@ TEST(SingleServerNeighbourCacheTest,
 
   // add_batch for another vertex
   auto another_vertex = velocypack::HashedStringRef{"def", 87};
-  ASSERT_FALSE(cache.rearm(another_vertex));
+  ASSERT_EQ(cache.rearm(another_vertex), std::nullopt);
   vec = std::vector<ExpansionInfo>{};
   vec.emplace_back(ExpansionInfo{
       EdgeDocumentToken{DataSourceId{4}, LocalDocumentId{8}}, VPackSlice{}, 0});

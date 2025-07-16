@@ -97,7 +97,6 @@ struct SingleServerNeighbourProvider {
   size_t _readSomething = 0;
 
   std::optional<NeighbourCache> _neighbourCache;
-  ResourceMonitor& _resourceMonitor;
   const uint64_t _batchSize;
 };
 
