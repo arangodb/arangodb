@@ -375,6 +375,17 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * to `Finished`, then fetches the result and sets `state` to `Consumed`.
    * This is necessary to avoid waiting for a task that has already been
    * consumed.
+   * 
+   * An additional note on stopping the query early: In this case
+   * we now have at least two concurrent operations, the cleannup
+   * which will eventually destrruct all objects in the query, and
+   * an async prefetch task.
+   * This stop process now needs to ensure that the prefetchTask is
+   * either completed or will not be started.
+   * Therefore if the task is not consumed the prefetch task is tried to
+   * get claimed with above mechanism. If we can not claim it, we need
+   * to wait for it to finish, as someone is actively working on it.
+   * If we claimed it, we need to discard it, as it is not needed anymore.
    */
   struct PrefetchTask {
     enum class Status { Pending, InProgress, Finished, Consumed };
