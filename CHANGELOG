@@ -9,6 +9,10 @@ devel
   This situation could only be reached if the async-prefetch optimizer rule
   is active, which can only be applied on read-only queries.
 
+* Add option --database.auto-upgrade-full-compaction to run a full RocksDB
+  compaction on database upgrade.
+
+
 * Fix logging of the request body when compression is present.
 
 * Move crash handling to a separate thread, this is cleaner and does not
