@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-2182: When a filter with inequality operator was used with
+  traversals, the Filter node was not pushed into the Traversal node. This
+  fixes that problem in the optimization rule
+  remove-filter-covered-by-traversal.
+
 * Fix BTS-2174: When a more complex query get's killed and the server
   (or DBServer in the cluster) is under high query load, there was a
   race condition in the asynchrounous query execution which would cause
