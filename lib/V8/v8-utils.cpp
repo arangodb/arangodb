@@ -4773,7 +4773,7 @@ static void JS_ExecuteExternalAndWait(
   std::string subProcessWorkingDirectory = workingDirectory;
 
   if (5 <= args.Length()) {
-    TRI_Utf8ValueNFC name(isolate, args[4]);
+    TRI_Utf8ValueNFC name(isolate, args[5]);
     if (*name == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
     }
