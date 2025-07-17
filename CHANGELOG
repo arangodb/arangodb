@@ -1,3 +1,10 @@
+3.12.5.1 (XXXX-XX-XX)
+---------------------
+
+* Add option --database.auto-upgrade-full-compaction to run a full RocksDB
+  compaction on database upgrade.
+
+
 3.12.5 (2025-06-18)
 -------------------
 
