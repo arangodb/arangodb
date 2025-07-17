@@ -46,6 +46,40 @@ known_parameter = {
     "size": "docker container size to be used in CircleCI",
 }
 
+# Global configuration for sanitizer size increment
+SANITIZER_SIZE_INCREMENT = 1  # Number of sizes to increment when sanitizer is present
+
+def get_test_size(size, build_config, cluster):
+    """
+    Get the appropriate test size, potentially increasing it for sanitizer builds.
+    
+    Args:
+        size: The base size from test definition
+        build_config: Build configuration object
+        cluster: Whether this is a cluster test
+    
+    Returns:
+        The adjusted size for the test
+    """
+    if build_config.sanitizer == "":
+        return get_size(size, build_config.arch)
+    
+    # Define the size progression
+    size_progression = ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]
+    
+    # Find the current size index
+    try:
+        current_index = size_progression.index(size)
+    except ValueError:
+        # If size is not in the progression, return the original size
+        return get_size(size, build_config.arch)
+    
+    # Calculate the new index with increment
+    new_index = min(current_index + SANITIZER_SIZE_INCREMENT, len(size_progression) - 1)
+    new_size = size_progression[new_index]
+    
+    return get_size(new_size, build_config.arch)
+
 
 def print_help_flags():
     """print help for flags"""
@@ -298,16 +332,6 @@ def get_size(size, arch):
         "2xlarge": "2xlarge",
     }
     return aarch64_sizes[size] if arch == "aarch64" else x86_sizes[size]
-
-
-def get_test_size(size, build_config, cluster):
-    if build_config.sanitizer != "":
-        # sanitizer builds need more resources
-        if size == "small":
-            size = "xlarge" if build_config.sanitizer == "tsan" and cluster else "large"
-        elif size in ["medium", "medium+", "large"]:
-            size = "xlarge"
-    return get_size(size, build_config.arch)
 
 
 def create_test_job(test, cluster, build_config, build_jobs, args, replication_version=1):
