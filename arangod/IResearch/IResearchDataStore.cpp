@@ -937,6 +937,28 @@ Result IResearchDataStore::commitUnsafeImpl(
     absl::Cleanup commitGuard = [&, last = _lastCommittedTick]() noexcept {
       _lastCommittedTick = last;
     };
+
+    // Add debugging: Log segment information before commit
+    auto snapshotBeforeCommit = _dataStore._writer->GetSnapshot();
+    if (snapshotBeforeCommit) {
+      LOG_TOPIC("COMMIT1", DEBUG, TOPIC)
+          << "Starting commit on ArangoSearch index '" << index().id().id()
+          << "' - Current segments before commit: "
+          << snapshotBeforeCommit->size();
+
+      // Log details of each segment before commit
+      size_t segmentIndex = 0;
+      for (auto const& segment : *snapshotBeforeCommit) {
+        auto const& meta = segment.Meta();
+        LOG_TOPIC("COMMIT1A", DEBUG, TOPIC)
+            << "  Segment[" << segmentIndex << "]: name='" << meta.name
+            << "', docs=" << meta.docs_count
+            << ", live_docs=" << meta.live_docs_count
+            << ", size=" << meta.byte_size << " bytes";
+        ++segmentIndex;
+      }
+    }
+
     bool const wereChanges = _dataStore._writer->Commit({
         .tick = _isCreation ? irs::writer_limits::kMaxTick : beforeCommit,
         .progress = progress,
@@ -981,6 +1003,24 @@ Result IResearchDataStore::commitUnsafeImpl(
     updateStatsUnsafe(std::move(data));
 
     invalidateQueryCache(&index().collection().vocbase());
+
+    // Add debugging: Log detailed segment information after commit
+    LOG_TOPIC("COMMIT2", DEBUG, TOPIC)
+        << "Successful commit on ArangoSearch index '" << index().id().id()
+        << "' - Segments after commit: " << readerSize
+        << ", total docs: " << docsCount << ", live docs: " << liveDocsCount;
+
+    // Log details of each segment after commit
+    size_t segmentIndex = 0;
+    for (auto const& segment : data->_reader) {
+      auto const& meta = segment.Meta();
+      LOG_TOPIC("COMMIT2A", DEBUG, TOPIC)
+          << "  Segment[" << segmentIndex << "]: name='" << meta.name
+          << "', docs=" << meta.docs_count
+          << ", live_docs=" << meta.live_docs_count
+          << ", size=" << meta.byte_size << " bytes";
+      ++segmentIndex;
+    }
 
     LOG_TOPIC("7e328", DEBUG, iresearch::TOPIC)
         << "successful sync of ArangoSearch index '" << index().id()
@@ -1046,10 +1086,40 @@ Result IResearchDataStore::consolidateUnsafeImpl(
   // NOTE: assumes that '_asyncSelf' is read-locked (for use with async tasks)
   TRI_ASSERT(_dataStore);  // must be valid if _asyncSelf->get() is valid
 
+  // Add debugging: Log segment information before consolidation
+  auto snapshotBefore = _dataStore._writer->GetSnapshot();
+  if (snapshotBefore) {
+    LOG_TOPIC("CONSOL1", DEBUG, TOPIC)
+        << "Starting consolidation on ArangoSearch index '" << index().id().id()
+        << "' with policy: " << policy.properties().toString()
+        << " - Current segments before consolidation: "
+        << snapshotBefore->size();
+
+    // Log details of each segment before consolidation
+    size_t segmentIndex = 0;
+    for (auto const& segment : *snapshotBefore) {
+      auto const& meta = segment.Meta();
+      LOG_TOPIC("CONSOL1A", DEBUG, TOPIC)
+          << "  Segment[" << segmentIndex << "]: name='" << meta.name
+          << "', docs=" << meta.docs_count
+          << ", live_docs=" << meta.live_docs_count
+          << ", size=" << meta.byte_size << " bytes";
+      ++segmentIndex;
+    }
+  } else {
+    LOG_TOPIC("CONSOL1", DEBUG, TOPIC)
+        << "Starting consolidation on ArangoSearch index '" << index().id().id()
+        << "' with policy: " << policy.properties().toString()
+        << " - Could not get snapshot before consolidation";
+  }
+
   try {
     auto const res =
         _dataStore._writer->Consolidate(policy.policy(), nullptr, progress);
     if (!res) {
+      LOG_TOPIC("CONSOL2", DEBUG, TOPIC)
+          << "Consolidation failed on ArangoSearch index '" << index().id().id()
+          << "'";
       return {
           TRI_ERROR_INTERNAL,
           absl::StrCat("failure while executing consolidation policy '",
@@ -1058,6 +1128,37 @@ Result IResearchDataStore::consolidateUnsafeImpl(
     }
 
     emptyConsolidation = (res.size == 0);
+
+    // Add debugging: Log segment information after consolidation
+    auto snapshotAfter = _dataStore._writer->GetSnapshot();
+    if (emptyConsolidation) {
+      LOG_TOPIC("CONSOL3", DEBUG, TOPIC)
+          << "Empty consolidation (no segments to consolidate) on ArangoSearch "
+             "index '"
+          << index().id().id() << "'";
+    } else {
+      LOG_TOPIC("CONSOL4", DEBUG, TOPIC)
+          << "Successful consolidation on ArangoSearch index '"
+          << index().id().id() << "' - consolidated " << res.size
+          << " segments";
+
+      if (snapshotAfter) {
+        LOG_TOPIC("CONSOL4A", DEBUG, TOPIC)
+            << "  Segments after consolidation: " << snapshotAfter->size();
+
+        // Log details of each segment after consolidation
+        size_t segmentIndex = 0;
+        for (auto const& segment : *snapshotAfter) {
+          auto const& meta = segment.Meta();
+          LOG_TOPIC("CONSOL4B", DEBUG, TOPIC)
+              << "  Segment[" << segmentIndex << "]: name='" << meta.name
+              << "', docs=" << meta.docs_count
+              << ", live_docs=" << meta.live_docs_count
+              << ", size=" << meta.byte_size << " bytes";
+          ++segmentIndex;
+        }
+      }
+    }
   } catch (std::exception const& e) {
     return {TRI_ERROR_INTERNAL,
             absl::StrCat(
