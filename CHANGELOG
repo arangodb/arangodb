@@ -1,3 +1,14 @@
+3.12.5.1 (XXXX)
+-----
+
+* Fix BTS-2174: When a more complex query get's killed and the server
+  (or DBServer in the cluster) is under high query load, there was a
+  race condition in the asynchrounous query execution which would cause
+  the kill process of the query to get stuck. This race was one
+  of the root causes for a stall which was fixed in BTS-2135 previously.
+  This situation could only be reached if the async-prefetch optimizer rule
+  is active, which can only be applied on read-only queries.
+
 3.12.5 (2025-06-18)
 -------------------
 
