@@ -517,12 +517,50 @@ function VectorIndexL2TestSuite() {
     };
 }
 
+// When cosine similarity scores are too close to each other,  
+// vector search results can become non-deterministic due to floating-point 
+// precision issues. This causes test failures where document ordering 
+// changes between test runs. We ensure minimum distance separation between 
+// vectors' cosine distances from the query point to guarantee deterministic results.
 function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
     const numberOfDocs = 1000;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+    // Helper function to calculate cosine similarity between two vectors
+    function cosineSimilarity(vec1, vec2) {
+        if (vec1.length !== vec2.length) {
+            throw new Error("Vectors must have the same length");
+        }
+        
+        let dotProduct = 0;
+        let norm1 = 0;
+        let norm2 = 0;
+        
+        for (let i = 0; i < vec1.length; i++) {
+            dotProduct += vec1[i] * vec2[i];
+            norm1 += vec1[i] * vec1[i];
+            norm2 += vec2[i] * vec2[i];
+        }
+        
+        norm1 = Math.sqrt(norm1);
+        norm2 = Math.sqrt(norm2);
+        
+        if (norm1 === 0 || norm2 === 0) {
+            return 0;
+        }
+        
+        return dotProduct / (norm1 * norm2);
+    }
+
+    // Helper function to calculate cosine distance (1 - cosine similarity)
+    function cosineDistance(vec1, vec2) {
+        return 1 - cosineSimilarity(vec1, vec2);
+    }
 
     return {
         setUpAll: function() {
@@ -536,19 +574,53 @@ function VectorIndexCosineTestSuite() {
 
             let docs = [];
             let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < numberOfDocs; ++i) {
+            let attempts = 0;
+            const maxAttempts = numberOfDocs * 100; // Prevent infinite loops
+            
+            while (docs.length < numberOfDocs && attempts < maxAttempts) {
                 const vector = Array.from({
                     length: dimension
                 }, () => gen());
-                if (i === (numberOfDocs / 2)) {
+                
+                if (docs.length === (numberOfDocs / 2)) {
                     randomPoint = vector;
                 }
+                
+                // Check if this vector's cosine distance from randomPoint is too close to existing vectors
+                if (randomPoint && docs.length > (numberOfDocs / 2)) {
+                    const currentDistance = cosineDistance(vector, randomPoint);
+                    let tooClose = false;
+                    
+                    // Check against all existing vectors (excluding the randomPoint itself)
+                    for (let i = 0; i < docs.length; i++) {
+                        if (i === (numberOfDocs / 2)) continue; // Skip the randomPoint
+                        
+                        const existingDistance = cosineDistance(docs[i].vector, randomPoint);
+                        if (Math.abs(currentDistance - existingDistance) < floatEpsilon) {
+                            print(`Vector ${docs.length} has cosine distance ${currentDistance} which is too close to vector ${i} with distance ${existingDistance} (difference: ${Math.abs(currentDistance - existingDistance)})`);
+                            tooClose = true;
+                            break;
+                        }
+                    }
+                    
+                    if (tooClose) {
+                        attempts++;
+                        continue; // Generate a new vector
+                    }
+                }
+                
                 docs.push({
                     vector,
-                    nonVector: i,
+                    nonVector: docs.length,
                     unIndexedVector: vector
                 });
+                attempts++;
             }
+            
+            if (docs.length < numberOfDocs) {
+                throw new Error(`Could not generate ${numberOfDocs} vectors with sufficient distance separation after ${maxAttempts} attempts. Generated ${docs.length} vectors.`);
+            }
+            
             collection.insert(docs);
 
             collection.ensureIndex({
