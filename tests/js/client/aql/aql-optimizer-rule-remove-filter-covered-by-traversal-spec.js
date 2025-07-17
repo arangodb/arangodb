@@ -141,10 +141,32 @@ describe('Single Traversal Optimizer', function () {
         hasNoFilterNode(plan);
         validateResult(query, bindVars);
       });
+
+      // BTS-2182
+      it('on v.foo != 3 AND v.foo < 10', () => {
+        let query = `WITH @@vertices
+                       FOR v, e IN 0 OUTBOUND @start @@edges
+                       FILTER v.foo < 10
+                       FILTER v.foo != 3
+                       RETURN v`;
+        let plan = db._createStatement({query: query, bindVars:  bindVars, options:  activateOptimizer}).explain();
+        hasNoFilterNode(plan);
+        validateResult(query, bindVars);
+      });
+
+      it('on e.bar != 4 AND v.foo < 10 AND v.foo != 3', () => {
+        let query = `WITH @@vertices
+                       FOR v, e IN 0 OUTBOUND @start @@edges
+                       FILTER e.bar != 4
+                       FILTER v.foo < 10 AND v.foo != 3
+                       RETURN v`;
+        let plan = db._createStatement({query: query, bindVars:  bindVars, options:  activateOptimizer}).explain();
+        hasNoFilterNode(plan);
+        validateResult(query, bindVars);
+      });
  
     });
 
   });
-
 
 });
