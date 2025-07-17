@@ -47,7 +47,7 @@ known_parameter = {
 }
 
 # Global configuration for sanitizer size increment
-SANITIZER_SIZE_INCREMENT = 1  # Number of sizes to increment when sanitizer is present
+SANITIZER_SIZE_INCREMENT = 2  # Number of sizes to increment when sanitizer is present
 
 def get_test_size(size, build_config, cluster):
     """
