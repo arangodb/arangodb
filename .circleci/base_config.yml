@@ -78,6 +78,9 @@ parameters:
   config-definitions: #dummy. we don't need this here but are required to.
     type: string
     default: tests/test-definitions.txt
+  config-definitions-branches: #dummy. we don't need this here but are required to.
+    type: string
+    default: ""
 
 commands:
   checkout-arangodb:
