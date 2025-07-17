@@ -82,6 +82,7 @@ function goDriver (options) {
       } else {
         opts.extraArgs['server.authentication'] = true;
       }
+      opts['arangodConfig'] = 'arangod-auth.conf';
       super(opts, testname, ...optionalArgs);
       this.info = "runInGoTest";
     }
