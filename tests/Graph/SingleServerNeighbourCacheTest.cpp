@@ -37,7 +37,8 @@ TEST(SingleServerNeighbourCacheTest,
      gives_vertex_batches_that_were_added_to_cache) {
   auto monitor = MyMonitor{};
   auto cache = NeighbourCache{};
-  auto vertex = velocypack::HashedStringRef{"abc", 3};
+  std::string vertexName = "abc";
+  auto vertex = velocypack::HashedStringRef{vertexName.c_str(), 3};
 
   // rearm cache to new vertex
   ASSERT_EQ(cache.rearm(vertex), std::nullopt);
@@ -69,7 +70,9 @@ TEST(SingleServerNeighbourCacheTest,
   ASSERT_EQ(iterator->next(), std::nullopt);
 
   // add_batch for another vertex
-  auto another_vertex = velocypack::HashedStringRef{"def", 87};
+  std::string anotherVertexName = "def";
+  auto another_vertex =
+      velocypack::HashedStringRef{anotherVertexName.c_str(), 87};
   ASSERT_EQ(cache.rearm(another_vertex), std::nullopt);
   vec = std::vector<ExpansionInfo>{};
   vec.emplace_back(ExpansionInfo{
