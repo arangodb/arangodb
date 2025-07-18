@@ -44,21 +44,23 @@ known_parameter = {
     "priority": "priority that controls execution order. Testsuites with lower priority are executed later",
     "parallelity": "parallelity how many resources will the job use in the SUT? Default: 1 in Single server, 4 in Clusters",
     "size": "docker container size to be used in CircleCI",
-    "sanitizerSize": "docker container size to be used in CircleCI when sanitizer is enabled",
+    "tsanSize": "docker container size to be used in CircleCI when tsan sanitizer is enabled",
+    "alubsanSize": "docker container size to be used in CircleCI when alubsan sanitizer is enabled",
 }
 
 # Global configuration for sanitizer size increment
 SANITIZER_SIZE_INCREMENT = 2  # Number of sizes to increment when sanitizer is present
 
-def get_test_size(size, build_config, cluster, sanitizer_size=None):
+def get_test_size(size, build_config, cluster, tsan_size=None, alubsan_size=None):
     """
-    Get the appropriate test size, potentially using explicit sanitizer size.
+    Get the appropriate test size, potentially using explicit sanitizer sizes.
     
     Args:
         size: The base size from test definition
         build_config: Build configuration object
         cluster: Whether this is a cluster test
-        sanitizer_size: Explicit sanitizer size from test definition
+        tsan_size: Explicit tsan size from test definition
+        alubsan_size: Explicit alubsan size from test definition
     
     Returns:
         The adjusted size for the test
@@ -66,9 +68,11 @@ def get_test_size(size, build_config, cluster, sanitizer_size=None):
     if build_config.sanitizer == "":
         return get_size(size, build_config.arch)
     
-    # Use explicit sanitizer size if provided, otherwise fall back to computed size
-    if sanitizer_size is not None:
-        return get_size(sanitizer_size, build_config.arch)
+    # Use explicit sanitizer size based on the sanitizer type
+    if build_config.sanitizer == "tsan" and tsan_size is not None:
+        return get_size(tsan_size, build_config.arch)
+    elif build_config.sanitizer == "alubsan" and alubsan_size is not None:
+        return get_size(alubsan_size, build_config.arch)
     
     # Fallback to the old computation method for backward compatibility
     # Define the size progression
@@ -252,7 +256,8 @@ def read_definition_line(line, testfile_definitions):
         "name": params.get("name", suites),
         "suites": suites,
         "size": params.get("size", "medium" if is_cluster else "small"),
-        "sanitizerSize": params.get("sanitizerSize"),
+        "tsanSize": params.get("tsanSize"),
+        "alubsanSize": params.get("alubsanSize"),
         "flags": flags,
         "args": args,
         "arangosh_args": arangosh_args,
@@ -371,7 +376,7 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_test_size(size, build_config, cluster, test.get("sanitizerSize")),
+        "size": get_test_size(size, build_config, cluster, test.get("tsanSize"), test.get("alubsanSize")),
         "cluster": cluster,
         "requires": build_jobs,
         "arangosh_args": "A " + json.dumps(sub_arangosh_args),
@@ -383,7 +388,7 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
 
     if suite_name == "shell_client_aql" and build_config.isNightly and not cluster:
         # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size
-        job["size"] = get_test_size("medium+", build_config, cluster, test.get("sanitizerSize"))
+        job["size"] = get_test_size("medium+", build_config, cluster, test.get("tsanSize"), test.get("alubsanSize"))
 
     sub_extra_args = test["args"].copy()
     if cluster:
@@ -493,7 +498,7 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
             {
                 "run-hotbackup-tests": {
                     "name": f"run-hotbackup-tests-{build_config.arch}",
-                    "size": get_test_size("medium", build_config, True, None),
+                    "size": get_test_size("medium", build_config, True, None, None),
                     "requires": build_jobs,
                 }
             }
