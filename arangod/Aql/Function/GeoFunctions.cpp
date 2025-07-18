@@ -637,6 +637,68 @@ AqlValue functions::GeoPoint(ExpressionContext* expressionContext,
   return AqlValue(builder->slice(), builder->size());
 }
 
+struct Position {
+  double x;
+  double y;
+  std::optional<double> z;
+};
+
+ResultT<Position> buildPositionFromSlice(VPackSlice slice,
+                                         ExpressionContext* expressionContext,
+                                         std::string_view functionName) {
+  if (!slice.isArray()) {
+    functions::registerWarning(
+        expressionContext, functionName,
+        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+               "not an array containing positions"));
+    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+  }
+  VPackArrayIterator arrayIterator = VPackArrayIterator(slice);
+  if (auto const arraySize = arrayIterator.size();
+      arraySize < 2 || arraySize > 3) {
+    functions::registerWarning(
+        expressionContext, functionName,
+        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+               "position definition must contain 2 or 3 components"));
+    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+  }
+
+  Position pos;
+  if (!(*arrayIterator).isNumber()) {
+    functions::registerWarning(
+        expressionContext, functionName,
+        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+               "not a numeric value"));
+    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+  }
+  pos.x = (*arrayIterator).getNumber<double>();
+  ++arrayIterator;
+
+  if (!(*arrayIterator).isNumber()) {
+    functions::registerWarning(
+        expressionContext, functionName,
+        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+               "not a numeric value"));
+    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+  }
+  pos.y = (*arrayIterator).getNumber<double>();
+  ++arrayIterator;
+
+  if (arrayIterator.size() == 3) {
+    if (!(*arrayIterator).isNumber()) {
+      functions::registerWarning(
+          expressionContext, functionName,
+          Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
+                 "not a numeric value"));
+      return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+    }
+
+    pos.z = (*arrayIterator).getNumber<double>();
+  }
+
+  return {pos};
+}
+
 /// @brief function GEO_MULTIPOINT
 AqlValue functions::GeoMultiPoint(ExpressionContext* expressionContext,
                                   AstNode const&,
@@ -674,24 +736,17 @@ AqlValue functions::GeoMultiPoint(ExpressionContext* expressionContext,
   AqlValueMaterializer materializer(vopts);
   VPackSlice s = materializer.slice(geoArray);
   for (VPackSlice v : VPackArrayIterator(s)) {
-    if (v.isArray()) {
+    if (auto const res =
+            buildPositionFromSlice(v, expressionContext, "GEO_MULTIPOINT");
+        res.ok()) {
       builder->openArray();
-      for (auto const& coord : VPackArrayIterator(v)) {
-        if (coord.isNumber()) {
-          builder->add(VPackValue(coord.getNumber<double>()));
-        } else {
-          registerWarning(
-              expressionContext, "GEO_MULTIPOINT",
-              Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                     "not a numeric value"));
-          return AqlValue(AqlValueHintNull());
-        }
+      builder->add(VPackValue(res->x));
+      builder->add(VPackValue(res->y));
+      if (res->z.has_value()) {
+        builder->add(VPackValue(*res->z));
       }
       builder->close();
     } else {
-      registerWarning(expressionContext, "GEO_MULTIPOINT",
-                      Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                             "not an array containing positions"));
       return AqlValue(AqlValueHintNull());
     }
   }
