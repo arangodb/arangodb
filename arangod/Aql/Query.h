@@ -457,7 +457,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   double _endTime;
 
   /// @brief query execution phase start time (steady clock value)
-  double _startExecutionTime;
+  std::atomic<double> _startExecutionTime{0};
 
   /// @brief query execution end time (steady clock value), only
   /// set once the execution phase ends

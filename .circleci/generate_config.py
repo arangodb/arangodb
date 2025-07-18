@@ -105,9 +105,10 @@ def parse_arguments():
     parser.add_argument(
         "definitions", help="file containing the test definitions", type=str, nargs='*'
     )
-    parser.add_argument("-o", "--output", type=str, help="filename of the output")
+    parser.add_argument("-o", "--output", type=str, required=True, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
-    parser.add_argument("-d", "--default-container", type=str, help="default container to be used")
+    parser.add_argument("-d", "--default-container", type=str, required=True, help="default container to be used")
+    parser.add_argument("-b", "--test-branches", type=str, help="colon separated list of test-definition-prefix=branch")
     parser.add_argument(
         "--ui", type=str, help="whether to run UI test [off|on|only|community]"
     )
@@ -252,7 +253,7 @@ def read_definition_line(line, testfile_definitions):
     }
 
 
-def read_definitions(filename):
+def read_definitions(filename, override_branch):
     """read test definitions txt"""
     tests = []
     has_error = False
@@ -265,6 +266,8 @@ def read_definitions(filename):
             elif line.startswith("#"):
                 if line[2] == '{':
                     testfile_definitions = json.loads(line[2:])
+                    if override_branch is not None:
+                        testfile_definitions['branch'] = override_branch
                 continue  # ignore comments
             try:
                 test = read_definition_line(line, testfile_definitions)
@@ -690,7 +693,16 @@ def main():
             args.ui_testsuites = ""
         tests = []
         for one_definition in args.definitions:
-            tests += read_definitions(one_definition)
+            override_branch = None
+            if args.test_branches is not None and args.test_branches != "":
+                try:
+                    for branch_name_pair in args.test_branches.split(":"):
+                        (name, branch) = branch_name_pair.split("=")
+                        if one_definition.find(name) >= 0:
+                            override_branch = branch
+                except Exception as ex:
+                    raise Exception(f"Syntax error in --test-branches: {branch_name_pair} must be 'name=branch:name2=branch2'") from ex
+            tests += read_definitions(one_definition, override_branch)
         # if args.validate_only:
         #    return  # nothing left to do
         with open(args.base_config, "r", encoding="utf-8") as instream:
