@@ -43,10 +43,10 @@ function GeoFunctionsTestSuite() {
         ["RETURN GEO_MULTIPOINT([[],[1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
         ["RETURN GEO_MULTIPOINT([[1,2,3,4],[5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
         // GEO_LINESTRING
-       /* ["RETURN GEO_LINESTRING([[1,2,3],[4,5])", null],*/
-        /*["RETURN GEO_LINESTRING([[1],[2,3]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],*/
-        /*["RETURN GEO_LINESTRING([[],[1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],*/
-        /*["RETURN GEO_LINESTRING([[1,2,3,4],[5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],*/
+        ["RETURN GEO_LINESTRING([[1,2,3],[4,5]])", null],
+        ["RETURN GEO_LINESTRING([[1],[2,3]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_LINESTRING([[],[1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_LINESTRING([[1,2,3,4],[5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
       ];
 
       for(const queryExecution of queries) {
