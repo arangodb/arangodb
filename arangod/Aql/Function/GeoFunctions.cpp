@@ -928,24 +928,17 @@ AqlValue functions::GeoLinestring(ExpressionContext* expressionContext,
   AqlValueMaterializer materializer(vopts);
   VPackSlice s = materializer.slice(geoArray);
   for (VPackSlice v : VPackArrayIterator(s)) {
-    if (v.isArray()) {
+    if (auto const res =
+            buildPositionFromSlice(v, expressionContext, "GEO_LINESTRING");
+        res.ok()) {
       builder->openArray();
-      for (auto const& coord : VPackArrayIterator(v)) {
-        if (coord.isNumber()) {
-          builder->add(VPackValue(coord.getNumber<double>()));
-        } else {
-          registerWarning(
-              expressionContext, "GEO_LINESTRING",
-              Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                     "not a numeric value"));
-          return AqlValue(AqlValueHintNull());
-        }
+      builder->add(VPackValue(res->x));
+      builder->add(VPackValue(res->y));
+      if (res->z.has_value()) {
+        builder->add(VPackValue(*res->z));
       }
       builder->close();
     } else {
-      registerWarning(expressionContext, "GEO_LINESTRING",
-                      Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                             "not an array containing positions"));
       return AqlValue(AqlValueHintNull());
     }
   }
