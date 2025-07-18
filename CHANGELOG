@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,
+  GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions
+  with two or three components.
+
 * Fix BTS-2174: When a more complex query get's killed and the server
   (or DBServer in the cluster) is under high query load, there was a
   race condition in the asynchrounous query execution which would cause
