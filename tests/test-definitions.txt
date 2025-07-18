@@ -9,36 +9,36 @@ arangobench,permissions,paths_server,version single name=single_server_only_part
 
 
 # Single Server Replication Tests
-replication_fuzz priority=500 parallelity=4 size=small tsanSize=large alubsanSize=large single -- --extraArgs:log.level replication=trace
-replication_ongoing priority=500 parallelity=3 size=small tsanSize=large alubsanSize=large single -- --extraArgs:log.level replication=trace
-replication_ongoing_frompresent parallelity=3 size=small tsanSize=large alubsanSize=large single -- --extraArgs:log.level replication=trace
-replication_ongoing_global priority=500 parallelity=3 size=small tsanSize=large alubsanSize=large single -- --extraArgs:log.level replication=trace
-replication_ongoing_global_spec parallelity=3 size=small tsanSize=large alubsanSize=large single -- --extraArgs:log.level replication=trace
+replication_fuzz priority=500 parallelity=4 size=small tsanSize=medium+ alubsanSize=medium+ single -- --extraArgs:log.level replication=trace
+replication_ongoing priority=500 parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single -- --extraArgs:log.level replication=trace
+replication_ongoing_global priority=500 parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single -- --extraArgs:log.level replication=trace
 # one run for each test...
-replication_static priority=500 parallelity=3 size=small tsanSize=large alubsanSize=large single buckets=2 -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true
+replication_static priority=500 parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single buckets=2 -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true
 # TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with Jenkins. However, in CircleCI we definitely
 # want to use more buckets, especially when running with sanitizers.
-replication_sync priority=8000 buckets=9 parallelity=3 size=medium tsanSize=xlarge alubsanSize=xlarge single -- --extraArgs:log.level replication=trace
-shell_replication parallelity=3 size=small tsanSize=large alubsanSize=large single 
-http_replication priority=500 parallelity=3 size=small tsanSize=large alubsanSize=large single
+replication_sync priority=8000 buckets=9 parallelity=3 size=medium tsanSize=large alubsanSize=xlarge single -- --extraArgs:log.level replication=trace
+shell_replication parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single 
+http_replication priority=500 parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single
 
 # Misc single server tests
-agency,agency-restart priority=350 parallelity=3 size=small tsanSize=large alubsanSize=large single -- --dumpAgencyOnError true
+agency,agency-restart priority=350 parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single -- --dumpAgencyOnError true
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
 
-recovery priority=2000 buckets=8 parallelity=3 size=small tsanSize=large alubsanSize=large single
+recovery priority=2000 buckets=8 parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single
 # cluster
 recovery_cluster priority=2000 cluster buckets=8 -- --extremeVerbosity true 
 
-recovery_server priority=2000 buckets=3 parallelity=3 size=small tsanSize=large alubsanSize=large single
+recovery_server priority=2000 buckets=3 parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single
 
 shell_api priority=500 single -- $EncryptionAtRest
 
 shell_api_multi,shell_api_multi name=shell_api_multi priority=500 single -- --optionsJson [{"http":true},{"ssl":true,"suffix":"ssl"}] $EncryptionAtRest
 
 # Shell client tests Single Server; distribute evenly
-shell_client priority=250 parallelity=2 buckets=4 single size=medium tsanSize=xlarge alubsanSize=xlarge -- $EncryptionAtRest
+shell_client priority=250 parallelity=2 buckets=4 single size=medium tsanSize=large alubsanSize=medium+ -- $EncryptionAtRest
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
 shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 true
@@ -50,8 +50,8 @@ shell_client_traffic,shell_client_traffic,shell_client_traffic,shell_client_traf
 shell_client_aql buckets=19 priority=250  single
 
 # C++ unit tests are executed in single env
-gtest_iresearch !coverage priority=1000 parallelity=3 size=medium tsanSize=xlarge alubsanSize=xlarge single
-gtest_arangodb !coverage priority=1000 parallelity=3 size=medium+ tsanSize=2xlarge alubsanSize=2xlarge single
+gtest_iresearch !coverage priority=1000 parallelity=3 size=medium tsanSize=large alubsanSize=medium+ single
+gtest_arangodb !coverage priority=1000 parallelity=3 size=medium+ tsanSize=xlarge alubsanSize=xlarge single
 
 # Fuerte tests are executed in single env
 fuerte !coverage priority=500 single suffix=http
@@ -62,23 +62,23 @@ rta_makedata single -- --extraArgs:experimental-vector-index true
 
 # Cluster Tests
 
-arangobench priority=1000 size=small tsanSize=large alubsanSize=large cluster -- --dumpAgencyOnError true
+arangobench priority=1000 size=small tsanSize=medium+ alubsanSize=medium+ cluster -- --dumpAgencyOnError true
 chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
-chaos_subq !coverage full priority=1000 size=medium+ tsanSize=2xlarge alubsanSize=2xlarge --javascript.v8-max-heap=32768 --javascript.gc-interval=25 -- --dumpAgencyOnError true
+chaos_subq !coverage full priority=1000 size=medium+ tsanSize=xlarge alubsanSize=xlarge --javascript.v8-max-heap=32768 --javascript.gc-interval=25 -- --dumpAgencyOnError true
 deadlock cluster !coverage -- --dumpAgencyOnError true
-restart priority=1000 size=medium tsanSize=xlarge alubsanSize=xlarge cluster -- --dumpAgencyOnError true --forceJson true
+restart priority=1000 size=medium tsanSize=large alubsanSize=medium+ cluster -- --dumpAgencyOnError true --forceJson true
 
-load_balancing priority=500 size=medium tsanSize=xlarge alubsanSize=xlarge cluster -- --dumpAgencyOnError true
-load_balancing_auth priority=500 size=small tsanSize=large alubsanSize=large cluster -- --dumpAgencyOnError true
+load_balancing priority=500 size=medium tsanSize=large alubsanSize=medium+ cluster -- --dumpAgencyOnError true
+load_balancing_auth priority=500 size=small tsanSize=medium+ alubsanSize=medium+ cluster -- --dumpAgencyOnError true
 
 #replication2_client size=small cluster
 #replication2_server size=medium cluster buckets=3 -- --dumpAgencyOnError true
 # see also DISABLED restart tests when re-enabling!
 
-resilience_analyzers priority=500 size=medium tsanSize=xlarge alubsanSize=xlarge cluster -- --dumpAgencyOnError true
-resilience_failover priority=1200 size=medium buckets=4 tsanSize=xlarge alubsanSize=xlarge cluster -- --dumpAgencyOnError true
-resilience_move priority=600 size=medium buckets=3 tsanSize=xlarge alubsanSize=xlarge cluster -- --dumpAgencyOnError true
-resilience_sharddist size=small tsanSize=large alubsanSize=large cluster -- --dumpAgencyOnError true
+resilience_analyzers priority=500 size=medium tsanSize=large alubsanSize=medium+ cluster -- --dumpAgencyOnError true
+resilience_failover priority=1200 size=medium buckets=4 tsanSize=large alubsanSize=medium+ cluster -- --dumpAgencyOnError true
+resilience_move priority=600 size=medium buckets=3 tsanSize=large alubsanSize=medium+ cluster -- --dumpAgencyOnError true
+resilience_sharddist size=small tsanSize=medium+ alubsanSize=medium+ cluster -- --dumpAgencyOnError true
 
 shell_api priority=500 cluster -- $EncryptionAtRest
 
@@ -86,58 +86,58 @@ shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
 shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
-shell_client_multi priority=1500 cluster suffix=http -- --http true
-shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
+shell_client_multi priority=1500 cluster suffix=http alubsanSize=medium+ -- --http true
+shell_client_multi priority=1500 cluster suffix=http2 alubsanSize=large -- --http2 true
 
 # different number of buckets in cluster
-shell_client_aql priority=1000 size=medium+ tsanSize=2xlarge alubsanSize=2xlarge cluster buckets=20 -- --dumpAgencyOnError true
-shell_client priority=500 cluster size=medium+ tsanSize=2xlarge alubsanSize=2xlarge buckets=20 -- --dumpAgencyOnError true
-shell_client_transaction priority=500 cluster parallelity=5 size=small tsanSize=large alubsanSize=large buckets=5 -- --dumpAgencyOnError true
+shell_client_aql priority=1000 size=medium+ tsanSize=xlarge alubsanSize=xlarge cluster buckets=20 -- --dumpAgencyOnError true
+shell_client priority=500 cluster size=medium+ tsanSize=xlarge alubsanSize=2xlarge buckets=20 -- --dumpAgencyOnError true
+shell_client_transaction priority=500 cluster parallelity=5 size=small tsanSize=medium+ alubsanSize=xlarge buckets=5 -- --dumpAgencyOnError true
 #shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 
 rta_makedata cluster parallelity=6 -- --extraArgs:experimental-vector-index true 
 rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true --extraArgs:experimental-vector-index true
 
 # shell aql vector index tests
-shell_client_aql_vector priority=1000 size=medium+ tsanSize=2xlarge alubsanSize=2xlarge cluster buckets=1 -- --dumpAgencyOnError true
+shell_client_aql_vector priority=1000 size=medium+ tsanSize=xlarge alubsanSize=xlarge cluster buckets=1 -- --dumpAgencyOnError true
 
 # Common Tests
 
-importing,export name=import_export parallelity=5 size=small tsanSize=large alubsanSize=large cluster -- --dumpAgencyOnError true
-importing,export name=import_export parallelity=3 size=small tsanSize=large alubsanSize=large single -- --dumpAgencyOnError true
-hot_backup enterprise single size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
-hot_backup enterprise cluster size=medium+ tsanSize=2xlarge alubsanSize=2xlarge parallelity=5 -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
+importing,export name=import_export parallelity=5 size=small tsanSize=medium+ alubsanSize=medium+ cluster -- --dumpAgencyOnError true
+importing,export name=import_export parallelity=3 size=small tsanSize=medium+ alubsanSize=medium+ single -- --dumpAgencyOnError true
+hot_backup enterprise single size=medium tsanSize=large alubsanSize=medium+ -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
+hot_backup enterprise cluster size=medium+ tsanSize=xlarge alubsanSize=xlarge parallelity=5 -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=10 size=medium+ tsanSize=2xlarge alubsanSize=2xlarge cluster -- --dumpAgencyOnError true
-server_permissions priority=1000 parallelity=5 size=small tsanSize=large alubsanSize=large buckets=2 -- --dumpAgencyOnError true
-server_secrets priority=1000 parallelity=5 size=small tsanSize=large alubsanSize=large -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=10 size=medium+ tsanSize=xlarge alubsanSize=xlarge cluster -- --dumpAgencyOnError true
+server_permissions priority=1000 parallelity=5 size=small tsanSize=medium+ alubsanSize=medium+ buckets=2 -- --dumpAgencyOnError true
+server_secrets priority=1000 parallelity=5 size=small tsanSize=medium+ alubsanSize=medium+ -- --dumpAgencyOnError true
 
 # Dump Tests
-dump cluster size=medium parallelity=5 tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump single size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump cluster suffix=_vpack size=medium parallelity=5 tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
-dump single suffix=_vpack size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+dump cluster size=medium parallelity=5 tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump single size=medium tsanSize=large alubsanSize=medium+ -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump cluster suffix=_vpack size=medium parallelity=5 tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+dump single suffix=_vpack size=medium tsanSize=large alubsanSize=medium+ -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
 # BTS-1852 enable after fix:
 # dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_authentication size=medium tsanSize=xlarge alubsanSize=xlarge  -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_jwt size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple_same single size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple_same cluster size=medium parallelity=5 tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple_two single size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_multiple_two cluster size=medium+ parallelity=5 tsanSize=2xlarge alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_non_parallel size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_maskings  enterprise size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_encrypted enterprise size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_mixed_cluster_single size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_mixed_single_cluster size=medium+ tsanSize=2xlarge alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_mixed_cluster_single suffix=vpack size=medium tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
-dump_mixed_single_cluster suffix=vpack size=medium+ tsanSize=2xlarge alubsanSize=2xlarge -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+dump_authentication size=medium tsanSize=large alubsanSize=2xlarge  -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_jwt size=medium tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_same single size=medium tsanSize=large alubsanSize=medium+ -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_same cluster size=medium parallelity=5 tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two single size=medium tsanSize=large alubsanSize=medium+ -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_multiple_two cluster size=medium+ parallelity=5 tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_non_parallel size=medium tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_maskings  enterprise size=medium tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_encrypted enterprise size=medium tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_mixed_cluster_single size=medium tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_mixed_single_cluster size=medium+ tsanSize=xlarge alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_mixed_cluster_single suffix=vpack size=medium tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
+dump_mixed_single_cluster suffix=vpack size=medium+ tsanSize=xlarge alubsanSize=2xlarge -- --dumpAgencyOnError true --dumpVPack true  --extraArgs:experimental-vector-index true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
-dump_with_crashes single size=medium parallelity=1 priority=2000 tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_with_crashes full cluster size=medium parallelity=1 priority=2000 tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
-dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_with_crashes single size=medium parallelity=1 priority=2000 tsanSize=large alubsanSize=medium+ -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_with_crashes full cluster size=medium parallelity=1 priority=2000 tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
+dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 tsanSize=large alubsanSize=2xlarge -- --dumpAgencyOnError true  --extraArgs:experimental-vector-index true
 
 # Audit Tests
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
@@ -155,8 +155,8 @@ replication_random priority=1000 single full
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-chaos !coverage full cluster priority=9600 size=large tsanSize=2xlarge alubsanSize=2xlarge -- --dumpAgencyOnError true --skipNightly false
-chaos_subq  !coverage full cluster priority=1000 size=medium+ tsanSize=2xlarge alubsanSize=2xlarge --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
+chaos !coverage full cluster priority=9600 size=large tsanSize=xlarge alubsanSize=xlarge -- --dumpAgencyOnError true --skipNightly false
+chaos_subq  !coverage full cluster priority=1000 size=medium+ tsanSize=xlarge alubsanSize=xlarge --javascript.v8-max-heap=16384 -- --dumpAgencyOnError true
 resilience_failover_failure full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view full cluster priority=500 -- --dumpAgencyOnError true
 resilience_transactions full cluster priority=500 -- --dumpAgencyOnError true
@@ -166,6 +166,6 @@ wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
 communication full priority=1000 parallelity=2 single
 communication_ssl full priority=1000 parallelity=2 single
 
-communication full priority=1000 size=large parallelity=6 tsanSize=2xlarge alubsanSize=2xlarge cluster
-communication_ssl full priority=1000 size=large parallelity=6 tsanSize=2xlarge alubsanSize=2xlarge cluster
+communication full priority=1000 size=large parallelity=6 tsanSize=xlarge alubsanSize=2xlarge cluster
+communication_ssl full priority=1000 size=large parallelity=6 tsanSize=xlarge alubsanSize=2xlarge cluster
 
