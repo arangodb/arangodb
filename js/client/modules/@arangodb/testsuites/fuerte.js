@@ -114,7 +114,7 @@ function gtestRunner(options) {
   if (!results.fuerte.status) {
     results.failed += 1;
   }
-  results = getGTestResults(testResultJsonFile, results);
+  results = getGTestResults(testResultJsonFile, results, 'fuerte');
 
   print('Shutting down...');
 
