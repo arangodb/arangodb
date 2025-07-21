@@ -351,6 +351,10 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice doc,
                                                   std::vector<float>& input) {
   TRI_ASSERT(_fields.size() == 1);
   VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
+  if (value.isNone()) {
+    return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+  }
+
   input.clear();
   input.reserve(_definition.dimension);
   if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
@@ -379,8 +383,11 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   std::vector<float> input;
-  if (auto res = readDocumentVectorData(doc, input); res.fail()) {
-    return res;
+  if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
+    // We ignore the documents without the embedding field
+    if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
+      return {};
+    }
   }
 
   faiss::idx_t listId{0};
@@ -421,7 +428,11 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   while (counter < trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-    if (auto res = readDocumentVectorData(doc, input); res.fail()) {
+    if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
+      if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
+        it->Next();
+        continue;
+      }
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -605,44 +616,50 @@ Result RocksDBVectorIndex::ingestVectors(
 
   auto extractDocumentVector =
       [&](velocypack::Slice doc, std::vector<basics::AttributeName> const& path,
-          std::vector<float>& output) {
-        try {
-          auto v = rocksutils::accessDocumentPath(doc, path);
-          if (!v.isArray()) {
-            THROW_ARANGO_EXCEPTION_FORMAT(
-                TRI_ERROR_TYPE_ERROR,
-                "array expected for vector attribute for document %s",
-                transaction::helpers::extractKeyFromDocument(doc)
-                    .copyString()
-                    .c_str());
-          }
-          if (v.length() != _definition.dimension) {
-            THROW_ARANGO_EXCEPTION_FORMAT(
-                TRI_ERROR_TYPE_ERROR,
-                "provided vector is not of matching dimension for document %s",
-                transaction::helpers::extractKeyFromDocument(doc)
-                    .copyString()
-                    .c_str());
-          }
-          for (auto d : VPackArrayIterator(v)) {
-            if (not d.isNumber<double>()) {
-              THROW_ARANGO_EXCEPTION_FORMAT(
-                  TRI_ERROR_TYPE_ERROR,
-                  "vector contains data not representable as double for "
-                  "document %s",
-                  transaction::helpers::extractKeyFromDocument(doc)
-                      .copyString()
-                      .c_str());
-            }
-            output.push_back(d.getNumericValue<double>());
-          }
-        } catch (velocypack::Exception const& e) {
-          LOG_DEVEL << doc.toJson();
+          std::vector<float>& output) -> Result {
+    try {
+      auto v = rocksutils::accessDocumentPath(doc, path);
+      if (v.isNone()) {
+        return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+      }
+
+      // All of these cases can and should be handled here
+      if (!v.isArray()) {
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_TYPE_ERROR,
+            "array expected for vector attribute for document %s",
+            transaction::helpers::extractKeyFromDocument(doc)
+                .copyString()
+                .c_str());
+      }
+      if (v.length() != _definition.dimension) {
+        THROW_ARANGO_EXCEPTION_FORMAT(
+            TRI_ERROR_TYPE_ERROR,
+            "provided vector is not of matching dimension for document %s",
+            transaction::helpers::extractKeyFromDocument(doc)
+                .copyString()
+                .c_str());
+      }
+      for (auto d : VPackArrayIterator(v)) {
+        if (not d.isNumber<double>()) {
           THROW_ARANGO_EXCEPTION_FORMAT(
               TRI_ERROR_TYPE_ERROR,
-              "deserialization error when accessing a document: %s", e.what());
+              "vector contains data not representable as double for "
+              "document %s",
+              transaction::helpers::extractKeyFromDocument(doc)
+                  .copyString()
+                  .c_str());
         }
-      };
+        output.push_back(d.getNumericValue<double>());
+      }
+      return {};
+    } catch (velocypack::Exception const& e) {
+      LOG_DEVEL << doc.toJson();
+      THROW_ARANGO_EXCEPTION_FORMAT(
+          TRI_ERROR_TYPE_ERROR,
+          "deserialization error when accessing a document: %s", e.what());
+    }
+  };
 
   auto readDocuments = [&] {
     // This is a simple implementation, using a single thread.
@@ -665,6 +682,15 @@ Result RocksDBVectorIndex::ingestVectors(
       while (documentIterator->Valid() && not hasError.load()) {
         LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
         VPackSlice doc = RocksDBValue::data(documentIterator->value());
+        if (auto const res =
+                extractDocumentVector(doc, _fields[0], batch->vectors);
+            res.fail()) {
+          // If the documents does not have a embedding attribute just skip
+          if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
+            documentIterator->Next();
+            continue;
+          }
+        }
         extractDocumentVector(doc, _fields[0], batch->vectors);
         batch->docIds.push_back(docId);
         documentIterator->Next();
