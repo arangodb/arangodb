@@ -1,6 +1,9 @@
 devel
 -----
 
+ * Fix BTS-2184: Vector index creation fails on documents which don't have
+  and embedding field defined.
+
 * Fix BTS-2174: When a more complex query get's killed and the server
   (or DBServer in the cluster) is under high query load, there was a
   race condition in the asynchrounous query execution which would cause
