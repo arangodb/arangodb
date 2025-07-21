@@ -265,6 +265,61 @@ function GenericQueryKillSuite() { // can be either default or stream
     assertTrue(localQuery);
   };
 
+  testSuite["test_streamingAsyncPrefetchUnderKill"] = function () {
+    const failurePointName = "AsyncPrefetch::delayClaimOfPrefetchTask";
+    // Create a collection with 4000 empty documents
+    const testCollectionName = "TestCollection" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
+    try {
+      global.instanceManager.debugSetFailAt(failurePointName);
+    } catch (e) {
+      // Let the Test fail
+      throw `Failed to initialize failurepoint ${failurePointName}`;
+    }
+    db._create(testCollectionName);
+    try {
+      // Insert 4000 empty documents
+      const docs = [];
+      for (let i = 0; i < 4000; i++) {
+        docs.push({});
+      }
+      db[testCollectionName].insert(docs);
+      
+      // Execute streaming AQL query that iterates over collection and calculates something
+      const streamingQuery = `FOR doc IN ${testCollectionName} 
+                            LET calculated = doc.nonExistentAttr1 + doc.nonExistentAttr2
+                            FILTER calculated < 10
+                            RETURN { calculated }`;
+      let cursor = db._query(streamingQuery, null, {batchSize: 1000}, {stream: true});
+      
+      // Read one batch from the streaming cursor
+      let batch = cursor.next();
+      
+      // Kill the query
+      cursor.dispose();
+
+      // NOTE: We do not need to assert anything here.
+      // The purpose of this test is to get async prefetch into a 
+      // race condition. Which would lock up the thread.
+      // If this test does not trigger assertions or get the
+      // stuck it is a success.
+    } finally {
+      // Clean up the test collection
+      try {
+        db._drop(testCollectionName);
+      } catch (e) {
+        // If this does not work we cannot do much about it test would be red.
+        // Important here is that the failurePoint is removed. Otherwise we
+        // actively deactivated async prefetch and would block LOW prio lane
+        // for all following tests.
+      }
+      try {
+        global.instanceManager.debugRemoveFailAt(failurePointName);
+      } catch (e) {
+        console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable. Expect sever issues after this test as effectively the Low priority lane is potentially starting blocked threads.`);
+      }
+    }
+  };
+
   return testSuite;
 }
 

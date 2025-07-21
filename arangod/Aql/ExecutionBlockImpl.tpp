@@ -376,10 +376,17 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
         CrashHandler::logBacktrace();
       }
     });
-    if (!_prefetchTask->isConsumed() && !_prefetchTask->tryClaim()) {
-      // some thread is still working on our prefetch task
-      // -> we need to wait for that task to finish first!
-      _prefetchTask->waitFor();
+    if (!_prefetchTask->isConsumed()) {
+      if (!_prefetchTask->tryClaim()) {
+        // some thread is still working on our prefetch task
+        // -> we need to wait for that task to finish first!
+        _prefetchTask->waitFor();
+      } else {
+        // We took responsibility for the prefetch task, but we are not going to
+        // run anything, this in the shutdown process.
+        // We will simply discard the task
+        _prefetchTask->discard(/*isFinished*/ false);
+      }
     }
   }
 }
@@ -1087,6 +1094,19 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
             [block = this, task = _prefetchTask]() mutable {
+              TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
+                // We need to simulate that we are not picking up this task.
+                // So we simply continue sleeping until the failure point is
+                // erased.
+                bool needSleep = true;
+                while (needSleep) {
+                  needSleep = false;
+                  TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
+                    needSleep = true;
+                  }
+                  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+              }
               if (!task->tryClaimOrAbandon()) {
                 return;
               }
