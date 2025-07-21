@@ -116,7 +116,7 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     if (!results[name].status) {
       results.failed += 1;
     }
-    results = getGTestResults(testResultJsonFile, results);
+    results = getGTestResults(testResultJsonFile, results, name);
     tmpMgr.destructor((results.failed === 0) && options.cleanup);
   } else {
     results.failed += 1;
