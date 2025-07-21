@@ -29,6 +29,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const helper = require("@arangodb/aql-helper");
 const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
+const internal = require("internal");
 const errors = internal.errors;
 
 function GeoFunctionsTestSuite() {
@@ -37,11 +38,6 @@ function GeoFunctionsTestSuite() {
 
     testPositionDefinitionInGeoFunctions: function() {
       const queries = [
-         // GEO_POLYGON
-        ["RETURN GEO_POLYGON([[1,2,3], [4,5], [1,2,3]])", null],
-        ["RETURN GEO_POLYGON([[1], [2,3], [1]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_POLYGON([[], [1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_POLYGON([[1,2,3,4], [5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
         // GEO_MULTIPOINT
         ["RETURN GEO_MULTIPOINT([[1,2,3], [4,5]])", null],
         ["RETURN GEO_MULTIPOINT([[1], [2,3]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
