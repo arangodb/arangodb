@@ -109,12 +109,14 @@ function gtestRunner(options) {
 
   print(argv);
 
-  results.fuerte = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
-  results.fuerte.failed = results.fuerte.status ? 0 : 1;
+  const name = 'fuerte';
+  results[name] = {};
+  results[name][name] = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
+  results[name].failed = results[name][name].status ? 0 : 1;
   if (!results.fuerte.status) {
     results.failed += 1;
   }
-  results = getGTestResults(testResultJsonFile, results, 'fuerte');
+  results = getGTestResults(testResultJsonFile, results, name);
 
   print('Shutting down...');
 

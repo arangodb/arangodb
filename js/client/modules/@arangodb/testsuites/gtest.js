@@ -111,8 +111,9 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     // all non gtest args have to come last
     argv.push('--log.line-number');
     argv.push(options.extremeVerbosity ? "true" : "false");
-    results[name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
-    results[name].failed = results[name].status ? 0 : 1;
+    results[name] = {};
+    results[name][name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
+    results[name].failed = results[name][name].status ? 0 : 1;
     if (!results[name].status) {
       results.failed += 1;
     }
