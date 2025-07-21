@@ -317,6 +317,40 @@ function VectorIndexTestCreationWithVectors() {
                     e.errorNum);
             }
         },
+
+        testCreatingVectorIndexWhenFieldNotPresent: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 20; ++i) {
+                if (i > 10) {
+                  const vector = Array.from({
+                      length: dimension
+                  }, () => gen());
+                  docs.push({vector});
+                } else {
+                  docs.push({value: i});
+                }
+            }
+            collection.insert(docs);
+
+            try {
+                let result = collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+            } catch (e) {
+                assertEqual(undefined, e);
+            }
+        },
     };
 }
 
