@@ -347,7 +347,7 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   return {std::move(labels), std::move(distances)};
 }
 
-Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice doc,
+Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                                   std::vector<float>& input) {
   TRI_ASSERT(_fields.size() == 1);
   VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
@@ -468,7 +468,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
   std::vector<float> input;
-  if (auto res = readDocumentVectorData(doc, input); res.fail()) {
+  if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
     return res;
   }
 
@@ -477,7 +477,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   _faissIndex->quantizer->assign(1, input.data(), &listId);
   RocksDBKey rocksdbKey;
   rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
-  auto status = methods->Delete(_cf, rocksdbKey);
+  auto const status = methods->Delete(_cf, rocksdbKey);
 
   if (!status.ok()) {
     // Here we need to throw since there is no way to return the status
@@ -614,7 +614,7 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  auto extractDocumentVector =
+  auto const extractDocumentVector =
       [&](velocypack::Slice doc, std::vector<basics::AttributeName> const& path,
           std::vector<float>& output) -> Result {
     try {
@@ -691,7 +691,6 @@ Result RocksDBVectorIndex::ingestVectors(
             continue;
           }
         }
-        extractDocumentVector(doc, _fields[0], batch->vectors);
         batch->docIds.push_back(docId);
         documentIterator->Next();
 
