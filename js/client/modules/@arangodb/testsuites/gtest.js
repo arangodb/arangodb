@@ -114,7 +114,7 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     results[name] = {};
     results[name][name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
     results[name].failed = results[name][name].status ? 0 : 1;
-    if (!results[name].status) {
+    if (!results[name][name].status) {
       results.failed += 1;
     }
     results = getGTestResults(testResultJsonFile, results, name);

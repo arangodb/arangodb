@@ -113,7 +113,7 @@ function gtestRunner(options) {
   results[name] = {};
   results[name][name] = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
   results[name].failed = results[name][name].status ? 0 : 1;
-  if (!results.fuerte.status) {
+  if (!results[name][name].status) {
     results.failed += 1;
   }
   results = getGTestResults(testResultJsonFile, results, name);
