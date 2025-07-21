@@ -273,37 +273,31 @@ ResultT<GeoPosition> buildGeoPositionFromSlice(
     return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
   }
 
-  GeoPosition pos;
-  if (!(*arrayIterator).isNumber()) {
-    functions::registerWarning(
-        expressionContext, functionName,
-        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-               "first component is not a numeric value"));
-    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
-  }
-  pos.x = (*arrayIterator).getNumber<double>();
-  ++arrayIterator;
-
-  if (!(*arrayIterator).isNumber()) {
-    functions::registerWarning(
-        expressionContext, functionName,
-        Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-               "second  component is not a numeric value"));
-    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
-  }
-  pos.y = (*arrayIterator).getNumber<double>();
-  ++arrayIterator;
-
-  if (arrayIterator.size() == 3) {
+  auto const isGeoPositionComponentSet = [&](double& component) {
     if (!(*arrayIterator).isNumber()) {
       functions::registerWarning(
           expressionContext, functionName,
           Result(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-                 "third component is not a numeric value"));
+                 "first component is not a numeric value"));
+      return false;
+    }
+    component = (*arrayIterator).getNumber<double>();
+    ++arrayIterator;
+    return true;
+  };
+
+  GeoPosition pos;
+  if (!isGeoPositionComponentSet(pos.x)) {
+    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+  }
+  if (!isGeoPositionComponentSet(pos.y)) {
+    return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
+  }
+
+  if (arrayIterator.size() == 3) {
+    if (!isGeoPositionComponentSet(pos.y)) {
       return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
     }
-
-    pos.z = (*arrayIterator).getNumber<double>();
   }
 
   return {pos};

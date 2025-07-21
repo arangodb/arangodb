@@ -37,21 +37,26 @@ function GeoFunctionsTestSuite() {
 
     testPositionDefinitionInGeoFunctions: function() {
       const queries = [
+         // GEO_POLYGON
+        ["RETURN GEO_POLYGON([[1,2,3], [4,5], [1,2,3]])", null],
+        ["RETURN GEO_POLYGON([[1], [2,3], [1]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_POLYGON([[], [1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_POLYGON([[1,2,3,4], [5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
         // GEO_MULTIPOINT
-        ["RETURN GEO_MULTIPOINT([[1,2,3],[4,5]])", null],
-        ["RETURN GEO_MULTIPOINT([[1],[2,3]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_MULTIPOINT([[],[1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_MULTIPOINT([[1,2,3,4],[5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_MULTIPOINT([[1,2,3], [4,5]])", null],
+        ["RETURN GEO_MULTIPOINT([[1], [2,3]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_MULTIPOINT([[], [1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_MULTIPOINT([[1,2,3,4], [5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
         // GEO_LINESTRING
-        ["RETURN GEO_LINESTRING([[1,2,3],[4,5]])", null],
-        ["RETURN GEO_LINESTRING([[1],[2,3]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_LINESTRING([[],[1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_LINESTRING([[1,2,3,4],[5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_LINESTRING([[1,2,3], [4,5]])", null],
+        ["RETURN GEO_LINESTRING([[1], [2,3]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_LINESTRING([[], [1,2]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_LINESTRING([[1,2,3,4], [5,6]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
         // GEO_MULTILINESTRING
-        ["RETURN GEO_MULTILINESTRING([[[1,2,3],[4,5]],[[6,7],[8,9]]])", null],
-        ["RETURN GEO_MULTILINESTRING([[[1],[2,3]],[[4,5],[6,7]]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_MULTILINESTRING([[[],[1,2]],[[3,4],[5,6]]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
-        ["RETURN GEO_MULTILINESTRING([[[1,2,3,4],[5,6]],[[7,8],[9,0]]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_MULTILINESTRING([[[1,2,3], [4,5]], [[6,7], [8,9]]])", null],
+        ["RETURN GEO_MULTILINESTRING([[[1], [2,3]], [[4,5], [6,7]]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_MULTILINESTRING([[[], [1,2]], [[3,4], [5,6]]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
+        ["RETURN GEO_MULTILINESTRING([[[1,2,3,4], [5,6]], [[7,8], [9,0]]])", errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code],
       ];
 
       for(const queryExecution of queries) {
