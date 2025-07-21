@@ -295,7 +295,7 @@ ResultT<GeoPosition> buildGeoPositionFromSlice(
   }
 
   if (arrayIterator.size() == 3) {
-    if (!isGeoPositionComponentSet(pos.y)) {
+    if (!isGeoPositionComponentSet(*pos.z)) {
       return {TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH};
     }
   }
