@@ -86,7 +86,7 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     }
     options.commandSwitches = options.commandSwitches.concat(testoptions);
   }
-  let results = { failed: 0 };
+  let results = { failed: 0, [name]: {}};
   let rootDir = fs.join(fs.getTempPath(), name);
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
@@ -111,9 +111,10 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     // all non gtest args have to come last
     argv.push('--log.line-number');
     argv.push(options.extremeVerbosity ? "true" : "false");
-    results[name] = {};
     results[name][name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
     results[name].failed = results[name][name].status ? 0 : 1;
+    results[name].status = results[name][name].status;
+
     if (!results[name][name].status) {
       results.failed += 1;
     }
