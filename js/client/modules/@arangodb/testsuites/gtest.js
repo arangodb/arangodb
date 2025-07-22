@@ -111,14 +111,17 @@ function gtestRunner (testfilename, name, opts, testoptions) {
     // all non gtest args have to come last
     argv.push('--log.line-number');
     argv.push(options.extremeVerbosity ? "true" : "false");
-    results[name][name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
-    results[name].failed = results[name][name].status ? 0 : 1;
-    results[name].status = results[name][name].status;
+    let ret = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
+    results[name].failed = ret.status ? 0 : 1;
+    results[name].status = ret.status;
 
     if (!results[name][name].status) {
       results.failed += 1;
     }
     results = getGTestResults(testResultJsonFile, results, name);
+    if (Object.keys(results[name]).length < 2) {
+      results[name][name] = ret;
+    }
     tmpMgr.destructor((results.failed === 0) && options.cleanup);
   } else {
     results.failed += 1;

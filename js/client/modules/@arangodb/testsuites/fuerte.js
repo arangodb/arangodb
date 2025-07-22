@@ -108,13 +108,16 @@ function gtestRunner(options) {
   argv.push('--endpoint=' + instanceManager.endpoint);
   argv.push('--authentication=' + "basic:root:");
 
-  results[name][name] = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
-  results[name].failed = results[name][name].status ? 0 : 1;
-  results[name].status = results[name][name].status;
+  let ret = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
+  results[name].failed = ret.status ? 0 : 1;
+  results[name].status = ret.status;
   if (!results[name][name].status) {
     results.failed += 1;
   }
   results = getGTestResults(testResultJsonFile, results, name);
+  if (Object.keys(results[name]).length < 2) {
+    results[name][name] = ret;
+  }
 
   print('Shutting down...');
 
