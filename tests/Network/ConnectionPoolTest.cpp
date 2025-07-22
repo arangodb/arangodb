@@ -22,8 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
-#include "Mocks/Servers.h"
 
+#include "Mocks/Servers.h"
+#include "MockTcpDummyServer.h"
 #include "Metrics/MetricsFeature.h"
 #include "Metrics/Gauge.h"
 #include "Network/ConnectionPool.h"
@@ -48,7 +49,12 @@ namespace arangodb {
 namespace tests {
 
 struct NetworkConnectionPoolTest : public ::testing::Test {
-  NetworkConnectionPoolTest() : server(false) { server.startFeatures(); }
+  NetworkConnectionPoolTest() : server(false), dummyTcpServer(port) {
+    server.startFeatures();
+    dummyTcpServer.start();
+  }
+
+  ~NetworkConnectionPoolTest() { dummyTcpServer.stop(); }
 
  protected:
   metrics::MetricsFeature& metrics() {
@@ -62,7 +68,9 @@ struct NetworkConnectionPoolTest : public ::testing::Test {
     return gauge->load();
   }
   tests::mocks::MockMetricsServer server;
+  tests::mocks::MockTcpServer dummyTcpServer;
 
+  static constexpr int port{1236};
   static constexpr metrics::MetricKeyView currentConnectionsMetric{
       "arangodb_connection_pool_connections_current", "pool=\"\""};
 };
@@ -144,12 +152,16 @@ TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
   ConnectionPool pool(config);
 
   bool isFromPool;
-  auto conn = pool.leaseConnection("tcp://example.org:80", isFromPool);
+  auto conn =
+      pool.leaseConnection(fmt::format("tcp://127.0.0.1:{}", port), isFromPool);
+
   ASSERT_EQ(pool.numOpenConnections(), 1);
   EXPECT_EQ(extractCurrentMetric(), 1ull);
   auto req =
       fuerte::createRequest(fuerte::RestVerb::Get, fuerte::ContentType::Unset);
-  auto res = conn->sendRequest(std::move(req));
+
+  auto const res = conn->sendRequest(std::move(req));
+
   ASSERT_EQ(res->statusCode(), fuerte::StatusOK);
   ASSERT_TRUE(res->payloadSize() > 0);
 }
