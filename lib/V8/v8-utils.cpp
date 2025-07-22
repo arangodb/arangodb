@@ -4746,7 +4746,7 @@ static void JS_ExecuteExternalAndWait(
 
   std::vector<std::string> additionalEnv;
 
-  if (5 <= args.Length()) {
+  if (6 <= args.Length()) {
     v8::Handle<v8::Value> a = args[4];
 
     if (a->IsArray()) {
