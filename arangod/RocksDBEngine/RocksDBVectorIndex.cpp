@@ -350,30 +350,45 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
 Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                                   std::vector<float>& input) {
   TRI_ASSERT(_fields.size() == 1);
-  VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
 
-  if (value.isNone()) {
-    return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+  try {
+    VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
+
+    if (value.isNone()) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+    }
+
+    // All of these cases can and should be handled here
+    if (!value.isArray()) {
+      return {TRI_ERROR_TYPE_ERROR,
+              fmt::format("array expected for vector attribute for document %s",
+                          transaction::helpers::extractKeyFromDocument(doc)
+                              .copyString()
+                              .c_str())};
+    }
+    if (value.length() != _definition.dimension) {
+      return {
+          TRI_ERROR_TYPE_ERROR,
+          fmt::format(
+              "provided vector is not of matching dimension for document %s",
+              transaction::helpers::extractKeyFromDocument(doc)
+                  .copyString()
+                  .c_str())};
+    }
+
+    input.reserve(_definition.dimension);
+    if (auto const res = velocypack::deserializeWithStatus(value, input);
+        !res.ok()) {
+      return {TRI_ERROR_BAD_PARAMETER, res.error()};
+    }
+
+    return {};
+  } catch (velocypack::Exception const& e) {
+    LOG_DEVEL << doc.toJson();
+    return {TRI_ERROR_TYPE_ERROR,
+            fmt::format("deserialization error when accessing a document: %s",
+                        e.what())};
   }
-
-  input.clear();
-  input.reserve(_definition.dimension);
-  if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
-    return {TRI_ERROR_BAD_PARAMETER, res.error()};
-  }
-
-  if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            fmt::format("input vector of {} dimension does not have the "
-                        "correct dimension of {}",
-                        input.size(), _definition.dimension)};
-  }
-
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
-  }
-
-  return {};
 }
 
 /// @brief inserts a document into the index
@@ -391,6 +406,10 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
       return {};
     }
     return res;
+  }
+
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
   faiss::idx_t listId{0};
@@ -446,6 +465,10 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     ++counter;
   }
 
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
+  }
+
   LOG_VECTOR_INDEX("a162b", INFO, Logger::FIXME)
       << "Loaded " << counter << " vectors. Start training process on "
       << _definition.nLists << " centroids.";
@@ -473,6 +496,10 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   std::vector<float> input;
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
     return res;
+  }
+
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
   faiss::idx_t listId{0};
@@ -617,53 +644,6 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  auto const extractDocumentVector =
-      [&](velocypack::Slice doc, std::vector<basics::AttributeName> const& path,
-          std::vector<float>& output) -> Result {
-    try {
-      auto v = rocksutils::accessDocumentPath(doc, path);
-      if (v.isNone()) {
-        return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
-      }
-
-      // All of these cases can and should be handled here
-      if (!v.isArray()) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_TYPE_ERROR,
-            "array expected for vector attribute for document %s",
-            transaction::helpers::extractKeyFromDocument(doc)
-                .copyString()
-                .c_str());
-      }
-      if (v.length() != _definition.dimension) {
-        THROW_ARANGO_EXCEPTION_FORMAT(
-            TRI_ERROR_TYPE_ERROR,
-            "provided vector is not of matching dimension for document %s",
-            transaction::helpers::extractKeyFromDocument(doc)
-                .copyString()
-                .c_str());
-      }
-      for (auto d : VPackArrayIterator(v)) {
-        if (not d.isNumber<double>()) {
-          THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_TYPE_ERROR,
-              "vector contains data not representable as double for "
-              "document %s",
-              transaction::helpers::extractKeyFromDocument(doc)
-                  .copyString()
-                  .c_str());
-        }
-        output.push_back(d.getNumericValue<double>());
-      }
-      return {};
-    } catch (velocypack::Exception const& e) {
-      LOG_DEVEL << doc.toJson();
-      THROW_ARANGO_EXCEPTION_FORMAT(
-          TRI_ERROR_TYPE_ERROR,
-          "deserialization error when accessing a document: %s", e.what());
-    }
-  };
-
   auto readDocuments = [&] {
     // This is a simple implementation, using a single thread.
     // If reading becomes the bottleneck, we can always adapt the parallel index
@@ -685,8 +665,7 @@ Result RocksDBVectorIndex::ingestVectors(
       while (documentIterator->Valid() && not hasError.load()) {
         LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
         VPackSlice doc = RocksDBValue::data(documentIterator->value());
-        if (auto const res =
-                extractDocumentVector(doc, _fields[0], batch->vectors);
+        if (auto const res = readDocumentVectorData(doc, batch->vectors);
             res.fail()) {
           // If the documents does not have an embedding attribute and the index
           // is sparse skip
@@ -716,6 +695,7 @@ Result RocksDBVectorIndex::ingestVectors(
           batch = prepareBatch();
         }
       }
+
       if (_definition.metric == SimilarityMetric::kCosine) {
         faiss::fvec_renorm_L2(_definition.dimension, batch->docIds.size(),
                               batch->vectors.data());
