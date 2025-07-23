@@ -174,9 +174,7 @@ arangosh without connecting to a server.)");
         "--server.jwt-secret-keyfile, --server.username and --server.password. "
         "If specified, it is used for all connections - even if a new "
         "connection to another server is created.",
-        new StringParameter(&_jwtToken),
-        arangodb::options::makeDefaultFlags(
-            arangodb::options::Flags::Uncommon));
+        new StringParameter(&_jwtToken));
   }
 
   options->addOption("--server.connection-timeout",
