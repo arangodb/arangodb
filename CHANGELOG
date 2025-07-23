@@ -22,6 +22,20 @@
   This also improves cluster queries (replace the traversal with another FOR loop)
   which had the same behaviour and are now enumerating less unused
   intermediate results.
+  Please Note: If the above situation is encapsulated inside a subquery
+  like this:
+  
+  FOR y IN 1..2
+  LET subquery = (
+    FOR x IN largeCollection
+      FOR v IN 1 OUTBOUND x edges {parallelism: 4}
+        LIMIT 10
+        RETURN v
+  )
+  RETURN {y, subquery}
+
+  The issue still exists.
+
 
 * Add option --database.auto-upgrade-full-compaction to run a full RocksDB
   compaction on database upgrade.
