@@ -59,7 +59,8 @@ function locateGTest(name) {
 }
 
 function gtestRunner(options) {
-  let results = { failed: 0 };
+  const name = 'fuerte';
+  let results = { failed: 0, [name]: {}};
   let rootDir = fs.join(fs.getTempPath(), 'fuertetest');
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
@@ -107,14 +108,16 @@ function gtestRunner(options) {
   argv.push('--endpoint=' + instanceManager.endpoint);
   argv.push('--authentication=' + "basic:root:");
 
-  print(argv);
-
-  results.fuerte = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
-  results.fuerte.failed = results.fuerte.status ? 0 : 1;
-  if (!results.fuerte.status) {
-    results.failed += 1;
+  let ret = pu.executeAndWait(run, argv, options, 'fuertetest', rootDir, options.coreCheck);
+  results[name].failed = ret.status ? 0 : 1;
+  results[name].status = ret.status;
+  results = getGTestResults(testResultJsonFile, results, name);
+  if (Object.keys(results[name]).length < 2) {
+    if (!ret.status) {
+      results.failed += 1;
+    }
+    results[name][name] = ret;
   }
-  results = getGTestResults(testResultJsonFile, results);
 
   print('Shutting down...');
 
