@@ -8,7 +8,7 @@
   This situation could only be reached if the async-prefetch optimizer rule
   is active, which can only be applied on read-only queries.
 
-* Fix BTS-2152 Overfetch input on prallel Traversals. For queries like this:
+* Fix BTS-2152 Overfetch input on parallel Traversals. For queries like this:
   
   FOR x IN largeCollection
     FOR v IN 1 OUTBOUND x edges {parallelism: 4}
