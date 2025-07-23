@@ -1424,6 +1424,8 @@ QueryResult Query::explain() {
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
+        // Even though there is a execution time this remains to be called
+        // executionTime for backwards compatibility reasons
         b.add("executionTime", VPackValue(queryTime()));
       }
     }
@@ -1726,8 +1728,9 @@ void Query::logAtEnd() const {
 
 void Query::trackExecutionStart() noexcept {
   // We should do this only once
-  if (!_isExecuting) {
-    _startExecutionTime = currentSteadyClockValue();
+  double expectedTime{0};
+  if (_startExecutionTime.compare_exchange_strong(expectedTime,
+                                                  currentSteadyClockValue())) {
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryStart();
@@ -1736,12 +1739,12 @@ void Query::trackExecutionStart() noexcept {
 }
 
 void Query::trackExecutionEnd() noexcept {
-  if (_isExecuting) {
+  bool expected = true;
+  if (_isExecuting.compare_exchange_strong(expected, false)) {
     _endExecutionTime = currentSteadyClockValue();
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryEnd(executionTime());
-    _isExecuting = false;
   }
 }
 

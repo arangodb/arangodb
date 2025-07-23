@@ -457,7 +457,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   double _endTime;
 
   /// @brief query execution phase start time (steady clock value)
-  double _startExecutionTime;
+  std::atomic<double> _startExecutionTime{0};
 
   /// @brief query execution end time (steady clock value), only
   /// set once the execution phase ends
@@ -536,7 +536,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // the consequence is that _ast is nullptr
   bool _isCached{false};
 
-  bool _isExecuting{false};
+  std::atomic<bool> _isExecuting{false};
 };
 
 }  // namespace aql

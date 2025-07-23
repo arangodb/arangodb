@@ -58,7 +58,9 @@ constexpr auto kNonServerFeatures =
 
 static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   try {
-    CrashHandler::installCrashHandler();
+    CrashHandler crashHandler;  // initializes the crash handler and starts its
+                                // thread the destructor will stop it.
+
     std::string name = context.binaryName();
 
     auto options = std::make_shared<arangodb::options::ProgramOptions>(
@@ -226,7 +228,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
              "unknown type";
       ret = EXIT_FAILURE;
     }
+
     Logger::flush();
+    // CrashHandler will be deactivated here automatically by its destructor
     return context.exit(ret);
   } catch (std::exception const& ex) {
     LOG_TOPIC("8afa8", ERR, arangodb::Logger::FIXME)
