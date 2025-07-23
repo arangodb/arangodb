@@ -138,13 +138,15 @@ class testRunner {
     }
     return true;
   }
-  setResult(te, serverDead, res) {
+  setResult(te, serverDead, res, which) {
     let orgRes = JSON.stringify(this.results[this.translateResult(te)]);
-    this.results[this.translateResult(te)] = res;
+    res.message += "\n - Original test status: \n" + orgRes;
+    this.results[this.translateResult(te)] = {
+      [`SUT-checker "${which}"`]: res
+    };
     if (serverDead) {
       this.serverDead = true;
     }
-    this.results[this.translateResult(te)].message += " - Original test status: \n" + orgRes;
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief Hooks that you can overload to be invoked in different phases:
@@ -398,7 +400,7 @@ class testRunner {
               continue;
             }
           } else {
-            this.results[this.translateResult(te)].message = "Instance not healthy! " + JSON.stringify(reply);
+            this.results[this.translateResult(te)] = {"FATAL": { message = "Instance not healthy! " + JSON.stringify(reply)}};
             continue;
           }
           first = false;
