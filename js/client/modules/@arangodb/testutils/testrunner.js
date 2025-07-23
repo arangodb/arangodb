@@ -183,13 +183,11 @@ class testRunner {
       if (this.results.hasOwnProperty(te) && this.results[this.translateResult(te)].hasOwnProperty('message')) {
         originalMessage = this.results[this.translateResult(te)].message;
       }
-      this.results['SKIPPED'] = {
-        status: false,
-        message: ""
-      };
       this.results[this.translateResult(te)] = {
-        status: false,
-        message: 'server unavailable for testing. ' + originalMessage
+        'FATAL': {
+          status: false,
+          message: 'server unavailable for testing. ' + originalMessage
+        }
       };
     } else {
       if (this.results['SKIPPED'].message !== '') {
@@ -400,7 +398,11 @@ class testRunner {
               continue;
             }
           } else {
-            this.results[this.translateResult(te)] = {"FATAL": { message = "Instance not healthy! " + JSON.stringify(reply)}};
+            this.results[this.translateResult(te)] = {
+              "FATAL": {
+                message: "Instance not healthy! " + JSON.stringify(reply)
+              }
+            };
             continue;
           }
           first = false;
