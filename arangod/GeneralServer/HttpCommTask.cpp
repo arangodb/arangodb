@@ -331,7 +331,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
         err = llhttp_execute(&_parser, data, datasize);
         if (err != HPE_OK) {
-          if (err == HPE_INVALID_HEADER_TOKEN) {
+          if (err == HPE_INVALID_HEADER_TOKEN || err == HPE_INVALID_URL ||
+              err == HPE_UNEXPECTED_CONTENT_LENGTH) {
             _headerCorrupt = true;
           }
           ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
