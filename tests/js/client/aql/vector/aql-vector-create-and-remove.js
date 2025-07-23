@@ -340,6 +340,42 @@ function VectorIndexTestCreationWithVectors() {
                     type: "vector",
                     fields: ["vector"],
                     inBackground: false,
+                    sparse: false,
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+            } catch (e) {
+                assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, e.errorNum);
+            }
+        },
+
+        testCreatingVectorIndexWhenFieldNotPresentAndSparse: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 20; ++i) {
+                if (i > 10) {
+                  const vector = Array.from({
+                      length: dimension
+                  }, () => gen());
+                  docs.push({vector});
+                } else {
+                  docs.push({value: i});
+                }
+            }
+            collection.insert(docs);
+
+            try {
+                let result = collection.ensureIndex({
+                    name: "vector_l2",
+                    type: "vector",
+                    fields: ["vector"],
+                    inBackground: false,
+                    sparse: true,
                     params: {
                         metric: "l2",
                         dimension: dimension,
