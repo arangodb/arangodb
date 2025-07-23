@@ -179,7 +179,7 @@ class testRunner {
   abortTestOnError(te) {
     if (!this.results.hasOwnProperty('SKIPPED')) {
       print('oops! Skipping remaining tests, server is unavailable for testing.');
-      let originalMessage;
+      let originalMessage = "";
       if (this.results.hasOwnProperty(te) && this.results[this.translateResult(te)].hasOwnProperty('message')) {
         originalMessage = this.results[this.translateResult(te)].message;
       }
