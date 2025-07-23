@@ -562,6 +562,7 @@ function VectorIndexCosineTestSuite() {
         return 1 - cosineSimilarity(vec1, vec2);
     }
 
+
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
@@ -572,49 +573,113 @@ function VectorIndexCosineTestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            let attempts = 0;
-            const maxAttempts = numberOfDocs * 100; // Prevent infinite loops
-            
-            while (docs.length < numberOfDocs && attempts < maxAttempts) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                
-                if (docs.length === (numberOfDocs / 2)) {
-                    randomPoint = vector;
+            const docs = [];
+            const gen = randomNumberGeneratorFloat(seed); // Assumed to be provided externally
+            const maxAttemptsPerDoc = 100; // Limit attempts for each vector generation
+        
+            // This array will store the cosine distances of generated vectors from 'randomPoint'.
+            // It will be kept sorted to enable faster proximity checks.
+            const distancesFromRandomPoint = [];
+
+            // Helper function to find if a targetDistance is too close to any existing distance
+            // in the sorted distancesFromRandomPoint array.
+            function findProximity(targetDistance) {
+                let low = 0;
+                let high = distancesFromRandomPoint.length - 1;
+
+                // Binary search to find a starting point for linear scan
+                let startIndex = 0; // Default to start of array
+                while (low <= high) {
+                    const mid = Math.floor((low + high) / 2);
+                    if (distancesFromRandomPoint[mid] < targetDistance - floatEpsilon) {
+                        low = mid + 1;
+                    } else {
+                        startIndex = mid;
+                        high = mid - 1;
+                    }
                 }
-                
-                // Check if this vector's cosine distance from randomPoint is too close to existing vectors
-                if (randomPoint && docs.length > (numberOfDocs / 2)) {
-                    const currentDistance = cosineDistance(vector, randomPoint);
-                    let tooClose = false;
-                    
-                    // Check against all existing vectors (excluding the randomPoint itself)
-                    for (let i = 0; i < docs.length; i++) {
-                        if (i === (numberOfDocs / 2)) continue; // Skip the randomPoint
-                        
-                        const existingDistance = cosineDistance(docs[i].vector, randomPoint);
-                        if (Math.abs(currentDistance - existingDistance) < floatEpsilon) {
-                            print(`Vector ${docs.length} has cosine distance ${currentDistance} which is too close to vector ${i} with distance ${existingDistance} (difference: ${Math.abs(currentDistance - existingDistance)})`);
-                            tooClose = true;
-                            break;
+
+                // Linearly scan from the determined startIndex to find a close match.
+                // We only need to check values that could possibly be within the floatEpsilon range.
+                for (let k = startIndex; k < distancesFromRandomPoint.length; k++) {
+                    const existingDistance = distancesFromRandomPoint[k];
+                    // If the current existingDistance is already too far, we can stop early
+                    if (existingDistance > targetDistance + floatEpsilon) {
+                        break;
+                    }
+                    // Check if it's within the epsilon range
+                    if (Math.abs(existingDistance - targetDistance) < floatEpsilon) {
+                        return true; // Found a close distance
+                    }
+                }
+                return false; // No close distance found
+            }
+
+            // Helper function to insert a value into the sorted distancesFromRandomPoint array
+            function insertSorted(value) {
+                let low = 0;
+                let high = distancesFromRandomPoint.length;
+                // Binary search to find the correct insertion point
+                while (low < high) {
+                    const mid = Math.floor((low + high) / 2);
+                    if (distancesFromRandomPoint[mid] < value) {
+                        low = mid + 1;
+                    } else {
+                        high = mid;
+                    }
+                }
+                // Insert the value at the found position, maintaining sort order
+                distancesFromRandomPoint.splice(low, 0, value);
+            }
+        
+            for (let i = 0; i < numberOfDocs; i++) {
+                let attempts = 0;
+                let vector = null;
+                let isTooClose;
+        
+                while (attempts < maxAttemptsPerDoc) {
+                    vector = Array.from({ length: dimension }, () => gen());
+                    isTooClose = false;
+        
+                    // Set the randomPoint when we reach the middle index
+                    if (i === 0) {
+                        randomPoint = vector;
+                        // Once randomPoint is set, calculate distances for all previously generated
+                        // vectors and add them to distancesFromRandomPoint.
+                        // This ensures all relevant distances are tracked.
+                        for (let j = 0; j < docs.length; j++) {
+                            insertSorted(cosineDistance(docs[j].vector, randomPoint));
                         }
+                        break; // randomPoint found, no proximity check needed for itself
                     }
-                    
-                    if (tooClose) {
-                        attempts++;
-                        continue; // Generate a new vector
+        
+                    // Perform proximity check only if randomPoint is set and we are generating
+                    // vectors *after* the randomPoint.
+                    if (randomPoint && i > Math.floor(numberOfDocs / 2)) {
+                        const currentDistance = cosineDistance(vector, randomPoint);
+                        isTooClose = findProximity(currentDistance);
                     }
+        
+                    if (!isTooClose) {
+                        // If the vector is suitable, and randomPoint is set and active,
+                        // add its distance to our sorted array for future checks.
+                        if (randomPoint && i > Math.floor(numberOfDocs / 2)) {
+                            insertSorted(cosineDistance(vector, randomPoint));
+                        }
+                        break; // Found a suitable vector, exit inner loop
+                    }
+                    attempts++;
                 }
-                
+        
+                if (attempts === maxAttemptsPerDoc) {
+                    console.warn(`Warning: Could not generate a sufficiently unique vector for index ${i} after ${maxAttemptsPerDoc} attempts. Consider adjusting parameters.`);
+                }
+        
                 docs.push({
-                    vector,
-                    nonVector: docs.length,
-                    unIndexedVector: vector
+                    vector: vector,
+                    nonVector: i, // Use the loop index directly for simplicity
+                    unIndexedVector: vector // Redundant if 'vector' is the stored value, but kept for original intent
                 });
-                attempts++;
             }
             
             if (docs.length < numberOfDocs) {
