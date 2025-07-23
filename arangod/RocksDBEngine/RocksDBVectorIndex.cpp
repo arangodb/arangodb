@@ -351,6 +351,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
                                                   std::vector<float>& input) {
   TRI_ASSERT(_fields.size() == 1);
   VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
+
   if (value.isNone()) {
     return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
   }
@@ -384,10 +385,12 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                                   bool /*performChecks*/) {
   std::vector<float> input;
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-    // We ignore the documents without the embedding field
-    if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
+    // We ignore the documents without the embedding field if the index is
+    // sparse
+    if (_sparse && res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
       return {};
     }
+    return res;
   }
 
   faiss::idx_t listId{0};
@@ -429,7 +432,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     TRI_ASSERT(it->key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
     if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
+      if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) && _sparse) {
         it->Next();
         continue;
       }
@@ -685,11 +688,19 @@ Result RocksDBVectorIndex::ingestVectors(
         if (auto const res =
                 extractDocumentVector(doc, _fields[0], batch->vectors);
             res.fail()) {
-          // If the documents does not have a embedding attribute just skip
-          if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
+          // If the documents does not have an embedding attribute and the index
+          // is sparse skip
+          if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) && _sparse) {
             documentIterator->Next();
             continue;
           }
+          THROW_ARANGO_EXCEPTION_FORMAT(
+              TRI_ERROR_TYPE_ERROR,
+              "document %s does not contain the vector index field and the "
+              "index is not sparse",
+              transaction::helpers::extractKeyFromDocument(doc)
+                  .copyString()
+                  .c_str());
         }
         batch->docIds.push_back(docId);
         documentIterator->Next();
