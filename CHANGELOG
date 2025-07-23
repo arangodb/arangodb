@@ -1,6 +1,12 @@
 devel
 -----
 
+* Add option --server.jwt-token to arangosh and all other client tools.
+  This allows you to login with a JWT token that is valid for the system.
+  You can get this token from the _open/auth endpoint. You need to either
+  pick username and password, or the JWT token when starting
+  a client tool.
+
 * Fix BTS-2174: When a more complex query get's killed and the server
   (or DBServer in the cluster) is under high query load, there was a
   race condition in the asynchrounous query execution which would cause
@@ -11,7 +17,6 @@ devel
 
 * Add option --database.auto-upgrade-full-compaction to run a full RocksDB
   compaction on database upgrade.
-
 
 * Fix logging of the request body when compression is present.
 
@@ -38,6 +43,22 @@ devel
   This also improves cluster queries (replace the traversal with another FOR loop)
   which had the same behaviour and are now enumerating less unused
   intermediate results.
+
+  Please Note: If the above situation is encapsulated inside a subquery
+   like this:
+
+
+
+   FOR y IN 1..2
+   LET subquery = (
+     FOR x IN largeCollection
+       FOR v IN 1 OUTBOUND x edges {parallelism: 4}
+         LIMIT 10
+         RETURN v
+   )
+   RETURN {y, subquery}
+
+   The issue still exists.
 
 * Fix a bug in the PERCENTILE function in AQL, which gave the incorrect
   result null for small percentiles. This fixes BTS-2169.
