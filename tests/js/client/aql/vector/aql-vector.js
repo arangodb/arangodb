@@ -635,18 +635,16 @@ function VectorIndexCosineTestSuite() {
             for (let i = 0; i < numberOfDocs; i++) {
                 let attempts = 0;
                 let vector = null;
-                let isTooClose;
+                let isTooClose = false;
         
                 while (attempts < maxAttemptsPerDoc) {
                     vector = Array.from({ length: dimension }, () => gen());
                     isTooClose = false;
         
                     // Set the randomPoint when we reach the middle index
-                    if (i === 0) {
+                    if (i === Math.floor(numberOfDocs / 2)) {
                         randomPoint = vector;
-                        // Once randomPoint is set, calculate distances for all previously generated
-                        // vectors and add them to distancesFromRandomPoint.
-                        // This ensures all relevant distances are tracked.
+                        // Calculate distances for all previously generated vectors
                         for (let j = 0; j < docs.length; j++) {
                             insertSorted(cosineDistance(docs[j].vector, randomPoint));
                         }
@@ -683,7 +681,7 @@ function VectorIndexCosineTestSuite() {
             }
             
             if (docs.length < numberOfDocs) {
-                throw new Error(`Could not generate ${numberOfDocs} vectors with sufficient distance separation after ${maxAttempts} attempts. Generated ${docs.length} vectors.`);
+                throw new Error(`Could not generate ${numberOfDocs} vectors with sufficient distance separation after ${maxAttemptsPerDoc} attempts. Generated ${docs.length} vectors.`);
             }
             
             collection.insert(docs);
