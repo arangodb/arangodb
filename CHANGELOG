@@ -5,7 +5,9 @@ devel
   This allows you to login with a JWT token that is valid for the system.
   You can get this token from the _open/auth endpoint. You need to either
   pick username and password, or the JWT token when starting
-  a client tool.
+  a client tool. Please note: You can write "--server.jwt-token -"
+  to get prompted for the token, so it is not visible in the
+  process list.
 
 * Fix BTS-2174: When a more complex query get's killed and the server
   (or DBServer in the cluster) is under high query load, there was a

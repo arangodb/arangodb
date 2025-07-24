@@ -96,6 +96,7 @@ class ClientFeature final : public HttpEndpointProvider {
   void setJwtSecret(std::string_view jwtSecret);
 
   std::string jwtToken() const;
+  void setJwtToken(std::string_view jwtToken);
 
   double connectionTimeout() const noexcept;
   double requestTimeout() const noexcept;
@@ -147,6 +148,7 @@ class ClientFeature final : public HttpEndpointProvider {
 
   void readPassword();
   void readJwtSecret();
+  void readJwtToken();
   void loadJwtSecretFile();
 
   CommunicationFeaturePhase& _comm;

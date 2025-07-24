@@ -380,6 +380,19 @@ void ClientFeature::readPassword() {
   std::cout << std::endl << std::flush;
 }
 
+void ClientFeature::readJwtToken() {
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+  if (_console && _console->isEnabled()) {
+    setJwtToken(_console->readPassword("Please specify a JWT token: "));
+    return;
+  }
+
+  std::cout << "Please specify a JWT token: " << std::flush;
+  setJwtToken(ShellConsoleFeature::readPassword());
+  std::cout << std::endl << std::flush;
+}
+
 void ClientFeature::readJwtSecret() {
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
@@ -426,6 +439,9 @@ void ClientFeature::prepare() {
   } else if (_authentication && _haveServerPassword) {
     // ask for a password
     readPassword();
+  } else if (!_jwtToken.empty() && _jwtToken == "-") {
+    // if the jwt token is set to "-" we will ask for it
+    readJwtToken();
   }
 }
 
@@ -550,6 +566,11 @@ std::string ClientFeature::password() const {
 void ClientFeature::setPassword(std::string_view value) {
   WRITE_LOCKER(locker, _settingsLock);
   _password = value;
+}
+
+void ClientFeature::setJwtToken(std::string_view jwtToken) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _jwtToken = jwtToken;
 }
 
 std::string ClientFeature::jwtSecret() const {
