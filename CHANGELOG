@@ -1,4 +1,4 @@
-3.12.5.1 (XXXX-XX-XX)
+3.12.5.1 (2025-07-25)
 ---------------------
 
 * Fix for null access for smallest range when no files on level (RocksDB).
