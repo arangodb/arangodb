@@ -101,6 +101,8 @@ rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 -
 
 # shell aql vector index tests
 shell_client_aql_vector priority=1000 size=medium+ cluster buckets=1 -- --dumpAgencyOnError true
+# shell client aql, this tests only the restoration from vector index dump to non vector index enabled instance
+shell_client_vector priority=1000 size=medium cluster buckets=1 -- --dumpAgencyOnError true
 
 # Common Tests
 
