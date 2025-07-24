@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix for null access for smallest range when no files on level (RocksDB).
+
 * Internal change: The common entry point for rest handlers is now a coroutine,
   simplifying asynchronous rest handlers.
 
