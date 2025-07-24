@@ -56,7 +56,8 @@ function aqlKillSuite () {
       }
     }
     console.warn(`Giving up after ${stopAfter}s in ` + JSON.stringify(new Error().stack));
-    return { code: 500, error: true, errorMessage: `Giving up after ${stopAfter}s in ${JSON.stringify(new Error().stack)}`};
+
+    return undefined;
   }
 
   function queryGone (queryId) {
@@ -116,9 +117,6 @@ function aqlKillSuite () {
     assertEqual(killResult.code, 200, { httpres: JSON.stringify(killResult), sleepForMs });
 
     const putResult = tryForUntil({until: jobGone(jobId)});
-    if (isCov && putResult.code === 404 && putResult.errorNum === 1591) {
-      return;
-    }
     assertEqual(410, putResult.code, JSON.stringify(putResult));
   }
 
