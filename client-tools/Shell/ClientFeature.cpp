@@ -169,8 +169,10 @@ arangosh without connecting to a server.)");
 
     options->addOption(
         "--server.jwt-token",
-        "If enabled, the JWT token is used directly for authentication. You can either "
-        "specify the token directly or use the - sign to be prompted for it to not leak "
+        "If enabled, the JWT token is used directly for authentication. You "
+        "can either "
+        "specify the token directly or use the - sign to be prompted for it to "
+        "not leak "
         "the token to the process list. This "
         "option is not compatible with --server.ask-jwt-secret, "
         "--server.jwt-secret-keyfile, --server.username and --server.password. "
