@@ -591,7 +591,7 @@ function VectorIndexCosineTestSuite() {
                 let startIndex = 0; // Default to start of array
                 while (low <= high) {
                     const mid = Math.floor((low + high) / 2);
-                    if (distancesFromRandomPoint[mid] < targetDistance - floatEpsilon) {
+                    if (distancesFromRandomPoint[mid] < targetDistance) {
                         low = mid + 1;
                     } else {
                         startIndex = mid;
@@ -641,29 +641,19 @@ function VectorIndexCosineTestSuite() {
                     vector = Array.from({ length: dimension }, () => gen());
                     isTooClose = false;
         
-                    // Set the randomPoint when we reach the middle index
-                    if (i === Math.floor(numberOfDocs / 2)) {
+                    // Set the randomPoint
+                    if (i === 0) {
                         randomPoint = vector;
-                        // Calculate distances for all previously generated vectors
-                        for (let j = 0; j < docs.length; j++) {
-                            insertSorted(cosineDistance(docs[j].vector, randomPoint));
-                        }
-                        break; // randomPoint found, no proximity check needed for itself
+                        break;
                     }
         
-                    // Perform proximity check only if randomPoint is set and we are generating
-                    // vectors *after* the randomPoint.
-                    if (randomPoint && i > Math.floor(numberOfDocs / 2)) {
-                        const currentDistance = cosineDistance(vector, randomPoint);
-                        isTooClose = findProximity(currentDistance);
-                    }
+                    const currentDistance = cosineDistance(vector, randomPoint);
+                    isTooClose = findProximity(currentDistance);
         
                     if (!isTooClose) {
                         // If the vector is suitable, and randomPoint is set and active,
                         // add its distance to our sorted array for future checks.
-                        if (randomPoint && i > Math.floor(numberOfDocs / 2)) {
-                            insertSorted(cosineDistance(vector, randomPoint));
-                        }
+                        insertSorted(currentDistance);
                         break; // Found a suitable vector, exit inner loop
                     }
                     attempts++;
