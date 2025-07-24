@@ -9,6 +9,9 @@ devel
   to get prompted for the token, so it is not visible in the
   process list.
 
+* Internal change: The common entry point for rest handlers is now a coroutine,
+  simplifying asynchronous rest handlers.
+
 * Fix BTS-2174: When a more complex query get's killed and the server
   (or DBServer in the cluster) is under high query load, there was a
   race condition in the asynchrounous query execution which would cause

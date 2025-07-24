@@ -45,14 +45,14 @@ exports.checker = class {
           status: false,
           message: 'Cleanup of transactions missing - found transactions left over: ' +
             JSON.stringify(tl)
-        });
+        }, this.name);
         return false;
       }
     } catch (x) {
       this.runner.setResult(te, true, {
         status: false,
         message: 'failed to fetch the transactions on the system after the test: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     return true;

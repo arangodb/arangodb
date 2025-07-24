@@ -88,10 +88,10 @@ class Context {
   TEST_VIRTUAL void returnBuilder(arangodb::velocypack::Builder*) noexcept;
 
   /// @brief get velocypack options with a custom type handler
-  TEST_VIRTUAL velocypack::Options* getVPackOptions();
+  TEST_VIRTUAL velocypack::Options const* getVPackOptions() const noexcept;
 
   /// @brief get a custom type handler
-  virtual arangodb::velocypack::CustomTypeHandler* orderCustomTypeHandler() = 0;
+  velocypack::CustomTypeHandler* getCustomTypeHandler() const noexcept;
 
   /// @brief get transaction state, determine commit responsiblity
   virtual std::shared_ptr<TransactionState> acquireState(
@@ -130,7 +130,7 @@ class Context {
   /// @brief whether or not the transaction is embeddable
   virtual bool isEmbeddable() const = 0;
 
-  CollectionNameResolver const& resolver();
+  CollectionNameResolver const& resolver() const noexcept;
 
   /// @brief unregister the transaction
   virtual void unregisterTransaction() noexcept = 0;
@@ -153,6 +153,11 @@ class Context {
       transaction::Options const& options);
 
   TRI_vocbase_t& _vocbase;
+
+ private:
+  std::unique_ptr<CollectionNameResolver> _resolver;
+
+ protected:
   std::unique_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
 
   containers::SmallVector<arangodb::velocypack::Builder*, 8> _builders;
@@ -163,8 +168,6 @@ class Context {
   OperationOrigin _operationOrigin;
 
  private:
-  std::unique_ptr<CollectionNameResolver> _resolver;
-
   std::shared_ptr<CounterGuard> _counterGuard;
 
   struct {
