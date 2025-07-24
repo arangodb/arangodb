@@ -115,6 +115,11 @@ function main (argv) {
     try {
       print(YELLOW + "Analyzing: " + file + RESET);
       ret = ret && analyzers.forEach(function(which) {
+        if (!Object.keys(rp.analyze).includes(which)) {
+          print("Analyzer not any of:");
+          Object.keys(rp.analyze).forEach(name => {print(" - " + name);});
+          return false;
+        }
         rp.analyze[which](options, results, otherResults);
       });
     } catch (ex) {
