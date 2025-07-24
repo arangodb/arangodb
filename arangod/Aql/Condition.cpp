@@ -1104,7 +1104,9 @@ void Condition::collectOverlappingMembers(
     }
 
     if (isFromTraverser) {
-      allowOps = allowOps || operand->isArrayComparisonOperator();
+      if (isPathCondition) {
+        allowOps = allowOps || operand->isArrayComparisonOperator();
+      }
     } else {
       allowOps = allowOps && operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
                  operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
