@@ -312,29 +312,28 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
-  if (hasJwtToken &&
-      options->processingResult().touched("server.password")) {
+  if (hasJwtToken && options->processingResult().touched("server.password")) {
     LOG_TOPIC("65476", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both --server.password and --server.jwt-token";
     FATAL_ERROR_EXIT();
   }
 
-  if (hasJwtToken &&
-      options->processingResult().touched("server.username")) {
+  if (hasJwtToken && options->processingResult().touched("server.username")) {
     LOG_TOPIC("9d887", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both --server.username and --server.jwt-token";
     FATAL_ERROR_EXIT();
   }
 
   if (hasJwtToken && _askJwtSecret) {
-    LOG_TOPIC("aeaec", FATAL, arangodb::Logger::FIXME)
+    LOG_TOPIC("aeaed", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both --server.ask-jwt-secret and --server.jwt-token";
     FATAL_ERROR_EXIT();
   }
 
   if (hasJwtToken && hasJwtSecretFile) {
-    LOG_TOPIC("aeaed", FATAL, arangodb::Logger::FIXME)
-        << "cannot specify both --server.jwt-secret-keyfile and --server.jwt-token";
+    LOG_TOPIC("aeaee", FATAL, arangodb::Logger::FIXME)
+        << "cannot specify both --server.jwt-secret-keyfile and "
+           "--server.jwt-token";
     FATAL_ERROR_EXIT();
   }
 

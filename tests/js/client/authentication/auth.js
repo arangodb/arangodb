@@ -1218,7 +1218,7 @@ function AuthMechanismSuite() {
         assertEqual(e.code, 404, `Wrong error caught: ${e}`);
       }
     }
-  }
+  };
 }
 
 
