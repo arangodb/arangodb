@@ -35,6 +35,7 @@
 #include <thread>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "Basics/debugging.h"
 
@@ -149,10 +150,10 @@ class LogContext {
   /// the visitor for each of them.
   void visit(Visitor const&) const;
 
-  bool empty() const noexcept { return _tail == nullptr; }
+  [[nodiscard]] bool empty() const noexcept { return _tail == nullptr; }
 
   /// @brief returns the local LogContext
-  static LogContext& current() noexcept;
+  [[nodiscard]] static LogContext& current() noexcept;
 
   /// @brief sets the given context as the current LogContext.
   static void setCurrent(LogContext ctx) noexcept;
@@ -208,7 +209,7 @@ class LogContext {
 
   Entry* pushEntry(std::unique_ptr<Entry>) noexcept;
   void popTail(EntryCache& cache) noexcept;
-  void clear(EntryCache& cache);
+  void clear(EntryCache& cache) noexcept;
 
   Entry* _tail{};
 
@@ -664,21 +665,7 @@ inline void LogContext::ThreadControlBlock::pop(Entry* entry) noexcept {
 
 inline LogContext::~LogContext() {
   auto& cache = controlBlock()._entryCache;
-  auto* t = _tail;
-  while (t != nullptr) {
-    auto prev = t->_prev;
-    if (t->_refCount.load(std::memory_order_relaxed) == 1 ||
-        t->decRefCnt() == 1) {
-      // we have/had the only reference to this Entry, so we can "reuse" t's
-      // reference to prev and therefore do not need to update any refCount.
-      t->release(cache);
-    } else {
-      // we have decremented the refcnt, but some other LogContext still holds
-      // a reference to this entry, so there is nothing left for us to do!
-      break;
-    }
-    t = prev;
-  }
+  clear(cache);
 }
 
 inline LogContext::LogContext(LogContext const& r) noexcept : _tail(r._tail) {
@@ -693,14 +680,18 @@ inline LogContext::LogContext(LogContext&& r) noexcept : _tail(r._tail) {
 
 inline LogContext& LogContext::operator=(LogContext const& r) noexcept {
   TRI_ASSERT(&r != this);
+  clear(controlBlock()._entryCache);
   TRI_ASSERT(_tail == nullptr);
   _tail = r._tail;
-  _tail->incRefCnt();
+  if (_tail != nullptr) {
+    _tail->incRefCnt();
+  }
   return *this;
 }
 
 inline LogContext& LogContext::operator=(LogContext&& r) noexcept {
   TRI_ASSERT(&r != this);
+  clear(controlBlock()._entryCache);
   TRI_ASSERT(_tail == nullptr);
   _tail = r._tail;
   r._tail = nullptr;
