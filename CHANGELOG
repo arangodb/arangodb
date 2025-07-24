@@ -1,6 +1,8 @@
 devel
 -----
 
+* Bump up RocksDB submodule for nullptr fix compaction picker.
+
 * Internal change: The common entry point for rest handlers is now a coroutine,
   simplifying asynchronous rest handlers.
 
