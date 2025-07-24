@@ -1,6 +1,8 @@
 3.12.5.1 (XXXX-XX-XX)
 ---------------------
 
+* Fix for null access for smallest range when no files on level (RocksDB).
+
 * Fix BTS-2152 Overfetch input on parallel Traversals. For queries like this:
 
   FOR x IN largeCollection
