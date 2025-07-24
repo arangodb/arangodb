@@ -68,21 +68,15 @@ struct NetworkConnectionPoolTest : public ::testing::Test {
     return gauge->load();
   }
 
-  static constexpr std::string getActiveEndpoint() {
+  std::string getActiveEndpoint() {
     return fmt::format("tcp://127.0.0.1:{}", kPort);
   }
 
-  static constexpr std::string getInactiveEndpoint1() {
-    return "tcp://127.0.0.1:1237";
-  }
+  std::string getInactiveEndpoint1() { return "tcp://127.0.0.1:1237"; }
 
-  static constexpr std::string getInactiveEndpoint2() {
-    return "tcp://127.0.0.1:1238";
-  }
+  std::string getInactiveEndpoint2() { return "tcp://127.0.0.1:1238"; }
 
-  static constexpr std::string getInactiveEndpoint3() {
-    return "tcp://127.0.0.1:1239";
-  }
+  std::string getInactiveEndpoint3() { return "tcp://127.0.0.1:1239"; }
 
   tests::mocks::MockMetricsServer server;
   tests::mocks::MockTcpServer dummyTcpServer;
