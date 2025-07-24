@@ -1413,7 +1413,7 @@ function restoreIntegrationVectorSuite() {
         parameters: {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
-            {id: "95", fields: ["vector"], type: "vector", params: {dimension: 4, nLists:4, metric: "l2"}},
+            {id: "95", fields: ["vector"], type: "vector", params: {dimension: 4, nLists: 4, metric: "l2"}},
             {id: "295", fields: ["value"], type: "persistent", sparse: true},
           ],
           name: cn,
@@ -1432,20 +1432,13 @@ function restoreIntegrationVectorSuite() {
 
       let c = db._collection(cn);
       let indexes = c.indexes();
-      assertEqual(3, indexes.length);
+      // Assert that the vector index was ignored
+      assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
       assertEqual(["_key"], indexes[0].fields);
-      assertEqual("vector", indexes[1].type);
-      assertEqual(["vector"], indexes[1].fields);
       assertEqual("persistent", indexes[2].type);
       assertEqual(["value"], indexes[2].fields);
 
-      // test if the vector index works
-      for (let i = 0; i < 100; ++i) {
-        c.insert({value: i, vector: [0, 0, 0, 0]});
-      }
-      let result = db._query("FOR doc IN " + cn + " LET dist = APPROX_NEAR_L2(doc.vector, [0, 0, 0, 0]) SORT dist LIMIT 10 RETURN doc").toArray();
-      assertEqual(10, result.length);
       fs.removeDirectoryRecursive(path, true);
     }
   };
@@ -1453,9 +1446,6 @@ function restoreIntegrationVectorSuite() {
 
 
 jsunity.run(restoreIntegrationSuite);
-
-if (!versionHas("arm")) {
-  jsunity.run(restoreIntegrationVectorSuite);
-}
+jsunity.run(restoreIntegrationVectorSuite);
 
 return jsunity.done();
