@@ -1061,6 +1061,8 @@ void Condition::collectOverlappingMembers(
     auto operand = andNode->getMemberUnchecked(i);
     bool allowOps = operand->isComparisonOperator();
 
+    // We can enter here only if we have index node, therefore we know that we
+    // are not dealing with the Traversal Node
     if (isSparse && allowOps && !isFromTraverser &&
         (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
@@ -1074,9 +1076,8 @@ void Condition::collectOverlappingMembers(
 
       ::clearAttributeAccess(result);
 
-      TRI_ASSERT(!isFromTraverser) << "This is impossible!";
       if (rhs->isNullValue() &&
-          lhs->isAttributeAccessForVariable(result, false) &&
+          lhs->isAttributeAccessForVariable(result, isFromTraverser) &&
           result.first == variable) {
         auto const mayRemoveIndexNonNullAttribute = [&] {
           if (auto ty = index->type();
