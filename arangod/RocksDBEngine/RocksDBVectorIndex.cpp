@@ -348,45 +348,58 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
 }
 
 Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
-                                                  std::vector<float>& input) {
+                                                  std::vector<float>& output) {
   TRI_ASSERT(_fields.size() == 1);
 
   try {
     VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
 
+    // this fails if index is not sparse
     if (value.isNone()) {
-      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
-    }
-
-    // All of these cases can and should be handled here
-    if (!value.isArray()) {
       return {TRI_ERROR_TYPE_ERROR,
-              fmt::format("array expected for vector attribute for document %s",
+              fmt::format("vector field not present in document {}",
                           transaction::helpers::extractKeyFromDocument(doc)
                               .copyString()
                               .c_str())};
     }
-    if (value.length() != _definition.dimension) {
-      return {
-          TRI_ERROR_TYPE_ERROR,
-          fmt::format(
-              "provided vector is not of matching dimension for document %s",
-              transaction::helpers::extractKeyFromDocument(doc)
-                  .copyString()
-                  .c_str())};
+
+    if (!value.isArray()) {
+      return {TRI_ERROR_TYPE_ERROR,
+              fmt::format("array expected for vector attribute for document {}",
+                          transaction::helpers::extractKeyFromDocument(doc)
+                              .copyString()
+                              .c_str())};
     }
 
-    input.reserve(_definition.dimension);
-    if (auto const res = velocypack::deserializeWithStatus(value, input);
-        !res.ok()) {
-      return {TRI_ERROR_BAD_PARAMETER, res.error()};
+    if (value.length() != _definition.dimension) {
+      return {TRI_ERROR_TYPE_ERROR,
+              fmt::format(
+                  "provided vector is not of matching dimension for document "
+                  "{}, index dimension: {}, document dimension: {}",
+                  transaction::helpers::extractKeyFromDocument(doc)
+                      .copyString()
+                      .c_str(),
+                  _definition.dimension, value.length())};
+    }
+
+    // We don't make assumptions here if output contains one or more vectors
+    for (auto const d : VPackArrayIterator(value)) {
+      if (not d.isNumber<double>()) {
+        return {
+            TRI_ERROR_TYPE_ERROR,
+            fmt::format("vector contains data not representable as double for "
+                        "document {}",
+                        transaction::helpers::extractKeyFromDocument(doc)
+                            .copyString()
+                            .c_str())};
+      }
+      output.push_back(d.getNumericValue<double>());
     }
 
     return {};
   } catch (velocypack::Exception const& e) {
-    LOG_DEVEL << doc.toJson();
     return {TRI_ERROR_TYPE_ERROR,
-            fmt::format("deserialization error when accessing a document: %s",
+            fmt::format("deserialization error when accessing a document: {}",
                         e.what())};
   }
 }
@@ -399,6 +412,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   std::vector<float> input;
+  input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
     // We ignore the documents without the embedding field if the index is
     // sparse
@@ -450,12 +464,14 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   while (counter < trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
+    // TODO Don't use input array only trainingData array
     if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
       if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) && _sparse) {
         it->Next();
         continue;
       }
-      THROW_ARANGO_EXCEPTION(res);
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
+                                     "invalid index type definition");
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
@@ -494,6 +510,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
   std::vector<float> input;
+  input.reserve(_definition.dimension);
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
     return res;
   }
@@ -673,13 +690,7 @@ Result RocksDBVectorIndex::ingestVectors(
             documentIterator->Next();
             continue;
           }
-          THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_TYPE_ERROR,
-              "document %s does not contain the vector index field and the "
-              "index is not sparse",
-              transaction::helpers::extractKeyFromDocument(doc)
-                  .copyString()
-                  .c_str());
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
         }
         batch->docIds.push_back(docId);
         documentIterator->Next();
