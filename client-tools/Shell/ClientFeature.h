@@ -81,9 +81,6 @@ class ClientFeature final : public HttpEndpointProvider {
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
-
-  bool authentication() const noexcept;
-
   // get single endpoint. used by client tools that can handle only one endpoint
   std::string endpoint() const;
   // set single endpoint
@@ -97,6 +94,9 @@ class ClientFeature final : public HttpEndpointProvider {
 
   std::string jwtSecret() const;
   void setJwtSecret(std::string_view jwtSecret);
+
+  std::string jwtToken() const;
+  void setJwtToken(std::string_view jwtToken);
 
   double connectionTimeout() const noexcept;
   double requestTimeout() const noexcept;
@@ -148,6 +148,7 @@ class ClientFeature final : public HttpEndpointProvider {
 
   void readPassword();
   void readJwtSecret();
+  void readJwtToken();
   void loadJwtSecretFile();
 
   CommunicationFeaturePhase& _comm;
@@ -164,6 +165,7 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string _password;
   std::string _jwtSecret;
   std::string _jwtSecretFile;
+  std::string _jwtToken;
   double _connectionTimeout;
   double _requestTimeout;
   uint64_t _maxPacketSize;

@@ -74,6 +74,7 @@ class V8ClientConnection {
 
   bool isConnected() const;
 
+  void prepareConnection();
   void connect();
   void reconnect();
 
