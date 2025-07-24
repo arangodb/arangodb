@@ -5,6 +5,8 @@ devel
   GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions
   with two or three components.
 
+* Fix for null access for smallest range when no files on level (RocksDB).
+
 * Internal change: The common entry point for rest handlers is now a coroutine,
   simplifying asynchronous rest handlers.
 
