@@ -348,7 +348,7 @@ function VectorIndexTestCreationWithVectors() {
                     },
                 });
             } catch (e) {
-                assertEqual(errors.ERROR_ARANGO_DOCUMENT_KEY_MISSING.code, e.errorNum);
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
             }
         },
 

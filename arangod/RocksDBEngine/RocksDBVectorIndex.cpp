@@ -356,7 +356,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
 
     // this fails if index is not sparse
     if (value.isNone()) {
-      return {TRI_ERROR_TYPE_ERROR,
+      return {TRI_ERROR_BAD_PARAMETER,
               fmt::format("vector field not present in document {}",
                           transaction::helpers::extractKeyFromDocument(doc)
                               .copyString()
@@ -416,7 +416,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
   if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
     // We ignore the documents without the embedding field if the index is
     // sparse
-    if (_sparse && res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING)) {
+    if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
       return {};
     }
     return res;
@@ -466,7 +466,7 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
     // TODO Don't use input array only trainingData array
     if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
-      if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) && _sparse) {
+      if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
         it->Next();
         continue;
       }
@@ -686,7 +686,7 @@ Result RocksDBVectorIndex::ingestVectors(
             res.fail()) {
           // If the documents does not have an embedding attribute and the index
           // is sparse skip
-          if (res.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING) && _sparse) {
+          if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
             documentIterator->Next();
             continue;
           }
