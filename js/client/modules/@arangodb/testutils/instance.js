@@ -535,9 +535,7 @@ class instance {
       argv = toArgv(valgrindOpts, true).concat([cmd]).concat(toArgv(args));
       cmd = this.options.valgrind;
     } else if (this.options.rr) {
-      argv = [cmd].concat(toArgv(args));
-      argv = ['-c', '0-11', 'rr', 'record'].concat(argv)
-      cmd = 'taskset';
+      cmd = 'rr';
     } else {
       argv = toArgv(args);
     }
