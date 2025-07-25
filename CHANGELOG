@@ -5,6 +5,9 @@ devel
   GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions
   with two or three components.
 
+ * Fix BTS-2184: Sparse vector index creation fails when with  on documents which don't have
+  and embedding field defined.
+
 * Fix for null access for smallest range when no files on level (RocksDB).
 
 * Internal change: The common entry point for rest handlers is now a coroutine,
