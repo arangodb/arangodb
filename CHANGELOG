@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,
+  GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions
+  with two or three components.
+
 * Fix BTS-2182: When a filter with inequality operator was used with
   traversals, the Filter node was not pushed into the Traversal node. This
   fixes that problem in the optimization rule
