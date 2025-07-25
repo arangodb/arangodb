@@ -181,7 +181,13 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
   // execute the expression
   ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
                                 _aqlFunctionsInternalCache, input,
-                                _infos.getVarToRegs());
+                                _infos.getVarToRegs(),
+                                _infos.getQuery().resourceMonitor());
+
+  // ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
+  //                             _aqlFunctionsInternalCache, input,
+  //                             _infos.getVarToRegs(),
+  //                             );
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
@@ -216,7 +222,8 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
   // execute the expression
   ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
                                 _aqlFunctionsInternalCache, input,
-                                _infos.getVarToRegs());
+                                _infos.getVarToRegs(),
+                                _infos.getQuery().resourceMonitor());
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);

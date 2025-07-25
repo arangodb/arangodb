@@ -160,7 +160,8 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
             bool mustDestroy = false;
             ExecutorExpressionContext ctx{_trx, *_infos.query, _functionsCache,
                                           _currentRow,
-                                          idx.expressionVarsToRegs};
+                                          idx.expressionVarsToRegs,
+                                          resourceMonitor()};
 
             aql::AqlValue res = expr->execute(&ctx, mustDestroy);
             aql::AqlValueGuard guard{res, mustDestroy};

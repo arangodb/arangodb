@@ -129,42 +129,40 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 AqlValue mergeParameters(ExpressionContext* expressionContext,
                          aql::functions::VPackFunctionParametersView parameters,
                          char const* funcName, bool recursive) {
-  try {
-    auto const& ctxType = typeid(*expressionContext).name();
-    LOG_DEVEL << "ExpressionContext dynamic type: " << ctxType;
-  } catch (...) {}
   auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
-  ResourceMonitor* monitor = nullptr;
-  if (execCtx) {
-    monitor = &execCtx->getResourceMonitor();
-  }
-  bool monitored = false;
+  ResourceMonitor* monitor = execCtx ? &execCtx->getResourceMonitor() : nullptr;
+  uint64_t mergeUsage = 0;
+
+  struct MonitorGuard {
+    ResourceMonitor* _monitor;
+    uint64_t& _usage;
+    ~MonitorGuard() {
+      if (_monitor && _usage > 0) {
+        _monitor->decreaseMemoryUsage(_usage);
+        _usage = 0;
+      }
+    }
+  } guard{monitor, mergeUsage};
 
   auto increaseMemoryUsage = [&](uint64_t byte) {
     if (monitor) {
       monitor->increaseMemoryUsage(byte);
-      LOG_DEVEL << "Memory increased by: " << byte;
-      LOG_DEVEL << "Current: " << monitor->current();
-      LOG_DEVEL << "Limit: " << monitor->memoryLimit();
-      LOG_DEVEL << "Peak: " << monitor->peak();
-      monitored = true;
+      LOG_DEVEL << "Memory increased by: " << byte
+      << " Current: " << monitor->current()
+      << " Limit: " << monitor->memoryLimit()
+      << " Peak: " << monitor->peak();
+      mergeUsage += byte;
     }
   };
 
   auto decreaseMemoryUsage = [&](uint64_t byte) {
     if (monitor) {
       monitor->decreaseMemoryUsage(byte);
-      LOG_DEVEL << "Memory decreased by: " << byte;
-      LOG_DEVEL << "Current: " << monitor->current();
-      LOG_DEVEL << "Limit: " << monitor->memoryLimit();
-      LOG_DEVEL << "Peak: " << monitor->peak();
-      monitored = true;
-    }
-  };
-
-  auto resetResourceMonitor = [&]() {
-    if (monitor && monitored) {
-      monitor->clear();
+      LOG_DEVEL << "Memory decreased by: " << byte
+      << " Current: " << monitor->current()
+      << " Limit: " << monitor->memoryLimit()
+      << " Peak: " << monitor->peak();
+      mergeUsage -= byte;
     }
   };
 
@@ -231,11 +229,11 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         builder = velocypack::Collection::merge(builder.slice(), it,
                                                 /*mergeObjects*/ recursive,
                                                 /*nullMeansRemove*/ false);
-        auto actual = builder.buffer()->byteSize() - before;
-        decreaseMemoryUsage(it.valueByteSize() - actual);
+        TRI_ASSERT(it.valueByteSize() + before >= builder.buffer()->byteSize());
+        auto overEstimate = before + it.valueByteSize() - builder.buffer()->byteSize();
+        decreaseMemoryUsage(overEstimate);
       }
     }
-    resetResourceMonitor();
     return AqlValue(builder.slice(), builder.size());
   }
 
@@ -265,14 +263,14 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
                                             /*mergeObjects*/ recursive,
                                             /*nullMeansRemove*/ false);
     initialSlice = builder.slice();
-    auto actual = initialSlice.valueByteSize() - before;
-    decreaseMemoryUsage(slice.valueByteSize() - actual);
+    TRI_ASSERT(slice.valueByteSize() + before >= initialSlice.valueByteSize());
+    auto overEstimate = slice.valueByteSize() + before - initialSlice.valueByteSize();
+    decreaseMemoryUsage(overEstimate);
   }
   if (n == 1) {
     // only one parameter. now add original document
     builder.add(initialSlice);
   }
-  resetResourceMonitor();
   return AqlValue(builder.slice(), builder.size());
 }
 

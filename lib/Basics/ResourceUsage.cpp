@@ -26,6 +26,7 @@
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 
@@ -131,8 +132,9 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
     // number of chunks has changed, so this is either a substantial allocation
     // or we have piled up changes by lots of small allocations so far. time for
     // some memory expensive checks now...
-
     if (_limit > 0 && ADB_UNLIKELY(current > _limit)) {
+      LOG_DEVEL << "INSIDE ERROR LOGIC: _limit=" << _limit << " current=" << current
+          << " previous=" << previous << " diff=" << diff;
       // we would use more memory than dictated by the instance's own limit.
       // because we will throw an exception directly afterwards, we now need to
       // revert the change that we already made to the instance's own counter.

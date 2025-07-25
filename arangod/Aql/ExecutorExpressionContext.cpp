@@ -44,11 +44,12 @@ using namespace arangodb::aql;
 ExecutorExpressionContext::ExecutorExpressionContext(
   transaction::Methods& trx, QueryContext& context,
   AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-  std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
+  std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
+  ResourceMonitor& resourceMonitor)
   : QueryExpressionContext(trx, context, cache),
     _inputRow(inputRow),
     _varsToRegister(varsToRegister),
-    _resourceMonitor(std::make_shared<ResourceMonitor>(GlobalResourceMonitor::instance())){}
+    _resourceMonitor(resourceMonitor){}
 
 void ExecutorExpressionContext::adjustInputRow(
     InputAqlItemRow const& inputRow) noexcept {
@@ -80,5 +81,5 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
 
 arangodb::ResourceMonitor& ExecutorExpressionContext::getResourceMonitor()
     const {
-  return *_resourceMonitor;
+  return _resourceMonitor;
 }
