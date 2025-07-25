@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-2182: When a filter with inequality operator was used with
+  traversals, the Filter node was not pushed into the Traversal node. This
+  fixes that problem in the optimization rule
+  remove-filter-covered-by-traversal.
+
  * Fix BTS-2184: Sparse vector index creation fails when with  on documents which don't have
   and embedding field defined.
 

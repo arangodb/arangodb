@@ -55,6 +55,10 @@ describe('Single Traversal Optimizer', function () {
     expect(findExecutionNodes(plan, "FilterNode").length).to.equal(0, "Plan should have no filter node");
   };
 
+  const hasFilterNode = (plan) => {
+    expect(findExecutionNodes(plan, "FilterNode").length).to.equal(1, "Plan should have a single filter node");
+  };
+
   const validateResult = (query, bindVars) => {
     let resultOpt = db._query(query, bindVars, activateOptimizer).toArray().sort();
     let resultNoOpt = db._query(query, bindVars, deactivateOptimizer).toArray().sort();
@@ -76,7 +80,7 @@ describe('Single Traversal Optimizer', function () {
       edges.push({_from: startId, _to: `${vertexCollection}/a${i}`, foo: i});
       for (let j = 0; j < 10; ++j) {
         vertices.push({_key: `a${i}${j}`, foo: j});
-        edges.push({_from: `${vertexCollection}/a${i}`, _to: `${vertexCollection}/a${i}${j}`, foo: j});
+        edges.push({_from: `${vertexCollection}/a${i}`, _to: `${vertexCollection}/a${i}${j}`, foo: j, bar: [1, 2, 3, 4, 5]});
       }
     }
 
@@ -141,10 +145,55 @@ describe('Single Traversal Optimizer', function () {
         hasNoFilterNode(plan);
         validateResult(query, bindVars);
       });
- 
+
+      // BTS-2182
+      it('on v.foo != 3 AND v.foo < 10', () => {
+        let query = `WITH @@vertices
+                       FOR v, e IN 0..2 ANY @start @@edges
+                       FILTER v.foo < 10
+                       FILTER v.foo != 3
+                       RETURN v`;
+        let plan = db._createStatement({query: query, bindVars:  bindVars, options:  activateOptimizer}).explain();
+        hasNoFilterNode(plan);
+        validateResult(query, bindVars);
+      });
+
+      it('on e.bar != 4 AND v.foo < 10 AND v.foo != 3', () => {
+        let query = `WITH @@vertices
+                       FOR v, e IN 0..2 ANY @start @@edges
+                       FILTER e.bar != 4
+                       FILTER v.foo < 10 AND v.foo != 3
+                       RETURN v`;
+        let plan = db._createStatement({query: query, bindVars:  bindVars, options:  activateOptimizer}).explain();
+        hasNoFilterNode(plan);
+        validateResult(query, bindVars);
+      });
+
+      // This check that in array will not be handler by Traversal Node
+      it('on p.edges[*].foo ALL > 3 AND FILTER v.bar[*] ALL < 10', () => {
+        let query = `WITH @@vertices
+                       FOR v, e, p IN 0..2 ANY @start @@edges
+                       FILTER p.edges[*].foo ALL > 3
+                       FILTER v.bar[*] ALL < 10
+                       RETURN v`;
+        let plan = db._createStatement({query: query, bindVars:  bindVars, options:  activateOptimizer}).explain();
+
+        hasFilterNode(plan);
+        validateResult(query, bindVars);
+      });
+
+      it('on p.edges[*].foo ALL > 3 AND e.bar[*] ANY == 3', () => {
+        let query = `WITH @@vertices
+                       FOR v, e, p IN OUTBOUND @start @@edges
+                       FILTER p.edges[*].foo ALL > 3
+                       FILTER e.bar[*] ANY == 2
+                       RETURN v`;
+        let plan = db._createStatement({query: query, bindVars:  bindVars, options:  activateOptimizer}).explain();
+
+        hasFilterNode(plan);
+        validateResult(query, bindVars);
+      });
     });
-
   });
-
 
 });
