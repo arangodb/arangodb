@@ -181,9 +181,12 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
+  // return only the execution time of the query, can be 0
+  double executionTime() const noexcept;
+
   /// @brief return the total execution time of the query (until
   /// the start of finalize)
-  double executionTime() const noexcept;
+  double queryTime() const noexcept;
 
   void prepareQuery();
 
@@ -318,11 +321,16 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
     return _planCacheKey;
   }
 
+  // set the isExecuting flag to true and change execution queries gauge
+  // this is public because the QueryStreamCursor circumvents the normal
+  // execution of query and needs to call tracking on a  query on its own
+  void trackExecutionStart() noexcept;
+
  protected:
   /// @brief make sure that the query execution time is set.
   /// only the first call to this function will set the time.
   /// every following call will be ignored.
-  void ensureExecutionTime() noexcept;
+  void ensureEndTime() noexcept;
 
   /// @brief initializes the query
   void init(bool createProfile);
@@ -378,6 +386,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   // log the end of a query (warnings only)
   void logAtEnd() const;
+
+  // set the isExecuting flag to false and change execution queries gauge
+  void trackExecutionEnd() noexcept;
 
   struct CollectionSerializationFlags {
     bool includeNumericIds = true;
@@ -444,6 +455,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief query end time (steady clock value), only set once finalize()
   /// is reached
   double _endTime;
+
+  /// @brief query execution phase start time (steady clock value)
+  std::atomic<double> _startExecutionTime{0};
+
+  /// @brief query execution end time (steady clock value), only
+  /// set once the execution phase ends
+  double _endExecutionTime;
 
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
@@ -517,6 +535,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // If the query object was constructed from cache
   // the consequence is that _ast is nullptr
   bool _isCached{false};
+
+  std::atomic<bool> _isExecuting{false};
 };
 
 }  // namespace aql

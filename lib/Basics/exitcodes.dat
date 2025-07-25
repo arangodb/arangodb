@@ -28,6 +28,7 @@ EXIT_ICU_INITIALIZATION_FAILED,26,"failed to initialize ICU library","Will be re
 EXIT_TZDATA_INITIALIZATION_FAILED,27,"failed to locate tzdata","Will be returned if tzdata is not found"
 EXIT_RESOURCES_TOO_LOW,28,"the system restricts resources below what is required to start arangod","Will be returned if i.e. ulimit is too restrictive"
 EXIT_SST_FILE_CHECK,29,"sst file check unsuccessful","Will be returned when either sst file open or sst file check was unsuccessful i.e. sst file is not valid"
+EXIT_FULL_COMPACTION_FAILED,30,"Full RocksDB compaction failed.","Will be returned when --database.auto-upgrade-full-compaction is set and the full compaction after database upgrade failed"
 # network
 #EXIT_NO_COORDINATOR
 #EXIT_NO_AGENCY
