@@ -249,11 +249,9 @@ function GeoDistanceRange() {
         let actual;
         try {
           actual = db._query(query).toArray().length;
-          db._query(query);
           assertEqual(actual, expected);
         } catch (err) {
-          print(`Actual: ${actual}, Expected: ${expected}, Index: ${index}`);
-          print(query);
+          print(`Actual: ${actual}, Expected: ${expected}, Index: ${index} for query: ${query}`);
           fail(err);
         }
       }); 
