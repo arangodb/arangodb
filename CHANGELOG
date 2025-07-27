@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2130: Fix the endless wait in Coordinators during
+  CreateDatabase and CreateCollection.
+
 * delete the Coordinator-V8 wrappers for the agency.
 
 * Deprecate rocksdb.transaction-lock-timeout option since we would
