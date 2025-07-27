@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2130: Fix the endless wait in Coordinators during
+  CreateDatabase and CreateCollection.
+
 * Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
   We should therefore check before accessing clusterInfo() whether we're
   in an upgrade scenario. Added those checks in iresearch.
