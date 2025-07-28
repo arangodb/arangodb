@@ -24,6 +24,12 @@
 // / @author Jure Bajic
 // //////////////////////////////////////////////////////////////////////////////
 
+if (getOptions === true) {
+  return {
+    'experimental-vector-index' : 'true'
+  };
+}
+
 const jsunity = require('jsunity');
 const {assertTrue, assertFalse, assertEqual, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
 const internal = require('internal');
