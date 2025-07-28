@@ -109,8 +109,8 @@ class RequestFuzzer {
   static constexpr uint32_t kArrayNumMembers = 4;
 
   uint32_t _recursionDepth = 0;
-  std::vector<std::string> _wordListForKeys;
-  std::vector<std::string> _wordListForRoute;
+  const std::vector<std::string>& _wordListForKeys;
+  const std::vector<std::string>& _wordListForRoute;
 
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
   std::unordered_set<std::string> _usedKeys;

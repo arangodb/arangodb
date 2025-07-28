@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RequestFuzzer.h"
-
 namespace {
 
 static constexpr char alphaNumericChars[] =
@@ -205,7 +204,9 @@ fuerte::RestVerb RequestFuzzer::generateHeader(std::string& header,
                                             (sizeof(alphaNumericChars) - 1)]);
     }
   }
-  path = firstLine.substr(len + 1, firstLine.length() - len + 1);
+  if (len != firstLine.length()) {
+    path = firstLine.substr(len + 1, firstLine.length() - len + 1);
+  }
   firstLine.push_back(' ');
   if (generateRandNumWithinRange<uint32_t>(0, 99) > 0) {
     firstLine.append(" HTTP/");

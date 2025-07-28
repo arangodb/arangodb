@@ -1463,7 +1463,7 @@ static void ClientConnection_httpFuzzRequests(
     if (!args[4]->IsUint32()) {
       TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
     }
-    seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], false));
+    seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[4], false));
   }
 
   fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts),
