@@ -51,7 +51,7 @@ struct SingleServerNeighbourProvider {
   SingleServerNeighbourProvider(SingleServerBaseProviderOptions& opts,
                                 transaction::Methods* trx,
                                 ResourceMonitor& resourceMonitor,
-                                uint64_t batchSize);
+                                uint64_t batchSize, bool useCache = true);
   SingleServerNeighbourProvider(SingleServerNeighbourProvider const&) = delete;
   SingleServerNeighbourProvider(SingleServerNeighbourProvider&&) = default;
   SingleServerNeighbourProvider& operator=(

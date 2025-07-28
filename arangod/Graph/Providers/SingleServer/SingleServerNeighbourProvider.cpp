@@ -37,14 +37,14 @@ using namespace arangodb::graph;
 template<class Step>
 SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
     SingleServerBaseProviderOptions& opts, transaction::Methods* trx,
-    ResourceMonitor& resourceMonitor, uint64_t batchSize)
+    ResourceMonitor& resourceMonitor, uint64_t batchSize, bool useCache)
     : _cursor{std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
           resourceMonitor, trx, opts.tmpVar(), opts.indexInformations().first,
           opts.indexInformations().second, opts.expressionContext(),
           /*requiresFullDocument*/ opts.hasWeightMethod(), opts.useCache())},
       _batchSize{batchSize},
       _resourceMonitor{resourceMonitor} {
-  if (opts.indexInformations().second.empty()) {
+  if (useCache && opts.indexInformations().second.empty()) {
     // If we have depth dependent filters, we must not use the cache,
     // otherwise, we do:
     _neighbourCache.emplace();
@@ -84,6 +84,7 @@ auto SingleServerNeighbourProvider<Step>::next(
   }
 
   NeighbourBatch newNeighbours = std::make_shared<std::vector<ExpansionInfo>>();
+  newNeighbours->reserve(_batchSize);
   _cursor->readNext(
       _batchSize, provider, stats, _currentStep->getDepth(),
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorID) -> void {
