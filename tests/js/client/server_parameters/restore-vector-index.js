@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, arango */
+/* global fail, arango, getOptions */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
