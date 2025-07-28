@@ -30,7 +30,6 @@ const functionsDocumentation = {
   'shell_api': 'shell client tests - only *api*',
   'shell_api_multi': 'shell client tests - only *api* - to be run in multi protocol environments',
   'shell_client': 'shell client tests',
-  'shell_client_vector': 'shell client tests with vector index enabled',
   'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
   'shell_client_aql': 'AQL tests in the client',
   'shell_client_aql_vector': 'AQL tests in the client with vector index feature enabled',
@@ -57,7 +56,6 @@ const testPaths = {
   'shell_api': [ tu.pathForTesting('client/shell/api')],
   'shell_api_multi': [ tu.pathForTesting('client/shell/api/multi')],
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
-  'shell_client_vector': [ tu.pathForTesting('client/shell/vector')],
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
@@ -160,29 +158,6 @@ function shellClient (options) {
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
   let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
-  options.cleanup = options.cleanup && opts.cleanup;
-  return rc;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_client_vector
-// The behavior with dump/restore is different when we have enabled vector index
-// //////////////////////////////////////////////////////////////////////////////
-
-function shellClientVector (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_client_vector, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-
-  var opts = ensureServers(options, 3);
-  opts = ensureCoordinators(opts, 2);
-  opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
-
-  // increase timeouts after which servers count as BAD/FAILED.
-  // we want this to ensure that in an overload situation we do not
-  // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30", "experimental-vector-index": true };
-  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_vector', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -334,7 +309,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['shell_api'] = shellApiClient;
   testFns['shell_api_multi'] = shellApiMulti;
   testFns['shell_client'] = shellClient;
-  testFns['shell_client_vector'] = shellClientVector;
   testFns['shell_client_multi'] = shellClientMulti;
   testFns['shell_client_aql'] = shellClientAql;
   testFns['shell_client_aql_vector'] = shellClientAqlVector;
