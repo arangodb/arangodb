@@ -1400,7 +1400,8 @@ static void ClientConnection_httpFuzzRequests(
 
   if (args.Length() < 4 || args.Length() > 5) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "fuzzRequests(<numRequests>, <numIterations>, <wordListForKeys>, <wordListForRoute> [, <seed>])");
+        "fuzzRequests(<numRequests>, <numIterations>, <wordListForKeys>, "
+        "<wordListForRoute> [, <seed>])");
   }
 
   // arg0 = number of requests, arg1 = number of iterations, arg2 = seed for
@@ -1423,7 +1424,7 @@ static void ClientConnection_httpFuzzRequests(
     wordListForKeys.reserve(n - 1);
     for (uint32_t i = 0; i < n; ++i) {
       TRI_Utf8ValueNFC keyStr(
-        isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
+          isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
 
       if (*keyStr == nullptr) {
         wordListForKeys.push_back("");
@@ -1432,13 +1433,12 @@ static void ClientConnection_httpFuzzRequests(
       }
     }
   } else {
-      TRI_V8_THROW_TYPE_ERROR("<wordListForKeys> must be an array of strings");
+    TRI_V8_THROW_TYPE_ERROR("<wordListForKeys> must be an array of strings");
   }
 
   std::vector<std::string> wordListForRoute;
 
   a = args[3];
-
   if (a->IsArray()) {
     v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
@@ -1446,7 +1446,7 @@ static void ClientConnection_httpFuzzRequests(
     wordListForRoute.reserve(n - 1);
     for (uint32_t i = 0; i < n; ++i) {
       TRI_Utf8ValueNFC routeStr(
-        isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
+          isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
 
       if (*routeStr == nullptr) {
         wordListForRoute.push_back("");
@@ -1455,7 +1455,7 @@ static void ClientConnection_httpFuzzRequests(
       }
     }
   } else {
-      TRI_V8_THROW_TYPE_ERROR("<wordListForRoute> must be an array of strings");
+    TRI_V8_THROW_TYPE_ERROR("<wordListForRoute> must be an array of strings");
   }
 
   std::optional<uint32_t> seed;
@@ -1466,10 +1466,8 @@ static void ClientConnection_httpFuzzRequests(
     seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[4], false));
   }
 
-  fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts),
-                               wordListForKeys,
-                               wordListForRoute,
-                               seed);
+  fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts), wordListForKeys,
+                               wordListForRoute, seed);
   if (!seed.has_value()) {
     // log the random seed value for later reproducibility.
     // log level must be warning here because log levels < WARN are suppressed

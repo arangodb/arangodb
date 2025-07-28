@@ -72,7 +72,7 @@ class RequestFuzzer {
         _randContext{_seed},
         _headerSplitInLines{},
         _wordListForKeys(wordListForKeys),
-        _wordListForRoute(wordListForRoute){}
+        _wordListForRoute(wordListForRoute) {}
 
   [[nodiscard]] uint32_t getSeed() const noexcept { return _seed; }
 
