@@ -64,20 +64,20 @@ exports.checker = class {
       this.runner.setResult(te, false, {
         status: false,
         message: 'failed to fetch the currently available analyzers: [ ' + x.message
-      });
+      }, this.name);
       return false;
     }
     if (leftover.length !== 0) {
       this.runner.setResult(te, false, {
         status: false,
         message: 'Cleanup missing - test left over analyzer: [ ' + leftover
-      });
+      }, this.name);
       return false;
     } else if (foundAnalyzers.length !== this.analyzersBefore.length) {
       this.runner.setResult(te, false, {
         status: false,
         message: 'Cleanup remove analyzers: [ ' + foundAnalyzers  + ' != ' + this.analyzersBefore
-      });
+      }, this.name);
       return false;
     }
     return true;

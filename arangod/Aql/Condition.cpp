@@ -1049,7 +1049,8 @@ void Condition::collectOverlappingMembers(
     ExecutionPlan const* plan, Variable const* variable, AstNode const* andNode,
     AstNode const* otherAndNode, containers::HashSet<size_t>& toRemove,
     Index const* index, /* may be nullptr */
-    bool isFromTraverser) {
+    bool isPathCondition) {
+  bool const isFromTraverser{index == nullptr};
   bool const isSparse = (index != nullptr && index->sparse());
 
   std::pair<Variable const*, std::vector<basics::AttributeName>> result;
@@ -1060,6 +1061,8 @@ void Condition::collectOverlappingMembers(
     auto operand = andNode->getMemberUnchecked(i);
     bool allowOps = operand->isComparisonOperator();
 
+    // We can enter here only if we have index node, therefore we know that we
+    // are not dealing with the Traversal Node
     if (isSparse && allowOps && !isFromTraverser &&
         (operand->type == NODE_TYPE_OPERATOR_BINARY_NE ||
          operand->type == NODE_TYPE_OPERATOR_BINARY_GT)) {
@@ -1087,6 +1090,7 @@ void Condition::collectOverlappingMembers(
 
           // otherwise only remove the condition if the index is exactly on the
           // same attribute as the condition
+
           return index->fields().size() == 1 &&
                  basics::AttributeName::isIdentical(result.second,
                                                     index->fields()[0], false);
@@ -1101,7 +1105,9 @@ void Condition::collectOverlappingMembers(
     }
 
     if (isFromTraverser) {
-      allowOps = allowOps || operand->isArrayComparisonOperator();
+      if (isPathCondition) {
+        allowOps = allowOps || operand->isArrayComparisonOperator();
+      }
     } else {
       allowOps = allowOps && operand->type != NODE_TYPE_OPERATOR_BINARY_NE &&
                  operand->type != NODE_TYPE_OPERATOR_BINARY_NIN;
@@ -1177,8 +1183,10 @@ AstNode* Condition::removeTraversalCondition(ExecutionPlan const* plan,
 AstNode* Condition::removeCondition(ExecutionPlan const* plan,
                                     Variable const* variable,
                                     AstNode const* condition,
-                                    Index const* index, bool isFromTraverser) {
-  TRI_ASSERT(!isFromTraverser || index == nullptr);
+                                    Index const* index, bool isPathCondition) {
+  // If the isPathCondition is true the condition is on Traverse node
+  // and index cannot be used
+  TRI_ASSERT(!isPathCondition || index == nullptr);
 
   if (_root == nullptr || condition == nullptr) {
     return _root;
@@ -1203,7 +1211,7 @@ AstNode* Condition::removeCondition(ExecutionPlan const* plan,
 
   containers::HashSet<size_t> toRemove;
   collectOverlappingMembers(plan, variable, andNode, conditionAndNode, toRemove,
-                            index, isFromTraverser);
+                            index, isPathCondition);
 
   if (toRemove.empty()) {
     return _root;
