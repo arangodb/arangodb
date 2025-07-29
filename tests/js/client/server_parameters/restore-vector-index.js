@@ -36,7 +36,7 @@ const arangodb = require('@arangodb');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
-const { executeExternalAndWaitWithSanitizer, createCollectionDataFile } = require('@arangodb/test-helper');
+const { executeExternalAndWaitWithSanitizer, dumpUtils } = require('@arangodb/test-helper');
 
 
 function restoreIntegrationVectorSuite() {
@@ -104,7 +104,7 @@ function restoreIntegrationVectorSuite() {
       for (let i = 0; i < 1000; ++i) {
         data.push({_key: "test" + i, value: i, vector: [0, i / 10, i / 100, i / 1000]});
       }
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
       
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
