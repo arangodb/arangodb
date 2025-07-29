@@ -490,9 +490,11 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
       << _definition.nLists << " centroids.";
 
   if (trainingData.size() == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "For the vector index to be created a data "
-                                   "must be present for the training process.");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "For the vector index to be created documents "
+        "must be present in the respective collection for the training "
+        "process.");
   }
   _faissIndex->train(counter, trainingData.data());
   LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
