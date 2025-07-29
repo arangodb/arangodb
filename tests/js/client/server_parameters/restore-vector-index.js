@@ -31,60 +31,12 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
-const {assertTrue, assertFalse, assertEqual, assertNotEqual, assertInstanceOf} = jsunity.jsUnity.assertions;
-const internal = require('internal');
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 const arangodb = require('@arangodb');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
-const isCluster = require("internal").isCluster();
 const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
-const { versionHas } = require("@arangodb/test-helper");
-const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {
-  "name": "cachorro",
-  "id": "9999995",
-  "isUnicode": false
-}, {"name": "testName", "id": "9999996", "isUnicode": false}, {
-  "name": "😀",
-  "id": "9999997",
-  "isUnicode": true
-}, {"name": "かわいい犬", "id": "9999998"}, {"name": "ﻚﻠﺑ ﻞﻄﻴﻓ", "id": "9999999", "isUnicode": true}];
-const validatorJson = {
-  "message": "",
-  "level": "new",
-  "type": "json",
-  "rule": {
-    "additionalProperties": true,
-    "properties": {
-      "value1": {
-        "type": "integer"
-      },
-      "value2": {
-        "type": "string"
-      },
-      "name": {
-        "type": "string"
-      }
-    },
-    "required": [
-      "value1",
-      "value2"
-    ],
-    "type": "object"
-  }
-};
-
-function createCollectionStructureFile(path, cn) {
-  let fn = fs.join(path, cn + ".structure.json");
-  fs.write(fn, JSON.stringify({
-    indexes: [],
-    parameters: {
-      name: cn,
-      numberOfShards: 3,
-      type: 2
-    }
-  }));
-}
 
 function createCollectionDataFile(data, path, cn, split) {
   const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
@@ -107,26 +59,6 @@ function createCollectionDataFile(data, path, cn, split) {
   }
 }
 
-function createCollectionFiles(path, cn, split) {
-  createCollectionStructureFile(path, cn);
-  let data = [];
-  for (let i = 0; i < 1000; ++i) {
-    data.push({type: 2300, data: {_key: "test" + i, value: i}});
-  }
-  createCollectionDataFile(data, path, cn, /*split*/ false);
-  return data;
-}
-
-function createDumpJsonFile(path, databaseName, id) {
-  let fn = fs.join(path, "dump.json");
-  fs.write(fn, JSON.stringify({
-    database: databaseName,
-    properties: {
-      name: databaseName,
-      id: id
-    }
-  }));
-}
 
 function restoreIntegrationVectorSuite() {
   'use strict';
