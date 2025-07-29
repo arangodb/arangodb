@@ -1013,4 +1013,4 @@ exports.dumpUtils =  {
   createCollectionStructureFile: createCollectionStructureFile,
   createCollectionFiles: createCollectionFiles,
   createDumpJsonFile: createDumpJsonFile,
-}
+};
