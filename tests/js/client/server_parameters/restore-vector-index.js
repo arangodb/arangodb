@@ -36,28 +36,7 @@ const arangodb = require('@arangodb');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
-const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
-
-function createCollectionDataFile(data, path, cn, split) {
-  const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
-  let write = (data, fn) => {
-    fs.write(fs.join(path, fn), data.map((d) => JSON.stringify(d)).join('\n'));
-  };
-
-  if (split) {
-    const n = data.length;
-    let id = 0; // file number
-    let s = 0;
-    for (let i = 0; i <= n; ++i) {
-      if (i - s >= (n / 5) || i === n) {
-        write(data.slice(s, i), prefix + "." + (id++) + ".data.json");
-        s = i;
-      }
-    }
-  } else {
-    write(data, prefix + ".data.json");
-  }
-}
+const { executeExternalAndWaitWithSanitizer, createCollectionDataFile } = require('@arangodb/test-helper');
 
 
 function restoreIntegrationVectorSuite() {
