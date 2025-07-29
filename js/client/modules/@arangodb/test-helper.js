@@ -1011,7 +1011,6 @@ function createDumpJsonFile(path, databaseName, id) {
 exports.dumpUtils =  {
   createCollectionDataFile: createCollectionDataFile,
   createCollectionStructureFile: createCollectionStructureFile,
-  createCollectionStructureFile: createCollectionStructureFile,
   createCollectionFiles: createCollectionFiles,
-  createDumpJsonFile: createDumpJsonFile
+  createDumpJsonFile: createDumpJsonFile,
 }
