@@ -262,6 +262,7 @@ auto HashedCollectExecutor::returnState() const -> ExecutorState {
 auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, NoStats, AqlCall> {
+  LOG_DEVEL << "HashedCollectExecutor was called";
   TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

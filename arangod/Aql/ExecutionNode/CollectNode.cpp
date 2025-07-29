@@ -37,6 +37,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Transaction/Methods.h"
 
+#include <Aql/ExecutionEngine.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 
@@ -261,6 +262,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
     ExecutionEngine& engine) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::kHash: {
+      LOG_DEVEL << "case kHash was routed";
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 
@@ -310,6 +312,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::kSorted: {
+      LOG_DEVEL << "case kSorted was routed";
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 
@@ -356,12 +359,14 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           std::move(groupRegisters), collectRegister, expressionRegister,
           _expressionVariable, std::move(aggregateTypes),
           std::move(inputVariables), std::move(aggregateRegisters),
-          &_plan->getAst()->query().vpackOptions());
+          &_plan->getAst()->query().vpackOptions(),
+          engine.getQuery().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::kCount: {
+      LOG_DEVEL << "case kCount was routed";
       TRI_ASSERT(aggregateVariables().size() == 1);
       TRI_ASSERT(hasOutVariable() == false);
       ExecutionNode const* previousNode = getFirstDependency();
@@ -380,6 +385,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           &engine, this, std::move(registerInfos), std::move(executorInfos));
     }
     case CollectOptions::CollectMethod::kDistinct: {
+      LOG_DEVEL << "case kDistinct was routed";
       ExecutionNode const* previousNode = getFirstDependency();
       TRI_ASSERT(previousNode != nullptr);
 

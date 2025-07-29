@@ -107,7 +107,12 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
     size_t i = 0;
     _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
-      this->groupValues[i] = input.getValue(it.second).clone();
+      AqlValue val = input.getValue(it.second).clone();
+      LOG_DEVEL << "COLLECT value is added: " << val.slice().toJson() << " (" << val.memoryUsage() << ")";
+      infos.getResourceMonitor().increaseMemoryUsage(val.memoryUsage());
+      infos.addAccumulatedMemory(val.memoryUsage());
+      this->groupValues[i] = val;
+      // this->groupValues[i] = input.getValue(it.second).clone();
       ++i;
     }
 
@@ -124,7 +129,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    velocypack::Options const* opts)
+    velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
     : _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
       _groupRegisters(std::move(groupRegisters)),
@@ -132,7 +137,8 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _expressionRegister(expressionRegister),
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _vpackOptions(opts) {}
+      _vpackOptions(opts),
+      _resourceMonitor(resourceMonitor) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos), _currentGroup(infos) {
@@ -168,18 +174,31 @@ void SortedCollectExecutor::CollectGroup::addLine(
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      input.getValue(infos.getExpressionRegister())
-          .toVelocyPack(infos.getVPackOptions(), _builder,
+      // input.getValue(infos.getExpressionRegister())
+      //     .toVelocyPack(infos.getVPackOptions(), _builder,
+      //                   /*allowUnindexed*/ false);
+      auto val = input.getValue(infos.getExpressionRegister());
+      LOG_DEVEL << "INTO group value is added: " << val.slice().toJson() << " (" << val.memoryUsage() << ")";
+      infos.getResourceMonitor().increaseMemoryUsage(val.memoryUsage());
+      infos.addAccumulatedMemory(val.memoryUsage());
+      val.toVelocyPack(infos.getVPackOptions(), _builder,
                         /*allowUnindexed*/ false);
     } else {
       // copy variables / keep variables into result register
 
       _builder.openObject();
       for (auto const& pair : infos.getInputVariables()) {
+        LOG_DEVEL << "INTO group key is added: " << pair.first << " (" << pair.first.size() + sizeof(char) << ")";
         _builder.add(VPackValue(pair.first));
-        input.getValue(pair.second)
-            .toVelocyPack(infos.getVPackOptions(), _builder,
-                          /*allowUnindexed*/ false);
+        // input.getValue(pair.second)
+        //     .toVelocyPack(infos.getVPackOptions(), _builder,
+        //                   /*allowUnindexed*/ false);
+        auto val = input.getValue(pair.second);
+        LOG_DEVEL << "INTO group value is added: " << val.slice().toJson() << " (" << val.memoryUsage() << ")";
+        infos.getResourceMonitor().increaseMemoryUsage(val.memoryUsage());
+        infos.addAccumulatedMemory(val.memoryUsage());
+        val.toVelocyPack(infos.getVPackOptions(), _builder,
+                           /*allowUnindexed*/ false);
       }
       _builder.close();
     }
@@ -257,6 +276,9 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   size_t j = 0;
   for (auto& it : this->aggregators) {
     AqlValue val = it->stealValue();
+    LOG_DEVEL << "AGGREGATE value is added: " << val.slice().toJson() << " (" << val.memoryUsage() << ")";
+    infos.getResourceMonitor().increaseMemoryUsage(val.memoryUsage());
+    infos.addAccumulatedMemory(val.memoryUsage());
     AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
                          &guard);
@@ -474,6 +496,10 @@ auto SortedCollectExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
 
   return {inputRange.upstreamState(), NoStats{}, clientCall.getSkipCount(),
           AqlCall{}};
+}
+
+ResourceMonitor& SortedCollectExecutor::getResourceMonitor() const {
+  return _infos.getResourceMonitor();
 }
 
 template class ExecutionBlockImpl<SortedCollectExecutor>;

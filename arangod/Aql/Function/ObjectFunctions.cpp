@@ -131,38 +131,28 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
                          char const* funcName, bool recursive) {
   auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
   ResourceMonitor* monitor = execCtx ? &execCtx->getResourceMonitor() : nullptr;
-  uint64_t mergeUsage = 0;
-
-  struct MonitorGuard {
-    ResourceMonitor* _monitor;
-    uint64_t& _usage;
-    ~MonitorGuard() {
-      if (_monitor && _usage > 0) {
-        _monitor->decreaseMemoryUsage(_usage);
-        _usage = 0;
-      }
-    }
-  } guard{monitor, mergeUsage};
+  std::unique_ptr<ResourceUsageScope> scope;
+  if (monitor) {
+    scope = std::make_unique<ResourceUsageScope>(*monitor, 0);
+  }
 
   auto increaseMemoryUsage = [&](uint64_t byte) {
-    if (monitor) {
-      monitor->increaseMemoryUsage(byte);
-      LOG_DEVEL << "Memory increased by: " << byte
-      << " Current: " << monitor->current()
+    if (scope) {
+      LOG_DEVEL << "Memory increased by: " << byte;
+      scope->increase(byte);
+      LOG_DEVEL << "Current: " << monitor->current()
       << " Limit: " << monitor->memoryLimit()
       << " Peak: " << monitor->peak();
-      mergeUsage += byte;
     }
   };
 
   auto decreaseMemoryUsage = [&](uint64_t byte) {
-    if (monitor) {
-      monitor->decreaseMemoryUsage(byte);
-      LOG_DEVEL << "Memory decreased by: " << byte
-      << " Current: " << monitor->current()
+    if (scope) {
+      LOG_DEVEL << "Memory decreased by: " << byte;
+      scope->decrease(byte);
+      LOG_DEVEL << "Current: " << monitor->current()
       << " Limit: " << monitor->memoryLimit()
       << " Peak: " << monitor->peak();
-      mergeUsage -= byte;
     }
   };
 
@@ -229,9 +219,15 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         builder = velocypack::Collection::merge(builder.slice(), it,
                                                 /*mergeObjects*/ recursive,
                                                 /*nullMeansRemove*/ false);
-        TRI_ASSERT(it.valueByteSize() + before >= builder.buffer()->byteSize());
-        auto overEstimate = before + it.valueByteSize() - builder.buffer()->byteSize();
-        decreaseMemoryUsage(overEstimate);
+        auto after = builder.buffer()->byteSize();
+       // TRI_ASSERT(before + it.valueByteSize() >= after);
+        if (before + it.valueByteSize() >= after) {
+          auto overEstimate = before + it.valueByteSize() - after;
+          decreaseMemoryUsage(overEstimate);
+        } else {
+          auto underEstimate = after - (before + it.valueByteSize());
+          increaseMemoryUsage(underEstimate);
+        }
       }
     }
     return AqlValue(builder.slice(), builder.size());
@@ -243,7 +239,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   }
 
   // merge in all other arguments
-  LOG_DEVEL << "Multiple objs was called";
+  LOG_DEVEL << "Object was called";
   increaseMemoryUsage(initialSlice.valueByteSize());
   for (size_t i = 1; i < n; ++i) {
     AqlValue const& param =
@@ -263,9 +259,14 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
                                             /*mergeObjects*/ recursive,
                                             /*nullMeansRemove*/ false);
     initialSlice = builder.slice();
-    TRI_ASSERT(slice.valueByteSize() + before >= initialSlice.valueByteSize());
-    auto overEstimate = slice.valueByteSize() + before - initialSlice.valueByteSize();
-    decreaseMemoryUsage(overEstimate);
+    auto after = initialSlice.valueByteSize();
+    if (before + slice.valueByteSize() >= after) {
+      auto overEstimate = before + slice.valueByteSize() - after;
+      decreaseMemoryUsage(overEstimate);
+    } else {
+      auto underEstimate = after - (before + slice.valueByteSize());
+      increaseMemoryUsage(underEstimate);
+    }
   }
   if (n == 1) {
     // only one parameter. now add original document

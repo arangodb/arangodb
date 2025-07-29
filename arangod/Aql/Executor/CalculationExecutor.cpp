@@ -184,11 +184,6 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
                                 _infos.getVarToRegs(),
                                 _infos.getQuery().resourceMonitor());
 
-  // ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
-  //                             _aqlFunctionsInternalCache, input,
-  //                             _infos.getVarToRegs(),
-  //                             );
-
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
   AqlValueGuard guard(a, mustDestroy);

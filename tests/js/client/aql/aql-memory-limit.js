@@ -392,9 +392,100 @@ function ahuacatlMemoryLimitSkipTestSuite () {
   };
 }
 
-jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+function ahuacatMemoryLimitMergeTestSuite() {
+  return {
+    testMergeSingleObjectWithinLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024 * 1024)})";
+      let res = db._query(query, null, { memoryLimit: 16 * 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(res[0].a.length === 1024 * 1024);
+    },
+
+    testMergeSingleObjectNonExceedLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024 * 1024)})";
+      try {
+        db._query(query, null, { memoryLimit: 2 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeMultipleObjectsWithinLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024)}, {b: REPEAT('x', 1024)}, {b: REPEAT('x', 1024)})";
+      let res = db._query(query, null, { memoryLimit: 6 * 1024 }).toArray();
+      assertEqual(1, res.length);
+    },
+
+    testMergeMultipleObjectsExceedLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024 * 1024)}, {b: REPEAT('x', 1024 * 1024)}, {b: REPEAT('x', 1024 * 1024)})";
+      try {
+        db._query(query, null, { memoryLimit: 6 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeRecursiveMultipleObjectsWithinLimit: function() {
+      const query = "RETURN MERGE_RECURSIVE({a: {x: REPEAT('x', 1024)}, b: REPEAT('y', 1024)}," +
+          "{a: {y: REPEAT('z', 1024)}, c: REPEAT('w', 1024)})";
+      let res = db._query(query, null, { memoryLimit: 4 * 1024 }).toArray();
+      assertEqual(1, res.length);
+    },
+
+    testMergeMultipleObjectsRecursiveExceedLimit: function() {
+      const query = "RETURN MERGE_RECURSIVE({a: {x: REPEAT('x', 1024 * 1024)}, y: REPEAT('y', 1024 * 1024)}," +
+          "{a: {z: REPEAT('z', 1024 * 1024)}, w: REPEAT('w', 1024 * 1024)}," +
+          "{b: {x: REPEAT('x', 1024 * 1024)}, y: REPEAT('y', 1024 * 1024)})";
+      try {
+        db._query(query, null, { memoryLimit: 16 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeArrayWithinLimit: function() {
+      const query = `RETURN MERGE((FOR i IN 1..2024 RETURN { [CONCAT('k', i)]: REPEAT('x', 4096) }))`;
+      let res = db._query(query, null, { memoryLimit: 32 * 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(res[0] !== null);
+    },
+
+    testMergeArrayExceedLimit: function() {
+      const query = `RETURN MERGE((FOR i IN 1..2024 RETURN { [CONCAT('k', i)]: REPEAT('x', 4096) }))`;
+      try {
+        db._query(query, null, { memoryLimit: 12 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeRecursiveArrayWithinLimit: function() {
+      const query = `RETURN MERGE_RECURSIVE((FOR i IN 1..1000 RETURN { [CONCAT('k', i)]: i, nested: { x: i } }))`;
+      let res = db._query(query, null, { memoryLimit: 20 * 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(res[0] !== null);
+    },
+
+    testMergeRecursiveArrayExceedLimit: function() {
+      const query = `RETURN MERGE_RECURSIVE((FOR i IN 1..2048 RETURN { [CONCAT('k', i)]: REPEAT('x', 4096), nested: { [CONCAT('nested', i)]: REPEAT('x', 4096) } }))`;
+      try {
+        db._query(query, null, { memoryLimit: 32 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    }
+  };
+}
+
+// jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+jsunity.run(ahuacatMemoryLimitMergeTestSuite);
 
 return jsunity.done();
