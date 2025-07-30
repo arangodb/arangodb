@@ -762,12 +762,12 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
     // use specific cursor
-    return std::make_unique<graph::DBServerEdgeCursor>(this, _tmpVar, nullptr,
+    return std::make_unique<graph::DBServerEdgeCursor>(this, _tmpVar,
                                                        specific->second);
   }
 
   // otherwise, retain / reuse the general (global) cursor
-  return std::make_unique<graph::DBServerEdgeCursor>(this, _tmpVar, nullptr,
+  return std::make_unique<graph::DBServerEdgeCursor>(this, _tmpVar,
                                                      _baseLookupInfos);
 }
 
