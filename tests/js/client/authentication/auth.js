@@ -28,6 +28,7 @@
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
+const errors = require("internal").errors;
 const users = require("@arangodb/users");
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
@@ -182,25 +183,27 @@ function AuthSuite() {
       assertEqual(403, result.code);
     },
 
-    // todo reload test
-    // unit-test, no thread, try to call something
-
-    testAuthenticationErrorDuringStartup: function () {
+    testReload: function () {
       if (!IM.debugCanUseFailAt()) {
         return;
       }
+      // Internally the reload will trigger an increment for `arango/Sync/UserVersion`
+      // and trigger the internal thread to catch up to this increased version.
+      // It is a blocking call, so it only returns if the reload succeeded
+      users.reload();
+      let didThrow = false;
       try {
-        IM.debugSetFailAt("UserManager::StillStartingUp");
-        // IM.debugSetFailAt("BootstrapFeature_not_ready");
-
-        //users.reload();
-
-        const result = arango.GET('/_api/version');
-        require('internal').print(result);
-        assertEqual(503, result.code);
+        // This failure point will internally check if the versions are
+        // as expected and really incremented and will throw if the assumption is right
+        IM.debugSetFailAt("UserManager::FailReload");
+        users.reload();
+      } catch (err) {
+        didThrow = true;
+        assertEqual(errors.ERROR_DEBUG.code, err.errorNum);
       } finally {
         IM.debugClearFailAt();
       }
+      assertTrue(didThrow, 'Reload should have thrown');
     },
 
     // test creating a new user

@@ -409,7 +409,14 @@ void auth::UserManager::triggerCacheRevalidation() {
   while (_internalVersion.load(std::memory_order_acquire) < globalVersion()) {
     _internalVersion.wait(versionBeforeReload);
   }
-  checkIfUserDataIsAvailable();
+  TRI_IF_FAILURE("UserManager::FailReload") {
+    bool const internalVersionWasUpdated =
+        _internalVersion.load(std::memory_order_acquire) > versionBeforeReload;
+    bool const versionsAreEqual = _internalVersion == _globalVersion;
+    if (internalVersionWasUpdated && versionsAreEqual) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
 }
 
 void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
