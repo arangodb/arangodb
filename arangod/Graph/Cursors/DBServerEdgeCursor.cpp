@@ -21,7 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SingleServerEdgeCursor.h"
+#include "DBServerEdgeCursor.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/AttributeNamePath.h"
@@ -69,7 +69,7 @@ void PrepareIndexCondition(BaseOptions::LookupInfo const& info,
 ///        On all other cases this function throws.
 ////////////////////////////////////////////////////////////////////////////////
 
-SingleServerEdgeCursor::SingleServerEdgeCursor(
+DBServerEdgeCursor::DBServerEdgeCursor(
     BaseOptions* opts, aql::Variable const* tmpVar,
     std::vector<size_t> const* mapping,
     std::vector<BaseOptions::LookupInfo> const& lookupInfo)
@@ -91,7 +91,7 @@ SingleServerEdgeCursor::SingleServerEdgeCursor(
   }
 }
 
-SingleServerEdgeCursor::~SingleServerEdgeCursor() = default;
+DBServerEdgeCursor::~DBServerEdgeCursor() = default;
 
 #ifdef USE_ENTERPRISE
 static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
@@ -105,7 +105,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
 }
 #endif
 
-void SingleServerEdgeCursor::getDocAndRunCallback(
+void DBServerEdgeCursor::getDocAndRunCallback(
     IndexIterator* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->id(), _cache[_cachePos++]);
@@ -134,8 +134,8 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
                                     {.countBytes = true});
 }
 
-bool SingleServerEdgeCursor::advanceCursor(
-    IndexIterator*& cursor, std::vector<CursorInfo>*& cursorSet) {
+bool DBServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
+                                       std::vector<CursorInfo>*& cursorSet) {
   TRI_ASSERT(!_cursors.empty());
   ++_currentSubCursor;
   if (_currentSubCursor >= cursorSet->size()) {
@@ -154,7 +154,7 @@ bool SingleServerEdgeCursor::advanceCursor(
   return true;
 }
 
-bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
+bool DBServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the
   // other side of the edge (we are standing on a node and want to iterate all
   // connected edges
@@ -249,7 +249,7 @@ bool SingleServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
   return true;
 }
 
-void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
+void DBServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   TRI_ASSERT(!_cursors.empty());
   size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
@@ -317,8 +317,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   }
 }
 
-void SingleServerEdgeCursor::rearm(std::string_view vertex,
-                                   uint64_t /*depth*/) {
+void DBServerEdgeCursor::rearm(std::string_view vertex, uint64_t /*depth*/) {
   _currentCursor = 0;
   _currentSubCursor = 0;
   _cache.clear();
@@ -370,7 +369,7 @@ void SingleServerEdgeCursor::rearm(std::string_view vertex,
   }
 }
 
-void SingleServerEdgeCursor::buildLookupInfo(std::string_view vertex) {
+void DBServerEdgeCursor::buildLookupInfo(std::string_view vertex) {
   TRI_ASSERT(_cursors.empty());
   _cursors.reserve(_lookupInfo.size());
 
@@ -389,8 +388,8 @@ void SingleServerEdgeCursor::buildLookupInfo(std::string_view vertex) {
              _internalCursorMapping->size() == _cursors.size());
 }
 
-void SingleServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
-                                       std::string_view vertex) {
+void DBServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,
+                                   std::string_view vertex) {
   ::PrepareIndexCondition(info, vertex);
   IndexIteratorOptions defaultIndexIteratorOptions;
 

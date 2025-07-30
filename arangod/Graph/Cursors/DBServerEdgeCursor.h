@@ -23,12 +23,13 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string_view>
 #include <vector>
 
-#include "BaseOptions.h"
-#include "Graph/EdgeCursor.h"
+#include "Graph/BaseOptions.h"
+#include "Graph/Cursors/EdgeCursor.h"
 #include "Indexes/IndexIterator.h"
 
 namespace arangodb {
@@ -51,7 +52,7 @@ class Slice;
 namespace graph {
 struct BaseOptions;
 
-class SingleServerEdgeCursor final : public EdgeCursor {
+class DBServerEdgeCursor final : public EdgeCursor {
  private:
   struct CursorInfo {
     std::unique_ptr<IndexIterator> cursor;
@@ -81,15 +82,14 @@ class SingleServerEdgeCursor final : public EdgeCursor {
   std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
-  explicit SingleServerEdgeCursor(
+  explicit DBServerEdgeCursor(
       BaseOptions* options, aql::Variable const* tmpVar,
       std::vector<size_t> const* mapping,
       std::vector<BaseOptions::LookupInfo> const& lookupInfo);
 
-  ~SingleServerEdgeCursor();
+  ~DBServerEdgeCursor();
 
   bool next(EdgeCursor::Callback const& callback) override;
-
   void readAll(EdgeCursor::Callback const& callback) override;
 
   /// @brief number of HTTP requests performed. always 0 in single server

@@ -31,7 +31,7 @@
 #include "Aql/NonConstExpression.h"
 #include "Aql/Projections.h"
 #include "Basics/StaticStrings.h"
-#include "Graph/EdgeCursor.h"
+#include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 // TODO: Needed for the IndexAccessor, should be modified
 #include "Graph/Providers/SingleServerProvider.h"

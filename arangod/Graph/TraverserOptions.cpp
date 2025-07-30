@@ -32,7 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
-#include "Graph/SingleServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -762,13 +762,13 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
     // use specific cursor
-    return std::make_unique<graph::SingleServerEdgeCursor>(
-        this, _tmpVar, nullptr, specific->second);
+    return std::make_unique<graph::DBServerEdgeCursor>(this, _tmpVar, nullptr,
+                                                       specific->second);
   }
 
   // otherwise, retain / reuse the general (global) cursor
-  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
-                                                         _baseLookupInfos);
+  return std::make_unique<graph::DBServerEdgeCursor>(this, _tmpVar, nullptr,
+                                                     _baseLookupInfos);
 }
 
 double TraverserOptions::estimateCost(size_t& nrItems) const {
