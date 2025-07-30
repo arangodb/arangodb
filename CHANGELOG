@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add agency diagnosis API: `/_admin/cluster/agencyDiagnosis`.
+
 * Fix BTS-2051: Fix error message when creating vector index without data.
 
 * Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,

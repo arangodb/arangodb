@@ -43,6 +43,7 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallback.h"
 #include "Cluster/AgencyCallbackRegistry.h"
+#include "Cluster/AgencyDiagnosis.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterInfo.h"
@@ -354,6 +355,7 @@ std::string const RestAdminClusterHandler::VPackSortMigrationCheck = "check";
 std::string const RestAdminClusterHandler::VPackSortMigrationMigrate =
     "migrate";
 std::string const RestAdminClusterHandler::VPackSortMigrationStatus = "status";
+std::string const RestAdminClusterHandler::AgencyDiagnosis = "agencyDiagnosis";
 
 auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
   // here we first do a glboal check, which is based on the setting in startup
@@ -446,6 +448,9 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_return;
     } else if (command == ShardStatistics) {
       handleShardStatistics();
+      co_return;
+    } else if (command == AgencyDiagnosis) {
+      co_await handleAgencyDiagnosis();
       co_return;
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -2915,4 +2920,55 @@ async<void> RestAdminClusterHandler::handleVPackSortMigration(
     generateOk(rest::ResponseCode::OK, result.slice());
   }
   co_return;
+}
+
+async<void> RestAdminClusterHandler::handleAgencyDiagnosis() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    co_return;
+  }
+
+  if (!ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    co_return;
+  }
+
+  if (request()->requestType() != rest::RequestType::GET &&
+      request()->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    co_return;
+  }
+
+  bool strict = true;
+  std::string strictStr = request()->value("strict");
+  if (strictStr == "false") {
+    strict = false;
+  }
+
+  VPackBuilder diag;
+  if (request()->requestType() == rest::RequestType::GET) {
+    diag = arangodb::agency::diagnoseAgency(_server, strict);
+  } else if (request()->requestType() == rest::RequestType::POST) {
+    // Accept an agency dump to diagnose as body
+    bool parseSuccess;
+    VPackSlice body = parseVPackBody(parseSuccess);
+    if (!parseSuccess) {
+      co_return;
+    }
+    if (!body.isObject()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "Expecting object as body.");
+      co_return;
+    }
+    // Handle case of agency history, simply take "agency" attribute:
+    if (body.hasKey("index") && body.hasKey("term") && body.hasKey("agency")) {
+      diag = arangodb::agency::diagnoseAgency(body.get("agency"), strict);
+    } else {
+      diag = arangodb::agency::diagnoseAgency(body, strict);
+    }
+  }
+
+  generateOk(rest::ResponseCode::OK, diag.slice());
 }

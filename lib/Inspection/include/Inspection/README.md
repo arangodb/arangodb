@@ -326,9 +326,9 @@ template<class Inspector>
 auto inspect(Inspector& f, MyVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).qualified("type", "value").alternatives(
-      insp::inlineType<std::string>(),
-      insp::type<int>("int"),
-      insp::type<Struct1>("Struct1"));
+      inspection::inlineType<std::string>(),
+      inspection::type<int>("int"),
+      inspection::type<Struct1>("Struct1"));
 }
 ```
 This serializes/deserializes the variant in "qualified form", where `string` is
@@ -376,9 +376,9 @@ template<class Inspector>
 auto inspect(Inspector& f, MyVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).unqualified().alternatives(
-      insp::type<std::string>("string"),
-      insp::type<int>("int"),
-      insp::type<Struct1>("Struct1"));
+      inspection::type<std::string>("string"),
+      inspection::type<int>("int"),
+      inspection::type<Struct1>("Struct1"));
 }
 ```
 Then the generated result would instead look like this:
@@ -399,8 +399,8 @@ template<class Inspector>
 auto inspect(Inspector& f, MyEmbeddedVariant& x) {
   namespace insp = arangodb::inspection;
   return f.variant(x).embedded("type").alternatives(
-      insp::type<Struct1>("Struct1"),
-      insp::type<Struct2>("Struct2"));
+      inspection::type<Struct1>("Struct1"),
+      inspection::type<Struct2>("Struct2"));
 }
 ```
 If we were to serialize a `Struct2{.a = 42}` this would generate the following

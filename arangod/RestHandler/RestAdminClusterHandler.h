@@ -70,6 +70,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const VPackSortMigrationCheck;
   static std::string const VPackSortMigrationMigrate;
   static std::string const VPackSortMigrationStatus;
+  static std::string const AgencyDiagnosis;
 
   async<void> handleHealth();
   async<void> handleNumberOfServers();
@@ -110,6 +111,8 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   void handleRebalanceGet();
   async<void> handleRebalanceExecute();
   async<void> handleRebalancePlan();
+
+  async<void> handleAgencyDiagnosis();
 
   async<void> handleVPackSortMigration(std::string const& subCommand);
 
