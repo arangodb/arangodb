@@ -176,26 +176,10 @@ class V8ViewsTest
   ViewFactory viewFactory;
 
   V8ViewsTest() {
-    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
     arangodb::tests::v8Init();  // on-time initialize V8
-
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    if (userManager != nullptr) {
-      userManager->loadUserCacheAndStartUpdateThread();
-    }
 
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
-  }
-
-  ~V8ViewsTest() override {
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-    if (userManager != nullptr) {
-      userManager->shutdown();
-    }
-    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
   }
 };
 
@@ -254,11 +238,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -397,11 +376,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -539,11 +513,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -676,11 +645,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -873,11 +837,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -1073,11 +1032,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1238,11 +1192,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1401,11 +1350,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {

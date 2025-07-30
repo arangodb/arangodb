@@ -78,14 +78,11 @@ class UserManager {
   // Tells coordinator to reload its data. Only called in HeartBeat thread
   void setGlobalVersion(uint64_t version) noexcept;
 
-  // reload user cache and token caches
-  void triggerLocalReload() noexcept;
-
   // used for caching
   uint64_t globalVersion() const noexcept;
 
   // Trigger eventual reload on all other coordinators (and in TokenCache)
-  void triggerGlobalReload();
+  void triggerGlobalReload() const;
 
   // Will trigger a local and a global reload and block until the lates version
   // is loaded.
@@ -148,13 +145,17 @@ class UserManager {
   // for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
 
-  // this is only needed in unittest this
-  // will shutdown the running thread on demand
-  // its needed because the failure point can be deactivated before the thread
-  // is finished and can lead to calls on the server that are not initialized
-  // properly in the unit-test environment
+  // This is only needed in unittest:
+  // This will shut down the running thread on demand. It's needed because the
+  // failure point can be deactivated before the thread is finished and can lead
+  // to calls on the server that are not initialized properly in the unit-test
+  // environment.
   void shutdown();
-#endif
+
+  // need this to find out if the loadFromDB was run and the internal version
+  // was updated
+  uint64_t internalVersion() const noexcept;
+#endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:
   bool checkPassword(std::string const& username, std::string const& password);
@@ -162,12 +163,12 @@ class UserManager {
                         std::string& un);
 
   // load users and permissions from local database
-  uint64_t loadFromDB();
+  uint64_t loadFromDB() noexcept;
 
-  // This function is basically just to replicate some of the behaviour
-  // for test that was previously in the loadFromDB call, that is now in
-  // a seperate thread
-  void checkIfUserDataIsAvailable();
+  // This function will throw if the thread was not yet started
+  // and the user-cache was not yet preloaded.
+  // Basically guards most of the functions from being called too early.
+  void checkIfUserDataIsAvailable() const;
 
   // store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
@@ -184,8 +185,7 @@ class UserManager {
   // used to update caches
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
-  std::atomic<bool> _usersInitialized;
-  std::unique_ptr<std::jthread> _userCacheUpdateThread;
+  std::jthread _userCacheUpdateThread;
 
   // Caches permissions and other user info
   UserMap _userCache;

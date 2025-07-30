@@ -150,6 +150,45 @@ TEST_F(
   ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
+TEST_F(UserManagerTest, usermanager_should_throw_if_called_too_early) {
+  // we never start the internal thread
+  // so the internal version stays 0 and every call to the following functions
+  // should lead to a `TRI_ERROR_STARTING_UP` exception
+  auto const ShouldThrow = [](std::string_view const name,
+                              std::function<void()> const& f) {
+    try {
+      f();
+      FAIL() << name << " should have thrown";
+    } catch (basics::Exception const& e) {
+      ASSERT_EQ(e.code(), TRI_ERROR_STARTING_UP);
+    }
+  };
+  ShouldThrow("storeUser",
+              [&] { um.storeUser(true, "username", "password", true, {}); });
+  ShouldThrow("enumerateUsers",
+              [&] { um.enumerateUsers([](auto&) { return true; }, true); });
+  ShouldThrow("updateUser", [&] {
+    um.updateUser("username", [](auto&) { return Result(); });
+  });
+  ShouldThrow("accessUser", [&] {
+    um.accessUser("username", [](auto&) { return Result(); });
+  });
+  ShouldThrow("userExists", [&] { um.userExists("username"); });
+  ShouldThrow("serializeUser", [&] { um.serializeUser("username"); });
+  ShouldThrow("removeUser", [&] { um.removeUser("username"); });
+  ShouldThrow("removeAllUsers", [&] { um.removeAllUsers(); });
+  ShouldThrow("databaseAuthLevel",
+              [&] { um.databaseAuthLevel("username", "dbname", true); });
+  ShouldThrow("collectionAuthLevel", [&] {
+    um.collectionAuthLevel("username", "dbname", "collection", true);
+  });
+
+  ShouldThrow("checkCredentials", [&] {
+    std::string un;
+    um.checkCredentials("username", "dbname", un);
+  });
+}
+
 }  // namespace auth_info_test
 }  // namespace tests
 }  // namespace arangodb

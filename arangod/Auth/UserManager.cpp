@@ -81,18 +81,14 @@ using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
 auth::UserManager::UserManager(ArangodServer& server)
-    : _server(server),
-      _globalVersion(1),
-      _internalVersion(0),
-      _usersInitialized(false) {}
+    : _server(server), _globalVersion(1), _internalVersion(0) {}
 
 auth::UserManager::~UserManager() {
-  if (_userCacheUpdateThread && _userCacheUpdateThread->joinable()) {
-    _userCacheUpdateThread->request_stop();
-    // set global version leads to a triggerLocalReload.
-    // this will wake up the thread.
+  if (_userCacheUpdateThread.joinable()) {
+    _userCacheUpdateThread.request_stop();
+    // set global version leads to a wake-up of the update thread
     setGlobalVersion(std::numeric_limits<uint64_t>::max());
-    _userCacheUpdateThread->join();
+    _userCacheUpdateThread.join();
   }
 }
 
@@ -115,11 +111,6 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
 }
 
 static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
-  TRI_IF_FAILURE("QueryAllUsers") {
-    // simulates the case that the _users collection is not yet available
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  }
-
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -164,7 +155,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
 
   if (usersSlice.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  } else if (!usersSlice.isArray()) {
+  }
+  if (!usersSlice.isArray()) {
     LOG_TOPIC("4b11d", ERR, arangodb::Logger::AUTHENTICATION)
         << "cannot read users from _users collection";
     return {};
@@ -189,52 +181,70 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 }
 
 void auth::UserManager::loadUserCacheAndStartUpdateThread() noexcept {
-  if (_usersInitialized.load(std::memory_order_relaxed) == true) {
+  TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+
+  if (_userCacheUpdateThread.get_id() != std::jthread::id()) {
+    // thread already started
     return;
   }
 
   namespace chrono = std::chrono;
   LOG_TOPIC("ef78c", INFO, Logger::AUTHENTICATION) << "Preloading user cache";
-  auto const start = chrono::system_clock::now();
-  int64_t lastLog = 0;
-  int64_t constexpr LogEverySeconds = 3;
-  while (_usersInitialized.load(std::memory_order_acquire) != true) {
+  auto start = chrono::system_clock::now();
+  while (_internalVersion.load(std::memory_order_acquire) == 0) {
     auto const now = chrono::system_clock::now();
-    auto const diff =
-        chrono::duration_cast<chrono::seconds>(now - start).count();
-    if (lastLog + LogEverySeconds < diff) {
-      lastLog = diff;
+    if ((now - start) > std::chrono::seconds(3)) {
+      start = chrono::system_clock::now();
       LOG_TOPIC("ef78e", INFO, Logger::AUTHENTICATION)
-          << "Preloading user cache still in progress.";
+          << "Preloading user cache is still in progress.";
     }
     loadFromDB();
   }
 
   _userCacheUpdateThread =
-      std::make_unique<std::jthread>([this](std::stop_token stpTkn) {
+      std::jthread([this](std::stop_token stpTkn) noexcept {
+        uint32_t tries = 0;
+        auto start = chrono::system_clock::now();
         while (!stpTkn.stop_requested()) {
           uint64_t const loadedVersion = loadFromDB();
-          // triggerLocalReload will set the _localVersion to 0
-          // waiting for 0 here would lead to a endless wait.
-          if (loadedVersion > 0) {
-            _internalVersion.wait(loadedVersion);
+          // In case of an error while loading the _user collection we do not
+          // want to retry to often to prevent additional load on the whole
+          // server/cluster
+          if (loadedVersion == 0) {
+            tries++;
+            auto const now = chrono::system_clock::now();
+            if (tries == 1) {
+              LOG_TOPIC("dfba8", INFO, Logger::AUTHENTICATION)
+                  << "Loading user cache failed, retrying";
+              start = chrono::system_clock::now();
+            } else if (now - start > chrono::seconds(2)) {
+              LOG_TOPIC("dfbb9", WARN, Logger::AUTHENTICATION)
+                  << "Loading user cache is still failing, retrying for the "
+                  << tries << " time.";
+              start = chrono::system_clock::now();
+            }
+            // The wait time between retries get longer and longer up until a
+            // maximum of ~10sec in between tries.
+            uint32_t const multiplier = 1u << std::min(tries, 20u);
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(10us * multiplier);
+          } else {
+            // load was successful reset tries
+            tries = 0;
           }
+          _globalVersion.wait(loadedVersion);
         }
       });
 #ifdef TRI_HAVE_SYS_PRCTL_H
-  pthread_setname_np(_userCacheUpdateThread->native_handle(),
-                     "UserCacheThread");
+  pthread_setname_np(_userCacheUpdateThread.native_handle(), "UserCacheThread");
 #endif
 }
 
 // private, will acquire _userCacheLock in write-mode and release it.
-uint64_t auth::UserManager::loadFromDB() {
+uint64_t auth::UserManager::loadFromDB() noexcept {
   uint64_t const currentGlobalVersion = globalVersion();
-  uint64_t const currentInternalVersion =
-      _internalVersion.load(std::memory_order_acquire);
 
   auto const setInternalVersion = [&](uint64_t const version) {
-    _usersInitialized.store(true);
     _internalVersion.store(version);
     _internalVersion.notify_all();
   };
@@ -244,8 +254,6 @@ uint64_t auth::UserManager::loadFromDB() {
     setInternalVersion(currentGlobalVersion);
     return currentGlobalVersion;
   }
-
-  TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_server);
@@ -271,28 +279,17 @@ uint64_t auth::UserManager::loadFromDB() {
     LOG_TOPIC("3f537", TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
   }
-  return currentInternalVersion;
+  return 0u;
 }
 
-void auth::UserManager::checkIfUserDataIsAvailable() {
-  TRI_IF_FAILURE("UserManager::failDBLookup") {
-    // Used in GTest. It is used to identify
-    // if the UserManager would have updated it's
-    // cache in a specific situation.
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  TRI_IF_FAILURE("QueryAllUsers") {
-    bool const reloadTriggered =
-        _internalVersion.load(std::memory_order_acquire) == 0;
-    bool const boostrapReady =
-        _server.hasFeature<BootstrapFeature>() &&
-        !_server.getFeature<BootstrapFeature>().isReady();
-    if (reloadTriggered && boostrapReady) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
-                                     "Cannot load users because the _users "
-                                     "collection is not yet available");
-    }
+void auth::UserManager::checkIfUserDataIsAvailable() const {
+  bool const noDataYetLoaded =
+      _internalVersion.load(std::memory_order_acquire) == 0;
+  if (noDataYetLoaded == true ||
+      TRI_ShouldFailDebugging("UserManager::StillStartingUp")) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
+                                   "Cannot load users because the _users "
+                                   "collection is not yet available");
   }
 }
 
@@ -339,7 +336,6 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
 
     if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
       // user was outdated, we should trigger a reload
-      triggerLocalReload();
       LOG_TOPIC("cf922", DEBUG, Logger::AUTHENTICATION)
           << "Cannot update user : '" << res.errorMessage() << "'";
     }
@@ -353,9 +349,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
 
 // only call from the boostrap feature, must be sure to be the only one
 void auth::UserManager::createRootUser() {
-  checkIfUserDataIsAvailable();
-
-  READ_LOCKER(readGuard, _userCacheLock);  // must be second
+  READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
     LOG_TOPIC("bbc97", TRACE, Logger::AUTHENTICATION)
@@ -409,12 +403,11 @@ VPackBuilder auth::UserManager::allUsers() {
 }
 
 void auth::UserManager::triggerCacheRevalidation() {
-  uint64_t versionToReloadTo = globalVersion() + 1;
+  uint64_t const versionBeforeReload = globalVersion();
   triggerGlobalReload();
-  setGlobalVersion(versionToReloadTo);
-  while (_internalVersion.load() < versionToReloadTo) {
-    triggerLocalReload();
-    _internalVersion.wait(0);
+  setGlobalVersion(versionBeforeReload + 1);
+  while (_internalVersion.load(std::memory_order_acquire) < globalVersion()) {
+    _internalVersion.wait(versionBeforeReload);
   }
   checkIfUserDataIsAvailable();
 }
@@ -425,18 +418,11 @@ void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
     if (_globalVersion.compare_exchange_strong(previous, version,
                                                std::memory_order_release,
                                                std::memory_order_relaxed)) {
-      triggerLocalReload();
+      _globalVersion.notify_all();
       return;
     }
   }
   // we were not able to update the _globalVersion
-}
-
-/// @brief reload user cache and token caches
-void auth::UserManager::triggerLocalReload() noexcept {
-  // we are forcing a reload here, but we still have a userCache,
-  _internalVersion.store(0, std::memory_order_release);
-  _internalVersion.notify_all();
 }
 
 /// @brief used for caching
@@ -445,7 +431,7 @@ uint64_t auth::UserManager::globalVersion() const noexcept {
 }
 
 /// Trigger eventual reload, user facing API call
-void auth::UserManager::triggerGlobalReload() {
+void auth::UserManager::triggerGlobalReload() const {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -454,18 +440,15 @@ void auth::UserManager::triggerGlobalReload() {
   AgencyWriteTransaction incrementVersion({AgencyOperation(
       "Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
 
-  int maxTries = 10;
+  AgencyCommResult const result =
+      agency.sendTransactionWithFailover(incrementVersion);
 
-  while (maxTries-- > 0) {
-    AgencyCommResult result =
-        agency.sendTransactionWithFailover(incrementVersion);
-    if (result.successful()) {
-      return;
-    }
+  if (result.successful() == false) {
+    LOG_TOPIC("d2f51", WARN, Logger::AUTHENTICATION)
+        << "Sync/UserVersion could not be updated. " << result.errorMessage();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "could not update global version");
   }
-
-  LOG_TOPIC("d2f51", WARN, Logger::AUTHENTICATION)
-      << "Sync/UserVersion could not be updated";
 }
 
 Result auth::UserManager::storeUser(bool const replace,
@@ -934,17 +917,22 @@ void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
   WRITE_LOCKER(writeGuard, _userCacheLock);
   _userCache = newMap;
   writeGuard.unlock();
-  setGlobalVersion(globalVersion() + 1);
-  _usersInitialized.store(true);
+  auto const currentGlobalVersion = globalVersion();
+  setGlobalVersion(currentGlobalVersion + 1);
+  _internalVersion.store(currentGlobalVersion + 1);
 }
 
 void auth::UserManager::shutdown() {
-  if (_userCacheUpdateThread && _userCacheUpdateThread->joinable()) {
-    _userCacheUpdateThread->request_stop();
-    // set global version leads to a triggerLocalReload;
+  if (_userCacheUpdateThread.joinable()) {
+    _userCacheUpdateThread.request_stop();
+    // set global version leads to a wake-up of the update thread
     setGlobalVersion(std::numeric_limits<uint64_t>::max());
-    _userCacheUpdateThread->join();
+    _userCacheUpdateThread.join();
   }
+}
+
+uint64_t auth::UserManager::internalVersion() const noexcept {
+  return _internalVersion.load(std::memory_order_acquire);
 }
 
 #endif

@@ -182,15 +182,18 @@ function AuthSuite() {
       assertEqual(403, result.code);
     },
 
+    // todo reload test
+    // unit-test, no thread, try to call something
+
     testAuthenticationErrorDuringStartup: function () {
       if (!IM.debugCanUseFailAt()) {
         return;
       }
       try {
-        IM.debugSetFailAt("QueryAllUsers");
-        IM.debugSetFailAt("BootstrapFeature_not_ready");
+        IM.debugSetFailAt("UserManager::StillStartingUp");
+        // IM.debugSetFailAt("BootstrapFeature_not_ready");
 
-        users.reload();
+        //users.reload();
 
         const result = arango.GET('/_api/version');
         require('internal').print(result);

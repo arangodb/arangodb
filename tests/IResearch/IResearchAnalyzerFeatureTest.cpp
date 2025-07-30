@@ -97,8 +97,6 @@
 
 namespace {
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-
 struct TestIndex : public arangodb::Index {
   TestIndex(arangodb::IndexId id, arangodb::LogicalCollection& collection,
             arangodb::velocypack::Slice const& definition)
@@ -444,7 +442,6 @@ class IResearchAnalyzerFeatureTest
   arangodb::SystemDatabaseFeature* sysDatabaseFeature{};
 
   IResearchAnalyzerFeatureTest() : server(false) {
-    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
     arangodb::tests::init();
 
     server.addFeature<arangodb::QueryRegistryFeature>(
@@ -453,8 +450,6 @@ class IResearchAnalyzerFeatureTest
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 
     server.startFeatures();
-
-    userManager()->loadUserCacheAndStartUpdateThread();
 
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
@@ -467,25 +462,9 @@ class IResearchAnalyzerFeatureTest
         unused);
   }
 
-  ~IResearchAnalyzerFeatureTest() {
-    // Clear the authentication user:
-    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    auto* userManager = authFeature.userManager();
-    if (userManager != nullptr) {
-      userManager->removeAllUsers();
-      userManager->shutdown();
-    }
-    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
-  }
-
-  arangodb::auth::UserManager* userManager() {
-    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    auto* userManager = authFeature.userManager();
-    return userManager;
-  }
-
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
-    auto* um = userManager();
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    auto* um = authFeature.userManager();
     ASSERT_NE(um, nullptr);
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
@@ -5373,5 +5352,3 @@ TEST(FeaturesTest, add_validate) {
     ASSERT_TRUE(f.validate().ok());
   }
 }
-
-#endif  // ARANGODB_ENABLE_FAILURE_TESTS
