@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Graph/EdgeCursor.h"
+#include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/TraverserOptions.h"
 
 namespace arangodb {
