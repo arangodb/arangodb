@@ -80,6 +80,10 @@ bool isCollectNodeEligible(CollectNode const& cn) {
 }
 
 bool isIndexNodeEligible(IndexNode const& in) {
+  if (in.estimateCost().estimatedNrItems == 0) {
+    LOG_RULE << "IndexNode " << in.id() << " not eligible - no data";
+    return false;
+  }
   if (in.hasFilter()) {
     LOG_RULE << "IndexNode " << in.id()
              << " not eligible - it has a post filter";

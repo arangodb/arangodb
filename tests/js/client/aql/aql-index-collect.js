@@ -53,6 +53,15 @@ function IndexCollectOptimizerTestSuite() {
       db[collection].indexes().filter(x => x.type !== "primary").map(x => db[collection].dropIndex(x));
     },
 
+    testOptimizerRuleDoesNotApplyForEmptyCollection: function () {
+      const c = db._create("empty_collection", { numberOfShards: 3 });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
+      const query = `FOR doc IN ${collection} COLLECT a = doc.a RETURN a`;
+      const explain = db._createStatement(query).explain();
+      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) == -1, query);
+      c.drop();
+    },
+
     testOptimizerRule: function () {
       db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"] });
       db[collection].ensureIndex({ type: "persistent", fields: ["x"], sparse: true });
@@ -204,6 +213,15 @@ function IndexAggregationCollectOptimizerTestSuite() {
       db[collection].indexes().filter(x => x.type !== "primary").map(x => db[collection].dropIndex(x));
     },
 
+    testAggregateOptimizerRuleDoesNotApplyForEmptyCollection: function () {
+      const c = db._create("empty_collection", { numberOfShards: 3 });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
+      const query = `FOR doc IN ${collection} COLLECT AGGREGATE max = MAX(doc.b) RETURN max`;
+      const explain = db._createStatement(query).explain();
+      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) == -1, query);
+      c.drop();
+    },
+
     testAggregateOptimizerRule: function () {
       db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"] });
       db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
@@ -242,7 +260,13 @@ function IndexCollectExecutionTestSuite() {
     setUpAll: function () {
       db._createDatabase(database);
       db._useDatabase(database);
+    },
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(database);
+    },
 
+    testIndexCollectExecution: function () {
       const c = db._create(collection, { numberOfShards: 3 });
       const docs = [];
       for (let k = 0; k < numDocuments; k++) {
@@ -254,13 +278,6 @@ function IndexCollectExecutionTestSuite() {
       c.ensureIndex({ type: "persistent", fields: ["b"] });
       c.ensureIndex({ type: "persistent", fields: ["c"] });
       c.ensureIndex({ type: "persistent", fields: ["m", "a"] });
-    },
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(database);
-    },
-
-    testIndexCollectExecution: function () {
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a RETURN [a]`],
