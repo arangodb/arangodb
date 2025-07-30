@@ -65,6 +65,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
+#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -384,6 +385,86 @@ std::string V8ClientConnection::protocol() const {
   }
 }
 
+#if USE_NEW_AUTH_METHOD
+// Helper function to authenticate via /_open/auth endpoint
+std::string V8ClientConnection::authenticateViaOpenAuth() {
+  // Create a temporary connection builder for the auth request
+  fuerte::ConnectionBuilder tempBuilder;
+  tempBuilder.endpoint(_client.endpoint());
+
+  // Create connection without authentication
+  auto connection = tempBuilder.connect(_loop);
+  if (!connection) {
+    throw std::runtime_error("Failed to create connection for authentication");
+  }
+
+  // Prepare the authentication request
+  auto req = std::make_unique<fu::Request>();
+  req->header.restVerb = fu::RestVerb::Post;
+  req->header.path = "/_open/auth";
+  req->header.contentType(fu::ContentType::Json);
+  req->header.acceptType(fu::ContentType::Json);
+  req->timeout(
+      std::chrono::duration_cast<std::chrono::milliseconds>(_requestTimeout));
+
+  // Create JSON body with username and password
+  velocypack::Builder bodyBuilder;
+  bodyBuilder.openObject();
+  bodyBuilder.add("username", _client.username());
+  bodyBuilder.add("password", _client.password());
+  bodyBuilder.close();
+
+  // Add the JSON body to the request
+  std::string jsonBody = bodyBuilder.slice().toJson();
+  req->addBinary(reinterpret_cast<uint8_t const*>(jsonBody.data()),
+                 jsonBody.size());
+
+  // Send the request
+  auto response = connection->sendRequest(std::move(req));
+  if (!response) {
+    throw std::runtime_error("Failed to send authentication request");
+  }
+
+  if (response->statusCode() != 200) {
+    std::string errorMsg = "Authentication failed with status code: " +
+                           std::to_string(response->statusCode());
+    if (response->payloadSize() > 0) {
+      // Try to parse error message from response
+      try {
+        auto parsedBody = VPackParser::fromJson(
+            reinterpret_cast<char const*>(response->payload().data()),
+            response->payload().size());
+        auto slice = parsedBody->slice();
+        if (slice.isObject() && slice.hasKey("errorMessage")) {
+          errorMsg =
+              VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
+        }
+      } catch (...) {
+        // Ignore parsing errors, use default error message
+      }
+    }
+    throw std::runtime_error(errorMsg);
+  }
+
+  // Parse the response to extract the JWT token
+  if (response->payloadSize() == 0) {
+    throw std::runtime_error("Empty response from authentication endpoint");
+  }
+
+  auto parsedBody = VPackParser::fromJson(
+      reinterpret_cast<char const*>(response->payload().data()),
+      response->payload().size());
+  auto slice = parsedBody->slice();
+
+  if (!slice.isObject() || !slice.hasKey("jwt")) {
+    throw std::runtime_error(
+        "Invalid response format from authentication endpoint");
+  }
+
+  return VelocyPackHelper::getStringValue(slice, "jwt", "");
+}
+#endif
+
 void V8ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
@@ -401,9 +482,22 @@ void V8ClientConnection::prepareConnection() {
     _builder.jwtToken(
         fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
+#if USE_NEW_AUTH_METHOD
+  } else if (!_client.username().empty()) {
+    // Use new authentication method via /_open/auth endpoint
+    try {
+      std::string jwtToken = authenticateViaOpenAuth();
+      _builder.jwtToken(jwtToken);
+      _builder.authenticationType(fu::AuthenticationType::Jwt);
+    } catch (std::exception const& e) {
+      throw std::runtime_error("Authentication failed: " +
+                               std::string(e.what()));
+    }
+#else
   } else if (!_client.username().empty()) {
     _builder.user(_client.username()).password(_client.password());
     _builder.authenticationType(fu::AuthenticationType::Basic);
+#endif
   }
 }
 
