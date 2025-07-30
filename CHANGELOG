@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix miscounting bug for number of SynchronizeShard jobs scheduled.
+  This fixes BTS-2202. The bug could show up as a dbserver not syncing
+  its follower shards with the leader.
+
 * Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,
   GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions
   with two or three components.
