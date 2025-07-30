@@ -32,7 +32,7 @@ const database = "IndexCollectDatabase";
 const collection = "c";
 const indexCollectOptimizerRule = "use-index-for-collect";
 
-function IndexCollectOptimizerTestSuite() {
+function OptimizerTestSuite() {
   return {
     setUpAll: function () {
       db._createDatabase(database);
@@ -53,24 +53,15 @@ function IndexCollectOptimizerTestSuite() {
       db[collection].indexes().filter(x => x.type !== "primary").map(x => db[collection].dropIndex(x));
     },
 
-    testOptimizerRuleDoesNotApplyForEmptyCollection: function () {
-      const c = db._create("empty_collection", { numberOfShards: 3 });
-      c.ensureIndex({ type: "persistent", fields: ["a"] });
-      const query = `FOR doc IN ${collection} COLLECT a = doc.a RETURN a`;
-      const explain = db._createStatement(query).explain();
-      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1, query);
-      c.drop();
-    },
-
-    testOptimizerRule: function () {
+    testDistinctOptimizerRule: function () {
       db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"] });
       db[collection].ensureIndex({ type: "persistent", fields: ["x"], sparse: true });
 
       const queries = [
         [`FOR doc IN ${collection} COLLECT a = doc.a RETURN a`, true],
-        [`FOR doc IN ${collection} COLLECT b = doc.b RETURN b`, false],
+        [`FOR doc IN ${collection} COLLECT b = doc.b RETURN b`, false], // index cannot be used
         [`FOR doc IN ${collection} COLLECT a = doc.a.c RETURN a`, false],
-        [`FOR doc IN ${collection} COLLECT a = doc.x RETURN a`, false], // does not work on sparse indexes
+        [`FOR doc IN ${collection} COLLECT x = doc.x RETURN x`, false], // does not work on sparse indexes
         [`FOR doc IN ${collection} SORT doc.a DESC COLLECT a = doc.a RETURN [a]`, false], // desc not possible
         [`FOR doc IN ${collection} SORT doc.a ASC COLLECT a = doc.a RETURN [a]`, true],
         [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`, true],
@@ -96,6 +87,79 @@ function IndexCollectOptimizerTestSuite() {
         }
       }
     },
+
+    testAggregateOptimizerRule: function () {
+      db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"] });
+      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
+
+      const queries = [
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true], // no selectivity requiement
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b), c = SUM(doc.b) RETURN [a, b, c]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.c) RETURN [a, b]`, false],
+        [`FOR doc IN ${collection} LET x = doc.a COLLECT a = doc.a AGGREGATE b = MAX(x + 1) RETURN [a, b]`, false], // does currently not support aggregation expressions with variables different than the document variable
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE c = COUNT() RETURN [a, c]`, false], // does currently not support aggregation expressions with no in-variable
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.e) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d) RETURN [a, b]`, true],
+        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d), c = PUSH(doc.f) RETURN [a, b, c]`, true],
+      ];
+
+      for (const [query, optimized] of queries) {
+        const explain = db._createStatement(query).explain();
+        assertEqual(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, optimized, query);
+        if (optimized) {
+          const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
+          assertEqual(nodes.length, 1, query);
+          const indexCollect = nodes[0];
+          assertTrue(indexCollect.aggregations.length > 0);
+        }
+      }
+    },
+
+    testCollectOptions: function () {
+      const index = db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "c.d"], name: "foobar" });
+      const queries = [
+        [`FOR doc IN ${collection} COLLECT a = doc.a RETURN a`, "sorted", [0], [["a"]]],
+        [`FOR doc IN ${collection} COLLECT a = doc.a SORT null RETURN a`, "hash", [0], [["a"]]],
+        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`, "sorted", [0, 1], [["a"], ["b"]]],
+        [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`, "hash", [1, 0], [["b"], ["a"]]],
+        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b, c = doc.c.d RETURN [a, b]`, "sorted", [0, 1, 2], [["a"], ["b"], ["c", "d"]]],
+      ];
+
+      for (const [query, method, expectedFields, expectedAttributes] of queries) {
+        const explain = db._createStatement(query).explain();
+        assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, query);
+        const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
+        assertEqual(nodes.length, 1, query);
+        const icn = nodes[0];
+
+        assertEqual(icn.collection, collection);
+        assertEqual(icn.collectOptions.method, method);
+        assertEqual(icn.index.name, index.name);
+        assertEqual(icn.oldIndexVariable.name, "doc");
+
+        const indexFields = icn.groups.map(x => x.indexField);
+        assertEqual(indexFields, expectedFields);
+
+        const attributes = icn.groups.map(x => x.attribute);
+        assertEqual(attributes, expectedAttributes);
+      }
+    },
+
+    testOptimizerRuleDoesNotApplyForEmptyCollection: function () {
+      const c = db._create("empty_collection", { numberOfShards: 3 });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
+      const queries = [
+        `FOR doc IN ${collection} COLLECT a = doc.a RETURN a`,
+        `FOR doc IN ${collection} COLLECT AGGREGATE max = MAX(doc.b) RETURN max`
+      ];
+      for (const query of queries) {
+        const explain = db._createStatement(query).explain();
+        assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1, query);
+      }
+      c.drop();
+    },
+
+    // the following tests apply only to queries that include a COLLECT without an additional AGGREGATE
 
     testOptimizerRuleAppliesWhenSelectivityIsLowEnough: function () {
       const c_new = db._create(collection + "1", { numberOfShards: 3 });
@@ -141,37 +205,6 @@ function IndexCollectOptimizerTestSuite() {
       assertFalse(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1);
     },
 
-    testCollectOptions: function () {
-      const index = db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "c.d"], name: "foobar" });
-      const queries = [
-        [`FOR doc IN ${collection} COLLECT a = doc.a RETURN a`, "sorted", [0], [["a"]]],
-        [`FOR doc IN ${collection} COLLECT a = doc.a SORT null RETURN a`, "hash", [0], [["a"]]],
-        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b RETURN [a, b]`, "sorted", [0, 1], [["a"], ["b"]]],
-        [`FOR doc IN ${collection} COLLECT b = doc.b, a = doc.a RETURN [a, b]`, "hash", [1, 0], [["b"], ["a"]]],
-        [`FOR doc IN ${collection} COLLECT a = doc.a, b = doc.b, c = doc.c.d RETURN [a, b]`, "sorted", [0, 1, 2], [["a"], ["b"], ["c", "d"]]],
-      ];
-
-      for (const [query, method, expectedFields, expectedAttributes] of queries) {
-        const explain = db._createStatement(query).explain();
-        assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, query);
-        const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
-        assertEqual(nodes.length, 1, query);
-        const icn = nodes[0];
-
-        assertEqual(icn.collection, collection);
-        assertEqual(icn.collectOptions.method, method);
-        assertEqual(icn.index.name, index.name);
-        assertEqual(icn.oldIndexVariable.name, "doc");
-
-        const indexFields = icn.groups.map(x => x.indexField);
-        assertEqual(indexFields, expectedFields);
-
-        const attributes = icn.groups.map(x => x.attribute);
-        assertEqual(attributes, expectedAttributes);
-      }
-    },
-
-    // this tests cases that only apply for a COLLECT without an additional AGGREGATE in it
     testDistinctIndexCollectOptimizerRule: function () {
       db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
       db[collection].ensureIndex({ type: "persistent", fields: ["a"] });
@@ -196,64 +229,7 @@ function IndexCollectOptimizerTestSuite() {
   };
 }
 
-// this suite tests cases where a query includes a COLLECT with an AGGREGATE. All general tests above (if not otherwise state) for a COLLECT statement also apply here and are not tested here again.
-function IndexAggregationCollectOptimizerTestSuite() {
-  return {
-    setUpAll: function () {
-      db._createDatabase(database);
-      db._useDatabase(database);
-
-      db._create(collection, { numberOfShards: 3 });
-    },
-    tearDownAll: function () {
-      db._useDatabase("_system");
-      db._dropDatabase(database);
-    },
-    tearDown: function () {
-      db[collection].indexes().filter(x => x.type !== "primary").map(x => db[collection].dropIndex(x));
-    },
-
-    testAggregateOptimizerRuleDoesNotApplyForEmptyCollection: function () {
-      const c = db._create("empty_collection", { numberOfShards: 3 });
-      c.ensureIndex({ type: "persistent", fields: ["a"] });
-      const query = `FOR doc IN ${collection} COLLECT AGGREGATE max = MAX(doc.b) RETURN max`;
-      const explain = db._createStatement(query).explain();
-      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1, query);
-      c.drop();
-    },
-
-    testAggregateOptimizerRule: function () {
-      db[collection].ensureIndex({ type: "persistent", fields: ["a", "b", "d"], storedValues: ["e", "f"] });
-      db[collection].ensureIndex({ type: "persistent", fields: ["k"] });
-
-      const queries = [
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b) RETURN [a, b]`, true], // no selectivity requiement
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b), c = SUM(doc.b) RETURN [a, b, c]`, true],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.c) RETURN [a, b]`, false],
-        [`FOR doc IN ${collection} LET x = doc.a COLLECT a = doc.a AGGREGATE b = MAX(x + 1) RETURN [a, b]`, false], // does currently not support aggregation expressions with variables different than the document variable
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE c = COUNT() RETURN [a, c]`, false], // does currently not support aggregation expressions with no in-variable
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.e) RETURN [a, b]`, true],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d) RETURN [a, b]`, true],
-        [`FOR doc IN ${collection} COLLECT a = doc.a AGGREGATE b = MAX(doc.b + doc.d), c = PUSH(doc.f) RETURN [a, b, c]`, true],
-      ];
-
-      for (const [query, optimized] of queries) {
-        const explain = db._createStatement(query).explain();
-        assertEqual(explain.plan.rules.indexOf(indexCollectOptimizerRule) !== -1, optimized, query);
-        if (optimized) {
-          const nodes = explain.plan.nodes.filter(x => x.type === "IndexCollectNode");
-          assertEqual(nodes.length, 1, query);
-          const indexCollect = nodes[0];
-          assertTrue(indexCollect.aggregations.length > 0);
-        }
-      }
-    },
-
-  };
-}
-
-
-function IndexCollectExecutionTestSuite() {
+function ExecutionTestSuite() {
   const numDocuments = 10000;
 
   return {
@@ -312,7 +288,6 @@ function IndexCollectExecutionTestSuite() {
   };
 }
 
-jsunity.run(IndexCollectOptimizerTestSuite);
-jsunity.run(IndexAggregationCollectOptimizerTestSuite);
-jsunity.run(IndexCollectExecutionTestSuite);
+jsunity.run(OptimizerTestSuite);
+jsunity.run(ExecutionTestSuite);
 return jsunity.done();
