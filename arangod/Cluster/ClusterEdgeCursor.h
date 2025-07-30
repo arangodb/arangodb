@@ -35,8 +35,6 @@ class ClusterTraverserCache;
 
 namespace traverser {
 
-class Traverser;
-
 class ClusterEdgeCursor : public graph::EdgeCursor {
  public:
   explicit ClusterEdgeCursor(graph::BaseOptions const* opts);
