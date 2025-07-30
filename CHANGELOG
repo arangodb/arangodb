@@ -3,6 +3,8 @@ devel
 
 * IResearch: Fix for address_table memory over-allocation.
 
+* Fix BTS-2051: Fix error message when creating vector index without data.
+
 * Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,
   GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions
   with two or three components.
