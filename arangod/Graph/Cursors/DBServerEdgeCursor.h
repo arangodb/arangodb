@@ -78,13 +78,11 @@ class DBServerEdgeCursor final : public EdgeCursor {
   size_t _currentSubCursor;
   std::vector<LocalDocumentId> _cache;
   size_t _cachePos;
-  std::vector<size_t> const* _internalCursorMapping;
   std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
 
  public:
   explicit DBServerEdgeCursor(
       BaseOptions* options, aql::Variable const* tmpVar,
-      std::vector<size_t> const* mapping,
       std::vector<BaseOptions::LookupInfo> const& lookupInfo);
 
   ~DBServerEdgeCursor();

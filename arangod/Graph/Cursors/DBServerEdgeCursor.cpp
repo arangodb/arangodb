@@ -71,7 +71,6 @@ void PrepareIndexCondition(BaseOptions::LookupInfo const& info,
 
 DBServerEdgeCursor::DBServerEdgeCursor(
     BaseOptions* opts, aql::Variable const* tmpVar,
-    std::vector<size_t> const* mapping,
     std::vector<BaseOptions::LookupInfo> const& lookupInfo)
     : _opts(opts),
       _monitor(_opts->query().resourceMonitor()),
@@ -80,7 +79,6 @@ DBServerEdgeCursor::DBServerEdgeCursor(
       _currentCursor(0),
       _currentSubCursor(0),
       _cachePos(0),
-      _internalCursorMapping(mapping),
       _lookupInfo(lookupInfo) {
   _cache.reserve(1000);
   TRI_ASSERT(_opts->cache() != nullptr);
@@ -121,13 +119,7 @@ void DBServerEdgeCursor::getDocAndRunCallback(
     }
 #endif
     _opts->cache()->incrDocuments();
-    if (_internalCursorMapping != nullptr) {
-      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      callback(std::move(etkn), edgeDoc,
-               _internalCursorMapping->at(_currentCursor));
-    } else {
-      callback(std::move(etkn), edgeDoc, _currentCursor);
-    }
+    callback(std::move(etkn), edgeDoc, _currentCursor);
     return true;
   };
   collection->getPhysical()->lookup(_trx, etkn.localDocumentId(), cb,
@@ -210,12 +202,7 @@ bool DBServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
                 operationSuccessful = true;
                 auto etkn =
                     EdgeDocumentToken(cursor->collection()->id(), token);
-                if (_internalCursorMapping != nullptr) {
-                  TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-                  callback(std::move(etkn), edge,
-                           _internalCursorMapping->at(_currentCursor));
-                } else {
-                  callback(std::move(etkn), edge, _currentCursor);
+                callback(std::move(etkn), edge, _currentCursor);
                 }
                 return true;
               }
@@ -253,12 +240,7 @@ void DBServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
   TRI_ASSERT(!_cursors.empty());
   size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
-    if (_internalCursorMapping != nullptr) {
-      TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      cursorId = _internalCursorMapping->at(_currentCursor);
-    } else {
-      cursorId = _currentCursor;
-    }
+    cursorId = _currentCursor;
     auto& cursorSet = _cursors[_currentCursor];
     for (auto& [cursor, coveringPosition] : cursorSet) {
       LogicalCollection* collection = cursor->collection();
@@ -373,19 +355,9 @@ void DBServerEdgeCursor::buildLookupInfo(std::string_view vertex) {
   TRI_ASSERT(_cursors.empty());
   _cursors.reserve(_lookupInfo.size());
 
-  if (_internalCursorMapping == nullptr) {
-    for (auto& info : _lookupInfo) {
-      addCursor(info, vertex);
-    }
-  } else {
-    for (auto& index : *_internalCursorMapping) {
-      TRI_ASSERT(index < _lookupInfo.size());
-      auto& info = _lookupInfo[index];
-      addCursor(info, vertex);
-    }
+  for (auto& info : _lookupInfo) {
+    addCursor(info, vertex);
   }
-  TRI_ASSERT(_internalCursorMapping == nullptr ||
-             _internalCursorMapping->size() == _cursors.size());
 }
 
 void DBServerEdgeCursor::addCursor(BaseOptions::LookupInfo const& info,

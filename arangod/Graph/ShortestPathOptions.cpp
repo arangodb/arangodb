@@ -204,8 +204,7 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
   }
 
   return std::make_unique<DBServerEdgeCursor>(
-      this, _tmpVar, nullptr,
-      backward ? _reverseLookupInfos : _baseLookupInfos);
+      this, _tmpVar, backward ? _reverseLookupInfos : _baseLookupInfos);
 }
 
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {
