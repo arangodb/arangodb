@@ -25,7 +25,6 @@
 #include <set>
 #include <random>
 
-#include "Basics/ScopeGuard.h"
 #include "Cluster/Maintenance.h"
 #include "MaintenanceFeature.h"
 
@@ -1295,15 +1294,17 @@ Result MaintenanceFeature::requeueAction(
     // count the job anyway, since it will be scheduled. And thus it will
     // eventually be executed, which will decrease the counter again!
   }
-  // We use a scope guard to prevent miscounting if something throws during
+  // We use a try/catch here to prevent miscounting if something throws during
   // the registration:
-  ScopeGuard scopeGuard(
-      [&]() noexcept { decreaseNumberOfSyncShardActionsQueued(); });
-  auto newAction =
-      std::make_shared<maintenance::Action>(*this, action->describe());
-  newAction->setPriority(newPriority);
-  std::unique_lock guard(_actionRegistryLock);
-  registerAction(std::move(newAction));
-  scopeGuard.cancel();
+  try {
+    auto newAction =
+        std::make_shared<maintenance::Action>(*this, action->describe());
+    newAction->setPriority(newPriority);
+    std::unique_lock guard(_actionRegistryLock);
+    registerAction(std::move(newAction));
+  } catch (...) {
+    decreaseNumberOfSyncShardActionsQueued();
+    throw;
+  }
   return {};
 }
