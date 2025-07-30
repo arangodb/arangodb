@@ -1,4 +1,4 @@
-3.12.5.2 (2025-07-25)
+3.12.5.2 (XXXX-XX-XX)
 ---------------------
 
 * Fix miscounting bug for number of SynchronizeShard jobs scheduled.
