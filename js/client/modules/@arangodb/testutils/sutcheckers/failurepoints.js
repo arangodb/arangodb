@@ -40,7 +40,7 @@ exports.checker = class {
         status: false,
         message: 'Cleanup of failure points missing - found failure points engaged: ' +
           JSON.stringify(failurePoints)
-      });
+      }, this.name);
       return false;
     }
     return true;

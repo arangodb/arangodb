@@ -1424,6 +1424,8 @@ QueryResult Query::explain() {
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
+        // Even though there is a execution time this remains to be called
+        // executionTime for backwards compatibility reasons
         b.add("executionTime", VPackValue(queryTime()));
       }
     }
@@ -1726,12 +1728,13 @@ void Query::logAtEnd() const {
 
 void Query::trackExecutionStart() noexcept {
   // We should do this only once
-  bool expected = false;
-  if (_isExecuting.compare_exchange_strong(expected, true)) {
-    _startExecutionTime = currentSteadyClockValue();
+  double expectedTime{0};
+  if (_startExecutionTime.compare_exchange_strong(expectedTime,
+                                                  currentSteadyClockValue())) {
     auto& queryRegistryFeature =
         vocbase().server().getFeature<QueryRegistryFeature>();
     queryRegistryFeature.trackQueryStart();
+    _isExecuting = true;
   }
 }
 
@@ -2042,7 +2045,7 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
 }
 
 velocypack::Options const& Query::vpackOptions() const {
-  return *(_transactionContext->getVPackOptions());
+  return *_transactionContext->getVPackOptions();
 }
 
 transaction::Methods& Query::trxForOptimization() {

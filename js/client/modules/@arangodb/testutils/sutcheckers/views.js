@@ -49,7 +49,7 @@ exports.checker = class {
       this.runner.setResult(te, true, {
         status: false,
         message: 'failed to fetch the previously available views: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     return true;
@@ -64,7 +64,7 @@ exports.checker = class {
       this.runner.setResult(te, false, {
         status: false,
         message: 'failed to fetch the currently available views: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     let delta = tu.diffArray(this.viewsBefore, viewsAfter);
@@ -72,7 +72,7 @@ exports.checker = class {
       this.runner.setResult(te, false, {
         status: false,
         message: 'Cleanup missing - test left over view: ' + delta
-      });
+      }, this.name);
       return false;
     }
     return true;

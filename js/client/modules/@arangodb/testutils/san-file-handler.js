@@ -156,9 +156,9 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
   tu.CopyIntoList(optionsDocumentation, [
     ' SUT instrumented binaries',
     '   - `sanitizer`: if set the programs are run with enabled sanitizer',
-    '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+    '   - `isSan`: doubles oneTestTimeout value if set to true (for ASAN-related builds)',
     '     and need longer timeouts',
-    '   - `isCov`: doubles oneTestTimeot value if set to true',
+    '   - `isCov`: doubles oneTestTimeout value if set to true',
     ''
   ]);
   optionHandlers.push(function(options) {
