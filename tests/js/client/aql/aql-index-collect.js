@@ -58,7 +58,7 @@ function IndexCollectOptimizerTestSuite() {
       c.ensureIndex({ type: "persistent", fields: ["a"] });
       const query = `FOR doc IN ${collection} COLLECT a = doc.a RETURN a`;
       const explain = db._createStatement(query).explain();
-      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) == -1, query);
+      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1, query);
       c.drop();
     },
 
@@ -218,7 +218,7 @@ function IndexAggregationCollectOptimizerTestSuite() {
       c.ensureIndex({ type: "persistent", fields: ["a"] });
       const query = `FOR doc IN ${collection} COLLECT AGGREGATE max = MAX(doc.b) RETURN max`;
       const explain = db._createStatement(query).explain();
-      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) == -1, query);
+      assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1, query);
       c.drop();
     },
 
