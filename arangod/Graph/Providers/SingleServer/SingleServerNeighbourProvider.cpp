@@ -38,7 +38,7 @@ template<class Step>
 SingleServerNeighbourProvider<Step>::SingleServerNeighbourProvider(
     SingleServerBaseProviderOptions& opts, transaction::Methods* trx,
     ResourceMonitor& resourceMonitor, uint64_t batchSize, bool useCache)
-    : _cursor{std::make_unique<RefactoredSingleServerEdgeCursor<Step>>(
+    : _cursor{std::make_unique<SingleServerEdgeCursor<Step>>(
           resourceMonitor, trx, opts.tmpVar(), opts.indexInformations().first,
           opts.indexInformations().second, opts.expressionContext(),
           /*requiresFullDocument*/ opts.hasWeightMethod(), opts.useCache())},

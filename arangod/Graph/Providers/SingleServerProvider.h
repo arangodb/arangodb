@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Graph/Cache/RefactoredTraverserCache.h"
-#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Providers/BaseStep.h"

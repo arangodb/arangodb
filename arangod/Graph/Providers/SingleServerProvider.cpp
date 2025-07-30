@@ -28,7 +28,6 @@
 #include "Aql/QueryContext.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
-#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
