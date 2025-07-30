@@ -62,7 +62,9 @@ RestStatus InternalRestTraverserHandler::execute() {
   try {
     switch (type) {
       case RequestType::POST:
-        createEngine();
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_NOT_IMPLEMENTED,
+            "API traversal engine creation no longer supported");
         break;
       case RequestType::PUT:
         queryEngine();
@@ -86,12 +88,6 @@ RestStatus InternalRestTraverserHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
-}
-
-void InternalRestTraverserHandler::createEngine() {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_NOT_IMPLEMENTED,
-      "API traversal engine creation no longer supported");
 }
 
 void InternalRestTraverserHandler::queryEngine() {
