@@ -123,7 +123,10 @@ struct IndexAggregateScanExecutor {
   // projectionFields
   containers::FlatHashMap<VariableId, size_t> _variablesToProjectionsRelative;
 
-  bool _indexIncludesAnyData;
+  // On construction this is set according to wether the index iterator contains
+  // any data. It is needed to avoid running in some assertions when using
+  // using the iterator.
+  bool _indexIncludesAnyData = false;
 };
 
 }  // namespace aql
