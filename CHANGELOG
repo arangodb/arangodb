@@ -4,6 +4,9 @@ devel
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection
 	that has an	index used in the query.
 
+* Fix BTS-2183: Fix restoring the dump from instance when vector index feature
+  is enabled to instance where it is disabled.
+
 * IResearch: Fix for address_table memory over-allocation.
 
 * Fix miscounting bug for number of SynchronizeShard jobs scheduled.
