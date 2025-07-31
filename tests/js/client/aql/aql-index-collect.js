@@ -145,20 +145,6 @@ function OptimizerTestSuite() {
       }
     },
 
-    testOptimizerRuleDoesNotApplyForEmptyCollection: function () {
-      const c = db._create("empty_collection", { numberOfShards: 3 });
-      c.ensureIndex({ type: "persistent", fields: ["a"] });
-      const queries = [
-        `FOR doc IN ${collection} COLLECT a = doc.a RETURN a`,
-        `FOR doc IN ${collection} COLLECT AGGREGATE max = MAX(doc.b) RETURN max`
-      ];
-      for (const query of queries) {
-        const explain = db._createStatement(query).explain();
-        assertTrue(explain.plan.rules.indexOf(indexCollectOptimizerRule) === -1, query);
-      }
-      c.drop();
-    },
-
     // the following tests apply only to queries that include a COLLECT without an additional AGGREGATE
 
     testOptimizerRuleAppliesWhenSelectivityIsLowEnough: function () {
@@ -284,6 +270,21 @@ function ExecutionTestSuite() {
         const actualResult = db._query(query).toArray();
         assertEqual(expectedResult, actualResult);
       }
+      c.drop();
+    },
+
+    testQueriesOnEmptyCollection: function () {
+      const c = db._create(collection, { numberOfShards: 3 });
+      c.ensureIndex({ type: "persistent", fields: ["a"] });
+      const queries = [
+        `FOR doc IN ${collection} COLLECT a = doc.a RETURN a`,
+        `FOR doc IN ${collection} COLLECT AGGREGATE max = MAX(doc.a) RETURN max`
+      ];
+      for (const query of queries) {
+        const actualResult = db._query(query).toArray();
+        assertEqual(actualResult, []);
+      }
+      c.drop();
     }
   };
 }
