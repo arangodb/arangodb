@@ -4,6 +4,12 @@ devel
 * Fix BTS-2183: Fix restoring the dump from instance when vector index feature
   is enabled to instance where it is disabled.
 
+* IResearch: Fix for address_table memory over-allocation.
+
+* Fix miscounting bug for number of SynchronizeShard jobs scheduled.
+  This fixes BTS-2202. The bug could show up as a dbserver not syncing
+  its follower shards with the leader.
+
 * Fix BTS-2051: Fix error message when creating vector index without data.
 
 * Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,
