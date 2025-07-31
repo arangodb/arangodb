@@ -122,6 +122,8 @@ struct IndexAggregateScanExecutor {
   // map of aggregate variable to projection field location in the iterator's
   // projectionFields
   containers::FlatHashMap<VariableId, size_t> _variablesToProjectionsRelative;
+
+  bool _indexIncludesAnyData;
 };
 
 }  // namespace aql
