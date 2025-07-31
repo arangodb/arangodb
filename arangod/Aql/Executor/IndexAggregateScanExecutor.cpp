@@ -271,15 +271,15 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
   LOG_AGG_SCAN << "[SCAN] constructing stream with options " << streamOptions;
   _iterator = _infos.index->streamForCondition(&_trx, streamOptions);
 
-  _indexIncludesAnyData = _iterator->position(std::span<velocypack::Slice>{});
-  if (_indexIncludesAnyData) {
-    // fill projection slices
-    _projectionSlices.resize(streamOptions.projectedFields.size());
-    bool hasMore = _iterator->reset(_currentGroupKeySlices, {});
-    LOG_AGG_SCAN << "[SCAN] after reset at "
-                 << inspection::json(_currentGroupKeySlices)
-                 << " hasMore= " << hasMore;
+  // fill projection slices
+  _projectionSlices.resize(streamOptions.projectedFields.size());
+  bool hasMore = _iterator->reset(_currentGroupKeySlices, {});
+  LOG_AGG_SCAN << "[SCAN] after reset at "
+               << inspection::json(_currentGroupKeySlices)
+               << " hasMore= " << hasMore;
+  _indexIncludesAnyData = hasMore;
 
+  if (hasMore) {
     // loading (and also logics in produceRows and skipRowsRange) only
     // works properly (without hitting any assertions) if the index actually
     // includes data

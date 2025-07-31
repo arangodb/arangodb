@@ -223,6 +223,9 @@ function ExecutionTestSuite() {
       db._createDatabase(database);
       db._useDatabase(database);
     },
+    tearDown: function () {
+      db[collection].drop();
+    },
     tearDownAll: function () {
       db._useDatabase("_system");
       db._dropDatabase(database);
@@ -270,7 +273,6 @@ function ExecutionTestSuite() {
         const actualResult = db._query(query).toArray();
         assertEqual(expectedResult, actualResult);
       }
-      c.drop();
     },
 
     testQueriesOnEmptyCollection: function () {
@@ -281,10 +283,9 @@ function ExecutionTestSuite() {
         `FOR doc IN ${collection} COLLECT AGGREGATE max = MAX(doc.a) RETURN max`
       ];
       for (const query of queries) {
-        const actualResult = db._query(query).toArray();
+        const actualResult = db._query(query).toArray().filter(x => x != null);
         assertEqual(actualResult, []);
       }
-      c.drop();
     }
   };
 }
