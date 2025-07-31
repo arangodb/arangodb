@@ -438,8 +438,7 @@ HashedCollectExecutor::Infos const& HashedCollectExecutor::infos()
 
 void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
                                               velocypack::Builder& builder) {
-  size_t previousSize = builder.buffer()->size();
-
+  size_t memoryUsage{0};
   if (_infos.getExpressionVariable() != nullptr) {
     // get result of INTO expression variable
     input.getValue(_infos.getExpressionRegister())
@@ -448,20 +447,25 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
   } else {
     // copy variables / keep variables into result register
     builder.openObject();
+    auto& resourceMonitor = _infos.getResourceMonitor();
     for (auto const& pair : _infos.getInputVariables()) {
       builder.add(VPackValue(pair.first));
-      input.getValue(pair.second)
-          .toVelocyPack(_infos.getVPackOptions(), builder,
-                        /*allowUnindexed*/ false);
+      auto& registerValue = input.getValue(pair.second);
+      registerValue.toVelocyPack(_infos.getVPackOptions(), builder,
+                                 /*allowUnindexed*/ false);
+
+      auto const localMemory = pair.first.size() + registerValue.memoryUsage();
+      resourceMonitor.increaseMemoryUsage(localMemory);
+      memoryUsage += localMemory;
     }
+
     builder.close();
   }
 
-  // track memory usage of what we just added
-  size_t memoryUsage = builder.buffer()->size() - previousSize;
-  _infos.getResourceMonitor().increaseMemoryUsage(memoryUsage);
-
-  _memoryUsageForInto += memoryUsage;
+  size_t const previousSize = builder.buffer()->size();
+  // Decrease memory for the over estimation above
+  _infos.getResourceMonitor().decreaseMemoryUsage(previousSize);
+  _memoryUsageForInto += (memoryUsage - previousSize);
 }
 
 size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
