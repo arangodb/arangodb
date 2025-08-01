@@ -103,6 +103,7 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
 }
 #endif
 
+// TODO very similar to some part of readAll
 void DBServerEdgeCursor::getDocAndRunCallback(
     IndexIterator* cursor, EdgeCursor::Callback const& callback) {
   auto collection = cursor->collection();
@@ -203,7 +204,90 @@ bool DBServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
                 auto etkn =
                     EdgeDocumentToken(cursor->collection()->id(), token);
                 callback(std::move(etkn), edge, _currentCursor);
+                return true;
+              }
+              return false;
+            },
+            1);
+        // TODO: why are we calling this for just one document, but the
+        // non-covering part we call for 1000 documents at a time?
+        if (operationSuccessful) {
+          return true;
+        }
+      } else {
+        _cache.clear();
+        bool tmp = cursor->next(
+            [&](LocalDocumentId token) {
+              if (token.isSet()) {
+                // Document found
+                _cache.emplace_back(token);
+                return true;
+              }
+              return false;
+            },
+            1000);
+        TRI_ASSERT(tmp == cursor->hasMore());
+      }
+    }
+  } while (_cache.empty());
+  TRI_ASSERT(!_cache.empty());
+  TRI_ASSERT(_cachePos < _cache.size());
+  getDocAndRunCallback(cursor, callback);
+  return true;
+}
+
+bool DBServerEdgeCursor::next(EdgeCursor::Callback const& callback,
+                              uint64_t batchSize) {
+  TRI_ASSERT(!_cursors.empty());
+
+  if (_currentCursor == _cursors.size()) {
+    return false;
+  }
+
+  // There is still something in the cache
+  if (_cachePos < _cache.size()) {
+    // get the collection
+    getDocAndRunCallback(
+        _cursors[_currentCursor][_currentSubCursor].cursor.get(), callback);
+    return true;
+  }
+
+  // We need to refill the cache.
+  _cachePos = 0;
+  auto* cursorSet = &_cursors[_currentCursor];
+
+  // get current cursor
+  auto cursor = (*cursorSet)[_currentSubCursor].cursor.get();
+  uint16_t coveringPosition =
+      (*cursorSet)[_currentSubCursor].coveringIndexPosition;
+  TRI_ASSERT(cursor != nullptr);
+
+  // NOTE: We cannot clear the cache,
+  // because the cursor expects it to be filled.
+  do {
+    if (cursorSet->empty() || !cursor->hasMore()) {
+      if (!advanceCursor(cursor, cursorSet)) {
+        return false;
+      }
+    } else {
+      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
+        bool operationSuccessful = false;
+        return cursor->nextCovering(
+            [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
+              TRI_ASSERT(covering.isArray());
+              VPackSlice edge = covering.at(coveringPosition);
+              TRI_ASSERT(edge.isString());
+
+              if (token.isSet()) {
+#ifdef USE_ENTERPRISE
+                if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+                  return false;
                 }
+#endif
+                operationSuccessful = true;
+                auto etkn =
+                    EdgeDocumentToken(cursor->collection()->id(), token);
+                callback(std::move(etkn), edge, _currentCursor);
                 return true;
               }
               return false;

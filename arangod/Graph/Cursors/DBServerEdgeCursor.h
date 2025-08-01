@@ -88,6 +88,7 @@ class DBServerEdgeCursor final : public EdgeCursor {
   ~DBServerEdgeCursor();
 
   bool next(EdgeCursor::Callback const& callback) override;
+  bool next(EdgeCursor::Callback const& callback, uint64_t batchSize) override;
   void readAll(EdgeCursor::Callback const& callback) override;
 
   /// @brief number of HTTP requests performed. always 0 in single server

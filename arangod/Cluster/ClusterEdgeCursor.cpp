@@ -51,13 +51,22 @@ ClusterEdgeCursor::ClusterEdgeCursor(graph::BaseOptions const* opts)
 }
 
 bool ClusterEdgeCursor::next(EdgeCursor::Callback const& callback) {
-  if (_position < _edgeList.size()) {
+  return next(callback, 1);
+}
+
+bool ClusterEdgeCursor::next(EdgeCursor::Callback const& callback,
+                             uint64_t batchSize) {
+  uint64_t count = 0;
+  while (count < batchSize) {
+    if (_position >= _edgeList.size()) {
+      return false;
+    }
     VPackSlice edge = _edgeList[_position];
     callback(EdgeDocumentToken(edge), edge, _position);
     ++_position;
-    return true;
+    count++;
   }
-  return false;
+  return true;
 }
 
 void ClusterEdgeCursor::readAll(EdgeCursor::Callback const& callback) {

@@ -42,7 +42,7 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
   ~ClusterEdgeCursor() = default;
 
   bool next(EdgeCursor::Callback const& callback) override;
-
+  bool next(EdgeCursor::Callback const&, uint64_t batchSize) override;
   void readAll(EdgeCursor::Callback const& callback) override;
 
   /// @brief number of HTTP requests performed.
