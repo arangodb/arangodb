@@ -1,12 +1,13 @@
-/* global ArangoServerState, ArangoClusterInfo, arango */
+/* global ArangoServerState, ArangoClusterInfo, arango, GLOBAL */
 'use strict';
 
 /// helpers for cluster tests. these rely on objects not necessarily
 /// available to regular users
 
+const AM = GLOBAL.instanceManager.agencyMgr;
 exports.supervisionState = function () {
   try {
-    var result = arango.POST("/_admin/execute", `return global.ArangoAgency.get('Target')`);
+    var result = AM.get('Target');
     result = result.arango.Target;
     var proj = { ToDo: result.ToDo, Pending: result.Pending,
       Failed: result.Failed, Finished: result.Finished,
@@ -24,8 +25,8 @@ exports.queryAgencyJob = function (id) {
   for (let s of states) {
     try {
       let arg = 'Target/' + s + '/' + id;
-      job = arango.POST("/_admin/execute", `return global.ArangoAgency.get(${JSON.stringify(arg)})`);
-      job = job.arango.Target[s];
+      var result = AM.get(arg);
+      let job = result.arango.Target[s];
       if (Object.keys(job).length !== 0 && job.hasOwnProperty(id)) {
         return {error: false, id, status: s, job: job[id]};
       }

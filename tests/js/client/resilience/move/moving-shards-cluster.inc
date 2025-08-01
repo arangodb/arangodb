@@ -1260,11 +1260,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         assertEqual(result.statusCode, 202);
         let id = JSON.parse(result.body).id;
         while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
-          wait(isCov ? 15 : 0.1);
+          wait(isCov ? 1 : 0.1);
         }
         assertTrue(cancelAgencyJob(id));
         while (queryAgencyJob(result.json.id).status === "Pending") { // wait for job to be killed
-          wait(isCov ? 15 : 0.1);
+          wait(isCov ? 1 : 0.1);
         }
         var job = queryAgencyJob(result.json.id);
         assertEqual(job.status, "Failed");
