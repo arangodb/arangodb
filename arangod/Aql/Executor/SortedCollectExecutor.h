@@ -92,9 +92,7 @@ class SortedCollectExecutorInfos {
     return _inputVariables;
   }
 
-  ResourceMonitor& getResourceMonitor() const { return _resourceMonitor; }
-  void addAccumulatedMemory(const u_int64_t usage) { _accumulatedMemory += usage; }
-  u_int64_t getAccumulatedMemory() const noexcept { return _accumulatedMemory; }
+  ResourceUsageScope& getResourceUsageScope() const { return *_usageScope; }
 
  private:
   /// @brief aggregate types
@@ -126,9 +124,7 @@ class SortedCollectExecutorInfos {
 
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
-
-  ResourceMonitor& _resourceMonitor;
-  u_int64_t _accumulatedMemory = 0;
+  std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
@@ -183,13 +179,6 @@ class SortedCollectExecutor {
   SortedCollectExecutor(SortedCollectExecutor&&) = default;
   SortedCollectExecutor(SortedCollectExecutor const&) = delete;
   SortedCollectExecutor(Fetcher& fetcher, Infos&);
-  ~SortedCollectExecutor() noexcept {
-    auto accumulatedMemory = _infos.getAccumulatedMemory();
-    if (accumulatedMemory > 0) {
-      _infos.getResourceMonitor().decreaseMemoryUsage(accumulatedMemory);
-      accumulatedMemory = 0;
-    }
-  };
 
   /**
    * @brief produce the next Rows of Aql Values.

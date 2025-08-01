@@ -49,7 +49,7 @@ ExecutorExpressionContext::ExecutorExpressionContext(
   : QueryExpressionContext(trx, context, cache),
     _inputRow(inputRow),
     _varsToRegister(varsToRegister),
-    _resourceMonitor(resourceMonitor){}
+    _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {}
 
 void ExecutorExpressionContext::adjustInputRow(
     InputAqlItemRow const& inputRow) noexcept {
@@ -77,9 +77,4 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
             absl::StrCat("variable not found '", variable->name,
                          "' in ExecutorExpressionContext"));
       });
-}
-
-arangodb::ResourceMonitor& ExecutorExpressionContext::getResourceMonitor()
-    const {
-  return _resourceMonitor;
 }

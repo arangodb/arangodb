@@ -71,7 +71,6 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
       _current.fetch_add(value, std::memory_order_relaxed);
   std::uint64_t const current = previous + value;
   TRI_ASSERT(current >= value);
-
   // now calculate if the number of chunks used by instance's allocations stays
   // the same after the extra allocation. if yes, it was likely a very small
   // allocation, and we don't bother with updating the global counter for it.
@@ -90,6 +89,9 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
   std::int64_t const currentChunks = numChunks(current);
   TRI_ASSERT(currentChunks >= previousChunks);
   auto diff = currentChunks - previousChunks;
+
+  // LOG_DEVEL << "increaseMemoryUsage() was called: _limit=" << _limit << " current=" << current
+  //         << " previous=" << previous << " diff=" << diff;
 
   if (diff != 0) {
     auto rollback = [this, value, diff]() {
@@ -224,7 +226,10 @@ ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor,
   increase(value);
 }
 
-ResourceUsageScope::~ResourceUsageScope() { revert(); }
+ResourceUsageScope::~ResourceUsageScope() {
+  LOG_DEVEL << "ResourceUsageScope destructor was called: _value =" << _value;
+  revert();
+}
 
 void ResourceUsageScope::steal() noexcept { _value = 0; }
 

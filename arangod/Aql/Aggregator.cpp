@@ -32,6 +32,8 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -628,6 +630,7 @@ struct AggregatorUnique : public Aggregator {
     if (builder.isClosed()) {
       builder.openArray();
     }
+    getResourceUsageScope().increase(VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize());
     builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
   }
 
@@ -676,6 +679,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       if (builder.isClosed()) {
         builder.openArray();
       }
+      getResourceUsageScope().increase(VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize());
       builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
     }
   }
@@ -704,7 +708,7 @@ struct AggregatorSortedUnique : public Aggregator {
       // already saw the same value
       return;
     }
-
+    getResourceUsageScope().increase(s.byteSize());
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
@@ -745,6 +749,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
         continue;
       }
 
+      getResourceUsageScope().increase(it.byteSize());
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
       seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
@@ -776,6 +781,7 @@ struct AggregatorCountDistinct : public Aggregator {
       return;
     }
 
+    getResourceUsageScope().increase(s.byteSize());
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
@@ -798,6 +804,11 @@ struct GenericFactory : Aggregator::Factory {
       velocypack::Options const* opts) const override {
     return std::make_unique<T>(opts);
   }
+  // virtual std::unique_ptr<Aggregator> operator()(
+  //     velocypack::Options const* opts,
+  //     ResourceUsageScope& scope) const override {
+  //   return std::make_unique<T>(opts, scope);
+  // }
   void createInPlace(void* address,
                      velocypack::Options const* opts) const override {
     new (address) T(opts);
@@ -813,6 +824,11 @@ struct GenericVarianceFactory : Aggregator::Factory {
       velocypack::Options const* opts) const override {
     return std::make_unique<T>(opts, population);
   }
+  // virtual std::unique_ptr<Aggregator> operator()(
+  //   velocypack::Options const* opts,
+  //   ResourceUsageScope& scope) const override {
+  //   return std::make_unique<T>(opts, population, scope);
+  // }
   void createInPlace(void* address,
                      velocypack::Options const* opts) const override {
     new (address) T(opts, population);
@@ -842,6 +858,7 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
         continue;
       }
 
+      getResourceUsageScope().increase(it.byteSize());
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
       seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
@@ -948,6 +965,7 @@ struct AggregatorMergeLists : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
+    getResourceUsageScope().increase(s.byteSize());
     builder.add(VPackArrayIterator(s));
   }
 
@@ -976,6 +994,7 @@ struct AggregatorList : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
+    getResourceUsageScope().increase(s.byteSize());
     builder.add(s);
   }
 

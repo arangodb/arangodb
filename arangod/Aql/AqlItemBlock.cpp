@@ -36,6 +36,8 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "Logger/LogMacros.h"
+
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -88,6 +90,7 @@ AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t numRows,
   // this compare value is arbitrary, but having so many registers in a single
   // query seems unlikely
   TRI_ASSERT(_numRegisters <= RegisterId::maxRegisterId);
+  LOG_DEVEL << "Constructor calls increaseMemoryUsage()";
   increaseMemoryUsage(sizeof(AqlValue) * numEntries());
   try {
     _data.resize(numEntries());
@@ -423,6 +426,7 @@ void AqlItemBlock::rescale(size_t numRows, RegisterCount numRegisters) {
   TRI_ASSERT(targetSize <= _data.size());
 
   if (targetSize > numEntries()) {
+    LOG_DEVEL << "rescale calls increaseMemoryUsage()";
     increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
 
     // Values will not be re-initialized, but are expected to be that way.
@@ -1009,6 +1013,7 @@ void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
     if (++valueInfo.refCount == 1) {
       // we just inserted the item
       size_t memoryUsage = value.memoryUsage();
+      LOG_DEVEL << "setValue calls increaseMemoryUsage(): " << memoryUsage;
       increaseMemoryUsage(memoryUsage);
       valueInfo.setMemoryUsage(memoryUsage);
     }

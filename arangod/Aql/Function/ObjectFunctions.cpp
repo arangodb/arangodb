@@ -130,29 +130,25 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
                          aql::functions::VPackFunctionParametersView parameters,
                          char const* funcName, bool recursive) {
   auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
-  ResourceMonitor* monitor = execCtx ? &execCtx->getResourceMonitor() : nullptr;
-  std::unique_ptr<ResourceUsageScope> scope;
-  if (monitor) {
-    scope = std::make_unique<ResourceUsageScope>(*monitor, 0);
-  }
+  ResourceUsageScope* usageScope = execCtx ? &execCtx->getResourceUsageScope() : nullptr;
 
   auto increaseMemoryUsage = [&](uint64_t byte) {
-    if (scope) {
+    if (usageScope) {
       LOG_DEVEL << "Memory increased by: " << byte;
-      scope->increase(byte);
-      LOG_DEVEL << "Current: " << monitor->current()
-      << " Limit: " << monitor->memoryLimit()
-      << " Peak: " << monitor->peak();
+      usageScope->increase(byte);
+      LOG_DEVEL << "Current: " << usageScope->current()
+      << " Limit: " << usageScope->memoryLimit()
+      << " Peak: " << usageScope->peak();
     }
   };
 
   auto decreaseMemoryUsage = [&](uint64_t byte) {
-    if (scope) {
+    if (usageScope) {
       LOG_DEVEL << "Memory decreased by: " << byte;
-      scope->decrease(byte);
-      LOG_DEVEL << "Current: " << monitor->current()
-      << " Limit: " << monitor->memoryLimit()
-      << " Peak: " << monitor->peak();
+      usageScope->decrease(byte);
+      // LOG_DEVEL << "Current: " << usageScope->current()
+      // << " Limit: " << usageScope->memoryLimit()
+      // << " Peak: " << usageScope->peak();
     }
   };
 
@@ -194,13 +190,19 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 
       LOG_DEVEL << "Single array without recursion was called";
       // then we output the object
+      auto before = builder.buffer()->byteSize();
       {
         VPackObjectBuilder ob(&builder);
         for (auto const& [k, v] : attributes) {
-          increaseMemoryUsage(k.length() * sizeof(char) + v.valueByteSize());
+          increaseMemoryUsage(builder.buffer()->byteSize() - before);
+          before = builder.buffer()->byteSize();
+          auto estimate = k.length() * sizeof(char) + v.valueByteSize();
+          increaseMemoryUsage(estimate);
           builder.add(k, v);
+          decreaseMemoryUsage(estimate);
         }
       }
+      increaseMemoryUsage(builder.buffer()->byteSize() - before);
 
     } else {
       // slow path for recursive merge
@@ -208,6 +210,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
       builder.close();
       // merge in all other arguments
       LOG_DEVEL << "Single array with recursion was called";
+      increaseMemoryUsage(builder.buffer()->byteSize());
       for (VPackSlice it : VPackArrayIterator(initialSlice)) {
         if (!it.isObject()) {
           aql::functions::registerInvalidArgumentWarning(expressionContext,
@@ -220,7 +223,6 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
                                                 /*mergeObjects*/ recursive,
                                                 /*nullMeansRemove*/ false);
         auto after = builder.buffer()->byteSize();
-       // TRI_ASSERT(before + it.valueByteSize() >= after);
         if (before + it.valueByteSize() >= after) {
           auto overEstimate = before + it.valueByteSize() - after;
           decreaseMemoryUsage(overEstimate);
@@ -229,6 +231,11 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
           increaseMemoryUsage(underEstimate);
         }
       }
+    }
+    if (usageScope) {
+      LOG_DEVEL << "Tracked memory: " << usageScope->tracked();
+      LOG_DEVEL << "Actual memory: " << builder.buffer()->byteSize();
+      TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
     }
     return AqlValue(builder.slice(), builder.size());
   }
@@ -271,6 +278,11 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   if (n == 1) {
     // only one parameter. now add original document
     builder.add(initialSlice);
+  }
+  if (usageScope) {
+    LOG_DEVEL << "Tracked memory: " << usageScope->tracked();
+    LOG_DEVEL << "Actual memory: " << builder.buffer()->byteSize();
+    TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
   }
   return AqlValue(builder.slice(), builder.size());
 }
