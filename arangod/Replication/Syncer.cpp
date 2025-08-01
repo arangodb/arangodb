@@ -1113,12 +1113,10 @@ Result Syncer::dropView(velocypack::Slice slice, bool /*reportError*/) {
 }
 
 void Syncer::reloadUsers() {
-  // TODO: where is this needed?
-  // AuthenticationFeature* af = AuthenticationFeature::instance();
-  // auth::UserManager* um = af->userManager();
-  // if (um != nullptr) {
-  //  um->triggerLocalReload();
-  //}
+  const AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (auto* um = af->userManager(); um != nullptr) {
+    um->triggerCacheRevalidation();
+  }
 }
 
 SyncerId Syncer::syncerId() const noexcept { return _state.syncerId; }

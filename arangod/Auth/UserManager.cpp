@@ -208,7 +208,7 @@ void auth::UserManager::loadUserCacheAndStartUpdateThread() noexcept {
         while (!stpTkn.stop_requested()) {
           uint64_t const loadedVersion = loadFromDB();
           // In case of an error while loading the _user collection we do not
-          // want to retry to often to prevent additional load on the whole
+          // want to retry too often to prevent additional load on the whole
           // server/cluster
           if (loadedVersion == 0) {
             tries++;
@@ -285,8 +285,7 @@ uint64_t auth::UserManager::loadFromDB() noexcept {
 void auth::UserManager::checkIfUserDataIsAvailable() const {
   bool const noDataYetLoaded =
       _internalVersion.load(std::memory_order_acquire) == 0;
-  if (noDataYetLoaded == true ||
-      TRI_ShouldFailDebugging("UserManager::StillStartingUp")) {
+  if (noDataYetLoaded == true) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
                                    "Cannot load users because the _users "
                                    "collection is not yet available");
@@ -764,8 +763,6 @@ bool auth::UserManager::checkPassword(std::string const& username,
     return false;  // we cannot authenticate during bootstrap
   }
 
-  checkIfUserDataIsAvailable();
-
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator it = _userCache.find(username);
 
@@ -821,8 +818,6 @@ bool auth::UserManager::checkAccessToken(std::string const& username,
   if (!username.empty() && username != un) {
     return false;
   }
-
-  checkIfUserDataIsAvailable();
 
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator it = _userCache.find(un);

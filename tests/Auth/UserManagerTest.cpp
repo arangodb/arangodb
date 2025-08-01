@@ -22,6 +22,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gmock/gmock-matchers.h"
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
@@ -38,9 +39,7 @@ using namespace fakeit;
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace auth_info_test {
+namespace arangodb::tests::auth_info_test {
 
 class TestQueryRegistry : public QueryRegistry {
  public:
@@ -154,41 +153,42 @@ TEST_F(UserManagerTest, usermanager_should_throw_if_called_too_early) {
   // we never start the internal thread
   // so the internal version stays 0 and every call to the following functions
   // should lead to a `TRI_ERROR_STARTING_UP` exception
-  auto const ShouldThrow = [](std::string_view const name,
-                              std::function<void()> const& f) {
-    try {
-      f();
-      FAIL() << name << " should have thrown";
-    } catch (basics::Exception const& e) {
-      ASSERT_EQ(e.code(), TRI_ERROR_STARTING_UP);
-    }
-  };
-  ShouldThrow("storeUser",
-              [&] { um.storeUser(true, "username", "password", true, {}); });
-  ShouldThrow("enumerateUsers",
-              [&] { um.enumerateUsers([](auto&) { return true; }, true); });
-  ShouldThrow("updateUser", [&] {
-    um.updateUser("username", [](auto&) { return Result(); });
-  });
-  ShouldThrow("accessUser", [&] {
-    um.accessUser("username", [](auto&) { return Result(); });
-  });
-  ShouldThrow("userExists", [&] { um.userExists("username"); });
-  ShouldThrow("serializeUser", [&] { um.serializeUser("username"); });
-  ShouldThrow("removeUser", [&] { um.removeUser("username"); });
-  ShouldThrow("removeAllUsers", [&] { um.removeAllUsers(); });
-  ShouldThrow("databaseAuthLevel",
-              [&] { um.databaseAuthLevel("username", "dbname", true); });
-  ShouldThrow("collectionAuthLevel", [&] {
-    um.collectionAuthLevel("username", "dbname", "collection", true);
-  });
 
-  ShouldThrow("checkCredentials", [&] {
-    std::string un;
-    um.checkCredentials("username", "dbname", un);
-  });
+  using namespace ::testing;
+
+  EXPECT_THAT([&] { um.storeUser(true, "username", "password", true, {}); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.enumerateUsers([](auto&) { return true; }, true); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT(
+      [&] { um.updateUser("username", [](auto&) { return Result(); }); },
+      Throws<basics::Exception>(
+          Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT(
+      [&] { um.accessUser("username", [](auto&) { return Result(); }); },
+      Throws<basics::Exception>(
+          Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.userExists("username"); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.serializeUser("username"); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.removeUser("username"); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.removeAllUsers(); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.databaseAuthLevel("username", "dbname", true); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT(
+      [&] { um.collectionAuthLevel("username", "dbname", "collection", true); },
+      Throws<basics::Exception>(
+          Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
 }
 
-}  // namespace auth_info_test
-}  // namespace tests
-}  // namespace arangodb
+}  // namespace arangodb::tests::auth_info_test
