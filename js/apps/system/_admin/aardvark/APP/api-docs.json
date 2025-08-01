@@ -14,7 +14,7 @@
   },
   "summary": "The RESTful HTTP API of the ArangoDB Core Database System",
   "title": "ArangoDB Core API",
-  "version": "3.12.5-1"
+  "version": "3.12.5-2"
  },
  "openapi": "3.1.0",
  "paths": {
