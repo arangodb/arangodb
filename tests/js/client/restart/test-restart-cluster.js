@@ -50,8 +50,12 @@ function testSuite() {
       if (res.status === 200 || res.status === 401 || res.status === 403) {
         break;
       }
-      console.warn(`waiting for server response from url ${baseurl} - got ${JSON.stringify(res)}`);
+      // Reduce restart spam
+      if (!(res.status === 503 && (tries % 10) !== 0)) {
+        console.warn(`waiting for server response from url ${baseurl} - got ${JSON.stringify(res)}`);
+      }
       require('internal').sleep(0.5);
+      tries++;
     }
     return res;
   };
@@ -228,7 +232,11 @@ function testSuite() {
           sleep(5);
         }
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
-        assertTrue(aliveStatus.status === 401, JSON.stringify(aliveStatus));
+        // No DB servers means _users collections can not be loaded, so the server will stay in start-up
+        // and return 503 every time.
+        // TRI_ERROR_STARTING_UP = 38
+        assertTrue(aliveStatus.json.errorNum === 38);
+        assertTrue(aliveStatus.status === 503, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again
         coordinator.suspended = false; 
