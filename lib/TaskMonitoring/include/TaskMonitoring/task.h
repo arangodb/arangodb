@@ -25,6 +25,7 @@
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
+#include "GeneralServer/RequestLane.h"
 #include "Inspection/Types.h"
 #include "fmt/format.h"
 
@@ -33,6 +34,7 @@
 #include <optional>
 #include <source_location>
 #include <string>
+#include <thread>
 
 namespace arangodb::task_monitoring {
 
@@ -60,17 +62,18 @@ auto inspect(Inspector& f, ParentTaskSnapshot& x) {
       inspection::inlineType<RootTask>(), inspection::inlineType<TaskId>());
 }
 
-enum class State { Created = 0, Running, Finished, Deleted };
+enum class State { Created = 0, Scheduled, Running, Finished, Deleted };
 template<typename Inspector>
 auto inspect(Inspector& f, State& x) {
-  return f.enumeration(x).values(State::Created, "Created", State::Running,
-                                 "Running", State::Finished, "Finished",
-                                 State::Deleted, "Deleted");
+  return f.enumeration(x).values(
+      State::Created, "Created", State::Scheduled, "Scheduled", State::Running,
+      "Running", State::Finished, "Finished", State::Deleted, "Deleted");
 }
 
 struct TaskSnapshot {
   std::string name;
   State state;
+  std::string message;
   TaskId id;
   ParentTaskSnapshot parent;
   std::optional<basics::ThreadId> thread;
@@ -85,13 +88,26 @@ template<typename Inspector>
 auto inspect(Inspector& f, TaskSnapshot& x) {
   return f.object(x).fields(
       f.embedFields(x.id), f.field("name", x.name), f.field("state", x.state),
-      f.field("parent", x.parent), f.field("thread", x.thread),
+      f.field("message", x.message), f.field("parent", x.parent),
+      f.field("thread", x.thread),
       f.field("source_location", x.source_location));
 }
+auto PrintTo(TaskSnapshot const& task, std::ostream* os) -> void;
 
 struct Node;
 using NodeReference = std::shared_ptr<Node>;
 struct ParentTask : std::variant<RootTask, NodeReference> {};
+
+/**
+   A user-defined message type that can be used to provide additional
+   information for a task.
+
+   The to_string method is called when a snapshot of a task is created.
+ */
+struct TaskMessage {
+  virtual ~TaskMessage() = default;
+  virtual auto to_string() -> std::string { return ""; };
+};
 
 /**
    The task object inside the registry
@@ -103,30 +119,35 @@ struct TaskInRegistry {
   auto set_to_deleted() -> void {
     state.store(State::Deleted, std::memory_order_release);
   }
-  static auto root(std::string name, std::source_location loc)
-      -> TaskInRegistry {
+  static auto create(std::string name, ParentTask parent,
+                     std::shared_ptr<TaskMessage> printer,
+                     std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
                           .state = State::Running,
-                          .parent = ParentTask{RootTask{}},
-                          .running_thread = basics::ThreadId::current(),
-                          .source_location = std::move(loc)};
+                          .parent = std::move(parent),
+                          .running_thread = {basics::ThreadId::current()},
+                          .source_location = std::move(loc),
+                          .printer = printer};
   }
-  static auto child(std::string name, NodeReference parent,
-                    std::source_location loc) -> TaskInRegistry {
+  static auto scheduled(std::string name, ParentTask parent,
+                        std::shared_ptr<TaskMessage> printer,
+                        std::source_location loc) -> TaskInRegistry {
     return TaskInRegistry{.name = std::move(name),
-                          .state = State::Running,
-                          .parent = ParentTask{std::move(parent)},
-                          .running_thread = basics::ThreadId::current(),
-                          .source_location = std::move(loc)};
+                          .state = State::Scheduled,
+                          .parent = std::move(parent),
+                          .running_thread = {std::nullopt},
+                          .source_location = std::move(loc),
+                          .printer = printer};
   }
 
   std::string const name;
   std::atomic<State> state;
   ParentTask parent;
-  std::optional<basics::ThreadId>
-      running_thread;  // proably has to also be atomic because
-                       // changes for scheduled task
+  std::atomic<std::optional<basics::ThreadId>>
+      running_thread;  // TODO will be changed to a lock-free ptr to a
+                       // ThreadInfo in the future
   std::source_location const source_location;
+  std::shared_ptr<TaskMessage> printer;
   // possibly interesting other properties:
   // std::chrono::time_point<std::chrono::steady_clock> creation = std:;
 };
@@ -139,6 +160,7 @@ struct TaskInRegistry {
  */
 struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
 
+struct ThreadTask;
 /**
    This is a scope for an active task.
 
@@ -152,26 +174,52 @@ struct Node : public containers::ThreadOwnedList<TaskInRegistry>::Node {};
    as its task scope or its longest living child.
 */
 struct Task {
-  Task(Task&& other) = delete;
-  Task& operator=(Task&& other) = delete;
+  friend struct ThreadTask;
+  Task(Task&& other) = default;
+  Task& operator=(Task&& other) = default;
   Task(Task const&) = delete;
   Task& operator=(Task const&) = delete;
 
-  Task(std::string name,
+  Task(std::string name, std::shared_ptr<TaskMessage> printer = nullptr,
+       bool isScheduled = false,
        std::source_location loc = std::source_location::current());
   ~Task();
 
   auto id() -> TaskId;
+  auto source_location() -> basics::SourceLocationSnapshot;
+  auto start() -> void;
 
  private:
-  Task* parent;
   NodeReference _node_in_registry;
+  Task* parent;
 };
 
 auto get_current_task() -> Task**;
 
-}  // namespace arangodb::task_monitoring
+/**
+   Executes the given lambda in a new thread as a new task.
 
-auto operator<<(std::ostream& out,
-                arangodb::task_monitoring::TaskSnapshot const& task)
-    -> std::ostream&;
+   Creates a new task in the task registry. Its parent is the task that was
+   running on the already existing thread. Inside the lambda, you can use
+   *get_current_task() to get its task.
+ */
+struct ThreadTask {
+  ThreadTask(std::string name, std::function<void()> lambda,
+             std::shared_ptr<TaskMessage> printer = nullptr,
+             std::source_location loc = std::source_location::current());
+};
+
+/**
+   Schedules the given lamda on the given lane of the scheduler queue as a new
+   task.
+
+   Creates a new task in the task registry with a scheduled state. As soon as
+   the lambda is executed, the state is updated to running.
+ */
+struct ScheduledTask {
+  ScheduledTask(std::string name, RequestLane lane,
+                std::function<void()> lambda,
+                std::shared_ptr<TaskMessage> printer = nullptr,
+                std::source_location loc = std::source_location::current());
+};
+}  // namespace arangodb::task_monitoring
