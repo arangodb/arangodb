@@ -89,6 +89,9 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<async_registry::Feature>) {
           return std::make_unique<async_registry::Feature>(server);
         },
+        [](auto& server, TypeTag<task_monitoring::Feature>) {
+          return std::make_unique<task_monitoring::Feature>(server);
+        },
 #ifdef TRI_HAVE_GETRLIMIT
         [](auto& server, TypeTag<BumpFileDescriptorsFeature>) {
           return std::make_unique<BumpFileDescriptorsFeature>(

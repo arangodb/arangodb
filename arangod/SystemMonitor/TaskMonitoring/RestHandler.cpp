@@ -24,12 +24,11 @@
 #include <optional>
 #include <variant>
 
-#include "Async/Registry/promise.h"
 #include "Containers/Forest/depth_first.h"
 #include "Containers/Forest/forest.h"
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Async/Registry/promise.h"
-#include "Async/Registry/registry_variable.h"
+#include "TaskMonitoring/task.h"
+#include "TaskMonitoring/task_registry_variable.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -41,7 +40,7 @@
 #include "Rest/CommonDefines.h"
 
 using namespace arangodb;
-using namespace arangodb::async_registry;
+using namespace arangodb::task_monitoring;
 using namespace arangodb::containers;
 
 RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
@@ -52,7 +51,7 @@ RestHandler::RestHandler(ArangodServer& server, GeneralRequest* request,
 namespace {
 struct Entry {
   TreeHierarchy hierarchy;
-  PromiseSnapshot data;
+  TaskSnapshot data;
 };
 template<typename Inspector>
 auto inspect(Inspector& f, Entry& x) {
@@ -60,45 +59,44 @@ auto inspect(Inspector& f, Entry& x) {
                             f.field("data", x.data));
 }
 /**
-   Creates a forest of all promises in the async registry
+   Creates a forest of all current tasks
 
-   An edge between two promises means that the lower hierarchy promise waits for
- the larger hierarchy promise.
+   An edge between two tasks means that the lower hierarchy tasks started the
+ larger hierarchy task.
  **/
-auto all_undeleted_promises() -> ForestWithRoots<PromiseSnapshot> {
-  Forest<PromiseSnapshot> forest;
+auto all_undeleted_promises() -> ForestWithRoots<TaskSnapshot> {
+  auto forest = Forest<TaskSnapshot>{};
   std::vector<Id> roots;
-  registry.for_node([&](PromiseSnapshot promise) {
-    if (promise.state != State::Deleted) {
-      std::visit(overloaded{
-                     [&](PromiseId const& async_waiter) {
-                       forest.insert(promise.id.id, async_waiter.id, promise);
-                     },
-                     [&](basics::ThreadInfo const& sync_waiter_thread) {
-                       forest.insert(promise.id.id, nullptr, promise);
-                       roots.emplace_back(promise.id.id);
-                     },
-                 },
-                 promise.requester);
-    }
+  registry.for_node([&](TaskSnapshot task) {
+    // if (promise.state != State::Deleted) {
+    std::visit(
+        overloaded{
+            [&](TaskId parent) { forest.insert(task.id.id, parent.id, task); },
+            [&](RootTask root) {
+              forest.insert(task.id.id, nullptr, task);
+              roots.emplace_back(task.id.id);
+            },
+        },
+        task.parent);
+    // }
   });
   return ForestWithRoots{forest, roots};
 }
 
 /**
-   Converts a forest of promises into a list of stacktraces inside a
+   Converts a forest of tasks into a list of stacktraces inside a
  velocypack.
 
    The list of stacktraces include one stacktrace per tree in the forest. To
  create one stacktrace, it uses a depth first search to traverse the forest in
- post order, such that promises with the highest hierarchy in a tree are given
- first and the root promise is given last.
+ post order, such that tasks with the highest hierarchy in a tree are given
+ first and the root task is given last.
  **/
-auto getStacktraceData(IndexedForestWithRoots<PromiseSnapshot> const& promises)
+auto getStacktraceData(IndexedForestWithRoots<TaskSnapshot> const& promises)
     -> VPackBuilder {
   VPackBuilder builder;
   builder.openObject();
-  builder.add(VPackValue("promise_stacktraces"));
+  builder.add(VPackValue("task_stacktraces"));
   builder.openArray();
   for (auto const& root : promises.roots()) {
     builder.openArray();

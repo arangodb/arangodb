@@ -20,34 +20,23 @@
 ///
 /// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-#include "Metrics.h"
+#pragma once
 
-#include "Metrics/Counter.h"
-#include "Metrics/Gauge.h"
+#include "SystemMonitor/TaskMonitoring/Feature.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
-using namespace arangodb::async_registry;
+namespace arangodb::task_monitoring {
 
-auto RegistryMetrics::increment_total_nodes() -> void {
-  promises_total->count();
-}
-auto RegistryMetrics::increment_registered_nodes() -> void {
-  existing_promises->fetch_add(1);
-}
-auto RegistryMetrics::decrement_registered_nodes() -> void {
-  existing_promises->fetch_sub(1);
-}
-auto RegistryMetrics::increment_ready_for_deletion_nodes() -> void {
-  existing_promises->fetch_add(1);
-}
-auto RegistryMetrics::decrement_ready_for_deletion_nodes() -> void {
-  existing_promises->fetch_sub(1);
-}
-auto RegistryMetrics::increment_total_lists() -> void {
-  thread_registries_total->count();
-}
-auto RegistryMetrics::increment_existing_lists() -> void {
-  existing_thread_registries->fetch_add(1);
-}
-auto RegistryMetrics::decrement_existing_lists() -> void {
-  existing_thread_registries->fetch_sub(1);
-}
+class RestHandler : public arangodb::RestVocbaseBaseHandler {
+ public:
+  RestHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+
+ public:
+  char const* name() const override final { return "TaskRegistryRestHandler"; }
+  RequestLane lane() const override final { return RequestLane::CLUSTER_ADMIN; }
+  futures::Future<futures::Unit> executeAsync() override;
+
+  Feature& _feature;
+};
+
+}  // namespace arangodb::task_monitoring

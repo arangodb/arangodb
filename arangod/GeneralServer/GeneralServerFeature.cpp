@@ -30,7 +30,6 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
-#include "SystemMonitor/AsyncRegistry/RestHandler.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -129,6 +128,8 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "SystemMonitor/AsyncRegistry/RestHandler.h"
+#include "SystemMonitor/TaskMonitoring/RestHandler.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -842,6 +843,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/async-registry",
       RestHandlerCreator<arangodb::async_registry::RestHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_admin/task-monitoring",
+      RestHandlerCreator<arangodb::task_monitoring::RestHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/cluster",
