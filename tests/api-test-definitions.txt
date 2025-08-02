@@ -1,0 +1,5 @@
+shell_api priority=500 single -- $EncryptionAtRest
+shell_api_multi,shell_api_multi name=shell_api_multi priority=500 single -- --optionsJson [{"http":true},{"ssl":true,"suffix":"ssl"}] $EncryptionAtRest
+shell_api priority=500 cluster -- $EncryptionAtRest
+shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
+shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl

@@ -1,0 +1,14 @@
+# test_suite [flags ...] -- [additional-params...]
+# for possible flags and params see
+# https://github.com/arangodb/oskar#testing
+
+
+rta_makedata single -- --extraArgs:experimental-vector-index true
+
+# Cluster Tests
+
+rta_makedata cluster parallelity=6 -- --extraArgs:experimental-vector-index true 
+rta_makedata enterprise cluster name=rta_makedata_force_oneshard parallelity=5 --  --forceOneShard true --extraArgs:experimental-vector-index true
+
+
+replication_static priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true --test replication-rta.js
