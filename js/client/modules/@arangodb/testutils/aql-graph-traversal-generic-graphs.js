@@ -1,4 +1,5 @@
 /*jshint globalstrict:true, strict:true, esnext: true */
+/* global print */
 
 "use strict";
 
@@ -148,13 +149,18 @@ class TestGraph {
       isEnterprise: false,
       isSatellite: false
     };
+    this.debug = false;
   }
-  
+
   hasProjectionPayload() {
     return this.addProjectionPayload;
   }
 
   create() {
+    const startTime = Date.now();
+    const estimatedVertices = this.edges.length > 0 ? new Set(this.edges.map(e => [e[0], e[1]]).flat()).size : 0;
+    print(`[${new Date().toISOString()}] Creating graph: ${this.graphName} (${this.edges.length} edges, estimated ${estimatedVertices} vertices)`);
+
     switch (this.testVariant) {
       case TestVariants.SingleServer: {
         cgm._create(this.name(), [this.eRel], [this.on], {});
@@ -227,6 +233,9 @@ class TestGraph {
       }
     }
 
+    const graphSetupTime = Date.now() - startTime;
+    print(`[${new Date().toISOString()}] Graph structure created: ${this.graphName} (${graphSetupTime}ms)`);
+
     let vertexSharding = [];
     if (isCluster && (this.testVariant !== TestVariants.EnterpriseGraph) && (this.testVariant !== TestVariants.DisjointEnterpriseGraph)) {
       // Only create proper smart/vertex sharding settings in cluster mode
@@ -237,8 +246,28 @@ class TestGraph {
       vertexSharding = this.protoSmartSharding.map(([v, i]) => [v, shardAttrsByShardIndex[i]]);
     }
 
-    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload);
+    print(`[${new Date().toISOString()}] Filling graph data: ${this.graphName} (vertices and edges)`);
+    this.verticesByName = TestGraph._fillGraph(this.graphName, this.edges, db[this.vn], db[this.en], this.unconnectedVertices, vertexSharding, this.addProjectionPayload, this.debug);
+
+    print(`[${new Date().toISOString()}] Creating index on edge collection: ${this.en}`);
     db[this.en].ensureIndex({type: "persistent", fields: ["_from", graphIndexedAttribute]});
+
+    const totalTime = Date.now() - startTime;
+    print(`[${new Date().toISOString()}] Graph creation completed: ${this.graphName} (total time: ${totalTime}ms)`);
+
+    if (this.debug) {
+      print("First 10 vertices in graph " + this.graphName + ":");
+      const first10Vertices = Object.entries(this.verticesByName).slice(0, 10);
+      first10Vertices.forEach(([key, id]) => {
+        print(`  ${key}: ${id} (node name: ${key})`);
+      });
+
+      print("\nLast 10 vertices in graph " + this.graphName + ":");
+      const last10Vertices = Object.entries(this.verticesByName).slice(-10);
+      last10Vertices.forEach(([key, id]) => {
+        print(`  ${key}: ${id} (node name: ${key})`);
+      });
+    }
   }
 
   name() {
@@ -316,9 +345,13 @@ class TestGraph {
    *                       key and the second the smart attribute.
    * @param addProjectionPayload Boolean flag, to define if we should add heavy payload to vertices and edges
    *                             in order to test projections
+   * @param debug Boolean flag to enable detailed batch progress logging
    * @private
    */
-  static _fillGraph(gn, edges, vc, ec, unconnectedVertices, vertexSharding = [], addProjectionPayload = false) {
+  static _fillGraph(gn, edges, vc, ec, unconnectedVertices, vertexSharding = [], addProjectionPayload = false, debug = false) {
+    const fillStartTime = Date.now();
+    print(`[${new Date().toISOString()}] Starting _fillGraph for ${gn}: ${edges.length} edges, ${unconnectedVertices.length} unconnected vertices`);
+
     const vertices = new Map(vertexSharding);
     for (const edge of edges) {
       if (!vertices.has(edge[0])) {
@@ -333,6 +366,10 @@ class TestGraph {
         vertices.set(v, null);
       }
     }
+
+    const vertexMapTime = Date.now() - fillStartTime;
+    print(`[${new Date().toISOString()}] Vertex mapping completed for ${gn}: ${vertices.size} total vertices (${vertexMapTime}ms)`);
+
 
     function* payloadGenerator() {
       // Just some hardcoded repeated payload.
@@ -385,25 +422,68 @@ class TestGraph {
         toSave.push(doc);
         keys.push(vertexKey);
       }
-      // Save all vertices in one request, and map the result back to the input.
-      // This should speed up the tests.
-      vc.save(toSave).forEach((d, i) => {
-        verticesByName[keys[i]] = d._id;
-        return null;
-      });
+
+      // Process vertices in smaller batches to reduce memory pressure and get more frequent progress updates
+      const VERTEX_BATCH_SIZE = 5000; // Optimized for large graphs
+      const vertexStartTime = Date.now();
+      print(`[${new Date().toISOString()}] Processing vertices for ${gn}: ${toSave.length} vertices in batches of ${VERTEX_BATCH_SIZE}`);
+
+      if (toSave.length > 100000) {
+        print(`[${new Date().toISOString()}] Large vertex count detected - progress updates every 10 batches (~${VERTEX_BATCH_SIZE * 10} vertices)`);
+      }
+
+      for (let i = 0; i < toSave.length; i += VERTEX_BATCH_SIZE) {
+        const batch = toSave.slice(i, i + VERTEX_BATCH_SIZE);
+        const batchKeys = keys.slice(i, i + VERTEX_BATCH_SIZE);
+        const batchNum = Math.floor(i / VERTEX_BATCH_SIZE) + 1;
+        const totalBatches = Math.ceil(toSave.length / VERTEX_BATCH_SIZE);
+
+        // Progress update every 10 batches or on debug mode
+        if (debug || (batchNum % 10 === 0)) {
+          print(`[${new Date().toISOString()}] Saving vertex batch ${batchNum}/${totalBatches} (${batch.length} vertices, processed: ${i + batch.length}/${toSave.length})`);
+        }
+
+        vc.save(batch).forEach((d, idx) => {
+          verticesByName[batchKeys[idx]] = d._id;
+          return null;
+        });
+        // Clear references to help garbage collection
+        batch.length = 0;
+        batchKeys.length = 0;
+      }
+
+      const vertexProcessTime = Date.now() - vertexStartTime;
+      print(`[${new Date().toISOString()}] Vertex processing completed for ${gn}: ${toSave.length} vertices (${vertexProcessTime}ms)`);
+
+      // Clear the full arrays after processing
+      toSave.length = 0;
+      keys.length = 0;
     }
 
-    // Save all edges in one request
-    ec.save(edges.map(([v, w, weight]) => {
+    // Process edges in smaller batches to reduce memory pressure and get more frequent progress updates
+    const EDGE_BATCH_SIZE = 5000; // Optimized for large graphs
+    const edgeStartTime = Date.now();
+    print(`[${new Date().toISOString()}] Processing edges for ${gn}: ${edges.length} edges in batches of ${EDGE_BATCH_SIZE}`);
+
+    if (edges.length > 100000) {
+      print(`[${new Date().toISOString()}] Large edge count detected - progress updates every 10 batches (~${EDGE_BATCH_SIZE * 10} edges)`);
+    }
+
+    let edgeDocs = [];
+    let currentBatch = [];
+    let currentBatchSize = 0;
+    let edgeCount = 0;
+    let batchNum = 0;
+
+    // Process edges in a streaming fashion
+    for (const [v, w, weight] of edges) {
       const edge = {
         _from: verticesByName[v],
         _to: verticesByName[w],
-        // Will be used in filters of tests.
         secondFrom: verticesByName[v]
       };
-      // check if our edge also has a weight defined and is a number
+
       if (weight && typeof weight === 'number') {
-        // if found, add attribute "distance" as weightAttribute to the edge document
         edge[graphWeightAttribute] = weight;
         edge[graphIndexedAttribute] = weight;
       }
@@ -414,8 +494,42 @@ class TestGraph {
         edge.payload3 = payloadGen.next().value;
       }
 
-      return edge;
-    }));
+      currentBatch.push(edge);
+      currentBatchSize++;
+      edgeCount++;
+
+      // When batch is full, save it and clear memory
+      if (currentBatchSize >= EDGE_BATCH_SIZE) {
+        batchNum++;
+        const totalBatches = Math.ceil(edges.length / EDGE_BATCH_SIZE);
+
+        // Progress update every 10 batches or on debug mode
+        if (debug || (batchNum % 10 === 0)) {
+          print(`[${new Date().toISOString()}] Saving edge batch ${batchNum}/${totalBatches} (${currentBatchSize} edges, total processed: ${edgeCount}/${edges.length})`);
+        }
+
+        ec.save(currentBatch);
+        currentBatch = [];
+        currentBatchSize = 0;
+      }
+    }
+
+    // Save any remaining edges
+    if (currentBatch.length > 0) {
+      batchNum++;
+      const totalBatches = Math.ceil(edges.length / EDGE_BATCH_SIZE);
+
+      // Always show final batch completion
+      print(`[${new Date().toISOString()}] Saving final edge batch ${batchNum}/${totalBatches} (${currentBatch.length} edges)`);
+
+      ec.save(currentBatch);
+    }
+
+    const edgeProcessTime = Date.now() - edgeStartTime;
+    const totalFillTime = Date.now() - fillStartTime;
+    print(`[${new Date().toISOString()}] Edge processing completed for ${gn}: ${edges.length} edges (${edgeProcessTime}ms)`);
+    print(`[${new Date().toISOString()}] _fillGraph completed for ${gn}: total time ${totalFillTime}ms`);
+
     return verticesByName;
   }
 
@@ -841,6 +955,127 @@ protoGraphs.completeGraph = new ProtoGraph("completeGraph", [
   ]
 );
 
+// Generate edges for complete graph
+const generateCompleteGraphEdges = (nodes) => {
+  const edges = [];
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = 0; j < nodes.length; j++) {
+      if (i !== j) { // Don't create self-loops
+        // Generate random weight between 1 and 5
+        const weight = Math.floor(Math.random() * 5) + 1;
+        edges.push([nodes[i], nodes[j], weight]);
+      }
+    }
+  }
+  return edges;
+};
+
+// Create the huge complete graph with 1000 nodes
+/*
+ *        B
+ *     ↙↗ ↑  ↖↘
+ *   A   ← →   C       // Demonstration of the complete graph
+ *     ↖↘ ↓  ↙↗        // Note: Consists out of 1000 nodes with numeric keys
+ *        D
+ */
+const generateNumericNodeNames = (count) => {
+  const nodes = [];
+  for (let i = 0; i < count; i++) {
+    nodes.push(i.toString());
+  }
+  return nodes;
+};
+
+const hugeCompleteGraphNodes = generateNumericNodeNames(1000);
+const hugeCompleteGraphEdges = generateCompleteGraphEdges(hugeCompleteGraphNodes);
+
+protoGraphs.hugeCompleteGraph = new ProtoGraph("hugeCompleteGraph",
+  hugeCompleteGraphEdges,
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding: hugeCompleteGraphNodes.map((node, index) => [node, 0])
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding: hugeCompleteGraphNodes.map((node, index) => [node, index % 2])
+    },
+    {
+      numberOfShards: 5,
+      vertexSharding: hugeCompleteGraphNodes.map((node, index) => [node, index % 5])
+    }
+  ]
+);
+
+/*
+ * Grid Graph Structure (1000x1000)
+ * Each node connects to its right and bottom neighbors
+ *
+ * 1 → 2 → 3 → ... → 1000
+ * ↓   ↓   ↓         ↓
+ * 1001 → 1002 → 1003 → ... → 2000
+ * ↓   ↓   ↓         ↓
+ * ... ... ...       ...
+ * ↓   ↓   ↓         ↓
+ * 999001 → 999002 → 999003 → ... → 1000000
+ */
+
+// Generate grid graph with 1000x1000 nodes
+const generateGridGraph = (width, height) => {
+  const nodes = [];
+  const edges = [];
+
+  // Generate node names as simple numbers
+  const getNodeName = (row, col) => {
+    // Calculate node number: row * width + col + 1
+    const nodeNum = (row * width + col + 1).toString();
+    return nodeNum;
+  };
+
+  // Generate nodes and edges
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const nodeName = getNodeName(row, col);
+      nodes.push(nodeName);
+
+      // Connect to right neighbor
+      if (col < width - 1) {
+        edges.push([nodeName, getNodeName(row, col + 1), 1]);
+      }
+
+      // Connect to bottom neighbor
+      if (row < height - 1) {
+        edges.push([nodeName, getNodeName(row + 1, col), 1]);
+      }
+    }
+  }
+
+  return { nodes, edges };
+};
+
+const gridSize = 1000;
+const gridGraph = generateGridGraph(gridSize, gridSize);
+
+protoGraphs.hugeGridGraph = new ProtoGraph("hugeGridGraph",
+  gridGraph.edges,
+  [1, 2, 5],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding: gridGraph.nodes.map((node, index) => [node, 0])
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding: gridGraph.nodes.map((node, index) => [node, index % 2])
+    },
+    {
+      numberOfShards: 5,
+      vertexSharding: gridGraph.nodes.map((node, index) => [node, index % 5])
+    }
+  ]
+);
+
 /*
  *
  *
@@ -1160,6 +1395,60 @@ protoGraphs.moreAdvancedPath = new ProtoGraph("moreAdvancedPath", [
     ]
   );
 }
+
+/*
+ *       B
+ *     ↕   ↕
+ *   A       C
+ *     ↕   ↕
+ *       D
+ */
+protoGraphs.bidirectionalCircle = new ProtoGraph("bidirectionalCircle", [
+    ["A", "B", 1],
+    ["B", "A", 1],
+    ["B", "C", 1],
+    ["C", "B", 1],
+    ["C", "D", 1],
+    ["D", "C", 1],
+    ["D", "A", 1],
+    ["A", "D", 1]
+  ],
+  [1, 2, 4],
+  [
+    {
+      numberOfShards: 1,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 0],
+          ["C", 0],
+          ["D", 0]
+        ]
+    },
+    {
+      numberOfShards: 2,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 0],
+          ["D", 1]
+        ]
+    },
+    {
+      numberOfShards: 4,
+      vertexSharding:
+        [
+          ["A", 0],
+          ["B", 1],
+          ["C", 2],
+          ["D", 3]
+        ]
+    }
+  ],
+  [],
+  true
+);
 
 exports.ProtoGraph = ProtoGraph;
 exports.protoGraphs = protoGraphs;

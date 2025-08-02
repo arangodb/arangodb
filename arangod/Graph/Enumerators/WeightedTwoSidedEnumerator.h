@@ -345,7 +345,7 @@ class WeightedTwoSidedEnumerator {
    * @return true There will be no further path.
    * @return false There is a chance that there is more data available.
    */
-  [[nodiscard]] bool isDone() const;
+  [[nodiscard]] bool isDone();
 
   /**
    * @brief Reset to new source and target vertices.
@@ -410,7 +410,7 @@ class WeightedTwoSidedEnumerator {
     _right.setForbiddenEdges(std::move(forbidden));
   };
 
- private : [[nodiscard]] auto searchDone() const -> bool;
+ private : [[nodiscard]] auto searchDone() -> bool;
   // Ensure that we have fetched all vertices in the _results list. Otherwise,
   // we will not be able to generate the resulting path
   auto fetchResults() -> void;

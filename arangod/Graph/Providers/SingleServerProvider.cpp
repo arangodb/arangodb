@@ -164,6 +164,10 @@ auto SingleServerProvider<Step>::expand(
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
+  if (_opts.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding " << vertex.getID();
 

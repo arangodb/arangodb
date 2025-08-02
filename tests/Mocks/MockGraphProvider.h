@@ -36,9 +36,11 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 
+#include "Aql/QueryContext.h"
 #include "Graph/Providers/BaseStep.h"
-
-#include <velocypack/HashedStringRef.h>
+#include "Graph/EdgeDocumentToken.h"
+#include "Aql/TraversalStats.h"
+#include "VocBase/vocbase.h"
 
 namespace arangodb {
 
@@ -288,7 +290,7 @@ class MockGraphProvider {
   ~MockGraphProvider();
 
   MockGraphProvider& operator=(MockGraphProvider const&) = delete;
-  MockGraphProvider& operator=(MockGraphProvider&&) = default;
+  MockGraphProvider& operator=(MockGraphProvider&&) = delete;
 
   void destroyEngines(){};
   auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
@@ -339,6 +341,8 @@ class MockGraphProvider {
     _weightCallback = std::move(callback);
   }
 
+  bool isKilled() const { return _queryContext.killed(); }
+
  private:
   auto decideProcessable() const -> bool;
 
@@ -351,6 +355,7 @@ class MockGraphProvider {
   arangodb::aql::TraversalStats _stats;
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;
+  arangodb::aql::QueryContext& _queryContext;
 };
 }  // namespace graph
 }  // namespace tests

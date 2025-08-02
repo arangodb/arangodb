@@ -107,8 +107,11 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 }
 
 template<class Configuration>
-auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
-    -> void {
+void OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex() {
+  if (_options.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   // Pull next element from Queue
   // Do 1 step search
   TRI_ASSERT(!_queue.isEmpty());

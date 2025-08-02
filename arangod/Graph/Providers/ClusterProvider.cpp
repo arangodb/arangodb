@@ -445,6 +445,9 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::fetchVertices(
     std::vector<Step*> const& looseEnds) -> std::vector<Step*> {
+  if (_opts.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
   std::vector<Step*> result{};
 
   if (!looseEnds.empty()) {
@@ -471,6 +474,10 @@ auto ClusterProvider<StepImpl>::fetchVertices(
 template<class StepImpl>
 auto ClusterProvider<StepImpl>::fetchEdges(
     std::vector<Step*> const& fetchedVertices) -> Result {
+  if (_opts.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   for (auto const& step : fetchedVertices) {
     if (!_vertexConnectedEdges.contains(step->getVertex().getID())) {
       auto res = fetchEdgesFromEngines(step);
@@ -501,6 +508,10 @@ template<class StepImpl>
 auto ClusterProvider<StepImpl>::expand(
     Step const& step, size_t previous,
     std::function<void(Step)> const& callback) -> void {
+  if (_opts.isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
