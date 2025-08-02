@@ -40,6 +40,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -113,6 +114,11 @@ bool EnsureIndex::first() {
   auto const& collection = _description.get(COLLECTION);
   auto const& shard = _description.get(SHARD);
   auto const& id = properties().get(ID).copyString();
+
+  // Add task monitoring
+  auto task = task_monitoring::Task{"EnsureIndex for DB: '" + database +
+                                    "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
 
   try {  // now try to guard the database
     auto& df = _feature.server().getFeature<DatabaseFeature>();

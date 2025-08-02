@@ -42,7 +42,7 @@
 #include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/RebootTracker.h"
-#include "Cluster/ResignShardLeadership.h"
+#include "Cluster/MaintenanceActions/ResignShardLeadership.h"
 #include "Cluster/ServerState.h"
 #include "Containers/HashSet.h"
 #include "Containers/MerkleTree.h"

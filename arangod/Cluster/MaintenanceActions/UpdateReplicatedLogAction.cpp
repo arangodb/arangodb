@@ -41,6 +41,7 @@
 #include "UpdateReplicatedLogAction.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
+#include "TaskMonitoring/task.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -62,6 +63,11 @@ bool arangodb::maintenance::UpdateReplicatedLogAction::first() {
 
   auto const& database = _description.get(DATABASE);
   auto& df = _feature.server().getFeature<DatabaseFeature>();
+
+  // Add task monitoring
+  auto task =
+      task_monitoring::Task{"UpdateReplicatedLogAction for DB: '" + database +
+                            "', LogId: '" + std::to_string(logId.id()) + "'"};
 
   auto result = basics::catchToResult([&] {
     DatabaseGuard guard(df, database);

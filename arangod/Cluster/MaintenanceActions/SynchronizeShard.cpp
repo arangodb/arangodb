@@ -33,7 +33,7 @@
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/debugging.h"
-#include "Cluster/ActionDescription.h"
+#include "Cluster/MaintenanceActions/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -41,7 +41,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Cluster/ResignShardLeadership.h"
+#include "Cluster/MaintenanceActions/ResignShardLeadership.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -66,6 +66,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 #include <absl/strings/str_cat.h>
 #include <velocypack/Compare.h>

@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "TaskMonitoring/task.h"
 #include "Utils/Events.h"
 #include "VocBase/Methods/Databases.h"
 
@@ -48,10 +49,13 @@ RestStatus RestDatabaseHandler::execute() {
   // extract the request type
   rest::RequestType const type = _request->requestType();
   if (type == rest::RequestType::GET) {
+    auto task = task_monitoring::Task{"Request: List Databases"};
     return getDatabases();
   } else if (type == rest::RequestType::POST) {
+    auto task = task_monitoring::Task{"Request: Create Database"};
     return createDatabase();
   } else if (type == rest::RequestType::DELETE_REQ) {
+    auto task = task_monitoring::Task{"Request: Delete Database"};
     return deleteDatabase();
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,

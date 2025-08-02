@@ -43,6 +43,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -88,6 +89,11 @@ bool UpdateCollection::first() {
   auto const& followersToDrop = _description.get(FOLLOWERS_TO_DROP);
   auto const& props = properties();
   Result res;
+
+  // Add task monitoring
+  auto task = task_monitoring::Task{"UpdateCollection for DB: '" + database +
+                                    "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
 
   std::string from;
   _description.get("from", from);

@@ -23,9 +23,9 @@
 
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
 
-#include "Cluster/ActionDescription.h"
-#include "Cluster/CreateCollection.h"
-#include "Cluster/EnsureIndex.h"
+#include "Cluster/MaintenanceActions/ActionDescription.h"
+#include "Cluster/MaintenanceActions/CreateCollection.h"
+#include "Cluster/MaintenanceActions/EnsureIndex.h"
 #include "Cluster/Maintenance.h"
 #include "Logger/LogMacros.h"
 #include "VocBase/Methods/Collections.h"

@@ -51,6 +51,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -267,6 +268,10 @@ bool TakeoverShardLeadership::first() {
   uint64_t planIndex = basics::StringUtils::uint64(planRaftIndex);
   Result res;
 
+  // Add task monitoring
+  auto task = task_monitoring::Task{"TakeoverShardLeadership for DB: '" +
+                                    database + "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
   TRI_IF_FAILURE("DelayTakeoverShardLeadership15") {
     for (int i = 0; i < 15; ++i) {
       // Allow to stop the delay from the outside:

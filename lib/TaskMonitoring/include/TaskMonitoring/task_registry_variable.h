@@ -23,13 +23,26 @@
 #pragma once
 
 #include "Containers/Concurrent/ListOfNonOwnedLists.h"
+#include "Containers/Concurrent/metrics.h"
 #include "Containers/Concurrent/ThreadOwnedList.h"
 #include "TaskMonitoring/task.h"
 
 namespace arangodb::task_monitoring {
 
 using ThreadRegistry = containers::ThreadOwnedList<TaskInRegistry>;
-struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {};
+struct Registry : public containers::ListOfNonOwnedLists<ThreadRegistry> {
+  // all thread registries that are added to this registry will use these
+  // metrics
+  std::shared_ptr<containers::Metrics> metrics;
+  // metrics-feature is only available after startup, therefore we need to
+  // update the metrics after construction
+  // thread registries that are added to the registry before setting the metrics
+  // properly are not accounted for in the metrics
+  auto set_metrics(std::shared_ptr<containers::Metrics> new_metrics) -> void {
+    auto guard = std::lock_guard(_mutex);
+    metrics = new_metrics;
+  }
+};
 
 /**
    Global variable that holds all active tasks.

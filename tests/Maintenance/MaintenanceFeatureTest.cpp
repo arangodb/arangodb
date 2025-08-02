@@ -31,7 +31,7 @@
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
-#include "Cluster/Action.h"
+#include "Cluster/MaintenanceActions/Action.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"

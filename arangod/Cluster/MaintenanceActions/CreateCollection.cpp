@@ -44,6 +44,7 @@
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "TaskMonitoring/task.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -112,6 +113,10 @@ bool CreateCollection::first() {
   auto const& leader = _description.get(THE_LEADER);
   auto const& props = properties();
 
+  // Add task monitoring
+  auto task = task_monitoring::Task{"CreateCollection for DB: '" + database +
+                                    "', Collection: '" + collection +
+                                    "', Shard: '" + shard + "'"};
   TRI_IF_FAILURE("DelayCreateShard15") {
     for (int i = 0; i < 15; ++i) {
       // Allow to stop the delay from the outside:

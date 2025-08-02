@@ -34,7 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
-#include "Cluster/ResignShardLeadership.h"
+#include "Cluster/MaintenanceActions/ResignShardLeadership.h"
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
 #include "IResearch/IResearchCommon.h"

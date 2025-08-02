@@ -37,6 +37,7 @@
 #include "Utils/DatabaseGuard.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -68,6 +69,10 @@ CreateDatabase::~CreateDatabase() = default;
 bool CreateDatabase::first() {
   VPackSlice users;
   auto database = _description.get(DATABASE);
+
+  // Add task monitoring
+  auto task =
+      task_monitoring::Task{"CreateDatabase for DB: '" + database + "'"};
 
   LOG_TOPIC("953b1", DEBUG, Logger::MAINTENANCE)
       << "CreateDatabase: creating database " << database;

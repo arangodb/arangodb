@@ -39,6 +39,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Indexes.h"
+#include "TaskMonitoring/task.h"
 
 using namespace arangodb::application_features;
 using namespace arangodb::maintenance;
@@ -89,6 +90,11 @@ bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& shard = _description.get(SHARD);
   auto const& id = _description.get(INDEX);
+
+  // Add task monitoring
+  auto task =
+      task_monitoring::Task{"DropIndex for DB: '" + database + "', Shard: '" +
+                            shard + "', Index: '" + id + "'"};
 
   VPackBuilder index;
   index.add(VPackValue(_description.get(INDEX)));

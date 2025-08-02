@@ -25,8 +25,8 @@
 #pragma once
 
 #include "Basics/ResultT.h"
-#include "Cluster/ActionBase.h"
-#include "Cluster/ActionDescription.h"
+#include "Cluster/MaintenanceActions/ActionBase.h"
+#include "Cluster/MaintenanceActions/ActionDescription.h"
 #include "Replication/utilities.h"
 #include "VocBase/voc-types.h"
 

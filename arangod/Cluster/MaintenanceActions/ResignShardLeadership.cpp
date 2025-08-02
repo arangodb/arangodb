@@ -41,6 +41,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
+#include "TaskMonitoring/task.h"
 
 #include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
@@ -79,6 +80,11 @@ ResignShardLeadership::~ResignShardLeadership() = default;
 bool ResignShardLeadership::first() {
   std::string const& database = getDatabase();
   std::string const& collection = getShard();
+
+  // Add task monitoring
+  auto task =
+      task_monitoring::Task{"ResignShardLeadership for DB: '" + database +
+                            "', Shard: '" + collection + "'"};
 
   LOG_TOPIC("14f43", DEBUG, Logger::MAINTENANCE)
       << "trying to withdraw as leader of shard '" << database << "/"

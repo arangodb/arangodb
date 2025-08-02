@@ -53,6 +53,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "SystemMonitor/AsyncRegistry/Feature.h"
+#include "SystemMonitor/TaskMonitoring/Feature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/directories.h"

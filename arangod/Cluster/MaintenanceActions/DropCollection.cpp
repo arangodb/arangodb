@@ -40,6 +40,7 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/vocbase.h"
+#include "TaskMonitoring/task.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
@@ -68,6 +69,10 @@ DropCollection::~DropCollection() = default;
 bool DropCollection::first() {
   auto const& database = getDatabase();
   auto const& shard = getShard();
+
+  // Add task monitoring
+  auto task = task_monitoring::Task{"DropCollection for DB: '" + database +
+                                    "', Shard: '" + shard + "'"};
 
   LOG_TOPIC("a2961", DEBUG, Logger::MAINTENANCE)
       << "DropCollection: dropping local shard '" << database << "/" << shard;

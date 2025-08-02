@@ -69,12 +69,15 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include "TaskMonitoring/task.h"
+
 using namespace arangodb;
 using namespace arangodb::methods;
 using namespace arangodb::velocypack;
 
 std::vector<std::string> Databases::list(ArangodServer& server,
                                          std::string const& user) {
+  auto task = task_monitoring::Task{"Collect List of Databases"};
   if (!server.hasFeature<DatabaseFeature>()) {
     return std::vector<std::string>();
   }
@@ -95,6 +98,8 @@ std::vector<std::string> Databases::list(ArangodServer& server,
 }
 
 Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
+  auto task = task_monitoring::Task{"Collect Database information for " +
+                                    vocbase->name()};
   if (ServerState::instance()->isCoordinator()) {
     auto& cache = vocbase->server().getFeature<ClusterFeature>().agencyCache();
     auto [acb, idx] = cache.read(std::vector<std::string>{
@@ -186,6 +191,9 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
 
 // Create database on cluster;
 Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
+  auto task = task_monitoring::Task{"Create Database " + info.getName() +
+                                    " on Coordinator"};
+  // TODO: Add status strings to task for phases.
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   DatabaseFeature& databaseFeature =
@@ -361,6 +369,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 Result Databases::create(ArangodServer& server, ExecContext const& exec,
                          std::string const& dbName, velocypack::Slice users,
                          velocypack::Slice options) {
+  auto task = task_monitoring::Task{"Create Database: " + dbName};
   Result res = basics::catchToResult([&]() {
     Result res;
 
@@ -506,6 +515,7 @@ ErrorCode dropDBCoordinator(DatabaseFeature& df, std::string const& dbName) {
 
 Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
                        std::string const& dbName) {
+  auto task = task_monitoring::Task{"Drop Database: " + dbName};
   TRI_ASSERT(systemVocbase->isSystem());
   if (exec.systemAuthLevel() != auth::Level::RW) {
     events::DropDatabase(dbName, Result(TRI_ERROR_FORBIDDEN), exec);

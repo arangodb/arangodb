@@ -55,6 +55,7 @@
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Collection.h>
+#include "TaskMonitoring/include/TaskMonitoring/task.h"
 
 using namespace arangodb;
 using namespace arangodb::methods;
@@ -391,6 +392,8 @@ Result createSystemStatisticsIndices(
 Result createSystemCollectionsIndices(
     TRI_vocbase_t& vocbase,
     std::vector<std::shared_ptr<LogicalCollection>>& collections) {
+  auto task = task_monitoring::Task{"Create System Collections Indices for " +
+                                    vocbase.name()};
   Result res;
   if (vocbase.isSystem()) {
     res = ::createIndex(StaticStrings::UsersCollection,
@@ -439,6 +442,8 @@ Result createSystemCollectionsIndices(
 
 Result UpgradeTasks::createSystemCollectionsAndIndices(
     TRI_vocbase_t& vocbase, velocypack::Slice slice) {
+  auto task =
+      task_monitoring::Task{"Create System Collections for " + vocbase.name()};
   // after the call to ::createSystemCollections this vector should contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
@@ -478,6 +483,8 @@ Result UpgradeTasks::createSystemCollectionsAndIndices(
 
 Result UpgradeTasks::createStatisticsCollectionsAndIndices(
     TRI_vocbase_t& vocbase, velocypack::Slice slice) {
+  auto task = task_monitoring::Task{"Create Statistics Collections for " +
+                                    vocbase.name()};
   // This vector should after the call to ::createSystemCollections contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
@@ -507,6 +514,8 @@ Result UpgradeTasks::createStatisticsCollectionsAndIndices(
 ////////////////////////////////////////////////////////////////////////////////
 Result UpgradeTasks::dropLegacyAnalyzersCollection(
     TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  auto task =
+      task_monitoring::Task{"Drop Legacy Analyzers for " + vocbase.name()};
   // drop legacy collection if upgrading the system vocbase and collection found
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!vocbase.server().hasFeature<arangodb::SystemDatabaseFeature>()) {
@@ -541,6 +550,7 @@ Result UpgradeTasks::dropLegacyAnalyzersCollection(
 
 Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
                                          velocypack::Slice params) {
+  auto task = task_monitoring::Task{"Add Default User for " + vocbase.name()};
   TRI_ASSERT(!vocbase.isSystem());
   TRI_ASSERT(params.isObject());
 
@@ -598,6 +608,8 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
 
 Result UpgradeTasks::renameReplicationApplierStateFiles(
     TRI_vocbase_t& vocbase, velocypack::Slice slice) {
+  auto task = task_monitoring::Task{"Rename Replication Applier Files " +
+                                    vocbase.name()};
   std::string const path = vocbase.engine().databasePath();
 
   std::string const source = arangodb::basics::FileUtils::buildFilename(
@@ -634,6 +646,8 @@ Result UpgradeTasks::renameReplicationApplierStateFiles(
 
 Result UpgradeTasks::dropPregelQueriesCollection(
     TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
+  auto task = task_monitoring::Task{"Drop Pregel Queries Collection for " +
+                                    vocbase.name()};
   std::shared_ptr<arangodb::LogicalCollection> col;
   auto res =
       arangodb::methods::Collections::lookup(vocbase, "_pregel_queries", col);
