@@ -150,7 +150,7 @@ TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
   // for the internal version to be updated
   auto const start = std::chrono::system_clock::now();
   auto now = std::chrono::system_clock::now();
-  while (start - now > std::chrono::seconds(5)) {
+  while (now - start > std::chrono::seconds(5)) {
     if (currentAgencyVersion <= um->internalVersion()) {
       break;
     }
