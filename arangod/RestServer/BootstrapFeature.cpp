@@ -153,14 +153,14 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     LOG_TOPIC("784e2", DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
 
-    // let's see whether a DBserver is there:
+    // let's see whether a DBServer is there:
     ci.loadCurrentDBServers();
 
     auto dbservers = ci.getCurrentDBServers();
 
     if (dbservers.size() == 0) {
       LOG_TOPIC("0ad1c", TRACE, Logger::STARTUP)
-          << "raceForClusterBootstrap: no DBservers, waiting";
+          << "raceForClusterBootstrap: no DBServers, waiting";
       agency.removeValues(::bootstrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;

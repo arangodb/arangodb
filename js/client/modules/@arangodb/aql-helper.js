@@ -184,7 +184,7 @@ function assertQueryWarningAndNull (errorCode, query, bindVars) {
     found[result.extra.warnings[i].code] = true;
   }
 
-  assertTrue(found[errorCode]);
+  assertTrue(found[errorCode], 'error not found, found: [' + JSON.stringify(found) + ']');
   assertEqual([ null ], result.result);
 }
 

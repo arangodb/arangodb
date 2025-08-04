@@ -49,7 +49,7 @@ exports.checker = class {
       this.runner.setResult(te, true, {
         status: false,
         message: 'failed to fetch the previously available collections: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     return true;
@@ -64,7 +64,7 @@ exports.checker = class {
       this.runner.setResult(te, false, {
         status: false,
         message: 'failed to fetch the currently available collections: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     let delta = tu.diffArray(this.collectionsBefore, collectionsAfter).filter(function(name) {
@@ -76,7 +76,7 @@ exports.checker = class {
        this.runner.setResult(te, true, {
         status: false,
         message: 'Cleanup missing - test left over collection: ' + delta
-       });
+       }, this.name);
       return false;
     }
     return true;
