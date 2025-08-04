@@ -316,8 +316,6 @@ class Scheduler {
   virtual QueueStatistics queueStatistics() const = 0;
 
   virtual void trackCreateHandlerTask() noexcept = 0;
-  virtual void trackBeginOngoingLowPriorityTask() noexcept = 0;
-  virtual void trackEndOngoingLowPriorityTask() noexcept = 0;
 
   virtual void trackQueueTimeViolation() = 0;
   virtual void trackQueueItemSize(std::int64_t) noexcept = 0;

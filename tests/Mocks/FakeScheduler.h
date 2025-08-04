@@ -35,8 +35,6 @@ struct FakeScheduler : Scheduler {
   QueueStatistics queueStatistics() const override;
 
   void trackCreateHandlerTask() noexcept override;
-  void trackBeginOngoingLowPriorityTask() noexcept override;
-  void trackEndOngoingLowPriorityTask() noexcept override;
   void trackQueueTimeViolation() override;
   void trackQueueItemSize(std::int64_t) noexcept override;
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;

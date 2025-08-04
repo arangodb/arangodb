@@ -33,8 +33,6 @@ struct ThreadPoolScheduler final : Scheduler {
   void toVelocyPack(velocypack::Builder& builder) const override;
   QueueStatistics queueStatistics() const override;
   void trackCreateHandlerTask() noexcept override;
-  void trackBeginOngoingLowPriorityTask() noexcept override;
-  void trackEndOngoingLowPriorityTask() noexcept override;
   void trackQueueTimeViolation() override;
   void trackQueueItemSize(std::int64_t x) noexcept override;
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;

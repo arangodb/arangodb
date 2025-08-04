@@ -989,14 +989,6 @@ void SupervisedScheduler::trackCreateHandlerTask() noexcept {
   ++_metrics->_metricsHandlerTasksCreated;
 }
 
-void SupervisedScheduler::trackBeginOngoingLowPriorityTask() noexcept {
-  ++_metrics->_ongoingLowPriorityGauge;
-}
-
-void SupervisedScheduler::trackEndOngoingLowPriorityTask() noexcept {
-  --_metrics->_ongoingLowPriorityGauge;
-}
-
 void SupervisedScheduler::trackQueueTimeViolation() noexcept {
   ++_metrics->_metricsQueueTimeViolations;
 }

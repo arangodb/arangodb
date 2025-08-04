@@ -59,8 +59,6 @@ class SupervisedScheduler final : public Scheduler {
   Scheduler::QueueStatistics queueStatistics() const override;
 
   void trackCreateHandlerTask() noexcept override;
-  void trackBeginOngoingLowPriorityTask() noexcept override;
-  void trackEndOngoingLowPriorityTask() noexcept override;
 
   void trackQueueTimeViolation() noexcept override;
   void trackQueueItemSize(std::int64_t) noexcept override;

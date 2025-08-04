@@ -42,12 +42,6 @@ Scheduler::QueueStatistics ThreadPoolScheduler::queueStatistics() const {
 void ThreadPoolScheduler::trackCreateHandlerTask() noexcept {
   ++_metrics->_metricsHandlerTasksCreated;
 }
-void ThreadPoolScheduler::trackBeginOngoingLowPriorityTask() noexcept {
-  _metrics->_ongoingLowPriorityGauge += 1;
-}
-void ThreadPoolScheduler::trackEndOngoingLowPriorityTask() noexcept {
-  _metrics->_ongoingLowPriorityGauge -= 1;
-}
 void ThreadPoolScheduler::trackQueueTimeViolation() {
   ++_metrics->_metricsQueueTimeViolations;
 }

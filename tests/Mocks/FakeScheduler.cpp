@@ -50,12 +50,6 @@ Scheduler::QueueStatistics FakeScheduler::queueStatistics() const {
 void FakeScheduler::trackCreateHandlerTask() noexcept {
   ADB_PROD_ASSERT(false) << "not implemented";
 }
-void FakeScheduler::trackBeginOngoingLowPriorityTask() noexcept {
-  ADB_PROD_ASSERT(false) << "not implemented";
-}
-void FakeScheduler::trackEndOngoingLowPriorityTask() noexcept {
-  ADB_PROD_ASSERT(false) << "not implemented";
-}
 
 void FakeScheduler::trackQueueTimeViolation() {
   ADB_PROD_ASSERT(false) << "not implemented";

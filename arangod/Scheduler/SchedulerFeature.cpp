@@ -46,6 +46,8 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/ThreadPoolScheduler.h"
+#include "Scheduler/AcceptanceQueue/AcceptanceQueue.h"
+
 #ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
 #endif
@@ -83,6 +85,7 @@ std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
 namespace arangodb {
 
 Scheduler* SchedulerFeature::SCHEDULER = nullptr;
+AcceptanceQueue* SchedulerFeature::ACCEPTANCE_QUEUE = nullptr;
 
 struct SchedulerFeature::AsioHandler {
   std::shared_ptr<asio_ns::signal_set> _exitSignals;
@@ -93,6 +96,7 @@ SchedulerFeature::SchedulerFeature(Server& server,
                                    metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _scheduler(nullptr),
+      _acceptanceQueue(nullptr),
       _metricsFeature(metrics),
       _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
@@ -347,11 +351,15 @@ void SchedulerFeature::prepare() {
     } else {
       TRI_ASSERT(_schedulerType == "threadpools");
       return std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads,
-                                                   std::move(metrics));
+                                                   metrics);
     }
   });
 
+  _acceptanceQueue =
+      std::make_unique<AcceptanceQueue>(_scheduler.get(), metrics);
+
   SCHEDULER = _scheduler.get();
+  ACCEPTANCE_QUEUE = _acceptanceQueue.get();
 }
 
 void SchedulerFeature::start() {
@@ -364,6 +372,14 @@ void SchedulerFeature::start() {
     FATAL_ERROR_EXIT();
   }
   LOG_TOPIC("14e6f", DEBUG, Logger::STARTUP) << "scheduler has started";
+
+  ok = _acceptanceQueue->start();
+  if (!ok) {
+    LOG_TOPIC("7f498", FATAL, arangodb::Logger::FIXME)
+        << "the AcceptanceQueue cannot be started";
+    FATAL_ERROR_EXIT();
+  }
+  LOG_TOPIC("14e70", DEBUG, Logger::STARTUP) << "AcceptanceQueue has started";
 }
 
 void SchedulerFeature::stop() {
@@ -372,6 +388,7 @@ void SchedulerFeature::stop() {
   arangodb::Task::shutdownTasks();
 #endif
   signalStuffDeinit();
+  _acceptanceQueue->shutdown();
   _scheduler->shutdown();
 }
 
