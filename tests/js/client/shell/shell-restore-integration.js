@@ -32,7 +32,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
 const isCluster = require("internal").isCluster();
-const { executeExternalAndWaitWithSanitizer } = require('@arangodb/test-helper');
+const { executeExternalAndWaitWithSanitizer, dumpUtils } = require('@arangodb/test-helper');
 const { versionHas } = require("@arangodb/test-helper");
 const dbs = [{"name": "maçã", "id": "9999994", "isUnicode": true}, {
   "name": "cachorro",
@@ -68,59 +68,6 @@ const validatorJson = {
   }
 };
 
-function createCollectionStructureFile(path, cn) {
-  let fn = fs.join(path, cn + ".structure.json");
-  fs.write(fn, JSON.stringify({
-    indexes: [],
-    parameters: {
-      name: cn,
-      numberOfShards: 3,
-      type: 2
-    }
-  }));
-}
-
-function createCollectionDataFile(data, path, cn, split) {
-  const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
-  let write = (data, fn) => {
-    fs.write(fs.join(path, fn), data.map((d) => JSON.stringify(d)).join('\n'));
-  };
-
-  if (split) {
-    const n = data.length;
-    let id = 0; // file number
-    let s = 0;
-    for (let i = 0; i <= n; ++i) {
-      if (i - s >= (n / 5) || i === n) {
-        write(data.slice(s, i), prefix + "." + (id++) + ".data.json");
-        s = i;
-      }
-    }
-  } else {
-    write(data, prefix + ".data.json");
-  }
-}
-
-function createCollectionFiles(path, cn, split) {
-  createCollectionStructureFile(path, cn);
-  let data = [];
-  for (let i = 0; i < 1000; ++i) {
-    data.push({type: 2300, data: {_key: "test" + i, value: i}});
-  }
-  createCollectionDataFile(data, path, cn, /*split*/ false);
-  return data;
-}
-
-function createDumpJsonFile(path, databaseName, id) {
-  let fn = fs.join(path, "dump.json");
-  fs.write(fn, JSON.stringify({
-    database: databaseName,
-    properties: {
-      name: databaseName,
-      id: id
-    }
-  }));
-}
 
 function restoreIntegrationSuite() {
   'use strict';
@@ -258,7 +205,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value1: i, value2: "abc"}});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -297,7 +244,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + Math.floor(i / 2), value: i, overwrite: (i % 2 === 1)}});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -337,7 +284,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i * 2, overwrite: true}});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true', '--overwrite', 'true'];
       runRestore(path, args, 0);
@@ -400,7 +347,7 @@ function restoreIntegrationSuite() {
         });
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -436,7 +383,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i}});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -469,7 +416,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i}});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       fn = fs.join(path, "dump.json");
       fs.write(fn, JSON.stringify({
@@ -507,7 +454,7 @@ function restoreIntegrationSuite() {
         data.push({type: 2300, data: {_key: "test" + i, value: i}});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -535,7 +482,7 @@ function restoreIntegrationSuite() {
           }
           let dbPath = fs.join(path, subdir);
           fs.makeDirectory(dbPath);
-          createDumpJsonFile(dbPath, database["name"], database["id"]);
+          dumpUtils.createDumpJsonFile(dbPath, database["name"], database["id"]);
         });
         runRestore(path, args, 0);
         dbs.forEach((database) => {
@@ -572,7 +519,7 @@ function restoreIntegrationSuite() {
           if (index % 2 === 0) {
             db._createDatabase(database["name"]);
           }
-          createDumpJsonFile(dbPath, database["name"], database["id"]);
+          dumpUtils.createDumpJsonFile(dbPath, database["name"], database["id"]);
         });
         assertTrue(db._databases().length > 2);
         runRestore(path, args, 0);
@@ -606,8 +553,8 @@ function restoreIntegrationSuite() {
           }
           let dbPath = fs.join(path, subdir);
           fs.makeDirectory(dbPath);
-          createDumpJsonFile(dbPath, database["name"], database["id"]);
-          let data = createCollectionFiles(dbPath, cn);
+          dumpUtils.createDumpJsonFile(dbPath, database["name"], database["id"]);
+          let data = dumpUtils.createCollectionFiles(dbPath, cn);
           let args = ['--collection', cn, '--import-data', 'true', '--create-database', 'true', '--server.database', database["name"]];
           runRestore(dbPath, args, 0);
           db._useDatabase(database["name"]);
@@ -637,8 +584,8 @@ function restoreIntegrationSuite() {
           }
           let dbPath = fs.join(path, subdir);
           fs.makeDirectory(dbPath);
-          createDumpJsonFile(dbPath, database["name"], database["id"]);
-          createCollectionFiles(dbPath, cn);
+          dumpUtils.createDumpJsonFile(dbPath, database["name"], database["id"]);
+          dumpUtils.createCollectionFiles(dbPath, cn);
         });
         let args = ['--collection', cn, '--import-data', 'true', '--create-database', 'true', '--all-databases', 'true'];
         runRestore(path, args, 0);
@@ -676,7 +623,7 @@ function restoreIntegrationSuite() {
         data.push({_key: "test" + i, value: i});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ true);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ true);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -767,7 +714,7 @@ function restoreIntegrationSuite() {
         data.push({_key: "test" + i, value: i});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       fn = fs.join(path, "dump.json");
       fs.write(fn, JSON.stringify({
@@ -805,7 +752,7 @@ function restoreIntegrationSuite() {
         data.push({_key: "test" + i, value: i});
       }
 
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
 
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
@@ -1261,7 +1208,7 @@ function restoreIntegrationSuite() {
 
       const dbName = 'UnitTestRestoreRegressionDb';
       db._createDatabase(dbName);
-      createDumpJsonFile(path, dbName);
+      dumpUtils.createDumpJsonFile(path, dbName);
 
       for (const colJson of collectionsJson) {
         const colName = colJson.parameters.name;
@@ -1413,7 +1360,7 @@ function restoreIntegrationVectorSuite() {
         parameters: {
           indexes: [
             {id: "0", fields: ["_key"], type: "primary", unique: true},
-            {id: "95", fields: ["vector"], type: "vector", params: {dimension: 4, nLists:4, metric: "l2"}},
+            {id: "95", fields: ["vector"], type: "vector", params: {dimension: 4, nLists: 4, metric: "l2"}},
             {id: "295", fields: ["value"], type: "persistent", sparse: true},
           ],
           name: cn,
@@ -1425,27 +1372,20 @@ function restoreIntegrationVectorSuite() {
       for (let i = 0; i < 1000; ++i) {
         data.push({_key: "test" + i, value: i, vector: [0, i / 10, i / 100, i / 1000]});
       }
-      createCollectionDataFile(data, path, cn, /*split*/ false);
+      dumpUtils.createCollectionDataFile(data, path, cn, /*split*/ false);
       
       let args = ['--collection', cn, '--import-data', 'true'];
       runRestore(path, args, 0);
 
       let c = db._collection(cn);
       let indexes = c.indexes();
-      assertEqual(3, indexes.length);
+      // Assert that the vector index was ignored
+      assertEqual(2, indexes.length);
       assertEqual("primary", indexes[0].type);
       assertEqual(["_key"], indexes[0].fields);
-      assertEqual("vector", indexes[1].type);
-      assertEqual(["vector"], indexes[1].fields);
-      assertEqual("persistent", indexes[2].type);
-      assertEqual(["value"], indexes[2].fields);
+      assertEqual("persistent", indexes[1].type);
+      assertEqual(["value"], indexes[1].fields);
 
-      // test if the vector index works
-      for (let i = 0; i < 100; ++i) {
-        c.insert({value: i, vector: [0, 0, 0, 0]});
-      }
-      let result = db._query("FOR doc IN " + cn + " LET dist = APPROX_NEAR_L2(doc.vector, [0, 0, 0, 0]) SORT dist LIMIT 10 RETURN doc").toArray();
-      assertEqual(10, result.length);
       fs.removeDirectoryRecursive(path, true);
     }
   };
@@ -1453,9 +1393,6 @@ function restoreIntegrationVectorSuite() {
 
 
 jsunity.run(restoreIntegrationSuite);
-
-if (!versionHas("arm")) {
-  jsunity.run(restoreIntegrationVectorSuite);
-}
+jsunity.run(restoreIntegrationVectorSuite);
 
 return jsunity.done();

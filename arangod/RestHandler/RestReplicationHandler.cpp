@@ -61,6 +61,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
+#include "RestServer/VectorIndexFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1884,6 +1885,15 @@ Result RestReplicationHandler::processRestoreIndexes(
         idxDef = rebuilder.slice();
       }
 
+      if (type.isEqualString(StaticStrings::IndexNameVector) &&
+          !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+        LOG_TOPIC("e2125", ERR, Logger::RESTORE) << fmt::format(
+            "Discarding the vector index: `{}` since the feature is not "
+            "enabled.",
+            name);
+        continue;
+      }
+
       std::shared_ptr<arangodb::Index> idx;
       try {
         bool created = false;
@@ -2028,6 +2038,16 @@ Result RestReplicationHandler::processRestoreIndexesCoordinator(
           idxDef = rebuilder.slice();
         }
       }
+    }
+
+    if (type.isEqualString(StaticStrings::IndexNameVector) &&
+        !server().getFeature<VectorIndexFeature>().isVectorIndexEnabled()) {
+      auto const indexName = arangodb::basics::VelocyPackHelper::getStringValue(
+          parameters, "name", "");
+      LOG_TOPIC("43c16", ERR, Logger::RESTORE) << fmt::format(
+          "Discarding the vector index: `{}` since the feature is not enabled.",
+          indexName);
+      continue;
     }
 
     VPackBuilder tmp;
