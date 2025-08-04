@@ -124,7 +124,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var shards = Object.keys(cinfo.shards);
       var replFactor = cinfo.shards[shards[0]].length;
       var count = 0;
-      var maxCount = (isCov) 1800 : 180
+      var maxCount = (isCov)? 1800 : 180;
       while (++count <= maxCount) {
         var ccinfo = shards.map(
             s => arangoClusterInfoGetCollectionInfoCurrent(
@@ -159,7 +159,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
     var shards = Object.keys(cinfo.shards);
     var count = 0;
-    var maxCount = (isCov) 1800 : 180
+    var maxCount = (isCov)? 1800 : 180;
     while (++count <= maxCount) {
       var ccinfo = shards.map(
           s => arangoClusterInfoGetCollectionInfoCurrent(
@@ -525,7 +525,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       // numberOfDBServers. If this works, we can get rid of the collection
       // again and all is well. If it does not work, we have to wait a bit
       // longer:
-      var maxCount = (isCov) 1200 : 120
+      var maxCount = (isCov)? 1200 : 120;
       for (var count = 0; count < maxCount; ++count) {
         try {
           var c = db._create("collectionProbe", {replicationFactor: numberOfDBServers});
