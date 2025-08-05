@@ -28,6 +28,62 @@ const jsunity = require("jsunity");
 const internal = require('internal');
 const IM = global.instanceManager;
 
+
+const wordListForRoute = [
+  "/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version", "/status",
+  "/license", "/collection", "/database", "/current", "/log", "/"
+];
+
+const wordListForKeys = [
+  "Accept",
+  "",
+  "Accept-Charset",
+  "Accept-Encoding",
+  "Accept-Language",
+  "Accept-Ranges",
+  "Allow",
+  "Authorization",
+  "Cache-control",
+  "Connection",
+  "Content-encoding",
+  "Content-language",
+  "Content-location",
+  "Content-MD5",
+  "Content-range",
+  "Content-type",
+  "Date",
+  "ETag",
+  "Expect",
+  "Expires",
+  "From",
+  "Host",
+  "If-Match",
+  "If-modified-since",
+  "If-none-match",
+  "If-range",
+  "If-unmodified-since",
+  "Last-modified",
+  "Location",
+  "Max-forwards",
+  "Pragma",
+  "Proxy-authenticate",
+  "Proxy-authorization",
+  "Range",
+  "Referer",
+  "Retry-after",
+  "Server",
+  "TE",
+  "Trailer",
+  "Transfer-encoding",
+  "Upgrade",
+  "User-agent",
+  "Vary",
+  "Via",
+  "Warning",
+  "Www-authenticate",
+  "random"
+];
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Http Request Fuzzer suite
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,7 +106,7 @@ function httpRequestsFuzzerTestSuite() {
           IM.gatherNetstat();
           IM.printNetstat();
           for (let i = 0; i < 15; ++i) {
-            let response = arango.fuzzRequests(25000, i);
+            let response = arango.fuzzRequests(25000, i, wordListForRoute, wordListForKeys);
             assertTrue(response.hasOwnProperty("seed"));
             assertTrue(response.hasOwnProperty("totalRequests"));
             let numReqs = response["totalRequests"];
@@ -89,7 +145,7 @@ function httpRequestsFuzzerTestSuite() {
           IM.gatherNetstat();
           IM.printNetstat();
           for (let i = 0; i < 10; ++i) {
-            let response = arango.fuzzRequests(1, 10);
+            let response = arango.fuzzRequests(1, 10, wordListForRoute, wordListForKeys);
             assertTrue(response.hasOwnProperty("seed"));
             let seed = response["seed"];
             assertTrue(response.hasOwnProperty("totalRequests"));
@@ -111,7 +167,7 @@ function httpRequestsFuzzerTestSuite() {
             }
             assertEqual(numReqs, tempSum);
 
-            let newResponse = arango.fuzzRequests(1, 10, seed);
+            let newResponse = arango.fuzzRequests(1, 10, wordListForRoute, wordListForKeys, seed);
             assertEqual(response, newResponse);
             assertTrue(response.hasOwnProperty("seed"));
             assertTrue(response.hasOwnProperty("totalRequests"));
