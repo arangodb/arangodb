@@ -26,6 +26,7 @@ endif()
 add_custom_target(frontend ALL
   DEPENDS node_cache
   COMMENT "create frontend build"
+  DEPENDS arango_basic_utils
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
   COMMAND yarn install
   COMMAND yarn build

@@ -1075,7 +1075,8 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${FAISS_EXE_LINKER_FLAGS}"
 set(FAISS_ENABLE_GPU OFF CACHE BOOL "Disable GPU optimizations")
 set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
-
+set(FAISS_OPT_LEVEL "avx2" CACHE BOOL "faiss should have avx 2 as all our binaries")
+set(BUILD_TESTING OFF CACHE BOOL "disable faiss tests")
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
