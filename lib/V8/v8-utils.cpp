@@ -4448,11 +4448,11 @@ static void JS_ExecuteExternal(
     if (a->IsArray()) {
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
-      uint32_t n = arr->Length();
+      uint32_t const n = arr->Length();
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(
-            isolate, arr->Get(context, i).FromMaybe(v8::Local<v8::Value>()));
+            isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
 
         if (*arg == nullptr) {
           arguments.push_back("");
@@ -4497,6 +4497,8 @@ static void JS_ExecuteExternal(
           additionalEnv.push_back(*arg);
         }
       }
+    } else {
+      TRI_V8_THROW_TYPE_ERROR("<env> must be an array of strings");
     }
   }
 
@@ -4675,12 +4677,6 @@ static void JS_ExecuteExternalAndWait(
         "<timeoutms> [, <env> [, <workingDirectory> ] ] ] ] ])");
   }
 
-  TRI_Utf8ValueNFC name(isolate, args[0]);
-
-  if (*name == nullptr) {
-    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
-  }
-
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
 
@@ -4690,10 +4686,20 @@ static void JS_ExecuteExternalAndWait(
         "not allowed to execute or modify state of external processes");
   }
 
+  if (isExecutionDeadlineReached(isolate)) {
+    return;
+  }
+
+  TRI_Utf8ValueNFC name(isolate, args[0]);
+
   if (!v8security.isAllowedToAccessPath(isolate, *name, FSAccessType::READ)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN,
         std::string("not allowed to read files in this path: ") + *name);
+  }
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
   std::vector<std::string> arguments;
@@ -4728,12 +4734,12 @@ static void JS_ExecuteExternalAndWait(
   }
 
   bool usePipes = false;
-  if (args.Length() >= 3) {
+  if (3 <= args.Length()) {
     usePipes = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   uint32_t timeoutms = 0;
-  if (args.Length() >= 4) {
+  if (4 <= args.Length()) {
     timeoutms =
         static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
   }
@@ -4758,14 +4764,16 @@ static void JS_ExecuteExternalAndWait(
           additionalEnv.push_back(*arg);
         }
       }
+    } else {
+      TRI_V8_THROW_TYPE_ERROR("<env> must be an array of strings");
     }
   }
 
   auto workingDirectory = FileUtils::currentDirectory().result();
   std::string subProcessWorkingDirectory = workingDirectory;
 
-  if (5 <= args.Length()) {
-    TRI_Utf8ValueNFC name(isolate, args[4]);
+  if (6 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[5]);
     if (*name == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
     }

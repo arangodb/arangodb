@@ -322,6 +322,9 @@ class instance {
     }
 
     let config = 'arangod-' + this.instanceRole + '.conf';
+    if (this.options.arangodConfig !== undefined) {
+      config = this.options.arangodConfig;
+    }
     this.args = _.defaults(this.args, {
       'configuration': fs.join(pu.CONFIG_DIR, config),
       'define': 'TOP_DIR=' + pu.TOP_DIR,
@@ -595,10 +598,7 @@ class instance {
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
   };
-  restartOneInstance(moreArgs, unAuthOK) {
-    if (unAuthOK === undefined) {
-      unAuthOK = false;
-    }
+  restartOneInstance(moreArgs) {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
@@ -1555,6 +1555,7 @@ exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
+    'arangodConfig': undefined, // undocumented, internal use only. Override the automatic configuration choice
     'enableAliveMonitor': true,
     'maxLogFileSize': 500 * 1024,
     'skipLogAnalysis': true,

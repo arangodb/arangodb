@@ -33,7 +33,11 @@ class TestConfig:
         self.finish = None
         self.delta_seconds = 0
         self.delta = None
-
+        to_str = '--oneTestTimeout'
+        if to_str in arangosh_args:
+            new_timeout = int(arangosh_args[arangosh_args.index[to_str]+1])
+            print(f" extending timeout to {new_timeout}")
+            cfg.extend_deadline(new_timeout)
         self.base_logdir = cfg.test_report_dir / self.name
         if not self.base_logdir.exists():
             self.base_logdir.mkdir()

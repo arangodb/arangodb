@@ -70,7 +70,7 @@ function jsDriver (options) {
       super(options, testname, ...optionalArgs);
       this.info = "runInJsTest";
     }
-    run(file) {
+    runOneTest(file) {
       let topology;
       let results = {
         'message': ''
@@ -89,14 +89,20 @@ function jsDriver (options) {
       
       // testResultsDir
       let args = [
-        '-s', // Silent, only json
-        'arango-test'
+        "mocha",
+        "--reporter",
+        "json",
+        "--require",
+        "source-map-support/register",
+        "--timeout",
+        "10000",
+        "build/esm/test"
       ];
       if (this.options.testCase) {
         args.push('--grep');
         args.push(this.options.testCase);
       }
-      if (this.options.hasOwnProperty('jsOptions')) {
+      if (this.options.jsOptions !== '') {
         for (var key in this.options.jsOptions) {
           args.push('--' + key + '=' + this.options.jsOptions[key]);
         }
@@ -106,7 +112,7 @@ function jsDriver (options) {
       }
       let start = Date();
       let status = true;
-      const res = executeExternal('yarn', args, true, [], this.options.jssource);
+      const res = executeExternal('npx', args, true, [], this.options.jssource);
 
       let allBuff = '';
       let count = 0;
@@ -171,4 +177,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['js_driver'] = jsDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
+  tu.CopyIntoObject(opts, {
+    'jsOptions': '',
+    'jssource': '../arangojs',
+  });
 };

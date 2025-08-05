@@ -33,6 +33,9 @@ parameters:
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:15"
+  test-docker-image:
+    type: string
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-e6d3371f
   nightly:
     type: boolean
     default: false
@@ -60,6 +63,12 @@ parameters:
   rta-branch:
     type: string
     default: "main"
+  config-definitions:
+    type: string
+    default: tests/test-definitions.txt
+  config-definitions-branches:
+    type: string
+    default: ""
 # our defined job, and its steps
 jobs:
   # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
@@ -135,6 +144,9 @@ jobs:
       default-enterprise-branch:
         type: string
         default: "devel"
+      config-definitions-branches:
+        type: string
+        default: ""
     steps:
       - run:
           name: Print pipeline parameters
@@ -157,7 +169,7 @@ jobs:
             # We do not want to clone the whole repository since we only need a few files.
             # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
             (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
-            (mkdir tests && cd tests && wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/<< parameters.definitions >>)
+            (mkdir tests && cd tests && for def in << parameters.definitions >>; do wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/$def; done)
 
       - add_ssh_keys:
           fingerprints:
@@ -190,17 +202,23 @@ jobs:
             if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
               cp .circleci/build_test_image.yml continuation_config.yml
             else
+              set -x
               pip install pyyaml
-              python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
+              python3 ".circleci/generate_config.py" \
+                --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
+                --default-container "<< pipeline.parameters.test-docker-image >>" \
                 --ui "<< pipeline.parameters.ui >>" \
                 --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
-                -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+                --test-branches "<<parameters.config-definitions-branches>>" \
+                -o continuation_config.yml \
+                ./.circleci/base_config.yml \
+                << parameters.definitions >>
             fi
 
       - continuation/continue:
@@ -219,6 +237,10 @@ workflows:
           requires:
             - check-build-trigger
       - generate-config:
-          definitions: "tests/test-definitions.txt"
+          definitions: << pipeline.parameters.config-definitions >>
+          config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
+            #"tests/test-definitions.txt tests/go-test-definitions.txt tests/arangojs-test-definitions.txt"
+            # tests/java-test-definitions.txt"
+            # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
           requires:
             - cancel-redundant-pipelines
