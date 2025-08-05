@@ -837,7 +837,10 @@ class instanceManager {
     }
     this.setEndpoints();
     this.printProcessInfo(startTime);
-    sleep(this.options.sleepBeforeStart);
+    if (this.options.sleepBeforeStart > 0) {
+      console.log("sleeping for " + this.options.sleepBeforeStart);
+      sleep(this.options.sleepBeforeStart);
+    }
     this.spawnClusterHealthMonitor();
     if (this.options.cluster) {
       this.reconnect();
