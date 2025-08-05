@@ -99,7 +99,6 @@ function httpRequestsFuzzerTestSuite() {
       let moreargv = [];
       let logFile = fs.join(fs.getTempPath(), `rta_out_create.log`);
       let rc = ct.run.rtaMakedata(IM.options, IM, 0, messages[0], logFile, moreargv);
-      print(rc)
       if (!rc.status) {
         let rx = new RegExp(/\\n/g);
         throw("http_fuzz: failed to create testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
