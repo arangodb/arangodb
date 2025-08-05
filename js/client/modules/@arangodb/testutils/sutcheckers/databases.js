@@ -44,7 +44,7 @@ exports.checker = class {
         this.runner.setResult(te, false, {
           status: false,
           message: 'Cleanup missing - test left over databases: [ ' + JSON.stringify(databasesAfter)
-        });
+        }, this.name);
         return false;
       }
       return true;
@@ -52,7 +52,7 @@ exports.checker = class {
       this.runner.setResult(te, false, {
         status: false,
         message: 'failed to fetch the databases list: ' + x.message
-      });
+      }, this.name);
     }
     return false;
   }

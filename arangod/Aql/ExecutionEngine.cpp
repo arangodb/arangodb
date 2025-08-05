@@ -652,6 +652,9 @@ struct DistributedQueryInstanciator final
 
 std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
     SharedAqlItemBlockPtr&& items, size_t pos) {
+  // TODO (Tobias) I'm not sure this lock is really necessary here, I put it
+  //  here to keep similar behavior during a refactoring.
+  auto guard = getQuery().acquireLockGuard();
   if (_query.killed()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
   }
@@ -664,6 +667,23 @@ std::pair<ExecutionState, Result> ExecutionEngine::initializeCursor(
     _initializeCursorCalled = true;
   }
   return res;
+}
+
+auto ExecutionEngine::executeRemoteCall(AqlCallStack const& executeCall,
+                                        std::string const& clientId)
+    -> std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr> {
+  auto const rootNodeType = root()->getPlanNode()->getType();
+
+  // clientId is set IFF the root node is scatter or distribute
+  TRI_ASSERT(clientId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
+                                  rootNodeType == ExecutionNode::DISTRIBUTE));
+
+  auto guard = getQuery().acquireLockGuard();
+  if (clientId.empty()) {
+    return execute(executeCall);
+  } else {
+    return executeForClient(executeCall, clientId);
+  }
 }
 
 auto ExecutionEngine::execute(AqlCallStack const& stack)
