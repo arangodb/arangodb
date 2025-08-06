@@ -23,11 +23,49 @@
 
 #pragma once
 
+#include <atomic>
 #include <string_view>
 
 namespace arangodb {
+
+/// @brief States for the crash handler thread coordination.
+/// The state of the dedicated crash handler starts with IDLE
+/// and moves to CRASH_DETECTED when a crash is detected. When the
+/// thread has handled the situation it goes to HANDLING_COMPLETE
+/// to indicate that the crashed thread can continue its crash.
+/// The only other state transition possible is on regular shutdown
+/// from IDLE to SHUTDOWN to let the thread exit gracefully.
+enum class CrashHandlerState : int {
+  IDLE = 0,               ///< idle state, waiting for crashes
+  CRASH_DETECTED = 1,     ///< crash detected, handling in progress
+  HANDLING_COMPLETE = 2,  ///< crash handling complete
+  SHUTDOWN = 3            ///< shutdown requested
+};
+
 class CrashHandler {
+  std::atomic<bool> _threadRunning{false};
+  static std::atomic<CrashHandler*> _theCrashHandler;
+  // This needs to be static for the signal handlers to reach!
+
  public:
+  CrashHandler() {
+    // starts global background thread if not already done
+    bool threadRunning = _threadRunning.exchange(true);
+    if (!threadRunning) {
+      _theCrashHandler.store(this);
+      installCrashHandler();
+    }
+  }
+
+  ~CrashHandler() {
+    // joins global background thread if running
+    bool threadRunning = _threadRunning.exchange(false);
+    if (threadRunning) {
+      shutdownCrashHandler();
+    }
+    _theCrashHandler.store(nullptr);
+  }
+
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();
 
@@ -52,8 +90,23 @@ class CrashHandler {
   /// @brief disable printing of backtraces
   static void disableBacktraces();
 
+  /// @brief triggers the crash handler thread to handle a crash
+  /// @return true if successfully triggered, false if already in progress
+  /// This is used in the signal handlers and in the std::terminate handler
+  /// for assertion failures.
+  static void triggerCrashHandler();
+
+  /// @brief waits for the crash handler thread to complete its work
+  /// This is used in the signal handlers and in the std::terminate handler
+  /// for assertion failures.
+  static void waitForCrashHandlerCompletion();
+
+ private:
   /// @brief installs the crash handler globally
   static void installCrashHandler();
+
+  /// @brief shuts down the crash handler thread
+  static void shutdownCrashHandler();
 };
 
 }  // namespace arangodb

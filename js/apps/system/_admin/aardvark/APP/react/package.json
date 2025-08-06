@@ -109,6 +109,9 @@
     "underscore-template-loader": "^1.2.0",
     "url": "^0.11.0"
   },
+  "resolutions": {
+    "@babel/traverse": "^7.28.0"
+  },
   "babel": {
     "presets": [
       "react-app"

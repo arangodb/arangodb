@@ -120,6 +120,11 @@ auto IndexAggregateScanExecutor::skipRowsRange(
       "with one input row, but input range has {} rows",
       inputRange.countDataRows());
 
+  if (not _indexIncludesAnyData) {
+    inputRange.advanceDataRow();
+    return std::make_tuple(inputRange.upstreamState(), Stats{}, 0, AqlCall{});
+  }
+
   LocalDocumentId docId;
   bool hasMore = true;
   size_t skipped = 0;
@@ -175,6 +180,11 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
       "IndexAggregateScanExecutor expects to be run just after a SingletonNode "
       "with one input row, but input range has {} rows",
       inputRange.countDataRows());
+
+  if (not _indexIncludesAnyData) {
+    inputRange.advanceDataRow();
+    return std::make_tuple(inputRange.upstreamState(), Stats{}, AqlCall{});
+  }
 
   _inputRow = inputRange.peekDataRow().second;
 
@@ -267,17 +277,25 @@ IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
   LOG_AGG_SCAN << "[SCAN] after reset at "
                << inspection::json(_currentGroupKeySlices)
                << " hasMore= " << hasMore;
-  _iterator->load(_projectionSlices);
-  LOG_AGG_SCAN << "[SCAN] projections are  "
-               << inspection::json(_projectionSlices);
+  _indexIncludesAnyData = hasMore;
 
-  // create aggregators
-  _aggregatorInstances.reserve(_infos.aggregations.size());
-  for (auto const& agg : _infos.aggregations) {
-    auto const& factory = Aggregator::factoryFromTypeString(agg.type);
-    auto instance = factory.operator()(&_infos.query->vpackOptions());
+  if (hasMore) {
+    // loading (and also logics in produceRows and skipRowsRange) only
+    // works properly (without hitting any assertions) if the index actually
+    // includes data
+    _iterator->load(_projectionSlices);
 
-    _aggregatorInstances.emplace_back(std::move(instance))->reset();
+    LOG_AGG_SCAN << "[SCAN] projections are  "
+                 << inspection::json(_projectionSlices);
+
+    // create aggregators
+    _aggregatorInstances.reserve(_infos.aggregations.size());
+    for (auto const& agg : _infos.aggregations) {
+      auto const& factory = Aggregator::factoryFromTypeString(agg.type);
+      auto instance = factory.operator()(&_infos.query->vpackOptions());
+
+      _aggregatorInstances.emplace_back(std::move(instance))->reset();
+    }
   }
 }
 
