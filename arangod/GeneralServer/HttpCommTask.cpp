@@ -549,27 +549,21 @@ void HttpCommTask<T>::doProcessRequest() {
   // ensure there is a null byte termination. Some RestHandlers use
   // C functions like strchr that except a C string as input
   _request->appendNullTerminator();
-  // no need to increase memory usage here!
-  {
-    LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
-        << "\"http-request-begin\",\"" << (void*)this << "\",\""
-        << this->_connectionInfo.clientAddress << "\",\""
-        << HttpRequest::translateMethod(_request->requestType()) << "\",\""
-        << url() << "\"";
 
-    std::string_view body = _request->rawPayload();
-    this->_generalServerFeature.countHttp1Request(body.size());
+  LOG_TOPIC("6e770", INFO, Logger::REQUESTS)
+      << "\"http-request-begin\",\"" << (void*)this << "\",\""
+      << this->_connectionInfo.clientAddress << "\",\""
+      << HttpRequest::translateMethod(_request->requestType()) << "\",\""
+      << url() << "\"";
 
-    if (Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
-        Logger::logRequestParameters()) {
-      // Log HTTP headers:
-      this->logRequestHeaders("http", _request->headers());
-
-      if (!body.empty()) {
-        this->logRequestBody("http", _request->contentType(), body);
-      }
-    }
+  bool isTraceLoggingEnabled =
+      Logger::isEnabled(LogLevel::TRACE, Logger::REQUESTS) &&
+      Logger::logRequestParameters();
+  if (isTraceLoggingEnabled) {
+    // Log HTTP headers:
+    this->logRequestHeaders("http", _request->headers());
   }
+  this->_generalServerFeature.countHttp1Request(_request->rawPayload().size());
 
   // store origin header for later use
   _origin = _request->header(StaticStrings::Origin);
@@ -602,6 +596,15 @@ void HttpCommTask<T>::doProcessRequest() {
                             _request->contentTypeResponse(), 1,
                             TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
+  }
+
+  {
+    // no need to increase memory usage here!
+    std::string_view body = _request->rawPayload();
+
+    if (isTraceLoggingEnabled && !body.empty()) {
+      this->logRequestBody("http", _request->contentType(), body);
+    }
   }
 
   // create a handler and execute

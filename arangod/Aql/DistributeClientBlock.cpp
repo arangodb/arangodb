@@ -89,6 +89,14 @@ auto DistributeClientBlock::addBlock(SkipResult const& skipResult,
                                      SharedAqlItemBlockPtr block,
                                      std::vector<size_t> usedIndexes) -> void {
   TRI_ASSERT(!usedIndexes.empty() || block == nullptr);
+  if (gotHardLimit()) {
+    // We have already seen a hard limit, so we do not need to add more data.
+    TRI_ASSERT(block == nullptr || !block->hasShadowRows())
+        << "The logic here is not implemented yet for subqueries. If we want "
+           "to activate it, we need to move the ShadowRow over even if we have "
+           "seen a hardLimit.";
+    return;
+  }
   _queue.emplace_back(skipResult, std::move(block), std::move(usedIndexes));
 }
 
@@ -216,3 +224,29 @@ auto DistributeClientBlock::execute(AqlCallStack callStack,
   }
   return {state, std::move(skipped), std::move(result)};
 }
+
+/**
+ * @brief Check if we have received a hard limit
+ * @return true if we have received a hard limit
+ */
+auto DistributeClientBlock::gotHardLimit() const -> bool {
+  return _gotHardLimit;
+}
+
+/**
+ * @brief Reset the hard limit
+ */
+auto DistributeClientBlock::resetHardLimit() -> void { _gotHardLimit = false; }
+
+/**
+ * @brief Set hard limit has been seen.
+ */
+auto DistributeClientBlock::setSeenHardLimit() -> void { _gotHardLimit = true; }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+auto DistributeClientBlock::remainingRows() const -> uint64_t {
+  return std::accumulate(
+      _queue.begin(), _queue.end(), 0,
+      [](uint64_t sum, auto const& item) { return sum + item.numRows(); });
+}
+#endif

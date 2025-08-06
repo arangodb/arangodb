@@ -57,12 +57,14 @@ class UpgradeFeature final : public ArangodFeature {
 
  private:
   void upgradeLocalDatabase();
+  Result performFullCompaction();
 
  private:
   friend struct methods::Upgrade;  // to allow access to '_tasks'
 
   bool _upgrade;
   bool _upgradeCheck;
+  bool _upgradeFullCompaction;
 
   int* _result;
   std::span<const size_t> _nonServerFeatures;
