@@ -41,7 +41,6 @@ const request = require('@arangodb/request');
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
-  agency,
   arangoClusterInfoGetCollectionInfo,
   arangoClusterInfoGetCollectionInfoCurrent,
   arangoClusterInfoFlush,
@@ -51,24 +50,13 @@ const {
   getCoordinators
 } = require('@arangodb/test-helper');
 const { instanceRole } = require("@arangodb/testutils/instance");
-let IM = global.instanceManager;
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 // in the `useData` case, use this many documents:
 const numDocuments = 1000;
 
 const dbservers = getDBServers().map(arangod => arangod.id);
-
-function delaySupervisionFailoverActions(value) {
-  let agents = getAgents().map(
-    arangod => arangod.url);
-  for (let a of agents) {
-    const res = request({url: a + "/_api/agency/config",
-                   method: "PUT",
-                   body: JSON.stringify(
-                     {delayAddFollower: value, delayFailedFollower: value})});
-    assertEqual(200, res.statusCode);
-  }
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -758,15 +746,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     return false;
   }
 
-  function getServerRebootId(server) {
-    return helper.readAgencyValueAt(`Current/ServersKnown/${server}/rebootId`);
-  }
-
   function waitForRebootIdChanged(server, oldRebootId) {
-
     var count = (isCov)? 1200 : 300; // seconds
     while(--count > 0) {
-      if (getServerRebootId(server) !== oldRebootId) {
+      if (AM.getServerRebootId(server) !== oldRebootId) {
         return;
       }
       wait(isCov ? 1.5 : 1.0);
@@ -1002,7 +985,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testResignLeadershipWithUndo: function () {
       assertTrue(waitForSynchronousReplication(dbn));
       try {
-        delaySupervisionFailoverActions(120);
+        AM.delaySupervisionFailoverActions(120);
 
         var servers = findCollectionServers(dbn, c[0].name());
         var toResign = servers[0];
@@ -1014,23 +997,24 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         checkCollectionContents();
 
         // get server reboot id
-        const rebootId = getServerRebootId(toResign);
+        const rebootId = AM.getServerRebootId(toResign);
 
         // now suspend that server
-        helper.stopServerWaitFailed(toResign);
-
+        print('yyy')
+        IM.stopServerWaitFailed(toResign);
+        print('xxxx')
         // Wait for the reboot id to be changed.
         waitForRebootIdChanged(toResign, rebootId);
 
         // restart the server
-        helper.continueServerWaitOk(toResign);
+        IM.continueServerWaitOk(toResign);
 
         // now wait for the server to become leader again for shards
         assertTrue(waitForShardLeader(toResign, shards));
         assertTrue(waitForSupervision());
         checkCollectionContents();
       } finally {
-        delaySupervisionFailoverActions(0);
+        AM.delaySupervisionFailoverActions(0);
       }
     },
 
@@ -1138,10 +1122,10 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, true, "Finished"));
-      var first = agency.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State, state;
+      var first = AM.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State, state;
       var waitUntil = new Date().getTime() + 30.0 * 1000;
       while (true) {
-        state = agency.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State;
+        state = AM.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State;
         assertEqual(state.Timestamp, first.Timestamp);
         wait(isCov ? 1.5 : 5.0);
         if (new Date().getTime() > waitUntil) {
@@ -1149,7 +1133,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         }
       }
       assertTrue(maintenanceMode("off"));
-      state =agency.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State;
+      state = AM.call("transient", [["/arango/Supervision/State"]])[0].arango.Supervision.State;
       assertTrue(state.Timestamp !== first.Timestamp);
       assertTrue(testServerEmpty(fromServer, false, 1, 1));
       assertTrue(waitForSupervision());

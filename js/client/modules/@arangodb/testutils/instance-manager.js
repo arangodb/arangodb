@@ -1156,6 +1156,25 @@ class instanceManager {
       }
     });
   }
+
+  stopServerWaitFailed(urlIDOrShortName) {
+    this.arangods.forEach(arangod => {
+      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+        return;
+      }
+      arangod.suspend();
+    });
+    this.agencyMgr.waitFor(() => { this.agencyMgr.serverFailed(urlIDOrShortName); });
+  }
+  continueServerWaitOk(urlIDOrShortName) {
+    this.arangods.forEach(arangod => {
+      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+        return;
+      }
+      arangod.resume();
+    });
+    this.agencyMgr.waitFor(() => { this.agencyMgr.serverHealthy(urlIDOrShortName); });
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////

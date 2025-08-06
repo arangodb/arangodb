@@ -37,6 +37,8 @@ const internal = require('internal');
 const lh = require('@arangodb/testutils/replicated-logs-helper');
 const dh = require('@arangodb/testutils/document-state-helper');
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
@@ -46,7 +48,7 @@ function transactionReplication2ReplicateOperationSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = lh.dbservers.length;
+  const rc = AM.dbservers().length;
   let c = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
@@ -120,7 +122,7 @@ function transactionReplication2ReplicateOperationSuite() {
       }
 
       let {shards, logs} = dh.getCollectionShardsAndLogs(db, c);
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.dbservers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       for (let idx = 0; idx < logs.size; ++idx) {
@@ -229,7 +231,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = lh.dbservers.length;
+  const rc = AM.dbservers().length;
   const isReplication2 = dbParams.replicationVersion === "2";
   let c = null;
   let extraCollections = [];
@@ -264,7 +266,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       trx.abort();
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.dbservers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       let localValues = {};
       for (const [serverId, endpoint] of Object.entries(servers)) {
@@ -296,7 +298,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       };
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.dbservers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       let trx;
@@ -381,7 +383,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       let shards = [];
       shards.push([c.shards()[0], "foo"]);
       shards.push([distLike.shards()[0], "bar"]);
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.dbservers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       // Commit a transaction and expect everything to work
@@ -442,7 +444,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       let shards = [];
       shards.push([c.shards()[0], "foo"]);
       shards.push([distLike.shards()[0], "bar"]);
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.dbservers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       // Commit a transaction and expect everything to work
@@ -635,7 +637,7 @@ function transactionReplication2AbnormalTransactionsSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = lh.dbservers.length;
+  const rc = AM.dbservers().length;
   let cols = [];
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
