@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2171: Reduce the amount of code executed on dedicated network threads,
+  which might have reduced its throughput or delayed processing of other network
+  responses.
+
 * FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version)
 
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection
