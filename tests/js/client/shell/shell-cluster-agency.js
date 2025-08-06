@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global fail, assertFalse, assertTrue, assertEqual, assertMatch, ArangoAgency, arango */
+/*global fail, assertFalse, assertTrue, assertEqual, assertMatch, ArangoAgency, arango, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,7 +26,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
-
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: agency
@@ -39,17 +40,17 @@ function AgencySuite () {
 
     setUp : function () {
       try {
-        arango.POST("/_admin/execute", `return global.ArangoAgency.remove("UnitTestsAgency", true);`);
+        AM.remove("UnitTestsAgency");
       }
       catch (err) {
         // dir may not exist. this is not a problem
       }
-      arango.POST("/_admin/execute", `return global.ArangoAgency.createDirectory("UnitTestsAgency");`);
+      AM.createDirectory("UnitTestsAgency");
     },
     
     tearDown : function () {
       try {
-        arango.POST("/_admin/execute", `return global.ArangoAgency.remove("UnitTestsAgency", true);`);
+        AM.remove("UnitTestsAgency");
       }
       catch (err) {
       }
@@ -66,26 +67,26 @@ function AgencySuite () {
 
     testSet : function () {
       // insert
-      arango.POST("/_admin/execute", `return global.ArangoAgency.set("UnitTestsAgency/foo", "test1"); `);
-      var values = arango.POST("/_admin/execute", `return global.ArangoAgency.get("UnitTestsAgency/foo"); `);
+      AM.set("UnitTestsAgency/foo", "test1");
+      var values = AM.get("UnitTestsAgency/foo");
       assertTrue(values.hasOwnProperty("arango"));
       assertTrue(values.arango.hasOwnProperty("UnitTestsAgency"));
       assertTrue(values.arango.UnitTestsAgency.hasOwnProperty("foo"));
       assertEqual(values.arango.UnitTestsAgency.foo, "test1");
 
       // overwrite
-      arango.POST("/_admin/execute", `return global.ArangoAgency.set("UnitTestsAgency/foo", "test2", 2); `);
-      values = arango.POST("/_admin/execute", `return global.ArangoAgency.get("UnitTestsAgency/foo"); `);
+      AM.set("UnitTestsAgency/foo/test2", 2);
+      values = AM.get("UnitTestsAgency/foo");
       assertTrue(values.hasOwnProperty("arango"));
       assertTrue(values.arango.hasOwnProperty("UnitTestsAgency"));
       assertTrue(values.arango.UnitTestsAgency.hasOwnProperty("foo"));
       assertEqual(values.arango.UnitTestsAgency.foo, "test2");
 
-      assertTrue(arango.POST("/_admin/execute", `return global.ArangoAgency.remove("UnitTestsAgency/foo"); `));
+      assertTrue(AM.remove("UnitTestsAgency/foo"));
       
       // re-insert
-      arango.POST("/_admin/execute", `return global.ArangoAgency.set("UnitTestsAgency/foo", "test3"); `);
-      values = arango.POST("/_admin/execute", `return global.ArangoAgency.get("UnitTestsAgency/foo"); `);
+      AM.set("UnitTestsAgency/foo", "test3");
+      AM.get("UnitTestsAgency/foo");
       assertTrue(values.hasOwnProperty("arango"));
       assertTrue(values.arango.hasOwnProperty("UnitTestsAgency"));
       assertTrue(values.arango.UnitTestsAgency.hasOwnProperty("foo"));
@@ -97,7 +98,7 @@ function AgencySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCas : function () {
-      assertTrue(arango.POST("/_admin/execute", `return global.ArangoAgency.set("UnitTestsAgency/foo", "bar"); `));
+      assertTrue(AM.set("UnitTestsAgency/foo", "bar"));
 
       assertTrue(arango.POST("/_admin/execute", `return global.ArangoAgency.cas("UnitTestsAgency/foo", "bar", "baz"); `));
       assertTrue(arango.POST("/_admin/execute", `return global.ArangoAgency.cas("UnitTestsAgency/foo", "baz", "bart"); `));

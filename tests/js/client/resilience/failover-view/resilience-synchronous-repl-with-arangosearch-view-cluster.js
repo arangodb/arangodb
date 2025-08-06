@@ -42,8 +42,10 @@ const {
   arangoClusterInfoGetCollectionInfo,
   arangoClusterInfoGetCollectionInfoCurrent,
   getEndpointById,
-  agency
 } = require("@arangodb/test-helper");
+
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -599,7 +601,7 @@ function SynchronousReplicationWithViewSuite () {
       if(failedState.follower != null) healFollower(failedState.follower);
       db._drop(cn);
       viewOperations("drop");
-      //global.ArangoAgency.set('Target/FailedServers', {});
+      //AM.set('Target/FailedServers', {});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,7 +609,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testInquiry : function () {
       console.warn("Checking inquiry");
-      var writeResult = agency.call("write", [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+      var writeResult = AM.call("write", [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
       console.log(
         "Inquired successfully a matched precondition under 503 response from write");
       assertTrue(typeof writeResult === "object");
@@ -615,19 +617,19 @@ function SynchronousReplicationWithViewSuite () {
       assertTrue("results" in writeResult);
       assertTrue(writeResult.results[0]>0);
       try {
-        writeResult = agency.call("write",
+        writeResult = AM.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
         fail();
       } catch (e1) {
         console.log(
           "Inquired successfully a failed precondition under 503 response from write");
       }
-      writeResult = agency.call("write",
+      writeResult = AM.call("write",
         [[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
       console.log(
         "Inquired successfully a matched precondition under 0 response from write");
       try {
-        writeResult = agency.call("write",
+        writeResult = AM.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
         fail();
       } catch (e1) {
