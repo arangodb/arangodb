@@ -46,7 +46,7 @@ exports.checker = class {
       this.runner.setResult(te, true, {
         status: false,
         message: 'failed to fetch the tasks on the system before the test: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     return true;
@@ -58,14 +58,14 @@ exports.checker = class {
           status: false,
           message: 'Cleanup of tasks missing - found tasks left over: ' +
             JSON.stringify(tasks.get())
-        });
+        }, this.name);
         return false;
       }
     } catch (x) {
       this.runner.setResult(te, true, {
         status: false,
         message: 'failed to fetch the tasks on the system after the test: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     return true;

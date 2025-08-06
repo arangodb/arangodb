@@ -200,6 +200,19 @@ class instanceManager {
       }
     });
   }
+  setPassvoid() {
+    if (!arango.isConnected()) {
+      throw new Error('connecting the database failed');
+    }
+    try {
+      return require('org/arangodb/users').save(this.options.username, this.options.password);
+    } catch (ex) {
+      if (ex.errorNum === errors.ERROR_USER_DUPLICATE.code) {
+        return require('org/arangodb/users').update(this.options.username, this.options.password);
+      }
+      throw ex;
+    }
+  }
   getTypeToUrlsMap() {
     let ret = new Map();
     this.instanceRoles.forEach(role => {
@@ -824,7 +837,10 @@ class instanceManager {
     }
     this.setEndpoints();
     this.printProcessInfo(startTime);
-    sleep(this.options.sleepBeforeStart);
+    if (this.options.sleepBeforeStart > 0) {
+      console.log("sleeping for " + this.options.sleepBeforeStart);
+      sleep(this.options.sleepBeforeStart);
+    }
     this.spawnClusterHealthMonitor();
     if (this.options.cluster) {
       this.reconnect();

@@ -4734,12 +4734,12 @@ static void JS_ExecuteExternalAndWait(
   }
 
   bool usePipes = false;
-  if (args.Length() >= 3) {
+  if (3 <= args.Length()) {
     usePipes = TRI_ObjectToBoolean(isolate, args[2]);
   }
 
   uint32_t timeoutms = 0;
-  if (args.Length() >= 4) {
+  if (4 <= args.Length()) {
     timeoutms =
         static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[3], true));
   }
@@ -4772,8 +4772,8 @@ static void JS_ExecuteExternalAndWait(
   auto workingDirectory = FileUtils::currentDirectory().result();
   std::string subProcessWorkingDirectory = workingDirectory;
 
-  if (5 <= args.Length()) {
-    TRI_Utf8ValueNFC name(isolate, args[4]);
+  if (6 <= args.Length()) {
+    TRI_Utf8ValueNFC name(isolate, args[5]);
     if (*name == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<workingDirectory> must be a string");
     }
