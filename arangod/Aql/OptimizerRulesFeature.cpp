@@ -187,7 +187,8 @@ void OptimizerRulesFeature::addRules() {
       replaceEntriesWithObjectIteration,
       OptimizerRule::replaceEntriesWithObjectIteration,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-      R"(Replace FOR ... ENTRIES(obj) enumeration with proper object iteration.)");
+      R"(Replace FOR ... ENTRIES(obj) enumeration with proper object iteration
+to avoid copying a lot of key/value pairs and storing intermediate results.)");
 
   // inline subqueries one level higher
   registerRule("inline-subqueries", inlineSubqueriesRule,
@@ -363,7 +364,8 @@ attribute into a single condition.)");
   registerRule("geo-index-optimizer", geoIndexRule,
                OptimizerRule::applyGeoIndexRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Utilize geo-spatial indexes.)");
+               R"(Utilize geo-spatial indexes to remove `FILTER DISTANCE(...)`
+and SORT DISTANCE(...)`.)");
 
   // try to find a filter after an enumerate collection and find indexes
   registerRule("use-indexes", useIndexesRule, OptimizerRule::useIndexesRule,
@@ -399,7 +401,11 @@ from the query plan.)");
   registerRule("use-index-for-collect", useIndexForCollect,
                OptimizerRule::useIndexForCollectRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Use indexes for a collect statement if appropriate.)");
+               R"(Use indexes for a `COLLECT` operation if possible.
+Persistent indexes can speed up the scanning for distinct values up to orders
+of magnitude if the selectivity is low, i.e. if there are few different
+values. Furthermore, they can be used to cover eligible
+`COLLECT ... AGGREGATE` operations.)");
 
   // sort in-values in filters (note: must come after
   // remove-filter-covered-by-index rule)
@@ -437,7 +443,7 @@ AQL traversal.)");
       "optimize-enumerate-path-filters", optimizeEnumeratePathsFilterRule,
       OptimizerRule::optimizeEnumeratePathsFilterRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-      R"(Move `FILTER` conditions on the path output variable into the path search)");
+      R"(Move `FILTER` conditions on the path output variable into the path search.)");
 
   // optimize K_PATHS
   registerRule(
@@ -812,26 +818,35 @@ involved attributes are covered by inverted indexes.)");
   registerRule("batch-materialize-documents", batchMaterializeDocumentsRule,
                OptimizerRule::batchMaterializeDocumentsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Batch document lookup from indexes.)");
+               R"(Batch document lookups from indexes for efficiency.)");
 
   // push down materialization nodes to reduce the number of documents
   registerRule("push-down-late-materialization",
                pushDownLateMaterializationRule,
                OptimizerRule::pushDownLateMaterialization,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Push down late materialization.)");
+               R"(Defer loading documents when attributes accessed in `FILTER`
+and `SORT` operations are covered by an index. The rule can also push the
+materialization past `FOR` loops in case they are optimized to a merge join.)");
 
   registerRule("push-limit-into-index", pushLimitIntoIndexRule,
                OptimizerRule::pushLimitIntoIndexRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Push limit into index node.)");
+               R"(Reduce results early for a combination of `FILTER`, `SORT`,
+and `LIMIT` where the filter condition uses the `IN` comparison operator and
+the condition and sort attributes are covered by a persistent index, so that
+the limit can already be applied when reading from the index. Additional
+requirements are that there is no outer loop and no post-filtering, and the
+attributes to sort by must all be in the same direction.)");
 
   registerRule("materialize-into-separate-variable",
                materializeIntoSeparateVariable,
                OptimizerRule::materializeIntoSeparateVariable,
                // rule cannot be disabled because it is crucial for correctness
                OptimizerRule::makeFlags(),
-               R"(Introduce a separate variable for late materialization.)");
+               R"(Introduce separate internal variables for projected
+attributes. This enables late materialization that avoids the creation of
+temporary objects and having to look up attributes by key in these objects.)");
 
 #ifdef USE_ENTERPRISE
   // apply late materialization for offset infos
@@ -847,13 +862,15 @@ avoid unnecessary reads.)");
   registerRule("use-vector-index", useVectorIndexRule,
                OptimizerRule::useVectorIndexForSort,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(Apply vector index.)");
+               R"(Utilize a vector index to accelerate the comparison of
+vector embeddings with vector similarity AQL functions.)");
 
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,
       OptimizerRule::immutableSearchConditionRule,
       OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-      R"(Optimize immutable search condition for nested loops, we don't need to make real search many times, if we can cache results in bitset)");
+      R"(Optimize immutable search condition for nested loops. There is no need
+to perform a real search repeatedly if the results can be cached in a bitset.)");
 
   // remove calculations that are never necessary
   registerRule("remove-unnecessary-calculations-4",
@@ -898,7 +915,13 @@ optimizations.)");
                OptimizerRule::joinIndexNodesRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Join adjacent index nodes and replace them with a join node
-in case the indexes qualify for it.)");
+in case the indexes qualify for it.
+
+If two or more collections are joined using nested `FOR` loops and the
+attributes to join on are indexed by primary indexes or persistent indexes,
+then a merge join can be performed because they are sorted. Returning
+document attributes from the outer loop is limited to attributes covered by
+the index.)");
 
   // allow nodes to asynchronously prefetch the next batch while processing the
   // current batch. this effectively allows parts of the query to run in
