@@ -132,11 +132,11 @@ class AqlItemBlock {
                                     RegisterId::value_t column) const;
 
   /// @brief setValue, set the current value of a register
-  void setValue(size_t index, RegisterId varNr, AqlValue const& value);
+  void setValue(size_t index, RegisterId varNr, AqlValue const& value, bool countMemory=true);
 
   /// @brief setValue, set the current value of a register
   void setValue(size_t index, RegisterId::value_t column,
-                AqlValue const& value);
+                AqlValue const& value, bool countMemory=true);
 
   /// @brief emplaceValue, set the current value of a register, constructing
   /// it in place

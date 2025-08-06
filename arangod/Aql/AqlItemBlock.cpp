@@ -997,14 +997,15 @@ AqlValue const& AqlItemBlock::getValueReference(
 }
 
 void AqlItemBlock::setValue(size_t index, RegisterId varNr,
-                            AqlValue const& value) {
+                            AqlValue const& value, bool countMemory) {
   TRI_ASSERT(varNr.isRegularRegister());
-  setValue(index, varNr.value(), value);
+  setValue(index, varNr.value(), value, countMemory);
 }
 
 void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
-                            AqlValue const& value) {
+                            AqlValue const& value, bool countMemory) {
   TRI_ASSERT(_data[getAddress(index, column)].isEmpty());
+  LOG_DEVEL << "setValue was called: value: " << value.slice().toJson();
 
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {
@@ -1013,11 +1014,17 @@ void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
     if (++valueInfo.refCount == 1) {
       // we just inserted the item
       size_t memoryUsage = value.memoryUsage();
-      LOG_DEVEL << "setValue calls increaseMemoryUsage(): " << memoryUsage;
-      increaseMemoryUsage(memoryUsage);
+      if (countMemory) {
+        LOG_DEVEL << "ShouldChargeMemory: " << memoryUsage;
+        increaseMemoryUsage(memoryUsage);
+      } else {
+        _memoryUsage += memoryUsage;
+      }
+      //LOG_DEVEL << "setValue calls increaseMemoryUsage(): " << memoryUsage << ": " << value.slice().toJson();
       valueInfo.setMemoryUsage(memoryUsage);
     }
   }
+  LOG_DEVEL << "At the end of setValue: current: " << resourceMonitor().current();
 
   _data[getAddress(index, column)] = value;
   _maxModifiedRowIndex = std::max<size_t>(_maxModifiedRowIndex, index + 1);

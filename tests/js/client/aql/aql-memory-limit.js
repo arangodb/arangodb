@@ -394,8 +394,15 @@ function ahuacatlMemoryLimitSkipTestSuite () {
 
 function ahuacatMemoryLimitMergeTestSuite() {
   return {
-    testMergeSingleEmptyObjectWithinLimit: function() {
+    testMergeSingleEmptyObjectWithinLimit: function() { // failed leftover 1
       const query = "RETURN NOOPT(MERGE({}))";
+      let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(Object.keys(res[0]).length, 0);
+    },
+
+    testMergeSingleEmptyObjectWithinLimit2: function() { // failed leftover 10
+      const query = "RETURN NOOPT(MERGE({empty: {}}))";
       let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
       assertEqual(1, res.length);
       assertEqual(Object.keys(res[0]).length, 0);
@@ -418,7 +425,7 @@ function ahuacatMemoryLimitMergeTestSuite() {
       }
     },
 
-    testMergeRecursiveSingleObjectWithinLimit: function() {
+    testMergeRecursiveSingleObjectWithinLimit: function() { // failed leftover 36
       const query =
           "RETURN NOOPT(MERGE_RECURSIVE({a:{b:{c:{d:{e:{f:{g:1}}}}}}}))";
       let res = db._query(query, null, { memoryLimit: 512 }).toArray();
@@ -426,7 +433,7 @@ function ahuacatMemoryLimitMergeTestSuite() {
       assertEqual(res[0].a.b.c.d.e.f.g, 1);
     },
 
-    testMergeMultipleEmptyObjectsWithinLimit: function() {
+    testMergeMultipleEmptyObjectsWithinLimit: function() { // failed leftover 1
       const query = "RETURN NOOPT(MERGE({}, {}))";
       let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
       assertEqual(1, res.length);
@@ -468,7 +475,7 @@ function ahuacatMemoryLimitMergeTestSuite() {
       }
     },
 
-    testMergeEmptyArrayWithinLimit: function() {
+    testMergeEmptyArrayWithinLimit: function() { // failed leftover 1
       const query = "RETURN NOOPT(MERGE([]))";
       let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
       assertEqual(1, res.length);

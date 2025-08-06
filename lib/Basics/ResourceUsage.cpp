@@ -227,7 +227,7 @@ ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor,
 }
 
 ResourceUsageScope::~ResourceUsageScope() {
-  LOG_DEVEL << "ResourceUsageScope destructor was called: _value =" << _value;
+  LOG_DEVEL << "ResourceUsageScope destructor was called: _value = " << _value;
   revert();
 }
 

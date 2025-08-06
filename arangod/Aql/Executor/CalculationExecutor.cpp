@@ -186,13 +186,14 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
+  LOG_DEVEL << "CalculationExecutor: AqlValue: " << a.slice().toJson() << " (" << a.slice().byteSize() << ") current: " << _infos.getQuery().resourceMonitor().current();
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
+  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard, false);
 }
 
 #ifdef USE_V8

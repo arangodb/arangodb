@@ -61,7 +61,7 @@ class SortedCollectExecutorInfos {
       std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
       velocypack::Options const*,
-      ResourceMonitor& resourceMonitor);
+      std::unique_ptr<ResourceUsageScope> usageScope);
 
   SortedCollectExecutorInfos() = delete;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;

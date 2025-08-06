@@ -62,7 +62,8 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
       _vpackOptions(opts),
-      _resourceMonitor(resourceMonitor) {
+      _resourceMonitor(resourceMonitor),
+      _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -499,19 +500,19 @@ HashedCollectExecutor::makeAggregateValues() const {
     size += factory->getAggregatorSize();
   }
   void* p = ::operator new(size);
-  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions());
+  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions(), _infos.getResourceUsageScope());
   return std::unique_ptr<ValueAggregators>(static_cast<ValueAggregators*>(p));
 }
 
 HashedCollectExecutor::ValueAggregators::ValueAggregators(
     std::vector<Aggregator::Factory const*> factories,
-    velocypack::Options const* opts)
+    velocypack::Options const* opts, ResourceUsageScope& scope)
     : _size(factories.size()) {
   TRI_ASSERT(!factories.empty());
   auto* aggregatorPointers = reinterpret_cast<Aggregator**>(this + 1);
   void* aggregators = aggregatorPointers + _size;
   for (auto factory : factories) {
-    factory->createInPlace(aggregators, opts);
+    factory->createInPlace(aggregators, opts, scope);
     *aggregatorPointers = static_cast<Aggregator*>(aggregators);
     ++aggregatorPointers;
     aggregators =
