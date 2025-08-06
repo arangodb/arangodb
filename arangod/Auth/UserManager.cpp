@@ -227,7 +227,18 @@ void auth::UserManager::loadUserCacheAndStartUpdateThread() noexcept {
             // maximum of ~10sec in between tries.
             uint32_t const multiplier = 1u << std::min(tries, 20u);
             using namespace std::chrono_literals;
-            std::this_thread::sleep_for(10us * multiplier);
+            { // sleep for "10us * multiplier", but interruptible by the stop
+              // token.
+              auto mutex = std::mutex{};
+              auto cv = std::condition_variable{};
+              auto cb = std::stop_callback(stpTkn, [&] {
+                auto lock = std::unique_lock(mutex);
+                cv.notify_one();
+              });
+              auto lock = std::unique_lock(mutex);
+              cv.wait_for(lock, 10us * multiplier,
+                          [&] { return stpTkn.stop_requested(); });
+            }
           } else {
             // load was successful reset tries
             tries = 0;
