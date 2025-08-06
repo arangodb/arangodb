@@ -1,6 +1,9 @@
 devel
 -----
 
+* During AQL setup, the Coordinator will no longer block threads while waiting
+  for DBServers to finish the query instantiation.
+
 * FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version)
 
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection
