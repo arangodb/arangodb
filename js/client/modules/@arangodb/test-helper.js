@@ -777,9 +777,12 @@ exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
   return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
 };
 
+const shardIdToLogId = function (shardId) {
+  return shardId.slice(1);
+};
 
 const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
-  IM = exports.getInstanceInfo();
+  const IM = exports.getInstanceInfo();
   
   const colPlan = IM.agencyMgr.getAt(`Plan/Collections/${dbName}/${colId}`);
   let mapping = {};
@@ -824,7 +827,7 @@ exports.findCollectionServers = function (database, collection) {
   } else {
     return cinfo.shards[shard];
   }
-}
+};
 
 exports.AQL_EXPLAIN = function(query, bindVars, options) {
   let stmt = db._createStatement(query);
