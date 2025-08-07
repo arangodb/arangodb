@@ -51,7 +51,7 @@ function assertNoDatabasesInPlan () {
   if (!isCluster) {
     return;
   }
-  const prefix ="/arango";
+  const prefix ="arango";
   const paths = [
       "Plan/Databases/",
     ].map(p => `${prefix}/${p}`);

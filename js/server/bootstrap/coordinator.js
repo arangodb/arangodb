@@ -37,11 +37,12 @@
 
   if (internal.threadNumber === 0) {
     try {
+      
       require('@arangodb/foxx/manager')._startup();
       // start the queue manager once
       require('@arangodb/foxx/queues/manager').run();
-      const systemCollectionsCreated = global.ArangoAgency.get('SystemCollectionsCreated');
-      if (!(systemCollectionsCreated && systemCollectionsCreated.arango && systemCollectionsCreated.arango.SystemCollectionsCreated)) {
+      const systemCollectionsCreated = global.ArangoServerState.systemCollectionsCreated();
+      if (!systemCollectionsCreated) {
         // Wait for synchronous replication of system colls to settle:
         console.info('Waiting for initial replication of system collections...');
         const db = internal.db;
@@ -49,7 +50,7 @@
         if (!require('@arangodb/cluster').waitForSyncRepl('_system', colls)) {
           throw new Error('System collections not properly set up. Refusing startup!');
         } else {
-          global.ArangoAgency.set('SystemCollectionsCreated', true);
+          global.ArangoServerState.systemCollectionsCreated(true);
         }
       }
       console.info('bootstrapped coordinator %s', global.ArangoServerState.id());
