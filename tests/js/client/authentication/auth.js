@@ -28,6 +28,7 @@
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
+const errors = require("internal").errors;
 const users = require("@arangodb/users");
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
@@ -170,12 +171,7 @@ function AuthSuite() {
       users.grantDatabase(user, '_system', 'rw');
       users.reload();
 
-      try {
-        // connection will fail, but it will effectively set the username
-        // for all follow-up requests (which is what we need)
-        arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
-      } catch (err) {
-      }
+      arango.reconnect(arango.getEndpoint(), '_system', user, "foobar");
 
       users.revokeDatabase(user, '_system');
       try {
@@ -187,22 +183,13 @@ function AuthSuite() {
       assertEqual(403, result.code);
     },
 
-    testAuthenticationErrorDuringStartup: function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
-      try {
-        IM.debugSetFailAt("QueryAllUsers");
-        IM.debugSetFailAt("BootstrapFeature_not_ready");
-
-        users.reload();
-
-        const result = arango.GET('/_api/version');
-        require('internal').print(result);
-        assertEqual(503, result.code);
-      } finally {
-        IM.debugClearFailAt();
-      }
+    testReload: function () {
+      // This test is just so the reload is called and works without exception
+      // There are UnitTests that are testing the internals.
+      // As an idea for a possible test is to manipulate the _users collection without
+      // affecting `Sync/UserVersion` and test that the changes where not properly propagated
+      // trigger reload and verify that the changes are now properly loaded.
+      users.reload();
     },
 
     // test creating a new user

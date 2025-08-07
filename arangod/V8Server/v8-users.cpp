@@ -260,7 +260,6 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
-    um->triggerLocalReload();
     um->triggerGlobalReload();  // noop except on coordinator
   }
 

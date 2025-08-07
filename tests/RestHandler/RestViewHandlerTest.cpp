@@ -121,6 +121,9 @@ class RestViewHandlerTest
 TEST_F(RestViewHandlerTest, test_auth) {
   // test create
   {
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+
     TRI_vocbase_t vocbase(testDBInfo(server.server()));
     auto requestPtr = std::make_unique<GeneralRequestMock>(vocbase);
     auto& request = *requestPtr;
@@ -148,13 +151,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     };
     auto execContext = std::make_shared<ExecContext>();
     arangodb::ExecContextScope execContextScope(execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -271,11 +267,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -397,11 +388,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -578,11 +564,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -857,11 +838,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1044,11 +1020,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -1233,11 +1204,6 @@ TEST_F(RestViewHandlerTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {

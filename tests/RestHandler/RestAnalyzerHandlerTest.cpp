@@ -130,6 +130,7 @@ class RestAnalyzerHandlerTest
         userManager(authFeature.userManager()),
         execContext(std::make_shared<ExecContext>()),
         execContextScope(execContext) {
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::RW);
 
@@ -146,6 +147,10 @@ class RestAnalyzerHandlerTest
 
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::NONE);
+  }
+
+  ~RestAnalyzerHandlerTest() override {
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
   }
 
   // Creates the analyzers that are used in all the tests

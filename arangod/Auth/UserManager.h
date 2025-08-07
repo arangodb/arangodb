@@ -39,6 +39,7 @@
 #include "Auth/Handler.h"
 #endif
 
+#include <thread>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
@@ -63,7 +64,14 @@ using UserMap = std::unordered_map<std::string, auth::User>;
 class UserManager {
  public:
   explicit UserManager(ArangodServer&);
-  ~UserManager() = default;
+  ~UserManager();
+
+  /*
+   * This will first try to load the initial userCache and afterward start the
+   * internal update thread. This is blocking, it will repeat until it succeeds.
+   * This is not thread safe.
+   */
+  void loadUserCacheAndStartUpdateThread() noexcept;
 
   typedef std::function<Result(auth::User&)> UserCallback;
   typedef std::function<Result(auth::User const&)> ConstUserCallback;
@@ -71,16 +79,15 @@ class UserManager {
   // Tells coordinator to reload its data. Only called in HeartBeat thread
   void setGlobalVersion(uint64_t version) noexcept;
 
-  // reload user cache and token caches
-  void triggerLocalReload() noexcept;
-
   // used for caching
   uint64_t globalVersion() const noexcept;
 
   // Trigger eventual reload on all other coordinators (and in TokenCache)
-  void triggerGlobalReload();
+  void triggerGlobalReload() const;
 
-  // Trigger cache revalidation after user restore
+  // Will trigger a global reload and block until the versions are
+  // incremented at least once. To ensure that the internal thread executed
+  // loadFromDB at least once.
   void triggerCacheRevalidation();
 
   // Create the root user with a default password, will fail if the user
@@ -139,15 +146,32 @@ class UserManager {
   // Overwrite internally cached permissions, only use
   // for testing purposes
   void setAuthInfo(auth::UserMap const& userEntryMap);
-#endif
+
+  // Need this to find out if the loadFromDB was run and the internal version
+  // was updated
+  uint64_t internalVersion() const noexcept;
+#endif  // ARANGODB_USE_GOOGLE_TESTS
+
+  // This will shut down the running thread on demand. It's needed because the
+  // failure point can be deactivated before the thread is finished and can lead
+  // to calls on the server that are not initialized properly in the unit-test
+  // environment.
+  void shutdown();
 
  private:
   bool checkPassword(std::string const& username, std::string const& password);
   bool checkAccessToken(std::string const& username, std::string const& token,
                         std::string& un);
 
-  // load users and permissions from local database
-  void loadFromDB();
+  // Load users and permissions from local database.
+  // Returns the version that was loaded and written to the _internalVersion.
+  // Will be 0 if the load failed for any reason.
+  uint64_t loadFromDB() noexcept;
+
+  // This function will throw if the thread was not yet started
+  // and the user-cache was not yet preloaded.
+  // Basically guards most of the functions from being called too early.
+  void checkIfUserDataIsAvailable() const;
 
   // store or replace user object
   Result storeUserInternal(auth::User const& user, bool replace);
@@ -158,17 +182,13 @@ class UserManager {
   // underlying application server
   ArangodServer& _server;
 
-  // Protected the sync process from db, always lock
-  // before locking _userCacheLock
-  std::mutex _loadFromDBLock;
-
   // Protect the _userCache access
   basics::ReadWriteLock _userCacheLock;
 
   // used to update caches
   std::atomic<uint64_t> _globalVersion;
   std::atomic<uint64_t> _internalVersion;
-  std::atomic<bool> _usersInitialized;
+  std::jthread _userCacheUpdateThread;
 
   // Caches permissions and other user info
   UserMap _userCache;

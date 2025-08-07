@@ -462,28 +462,17 @@ class IResearchAnalyzerFeatureTest
         unused);
   }
 
-  ~IResearchAnalyzerFeatureTest() {
-    // Clear the authentication user:
-    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    auto* userManager = authFeature.userManager();
-    if (userManager != nullptr) {
-      userManager->removeAllUsers();
-    }
-  }
-
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    ASSERT_NE(authFeature, nullptr);
-    auto* userManager = authFeature->userManager();
-    ASSERT_NE(userManager, nullptr);
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    auto* um = authFeature.userManager();
+    ASSERT_NE(um, nullptr);
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
     user.grantCollection("testVocbase", "*", col);
     arangodb::auth::UserMap userMap;
     userMap.emplace("testUser", std::move(user));
-    userManager->setAuthInfo(
-        std::move(userMap));  // set user map to avoid loading
-                              // configuration from system database
+    um->setAuthInfo(std::move(userMap));  // set user map to avoid loading
+                                          // configuration from system database
   }
 
   std::shared_ptr<arangodb::ExecContext> getLoggedInContext() const {

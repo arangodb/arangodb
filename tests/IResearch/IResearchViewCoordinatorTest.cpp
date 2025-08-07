@@ -103,6 +103,7 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
+
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
@@ -113,8 +114,6 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
     ASSERT_NE(nullptr, vocbase);
     ASSERT_EQ("testDatabase", vocbase->name());
   }
-
-  ~IResearchViewCoordinatorTest() = default;
 };
 
 #ifdef USE_ENTERPRISE
@@ -247,6 +246,9 @@ TEST_F(IResearchViewCoordinatorTest, visit_collections) {
 
 TEST_F(IResearchViewCoordinatorTest, test_defaults) {
   auto& ci = server.getFeature<arangodb::ClusterFeature>().clusterInfo();
+  auto* authFeature = arangodb::AuthenticationFeature::instance();
+  auto* userManager = authFeature->userManager();
+  userManager->setAuthInfo({});
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
 
   createTestDatabase(vocbase);
@@ -452,13 +454,6 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     };
     auto execContext = std::make_shared<ExecContext>();
     arangodb::ExecContextScope execContextScope(execContext);
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     arangodb::LogicalView::ptr logicalView;
     auto res = arangodb::iresearch::IResearchViewCoordinator::factory().create(
@@ -867,11 +862,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorised (NONE collection) as per
     // https://github.com/arangodb/backlog/issues/459
@@ -4498,10 +4488,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
-
     EXPECT_TRUE((
         TRI_ERROR_FORBIDDEN ==
         logicalView->properties(linksJson->slice(), true, true).errorNumber()));
@@ -6075,10 +6061,6 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
 
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
-
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
                   .errorNumber());
@@ -6304,11 +6286,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -6439,9 +6416,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, false)
@@ -6550,11 +6524,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -6722,11 +6691,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -6922,11 +6886,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7212,11 +7171,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
@@ -7347,9 +7301,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
     userManager->setAuthInfo(userMap);  // set user map to avoid loading
                                         // configuration from system database
-    irs::Finally resetUserManager = [userManager]() noexcept {
-      userManager->removeAllUsers();
-    };
 
     EXPECT_EQ(TRI_ERROR_FORBIDDEN,
               logicalView->properties(viewUpdateJson->slice(), true, true)
@@ -7457,11 +7408,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7637,11 +7583,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {
@@ -7837,11 +7778,6 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // subsequent update (overwrite) not authorised (NONE collection)
     {

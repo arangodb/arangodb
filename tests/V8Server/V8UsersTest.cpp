@@ -136,9 +136,25 @@ class V8UsersTest
         system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     arangodb::tests::v8Init();  // on-time initialize V8
 
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->loadUserCacheAndStartUpdateThread();
+    }
+
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
+
+  ~V8UsersTest() {
+    auto* authFeature = arangodb::AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    if (userManager != nullptr) {
+      userManager->shutdown();
+    }
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
+  };
 };
 
 TEST_F(V8UsersTest, test_collection_auth) {
@@ -238,6 +254,8 @@ TEST_F(V8UsersTest, test_collection_auth) {
         [this](arangodb::LogicalCollection* ptr) -> void {
           system->dropCollection(ptr->id(), true);
         });
+    // We now have a _users collection, we can let the UserManager load
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
