@@ -193,10 +193,7 @@ class agencyMgr {
     ]]);
     return res[0];
   }
-  getAt(key) {
-    let res = this.postAgency( 'read', [[
-      `/arango/${key}`,
-    ]])[0];
+  unWrapQueriedItem(key, res) {
     const path = ['arango', ...key.split('/').filter(i => i)];
     for (const p of path) {
       if (res === undefined) {
@@ -205,6 +202,13 @@ class agencyMgr {
       res = res[p];
     }
     return res;
+  }
+  getAt(key) {
+    return this.unWrapQueriedItem(
+      key,
+      this.postAgency( 'read', [[
+        `/arango/${key}`,
+      ]])[0]);
   }
   set(path, value) {
     return this.postAgency('write', [[{
@@ -222,7 +226,9 @@ class agencyMgr {
     }]]);
   }
   transact(body) {
-    return this.postAgency("transact", body);
+    print(JSON.stringify(body))
+    let ret = this.postAgency("transact", body);
+    print(ret)
   }
   increaseVersion(path) {
     return this.postAgency('write', [[{
@@ -231,7 +237,24 @@ class agencyMgr {
       },
     }]]);
   }
-
+  casValue(key, value) {
+    return this.unWrapQueriedItem(this.transact([[
+      {
+        [[`/arango/${key}`]]: {
+          'op': 'set',
+          'new': value,
+        },
+      },
+      {
+        [[`/arango/${key}`]]: {
+          'oldEmpty': true
+        }
+      }
+    ]])[0]);
+  }
+  uniqId(newValue) {
+    return this.casValue('Sync/LatestID', newValue);
+  }
   delaySupervisionFailoverActions(value) {
     this.agencyInstances.forEach(agent => {
       let res = this.getAnyAgent(agent,
@@ -252,7 +275,7 @@ class agencyMgr {
   }
 
   isDBServerInCurrent(serverId) {
-    // TODO: not validated. 
+    // TODO: not validated.
     return this.getAt(`Current/DBServers/${serverId}`);
   }
 
@@ -275,7 +298,7 @@ class agencyMgr {
   serverFailed(serverId) {
     return this.checkServerHealth(serverId, "FAILED");
   }
-  
+
 /**
  * @param {string} database
  * @param {string} logId
@@ -676,7 +699,7 @@ class agencyMgr {
     const followers = _.difference(servers, [leader]);
     return {logId, servers, leader, term, followers};
   }
-  
+
   dumpAgent(agent, path, method, fn, dumpdir) {
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
     let agencyReply = this.getAnyAgent(agent, path, method);
