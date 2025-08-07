@@ -880,16 +880,13 @@ static void JS_systemCollectionsCreated(
     std::string key = "SystemCollectionsCreated";
     VPackSlice val = setTo ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
     if (set) {
-      LOG_TOPIC("xxxxx", WARN, Logger::REPLICATION) << "set";
       AgencyCommResult result = comm.setValue(key, val, 0.0);
       if (result.successful()) {
-        LOG_TOPIC("xxxxx", WARN, Logger::REPLICATION) << "created";
         result = comm.increment("Current/Version");
       }
       if (!result.successful() &&
           result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
           !v8g->server().isStopping()) {
-        LOG_TOPIC("xxxxx", WARN, Logger::REPLICATION) << "error";
         // gracefully ignore any shutdown errors here
         THROW_AGENCY_EXCEPTION(result);
       }
@@ -899,11 +896,10 @@ static void JS_systemCollectionsCreated(
           result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
           !v8g->server().isStopping()) {
         // gracefully ignore any shutdown errors here
-        LOG_TOPIC("xxxxx", WARN, Logger::REPLICATION) << "else error";
         THROW_AGENCY_EXCEPTION(result);
       }
       setTo = basics::VelocyPackHelper::getBooleanValue(
-          result.slice().get("arango"), key, false);
+          result.slice()[0].get("arango"), key, false);
     }
   }
   TRI_V8_RETURN_BOOL(setTo);
