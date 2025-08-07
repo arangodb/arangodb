@@ -90,7 +90,6 @@ AqlItemBlock::AqlItemBlock(AqlItemBlockManager& manager, size_t numRows,
   // this compare value is arbitrary, but having so many registers in a single
   // query seems unlikely
   TRI_ASSERT(_numRegisters <= RegisterId::maxRegisterId);
-  LOG_DEVEL << "Constructor calls increaseMemoryUsage()";
   increaseMemoryUsage(sizeof(AqlValue) * numEntries());
   try {
     _data.resize(numEntries());
@@ -426,7 +425,6 @@ void AqlItemBlock::rescale(size_t numRows, RegisterCount numRegisters) {
   TRI_ASSERT(targetSize <= _data.size());
 
   if (targetSize > numEntries()) {
-    LOG_DEVEL << "rescale calls increaseMemoryUsage()";
     increaseMemoryUsage(sizeof(AqlValue) * (targetSize - currentSize));
 
     // Values will not be re-initialized, but are expected to be that way.
@@ -1005,26 +1003,27 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr,
 void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
                             AqlValue const& value, bool countMemory) {
   TRI_ASSERT(_data[getAddress(index, column)].isEmpty());
-  LOG_DEVEL << "setValue was called: value: " << value.slice().toJson();
+  //LOG_DEVEL << "setValue was called";
 
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {
+    LOG_DEVEL << "requiresDestruction()";
     // note: this may create a new entry in _valueCount, which is fine
     auto& valueInfo = _valueCount[value.data()];
     if (++valueInfo.refCount == 1) {
+      LOG_DEVEL << "valueInfo.refCount == 1";
       // we just inserted the item
       size_t memoryUsage = value.memoryUsage();
       if (countMemory) {
-        LOG_DEVEL << "ShouldChargeMemory: " << memoryUsage;
+        LOG_DEVEL << "countMemory: " << memoryUsage;
         increaseMemoryUsage(memoryUsage);
       } else {
+        LOG_DEVEL << "not countMemory: " << memoryUsage << " current: " << resourceMonitor().current();
         _memoryUsage += memoryUsage;
       }
-      //LOG_DEVEL << "setValue calls increaseMemoryUsage(): " << memoryUsage << ": " << value.slice().toJson();
       valueInfo.setMemoryUsage(memoryUsage);
     }
   }
-  LOG_DEVEL << "At the end of setValue: current: " << resourceMonitor().current();
 
   _data[getAddress(index, column)] = value;
   _maxModifiedRowIndex = std::max<size_t>(_maxModifiedRowIndex, index + 1);

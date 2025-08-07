@@ -36,9 +36,34 @@
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 
+#include "Aql/Function.h"
+
 #ifdef USE_V8
 #include "V8/v8-globals.h"
 #endif
+
+static bool shouldCountMemory(AstNode const* node) {
+  if (node == nullptr) {
+    return true;
+  }
+  if (node->type == NODE_TYPE_ARRAY && node->numMembers() == 1) {
+    return shouldCountMemory(node->getMember(0));
+  }
+  if (node->type != NODE_TYPE_FCALL) {
+    return true;
+  }
+
+  auto func = static_cast<arangodb::aql::Function const*>(node->getData());
+  auto const& name = func->name;
+  if (name == "MERGE" || name == "MERGE_RECURSIVE") {
+    return false;
+  }
+
+  if (node->numMembers() == 1) {
+    return shouldCountMemory(node->getMember(0));
+  }
+  return true;
+}
 
 namespace arangodb::aql {
 
@@ -186,14 +211,17 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
 
   bool mustDestroy;  // will get filled by execution
   AqlValue a = _infos.getExpression().execute(&ctx, mustDestroy);
-  LOG_DEVEL << "CalculationExecutor: AqlValue: " << a.slice().toJson() << " (" << a.slice().byteSize() << ") current: " << _infos.getQuery().resourceMonitor().current();
   AqlValueGuard guard(a, mustDestroy);
 
   TRI_IF_FAILURE("CalculationBlock::executeExpression") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
-  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard, false);
+  AstNode const* ast = _infos.getExpression().node();
+  bool countMemory = shouldCountMemory(ast);
+  LOG_DEVEL << "CalculationExecutor: countMemory: " << countMemory;
+
+  output.moveValueInto(_infos.getOutputRegisterId(), input, &guard, countMemory);
 }
 
 #ifdef USE_V8

@@ -134,17 +134,17 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 
   auto increaseMemoryUsage = [&](uint64_t byte) {
     if (usageScope) {
-      LOG_DEVEL << "Memory increased by: " << byte;
+    //  LOG_DEVEL << "Memory increased by: " << byte;
       usageScope->increase(byte);
-      LOG_DEVEL << "Current: " << usageScope->current()
-      << " Limit: " << usageScope->memoryLimit()
-      << " Peak: " << usageScope->peak();
-    }
+    //   LOG_DEVEL << "Current: " << usageScope->current()
+    //   << " Limit: " << usageScope->memoryLimit()
+    //   << " Peak: " << usageScope->peak();
+     }
   };
 
   auto decreaseMemoryUsage = [&](uint64_t byte) {
     if (usageScope) {
-      LOG_DEVEL << "Memory decreased by: " << byte;
+      //LOG_DEVEL << "Memory decreased by: " << byte;
       usageScope->decrease(byte);
       // LOG_DEVEL << "Current: " << usageScope->current()
       // << " Limit: " << usageScope->memoryLimit()
@@ -232,16 +232,14 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         }
       }
     }
-    if (usageScope) {
-      auto slice = builder.slice();
-      if (!slice.isEmptyObject() && !slice.isEmptyArray()) {
-        TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
-        LOG_DEVEL << "At the end of MERGE: current: " << usageScope->current();
-        LOG_DEVEL << "Stolen memory usage: " << usageScope->tracked();
-        usageScope->steal();
-      }
+    AqlValue res{builder.slice(), builder.size()};
+    if (usageScope && res.memoryUsage() > 0) {
+      TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
+      LOG_DEVEL << "At the end of MERGE: current: " << usageScope->current();
+      LOG_DEVEL << "Stolen memory usage: " << usageScope->tracked();
+      usageScope->steal();
     }
-    return {builder.slice(), builder.size()};
+    return res;
   }
 
   if (!initial.isObject()) {
@@ -283,16 +281,14 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     // only one parameter. now add original document
     builder.add(initialSlice);
   }
-  if (usageScope) {
-    auto slice = builder.slice();
-    if (!slice.isEmptyObject() && !slice.isEmptyArray()) {
-      TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
-      LOG_DEVEL << "At the end of MERGE: current: " << usageScope->current();
-      LOG_DEVEL << "Stolen memory usage: " << usageScope->tracked();
-      usageScope->steal();
-    }
+  AqlValue res{builder.slice(), builder.size()};
+  if (usageScope && res.memoryUsage() > 0) {
+    TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
+    LOG_DEVEL << "At the end of MERGE: current: " << usageScope->current();
+    LOG_DEVEL << "Stolen memory usage: " << usageScope->tracked();
+    usageScope->steal();
   }
-  return {builder.slice(), builder.size()};
+  return res;
 }
 
 }  // namespace
