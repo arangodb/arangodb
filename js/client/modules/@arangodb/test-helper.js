@@ -81,6 +81,9 @@ exports.getInstanceInfo = function() {
 
 let reconnectRetry = exports.reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
+
+
+
 exports.clearAllFailurePoints = function () {
   const old = db._name();
   try {
@@ -773,6 +776,55 @@ exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
 exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
   return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
 };
+
+
+const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
+  IM = exports.getInstanceInfo();
+  
+  const colPlan = IM.agencyMgr.getAt(`Plan/Collections/${dbName}/${colId}`);
+  let mapping = {};
+  if (colPlan.hasOwnProperty("groupId")) {
+    const groupId = colPlan.groupId;
+    const shards = colPlan.shardsR2;
+    const colGroup = IM.agencyMgr.getAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
+    const shardSheaves = colGroup.shardSheaves;
+    for (let idx = 0; idx < shards.length; ++idx) {
+      mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
+    }
+  } else {
+    // Legacy code, supporting system collections
+    const shards = colPlan.shards;
+    for (const [shardId, _] of Object.entries(shards)) {
+      mapping[shardId] = shardIdToLogId(shardId);
+    }
+  }
+  return mapping;
+};
+
+
+exports.findCollectionServers = function (database, collection) {
+  var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
+  var shard = Object.keys(cinfo.shards)[0];
+
+  if (replVersion === "2") {
+    var shardsToLogs = getShardsToLogsMapping(database, cinfo.id);
+    const id = shardsToLogs[shard];
+    const spec = db._replicatedLog(id).status().specification.plan;
+    let servers = Object.keys(spec.participantsConfig.participants);
+    // make leader first server
+    if (spec.currentTerm && spec.currentTerm.leader) {
+      const leader = spec.currentTerm.leader.serverId;
+      let index = servers.indexOf(leader);
+      if (index !== -1) {
+        servers.splice(index, 1);
+      }
+      servers.unshift(leader);
+    }
+    return servers;
+  } else {
+    return cinfo.shards[shard];
+  }
+}
 
 exports.AQL_EXPLAIN = function(query, bindVars, options) {
   let stmt = db._createStatement(query);
