@@ -137,14 +137,12 @@ TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
   // before the heartbeat we internally still have the state of
   // global & internal version being equal, because no-one yet gave the new
   // agency version to the user-manager
-  EXPECT_EQ(um->globalVersion(), um->internalVersion());
-  EXPECT_LT(um->globalVersion(), versionAfterGlobalReload);
-  EXPECT_LT(um->internalVersion(), versionAfterGlobalReload);
+  EXPECT_EQ(um->globalVersion(), versionBeforeGlobalReload);
+  EXPECT_EQ(um->internalVersion(), versionBeforeGlobalReload);
 
   // Simulate heart beat
   // This internally will increase the globalVersion and trigger the
   // UpdateThread to start and preload the user cache
-  auto const globalVersionBeforeHeartbeat = um->globalVersion();
   um->setGlobalVersion(versionAfterGlobalReload);
 
   // but this call to setGlobalVersion is not blocking, so we need to wait here
@@ -161,11 +159,9 @@ TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
 
   // should now have parity between the internal, global and agency version
   // but it should not have touched the agency version
-  EXPECT_LT(globalVersionBeforeHeartbeat, um->globalVersion());
   EXPECT_EQ(versionAfterGlobalReload, getAgencyUserVersion());
   EXPECT_EQ(um->globalVersion(), versionAfterGlobalReload);
   EXPECT_EQ(um->internalVersion(), versionAfterGlobalReload);
-  EXPECT_EQ(um->globalVersion(), um->internalVersion());
 }
 
 #endif

@@ -12215,6 +12215,7 @@ v3.7.0-alpha.2 (2020-03-20)
 
 * Added traversal options `vertexCollections` and `edgeCollections` to restrict
   traversal to certain vertex or edge collections.
+
   The use case for `vertexCollections` is to not follow any edges that will
   point to other than the specified vertex collections, e.g.
 

@@ -189,14 +189,7 @@ function AuthSuite() {
       // As an idea for a possible test is to manipulate the _users collection without
       // affecting `Sync/UserVersion` and test that the changes where not properly propagated
       // trigger reload and verify that the changes are now properly loaded.
-      let didThrow = true;
-      try {
-        users.reload();
-        didThrow = false;
-      } finally {
-        IM.debugClearFailAt();
-      }
-      assertFalse(didThrow, 'Reload should not have thrown');
+      users.reload();
     },
 
     // test creating a new user
