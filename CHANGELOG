@@ -5,7 +5,7 @@ devel
   This pre-loads the user-cache as fast as possible (as soon as the global version changes)
   Also, compared to the old version, this allows the read-only operation to work on the user-cache 
   for longer and not block each other while trying to load a new version. On a high load environment this also 
-  means a more responsive UserManager and to prevent the thread responsible for the HTTP server to no getting blocked
+  means a more responsive UserManager and to prevent the thread responsible for the HTTP server to not getting blocked
   because of user-cache updates.
 
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection
@@ -12215,7 +12215,6 @@ v3.7.0-alpha.2 (2020-03-20)
 
 * Added traversal options `vertexCollections` and `edgeCollections` to restrict
   traversal to certain vertex or edge collections.
-
   The use case for `vertexCollections` is to not follow any edges that will
   point to other than the specified vertex collections, e.g.
 

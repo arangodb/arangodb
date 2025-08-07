@@ -184,26 +184,19 @@ function AuthSuite() {
     },
 
     testReload: function () {
-      if (!IM.debugCanUseFailAt()) {
-        return;
-      }
-      // Internally the reload will trigger an increment for `arango/Sync/UserVersion`
-      // and trigger the internal thread to catch up to this increased version.
-      // It is a blocking call, so it only returns if the reload succeeded
-      users.reload();
-      let didThrow = false;
+      // This test is just so the reload is called and works without exception
+      // There are UnitTests that are testing the internals.
+      // As an idea for a possible test is to manipulate the _users collection without
+      // affecting `Sync/UserVersion` and test that the changes where not properly propagated
+      // trigger reload and verify that the changes are now properly loaded.
+      let didThrow = true;
       try {
-        // This failure point will internally check if the versions are
-        // as expected and really incremented and will throw if the assumption is right
-        IM.debugSetFailAt("UserManager::FailReload");
         users.reload();
-      } catch (err) {
-        didThrow = true;
-        assertEqual(errors.ERROR_DEBUG.code, err.errorNum);
+        didThrow = false;
       } finally {
         IM.debugClearFailAt();
       }
-      assertTrue(didThrow, 'Reload should have thrown');
+      assertFalse(didThrow, 'Reload should not have thrown');
     },
 
     // test creating a new user

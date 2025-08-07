@@ -51,7 +51,7 @@ function testSuite() {
         break;
       }
       // Reduce restart spam
-      if (!(res.status === 503 && (tries % 10) !== 0)) {
+      if (res.status !== 503 || (tries % 10 === 0)) {
         console.warn(`waiting for server response from url ${baseurl} - got ${JSON.stringify(res)}`);
       }
       require('internal').sleep(0.5);
@@ -234,8 +234,7 @@ function testSuite() {
         let aliveStatus = waitForAlive(30, coordinator.url, { auth: { bearer: jwt } });
         // No DB servers means _users collections can not be loaded, so the server will stay in start-up
         // and return 503 every time.
-        // TRI_ERROR_STARTING_UP = 38
-        assertTrue(aliveStatus.json.errorNum === 38);
+        assertTrue(aliveStatus.json.errorNum === require('@arangodb').errors.ERROR_STARTING_UP.code);
         assertTrue(aliveStatus.status === 503, JSON.stringify(aliveStatus));
       } finally {
         // make db servers available again

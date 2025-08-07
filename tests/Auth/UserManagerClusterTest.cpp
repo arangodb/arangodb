@@ -124,46 +124,47 @@ TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
   // inject either the AgencyValue into the UserManager
   // or vice versa. This is just an assertion that we
   // expect everything to start at default (1).
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
   uint64_t const versionBeforeGlobalReload = getAgencyUserVersion();
+  EXPECT_EQ(um->globalVersion(), versionBeforeGlobalReload);
 
   um->triggerGlobalReload();
+
+  auto const versionAfterGlobalReload = getAgencyUserVersion();
+
   // The version in the Agency needs to be increased
-  EXPECT_LT(versionBeforeGlobalReload, getAgencyUserVersion());
+  EXPECT_LT(versionBeforeGlobalReload, versionAfterGlobalReload);
 
   // before the heartbeat we internally still have the state of
   // global & internal version being equal, because no-one yet gave the new
   // agency version to the user-manager
   EXPECT_EQ(um->globalVersion(), um->internalVersion());
-  EXPECT_LT(um->globalVersion(), getAgencyUserVersion());
-  EXPECT_LT(um->internalVersion(), getAgencyUserVersion());
+  EXPECT_LT(um->globalVersion(), versionAfterGlobalReload);
+  EXPECT_LT(um->internalVersion(), versionAfterGlobalReload);
 
   // Simulate heart beat
-  auto const currentAgencyVersion = getAgencyUserVersion();
   // This internally will increase the globalVersion and trigger the
   // UpdateThread to start and preload the user cache
   auto const globalVersionBeforeHeartbeat = um->globalVersion();
-  um->setGlobalVersion(currentAgencyVersion);
+  um->setGlobalVersion(versionAfterGlobalReload);
 
   // but this call to setGlobalVersion is not blocking, so we need to wait here
   // for the internal version to be updated
   auto const start = std::chrono::system_clock::now();
   auto now = std::chrono::system_clock::now();
   while (now - start < std::chrono::seconds(5)) {
-    if (currentAgencyVersion <= um->internalVersion()) {
+    if (versionAfterGlobalReload <= um->internalVersion()) {
       break;
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
     now = std::chrono::system_clock::now();
   }
 
   // should now have parity between the internal, global and agency version
   // but it should not have touched the agency version
   EXPECT_LT(globalVersionBeforeHeartbeat, um->globalVersion());
-  EXPECT_EQ(currentAgencyVersion, getAgencyUserVersion());
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-  EXPECT_EQ(um->internalVersion(), getAgencyUserVersion());
+  EXPECT_EQ(versionAfterGlobalReload, getAgencyUserVersion());
+  EXPECT_EQ(um->globalVersion(), versionAfterGlobalReload);
+  EXPECT_EQ(um->internalVersion(), versionAfterGlobalReload);
   EXPECT_EQ(um->globalVersion(), um->internalVersion());
 }
 

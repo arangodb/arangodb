@@ -191,14 +191,13 @@ void auth::UserManager::loadUserCacheAndStartUpdateThread() noexcept {
   namespace chrono = std::chrono;
   LOG_TOPIC("ef78c", INFO, Logger::AUTHENTICATION) << "Preloading user cache";
   auto start = chrono::system_clock::now();
-  while (_internalVersion.load(std::memory_order_acquire) == 0) {
+  while (loadFromDB() == 0) {
     auto const now = chrono::system_clock::now();
     if ((now - start) > std::chrono::seconds(3)) {
       start = chrono::system_clock::now();
       LOG_TOPIC("ef78e", INFO, Logger::AUTHENTICATION)
           << "Preloading user cache is still in progress.";
     }
-    loadFromDB();
   }
 
   _userCacheUpdateThread =
@@ -227,15 +226,26 @@ void auth::UserManager::loadUserCacheAndStartUpdateThread() noexcept {
             // maximum of ~10sec in between tries.
             uint32_t const multiplier = 1u << std::min(tries, 20u);
             using namespace std::chrono_literals;
-            { // sleep for "10us * multiplier", but interruptible by the stop
+            {  // sleep for "10us * multiplier", but interruptible by the stop
               // token.
               auto mutex = std::mutex{};
               auto cv = std::condition_variable{};
-              auto cb = std::stop_callback(stpTkn, [&] {
-                auto lock = std::unique_lock(mutex);
+              auto lock = std::unique_lock(mutex);
+              auto cb = std::stop_callback(stpTkn, [&]() noexcept {
+                // We lock and unlock here to make sure that we do not call a
+                // notify while the conditional_variable is currently woken-up
+                // and checking the predicate. This prevents any sleeping barber
+                // scenarios here. If the lock is successful the cv has not yet
+                // woken up but stop_requested is already true If the lock is
+                // unsuccessful (blocks) we wait here until the cv is finished
+                // with checking the predicate, and we can wake it up again
+                // after it is sleeping/waiting again.
+                mutex.lock();
+                mutex.unlock();
                 cv.notify_one();
               });
-              auto lock = std::unique_lock(mutex);
+              // The wake-up + lock and the sleep + unlock is guaranteed to
+              // happen atomically
               cv.wait_for(lock, 10us * multiplier,
                           [&] { return stpTkn.stop_requested(); });
             }
@@ -256,7 +266,9 @@ uint64_t auth::UserManager::loadFromDB() noexcept {
   uint64_t const currentGlobalVersion = globalVersion();
 
   auto const setInternalVersion = [&](uint64_t const version) {
-    _internalVersion.store(version);
+    auto const old =
+        _internalVersion.exchange(version, std::memory_order_release);
+    TRI_ASSERT(old <= version);
     _internalVersion.notify_all();
   };
 
@@ -295,8 +307,8 @@ uint64_t auth::UserManager::loadFromDB() noexcept {
 
 void auth::UserManager::checkIfUserDataIsAvailable() const {
   bool const noDataYetLoaded =
-      _internalVersion.load(std::memory_order_acquire) == 0;
-  if (noDataYetLoaded == true) {
+      _internalVersion.load(std::memory_order_relaxed) == 0;
+  if (noDataYetLoaded) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_STARTING_UP,
                                    "Cannot load users because the _users "
                                    "collection is not yet available");
@@ -413,20 +425,33 @@ VPackBuilder auth::UserManager::allUsers() {
 }
 
 void auth::UserManager::triggerCacheRevalidation() {
+  // Internally this function is called after a successful write/update to
+  // ensure that the changed data is loaded into the userCache. Before return.
   uint64_t const versionBeforeReload = globalVersion();
   triggerGlobalReload();
+  // We triggered a globalReload and can predict that at some point
+  // the HeartBeat will lead to an increment of the globalVersion through
+  // `setGlobalVersion`. So we just do it manually here.
   setGlobalVersion(versionBeforeReload + 1);
-  while (_internalVersion.load(std::memory_order_acquire) < globalVersion()) {
+
+  // After we increased the globalVersion we now have a minimal version that we
+  // want the internalVersion to be, so we now we wait.
+  uint64_t const versionAfterReload = versionBeforeReload + 1;
+  uint64_t currentInternalVersion =
+      _internalVersion.load(std::memory_order_acquire);
+  while (currentInternalVersion < versionAfterReload) {
     _internalVersion.wait(versionBeforeReload);
+    currentInternalVersion = _internalVersion.load(std::memory_order_acquire);
   }
-  TRI_IF_FAILURE("UserManager::FailReload") {
-    bool const internalVersionWasUpdated =
-        _internalVersion.load(std::memory_order_acquire) > versionBeforeReload;
-    bool const versionsAreEqual = _internalVersion == _globalVersion;
-    if (internalVersionWasUpdated && versionsAreEqual) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
+
+  // So basically:
+  // 1. We changed something on a user
+  // 2. We trigger a globalReload (Increment in Agency)
+  // 3. We overtake the HeartBeat - thread by calling setGlobalVersion manually
+  // 4. We wait until the internalVersion is at least the same as the
+  //    globalVersion that we called `setGlobalVersion` with.
+  // This makes sure that loadFromDB was called sometime after this function
+  // was called and before it returns.
 }
 
 void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
@@ -460,7 +485,7 @@ void auth::UserManager::triggerGlobalReload() const {
   AgencyCommResult const result =
       agency.sendTransactionWithFailover(incrementVersion);
 
-  if (result.successful() == false) {
+  if (!result.successful()) {
     LOG_TOPIC("d2f51", WARN, Logger::AUTHENTICATION)
         << "Sync/UserVersion could not be updated. " << result.errorMessage();
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
