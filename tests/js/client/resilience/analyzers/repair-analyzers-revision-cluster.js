@@ -67,7 +67,7 @@ function repairAnalyzersRevisionTestSuite () {
   }
 
   function waitForAllAgencyJobs() {
-    const prefix = "/arango";
+    const prefix = "arango";
     const paths = [
       "Target/ToDo/",
       "Target/Pending/",

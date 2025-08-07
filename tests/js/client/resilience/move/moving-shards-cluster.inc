@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo */
+/*global assertTrue, assertEqual, ArangoAgency, ArangoClusterInfo, GLOBAL */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -47,7 +47,8 @@ const {
   getDBServers,
   getAgents,
   getEndpointById,
-  getCoordinators
+  getCoordinators,
+  findCollectionServers
 } = require('@arangodb/test-helper');
 const { instanceRole } = require("@arangodb/testutils/instance");
 const IM = GLOBAL.instanceManager;
@@ -71,33 +72,6 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   var count = 0;
   var c = [];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief find out servers for a collection
-////////////////////////////////////////////////////////////////////////////////
-
-  function findCollectionServers(database, collection) {
-    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
-    var shard = Object.keys(cinfo.shards)[0];
-
-    if (replVersion === "2") {
-      var shardsToLogs = helper.getShardsToLogsMapping(database, cinfo.id);
-      const id = shardsToLogs[shard];
-      const spec = db._replicatedLog(id).status().specification.plan;
-      let servers = Object.keys(spec.participantsConfig.participants);
-      // make leader first server
-      if (spec.currentTerm && spec.currentTerm.leader) {
-        const leader = spec.currentTerm.leader.serverId;
-        let index = servers.indexOf(leader);
-        if (index !== -1) {
-          servers.splice(index, 1);
-        }
-        servers.unshift(leader);
-      }
-      return servers;
-    } else {
-      return cinfo.shards[shard];
-    }
-  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait for synchronous replication
@@ -1000,9 +974,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         const rebootId = AM.getServerRebootId(toResign);
 
         // now suspend that server
-        print('yyy')
         IM.stopServerWaitFailed(toResign);
-        print('xxxx')
         // Wait for the reboot id to be changed.
         waitForRebootIdChanged(toResign, rebootId);
 
