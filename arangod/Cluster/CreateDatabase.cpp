@@ -79,6 +79,9 @@ bool CreateDatabase::first() {
     return false;
   }
 
+  TRI_IF_FAILURE("CreateDatabase::delay") {
+    std::this_thread::sleep_for(std::chrono::seconds(15));
+  }
   Result res;
 
   try {
