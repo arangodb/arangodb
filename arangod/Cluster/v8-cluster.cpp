@@ -894,7 +894,7 @@ static void JS_systemCollectionsCreated(
         THROW_AGENCY_EXCEPTION(result);
       }
     } else {
-      AgencyCommResult result = comm.getValues(key, 0.0);
+      AgencyCommResult result = comm.getValues(key);
       if (!result.successful() &&
           result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
           !v8g->server().isStopping()) {
