@@ -1,6 +1,8 @@
 v3.11.14.2 (XXXX-XX-XX)
 -----------------------
 
+* Upgraded OpenSSL to 3.5.2 and OpenLDAP to 2.6.10.
+
 * Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
   coordinates for Point geometries.
 
