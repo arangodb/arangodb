@@ -4,6 +4,10 @@ devel
 * Deprecate rocksdb.transaction-lock-timeout option since we would
   internally change this to a different value.
 
+* Fix error message to use proper terminology order instead of mode.
+
+* FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is no longer included)
+
 * FE-636: bump http-proxy-middleware from 2.0.6 to 2.0.9 (latest 2.X version).
 
 * FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version)
