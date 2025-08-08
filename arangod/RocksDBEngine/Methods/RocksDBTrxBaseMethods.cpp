@@ -105,7 +105,7 @@ Result RocksDBTrxBaseMethods::beginTransaction() {
   TRI_ASSERT(_rocksTransaction != nullptr);
   TRI_ASSERT(_rocksTransaction->GetSnapshot() == nullptr);
 
-  if (!_state->options().delaySnapshot) {
+  if (!_state->options().avoidSnapshot) {
     // In some cases we delay acquiring the snapshot so we can lock the key(s)
     // _before_ we acquire the snapshot to prevent write-write conflicts. In all
     // other cases we acquire the snapshot right now to be consistent with the
@@ -197,7 +197,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
+  TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
   if (readOwnWrites == ReadOwnWrites::yes) {
     return _rocksTransaction->Get(ro, cf, key, val);
   }
@@ -210,7 +210,7 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
+  TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
   rocksdb::Status s = _rocksTransaction->GetForUpdate(ro, cf, key, val);
   if (s.ok()) {
     _memoryTracker.increaseMemoryUsage(
@@ -389,7 +389,7 @@ void RocksDBTrxBaseMethods::createTransaction() {
     // waiting for the contented striped mutex, increase it to a higher
     // value on followers that makes this situation unlikely.
     trxOpts.lock_timeout = 3000;
-  } else if (_state->options().delaySnapshot) {
+  } else if (_state->options().avoidSnapshot) {
     // for single operations we delay acquiring the snapshot so we can lock
     // the key _before_ we acquire the snapshot to prevent write-write
     // conflicts. in this case we obviously also want to use a higher lock
