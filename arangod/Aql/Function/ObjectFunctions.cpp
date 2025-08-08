@@ -189,6 +189,17 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
       }
 
       LOG_DEVEL << "Single array without recursion was called";
+
+
+      // increase memory before to have an outlook of whether or not the intermediate operation may overuse memory
+        uint64_t estimate = 0;
+        for (auto const& [k, v] : attributes) {
+            estimate += k.length() * sizeof(char) + v.valueByteSize();
+        }
+        increaseMemoryUsage(estimate);
+
+
+
       // then we output the object
       auto before = builder.buffer()->byteSize();
       {
@@ -203,6 +214,9 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         }
       }
       increaseMemoryUsage(builder.buffer()->byteSize() - before);
+
+        // give back the memory previously allocated as an estimate to not account the memory twice:
+        decreaseMemoryUsage(estimate);
 
     } else {
       // slow path for recursive merge

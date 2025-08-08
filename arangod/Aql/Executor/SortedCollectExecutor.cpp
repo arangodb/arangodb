@@ -187,6 +187,16 @@ void SortedCollectExecutor::CollectGroup::addLine(
     } else {
       // copy variables / keep variables into result register
 
+
+      // take into account memory usage before the operation so it will crash if overuses memory
+      uint64_t estimate = 0;
+      for (auto const& pair : infos.getInputVariables()) {
+          AqlValue v = input.getValue(pair.second);
+          estimate += pair.first.size() * sizeof(char) + v.memoryUsage();
+      }
+      infos.getResourceUsageScope().increase(estimate);
+
+
       auto before = _builder.buffer()->byteSize();
       _builder.openObject();
       for (auto const& pair : infos.getInputVariables()) {
@@ -208,6 +218,9 @@ void SortedCollectExecutor::CollectGroup::addLine(
       }
       _builder.close();
       infos.getResourceUsageScope().increase(_builder.buffer()->byteSize() - before);
+
+// give back the memory previously allocated as an estimate to not account the memory twice:
+        infos.getResourceUsageScope().decrease(estimate);
     }
   }
   TRI_IF_FAILURE("CollectGroup::addValues") {
