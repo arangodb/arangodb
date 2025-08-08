@@ -242,7 +242,6 @@ class agencyMgr {
     let keyStr = `/arango/${key}`;
     while (true) {
       let oldValue = this.getAt(key);
-      print(oldValue)
       try {
         let ret = this.write([[
           {
@@ -253,7 +252,7 @@ class agencyMgr {
           },
           {
             [[keyStr]]: {
-          'old': oldValue
+              'old': oldValue
             }
           }
         ]]);
