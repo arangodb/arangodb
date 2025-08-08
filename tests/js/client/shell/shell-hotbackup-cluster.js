@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertTrue, assertEqual, assertNotEqual, assertUndefined, assertNotUndefined, db*/
+/*global arango, assertTrue, assertEqual, assertNotEqual, assertUndefined, assertNotUndefined, db, GLOBAL */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test hotbackup in single server
