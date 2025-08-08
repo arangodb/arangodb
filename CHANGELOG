@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-636: bump http-proxy-middleware from 2.0.6 to 2.0.9 (latest 2.X version).
+
 * FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version)
 
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection
