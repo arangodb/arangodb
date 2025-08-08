@@ -26,6 +26,7 @@
 #include "Aql/CollectOptions.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Basics/ResourceUsage.h"
 
 #include <cstdint>
 #include <functional>
@@ -106,7 +107,8 @@ class CollectNode : public ExecutionNode {
       RegIdSet& writeableOutputRegisters) const;
 
   void calcAggregateTypes(
-      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes,
+      ResourceUsageScope& scope) const;
 
   std::vector<std::pair<std::string, RegisterId>> calcInputVariableNames()
       const;

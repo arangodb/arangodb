@@ -105,6 +105,7 @@ const DistinctCollectExecutor::Infos& DistinctCollectExecutor::infos()
 auto DistinctCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                           OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  LOG_DEVEL << "DistinctCollectExecutor was called";
   TRI_IF_FAILURE("DistinctCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

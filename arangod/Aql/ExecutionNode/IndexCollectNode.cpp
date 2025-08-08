@@ -101,6 +101,7 @@ std::unique_ptr<ExecutionBlock> IndexCollectNode::createBlockAggregationScan(
   infos.groups.reserve(_groups.size());
   infos.index = _index;
   infos.query = &engine.getQuery();
+  infos.usageScope = std::make_unique<ResourceUsageScope>(engine.getQuery().resourceMonitor(), 0);
 
   RegIdSet writableOutputRegisters;
   for (auto const& group : _groups) {

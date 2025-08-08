@@ -36,6 +36,8 @@
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 
+#include "Logger/LogMacros.h"
+
 #include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -993,23 +995,32 @@ AqlValue const& AqlItemBlock::getValueReference(
 }
 
 void AqlItemBlock::setValue(size_t index, RegisterId varNr,
-                            AqlValue const& value) {
+                            AqlValue const& value, bool countMemory) {
   TRI_ASSERT(varNr.isRegularRegister());
-  setValue(index, varNr.value(), value);
+  setValue(index, varNr.value(), value, countMemory);
 }
 
 void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
-                            AqlValue const& value) {
+                            AqlValue const& value, bool countMemory) {
   TRI_ASSERT(_data[getAddress(index, column)].isEmpty());
+  //LOG_DEVEL << "setValue was called";
 
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {
+    LOG_DEVEL << "requiresDestruction()";
     // note: this may create a new entry in _valueCount, which is fine
     auto& valueInfo = _valueCount[value.data()];
     if (++valueInfo.refCount == 1) {
+      LOG_DEVEL << "valueInfo.refCount == 1";
       // we just inserted the item
       size_t memoryUsage = value.memoryUsage();
-      increaseMemoryUsage(memoryUsage);
+      if (countMemory) {
+        LOG_DEVEL << "countMemory: " << memoryUsage;
+        increaseMemoryUsage(memoryUsage);
+      } else {
+        LOG_DEVEL << "not countMemory: " << memoryUsage << " current: " << resourceMonitor().current();
+        _memoryUsage += memoryUsage;
+      }
       valueInfo.setMemoryUsage(memoryUsage);
     }
   }
