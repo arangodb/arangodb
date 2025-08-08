@@ -225,10 +225,11 @@ class agencyMgr {
       },
     }]]);
   }
+  write(body) {
+    return this.postAgency("write", body);
+  }
   transact(body) {
-    print(JSON.stringify(body))
-    let ret = this.postAgency("transact", body);
-    print(ret)
+    return this.postAgency("transact", body);
   }
   increaseVersion(path) {
     return this.postAgency('write', [[{
@@ -238,22 +239,30 @@ class agencyMgr {
     }]]);
   }
   casValue(key, value) {
-    return this.unWrapQueriedItem(this.transact([[
-      {
-        [[`/arango/${key}`]]: {
-          'op': 'set',
-          'new': value,
-        },
-      },
-      {
-        [[`/arango/${key}`]]: {
-          'oldEmpty': true
-        }
+    let keyStr = `/arango/${key}`;
+    while (true) {
+      let oldValue = this.getAt(key);
+      try {
+        return this.write([[
+          {
+            [[keyStr]]: {
+              'op': 'set',
+              'new': oldValue + value,
+            },
+          },
+          {
+            [[keyStr]]: {
+          'old': oldValue
+            }
+          }
+        ]]).results;
+      } catch (ex) {
+        print(`request to casValue for ${key} failed: ${ex}, will retry`);
       }
-    ]])[0]);
+    }
   }
   uniqId(newValue) {
-    return this.casValue('Sync/LatestID', newValue);
+    return this.casValue('Sync/LatestID', newValue)[0];
   }
   delaySupervisionFailoverActions(value) {
     this.agencyInstances.forEach(agent => {
