@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual, assertFalse, assertTrue */
+/* global fail, assertEqual, assertNotEqual, assertFalse, assertTrue, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -27,8 +27,10 @@ let arangodb = require('@arangodb');
 let internal = require('internal');
 let _ = require('lodash');
 let db = arangodb.db;
-let { agency, getMetric, getEndpointById } = require('@arangodb/test-helper');
-  
+let { getMetric, getEndpointById } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
+
 const cn = 'UnitTestsCollection';
   
 function LeaderResignSuite() {
@@ -58,7 +60,7 @@ function LeaderResignSuite() {
 
 //      curl http://localhost:4001/_api/agency/write -d '[[{"/arango/Plan/Collections/_system/10043/shards/s10044":["_PRMR-434a57f2-199d-4289-be95-3ee6a2ec1ea2","PRMR-549e4fee-775f-4d8e-940c-afc3b4e5a7a9","PRMR-faa38bf9-5a6d-4e07-81be-ad59f8523ed9"], "/arango/Plan/Version":{"op":"increment"}}]]'; echo
       const planKey = `/arango/Plan/Collections/_system/${c._id}/shards/${shardId}`;
-      let planValue = agency.call("read", [[planKey]])[0].arango.Plan.Collections._system[c._id].shards[shardId];
+      let planValue = AM.call("read", [[planKey]])[0].arango.Plan.Collections._system[c._id].shards[shardId];
       assertEqual(expectedShards, planValue);
       
       let droppedFollowersBefore = getMetric(leader, "arangodb_dropped_followers_total");
@@ -69,14 +71,14 @@ function LeaderResignSuite() {
       // prepend underscore to server name
       shardsWithResignedLeader[0] = "_" + shardsWithResignedLeader[0];
       body[planKey] = {"op":"set", "new": shardsWithResignedLeader};
-      agency.call("write", [[body]]);
+      AM.call("write", [[body]]);
   
       // wait for servers to pick up the changes
       internal.sleep(5);
       
       // reactivate leader
       body[planKey] = {"op":"set", "new": expectedShards};
-      agency.call("write", [[body]]);
+      AM.call("write", [[body]]);
       
       // wait for servers to pick up the changes
       internal.sleep(5);
