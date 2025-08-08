@@ -44,7 +44,6 @@ function testSuite() {
       try { 
         // this executes all the calls from inside Foxx
         let res = arango.GET(`/_db/_system/${mount}/runInsideFoxx`);
-        print(res)
         let results = res.results;
         let cases = Object.keys(results);
         assertEqual(1, cases.length);
