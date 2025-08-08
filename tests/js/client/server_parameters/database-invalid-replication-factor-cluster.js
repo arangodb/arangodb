@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:true */
-/*global getOptions, assertEqual, assertTrue, assertFalse, fail */
+/*global getOptions, assertEqual, assertTrue, assertFalse, fail, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -38,6 +38,8 @@ const wait = require("internal").sleep;
 const errors = require("internal").errors;
 const helper = require("@arangodb/test-helper");
 const db = require("@arangodb").db;
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 function InvalidReplicationFactorTestSuite () {
   'use strict';
@@ -74,10 +76,10 @@ function InvalidReplicationFactorTestSuite () {
         "id": "3457693543845" // just assume this ID is not used otherwise
       };
       const key = "Plan/Databases/" + name;
-      helper.agency.set(key, data);
-      helper.agency.increaseVersion("Plan/Version");
+      AM.set(key, data);
+      AM.increaseVersion("Plan/Version");
 
-      let res = helper.agency.get(key).arango.Plan.Databases[name];
+      let res = AM.get(key).arango.Plan.Databases[name];
       assertEqual(res, data);
    
       const dbServers = helper.getEndpointsByType("dbserver").length;
@@ -86,7 +88,7 @@ function InvalidReplicationFactorTestSuite () {
       let tries = 0;
 
       while (++tries < 50) {
-        let res = helper.agency.get("Current/Databases").arango.Current.Databases;
+        let res = AM.get("Current/Databases").arango.Current.Databases;
         if (!res.hasOwnProperty(name)) {
           wait(0.5);
           continue;

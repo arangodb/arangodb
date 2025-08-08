@@ -67,7 +67,7 @@ function repairAnalyzersRevisionTestSuite () {
   }
 
   function waitForAllAgencyJobs() {
-    const prefix = arango.POST("/_admin/execute", `return global.ArangoAgency.prefix()`);
+    const prefix = "arango";
     const paths = [
       "Target/ToDo/",
       "Target/Pending/",
