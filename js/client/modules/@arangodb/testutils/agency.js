@@ -238,16 +238,17 @@ class agencyMgr {
       },
     }]]);
   }
-  casValue(key, value) {
+  casValue(key, deltaValue) {
     let keyStr = `/arango/${key}`;
     while (true) {
       let oldValue = this.getAt(key);
+      print(oldValue)
       try {
-        return this.write([[
+        let ret = this.write([[
           {
             [[keyStr]]: {
               'op': 'set',
-              'new': oldValue + value,
+              'new': oldValue + deltaValue,
             },
           },
           {
@@ -255,14 +256,15 @@ class agencyMgr {
           'old': oldValue
             }
           }
-        ]]).results;
+        ]]);
+        return oldValue;
       } catch (ex) {
         print(`request to casValue for ${key} failed: ${ex}, will retry`);
       }
     }
   }
-  uniqId(newValue) {
-    return this.casValue('Sync/LatestID', newValue)[0];
+  uniqId(deltaValue) {
+    return this.casValue('Sync/LatestID', deltaValue);
   }
   delaySupervisionFailoverActions(value) {
     this.agencyInstances.forEach(agent => {
