@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.5.2
+
 * FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is no longer included)
 
 * FE-636: bump http-proxy-middleware from 2.0.6 to 2.0.9 (latest 2.X version).
