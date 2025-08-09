@@ -46,10 +46,10 @@ flexible, extensible, and easily imported from your existing document database.
 **ArangoSearch** - Natively integrated cross-platform indexing, text-search and
 ranking engine for information retrieval, optimized for speed and memory.
 
-ArangoDB is available in a free and open-source **Community Edition**, as well
-as a commercial **Enterprise Edition** with additional features.
+ArangoDB is available in a free and fully featured **Community Edition** as well
+as an **Enterprise Edition** for commercial use and without a dataset size limit.
 
-### Community Edition features
+### Core Features
 
 - **Horizontal scalability**: Seamlessly shard your data across multiple machines.
 - **High availability** and **resilience**: Replicate data to multiple cluster
@@ -71,12 +71,11 @@ as a commercial **Enterprise Edition** with additional features.
 - Easy to use **web interface** and **command-line tools** for interaction
   with the server.
 
-### Enterprise Edition features
+### Scalability Features
 
 Focus on solving enterprise-scale problems for mission critical workloads using
-secure graph data. The Enterprise Edition has all the features of the
-Community Edition and offers additional features for performance, compliance,
-and security, as well as further query capabilities.
+secure graph data. ArangoDB offers special features for performance, compliance,
+and security, as well as advanced query capabilities.
 
 - Smartly shard and replicate graphs and datasets with features like
   **EnterpriseGraphs**, **SmartGraphs**, and **SmartJoins** for lightning fast
