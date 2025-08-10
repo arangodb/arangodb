@@ -1,6 +1,28 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.5.2
+
+* Fix error message to use proper terminology order instead of mode.
+
+* FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is no longer included)
+
+* FE-636: bump http-proxy-middleware from 2.0.6 to 2.0.9 (latest 2.X version).
+
+* FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version)
+
+* Fix BTS-2201: Make aggreate collect queries work again on an empty collection
+	that has an	index used in the query.
+
+* Fix BTS-2183: Fix restoring the dump from instance when vector index feature
+  is enabled to instance where it is disabled.
+
+* IResearch: Fix for address_table memory over-allocation.
+
+* Fix miscounting bug for number of SynchronizeShard jobs scheduled.
+  This fixes BTS-2202. The bug could show up as a dbserver not syncing
+  its follower shards with the leader.
+
 * Fix BTS-2051: Fix error message when creating vector index without data.
 
 * Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,

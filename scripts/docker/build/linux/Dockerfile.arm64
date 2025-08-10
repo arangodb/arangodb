@@ -155,7 +155,7 @@ COPY --from=openmp /opt/omp /opt/omp
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.5", "0" ]
+RUN [ "/tools/install.sh", "3.5", "2" ]
 
 COPY ./scripts /scripts
 
