@@ -1,6 +1,11 @@
 devel
 -----
 
+* Rebuilt included rclone v1.65.2 with go1.23.11 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.13-preview-1.
+
 * Upgraded OpenSSL to 3.5.2
 
 * Fix error message to use proper terminology order instead of mode.
