@@ -53,6 +53,10 @@ const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
 const seconds = x => x * 1000;
 
+const shardIdToLogId = function (shardId) {
+  return shardId.slice(1);
+};
+
 class agencyMgr {
   constructor(options, wholeCluster) {
     this.options = options;
@@ -98,7 +102,7 @@ class agencyMgr {
     let count = 0;
     let result = null;
     while (count < maxTries) {
-      result = checkFn();
+      result = checkFn(this);
       if (result === true || result === undefined) {
         return result;
       }
@@ -361,9 +365,9 @@ class agencyMgr {
  *   }}
  */
   readReplicatedLogAgency(database, logId) {
-    let target = this.get(`Target/ReplicatedLogs/${database}/${logId}`);
-    let plan = this.get(`Plan/ReplicatedLogs/${database}/${logId}`);
-    let current = this.get(`Current/ReplicatedLogs/${database}/${logId}`);
+    let target = this.getAt(`Target/ReplicatedLogs/${database}/${logId}`);
+    let plan = this.getAt(`Plan/ReplicatedLogs/${database}/${logId}`);
+    let current = this.getAt(`Current/ReplicatedLogs/${database}/${logId}`);
     return {target, plan, current};
   }
 
@@ -410,10 +414,11 @@ class agencyMgr {
       }
       return true;
     };
-  };
+  }
+
   replicatedLogLeaderEstablished(database, logId, term, participants) {
-    return function () {
-      let {plan, current} = this.readReplicatedLogAgency(database, logId);
+    return function (inst) {
+      let {plan, current} = inst.readReplicatedLogAgency(database, logId);
       if (current === undefined) {
         return Error("current not yet defined");
       }
@@ -783,6 +788,60 @@ class agencyMgr {
     return JSON.parse(req["body"])[0];
   }
 
+  getShardsToLogsMapping(dbName, colId) {
+    const colPlan = this.getAt(`Plan/Collections/${dbName}/${colId}`);
+    let mapping = {};
+    if (colPlan.hasOwnProperty("groupId")) {
+      const groupId = colPlan.groupId;
+      const shards = colPlan.shardsR2;
+      const colGroup = this.getAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
+      const shardSheaves = colGroup.shardSheaves;
+      for (let idx = 0; idx < shards.length; ++idx) {
+        mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
+      }
+    } else {
+      // Legacy code, supporting system collections
+      const shards = colPlan.shards;
+      for (const [shardId, _] of Object.entries(shards)) {
+        mapping[shardId] = shardIdToLogId(shardId);
+      }
+    }
+    return mapping;
+  }
+
+  getCollectionShardsAndLogs(db, collection) {
+    const shards = collection.shards();
+    const shardsToLogs = this.getShardsToLogsMapping(db._name(), collection._id);
+    const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
+    return {shards, shardsToLogs, logs};
+  }
+
+  /**
+   * Causes underlying replicated logs to trigger leader recovery.
+   */
+  bumpTermOfLogsAndWaitForConfirmation(dbn, col) {
+    const {numberOfShards, isSmart} = col.properties();
+    if (isSmart && numberOfShards === 0) {
+      // Adjust for SmartEdgeCollections
+      col = db._collection(`_local_${col.name()}`);
+    }
+    const shards = col.shards();
+    const shardsToLogs = this.getShardsToLogsMapping(dbn, col._id);
+    const stateMachineIds = shards.map(s => shardsToLogs[s]);
+
+    const increaseTerm = (stateId) => this.triggerLeaderElection(dbn, stateId);
+    const clearOldLeader = (stateId) => this.wholeCluster.unsetLeader(dbn, stateId);
+
+    // Clear the old leader, so it doesn't get back automatically.
+    stateMachineIds.forEach(clearOldLeader);
+    stateMachineIds.forEach(increaseTerm);
+    const leaderReady = function (stateId, inst) {
+      return inst.replicatedLogLeaderEstablished(dbn, stateId, undefined, []);
+    };
+
+    stateMachineIds.forEach(x => this.waitFor(leaderReady(x, this)));
+  }
+  
   removeServerFromAgency(serverId) {
     // Make sure we remove the server
     for (let i = 0; i < 10; ++i) {
