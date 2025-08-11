@@ -809,7 +809,7 @@ exports.findCollectionServers = function (database, collection) {
   var cinfo = exports.arangoClusterInfoGetCollectionInfo(database, collection);
   var shard = Object.keys(cinfo.shards)[0];
 
-  if (false) { // TODO: replVersion === "2") {
+  if (replVersion === "2") {
     var shardsToLogs = getShardsToLogsMapping(database, cinfo.id);
     const id = shardsToLogs[shard];
     const spec = db._replicatedLog(id).status().specification.plan;
