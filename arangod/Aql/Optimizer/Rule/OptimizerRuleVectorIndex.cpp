@@ -32,6 +32,7 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
@@ -46,7 +47,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE_ENABLED false
+#define LOG_RULE_ENABLED true
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
@@ -256,11 +257,27 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
     // check that enumerateColNode has both sort and limit
     auto* currentNode = enumerateCollectionNode->getFirstParent();
-    // skip over some calculation nodes
-    while (currentNode != nullptr &&
-           currentNode->getType() == EN::CALCULATION) {
+    const auto skipOverCalculationNodes = [&currentNode] {
+      while (currentNode != nullptr &&
+             currentNode->getType() == EN::CALCULATION) {
+        currentNode = currentNode->getFirstParent();
+      }
+    };
+    skipOverCalculationNodes();
+
+    // We tolerate post filtering
+    ExecutionNode* maybeFilterNode{nullptr};
+    if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
+      // TODO move this in searchParameters detection
+      LOG_TOPIC("b15ac", WARN, Logger::AQL)
+          << "When using filtering with vector index it is recommended to "
+             "enable "
+             "iterative mode, e.g. APPROX_NEAR_L2(..., ..., {iterative: true, "
+             "maxNProbe: 10})";
+      maybeFilterNode = currentNode;
       currentNode = currentNode->getFirstParent();
     }
+    skipOverCalculationNodes();
 
     if (currentNode == nullptr || currentNode->getType() != EN::SORT) {
       LOG_RULE << "DID NOT FIND SORT NODE, but instead "
@@ -313,17 +330,41 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       auto limit = limitNode->limit();
       auto* inVariable = plan->getAst()->variables()->createTemporaryVariable();
 
+      LOG_DEVEL << "SHOW PLAN";
+      plan->show();
       auto* queryPointCalculationNode = plan->createNode<CalculationNode>(
           plan.get(), plan->nextId(),
           std::make_unique<Expression>(plan->getAst(),
                                        approximatedAttributeExpression),
           inVariable);
 
+      // Remove filter node
+      // Take expression from CalculationNode and move it into
+      // EnumerateNearVectorNode
+      Expression* filterExpression{nullptr};
+      if (maybeFilterNode) {
+        // auto filterNode = ExecutionNode::castTo<FilterNode
+        // const*>(maybeFilterNode);
+        auto* calculationNode = maybeFilterNode->getFirstParent();
+        // This is wrong I need to check that the input variable of FilterNode
+        // is same as output of CalculationNode
+        TRI_ASSERT(calculationNode != nullptr &&
+                   calculationNode->getType() == EN::CALCULATION)
+            << "Can we ever have a FilterNode which does not depend on "
+               "CalculationNode?";
+        auto const* calcNode =
+            ExecutionNode::castTo<CalculationNode const*>(calculationNode);
+        LOG_DEVEL << "Expression calcNode: " << calcNode->expression();
+        filterExpression = calcNode->expression();
+
+        plan->unlinkNode(maybeFilterNode);
+        plan->unlinkNode(calculationNode);
+      }
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
           limitNode->offset(), std::move(searchParameters),
-          enumerateCollectionNode->collection(), index);
+          enumerateCollectionNode->collection(), index, filterExpression);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(
@@ -342,6 +383,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       plan->unlinkNode(distanceCalculationNode);
 
       modified = true;
+      LOG_DEVEL << "After optimizing";
+      plan->show();
       break;
     }
   }
