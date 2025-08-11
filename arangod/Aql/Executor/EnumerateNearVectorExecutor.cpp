@@ -102,7 +102,8 @@ void EnumerateNearVectorsExecutor::searchResults() {
 
   std::tie(_labels, _distances) = vectorIndex->readBatch(
       _inputRowConverted, _infos.searchParameters, mthds, &_trx,
-      _collection->getCollection(), 1, _infos.getNumberOfResults());
+      _collection->getCollection(), 1, _infos.getNumberOfResults(),
+      _infos.filterExpression);
   _currentProcessedResultCount = 0;
   TRI_ASSERT(hasResults());
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;

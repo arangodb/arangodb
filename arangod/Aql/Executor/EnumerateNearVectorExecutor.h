@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Aql/Expression.h"
 #include "Aql/QueryContext.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/ExecutionBlock.h"
@@ -47,7 +48,7 @@ struct EnumerateNearVectorsExecutorInfos {
       RegisterId inNmDocId, RegisterId outDocRegId, RegisterId outDistanceRegId,
       transaction::Methods::IndexHandle index, QueryContext& queryContext,
       aql::Collection const* collection, std::size_t topK, std::size_t offset,
-      SearchParameters searchParameters)
+      SearchParameters searchParameters, Expression* filterExpression)
       : inputReg(inNmDocId),
         outDocumentIdReg(outDocRegId),
         outDistancesReg(outDistanceRegId),
@@ -56,7 +57,8 @@ struct EnumerateNearVectorsExecutorInfos {
         collection(collection),
         topK(topK),
         offset(offset),
-        searchParameters(searchParameters) {}
+        searchParameters(searchParameters),
+        filterExpression(filterExpression) {}
 
   EnumerateNearVectorsExecutorInfos() = delete;
   EnumerateNearVectorsExecutorInfos(EnumerateNearVectorsExecutorInfos&&) =
@@ -81,6 +83,7 @@ struct EnumerateNearVectorsExecutorInfos {
   std::size_t topK;
   std::size_t offset;
   SearchParameters searchParameters;
+  Expression* filterExpression;
 };
 
 class EnumerateNearVectorsExecutor {
