@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertTrue, assertEqual, assertNotEqual, assertUndefined, assertNotUndefined, db*/
+/*global arango, assertTrue, assertEqual, assertNotEqual, assertUndefined, assertNotUndefined, db, GLOBAL */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test hotbackup in single server
@@ -23,9 +23,9 @@
 
 const jsunity = require('jsunity');
 const serverHelper = require('@arangodb/test-helper');
-const {readAgencyValueAt} = require("@arangodb/testutils/replicated-logs-helper");
 const {errors} = require('internal');
-
+const IM = global.instanceManager;
+const AM = IM.agencyMgr;
 'use strict';
 
 function HotBackupSuite () {
@@ -69,9 +69,9 @@ function HotBackupSuite () {
         // Now create the regression. In version 3.6 the entry /arango/Plan/Analyzers did not exist.
 
 
-        assertNotUndefined(readAgencyValueAt("Plan/Analyzers"), "We should have analyzers in plan by default.");
-        serverHelper.agency.remove("Plan/Analyzers");
-        assertUndefined(readAgencyValueAt("Plan/Analyzers"), "Failed to simulate 3.6 behaviour by removing the analyzers entry");
+        assertNotUndefined(AM.getAt("Plan/Analyzers"), "We should have analyzers in plan by default.");
+        AM.remove("Plan/Analyzers");
+        assertUndefined(AM.getAt("Plan/Analyzers"), "Failed to simulate 3.6 behaviour by removing the analyzers entry");
 
         const backupRegressed = arango.POST("/_admin/backup/create", {}).result;
 
