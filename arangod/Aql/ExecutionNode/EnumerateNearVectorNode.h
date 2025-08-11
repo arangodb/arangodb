@@ -51,7 +51,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           std::size_t limit, bool ascending, std::size_t offset,
                           SearchParameters searchParameters,
                           aql::Collection const* collection,
-                          transaction::Methods::IndexHandle indexHandle);
+                          transaction::Methods::IndexHandle indexHandle,
+                          Expression* filterExpression);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -109,5 +110,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief selected index for vector search
   transaction::Methods::IndexHandle _index;
+
+  // @brief if filter was set this is the filtering expression
+  Expression* _filterExpression;
 };
 }  // namespace arangodb::aql

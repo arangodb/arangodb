@@ -56,7 +56,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     Variable const* documentOutVariable, Variable const* distanceOutVariable,
     std::size_t limit, bool ascending, std::size_t offset,
     SearchParameters searchParameters, aql::Collection const* collection,
-    transaction::Methods::IndexHandle indexHandle)
+    transaction::Methods::IndexHandle indexHandle, Expression* filterExpression)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
       _inVariable(inVariable),
@@ -67,7 +67,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _ascending(ascending),
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
-      _index(std::move(indexHandle)) {}
+      _index(std::move(indexHandle)),
+      _filterExpression(filterExpression) {}
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
   return ENUMERATE_NEAR_VECTORS;
@@ -110,7 +111,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
       engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
-      _searchParameters);
+      _searchParameters, _filterExpression);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
@@ -123,7 +124,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index);
+      collection(), _index, _filterExpression);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
