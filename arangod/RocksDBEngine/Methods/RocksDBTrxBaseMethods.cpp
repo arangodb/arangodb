@@ -375,13 +375,6 @@ void RocksDBTrxBaseMethods::cleanupTransaction() {
   _rocksTransaction = nullptr;
   _memoryTracker.reset();
 }
-// write operations for the same keys on followers should normally be
-// serialized by the key locks held on the leaders. so we don't expect
-// to run into lock conflicts on followers. the lock_timeout does
-// nothing here since the RocksDB does not differentiate between
-// lock timeout on striped_mutex for PointLockManager and on single documents,
-// this timeout is ignored unless it is set to 0, then we try_wait
-// otherwise we just lock.
 
 void RocksDBTrxBaseMethods::createTransaction() {
   // start rocks transaction
@@ -390,11 +383,11 @@ void RocksDBTrxBaseMethods::createTransaction() {
   if (_state->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX)) {
     // write operations for the same keys on followers should normally be
     // serialized by the key locks held on the leaders. so we don't expect
-    // to run into lock conflicts on followers. however, the lock_timeout
-    // set here also includes locking the striped mutex for _all_ key locks,
-    // which may be contended under load. to avoid timeouts caused by
-    // waiting for the contented striped mutex, increase it to a higher
-    // value on followers that makes this situation unlikely.
+    // to run into lock conflicts on followers. the lock_timeout doesn't do
+    // much here since the RocksDB does not differentiate between
+    // lock timeout on striped_mutex for PointLockManager and on single
+    // documents, this timeout is ignored unless it is set to 0, then we
+    // try_wait otherwise we just lock.
     trxOpts.lock_timeout = 3000;
   } else if (_state->options().avoidSnapshot) {
     // for single operations we delay acquiring the snapshot so we can lock
@@ -406,6 +399,9 @@ void RocksDBTrxBaseMethods::createTransaction() {
   } else {
     // when trying to lock the same keys, we want to return quickly and not
     // spend the default 1000ms before giving up
+    // Setting lock_timeout to 0 is not an option because then RocksDB uses
+    // try_lock and if it cannot acquire the lock it fails which can lead
+    // to spurious failures without having conflicting transactions.
     trxOpts.lock_timeout = 1;
   }
 
