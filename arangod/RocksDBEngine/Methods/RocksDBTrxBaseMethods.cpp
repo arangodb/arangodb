@@ -400,8 +400,9 @@ void RocksDBTrxBaseMethods::createTransaction() {
     // when trying to lock the same keys, we want to return quickly and not
     // spend the default 1000ms before giving up
     // Setting lock_timeout to 0 is not an option because then RocksDB uses
-    // try_lock and if it cannot acquire the lock it fails which can lead
-    // to spurious failures without having conflicting transactions.
+    // try_lock on the striped mutex, and if it cannot acquire the lock it
+    // fails which can lead to spurious failures without having
+    // conflicting transactions.
     trxOpts.lock_timeout = 1;
   }
 
