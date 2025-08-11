@@ -805,7 +805,7 @@ const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
 };
 
 
-exports.findCollectionServers = function (database, collection) {
+exports.findCollectionServers = function (database, collection, replVersion="1") {
   var cinfo = exports.arangoClusterInfoGetCollectionInfo(database, collection);
   var shard = Object.keys(cinfo.shards)[0];
 

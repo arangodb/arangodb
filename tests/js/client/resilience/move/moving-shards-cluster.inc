@@ -218,7 +218,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     }
     for (var i = fromCollNr; i <= toCollNr; ++i) {
       arangoClusterInfoFlush();
-      var servers = findCollectionServers(dbn, c[i].name());
+      var servers = findCollectionServers(dbn, c[i].name(), replVersion);
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
         return false;
       }
@@ -249,7 +249,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     let result = [];
     for (var i = 0; i <  c.length ; ++i) {
       arangoClusterInfoFlush();
-      var servers = findCollectionServers(dbn, c[i].name());
+      var servers = findCollectionServers(dbn, c[i].name(), replVersion);
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
         result.push(c[i].name());
       }
@@ -313,7 +313,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         while (--count > 0) {
           wait(isCov ? 1.5 : 1.0);
           arangoClusterInfoFlush();
-          var servers = findCollectionServers(dbn, c[i].name());
+          var servers = findCollectionServers(dbn, c[i].name(), replVersion);
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
             /*var collInfo =
@@ -631,7 +631,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function createSomeCollections(n, nrShards, replFactor, useData, otherNumDocuments = 0) {
     assertEqual('boolean', typeof useData);
-    var systemCollServers = findCollectionServers(dbn, "_graphs");
+    var systemCollServers = findCollectionServers(dbn, "_graphs", replVersion);
     console.info("System collections use servers:", systemCollServers);
     for (var i = 0; i < n; ++i) {
       ++count;
@@ -650,7 +650,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           coll.insert(_.range(0, nd).map(v => ({value: v, x: "someString" + v})));
         }
 
-        var servers = findCollectionServers(dbn, name);
+        var servers = findCollectionServers(dbn, name, replVersion);
         console.info("Test collection uses servers:", servers);
         if (_.intersection(systemCollServers, servers).length === 0) {
           c.push(coll);
@@ -811,7 +811,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testMoveShardFromFollower: function () {
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[0].name());
+      var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -829,7 +829,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testMoveShardFromLeader: function () {
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[0].name());
+      var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -848,7 +848,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testMoveShardFromLeaderNoReplication: function () {
       createSomeCollections(1, 1, 1, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -867,7 +867,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testMoveShardFromFollowerRepl3_1: function () {
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -886,7 +886,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testMoveShardFromRepl3_2: function () {
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[2];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -905,7 +905,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testMoveShardFromLeaderRepl: function () {
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -924,7 +924,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testMoveShardFromLeaderToFollower: function () {
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = servers[1];
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -943,7 +943,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testResignLeadership: function () {
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[0].name());
+      var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var toResign = servers[0];
       assertTrue(resignLeadership(toResign));
       assertTrue(testServerNoLeader(toResign));
@@ -961,7 +961,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       try {
         AM.delaySupervisionFailoverActions(120);
 
-        var servers = findCollectionServers(dbn, c[0].name());
+        var servers = findCollectionServers(dbn, c[0].name(), replVersion);
         var toResign = servers[0];
         const shards = findLeaderShardsForServer(toResign);
         assertTrue(resignLeadership(toResign, true));
@@ -997,7 +997,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testCleanOutFollower: function () {
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[0].name());
+      var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var toClean = servers[1];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -1011,7 +1011,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
     testCleanOutLeader: function () {
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[0].name());
+      var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -1026,7 +1026,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testCleanOutMultipleCollections: function () {
       createSomeCollections(10, 1, 2, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -1041,7 +1041,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testCleanOut3Replicas: function () {
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -1056,7 +1056,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testCleanOutMultipleShards: function () {
       createSomeCollections(1, 10, 2, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var toClean = servers[1];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -1071,7 +1071,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testCleanOutNoReplication: function () {
       createSomeCollections(1, 1, 1, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var toClean = servers[0];
       assertTrue(cleanOutServer(toClean));
       assertTrue(testServerEmpty(toClean, true));
@@ -1086,7 +1086,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     testMaintenanceMode: function () {
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -1127,7 +1127,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var leader = servers[0];
       var fromServer = servers[1];
       var leaderUrl = getUrlById(leader);
@@ -1173,7 +1173,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
       var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -1209,7 +1209,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         let otherNumDocuments = 100000;
         createSomeCollections(1, 1, 3, useData, otherNumDocuments);
         assertTrue(waitForSynchronousReplication(dbn));
-        var servers = findCollectionServers(dbn, c[0].name());
+        var servers = findCollectionServers(dbn, c[0].name(), replVersion);
         var fromServer = servers[0];
         var toServer = findServerNotOnList(servers);
         var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -1246,7 +1246,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         let otherNumDocuments = 100000;
         createSomeCollections(1, 1, 3, useData, otherNumDocuments);
         assertTrue(waitForSynchronousReplication(dbn));
-        var servers = findCollectionServers(dbn, c[0].name());
+        var servers = findCollectionServers(dbn, c[0].name(), replVersion);
         var fromServer = servers[0];
         var toServer = findServerNotOnList(servers);
         var cinfo = arangoClusterInfoGetCollectionInfo(
@@ -1288,7 +1288,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
       createSomeCollections(1, 1, 3, useData);
       assertTrue(waitForSynchronousReplication(dbn));
-      var servers = findCollectionServers(dbn, c[1].name());
+      var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var cinfo = arangoClusterInfoGetCollectionInfo(
           dbn, c[1].name());
@@ -1326,7 +1326,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         let otherNumDocuments = 100000;
         createSomeCollections(1, 1, 3, useData, otherNumDocuments);
         assertTrue(waitForSynchronousReplication(dbn));
-        var servers = findCollectionServers(dbn, c[0].name());
+        var servers = findCollectionServers(dbn, c[0].name(), replVersion);
         var fromServer = servers[0];
         var cinfo = arangoClusterInfoGetCollectionInfo(
             dbn, c[0].name());
