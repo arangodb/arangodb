@@ -387,7 +387,7 @@ void RocksDBTrxBaseMethods::createTransaction() {
     // much here since the RocksDB does not differentiate between
     // lock timeout on striped_mutex for PointLockManager and on single
     // documents, this timeout is ignored unless it is set to 0, then we
-    // try_wait otherwise we just lock.
+    // try_lock otherwise we just lock.
     trxOpts.lock_timeout = 3000;
   } else if (_state->options().avoidSnapshot) {
     // for single operations we delay acquiring the snapshot so we can lock
