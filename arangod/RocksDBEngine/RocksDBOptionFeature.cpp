@@ -414,10 +414,8 @@ value of `16` if the number of cores is lower.)");
           "If positive, specifies the wait timeout in milliseconds when "
           " a transaction attempts to lock a document. A negative value "
           "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 "
-          "no "
-          "timeout). This is deprecated since we internally controle the lock "
-          "timeout "
-          "for diffrent cases.",
+          "no timeout). This is deprecated since we internally control the "
+          "lock timeout for different cases.",
           new Int64Parameter(&_transactionLockTimeout),
           arangodb::options::makeFlags(
               arangodb::options::Flags::DefaultNoComponents,
