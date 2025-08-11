@@ -408,18 +408,21 @@ values to reduce a potential contention in the lock manager.
 The option defaults to the number of available cores, but is increased to a
 value of `16` if the number of cores is lower.)");
 
-  options->addOption(
-      "--rocksdb.transaction-lock-timeout",
-      "If positive, specifies the wait timeout in milliseconds when "
-      " a transaction attempts to lock a document. A negative value "
-      "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 no "
-      "timeout)",
-      new Int64Parameter(&_transactionLockTimeout),
-      arangodb::options::makeFlags(
-          arangodb::options::Flags::DefaultNoComponents,
-          arangodb::options::Flags::OnAgent,
-          arangodb::options::Flags::OnDBServer,
-          arangodb::options::Flags::OnSingle));
+  options
+      ->addOption(
+          "--rocksdb.transaction-lock-timeout",
+          "If positive, specifies the wait timeout in milliseconds when "
+          " a transaction attempts to lock a document. A negative value "
+          "is not recommended as it can lead to deadlocks (0 = no waiting, < 0 "
+          "no timeout). This is deprecated since we internally control the "
+          "lock timeout for different cases.",
+          new Int64Parameter(&_transactionLockTimeout),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnAgent,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setDeprecatedIn(31206);
 
   options
       ->addOption(
