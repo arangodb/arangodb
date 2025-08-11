@@ -375,6 +375,13 @@ void RocksDBTrxBaseMethods::cleanupTransaction() {
   _rocksTransaction = nullptr;
   _memoryTracker.reset();
 }
+// write operations for the same keys on followers should normally be
+// serialized by the key locks held on the leaders. so we don't expect
+// to run into lock conflicts on followers. the lock_timeout does
+// nothing here since the RocksDB does not differentiate between
+// lock timeout on striped_mutex for PointLockManager and on single documents,
+// this timeout is ignored unless it is set to 0, then we try_wait
+// otherwise we just lock.
 
 void RocksDBTrxBaseMethods::createTransaction() {
   // start rocks transaction
