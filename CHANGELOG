@@ -4,6 +4,13 @@ devel
 * Deprecate rocksdb.transaction-lock-timeout option since we would
   internally change this to a different value.
 
+* Rebuilt included rclone v1.65.2 with go1.23.11 and non-vulnerable
+  dependencies.
+
+* Updated ArangoDB Starter to v0.19.13-preview-1.
+
+* Upgraded OpenSSL to 3.5.2
+
 * Fix error message to use proper terminology order instead of mode.
 
 * FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is no longer included)
