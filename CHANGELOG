@@ -7,7 +7,7 @@ devel
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
   dependencies.
 
-* Updated ArangoDB Starter to v0.19.13-preview-2.
+* Updated ArangoDB Starter to v0.19.13-preview-3.
 
 * Upgraded OpenSSL to 3.5.2
 
