@@ -91,13 +91,13 @@ function verifySstSuite() {
       const res = arango.POST("/_admin/backup/create", {});
       if (!require("internal").isEnterprise()) {
         // Hotbackup is an enterprise feature this call should respond with 404.
-        assertTrue(req.error);
-        assertEqual(req.code, 404);
+        assertTrue(res.error);
+        assertEqual(res.code, 404);
         return;
       }
       assertFalse(res.error, res);
-      assertEqual(200, res.code, res);
-      assertTrue(res.parsedBody.nrFiles > 0, res);
+      assertEqual(201, res.code, res);
+      assertTrue(res.result.nrFiles > 0, res);
   
       const verifySsts = (dir) => {
         const args = [
