@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, assertEqual, assertNotEqual, assertFalse, assertTrue */
+/* global fail, assertEqual, assertNotEqual, assertFalse, assertTrue, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,6 +29,7 @@ let arangodb = require('@arangodb');
 let internal = require('internal');
 let db = arangodb.db;
 let { agency } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
   
 const cn = 'UnitTestsCollection';
   
@@ -54,7 +55,7 @@ function DropDatabaseWithFailedSuite() {
                         error: false, errorMessage: "", errorNum: 0 };
       let body = {"/arango/Current/Version":{"op":"increment"}};
       body[currentKey] = {"op":"set", "new": currentValue};
-      agency.call("write", [[body]]);
+      IM.agencyMgr.call("write", [[body]]);
 
       internal.wait(5);   // Ensure that all coordinators have seen the value!
   

@@ -46,7 +46,7 @@ function testSuite() {
         let res = arango.GET(`/_db/_system/${mount}/runInsideFoxx`);
         let results = res.results;
         let cases = Object.keys(results);
-        assertEqual(19, cases.length);
+        assertEqual(1, cases.length);
         cases.forEach((c) => {
           assertTrue(results[c], results);
         });
@@ -64,7 +64,7 @@ function testSuite() {
         let res = arango.GET(`/_db/_system/${mount}/runInsideFoxxTransaction`);
         let results = res.results;
         let cases = Object.keys(results);
-        assertEqual(19, cases.length);
+        assertEqual(1, cases.length);
         cases.forEach((c) => {
           assertTrue(results[c], results);
         });
@@ -103,21 +103,6 @@ function testSuite() {
             return result;
           };
 
-          // ArangoAgency
-          ["agency", "read", "write", "transact", "transient", "cas", "get", "createDirectory",
-           "increaseVersion", "remove", "endpoints", "set", "uniqid"].forEach((func) => {
-            testCases["ArangoAgency" + func] = function() {
-              let testee = global.ArangoAgency;
-              return agencyCall(testee[func]);
-            };
-          });
-          // ArangoAgent
-          ["enabled", "leading", "read", "write", "state"].forEach((func) => {
-            testCases["ArangoAgent" + func] = function() {
-              let testee = global.ArangoAgent;
-              return agencyCall(testee[func]);
-            };
-          });
           let results = {};
           Object.keys(testCases).forEach((tc) => {
             results[tc] = testCases[tc]();
@@ -126,7 +111,7 @@ function testSuite() {
         }
       });
       let cases = Object.keys(results);
-      assertEqual(19, cases.length);
+      assertEqual(1, cases.length);
       cases.forEach((c) => {
         assertTrue(results[c], results);
       });
@@ -170,21 +155,6 @@ function testSuite() {
               return result;
             };
 
-            // ArangoAgency
-            ["agency", "read", "write", "transact", "transient", "cas", "get", "createDirectory",
-             "increaseVersion", "remove", "endpoints", "set", "uniqid"].forEach((func) => {
-              testCases["ArangoAgency" + func] = function() {
-                let testee = global.ArangoAgency;
-                return agencyCall(testee[func]);
-              };
-            });
-            // ArangoAgent
-            ["enabled", "leading", "read", "write", "state"].forEach((func) => {
-              testCases["ArangoAgent" + func] = function() {
-                let testee = global.ArangoAgent;
-                return agencyCall(testee[func]);
-              };
-            });
             let results = [];
             Object.keys(testCases).forEach((tc) => {
               results.push({ name: tc, result: testCases[tc]() });
@@ -202,7 +172,7 @@ function testSuite() {
           internal.sleep(0.5);
         }
 
-        assertEqual(19, db[cn].count());
+        assertEqual(1, db[cn].count());
         db[cn].toArray().forEach((doc) => {
           assertTrue(doc.result, doc);
         });
