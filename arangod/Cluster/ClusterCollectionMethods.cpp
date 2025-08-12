@@ -366,8 +366,37 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
             << "createCollectionCoordinator, Plan changed, waiting for "
                "success...";
 
+        const auto& agencyCache =
+            server.getFeature<ClusterFeature>().agencyCache();
+        auto baseCollectionPath =
+            std::string("Plan/Collections/") + std::string(databaseName) + "/";
+
         // Now "busy-loop"
         while (!server.isStopping()) {
+          //  Between the starting of collection creation process and its
+          //  completion, if the agency supervision momentarily marks the
+          //  coordinator as BAD (maybe because it is unreachable due to n/w
+          //  issues), the agency supervision will delete the collection name(s)
+          //  from Plan/Collections/<database>. When the coordinator comes back,
+          //  it will continue waiting endlessly for the collection(s) that will
+          //  never be created.
+          //
+          //  Check if the collection name(s) is still present in Plan, report
+          //  error otherwise.
+          //
+          {
+            auto [query, index] = agencyCache.get(baseCollectionPath);
+            auto slice = query->slice();
+            for (const auto& coll : colls) {
+              const auto& collId = coll.getCID();
+              if (!slice.hasKey(collId)) {
+                callbackInfos->addReport(
+                    collId,
+                    Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_COLLECTION));
+              }
+            }
+          }
+
           auto maybeFinalResult = callbackInfos->getResultIfAllReported();
           if (maybeFinalResult.has_value()) {
             // We have a final result. we are complete
@@ -424,8 +453,6 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
                 }
                 // get current raft index; this is at least as high as the one
                 // we just waited for in waitForPlan
-                auto& agencyCache =
-                    server.getFeature<ClusterFeature>().agencyCache();
                 auto const index = agencyCache.index();
                 // wait for cluster info/current to catch up as well
                 auto futCurrent = ci.waitForCurrent(index);
