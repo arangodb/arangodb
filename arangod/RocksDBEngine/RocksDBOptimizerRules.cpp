@@ -76,8 +76,7 @@ extracted entire documents to only return a projection of each document.
 
 Projections are limited to at most 5 different document attributes by default.
 The maximum number of projected attributes can optionally be adjusted by
-setting the `maxProjections` hint for an AQL `FOR` operation since
-ArangoDB 3.9.1.)");
+setting the `maxProjections` hint for an AQL `FOR` operation.)");
 
   // remove SORT RAND() LIMIT 1 if appropriate
   feature.registerRule(
