@@ -19,7 +19,7 @@ function performGETRequest() {
 }
 
 function performPOSTRequest() {
-  arango.POST("/_admin/execute", "return 'test!'");
+  arango.POST('/_api/version', {'detail': true});
 }
 
 function performDELETERequest() {
@@ -91,7 +91,6 @@ describe('request statistics', function () {
     const initialStats = getStatistics();
     performPOSTRequest();
     const finalStats = getStatistics();
-
     checkCommonStatisticsChanges(initialStats, finalStats);
 
     const increaseByOne = [
