@@ -548,6 +548,10 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   waitOnServerForGC (instanceInfo, options, waitTime) {
+    let baseUrl = this.url;
+    if (instanceInfo !== undefined) {
+      baseUrl = instanceInfo.url;
+    }
     try {
       print(Date() + ' waiting ' + waitTime + ' for server GC');
       const remoteCommand = 'require("internal").wait(' + waitTime + ', true);';
@@ -557,7 +561,7 @@ class instanceManager {
       requestOptions.returnBodyOnError = true;
 
       const reply = download(
-        instanceInfo.url + '/_admin/execute?returnAsJSON=true',
+        baseUrl + '/_admin/execute?returnAsJSON=true',
         remoteCommand,
         requestOptions);
 
