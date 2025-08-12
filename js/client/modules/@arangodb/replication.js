@@ -242,9 +242,13 @@ var waitForResult = function (config, id) {
 
     if (config.progress && iterations % 3 === 0) {
       try {
-        var progress = applier.state().state.progress;
-        var msg = progress.time + ': ' + progress.message;
-        internal.print('still synchronizing... last received status: ' + msg);
+        let state = applier.state();
+        var progress = state.state.progress;
+        var msg = `${progress.time}: ${progress.message}`;
+        if (iterations % 12 === 0) {
+          msg = `${progress.time}: ${progress.message} - ${JSON.stringify(state)}`;
+        }
+        internal.print(`${Date()} still synchronizing... last received status: ${msg}`);
       } catch (err) {}
     }
   }
