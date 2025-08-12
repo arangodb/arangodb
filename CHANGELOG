@@ -1,10 +1,10 @@
 v3.11.14.2 (XXXX-XX-XX)
 -----------------------
 
+* Updated ArangoDB Starter to v0.18.17 and arangosync to v2.19.17.
+
 * Rebuilt included rclone v1.62.2 with go1.23.12 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.18.17-preview-2.
 
 * Upgraded OpenSSL to 3.5.2 and OpenLDAP to 2.6.10.
 
