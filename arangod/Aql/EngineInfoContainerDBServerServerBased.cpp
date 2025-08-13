@@ -406,11 +406,11 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(kSetupTimeout);
-  switch (_query.executeCallerWaiting()) {
-    case QueryContext::ExecuteCallerWaiting::Asynchronously: {
+  switch (_query.queryApiSynchronicity()) {
+    case QueryContext::QueryApiSynchronicity::Asynchronous: {
       options.continuationLane = RequestLane::CLUSTER_AQL;
     } break;
-    case QueryContext::ExecuteCallerWaiting::Synchronously: {
+    case QueryContext::QueryApiSynchronicity::Synchronous: {
       options.skipScheduler = true;
     } break;
   }
@@ -481,8 +481,8 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
   }
 
   auto networkFut = futures::collectAll(std::move(networkCalls));
-  if (_query.executeCallerWaiting() ==
-      QueryContext::ExecuteCallerWaiting::Synchronously) {
+  if (_query.queryApiSynchronicity() ==
+      QueryContext::QueryApiSynchronicity::Synchronous) {
     // The caller is waiting synchronously. Because of that, skipScheduler is
     // set for the network requests sent here. Which means the network thread
     // will resolve the promise(s) without going through the scheduler. We
@@ -631,8 +631,8 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
 
       _query.incHttpRequests(unsigned(1));
 
-      if (_query.executeCallerWaiting() ==
-          QueryContext::ExecuteCallerWaiting::Synchronously) {
+      if (_query.queryApiSynchronicity() ==
+          QueryContext::QueryApiSynchronicity::Synchronous) {
         // The caller is waiting synchronously. Because of that, skipScheduler
         // is set for the network requests sent here. Which means the network
         // thread will resolve the promise(s) without going through the
@@ -788,11 +788,11 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
 
   network::RequestOptions options;
   options.database = dbname;
-  switch (_query.executeCallerWaiting()) {
-    case QueryContext::ExecuteCallerWaiting::Asynchronously: {
+  switch (_query.queryApiSynchronicity()) {
+    case QueryContext::QueryApiSynchronicity::Asynchronous: {
       options.continuationLane = RequestLane::CLUSTER_AQL;
     } break;
-    case QueryContext::ExecuteCallerWaiting::Synchronously: {
+    case QueryContext::QueryApiSynchronicity::Synchronous: {
       options.skipScheduler = true;
     } break;
   }
@@ -834,8 +834,8 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
 
   auto responsesFuture = futures::collectAll(std::move(futureResponses));
 
-  if (_query.executeCallerWaiting() ==
-      QueryContext::ExecuteCallerWaiting::Synchronously) {
+  if (_query.queryApiSynchronicity() ==
+      QueryContext::QueryApiSynchronicity::Synchronous) {
     // The caller is waiting synchronously. Because of that, skipScheduler is
     // set for the network requests sent here. Which means the network thread
     // will resolve the promise(s) without going through the scheduler. We

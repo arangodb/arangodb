@@ -932,7 +932,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  * @return The result of this query. The result is always complete
  */
 QueryResult Query::executeSync() {
-  _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
+  _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
   std::shared_ptr<SharedQueryState> ss;
 
   QueryResult queryResult;
@@ -955,7 +955,7 @@ QueryResult Query::executeSync() {
 #ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
-  _executeCallerWaiting = ExecuteCallerWaiting::Synchronously;
+  _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
@@ -2152,11 +2152,11 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(120.0);  // Picked arbitrarily
-  switch (query.executeCallerWaiting()) {
-    case QueryContext::ExecuteCallerWaiting::Asynchronously:
+  switch (query.queryApiSynchronicity()) {
+    case QueryContext::QueryApiSynchronicity::Asynchronous:
       options.continuationLane = RequestLane::CLUSTER_INTERNAL;
       break;
-    case QueryContext::ExecuteCallerWaiting::Synchronously:
+    case QueryContext::QueryApiSynchronicity::Synchronous:
       options.skipScheduler = true;
       break;
   }
@@ -2184,8 +2184,8 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   std::vector<futures::Future<Result>> futures;
   futures.reserve(serverQueryIds.size());
   for (auto&& future : futureResponses) {
-    if (query.executeCallerWaiting() ==
-        QueryContext::ExecuteCallerWaiting::Synchronously) {
+    if (query.queryApiSynchronicity() ==
+        QueryContext::QueryApiSynchronicity::Synchronous) {
       // The caller is waiting synchronously. Because of that, skipScheduler is
       // set for the network requests sent here. Which means the network thread
       // will resolve the promise(s) without going through the scheduler. We

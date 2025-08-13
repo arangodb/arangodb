@@ -170,12 +170,14 @@ class QueryContext {
   // counted up in the constructor and counted down in the destructor.
   constexpr static std::size_t baseMemoryUsage = 8192;
 
-  enum class ExecuteCallerWaiting {
-    Asynchronously,
-    Synchronously,
+  enum class QueryApiSynchronicity {
+    Asynchronous,
+    Synchronous,
   };
 
-  ExecuteCallerWaiting executeCallerWaiting() const noexcept;
+  // Whether the calling API is synchronous or asynchronous - e.g. the rest APIs
+  // are asynchronous, while V8 is synchronous.
+  QueryApiSynchronicity queryApiSynchronicity() const noexcept;
 
  protected:
   /// @brief current resources and limits used by query
@@ -223,8 +225,8 @@ class QueryContext {
   // i.e. is calling Query::executeSync, Query::executeV8 for the former, or
   // Query::execute for the latter.
   // This is used to decide whether certain network requests set skipScheduler.
-  ExecuteCallerWaiting _executeCallerWaiting =
-      ExecuteCallerWaiting::Asynchronously;
+  QueryApiSynchronicity _queryApiSynchronicity =
+      QueryApiSynchronicity::Asynchronous;
 };
 
 }  // namespace aql
