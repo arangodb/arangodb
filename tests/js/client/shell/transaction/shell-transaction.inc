@@ -44,6 +44,8 @@ const analyzers = require('@arangodb/analyzers');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
+const IM = global.instanceManager;
+const AM = IM.agencyMgr;
 
 const compareStringIds = function (l, r) {
   'use strict';
@@ -5584,7 +5586,7 @@ function transactionIndexSuite(dbParams) {
 
       if (db._properties().replicationVersion === "2") {
         const dh = require('@arangodb/testutils/document-state-helper');
-        const {logs: [logHandle]} = dh.getCollectionShardsAndLogs(db, db[cn]);
+        const {logs: [logHandle]} = AM.getCollectionShardsAndLogs(db, db[cn]);
         const log = logHandle.tail(100);
         const ops = log
             .filter(entry => entry.hasOwnProperty('payload'))

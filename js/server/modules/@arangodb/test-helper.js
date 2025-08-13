@@ -272,4 +272,3 @@ exports.triggerMetrics = function () {
 };
 
 exports.uniqid = global.ArangoClusterInfo.uniqid;
-exports.agency = global.ArangoAgency;
