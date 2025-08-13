@@ -183,7 +183,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     AqlValue& key = *const_cast<AqlValue*>(&it);
     AqlValueGuard guard{key, true};
     output.moveValueInto(_infos.getGroupRegisters()[i++].first,
-                         _lastInitializedInputRow, &guard);
+                         _lastInitializedInputRow, &guard, false);
     key.erase();  // to prevent double-freeing later
   }
 
@@ -199,7 +199,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
       AqlValue r = aggregators[aggregatorIdx].stealValue();
       AqlValueGuard guard{r, true};
       output.moveValueInto(_infos.getAggregatedRegisters()[j++].first,
-                           _lastInitializedInputRow, &guard);
+                           _lastInitializedInputRow, &guard, false);
     }
   }
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
@@ -213,7 +213,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     _currentGroup->second.second.reset();
 
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
-                         &guard);
+                         &guard, false);
   }
 }
 
@@ -500,7 +500,8 @@ HashedCollectExecutor::makeAggregateValues() const {
     size += factory->getAggregatorSize();
   }
   void* p = ::operator new(size);
-  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions(), _infos.getResourceUsageScope());
+  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions(),
+                           _infos.getResourceUsageScope());
   return std::unique_ptr<ValueAggregators>(static_cast<ValueAggregators*>(p));
 }
 

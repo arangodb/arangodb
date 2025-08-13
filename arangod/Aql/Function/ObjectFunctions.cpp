@@ -129,22 +129,25 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 AqlValue mergeParameters(ExpressionContext* expressionContext,
                          aql::functions::VPackFunctionParametersView parameters,
                          char const* funcName, bool recursive) {
+  // scope guard here to free builder capacity in the usage scope, steal in the
+  // end
   auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
-  ResourceUsageScope* usageScope = execCtx ? &execCtx->getResourceUsageScope() : nullptr;
+  ResourceUsageScope* usageScope =
+      execCtx ? &execCtx->getResourceUsageScope() : nullptr;
 
   auto increaseMemoryUsage = [&](uint64_t byte) {
     if (usageScope) {
-    //  LOG_DEVEL << "Memory increased by: " << byte;
+      //  LOG_DEVEL << "Memory increased by: " << byte;
       usageScope->increase(byte);
-    //   LOG_DEVEL << "Current: " << usageScope->current()
-    //   << " Limit: " << usageScope->memoryLimit()
-    //   << " Peak: " << usageScope->peak();
-     }
+      //   LOG_DEVEL << "Current: " << usageScope->current()
+      //   << " Limit: " << usageScope->memoryLimit()
+      //   << " Peak: " << usageScope->peak();
+    }
   };
 
   auto decreaseMemoryUsage = [&](uint64_t byte) {
     if (usageScope) {
-      //LOG_DEVEL << "Memory decreased by: " << byte;
+      // LOG_DEVEL << "Memory decreased by: " << byte;
       usageScope->decrease(byte);
       // LOG_DEVEL << "Current: " << usageScope->current()
       // << " Limit: " << usageScope->memoryLimit()
@@ -190,16 +193,6 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 
       LOG_DEVEL << "Single array without recursion was called";
 
-
-      // increase memory before to have an outlook of whether or not the intermediate operation may overuse memory
-        uint64_t estimate = 0;
-        for (auto const& [k, v] : attributes) {
-            estimate += k.length() * sizeof(char) + v.valueByteSize();
-        }
-        increaseMemoryUsage(estimate);
-
-
-
       // then we output the object
       auto before = builder.buffer()->byteSize();
       {
@@ -214,9 +207,6 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         }
       }
       increaseMemoryUsage(builder.buffer()->byteSize() - before);
-
-        // give back the memory previously allocated as an estimate to not account the memory twice:
-        decreaseMemoryUsage(estimate);
 
     } else {
       // slow path for recursive merge
@@ -246,9 +236,13 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         }
       }
     }
-    AqlValue res{builder.slice(), builder.size()};
+
+    size_t oldCapacity = builder.buffer()->byteSize();
+    size_t oldByteSize = builder.size();
+
+    AqlValue res{builder.slice(), oldByteSize};
     if (usageScope && res.memoryUsage() > 0) {
-      TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
+      TRI_ASSERT(usageScope->tracked() == oldCapacity + oldByteSize);
       LOG_DEVEL << "At the end of MERGE: current: " << usageScope->current();
       LOG_DEVEL << "Stolen memory usage: " << usageScope->tracked();
       usageScope->steal();

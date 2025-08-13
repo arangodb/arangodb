@@ -47,12 +47,47 @@ function resourceMonitorMergeCollectTestSuite () {
                 assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
             }
         },
+
+        testMergeMemoryLimitInsideLet: function () {
+            const query = `
+        LET iterations = (FOR i IN 1..200 RETURN { ['key' || TO_STRING(i)]: i, value: REPEAT('A', 1024) })
+        LET merged = MERGE(iterations)
+        RETURN merged
+      `;
+            const resOk = db._query(query, null, { memoryLimit: 10 * 1000 * 1000 }).toArray();
+            assertEqual(1, resOk.length);
+
+            try {
+                db._query(query, null, { memoryLimit: 60 * 1000 });
+                fail();
+            } catch (err) {
+                assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+            }
+        },
+
+        testMergeRecursiveMemoryLimitInsideLet: function () {
+            const query = `
+        LET iterations = (FOR i IN 1..150 RETURN { ['a' || TO_STRING(i)]: { val: REPEAT('B', 1024) } })
+        LET merged = MERGE_RECURSIVE(iterations)
+        RETURN merged
+      `;
+
+            const resOk = db._query(query, null, { memoryLimit: 15 * 1000 * 1000 }).toArray();
+            assertEqual(1, resOk.length);
+
+            try {
+                db._query(query, null, { memoryLimit: 80 * 1000 });
+                fail();
+            } catch (err) {
+                assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+            }
+        },
+
     };
+
 }
 
-function runResourceMonitorMergeCollect () {
-    jsunity.run(resourceMonitorMergeCollectTestSuite);
-    return jsunity.done();
-}
 
-module.exports = { resourceMonitorMergeCollectTestSuite, runResourceMonitorMergeCollect };
+jsunity.run(resourceMonitorMergeCollectTestSuite);
+return jsunity.done();
+
