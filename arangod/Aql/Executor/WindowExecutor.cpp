@@ -56,7 +56,7 @@ WindowExecutorInfos::WindowExecutorInfos(
       _aggregateRegisters(std::move(aggregateRegisters)),
       _warnings(w),
       _vpackOptions(opts),
-      _usageScope(std::move(usageScope)){
+      _usageScope(std::move(usageScope)) {
   TRI_ASSERT(!_aggregateRegisters.empty());
 }
 
@@ -94,7 +94,8 @@ BaseWindowExecutor::AggregatorList BaseWindowExecutor::createAggregators(
   // initialize aggregators
   for (auto const& r : infos.getAggregateTypes()) {
     auto& factory = Aggregator::factoryFromTypeString(r);
-    aggregators.emplace_back(factory(infos.getVPackOptions(), infos.getResourceUsageScope()));
+    aggregators.emplace_back(
+        factory(infos.getVPackOptions(), infos.getResourceUsageScope()));
   }
 
   return aggregators;

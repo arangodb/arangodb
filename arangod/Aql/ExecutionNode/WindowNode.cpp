@@ -440,7 +440,8 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
       _bounds, rangeRegister, std::move(aggregateTypes),
       std::move(aggregateRegisters), engine.getQuery().warnings(),
       &_plan->getAst()->query().vpackOptions(),
-      std::make_unique<ResourceUsageScope>(engine.getQuery().resourceMonitor(), 0));
+      std::make_unique<ResourceUsageScope>(engine.getQuery().resourceMonitor(),
+                                           0));
 
   if (_rangeVariable == nullptr && _bounds.unboundedPreceding()) {
     return std::make_unique<ExecutionBlockImpl<AccuWindowExecutor>>(

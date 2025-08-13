@@ -90,7 +90,8 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
   TRI_ASSERT(currentChunks >= previousChunks);
   auto diff = currentChunks - previousChunks;
 
-  // LOG_DEVEL << "increaseMemoryUsage() was called: _limit=" << _limit << " current=" << current
+  // LOG_DEVEL << "increaseMemoryUsage() was called: _limit=" << _limit << "
+  // current=" << current
   //         << " previous=" << previous << " diff=" << diff;
 
   if (diff != 0) {
@@ -135,8 +136,9 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
     // or we have piled up changes by lots of small allocations so far. time for
     // some memory expensive checks now...
     if (_limit > 0 && ADB_UNLIKELY(current > _limit)) {
-      LOG_DEVEL << "INSIDE ERROR LOGIC: _limit=" << _limit << " current=" << current
-          << " previous=" << previous << " diff=" << diff;
+      LOG_DEVEL << "INSIDE ERROR LOGIC: _limit=" << _limit
+                << " current=" << current << " previous=" << previous
+                << " diff=" << diff;
       // we would use more memory than dictated by the instance's own limit.
       // because we will throw an exception directly afterwards, we now need to
       // revert the change that we already made to the instance's own counter.
@@ -190,7 +192,8 @@ void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
   // when we are _increasing_ memory usage.
   std::uint64_t const previous =
       _current.fetch_sub(value, std::memory_order_relaxed);
-  LOG_DEVEL << "ResourceMonitor: decreaseMemoryUsage: previous: " << previous << " value: " << value;
+  LOG_DEVEL << "ResourceMonitor: decreaseMemoryUsage: previous: " << previous
+            << " value: " << value;
   TRI_ASSERT(previous >= value);
   std::uint64_t const current = previous - value;
 
@@ -227,9 +230,7 @@ ResourceUsageScope::ResourceUsageScope(ResourceMonitor& resourceMonitor,
   increase(value);
 }
 
-ResourceUsageScope::~ResourceUsageScope() {
-  revert();
-}
+ResourceUsageScope::~ResourceUsageScope() { revert(); }
 
 void ResourceUsageScope::steal() noexcept { _value = 0; }
 

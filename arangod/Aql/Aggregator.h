@@ -49,14 +49,16 @@ struct Aggregator {
     // virtual std::unique_ptr<Aggregator> operator()(
     //     velocypack::Options const*) const = 0;
     virtual std::unique_ptr<Aggregator> operator()(
-      velocypack::Options const*, ResourceUsageScope& scope) const = 0;
-    virtual void createInPlace(void*, velocypack::Options const*, ResourceUsageScope&) const = 0;
+        velocypack::Options const*, ResourceUsageScope& scope) const = 0;
+    virtual void createInPlace(void*, velocypack::Options const*,
+                               ResourceUsageScope&) const = 0;
     virtual std::size_t getAggregatorSize() const = 0;
   };
 
-  //explicit Aggregator(velocypack::Options const* opts) : _vpackOptions(opts) {}
+  // explicit Aggregator(velocypack::Options const* opts) : _vpackOptions(opts)
+  // {}
   Aggregator(velocypack::Options const* opts, ResourceUsageScope& scope)
-    : _vpackOptions(opts), _usageScope(scope) {}
+      : _vpackOptions(opts), _usageScope(scope) {}
   virtual ~Aggregator() = default;
   virtual void reset() = 0;
   virtual void reduce(AqlValue const&) = 0;
@@ -72,7 +74,8 @@ struct Aggregator {
                                                     std::string_view type,
                                                     ResourceUsageScope& scope);
 
-  // static std::unique_ptr<Aggregator> fromTypeString(velocypack::Options const*,
+  // static std::unique_ptr<Aggregator> fromTypeString(velocypack::Options
+  // const*,
   //                                                 std::string_view type);
 
   /// @brief creates an aggregator from a velocypack slice

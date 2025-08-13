@@ -119,7 +119,8 @@ void OutputAqlItemRow::cloneValueInto(RegisterId registerId,
 
 template<class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueWithoutRowCopy(RegisterId registerId,
-                                               ValueType value, bool countMemory) {
+                                               ValueType value,
+                                               bool countMemory) {
   TRI_ASSERT(isOutputRegister(registerId)) << registerId.value();
   // This is already implicitly asserted by isOutputRegister:
   TRI_ASSERT(registerId.isRegularRegister());
@@ -142,7 +143,8 @@ template<class ItemRowType, class ValueType>
 void OutputAqlItemRow::moveValueInto(RegisterId registerId,
                                      ItemRowType const& sourceRow,
                                      ValueType value, bool countMemory) {
-  moveValueWithoutRowCopy<ItemRowType, ValueType>(registerId, value, countMemory);
+  moveValueWithoutRowCopy<ItemRowType, ValueType>(registerId, value,
+                                                  countMemory);
 
   // allValuesWritten() must be called only *after* moveValueWithoutRowCopy(),
   // because it increases _numValuesWritten.
@@ -588,36 +590,43 @@ template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, AqlValueGuard*>(
     RegisterId registerId, ShadowAqlItemRow const& sourceRow,
     AqlValueGuard* guard, bool countMemory);
 template void OutputAqlItemRow::moveValueInto<ShadowAqlItemRow, VPackSlice>(
-    RegisterId registerId, ShadowAqlItemRow const& sourceRow, VPackSlice slice, bool countMemory);
+    RegisterId registerId, ShadowAqlItemRow const& sourceRow, VPackSlice slice,
+    bool countMemory);
 
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueGuard*>(
     RegisterId registerId, InputAqlItemRow const& sourceRow,
     AqlValueGuard* guard, bool countMemory);
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, VPackSlice>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice slice, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, VPackSlice slice,
+    bool countMemory);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, aql::DocumentData*>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    aql::DocumentData*, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, aql::DocumentData*,
+    bool countMemory);
 
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintBool>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintBool, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintBool,
+    bool countMemory);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintDouble>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow,
-    AqlValueHintDouble, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintDouble,
+    bool countMemory);
 template void OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintInt>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintInt, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintInt,
+    bool countMemory);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintUInt>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintUInt,
+    bool countMemory);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNone>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNone,
+    bool countMemory);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintNull>(
-    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNull, bool countMemory);
+    RegisterId registerId, InputAqlItemRow const& sourceRow, AqlValueHintNull,
+    bool countMemory);
 template void
 OutputAqlItemRow::moveValueInto<InputAqlItemRow, AqlValueHintEmptyArray>(
     RegisterId registerId, InputAqlItemRow const& sourceRow,

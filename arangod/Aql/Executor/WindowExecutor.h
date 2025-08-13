@@ -74,9 +74,7 @@ class WindowExecutorInfos {
   std::vector<std::string> const& getAggregateTypes() const;
   QueryWarnings& warnings() const;
   velocypack::Options const* getVPackOptions() const;
-  ResourceUsageScope& getResourceUsageScope() const {
-   return *_usageScope;
-  }
+  ResourceUsageScope& getResourceUsageScope() const { return *_usageScope; }
 
  private:
   WindowBounds const& _bounds;

@@ -42,14 +42,14 @@ using namespace arangodb::aql;
 //       _varsToRegister(varsToRegister) {}
 
 ExecutorExpressionContext::ExecutorExpressionContext(
-  transaction::Methods& trx, QueryContext& context,
-  AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-  std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
-  ResourceMonitor& resourceMonitor)
-  : QueryExpressionContext(trx, context, cache),
-    _inputRow(inputRow),
-    _varsToRegister(varsToRegister),
-    _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {}
+    transaction::Methods& trx, QueryContext& context,
+    AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
+    ResourceMonitor& resourceMonitor)
+    : QueryExpressionContext(trx, context, cache),
+      _inputRow(inputRow),
+      _varsToRegister(varsToRegister),
+      _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {}
 
 void ExecutorExpressionContext::adjustInputRow(
     InputAqlItemRow const& inputRow) noexcept {
