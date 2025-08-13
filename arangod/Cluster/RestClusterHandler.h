@@ -47,5 +47,23 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
 
   /// _api/cluster/cluster-info
   void handleClusterInfo();
+
+  bool isAdmin();
+  RestStatus handleCI_doesDatabaseExist(std::vector<std::string> const& suffixes);
+  void handleCI_databases();
+  void handleCI_flush();
+  void handleCI_getCollectionInfo(std::vector<std::string> const& suffixes);
+  void handleCI_getCollectionInfoCurrent();
+  void handleCI_getResponsibleServer();
+  void handleCI_getResponsibleServers();
+  void handleCI_getResponsibleShard();
+  void handleCI_getServerEndpoint();
+  void handleCI_getServerName();
+  void handleCI_getDBServers();
+  void handleCI_getCoordinators();
+  void handleCI_uniqid();
+  void handleCI_getAnalyzersRevision();
+  void handleCI_waitForPlanVersion();
+
 };
 }  // namespace arangodb
