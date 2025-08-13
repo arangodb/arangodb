@@ -1,6 +1,11 @@
 devel
 -----
 
+* During AQL setup, the Coordinator will no longer block threads while waiting
+  for DBServers to finish the query instantiation.
+
+* Add faiss and openmp versions in --version output of arangod.
+
 * Fix BTS-2171: Reduce the amount of code executed on dedicated network threads,
   which might have reduced its throughput or delayed processing of other network
   responses.

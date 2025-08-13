@@ -404,8 +404,9 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   }
 } catch (...) {
   // we can only get here if putting together an error response or an
-  // error log message failed with an exception. there is nothing we
-  // can do here to signal this problem.
+  // error log message failed with an exception.
+  ADB_PROD_ASSERT(false) << "Exception during exception handling; probably out "
+                            "of memory. Aborting.";
 }
 
 auto RestHandler::runHandlerStateMachine() -> futures::Future<futures::Unit> {
