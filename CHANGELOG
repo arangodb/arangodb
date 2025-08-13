@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2171: Reduce the amount of code executed on dedicated network threads,
+  which might have reduced its throughput or delayed processing of other network
+  responses.
+
 * Updated ArangoDB Starter to v0.19.13.
 
 * Delete the Coordinator-V8 wrappers for the agency.
