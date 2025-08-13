@@ -47,6 +47,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/Timing.h"
 #include "Assertions/Assert.h"
+#include "Async/async.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
@@ -319,7 +320,7 @@ void Query::kill() {
 }
 
 void Query::setKillFlag() {
-  _queryKilled.store(true, std::memory_order_acq_rel);
+  _queryKilled.store(true, std::memory_order_release);
 }
 
 /// @brief the query's transaction id. returns 0 if no transaction
@@ -402,7 +403,7 @@ bool Query::tryLoadPlanFromCache() {
   return false;
 }
 
-void Query::prepareQuery() {
+async<void> Query::prepareQuery() {
   try {
     if (tryLoadPlanFromCache()) {
       auto const querySlice = _planSliceCopy.slice();
@@ -410,9 +411,9 @@ void Query::prepareQuery() {
       auto const variables = querySlice.get("variables");
       auto const views = querySlice.get("views");
       auto const snippets = querySlice.get("nodes");
-      prepareFromVelocyPack(querySlice, collections, views, variables,
-                            snippets);
-      instantiatePlan(snippets);
+      prepareFromVelocyPackWithoutInstantiate(querySlice, collections, views,
+                                              variables, snippets);
+      co_await instantiatePlan(snippets);
 
       TRI_ASSERT(!_plans.empty());
 
@@ -421,7 +422,7 @@ void Query::prepareQuery() {
       plan->findCollectionAccessVariables();
       plan->prepareTraversalOptions();
       enterState(QueryExecutionState::ValueType::EXECUTION);
-      return;
+      co_return;
     }
 
     std::unique_ptr<ExecutionPlan> plan;
@@ -477,7 +478,7 @@ void Query::prepareQuery() {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
 
     _plans.push_back(std::move(plan));
 
@@ -727,10 +728,34 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           }
         }
 
+        TRI_ASSERT(!_prepareResult.valid());
         // will throw if it fails
-        if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery();
+        auto prepare = [this]() -> futures::Future<futures::Unit> {
+          if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
+            co_return co_await prepareQuery();
+          }
+          co_return;
+        }();
+        _executionPhase = ExecutionPhase::PREPARE;
+        if (!prepare.isReady()) {
+          std::move(prepare).thenFinal(
+              [this, sqs = sharedState()](auto&& tryResult) {
+                sqs->executeAndWakeup([this, tryResult = std::move(tryResult)] {
+                  _prepareResult = std::move(tryResult);
+                  TRI_ASSERT(_prepareResult.valid());
+                  return true;
+                });
+              });
+          return ExecutionState::WAITING;
+        } else {
+          _prepareResult = std::move(prepare).result();
+          TRI_ASSERT(_prepareResult.valid());
         }
+      }
+        [[fallthrough]];
+      case ExecutionPhase::PREPARE: {
+        TRI_ASSERT(_prepareResult.valid());
+        _prepareResult.throwIfFailed();
 
         logAtStart();
         if (_planCacheKey.has_value()) {
@@ -756,6 +781,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(queryResult.data != nullptr);
         TRI_ASSERT(queryResult.data->isOpenArray());
+        TRI_ASSERT(_trx != nullptr) << "id=" << id();
         TRI_ASSERT(_trx != nullptr);
         // We should do this only once
 
@@ -906,6 +932,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  * @return The result of this query. The result is always complete
  */
 QueryResult Query::executeSync() {
+  _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
   std::shared_ptr<SharedQueryState> ss;
 
   QueryResult queryResult;
@@ -928,6 +955,7 @@ QueryResult Query::executeSync() {
 #ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
 QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
+  _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
@@ -962,7 +990,10 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery();
+    [&]() -> futures::Future<futures::Unit> {
+      co_return co_await prepareQuery();
+    }()
+                 .waitAndGet();
 
     logAtStart();
 
@@ -2121,13 +2152,14 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   network::RequestOptions options;
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(120.0);  // Picked arbitrarily
-  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
-  // We definitely want to skip the scheduler here, because normally
-  // the thread that orders the query shutdown is blocked and waits
-  // synchronously until the shutdown requests have been responded to.
-  // we thus must guarantee progress here, even in case all
-  // scheduler threads are otherwise blocked.
-  options.skipScheduler = true;
+  switch (query.queryApiSynchronicity()) {
+    case QueryContext::QueryApiSynchronicity::Asynchronous:
+      options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+      break;
+    case QueryContext::QueryApiSynchronicity::Synchronous:
+      options.skipScheduler = true;
+      break;
+  }
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
@@ -2137,18 +2169,38 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
 
-  std::vector<futures::Future<Result>> futures;
-  futures.reserve(serverQueryIds.size());
-  auto ss = query.sharedState();
-  TRI_ASSERT(ss != nullptr);
-
+  auto futureResponses = std::vector<futures::Future<network::Response>>{};
+  futureResponses.reserve(serverQueryIds.size());
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
     TRI_ASSERT(!server.starts_with("server:"));
 
+    auto f = network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Delete,
+        absl::StrCat("/_api/aql/finish/", queryId), body, options);
+
+    futureResponses.emplace_back(std::move(f));
+  }
+
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(serverQueryIds.size());
+  for (auto&& future : futureResponses) {
+    if (query.queryApiSynchronicity() ==
+        QueryContext::QueryApiSynchronicity::Synchronous) {
+      // The caller is waiting synchronously. Because of that, skipScheduler is
+      // set for the network requests sent here. Which means the network thread
+      // will resolve the promise(s) without going through the scheduler. We
+      // must avoid executing arbitrary code on the network thread, and
+      // therefore have to wait here before calling `.thenValue` or
+      // `co_await`ing the response-future. The caller will be waiting
+      // synchronously anyway.
+      future.wait();
+    }
+
+    auto ss = query.sharedState();
+    TRI_ASSERT(ss != nullptr);
+
     auto f =
-        network::sendRequestRetry(
-            pool, "server:" + server, fuerte::RestVerb::Delete,
-            absl::StrCat("/_api/aql/finish/", queryId), body, options)
+        std::move(future)
             .thenValue([ss, &query](network::Response&& res) mutable -> Result {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
@@ -2196,7 +2248,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
                             "unhandled query shutdown exception");
             });
 
-    futures.push_back(std::move(f));
+    futures.emplace_back(std::move(f));
   }
 
   return futures::collectAll(std::move(futures))
@@ -2285,19 +2337,20 @@ ExecutionState Query::cleanupTrxAndEngines() {
     TRI_IF_FAILURE("Query::finalize_error_on_finish_db_servers") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
-    std::ignore =
-        ::finishDBServerParts(*this, result().errorNumber())
-            .thenValue([ss = _sharedState, this](Result r) {
-              LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
-                           r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
-                  << "received error from DBServer on query finalization: "
-                  << r.errorNumber() << ", '" << r.errorMessage() << "'";
-              _sharedState->executeAndWakeup([&] {
-                _shutdownState.store(ShutdownState::Done,
-                                     std::memory_order_relaxed);
-                return true;
-              });
-            });
+    ::finishDBServerParts(*this, result().errorNumber())
+        .thenFinal([ss = _sharedState, this](futures::Try<Result>&& tryResult) {
+          auto&& r =
+              basics::catchToResult([&] { return std::move(tryResult).get(); });
+          LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
+                       r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
+              << "received error from DBServer on query finalization: "
+              << r.errorNumber() << ", '" << r.errorMessage() << "'";
+          _sharedState->executeAndWakeup([&] {
+            _shutdownState.store(ShutdownState::Done,
+                                 std::memory_order_relaxed);
+            return true;
+          });
+        });
 
     TRI_IF_FAILURE("Query::directKillAfterDBServerFinishRequests") {
       debugKillQuery();
@@ -2461,17 +2514,17 @@ void Query::debugKillQuery() {
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
-void Query::prepareFromVelocyPack(velocypack::Slice querySlice,
-                                  velocypack::Slice collections,
-                                  velocypack::Slice views,
-                                  velocypack::Slice variables,
-                                  velocypack::Slice snippets) {
+void Query::prepareFromVelocyPackWithoutInstantiate(
+    velocypack::Slice querySlice, velocypack::Slice collections,
+    velocypack::Slice views, velocypack::Slice variables,
+    velocypack::Slice snippets) {
   // Note that the `views` slice can either be None or a list of views.
   // Both usages are allowed and are used in the code!
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
-      << elapsedSince(_startTime) << " Query::prepareFromVelocyPack"
+      << elapsedSince(_startTime)
+      << " Query::prepareFromVelocyPackWithoutInstantiate"
       << " this: " << (uintptr_t)this;
 
   // track memory usage
@@ -2535,19 +2588,20 @@ void Query::prepareFromVelocyPack(velocypack::Slice querySlice,
   enterState(QueryExecutionState::ValueType::PARSING);
 }
 
-void Query::instantiatePlan(velocypack::Slice snippets) {
+async<void> Query::instantiatePlan(velocypack::Slice snippets) {
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet = [&](velocypack::Slice snippet) {
+  auto instantiateSnippet = [&](velocypack::Slice snippet) -> async<void> {
     auto plan =
         ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet, true);
     TRI_ASSERT(plan != nullptr);
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
+    co_return;
   };
 
   // a single snippet
-  instantiateSnippet(snippets);
+  co_await instantiateSnippet(snippets);
   TRI_ASSERT(!_snippets.empty());
   TRI_ASSERT(!_trx->state()->isDBServer() || _snippets.back()->engineId() != 0);
 
@@ -2566,6 +2620,22 @@ void Query::instantiatePlan(velocypack::Slice snippets) {
 
   _queryProfile->registerInQueryList();
   enterState(QueryExecutionState::ValueType::EXECUTION);
+
+  co_return;
+}
+
+auto aql::toString(Query::ExecutionPhase phase) -> std::string_view {
+  switch (phase) {
+    case Query::ExecutionPhase::INITIALIZE:
+      return "INITIALIZE";
+    case Query::ExecutionPhase::PREPARE:
+      return "PREPARE";
+    case Query::ExecutionPhase::EXECUTE:
+      return "EXECUTE";
+    case Query::ExecutionPhase::FINALIZE:
+      return "FINALIZE";
+  }
+  ADB_UNREACHABLE;
 }
 
 void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
