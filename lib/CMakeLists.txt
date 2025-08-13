@@ -273,6 +273,7 @@ target_link_libraries(arango_basic_http_client
          fuerte
          rocksdb
          rocksdb_interface
+         faiss_interface
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)
