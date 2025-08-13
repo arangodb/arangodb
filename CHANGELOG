@@ -3,8 +3,6 @@ devel
 
 * Add faiss and openmp versions in --version output of arangod.
 
-* delete the Coordinator-V8 wrappers for the agency.
-
 * Updated ArangoDB Starter to v0.19.13.
 
 * Delete the Coordinator-V8 wrappers for the agency.
