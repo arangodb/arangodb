@@ -1050,7 +1050,6 @@ if(STATIC_EXECUTABLES)
   # This is hardcoded since we know exactly with which OpenMP version we want to build
   add_definitions(-DARANGODB_OPENMP_VERSION="5.1")
 
-  # TODO avoid hard coded paths
   set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -llapack -lgfortran")
   message(STATUS "OpenMP version: " ${OpenMP_CXX_VERSION})
 else()
