@@ -5,13 +5,15 @@ devel
 
 * delete the Coordinator-V8 wrappers for the agency.
 
+* Updated ArangoDB Starter to v0.19.13.
+
+* Delete the Coordinator-V8 wrappers for the agency.
+
 * Deprecate rocksdb.transaction-lock-timeout option since we would
   internally change this to a different value.
 
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.19.13-preview-3.
 
 * Upgraded OpenSSL to 3.5.2
 

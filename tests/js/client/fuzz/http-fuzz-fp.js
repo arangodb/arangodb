@@ -26,8 +26,9 @@
 
 const jsunity = require("jsunity");
 const internal = require('internal');
+const fs = require('fs');
 const IM = global.instanceManager;
-
+const ct = require('@arangodb/testutils/client-tools');
 
 const wordListForRoute = [
   "/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version", "/status",
@@ -84,15 +85,36 @@ const wordListForKeys = [
   "random"
 ];
 
+const messages = [
+  "creating data",
+  "cleaning up"
+];
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Http Request Fuzzer suite
 ////////////////////////////////////////////////////////////////////////////////
 function httpRequestsFuzzerTestSuite() {
   return {
     setUpAll: function () {
+      let moreargv = [];
+      let logFile = fs.join(fs.getTempPath(), `rta_out_create.log`);
+      let rc = ct.run.rtaMakedata(IM.options, IM, 0, messages[0], logFile, moreargv);
+      if (!rc.status) {
+        let rx = new RegExp(/\\n/g);
+        throw("http_fuzz: failed to create testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
+      }
+
       IM.rememberConnection();
     },
     tearDown: function () {
+      let moreargv = [];
+      let logFile = fs.join(fs.getTempPath(), `rta_out_clean.log`);
+      let rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
+      if (!rc.status) {
+        let rx = new RegExp(/\\n/g);
+        print("http_fuzz: failed to clear testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
+      }
+
       IM.gatherNetstat();
       IM.printNetstat();
     },
