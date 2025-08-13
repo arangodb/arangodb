@@ -105,7 +105,7 @@ Result RocksDBTrxBaseMethods::beginTransaction() {
   TRI_ASSERT(_rocksTransaction != nullptr);
   TRI_ASSERT(_rocksTransaction->GetSnapshot() == nullptr);
 
-  if (!_state->options().delaySnapshot) {
+  if (!_state->options().avoidSnapshot) {
     // In some cases we delay acquiring the snapshot so we can lock the key(s)
     // _before_ we acquire the snapshot to prevent write-write conflicts. In all
     // other cases we acquire the snapshot right now to be consistent with the
@@ -197,7 +197,7 @@ rocksdb::Status RocksDBTrxBaseMethods::Get(rocksdb::ColumnFamilyHandle* cf,
                                            ReadOwnWrites readOwnWrites) {
   TRI_ASSERT(cf != nullptr);
   rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
+  TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
   if (readOwnWrites == ReadOwnWrites::yes) {
     return _rocksTransaction->Get(ro, cf, key, val);
   }
@@ -210,7 +210,7 @@ rocksdb::Status RocksDBTrxBaseMethods::GetForUpdate(
   TRI_ASSERT(cf != nullptr);
   TRI_ASSERT(_rocksTransaction);
   rocksdb::ReadOptions const& ro = _readOptions;
-  TRI_ASSERT(ro.snapshot != nullptr || _state->options().delaySnapshot);
+  TRI_ASSERT(ro.snapshot != nullptr || _state->options().avoidSnapshot);
   rocksdb::Status s = _rocksTransaction->GetForUpdate(ro, cf, key, val);
   if (s.ok()) {
     _memoryTracker.increaseMemoryUsage(
@@ -383,13 +383,13 @@ void RocksDBTrxBaseMethods::createTransaction() {
   if (_state->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX)) {
     // write operations for the same keys on followers should normally be
     // serialized by the key locks held on the leaders. so we don't expect
-    // to run into lock conflicts on followers. however, the lock_timeout
-    // set here also includes locking the striped mutex for _all_ key locks,
-    // which may be contended under load. to avoid timeouts caused by
-    // waiting for the contented striped mutex, increase it to a higher
-    // value on followers that makes this situation unlikely.
+    // to run into lock conflicts on followers. the lock_timeout doesn't do
+    // much here since the RocksDB does not differentiate between
+    // lock timeout on striped_mutex for PointLockManager and on single
+    // documents, this timeout is ignored unless it is set to 0, then we
+    // try_lock otherwise we just lock.
     trxOpts.lock_timeout = 3000;
-  } else if (_state->options().delaySnapshot) {
+  } else if (_state->options().avoidSnapshot) {
     // for single operations we delay acquiring the snapshot so we can lock
     // the key _before_ we acquire the snapshot to prevent write-write
     // conflicts. in this case we obviously also want to use a higher lock
@@ -399,6 +399,10 @@ void RocksDBTrxBaseMethods::createTransaction() {
   } else {
     // when trying to lock the same keys, we want to return quickly and not
     // spend the default 1000ms before giving up
+    // Setting lock_timeout to 0 is not an option because then RocksDB uses
+    // try_lock on the striped mutex, and if it cannot acquire the lock it
+    // fails which can lead to spurious failures without having
+    // conflicting transactions.
     trxOpts.lock_timeout = 1;
   }
 

@@ -1132,7 +1132,10 @@ function getGTestResults(fileName, defaultResults, name) {
       const message = testSuite.testsuite.flatMap(
         suite => {
           if (suite.hasOwnProperty('failures')) {
-            return suite.failures.map(fail => fail.failure).join("\n");
+            return suite.classname + " - " +
+              suite.file + ":" + suite.line + " - " +
+              suite.name + ":\n" +
+              suite.failures.map(fail => fail.failure).join("\n");
           }
           return [];
         }).join("\n");

@@ -71,14 +71,14 @@ struct WriteWriteConflict::Options {
   struct Thread {
     std::string collection;
     OperationType operation;
-    bool delaySnapshot;
+    bool avoidSnapshot;
 
     template<class Inspector>
     friend inline auto inspect(Inspector& f, Thread& o) {
       return f.object(o).fields(
           f.field("collection", o.collection),
           f.field("operation", o.operation),
-          f.field("delaySnapshot", o.delaySnapshot).fallback(true));
+          f.field("avoidSnapshot", o.avoidSnapshot).fallback(true));
     }
   };
 

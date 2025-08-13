@@ -5,6 +5,24 @@ devel
   which might have reduced its throughput or delayed processing of other network
   responses.
 
+* Updated ArangoDB Starter to v0.19.13.
+
+* Delete the Coordinator-V8 wrappers for the agency.
+
+* Deprecate rocksdb.transaction-lock-timeout option since we would
+  internally change this to a different value.
+
+* Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
+  dependencies.
+
+* Upgraded OpenSSL to 3.5.2
+
+* Fix error message to use proper terminology order instead of mode.
+
+* FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is no longer included)
+
+* FE-636: bump http-proxy-middleware from 2.0.6 to 2.0.9 (latest 2.X version).
+
 * FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version)
 
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection

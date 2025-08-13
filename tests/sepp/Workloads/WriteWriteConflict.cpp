@@ -88,7 +88,7 @@ void WriteWriteConflict::Thread::run() {
   }
 
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = _options.delaySnapshot;
+  trxOpts.avoidSnapshot = _options.avoidSnapshot;
 
   for (;;) {
     SingleCollectionTransaction trx(

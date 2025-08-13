@@ -1,4 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
+/* global GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -37,6 +38,23 @@ const internal = require('internal');
 const lh = require('@arangodb/testutils/replicated-logs-helper');
 const dh = require('@arangodb/testutils/document-state-helper');
 const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
+
+const setUpAnd = function(cb) {
+  return function (testName) {
+    AM.registerAgencyTestBegin(testName);
+    cb(testName);
+  };
+};
+
+const tearDownAnd = function (cb) {
+  return function (testName) {
+    AM.registerAgencyTestEnd(testName);
+    // lh.resumeAll();
+    cb(testName);
+  };
+};
 
 /**
  * This test suite checks the correctness of replicated operations with respect to replicated log contents.
@@ -46,10 +64,10 @@ function transactionReplication2ReplicateOperationSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = lh.dbservers.length;
+  const rc = AM.getDbServers().length;
   let c = null;
 
-  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+  const {setUpAll, tearDownAll} =
     lh.testHelperFunctions(dbn, {replicationVersion: "2"});
 
   return {
@@ -75,8 +93,7 @@ function transactionReplication2ReplicateOperationSuite() {
       let tc = trx.collection(c.name());
       tc.insert({_key: 'test2', value: 2});
       trx.abort();
-
-      let {logs} = dh.getCollectionShardsAndLogs(db, c);
+      let {logs} = AM.getCollectionShardsAndLogs(db, c);
 
       // Expect to get one abort operation in the log
       let allEntries = {};
@@ -119,8 +136,8 @@ function transactionReplication2ReplicateOperationSuite() {
         }
       }
 
-      let {shards, logs} = dh.getCollectionShardsAndLogs(db, c);
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let {shards, logs} = AM.getCollectionShardsAndLogs(db, c);
+      let servers = Object.assign({}, ...AM.getDbServers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       for (let idx = 0; idx < logs.size; ++idx) {
@@ -197,7 +214,7 @@ function transactionReplication2ReplicateOperationSuite() {
       tc.save({_key: 'bar'});
 
       // Trigger leader recovery
-      lh.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
+      AM.bumpTermOfLogsAndWaitForConfirmation(dbn, c);
 
       let committed = false;
       try {
@@ -210,7 +227,7 @@ function transactionReplication2ReplicateOperationSuite() {
       }
       assertFalse(committed, "Transaction should not have been committed!");
 
-      let {logs} = dh.getCollectionShardsAndLogs(db, c);
+      let {logs} = AM.getCollectionShardsAndLogs(db, c);
 
       const logsWithCommit = logs.filter(log => log.head(1000).some(entry => dh.getOperationType(entry) === 'Commit'));
       if (logsWithCommit.length > 0) {
@@ -229,12 +246,12 @@ function transactionReplicationOnFollowersSuite(dbParams) {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = lh.dbservers.length;
+  const rc = AM.getDbServers().length;
   const isReplication2 = dbParams.replicationVersion === "2";
   let c = null;
   let extraCollections = [];
 
-  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+  const {setUpAll, tearDownAll} =
     lh.testHelperFunctions(dbn, {replicationVersion: isReplication2 ? "2" : "1"});
 
   return {
@@ -264,7 +281,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       trx.abort();
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.getDbServers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
       let localValues = {};
       for (const [serverId, endpoint] of Object.entries(servers)) {
@@ -275,7 +292,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
       let replication2Log = '';
       if (isReplication2) {
-        const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+        const shardsToLogs = AM.getShardsToLogsMapping(dbn, c._id);
         let log = db._replicatedLog(shardsToLogs[shards[0]]);
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
@@ -296,7 +313,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       };
 
       let shards = c.shards();
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.getDbServers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       let trx;
@@ -318,7 +335,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
           // Make sure nothing is committed just yet
           let replication2Log = '';
           if (isReplication2) {
-            const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+            const shardsToLogs = AM.getShardsToLogsMapping(dbn, c._id);
             const logId = shardsToLogs[shards[0]];
             let log = db._replicatedLog(logId);
             let entries = log.head(1000);
@@ -345,7 +362,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
       let replication2Log = '';
       if (isReplication2) {
-        const shardsToLogs = lh.getShardsToLogsMapping(dbn, c._id);
+        const shardsToLogs = AM.getShardsToLogsMapping(dbn, c._id);
         const logId = shardsToLogs[shards[0]];
         let log = db._replicatedLog(logId);
         let entries = log.head(1000);
@@ -381,7 +398,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       let shards = [];
       shards.push([c.shards()[0], "foo"]);
       shards.push([distLike.shards()[0], "bar"]);
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.getDbServers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       // Commit a transaction and expect everything to work
@@ -407,7 +424,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
       let replication2Log = '';
       if (isReplication2) {
-        let {logs} = dh.getCollectionShardsAndLogs(db, c);
+        let {logs} = AM.getCollectionShardsAndLogs(db, c);
         let log = logs[0];
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
@@ -442,7 +459,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
       let shards = [];
       shards.push([c.shards()[0], "foo"]);
       shards.push([distLike.shards()[0], "bar"]);
-      let servers = Object.assign({}, ...lh.dbservers.map(
+      let servers = Object.assign({}, ...AM.getDbServers().map(
         (serverId) => ({[serverId]: lh.getServerUrl(serverId)})));
 
       // Commit a transaction and expect everything to work
@@ -468,7 +485,7 @@ function transactionReplicationOnFollowersSuite(dbParams) {
 
       let replication2Log = '';
       if (isReplication2) {
-        let {logs} = dh.getCollectionShardsAndLogs(db, c);
+        let {logs} = AM.getCollectionShardsAndLogs(db, c);
         let log = logs[0];
         let entries = log.head(1000);
         replication2Log = `Log entries: ${JSON.stringify(entries)}`;
@@ -502,7 +519,7 @@ function transactionReplication2AbandonmentSuite() {
   const cn = 'UnitTestsTransaction';
   let cols = [];
 
-  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+  const {setUpAll, tearDownAll} =
     lh.testHelperFunctions(dbn, {replicationVersion: "2"});
 
   return {
@@ -525,7 +542,7 @@ function transactionReplication2AbandonmentSuite() {
       });
       cols.push(col);
 
-      let {logs} = dh.getCollectionShardsAndLogs(db, col);
+      let {logs} = AM.getCollectionShardsAndLogs(db, col);
       let log = logs[0];
 
       // Start a new transaction
@@ -571,7 +588,7 @@ function transactionReplication2AbandonmentSuite() {
       });
       cols.push(distLike);
 
-      let {logs} = dh.getCollectionShardsAndLogs(db, col);
+      let {logs} = AM.getCollectionShardsAndLogs(db, col);
       let log = logs[0];
 
       // Start a new transaction
@@ -635,10 +652,10 @@ function transactionReplication2AbnormalTransactionsSuite() {
   'use strict';
   const dbn = 'UnitTestsTransactionDatabase';
   const cn = 'UnitTestsTransaction';
-  const rc = lh.dbservers.length;
+  const rc = AM.getDbServers().length;
   let cols = [];
 
-  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+  const {setUpAll, tearDownAll} =
     lh.testHelperFunctions(dbn, {replicationVersion: "2"});
 
   return {
@@ -689,7 +706,7 @@ function transactionReplication2AbnormalTransactionsSuite() {
         }
       }
 
-      let {logs} = dh.getCollectionShardsAndLogs(db, col);
+      let {logs} = AM.getCollectionShardsAndLogs(db, col);
       let logContents = {};
       for (let log of logs) {
         logContents[log.id()] = log.head(1000);
@@ -748,7 +765,7 @@ function transactionReplication2AbnormalTransactionsSuite() {
       // Gather all log contents
       let logContents = {};
       for (let col of cols) {
-        let {logs} = dh.getCollectionShardsAndLogs(db, col);
+        let {logs} = AM.getCollectionShardsAndLogs(db, col);
         let log = logs[0];  // single shard
         logContents[log.id()] = log.head(1000);
       }
