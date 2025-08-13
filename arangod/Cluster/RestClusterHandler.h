@@ -53,17 +53,17 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   void handleCI_databases();
   void handleCI_flush();
   void handleCI_getCollectionInfo(std::vector<std::string> const& suffixes);
-  void handleCI_getCollectionInfoCurrent();
-  void handleCI_getResponsibleServer();
-  void handleCI_getResponsibleServers();
+  void handleCI_getCollectionInfoCurrent(std::vector<std::string> const& suffixes);
+  void handleCI_getResponsibleServer(std::vector<std::string> const& suffixes);
+  void handleCI_getResponsibleServers(std::vector<std::string> const& suffixes);
   void handleCI_getResponsibleShard();
-  void handleCI_getServerEndpoint();
-  void handleCI_getServerName();
+  void handleCI_getServerEndpoint(std::vector<std::string> const& suffixes);
+  void handleCI_getServerName(std::vector<std::string> const& suffixes);
   void handleCI_getDBServers();
   void handleCI_getCoordinators();
-  void handleCI_uniqid();
-  void handleCI_getAnalyzersRevision();
-  void handleCI_waitForPlanVersion();
+  void handleCI_uniqid(std::vector<std::string> const& suffixes);
+  void handleCI_getAnalyzersRevision(std::vector<std::string> const& suffixes);
+  void handleCI_waitForPlanVersion(std::vector<std::string> const& suffixes);
 
 };
 }  // namespace arangodb
