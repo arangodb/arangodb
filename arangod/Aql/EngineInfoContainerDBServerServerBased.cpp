@@ -628,6 +628,9 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
           trx, std::move(server), newRequest.slice(),
           std::move(didCreateEngine), snippetIds, serverToQueryId,
           serverToQueryIdLock, pool, options, false /* fastPath */);
+
+      _query.incHttpRequests(unsigned(1));
+
       if (_query.executeCallerWaiting() ==
           QueryContext::ExecuteCallerWaiting::Synchronously) {
         // The caller is waiting synchronously. Because of that, skipScheduler
@@ -639,7 +642,6 @@ auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
         // synchronously anyway.
         request.wait();
       }
-      _query.incHttpRequests(unsigned(1));
       auto requestResult = co_await std::move(request);
       if (requestResult.fail()) {
         // this will trigger the cleanupGuard.
