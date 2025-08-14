@@ -307,7 +307,7 @@ void RestClusterHandler::handleCI_getCollectionInfo(std::vector<std::string> con
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 5 || suffixes[1] != "databaseID" || suffixes[3] != "collectionID") {
+  if (suffixes.size() < 5 || suffixes[1] != "databaseName" || suffixes[3] != "collectionName") {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_BAD_PARAMETER,
                   "database and collection arguments are missing");
@@ -316,15 +316,15 @@ void RestClusterHandler::handleCI_getCollectionInfo(std::vector<std::string> con
   if (!isAdmin()) {
     return;
   }
-  std::string const& databaseID = suffixes[2];
-  std::string const& collectionID = suffixes[4];
+  std::string const& databaseName = suffixes[2];
+  std::string const& collectionName = suffixes[4];
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
-      ci.getCollectionNT(databaseID, collectionID);
+      ci.getCollectionNT(databaseName, collectionName);
   if (col == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-                  ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
+                  ClusterInfo::getCollectionNotFoundMsg(databaseName, collectionName));
     return;
   }
 
@@ -384,8 +384,8 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(std::vector<std::stri
     return;
   }
   if (suffixes.size() < 6 ||
-      suffixes[1] != "databaseID" ||
-      suffixes[3] != "collectionID" ||
+      suffixes[1] != "databaseName" ||
+      suffixes[3] != "collectionName" ||
       suffixes[5] != "shardID") {
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_BAD_PARAMETER,
