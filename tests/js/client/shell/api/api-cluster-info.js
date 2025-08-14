@@ -92,13 +92,43 @@ function verifyClusterInfoSuite() {
       const ret = ci.getCollectionInfoCurrent(db._id(), db._users._id, db._users.shards()[0]);
     },
     testgetResponsibleServer: function () {
-      const ret = ci.getResponsibleServer();
+      let ret = ci.getResponsibleServer(db._users.shards()[0]);
+      assertEqual(ret.length, 2, ret);
+      ret = ci.getResponsibleServer("xxx");
+      assertEqual(ret.length, 0, ret);
     },
     testgetResponsibleServers: function () {
-      const ret = ci.getResponsibleServers();
+      let shardIDs = [];
+      ["_users", "_graphs", "_apps"].forEach(col => {
+        shardIDs.push(db[col].shards()[0]);
+      });
+      let ret = ci.getResponsibleServers(shardIDs);
+      shardIDs.forEach(shard => {
+        assertTrue(ret[shard] != null, ret);
+      });
+
+      try {
+        ci.getResponsibleServers(['S00000']);
+        fail();
+      } catch(err) {
+        assertEqual(err.errorNum, errors.ERROR_HTTP_BAD_PARAMETER.code);
+      }
+      try {
+        ci.getResponsibleServers([]);
+        fail();
+      } catch(err) {
+        assertEqual(err.errorNum, errors.ERROR_HTTP_BAD_PARAMETER.code);
+      }
+      try {
+        ci.getResponsibleServers(null);
+        fail();
+      } catch(err) {
+        assertEqual(err.errorNum, errors.ERROR_HTTP_BAD_PARAMETER.code);
+      }
     },
     testgetResponsibleShard: function () {
-      const ret = ci.getResponsibleShard();
+      // TODO vocbase
+      // const ret = ci.getResponsibleShard(collectionID, documentKey, parseSuccess);
     },
     testgetServerEndpoint: function () {
       // aim for db-servers, these got server ids:
@@ -118,19 +148,26 @@ function verifyClusterInfoSuite() {
       }
     },
     testgetServerName: function () {
-      const ret = ci.getServerName();
+      assertEqual(ci.getServerName(IM.arangods[3].endpoint), IM.arangods[3].id)
+      assertEqual(ci.getServerName("xxx"), "");
     },
     testgetDBServers: function () {
       const ret = ci.getDBServers();
+      assertEqual(ret.length, IM.options.dbServers, ret);
     },
     testgetCoordinators: function () {
       const ret = ci.getCoordinators();
+      assertEqual(ret.length, IM.options.coordinators, ret);
     },
-    testuniqid: function () {
-      const ret = ci.uniqid();
+    testUniqid: function () {
+      const ret1 = ci.uniqid(100);
+      const ret2 = ci.uniqid(100);
+      assertTrue(ret2 - ret1 >= 100);
     },
     testgetAnalyzersRevision: function () {
-      const ret = ci.getAnalyzersRevision();
+      const ret = ci.getAnalyzersRevision('_system');
+      assertTrue(ret.revision >= 0, ret);
+      assertTrue(ret.buildingRevision >= 0, ret);
     },
     testwaitForPlanVersion: function () {
       const ret = ci.waitForPlanVersion();

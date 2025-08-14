@@ -54,16 +54,18 @@ function getCollectionInfoCurrent (databaseID, collectionID, shardID) {
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
-function getResponsibleServer () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-getResponsibleServer`);
+function getResponsibleServer (shardID) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-getResponsibleServer/shardID/${shardID}`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
-function getResponsibleServers () {
-  let res = arango.POST_RAW(`_api/cluster/cluster-info-getResponsibleServers`);
+function getResponsibleServers (shardIDs) {
+  let res = arango.POST_RAW(`_api/cluster/cluster-info-getResponsibleServers`, shardIDs);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
-function getResponsibleShard () {
-  let res = arango.POST_RAW(`_api/cluster/cluster-info-getResponsibleShard`);
+function getResponsibleShard (collectionID, documentKey, parseSuccess) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-getResponsibleShard/collectionID/${collectionID}/documentKey/${documentKey}/parseSuccess/${parseSuccess}`);
   arangosh.checkRequestResult(res);
 }
 function getServerEndpoint (serverID) {
@@ -71,29 +73,35 @@ function getServerEndpoint (serverID) {
   arangosh.checkRequestResult(res);
   return res.parsedBody.endpoint;
 }
-function getServerName () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-getServerName`);
+function getServerName (endpoint) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-getServerName/${encodeURIComponent(endpoint)}`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody.serverName;
 }
 function getDBServers () {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-getDBServers`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
 function getCoordinators () {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-getCoordinators`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
-function uniqid () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-uniqid`);
+function uniqid (count) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-uniqid/${count}`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
-function getAnalyzersRevision () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-getAnalyzersRevision`);
+function getAnalyzersRevision (database) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-getAnalyzersRevision/${database}`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
 function waitForPlanVersion () {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-waitForPlanVersion`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
 
 
