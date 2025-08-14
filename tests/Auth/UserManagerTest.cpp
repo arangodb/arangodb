@@ -31,7 +31,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Auth/Handler.h"
 #include "Auth/User.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerImpl.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 
@@ -44,15 +44,15 @@ namespace arangodb::tests::auth_info_test {
 class TestQueryRegistry : public QueryRegistry {
  public:
   TestQueryRegistry() : QueryRegistry(1.0){};
-  virtual ~TestQueryRegistry() = default;
+  ~TestQueryRegistry() override = default;
 };
 
 class UserManagerTest : public ::testing::Test {
  protected:
-  arangodb::ArangodServer server;
+  ArangodServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
-  auth::UserManager um;
+  auth::UserManagerImpl um;
 
   UserManagerTest()
       : server(nullptr, nullptr), state(ServerState::instance()), um(server) {
@@ -61,7 +61,7 @@ class UserManagerTest : public ::testing::Test {
     server.addFeature<DatabaseFeature>();
   }
 
-  ~UserManagerTest() {
+  ~UserManagerTest() override {
     state->setServerMode(ServerState::Mode::DEFAULT);
     state->setReadOnly(ServerState::API_FALSE);
   }
@@ -70,7 +70,7 @@ class UserManagerTest : public ::testing::Test {
 TEST_F(UserManagerTest, unknown_user_will_have_no_access) {
   auth::UserMap userEntryMap;
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::NONE);
 }
 
@@ -82,7 +82,7 @@ TEST_F(UserManagerTest,
   userEntryMap.emplace("test", testUser);
 
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
@@ -97,7 +97,7 @@ TEST_F(
   state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::RO);
 }
 
@@ -128,7 +128,7 @@ TEST_F(
   state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
+  auth::Level authLevel = um.collectionAuthLevel("test", "test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::RO);
 }
 

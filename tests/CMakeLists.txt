@@ -44,6 +44,7 @@ if (USE_V8)
 endif ()
 
 add_library(arango_tests_basics OBJECT
+  ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/Auth/UserManagerMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/ClusterInfoMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.h
@@ -72,7 +73,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 

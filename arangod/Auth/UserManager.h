@@ -23,39 +23,18 @@
 
 #pragma once
 
-#include <mutex>
-
 #include "Auth/Common.h"
 #include "Auth/User.h"
 
-#include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "Basics/debugging.h"
 #include "Rest/CommonDefines.h"
-#include "RestServer/arangod.h"
 
-#ifdef USE_ENTERPRISE
-#include "Auth/Handler.h"
-#endif
-
-#include <thread>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace aql {
-class QueryRegistry;
-}
-namespace basics {
-template<typename T>
-class ReadLocker;
-}
+namespace arangodb::auth {
 
-namespace auth {
-class Handler;
-
-using UserMap = std::unordered_map<std::string, auth::User>;
+using UserMap = std::unordered_map<std::string, User>;
 
 // UserManager is the sole point of access for users and permissions
 // stored in `_system/_users`. The permissions are cached locally if possible,
@@ -63,135 +42,98 @@ using UserMap = std::unordered_map<std::string, auth::User>;
 // exist on coordinators and single servers.
 class UserManager {
  public:
-  explicit UserManager(ArangodServer&);
-  ~UserManager();
+  virtual ~UserManager() = default;
 
   /*
    * This will first try to load the initial userCache and afterward start the
    * internal update thread. This is blocking, it will repeat until it succeeds.
    * This is not thread safe.
    */
-  void loadUserCacheAndStartUpdateThread() noexcept;
+  virtual void loadUserCacheAndStartUpdateThread() noexcept = 0;
 
-  typedef std::function<Result(auth::User&)> UserCallback;
-  typedef std::function<Result(auth::User const&)> ConstUserCallback;
+  using UserCallback = std::function<Result(User&)>;
+  using ConstUserCallback = std::function<Result(User const&)>;
 
   // Tells coordinator to reload its data. Only called in HeartBeat thread
-  void setGlobalVersion(uint64_t version) noexcept;
+  virtual void setGlobalVersion(uint64_t version) noexcept = 0;
 
   // used for caching
-  uint64_t globalVersion() const noexcept;
+  [[nodiscard]] virtual uint64_t globalVersion() const noexcept = 0;
 
   // Trigger eventual reload on all other coordinators (and in TokenCache)
-  void triggerGlobalReload() const;
+  virtual void triggerGlobalReload() const = 0;
 
   // Will trigger a global reload and block until the versions are
   // incremented at least once. To ensure that the internal thread executed
   // loadFromDB at least once.
-  void triggerCacheRevalidation();
+  virtual void triggerCacheRevalidation() = 0;
 
   // Create the root user with a default password, will fail if the user
   // already exists. Only ever call if you can guarantee to be in charge
-  void createRootUser();
+  virtual void createRootUser() = 0;
 
-  velocypack::Builder allUsers();
+  virtual velocypack::Builder allUsers() = 0;
   // Add user from arangodb
-  Result storeUser(bool replace, std::string const& user,
-                   std::string const& pass, bool active,
-                   velocypack::Slice extras);
+  virtual Result storeUser(bool replace, std::string const& user,
+                           std::string const& pass, bool active,
+                           velocypack::Slice extras) = 0;
 
   // Enumerate list of all users
-  Result enumerateUsers(std::function<bool(auth::User&)>&&,
-                        bool retryOnConflict);
+  virtual Result enumerateUsers(std::function<bool(User&)>&&,
+                                bool retryOnConflict) = 0;
 
   // Update specific user
-  Result updateUser(std::string const& user, UserCallback&&);
+  virtual Result updateUser(std::string const& user, UserCallback&&) = 0;
 
   // Access user without modifying it
-  Result accessUser(std::string const& user, ConstUserCallback&&);
+  virtual Result accessUser(std::string const& user, ConstUserCallback&&) = 0;
 
   // does this user exists in the db
-  bool userExists(std::string const& user);
+  virtual bool userExists(std::string const& user) = 0;
 
   // Serialize user into legacy format for REST API
-  velocypack::Builder serializeUser(std::string const& user);
+  virtual velocypack::Builder serializeUser(std::string const& user) = 0;
 
   // Remove one user or all users
-  Result removeUser(std::string const& user);
-  Result removeAllUsers();
+  virtual Result removeUser(std::string const& user) = 0;
+  virtual Result removeAllUsers() = 0;
 
   // Convenience methods to check a password or access token
-  bool checkCredentials(std::string const& username, std::string const& token,
-                        std::string& un);
+  virtual bool checkCredentials(std::string const& username,
+                                std::string const& token, std::string& un) = 0;
 
-  auth::Level databaseAuthLevel(std::string const& username,
-                                std::string const& dbname,
-                                bool configured = false);
-  auth::Level collectionAuthLevel(std::string const& username,
+  virtual Level databaseAuthLevel(std::string const& username,
                                   std::string const& dbname,
-                                  std::string_view coll,
-                                  bool configured = false);
+                                  bool configured) = 0;
+  virtual Level collectionAuthLevel(std::string const& username,
+                                    std::string const& dbname,
+                                    std::string_view coll, bool configured) = 0;
 
   // Return all access tokens of an user
-  Result accessTokens(std::string const& user, velocypack::Builder&);
+  virtual Result accessTokens(std::string const& user,
+                              velocypack::Builder&) = 0;
 
   // Delete an access tokens of an user
-  Result deleteAccessToken(std::string const& user, uint64_t id);
+  virtual Result deleteAccessToken(std::string const& user, uint64_t id) = 0;
 
   // Creates an access tokens for an user
-  Result createAccessToken(std::string const& user, std::string const& name,
-                           double validUntil, velocypack::Builder&);
+  virtual Result createAccessToken(std::string const& user,
+                                   std::string const& name, double validUntil,
+                                   velocypack::Builder&) = 0;
+
+  // This will shut down the running thread on demand.
+  // It should only be use when the UserManager is being destroyed.
+  virtual void shutdown() = 0;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Overwrite internally cached permissions, only use
-  // for testing purposes
-  void setAuthInfo(auth::UserMap const& userEntryMap);
+  // for testing purposes.
+  // This will assert that the underlying UpdateThread was started.
+  virtual void setAuthInfo(UserMap const& userEntryMap) = 0;
 
   // Need this to find out if the loadFromDB was run and the internal version
   // was updated
-  uint64_t internalVersion() const noexcept;
+  [[nodiscard]] virtual uint64_t internalVersion() const noexcept = 0;
 #endif  // ARANGODB_USE_GOOGLE_TESTS
-
-  // This will shut down the running thread on demand. It's needed because the
-  // failure point can be deactivated before the thread is finished and can lead
-  // to calls on the server that are not initialized properly in the unit-test
-  // environment.
-  void shutdown();
-
- private:
-  bool checkPassword(std::string const& username, std::string const& password);
-  bool checkAccessToken(std::string const& username, std::string const& token,
-                        std::string& un);
-
-  // Load users and permissions from local database.
-  // Returns the version that was loaded and written to the _internalVersion.
-  // Will be 0 if the load failed for any reason.
-  uint64_t loadFromDB() noexcept;
-
-  // This function will throw if the thread was not yet started
-  // and the user-cache was not yet preloaded.
-  // Basically guards most of the functions from being called too early.
-  void checkIfUserDataIsAvailable() const;
-
-  // store or replace user object
-  Result storeUserInternal(auth::User const& user, bool replace);
-
-  // extract the username from the access token
-  Result extractUsername(std::string const& token, std::string& username) const;
-
-  // underlying application server
-  ArangodServer& _server;
-
-  // Protect the _userCache access
-  basics::ReadWriteLock _userCacheLock;
-
-  // used to update caches
-  std::atomic<uint64_t> _globalVersion;
-  std::atomic<uint64_t> _internalVersion;
-  std::jthread _userCacheUpdateThread;
-
-  // Caches permissions and other user info
-  UserMap _userCache;
 };
-}  // namespace auth
-}  // namespace arangodb
+}  // namespace arangodb::auth

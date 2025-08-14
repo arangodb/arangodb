@@ -26,7 +26,7 @@
 #include "Mocks/Servers.h"
 
 #include "Agency/AgencyComm.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerImpl.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -42,7 +42,12 @@ class UserManagerClusterTest : public ::testing::Test {
  public:
   UserManagerClusterTest() {
     TRI_AddFailurePointDebugging("UserManager::performDBLookup");
-    auto um = _server.getFeature<AuthenticationFeature>().userManager();
+    auto& auth = _server.getFeature<AuthenticationFeature>();
+    // we are testing the proper implementation of the userManager, not the
+    // mock.
+    auth.setUserManager(
+        std::make_unique<auth::UserManagerImpl>(_server.server()));
+    auto* um = auth.userManager();
     um->loadUserCacheAndStartUpdateThread();
   }
 

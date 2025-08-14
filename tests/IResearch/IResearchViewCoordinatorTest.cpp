@@ -27,11 +27,7 @@
 #include "common.h"
 #include "gtest/gtest.h"
 
-#include "Agency/AgencyFeature.h"
 #include "Agency/Store.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
-#include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
@@ -41,26 +37,16 @@
 #include "Aql/Executor/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
-#include "Auth/UserManager.h"
-#include "Basics/ArangoGlobalContext.h"
+#include "Auth/UserManagerMock.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/files.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#ifdef USE_V8
-#include "FeaturePhases/V8FeaturePhase.h"
-#endif
 #include "GeneralServer/AuthenticationFeature.h"
-#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkCoordinator.h"
@@ -68,24 +54,10 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "Logger/LogTopic.h"
-#include "Logger/Logger.h"
-#include "Random/RandomFeature.h"
-#include "RestServer/AqlFeature.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/FlushFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
-#ifdef USE_V8
-#include "V8Server/V8DealerFeature.h"
-#endif
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 #include "velocypack/Iterator.h"
@@ -103,11 +75,37 @@ class IResearchViewCoordinatorTest : public ::testing::Test {
 
   IResearchViewCoordinatorTest() : server("CRDN_0001") {
     arangodb::tests::init();
-
+    expectUserManagerCalls();
     TransactionStateMock::abortTransactionCount = 0;
     TransactionStateMock::beginTransactionCount = 0;
     TransactionStateMock::commitTransactionCount = 0;
   }
+
+  void expectUserManagerCalls() {
+    using namespace arangodb;
+    auto* authFeature = AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    auto* um =
+        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
+    EXPECT_NE(um, nullptr);
+
+    using namespace ::testing;
+    EXPECT_CALL(*um, collectionAuthLevel)
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+                                                 std::string const& dbname,
+                                                 std::string_view cname) {
+          auto const it = _userMap.find(username);
+          if (it == _userMap.end()) {
+            return auth::Level::NONE;
+          }
+          EXPECT_EQ(username, it->second.username());
+          return it->second.collectionAuthLevel(dbname, cname);
+        }));
+    EXPECT_CALL(*um, setAuthInfo)
+        .WillRepeatedly(WithArgs<0>(
+            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
+  }
+  arangodb::auth::UserMap _userMap;
 
   void createTestDatabase(TRI_vocbase_t*& vocbase) {
     vocbase = server.createDatabase("testDatabase");

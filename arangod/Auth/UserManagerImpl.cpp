@@ -21,7 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "UserManager.h"
+#include "UserManagerImpl.h"
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -40,7 +40,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/BootstrapFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -75,34 +74,28 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
 
 }  // namespace
 
-using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-auth::UserManager::UserManager(ArangodServer& server)
+namespace arangodb::auth {
+
+UserManagerImpl::UserManagerImpl(ArangodServer& server)
     : _server(server), _globalVersion(1), _internalVersion(0) {}
 
-auth::UserManager::~UserManager() {
-  if (_userCacheUpdateThread.joinable()) {
-    _userCacheUpdateThread.request_stop();
-    // set global version leads to a wake-up of the update thread
-    setGlobalVersion(std::numeric_limits<uint64_t>::max());
-    _userCacheUpdateThread.join();
-  }
-}
+UserManagerImpl::~UserManagerImpl() { shutdown(); }
 
 // Parse the users
-static auth::UserMap ParseUsers(VPackSlice const& slice) {
+static UserMap ParseUsers(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
-  auth::UserMap result;
+  UserMap result;
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
     // we also need to insert inactive users into the cache here
     // otherwise all following update/replace/remove operations on the
     // user will fail
-    auth::User user = auth::User::fromDocument(s);
+    User user = User::fromDocument(s);
     // intentional copy, as we are about to move-away from user
     std::string username = user.username();
     result.try_emplace(std::move(username), std::move(user));
@@ -114,7 +107,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
-    LOG_TOPIC("b8c47", DEBUG, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("b8c47", DEBUG, Logger::AUTHENTICATION)
         << "system database is unknown";
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "system database is unknown");
@@ -126,16 +119,16 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   std::string const queryStr("FOR user IN _users RETURN user");
   auto origin =
       transaction::OperationOriginInternal{"querying all users from database"};
-  auto query = arangodb::aql::Query::create(
+  auto query = aql::Query::create(
       transaction::StandaloneContext::create(*vocbase, origin),
-      arangodb::aql::QueryString(queryStr), nullptr);
+      aql::QueryString(queryStr), nullptr);
 
   query->queryOptions().cache = false;
   query->queryOptions().ttl = 30;
   query->queryOptions().maxRuntime = 30;
   query->queryOptions().skipAudit = true;
 
-  LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
+  LOG_TOPIC("f3eec", DEBUG, Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
   aql::QueryResult queryResult = query->executeSync();
@@ -157,7 +150,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
   if (!usersSlice.isArray()) {
-    LOG_TOPIC("4b11d", ERR, arangodb::Logger::AUTHENTICATION)
+    LOG_TOPIC("4b11d", ERR, Logger::AUTHENTICATION)
         << "cannot read users from _users collection";
     return {};
   }
@@ -180,7 +173,7 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
   }
 }
 
-void auth::UserManager::loadUserCacheAndStartUpdateThread() noexcept {
+void UserManagerImpl::loadUserCacheAndStartUpdateThread() noexcept {
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
 
   if (_userCacheUpdateThread.get_id() != std::jthread::id()) {
@@ -262,7 +255,7 @@ void auth::UserManager::loadUserCacheAndStartUpdateThread() noexcept {
 }
 
 // private, will acquire _userCacheLock in write-mode and release it.
-uint64_t auth::UserManager::loadFromDB() noexcept {
+uint64_t UserManagerImpl::loadFromDB() noexcept {
   uint64_t const currentGlobalVersion = globalVersion();
 
   auto const setInternalVersion = [&](uint64_t const version) {
@@ -305,7 +298,7 @@ uint64_t auth::UserManager::loadFromDB() noexcept {
   return 0u;
 }
 
-void auth::UserManager::checkIfUserDataIsAvailable() const {
+void UserManagerImpl::checkIfUserDataIsAvailable() const {
   bool const noDataYetLoaded =
       _internalVersion.load(std::memory_order_relaxed) == 0;
   if (noDataYetLoaded) {
@@ -317,8 +310,8 @@ void auth::UserManager::checkIfUserDataIsAvailable() const {
 
 // private, must be called with _userCacheLock in write mode
 // this method can only be called by users with access to the _system collection
-Result auth::UserManager::storeUserInternal(auth::User const& entry,
-                                            bool const replace) {
+Result UserManagerImpl::storeUserInternal(User const& entry,
+                                          bool const replace) {
   VPackBuilder data = entry.toVPackBuilder();
   bool const hasKey = data.slice().hasKey(StaticStrings::KeyString);
   bool const hasRev = data.slice().hasKey(StaticStrings::RevString);
@@ -370,7 +363,7 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
 // -----------------------------------------------------------------------------
 
 // only call from the boostrap feature, must be sure to be the only one
-void auth::UserManager::createRootUser() {
+void UserManagerImpl::createRootUser() {
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator const& it = _userCache.find("root");
   if (it != _userCache.end()) {
@@ -387,13 +380,12 @@ void auth::UserManager::createRootUser() {
     // to the "_system" database, otherwise things break
     auto& initDatabaseFeature = _server.getFeature<InitDatabaseFeature>();
 
-    auth::User user =
-        auth::User::newUser("root", initDatabaseFeature.defaultPassword());
+    User user = User::newUser("root", initDatabaseFeature.defaultPassword());
     user.setActive(true);
-    user.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
-    user.grantCollection(StaticStrings::SystemDatabase, "*", auth::Level::RW);
-    user.grantDatabase("*", auth::Level::RW);
-    user.grantCollection("*", "*", auth::Level::RW);
+    user.grantDatabase(StaticStrings::SystemDatabase, Level::RW);
+    user.grantCollection(StaticStrings::SystemDatabase, "*", Level::RW);
+    user.grantDatabase("*", Level::RW);
+    user.grantCollection("*", "*", Level::RW);
     storeUserInternal(user, false);
   } catch (std::exception const& ex) {
     LOG_TOPIC("0511c", ERR, Logger::AUTHENTICATION)
@@ -408,7 +400,7 @@ void auth::UserManager::createRootUser() {
   triggerGlobalReload();
 }
 
-VPackBuilder auth::UserManager::allUsers() {
+VPackBuilder UserManagerImpl::allUsers() {
   // will query db directly, no need for _userCacheLock
   std::shared_ptr<VPackBuilder> users = QueryAllUsers(_server);
 
@@ -424,7 +416,7 @@ VPackBuilder auth::UserManager::allUsers() {
   return result;
 }
 
-void auth::UserManager::triggerCacheRevalidation() {
+void UserManagerImpl::triggerCacheRevalidation() {
   // Internally this function is called after a successful write/update to
   // ensure that the changed data is loaded into the userCache. Before return.
   uint64_t const versionBeforeReload = globalVersion();
@@ -454,7 +446,7 @@ void auth::UserManager::triggerCacheRevalidation() {
   // was called and before it returns.
 }
 
-void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
+void UserManagerImpl::setGlobalVersion(uint64_t const version) noexcept {
   uint64_t previous = _globalVersion.load(std::memory_order_relaxed);
   while (version > previous) {
     if (_globalVersion.compare_exchange_strong(previous, version,
@@ -468,12 +460,12 @@ void auth::UserManager::setGlobalVersion(uint64_t const version) noexcept {
 }
 
 /// @brief used for caching
-uint64_t auth::UserManager::globalVersion() const noexcept {
+uint64_t UserManagerImpl::globalVersion() const noexcept {
   return _globalVersion.load(std::memory_order_acquire);
 }
 
 /// Trigger eventual reload, user facing API call
-void auth::UserManager::triggerGlobalReload() const {
+void UserManagerImpl::triggerGlobalReload() const {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }
@@ -493,10 +485,10 @@ void auth::UserManager::triggerGlobalReload() const {
   }
 }
 
-Result auth::UserManager::storeUser(bool const replace,
-                                    std::string const& username,
-                                    std::string const& pass, bool const active,
-                                    VPackSlice extras) {
+Result UserManagerImpl::storeUser(bool const replace,
+                                  std::string const& username,
+                                  std::string const& pass, bool const active,
+                                  VPackSlice extras) {
   if (username.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
   }
@@ -514,12 +506,12 @@ Result auth::UserManager::storeUser(bool const replace,
   std::string oldKey;  // will only be populated during replace
   RevisionId oldRev = RevisionId::none();
   if (replace) {
-    auth::User const& oldEntry = it->second;
+    User const& oldEntry = it->second;
     oldKey = oldEntry.key();
     oldRev = oldEntry.rev();
   }
 
-  auth::User user = auth::User::newUser(username, pass);
+  User user = User::newUser(username, pass);
   user.setActive(active);
   if (extras.isObject() && !extras.isEmptyObject()) {
     user.setUserData(VPackBuilder(extras));
@@ -539,15 +531,15 @@ Result auth::UserManager::storeUser(bool const replace,
   return r;
 }
 
-Result auth::UserManager::enumerateUsers(
-    std::function<bool(auth::User&)>&& func, bool const retryOnConflict) {
+Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
+                                       bool const retryOnConflict) {
   checkIfUserDataIsAvailable();
 
-  std::vector<auth::User> toUpdate;
+  std::vector<User> toUpdate;
   {  // users are later updated with rev ID for consistency
     READ_LOCKER(readGuard, _userCacheLock);
     for (UserMap::value_type& it : _userCache) {
-      auth::User user = it.second;  // copy user object
+      User user = it.second;  // copy user object
       TRI_ASSERT(!user.key().empty() && user.rev().isSet());
       if (func(user)) {
         toUpdate.emplace_back(std::move(user));
@@ -572,7 +564,7 @@ Result auth::UserManager::enumerateUsers(
         READ_LOCKER(readGuard, _userCacheLock);
         UserMap::iterator it2 = _userCache.find(it->username());
         if (it2 != _userCache.end()) {
-          auth::User user = it2->second;  // copy user object
+          User user = it2->second;  // copy user object
           func(user);
           *it = std::move(user);
           continue;
@@ -591,8 +583,8 @@ Result auth::UserManager::enumerateUsers(
   return res;
 }
 
-Result auth::UserManager::updateUser(std::string const& name,
-                                     UserCallback&& func) {
+Result UserManagerImpl::updateUser(std::string const& name,
+                                   UserCallback&& func) {
   if (name.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -608,7 +600,7 @@ Result auth::UserManager::updateUser(std::string const& name,
   }
 
   LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
-  auth::User user = it->second;  // make a copy
+  User user = it->second;  // make a copy
   TRI_ASSERT(!user.key().empty() && user.rev().isSet());
   Result r = func(user);
   if (r.fail()) {
@@ -626,8 +618,8 @@ Result auth::UserManager::updateUser(std::string const& name,
   return r;
 }
 
-Result auth::UserManager::accessUser(std::string const& user,
-                                     ConstUserCallback&& func) {
+Result UserManagerImpl::accessUser(std::string const& user,
+                                   ConstUserCallback&& func) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -642,7 +634,7 @@ Result auth::UserManager::accessUser(std::string const& user,
   return TRI_ERROR_USER_NOT_FOUND;
 }
 
-bool auth::UserManager::userExists(std::string const& user) {
+bool UserManagerImpl::userExists(std::string const& user) {
   if (user.empty()) {
     return false;
   }
@@ -653,7 +645,7 @@ bool auth::UserManager::userExists(std::string const& user) {
   return it != _userCache.end();
 }
 
-VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
+VPackBuilder UserManagerImpl::serializeUser(std::string const& user) {
   checkIfUserDataIsAvailable();
 
   READ_LOCKER(readGuard, _userCacheLock);
@@ -670,8 +662,7 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);  // FIXME do not use
 }
 
-static Result RemoveUserInternal(ArangodServer& server,
-                                 auth::User const& entry) {
+static Result RemoveUserInternal(ArangodServer& server, User const& entry) {
   TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
 
@@ -707,7 +698,7 @@ static Result RemoveUserInternal(ArangodServer& server,
   return res;
 }
 
-Result auth::UserManager::removeUser(std::string const& user) {
+Result UserManagerImpl::removeUser(std::string const& user) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -726,7 +717,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
 
-  auth::User const& oldEntry = it->second;
+  User const& oldEntry = it->second;
   Result res = RemoveUserInternal(_server, oldEntry);
 
   // cannot hold _userCacheLock while  invalidating token cache
@@ -736,7 +727,7 @@ Result auth::UserManager::removeUser(std::string const& user) {
   return res;
 }
 
-Result auth::UserManager::removeAllUsers() {
+Result UserManagerImpl::removeAllUsers() {
   checkIfUserDataIsAvailable();
 
   Result res;
@@ -766,35 +757,35 @@ Result auth::UserManager::removeAllUsers() {
   return res;
 }
 
-Result auth::UserManager::accessTokens(std::string const& user,
-                                       velocypack::Builder& builder) {
+Result UserManagerImpl::accessTokens(std::string const& user,
+                                     velocypack::Builder& builder) {
   Result result = accessUser(
-      user, [&](auth::User const& u) { return u.getAccessTokens(builder); });
+      user, [&](User const& u) { return u.getAccessTokens(builder); });
 
   return result;
 }
 
-Result auth::UserManager::deleteAccessToken(std::string const& user,
-                                            uint64_t id) {
+Result UserManagerImpl::deleteAccessToken(std::string const& user,
+                                          uint64_t id) {
   Result result =
-      updateUser(user, [&](auth::User& u) { return u.deleteAccessToken(id); });
+      updateUser(user, [&](User& u) { return u.deleteAccessToken(id); });
 
   return result;
 }
 
-Result auth::UserManager::createAccessToken(std::string const& user,
-                                            std::string const& name,
-                                            double validUntil,
-                                            velocypack::Builder& builder) {
-  Result result = updateUser(user, [&](auth::User& u) {
+Result UserManagerImpl::createAccessToken(std::string const& user,
+                                          std::string const& name,
+                                          double validUntil,
+                                          velocypack::Builder& builder) {
+  Result result = updateUser(user, [&](User& u) {
     return u.createAccessToken(name, validUntil, builder);
   });
 
   return result;
 }
 
-bool auth::UserManager::checkPassword(std::string const& username,
-                                      std::string const& password) {
+bool UserManagerImpl::checkPassword(std::string const& username,
+                                    std::string const& password) {
   if (username.empty()) {
     return false;  // we cannot authenticate during bootstrap
   }
@@ -803,7 +794,7 @@ bool auth::UserManager::checkPassword(std::string const& username,
   UserMap::iterator it = _userCache.find(username);
 
   if (it != _userCache.end()) {
-    auth::User const& user = it->second;
+    User const& user = it->second;
     if (user.isActive()) {
       return user.checkPassword(password);
     }
@@ -812,8 +803,8 @@ bool auth::UserManager::checkPassword(std::string const& username,
   return false;
 }
 
-Result auth::UserManager::extractUsername(std::string const& token,
-                                          std::string& username) const {
+Result UserManagerImpl::extractUsername(std::string const& token,
+                                        std::string& username) const {
   if (token.starts_with("v1.")) {
     std::string unhex =
         StringUtils::decodeHex(token.c_str() + 3, token.size() - 3);
@@ -842,9 +833,9 @@ Result auth::UserManager::extractUsername(std::string const& token,
   }
 }
 
-bool auth::UserManager::checkAccessToken(std::string const& username,
-                                         std::string const& token,
-                                         std::string& un) {
+bool UserManagerImpl::checkAccessToken(std::string const& username,
+                                       std::string const& token,
+                                       std::string& un) {
   Result result = extractUsername(token, un);
 
   if (!result.ok()) {
@@ -859,7 +850,7 @@ bool auth::UserManager::checkAccessToken(std::string const& username,
   UserMap::iterator it = _userCache.find(un);
 
   if (it != _userCache.end()) {
-    auth::User const& user = it->second;
+    User const& user = it->second;
     if (user.isActive()) {
       return user.checkAccessToken(token);
     }
@@ -868,9 +859,9 @@ bool auth::UserManager::checkAccessToken(std::string const& username,
   return false;
 }
 
-bool auth::UserManager::checkCredentials(std::string const& username,
-                                         std::string const& password,
-                                         std::string& un) {
+bool UserManagerImpl::checkCredentials(std::string const& username,
+                                       std::string const& password,
+                                       std::string& un) {
   un.clear();
   bool authorized = !username.empty() && checkPassword(username, password);
 
@@ -883,11 +874,11 @@ bool auth::UserManager::checkCredentials(std::string const& username,
   return authorized;
 }
 
-auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
-                                                 std::string const& dbname,
-                                                 bool configured) {
+Level UserManagerImpl::databaseAuthLevel(std::string const& user,
+                                         std::string const& dbname,
+                                         bool configured) {
   if (dbname.empty()) {
-    return auth::Level::NONE;
+    return Level::NONE;
   }
 
   checkIfUserDataIsAvailable();
@@ -897,25 +888,25 @@ auth::Level auth::UserManager::databaseAuthLevel(std::string const& user,
   if (it == _userCache.end()) {
     LOG_TOPIC("aa27c", TRACE, Logger::AUTHORIZATION)
         << "User not found: " << user;
-    return auth::Level::NONE;
+    return Level::NONE;
   }
 
-  auth::Level level = it->second.databaseAuthLevel(dbname);
+  Level level = it->second.databaseAuthLevel(dbname);
   if (!configured) {
-    if (level > auth::Level::RO && ServerState::readOnly()) {
-      return auth::Level::RO;
+    if (level > Level::RO && ServerState::readOnly()) {
+      return Level::RO;
     }
   }
-  TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
+  TRI_ASSERT(level != Level::UNDEFINED);  // not allowed here
   return level;
 }
 
-auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
-                                                   std::string const& dbname,
-                                                   std::string_view coll,
-                                                   bool configured) {
+Level UserManagerImpl::collectionAuthLevel(std::string const& user,
+                                           std::string const& dbname,
+                                           std::string_view coll,
+                                           bool configured) {
   if (coll.empty()) {
-    return auth::Level::NONE;
+    return Level::NONE;
   }
 
   checkIfUserDataIsAvailable();
@@ -925,11 +916,11 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   if (it == _userCache.end()) {
     LOG_TOPIC("6d0d4", TRACE, Logger::AUTHORIZATION)
         << "User not found: " << user;
-    return auth::Level::NONE;  // no user found
+    return Level::NONE;  // no user found
   }
 
   TRI_ASSERT(!coll.empty());
-  auth::Level level;
+  Level level;
   if (coll[0] >= '0' && coll[0] <= '9') {
     std::string tmpColl =
         _server.getFeature<DatabaseFeature>().translateCollectionName(dbname,
@@ -940,27 +931,16 @@ auth::Level auth::UserManager::collectionAuthLevel(std::string const& user,
   }
 
   if (!configured) {
-    static_assert(auth::Level::RO < auth::Level::RW, "ro < rw");
-    if (level > auth::Level::RO && ServerState::readOnly()) {
-      return auth::Level::RO;
+    static_assert(Level::RO < Level::RW, "ro < rw");
+    if (level > Level::RO && ServerState::readOnly()) {
+      return Level::RO;
     }
   }
-  TRI_ASSERT(level != auth::Level::UNDEFINED);  // not allowed here
+  TRI_ASSERT(level != Level::UNDEFINED);  // not allowed here
   return level;
 }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-/// Only used for testing
-void auth::UserManager::setAuthInfo(auth::UserMap const& newMap) {
-  WRITE_LOCKER(writeGuard, _userCacheLock);
-  _userCache = newMap;
-  writeGuard.unlock();
-  auto const currentGlobalVersion = globalVersion();
-  setGlobalVersion(currentGlobalVersion + 1);
-  _internalVersion.store(currentGlobalVersion + 1);
-}
-
-void auth::UserManager::shutdown() {
+void UserManagerImpl::shutdown() {
   if (_userCacheUpdateThread.joinable()) {
     _userCacheUpdateThread.request_stop();
     // set global version leads to a wake-up of the update thread
@@ -969,8 +949,20 @@ void auth::UserManager::shutdown() {
   }
 }
 
-uint64_t auth::UserManager::internalVersion() const noexcept {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+/// Only used for testing
+void UserManagerImpl::setAuthInfo(UserMap const& newMap) {
+  WRITE_LOCKER(writeGuard, _userCacheLock);
+  _userCache = newMap;
+  writeGuard.unlock();
+  auto const currentGlobalVersion = globalVersion();
+  setGlobalVersion(currentGlobalVersion + 1);
+  _internalVersion.store(currentGlobalVersion + 1);
+}
+
+uint64_t UserManagerImpl::internalVersion() const noexcept {
   return _internalVersion.load(std::memory_order_acquire);
 }
 
 #endif
+}  // namespace arangodb::auth
