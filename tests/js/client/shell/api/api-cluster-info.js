@@ -56,8 +56,18 @@ function verifyClusterInfoSuite() {
     testFlush: function () {
       assertTrue(ci.flush());
     },
-    testdatabases: function () {
+    testDatabases: function () {
+      const dbn = 'testdb';
       const ret = ci.databases();
+      assertEqual(ret.length, 1, ret);
+      try {
+        db._createDatabase(dbn);
+        const ret = ci.databases();
+        assertEqual(ret.length, 2, ret);
+      } finally {
+        db._useDatabase('_system');
+        db._dropDatabase(dbn);
+      }
     },
     testgetCollectionInfo: function () {
       const ret = ci.getCollectionInfo();

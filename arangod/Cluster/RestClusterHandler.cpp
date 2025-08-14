@@ -267,12 +267,15 @@ void RestClusterHandler::handleCI_databases() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::vector<DatabaseID> res = ci.databases();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  body->openArray();
-  std::vector<DatabaseID>::iterator it;
-  for (it = res.begin(); it != res.end(); ++it) {
-    body->add(VPackValue(*it));
+  { VPackObjectBuilder x(&(*body));
+    body->add(VPackValue("databases"));
+    { VPackArrayBuilder x(&(*body));
+      std::vector<DatabaseID>::iterator it;
+      for (it = res.begin(); it != res.end(); ++it) {
+        body->add(VPackValue(*it));
+      }
+    }
   }
-  body->close();
 
   generateResult(rest::ResponseCode::OK, body->slice());
 }
