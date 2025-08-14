@@ -42,13 +42,17 @@ function databases () {
   arangosh.checkRequestResult(res);
   return res.parsedBody.databases;
 }
-function getCollectionInfo () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-getCollectionInfo`);
+function getCollectionInfo (databaseID, collectionID) {
+  print(`_api/cluster/cluster-info-getCollectionInfo/databaseID/${databaseID}/collectionID/${collectionID}`);
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-getCollectionInfo/databaseID/${databaseID}/collectionID/${collectionID}`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody.shardShorts;
 }
-function getCollectionInfoCurrent () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-getCollectionInfoCurrent`);
+function getCollectionInfoCurrent (databaseID, collectionID, shardID) {
+  let res = arango.GET_RAW(
+    `_api/cluster/cluster-info-getCollectionInfoCurrent/databaseID/${databaseID}/collectionID/${collectionID}/shardID/${shardID}`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
 function getResponsibleServer () {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-getResponsibleServer`);

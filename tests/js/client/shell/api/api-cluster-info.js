@@ -70,10 +70,26 @@ function verifyClusterInfoSuite() {
       }
     },
     testgetCollectionInfo: function () {
-      const ret = ci.getCollectionInfo();
+      try {
+        const ret = ci.getCollectionInfo(0, 0);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_HTTP_NOT_FOUND.code);
+      }
+      print(db)
+      print(db._users._id)
+      print(db._id())
+      db._createDatabase('test')
+      db._useDatabase('test')
+      db._create('test')
+      print(db.test._id)
+      print(db._id())
+      
+      const ret = ci.getCollectionInfo(db._id(), db.test._id);
+      print(ret)
     },
     testgetCollectionInfoCurrent: function () {
-      const ret = ci.getCollectionInfoCurrent();
+      const ret = ci.getCollectionInfoCurrent(db._id(), db._users._id, db._users.shards()[0]);
     },
     testgetResponsibleServer: function () {
       const ret = ci.getResponsibleServer();

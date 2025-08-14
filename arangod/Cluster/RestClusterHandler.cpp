@@ -306,17 +306,17 @@ void RestClusterHandler::handleCI_getCollectionInfo(std::vector<std::string> con
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 3) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+  if (suffixes.size() < 5 || suffixes[1] != "databaseID" || suffixes[3] != "collectionID") {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   "database and collection arguments are missing");
     return;
   }
   if (!isAdmin()) {
     return;
   }
-  std::string const& databaseID = suffixes[1];
-  std::string const& collectionID = suffixes[2];
+  std::string const& databaseID = suffixes[2];
+  std::string const& collectionID = suffixes[4];
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionID);
@@ -324,6 +324,7 @@ void RestClusterHandler::handleCI_getCollectionInfo(std::vector<std::string> con
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
+    return;
   }
 
   std::unordered_set<std::string> ignoreKeys{
@@ -381,7 +382,10 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(std::vector<std::stri
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 4) {
+  if (suffixes.size() < 6 ||
+      suffixes[1] != "databaseID" ||
+      suffixes[3] != "collectionID" ||
+      suffixes[5] != "shardID") {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "database, collection, shardID arguments are missing");
@@ -390,9 +394,9 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(std::vector<std::stri
   if (!isAdmin()) {
     return;
   }
-  std::string const& databaseID = suffixes[1];
-  std::string const& collectionID = suffixes[2];
-  auto maybeShardID = ShardID::shardIdFromString(suffixes[3]);
+  std::string const& databaseID = suffixes[2];
+  std::string const& collectionID = suffixes[4];
+  auto maybeShardID = ShardID::shardIdFromString(suffixes[6]);
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionID);
@@ -400,6 +404,7 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(std::vector<std::stri
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
                   ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
+    return;
   }
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   // First some stuff from Plan for which Current does not make sense:
@@ -464,7 +469,7 @@ void RestClusterHandler::handleCI_getResponsibleServer(std::vector<std::string> 
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 1) {
+  if (suffixes.size() < 2 || suffixes[1] != "shardID") {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "shardID argument is missing");
@@ -475,7 +480,7 @@ void RestClusterHandler::handleCI_getResponsibleServer(std::vector<std::string> 
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  auto maybeShardID = ShardID::shardIdFromString(suffixes[1]);
+  auto maybeShardID = ShardID::shardIdFromString(suffixes[2]);
   if (maybeShardID.fail()) {
     // Asking for non-shard name pattern.
     // Compatibility with original API return empty array.
