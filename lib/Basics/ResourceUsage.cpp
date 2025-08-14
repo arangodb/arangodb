@@ -192,8 +192,6 @@ void ResourceMonitor::decreaseMemoryUsage(std::uint64_t value) noexcept {
   // when we are _increasing_ memory usage.
   std::uint64_t const previous =
       _current.fetch_sub(value, std::memory_order_relaxed);
-  LOG_DEVEL << "ResourceMonitor: decreaseMemoryUsage: previous: " << previous
-            << " value: " << value;
   TRI_ASSERT(previous >= value);
   std::uint64_t const current = previous - value;
 

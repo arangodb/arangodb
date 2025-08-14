@@ -645,15 +645,21 @@ struct AggregatorUnique : public Aggregator {
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
+    auto before = builder.buffer()->size();
     if (builder.isClosed()) {
       builder.openArray();
     }
-    LOG_DEVEL << "UNIQUE value was added: " << s.toJson() << " ("
-              << VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize()
-              << ") current: " << getResourceUsageScope().current();
+
     getResourceUsageScope().increase(
         VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize());
     builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
+    auto after = builder.buffer()->size();
+    getResourceUsageScope().decrease(
+        VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize());
+    getResourceUsageScope().increase(after - before);
+    LOG_DEVEL << "UNIQUE value was added: " << s.toJson() << " ("
+              << after - before
+              << ") current: " << getResourceUsageScope().current();
   }
 
   AqlValue get() const override final {
@@ -661,10 +667,20 @@ struct AggregatorUnique : public Aggregator {
     if (builder.isClosed()) {
       builder.openArray();
     }
-
+    auto before = builder.buffer()->size();
     // always close the Builder
     builder.close();
-    return AqlValue(builder.slice());
+    auto after = builder.buffer()->size();
+    if (after >= before) {
+      getResourceUsageScope().increase(after - before);
+    } else {
+      getResourceUsageScope().decrease(before - after);
+    }
+    AqlValue a{builder.slice()};
+    if (a.memoryUsage() == 0) {
+      getResourceUsageScope().decrease(builder.buffer()->size());
+    }
+    return a;
   }
 
   MemoryBlockAllocator allocator;

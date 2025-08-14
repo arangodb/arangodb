@@ -120,7 +120,6 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
       ++i;
     }
     size_t afterOpenArray = _buffer.size();
-    LOG_DEVEL << "reset Diff before->after: " << beforeOpenArray << "->" << afterOpenArray << " current: " << infos.getResourceUsageScope().current();
     infos.getResourceUsageScope().increase(afterOpenArray - beforeOpenArray);
     addLine(input);
   } else {
@@ -283,8 +282,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   for (auto& it : infos.getGroupRegisters()) {
     AqlValue val = this->groupValues[i];
     AqlValueGuard guard{val, true};
-    output.moveValueInto(it.first, _lastInputRow, &guard);
-    //output.moveValueInto(it.first, _lastInputRow, &guard, false);
+    //output.moveValueInto(it.first, _lastInputRow, &guard);
+    output.moveValueInto(it.first, _lastInputRow, &guard, false);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
     ++i;
@@ -295,10 +294,10 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   for (auto& it : this->aggregators) {
     AqlValue val = it->stealValue();
     AqlValueGuard guard{val, true};
-    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
-                         &guard);
     // output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
-    //                      &guard, false);
+    //                      &guard);
+    output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
+                         &guard, false);
     ++j;
   }
 
@@ -313,19 +312,19 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     } else {
       infos.getResourceUsageScope().decrease(before - after);
     }
-    LOG_DEVEL << "writeToOutput: INTO: current: " << infos.getResourceUsageScope().current();
 
     AqlValue val(std::move(_buffer));  // _buffer still usable after
     AqlValueGuard guard{val, true};
     TRI_ASSERT(_buffer.size() == 0);
     _builder.clear();  // necessary
 
-    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
-    //output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard, false);
+    //output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
+    output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard, false);
   }
 
   LOG_DEVEL << "writeToOutput: tracked: "
             << infos.getResourceUsageScope().tracked();
+  infos.getResourceUsageScope().steal();
   output.advanceRow();
 }
 
