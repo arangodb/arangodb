@@ -25,6 +25,7 @@
 
 #include "RestClusterHandler.h"
 
+#include "Basics/StringUtils.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
@@ -77,10 +78,10 @@ RestStatus RestClusterHandler::execute() {
       handleCI_getResponsibleServer(suffixes);
       return RestStatus::DONE;
     } else if (suffixes[0] == "cluster-info-getResponsibleServers") {
-      handleCI_getResponsibleServers(suffixes);
+      handleCI_getResponsibleServers();
       return RestStatus::DONE;
     } else if (suffixes[0] == "cluster-info-getResponsibleShard") {
-      handleCI_getResponsibleShard();
+      handleCI_getResponsibleShard(suffixes);
       return RestStatus::DONE;
     } else if (suffixes[0] == "cluster-info-getServerEndpoint") {
       handleCI_getServerEndpoint(suffixes);
@@ -386,8 +387,8 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(std::vector<std::stri
       suffixes[1] != "databaseID" ||
       suffixes[3] != "collectionID" ||
       suffixes[5] != "shardID") {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   "database, collection, shardID arguments are missing");
     return;
   }
@@ -470,8 +471,8 @@ void RestClusterHandler::handleCI_getResponsibleServer(std::vector<std::string> 
     return;
   }
   if (suffixes.size() < 2 || suffixes[1] != "shardID") {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   "shardID argument is missing");
     return;
   }
@@ -497,7 +498,7 @@ void RestClusterHandler::handleCI_getResponsibleServer(std::vector<std::string> 
 
   generateResult(rest::ResponseCode::OK, body->slice());
 }
-void RestClusterHandler::handleCI_getResponsibleServers(std::vector<std::string> const& suffixes) {
+void RestClusterHandler::handleCI_getResponsibleServers() {
   if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
@@ -511,12 +512,11 @@ void RestClusterHandler::handleCI_getResponsibleServers(std::vector<std::string>
   VPackSlice postBody = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || !postBody.isArray()) {
     // error message generated in parseVPackBody
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   "shardID argument is missing");
     return;
   }
-  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   containers::FlatHashSet<ShardID> shardIds;
   VPackArrayIterator itBody(postBody);
   while (itBody.valid()) {
@@ -525,8 +525,8 @@ void RestClusterHandler::handleCI_getResponsibleServers(std::vector<std::string>
     if (maybeShard.fail()) {
       // For API compatibility we throw DataSourceNotFound error here
       // And ignore the parsing issue. (Illegally named shard cannot be found)
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_BAD_PARAMETER,
                     absl::StrCat("no shard found with ID ", shardID));
       return;
     }
@@ -535,12 +535,13 @@ void RestClusterHandler::handleCI_getResponsibleServers(std::vector<std::string>
   }
 
   if (shardIds.empty()) {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-                    absl::StrCat("no shard found"));
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_BAD_PARAMETER,
+                    "no shard found");
       return;
   }
 
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   auto result = ci.getResponsibleServers(shardIds);
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   { VPackObjectBuilder y(&(*body));
@@ -551,8 +552,8 @@ void RestClusterHandler::handleCI_getResponsibleServers(std::vector<std::string>
 
   generateResult(rest::ResponseCode::OK, body->slice());
 }
-void RestClusterHandler::handleCI_getResponsibleShard() {
-  if (_request->requestType() != rest::RequestType::POST) {
+void RestClusterHandler::handleCI_getResponsibleShard(std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "only the POST method is allowed");
@@ -561,29 +562,26 @@ void RestClusterHandler::handleCI_getResponsibleShard() {
   if (!isAdmin()) {
     return;
   }/*
-  auto colIdKey = "collectionId";
-  auto docKey = "document";
-  auto docIsCompleteKey = "documentIsComplete";
-  bool parseSuccess = false;
-  VPackSlice postBody = this->parseVPackBody(parseSuccess);
-  if (!parseSuccess || !postBody.isObject()) {
-    // error message generated in parseVPackBody
-    generateError(rest::ResponseCode::ERROR_HTTP_BAD_PARAMETER,
+  if (suffixes.size() < 6 ||
+      suffixes[1] != "collectionID" ||
+      suffixes[3] != "documentKey" ||
+      suffixes[5] != "documentIsComplete") {
+      generateError(rest::ResponseCode::ERROR_HTTP_BAD_PARAMETER,
                   TRI_ERROR_BAD_PARAMETER,
                   "collectionId, document, documentIsComplete arguments are missing");
     return;
   }
-  bool documentIsComplete = postBody.get(docIsCompleteKey).getBoolean();
-  auto document = postBody.get(docKey);
-  auto collectionId = postBody.get(colIdKey).stringView();
+  bool documentIsComplete = suffixes[6] == 'true';
+  auto document = suffixes[4];
+  auto collectionId = suffixes[2];
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   TRI_vocbase_t& vocbase();
   /// auto& vocbase = GetContextVocBase(); // todo
   auto collInfo = ci.getCollectionNT(vocbase.name(), collectionId);
   if (collInfo == nullptr) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   ClusterInfo::getCollectionNotFoundMsg(
                     vocbase.name(), collectionId));
     return;
@@ -595,8 +593,8 @@ void RestClusterHandler::handleCI_getResponsibleShard() {
       document, documentIsComplete, usesDefaultShardingAttributes);
 
   if (maybeShard.fail()) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   maybeShard.result());
     return;
   }
@@ -648,10 +646,11 @@ void RestClusterHandler::handleCI_getServerName(std::vector<std::string> const& 
     return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  std::string result =
-      ci.getServerName(suffixes[1]);
+  std::string serverName = ci.getServerName(basics::StringUtils::urlDecode(suffixes[1]));
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  body->add(VPackValue(result));
+  { VPackObjectBuilder x(&(*body));
+    body->add("serverName", serverName);
+  }
 
   generateResult(rest::ResponseCode::OK, body->slice());
 }
@@ -736,12 +735,18 @@ void RestClusterHandler::handleCI_getAnalyzersRevision(std::vector<std::string> 
   if (!isAdmin()) {
     return;
   }
+  if (suffixes.size() < 2) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
+                  "database argument is missing");
+    return;
+  }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   auto const analyzerRevision = ci.getAnalyzersRevision(suffixes[1]);
 
   if (!analyzerRevision) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   "<databaseName> is invalid");
     return;
   }
@@ -759,6 +764,12 @@ void RestClusterHandler::handleCI_waitForPlanVersion(std::vector<std::string> co
     return;
   }
   if (!isAdmin()) {
+    return;
+  }
+  if (suffixes.size() < 2) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
+                  "time wait argument is missing");
     return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
