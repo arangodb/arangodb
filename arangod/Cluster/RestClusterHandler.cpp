@@ -20,6 +20,7 @@
 ///
 /// @author Simon Grätzer
 /// @author Kaveh Vahedipour
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestClusterHandler.h"
@@ -58,7 +59,8 @@ RestStatus RestClusterHandler::execute() {
       handleClusterInfo();
       return RestStatus::DONE;
     } else if (suffixes[0] == "cluster-info-doesDatabaseExist") {
-      return handleCI_doesDatabaseExist(suffixes);
+      handleCI_doesDatabaseExist(suffixes);
+      return RestStatus::DONE;
     } else if (suffixes[0] == "cluster-info-flush") {
       handleCI_flush();
       return RestStatus::DONE;
@@ -209,6 +211,12 @@ bool RestClusterHandler::isAdmin() {
 }
 
 void RestClusterHandler::handleClusterInfo() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
@@ -220,21 +228,21 @@ void RestClusterHandler::handleClusterInfo() {
 
 
 
-RestStatus  RestClusterHandler::handleCI_doesDatabaseExist(std::vector<std::string> const& suffixes) {
+void RestClusterHandler::handleCI_doesDatabaseExist(std::vector<std::string> const& suffixes) {
   if (_request->requestType() != RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "only the GET method is allowed");
-    return RestStatus::DONE;
+    return;
   }
   if (!isAdmin()) {
-    return RestStatus::DONE;
+    return;
   }
   if (suffixes.size() < 2) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "database argument missing");
-    return RestStatus::DONE;
+    return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
@@ -246,7 +254,7 @@ RestStatus  RestClusterHandler::handleCI_doesDatabaseExist(std::vector<std::stri
   body->close();
 
   generateResult(rest::ResponseCode::OK, body->slice());
-  return RestStatus::DONE;
+  return;
 }
 void RestClusterHandler::handleCI_databases() {
   if (_request->requestType() != RequestType::GET) {
@@ -450,13 +458,19 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(std::vector<std::stri
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_getResponsibleServer(std::vector<std::string> const& suffixes) {
-  if (!isAdmin()) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
     return;
   }
   if (suffixes.size() < 1) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "shardID argument is missing");
+    return;
+  }
+  if (!isAdmin()) {
     return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
@@ -549,8 +563,8 @@ void RestClusterHandler::handleCI_getResponsibleShard() {
   VPackSlice postBody = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || !postBody.isObject()) {
     // error message generated in parseVPackBody
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+    generateError(rest::ResponseCode::ERROR_HTTP_BAD_PARAMETER,
+                  TRI_ERROR_BAD_PARAMETER,
                   "collectionId, document, documentIsComplete arguments are missing");
     return;
   }
@@ -589,18 +603,42 @@ void RestClusterHandler::handleCI_getResponsibleShard() {
   generateResult(rest::ResponseCode::OK, body->slice());*/
 }
 void RestClusterHandler::handleCI_getServerEndpoint(std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
+  if (suffixes.size() < 3 || suffixes[1] != "serverID") {
+      generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
+                  "serverID argument is missing");
+  }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  std::string result =
-      ci.getServerEndpoint(suffixes[1]);
+  std::string endpoint =
+    ci.getServerEndpoint(suffixes[2]);
+  if (endpoint.length() == 0) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_HTTP_NOT_FOUND,
+                  "No server found by that ID");
+    return;
+  }
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  body->add(VPackValue(result));
-
+  { VPackObjectBuilder x(&(*body));
+    body->add("endpoint", endpoint);
+  }
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_getServerName(std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
@@ -613,6 +651,12 @@ void RestClusterHandler::handleCI_getServerName(std::vector<std::string> const& 
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_getDBServers() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
@@ -639,6 +683,12 @@ void RestClusterHandler::handleCI_getDBServers() {
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_getCoordinators() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
@@ -656,6 +706,12 @@ void RestClusterHandler::handleCI_getCoordinators() {
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_uniqid(std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
@@ -666,6 +722,12 @@ void RestClusterHandler::handleCI_uniqid(std::vector<std::string> const& suffixe
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_getAnalyzersRevision(std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
@@ -685,6 +747,12 @@ void RestClusterHandler::handleCI_getAnalyzersRevision(std::vector<std::string> 
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_waitForPlanVersion(std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
   if (!isAdmin()) {
     return;
   }
@@ -697,9 +765,6 @@ void RestClusterHandler::handleCI_waitForPlanVersion(std::vector<std::string> co
 
   generateResult(rest::ResponseCode::OK, body->slice());
 }
-
-
-
 
 
 
