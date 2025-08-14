@@ -759,7 +759,7 @@ void RestClusterHandler::handleCI_getAnalyzersRevision(std::vector<std::string> 
 void RestClusterHandler::handleCI_waitForPlanVersion(std::vector<std::string> const& suffixes) {
   if (_request->requestType() != RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  TRI_ERROR_BAD_PARAMETER,
                   "only the GET method is allowed");
     return;
   }

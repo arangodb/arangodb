@@ -752,10 +752,6 @@ exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };
 
-exports.arangoClusterInfoFlush = function () {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
-};
-
 exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
   return arango.POST("/_admin/execute", 
     `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
@@ -767,14 +763,6 @@ exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, 
       ${JSON.stringify(dbName)}, 
       ${JSON.stringify(collName)}, 
       ${JSON.stringify(shard)})`);
-};
-
-exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
-};
-
-exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
 };
 
 const shardIdToLogId = function (shardId) {
