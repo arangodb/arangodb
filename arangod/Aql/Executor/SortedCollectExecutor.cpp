@@ -107,6 +107,7 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
   if (input.isInitialized()) {
     // construct the new group
     size_t i = 0;
+    size_t beforeOpenArray = _buffer.size();
     _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
       AqlValue val = input.getValue(it.second).clone();
@@ -118,7 +119,9 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
       // this->groupValues[i] = input.getValue(it.second).clone();
       ++i;
     }
-
+    size_t afterOpenArray = _buffer.size();
+    LOG_DEVEL << "reset Diff before->after: " << beforeOpenArray << "->" << afterOpenArray << " current: " << infos.getResourceUsageScope().current();
+    infos.getResourceUsageScope().increase(afterOpenArray - beforeOpenArray);
     addLine(input);
   } else {
     // We still need an open array...
@@ -281,7 +284,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValue val = this->groupValues[i];
     AqlValueGuard guard{val, true};
     output.moveValueInto(it.first, _lastInputRow, &guard);
-    LOG_DEVEL << "Writing group value " << it.first.value();
+    //output.moveValueInto(it.first, _lastInputRow, &guard, false);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
     ++i;
@@ -294,13 +297,23 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
                          &guard);
+    // output.moveValueInto(infos.getAggregatedRegisters()[j].first, _lastInputRow,
+    //                      &guard, false);
     ++j;
   }
 
   // set the group values
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     TRI_ASSERT(_builder.isOpenArray());
+    size_t before = _buffer.size();
     _builder.close();
+    size_t after = _buffer.size();
+    if (after >= before) {
+      infos.getResourceUsageScope().increase(after - before);
+    } else {
+      infos.getResourceUsageScope().decrease(before - after);
+    }
+    LOG_DEVEL << "writeToOutput: INTO: current: " << infos.getResourceUsageScope().current();
 
     AqlValue val(std::move(_buffer));  // _buffer still usable after
     AqlValueGuard guard{val, true};
@@ -308,6 +321,7 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     _builder.clear();  // necessary
 
     output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
+    //output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard, false);
   }
 
   LOG_DEVEL << "writeToOutput: tracked: "

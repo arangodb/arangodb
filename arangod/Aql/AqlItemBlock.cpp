@@ -1003,7 +1003,7 @@ void AqlItemBlock::setValue(size_t index, RegisterId varNr,
 void AqlItemBlock::setValue(size_t index, RegisterId::value_t column,
                             AqlValue const& value, bool countMemory) {
   TRI_ASSERT(_data[getAddress(index, column)].isEmpty());
-  // LOG_DEVEL << "setValue was called";
+  LOG_DEVEL << "setValue was called: AqlValue: " << value.slice().toJson();
 
   // First update the reference count, if this fails, the value is empty
   if (value.requiresDestruction()) {

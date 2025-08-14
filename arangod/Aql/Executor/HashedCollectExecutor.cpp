@@ -358,6 +358,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
     // where it is unclear who is responsible for the data
     AqlValue a = input.stealValue(reg.second);
     AqlValueGuard guard{a, true};
+    /** _infos.getResourceUsageScope().increase(a.memoryUsage()); **/
     _nextGroup.values.emplace_back(a);
     guard.steal();
   } else {
@@ -373,6 +374,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
       // of responsibilities of tuples.
       AqlValue a = input.getValue(reg.second).clone();
       AqlValueGuard guard{a, true};
+      /** _infos.getResourceUsageScope().increase(a.memoryUsage()); **/
       _nextGroup.values.emplace_back(a);
       guard.steal();
     }
