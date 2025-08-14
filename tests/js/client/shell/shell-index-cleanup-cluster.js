@@ -25,10 +25,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
+const IM = global.instanceManager;
+const AM = IM.agencyMgr;
 
-let { getServersByType,
-      agency }
-  = require('@arangodb/test-helper');
+let { getServersByType } = require('@arangodb/test-helper');
 
 const wait = require("internal").wait;
 
@@ -48,7 +48,7 @@ function indexCleanupSuite() {
   let getCoordinatorRebootId = function() {
     let coords = getServersByType("coordinator");
     coordinatorId = coords[0].id;
-    let res = agency.call("read", [["/arango/Current/ServersKnown"]]);
+    let res = AM.call("read", [["/arango/Current/ServersKnown"]]);
     coordinatorRebootId = res[0].arango.Current.ServersKnown[coordinatorId];
   };
 
@@ -57,7 +57,7 @@ function indexCleanupSuite() {
     let curKey = `/arango/Current/Collections/_system/${collId}`;
     for (let counter = 0; counter < 30; ++counter) {
       wait(1);
-      let cur = agency.call("read",[[curKey]]);
+      let cur = AM.call("read",[[curKey]]);
       let curColl = cur[0].arango.Current.Collections._system[collId];
       let shardIds = Object.keys(curColl);
       let nrOk = 0;
@@ -100,7 +100,7 @@ function indexCleanupSuite() {
       let planKey = `/arango/Plan/Collections/_system/${coll._id}/indexes`;
 
       // First check how many indexes there are now:
-      let oldPlan = agency.call("read", [[planKey]])[0].arango.Plan.Collections._system[coll._id].indexes;
+      let oldPlan = AM.call("read", [[planKey]])[0].arango.Plan.Collections._system[coll._id].indexes;
       let nrIndexes = oldPlan.length;
 
       // Now add one in the Plan:
@@ -115,7 +115,7 @@ function indexCleanupSuite() {
         coordinator: coordinatorId,
         coordinatorRebootId,
         isBuilding:true}};
-      agency.call("write", [[body]]);
+      AM.call("write", [[body]]);
 
       waitForIndexesInCurrent(nrIndexes + 1, coll._id);
 
@@ -124,7 +124,7 @@ function indexCleanupSuite() {
 
       // wait until index is no longer isBuilding in Plan
       for (let i = 0; i < 30; ++i) {
-        let res = agency.call("read", [[planKey]]);
+        let res = AM.call("read", [[planKey]]);
         let indexes = res[0].arango.Plan.Collections._system[coll._id].indexes;
         assertEqual(indexes.length, nrIndexes + 1);
         if (!indexes[nrIndexes].hasOwnProperty("isBuilding") &&
@@ -149,7 +149,7 @@ function indexCleanupSuite() {
       let planKey = `/arango/Plan/Collections/_system/${coll._id}/indexes`;
 
       // First check how many indexes there are now:
-      let oldPlan = agency.call("read", [[planKey]])[0].arango.Plan.Collections._system[coll._id].indexes;
+      let oldPlan = AM.call("read", [[planKey]])[0].arango.Plan.Collections._system[coll._id].indexes;
       let nrIndexes = oldPlan.length;
 
       // Now add one in the Plan:
@@ -164,7 +164,7 @@ function indexCleanupSuite() {
         coordinator: coordinatorId,
         coordinatorRebootId: 0,    // 0 is old
         isBuilding:true}};
-      agency.call("write", [[body]]);
+      AM.call("write", [[body]]);
 
       waitForIndexesInCurrent(nrIndexes + 1, coll._id);
 
@@ -173,7 +173,7 @@ function indexCleanupSuite() {
 
       // wait until index is no longer isBuilding in Plan
       for (let i = 0; i < 30; ++i) {
-        let res = agency.call("read", [[planKey]]);
+        let res = AM.call("read", [[planKey]]);
         let indexes = res[0].arango.Plan.Collections._system[coll._id].indexes;
         if (indexes.length === nrIndexes) {
           return;   // all good, our index has vanished again
@@ -195,7 +195,7 @@ function indexCleanupSuite() {
       let planKey = `/arango/Plan/Collections/_system/${coll._id}/indexes`;
 
       // First check how many indexes there are now:
-      let oldPlan = agency.call("read", [[planKey]])[0].arango.Plan.Collections._system[coll._id].indexes;
+      let oldPlan = AM.call("read", [[planKey]])[0].arango.Plan.Collections._system[coll._id].indexes;
       let nrIndexes = oldPlan.length;
 
       // Now add one in the Plan:
@@ -210,7 +210,7 @@ function indexCleanupSuite() {
         coordinator: coordinatorId,
         coordinatorRebootId,
         isBuilding:true}};
-      agency.call("write", [[body]]);
+      AM.call("write", [[body]]);
 
       waitForIndexesInCurrent(nrIndexes + 1, coll._id);
 
@@ -219,7 +219,7 @@ function indexCleanupSuite() {
 
       // wait until index is no longer isBuilding in Plan
       for (let i = 0; i < 10; ++i) {
-        let res = agency.call("read", [[planKey]]);
+        let res = AM.call("read", [[planKey]]);
         let indexes = res[0].arango.Plan.Collections._system[coll._id].indexes;
         if (indexes.length === nrIndexes) {
           throw "Index was cleaned up, but coordinator still there!";

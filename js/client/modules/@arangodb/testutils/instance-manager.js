@@ -30,6 +30,7 @@ const _ = require('lodash');
 const internal = require('internal');
 const fs = require('fs');
 const yaml = require('js-yaml');
+const arangosh = require('@arangodb/arangosh');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
@@ -1156,6 +1157,25 @@ class instanceManager {
       }
     });
   }
+
+  stopServerWaitFailed(urlIDOrShortName) {
+    this.arangods.forEach(arangod => {
+      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+        return;
+      }
+      arangod.suspend();
+    });
+    this.agencyMgr.waitFor(() => { this.agencyMgr.serverFailed(urlIDOrShortName); });
+  }
+  continueServerWaitOk(urlIDOrShortName) {
+    this.arangods.forEach(arangod => {
+      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+        return;
+      }
+      arangod.resume();
+    });
+    this.agencyMgr.waitFor(() => { this.agencyMgr.serverHealthy(urlIDOrShortName); });
+  }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief checks whether any instance has failure points set
   // //////////////////////////////////////////////////////////////////////////////
@@ -1264,6 +1284,18 @@ class instanceManager {
     }
   }
 
+  setLeader(database, logId, newLeader) {
+    const res = arango.POST_RAW(`/_db/${database}/_api/log/${logId}/leader/${newLeader}`, '');
+    arangosh.checkRequestResult(res);
+    return res.result;
+  }
+
+  unsetLeader(database, logId) {
+    const res = arango.DELETE(`/_db/${database}/_api/log/${logId}/leader`);
+    arangosh.checkRequestResult(res);
+    return res.result;
+  }
+  
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////

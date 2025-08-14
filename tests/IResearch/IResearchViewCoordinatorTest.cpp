@@ -38,7 +38,9 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
+#include "Async/async.h"
 #include "Auth/UserManagerMock.h"
+#include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -7891,7 +7893,7 @@ TEST_F(IResearchViewCoordinatorTest, IResearchViewNode_createBlock) {
         arangodb::transaction::StandaloneContext::create(
             *vocbase, arangodb::transaction::OperationOriginTestCase{}),
         arangodb::aql::QueryString(std::string_view("RETURN 1")), nullptr);
-    query->prepareQuery();
+    arangodb::tests::waitForAsync(query->prepareQuery());
 
     arangodb::aql::SingletonNode singleton(query->plan(),
                                            arangodb::aql::ExecutionNodeId{0});
