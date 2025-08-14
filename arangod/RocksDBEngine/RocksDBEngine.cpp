@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/ReadLocker.h"
@@ -1301,24 +1302,26 @@ void RocksDBEngine::start() {
   _logMetrics =
       std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(&_metrics);
 
-#ifndef USE_CUSTOM_WAL
   // When using the custom WAL implementation, we don't need to register a
   // RocksDB sync listener.
-  auto logPersistor =
-      std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
-          RocksDBColumnFamilyManager::get(
-              RocksDBColumnFamilyManager::Family::ReplicatedLogs),
-          _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
-          server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
-  _logPersistor = logPersistor;
+#ifndef USE_CUSTOM_WAL
+  if (replication2::EnableReplication2) {
+    auto logPersistor =
+        std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
+            RocksDBColumnFamilyManager::get(
+                RocksDBColumnFamilyManager::Family::ReplicatedLogs),
+            _db->GetRootDB(), std::make_shared<SchedulerExecutor>(server()),
+            server().getFeature<ReplicatedLogFeature>().options(), _logMetrics);
+    _logPersistor = logPersistor;
 
-  if (auto* syncer = syncThread(); syncer != nullptr) {
-    syncer->registerSyncListener(std::move(logPersistor));
-  } else {
-    LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
-        << "In replication2 databases, setting waitForSync to false will not "
-           "work correctly without a syncer thread. See the "
-           "--rocksdb.sync-interval option.";
+    if (auto* syncer = syncThread(); syncer != nullptr) {
+      syncer->registerSyncListener(std::move(logPersistor));
+    } else {
+      LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
+          << "In replication2 databases, setting waitForSync to false will not "
+             "work correctly without a syncer thread. See the "
+             "--rocksdb.sync-interval option.";
+    }
   }
 #endif
 
