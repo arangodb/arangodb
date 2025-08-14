@@ -29,11 +29,8 @@ var db = require("@arangodb").db;
 var analyzers = require("@arangodb/analyzers");
 var internal = require('internal');
 var ERRORS = require("@arangodb").errors;
-const {
-  arangoClusterInfoFlush,
-  arangoClusterInfoGetAnalyzersRevision,
-  arangoClusterInfoWaitForPlanVersion,
-} = require("@arangodb/test-helper");
+const CI = require('@arangodb/cluster-info');
+
 let IM = global.instanceManager;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -44,8 +41,8 @@ function analyzersRevisionTestSuite () {
   function waitForRevision(dbName, revisionNumber, buildingRevision) {
   	let tries = 0;
     while(tries < 2) {
-      arangoClusterInfoFlush();
-      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+      CI.flush();
+      let revision = CI.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertTrue(revision.hasOwnProperty("coordinator"));
@@ -135,7 +132,7 @@ function analyzersRevisionTestSuite () {
       db._useDatabase(dbName);
       let revisionNumber = 0;
 
-      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+      let revision = CI.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertFalse(revision.hasOwnProperty("coordinator"));
@@ -151,10 +148,11 @@ function analyzersRevisionTestSuite () {
       db._dropDatabase(dbName);
 
       let delRevision = "";
-      try { delRevision = arangoClusterInfoGetAnalyzersRevision(dbName); } catch(e) {
+      try { delRevision = CI.getAnalyzersRevision(dbName); } catch(e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+        delRevision = e.message;
       }
-      assertMatch(/ArangoError: <databaseName> is invalid/, delRevision);
+      assertMatch(/<databaseName> is invalid/, delRevision);
     },
     testAnalyzersPlanWithoutDbName: function() {
       db._useDatabase("_system");
@@ -165,7 +163,7 @@ function analyzersRevisionTestSuite () {
       db._useDatabase(dbName);
       let revisionNumber = 0;
 
-      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+      let revision = CI.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertFalse(revision.hasOwnProperty("coordinator"));
@@ -181,16 +179,17 @@ function analyzersRevisionTestSuite () {
       db._dropDatabase(dbName);
 
       let delRevision = "";
-      try { delRevision = arangoClusterInfoGetAnalyzersRevision(dbName); } catch(e) {
+      try { delRevision = CI.getAnalyzersRevision(dbName); } catch(e) {
         assertEqual(require("internal").errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+        delRevision = e.message;
       }
-      assertMatch(/ArangoError: <databaseName> is invalid/, delRevision);
+      assertMatch(/<databaseName> is invalid/, delRevision);
     },
     testAnalyzersPlanSystem: function() {
       let dbName = "_system";
       db._useDatabase(dbName);
 
-      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+      let revision = CI.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertEqual(revision.revision, revision.buildingRevision);
@@ -202,7 +201,7 @@ function analyzersRevisionTestSuite () {
       let dbName = "_system";
       db._useDatabase(dbName);
 
-      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+      let revision = CI.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       assertEqual(revision.revision, revision.buildingRevision);
@@ -268,8 +267,8 @@ function analyzersRevisionTestSuite () {
         let tries = 0;
         while (tries < 5) {
           tries++;
-          arangoClusterInfoFlush();
-          let recovered_revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+          CI.flush();
+          let recovered_revision = CI.getAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
             break;
           }
@@ -339,8 +338,8 @@ function analyzersRevisionTestSuite () {
         let tries = 0;
         while (tries < 5) {
           tries++;
-          arangoClusterInfoFlush();
-          let recovered_revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+          CI.flush();
+          let recovered_revision = CI.getAnalyzersRevision(dbName);
           if (recovered_revision.buildingRevision === 0) {
             break;
           }
@@ -372,7 +371,7 @@ function analyzersRevisionTestSuite () {
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
         // Wait until the coordinator has seen the Plan update
-        arangoClusterInfoWaitForPlanVersion(requiredVersion);
+        CI.waitForPlanVersion(requiredVersion);
         // Continue with the test.
         analyzers.save("TestAnalyzer", "identity");
         waitForCompletedRevision(dbName, 1);
@@ -404,7 +403,7 @@ function analyzersRevisionTestSuite () {
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
         // Wait until the coordinator has seen the Plan update
-        arangoClusterInfoWaitForPlanVersion(requiredVersion);
+        CI.waitForPlanVersion(requiredVersion);
         // Continue with the test.
         IM.debugClearFailAt();
         analyzers.save("TestAnalyzer", "identity");
@@ -446,7 +445,7 @@ function analyzersRevisionTestSuite () {
         assertTrue(Number.isInteger(requiredVersion));
         assertTrue(requiredVersion > 0);
         // Wait until the coordinator has seen the Plan update
-        arangoClusterInfoWaitForPlanVersion(requiredVersion);
+        CI.waitForPlanVersion(requiredVersion);
         // Continue with the test.
         db._query("RETURN TOKENS('Test', '::SystemTestAnalyzer') "); // check system revision is still read
         IM.debugClearFailAt();

@@ -98,8 +98,8 @@ function getAnalyzersRevision (database) {
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
-function waitForPlanVersion () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-waitForPlanVersion`);
+function waitForPlanVersion (versionToWaitFor) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-waitForPlanVersion/${versionToWaitFor}`);
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
