@@ -33,8 +33,9 @@ function doesDatabaseExist (database) {
   return res.parsedBody.exists;
 }
 function flush () {
-  let res = arango.PUT_RAW(`_api/cluster/cluster-info-flush`);
+  let res = arango.PUT_RAW(`_api/cluster/cluster-info-flush`, "");
   arangosh.checkRequestResult(res);
+  return res.parsedBody.OK;
 }
 function databases () {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-databases`);
@@ -93,6 +94,7 @@ function waitForPlanVersion () {
 
 
 exports.doesDatabaseExist = doesDatabaseExist;
+exports.flush = flush;
 exports.databases = databases;
 exports.getCollectionInfo = getCollectionInfo;
 exports.getCollectionInfoCurrent = getCollectionInfoCurrent;
