@@ -49,7 +49,7 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   void handleClusterInfo();
 
   bool isAdmin();
-  RestStatus handleCI_doesDatabaseExist(std::vector<std::string> const& suffixes);
+  void handleCI_doesDatabaseExist(std::vector<std::string> const& suffixes);
   void handleCI_databases();
   void handleCI_flush();
   void handleCI_getCollectionInfo(std::vector<std::string> const& suffixes);
