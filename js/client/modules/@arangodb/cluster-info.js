@@ -27,9 +27,10 @@
 const arangosh = require('@arangodb/arangosh');
 
 
-function doesDatabaseExist () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-doesDatabaseExist`);
+function doesDatabaseExist (database) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info-doesDatabaseExist/database/${database}`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody.exists;
 }
 function flush () {
   let res = arango.PUT_RAW(`_api/cluster/cluster-info-flush`);

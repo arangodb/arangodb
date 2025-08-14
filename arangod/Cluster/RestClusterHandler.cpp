@@ -238,9 +238,9 @@ void RestClusterHandler::handleCI_doesDatabaseExist(std::vector<std::string> con
   if (!isAdmin()) {
     return;
   }
-  if (suffixes.size() < 2) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+  if (suffixes.size() < 3 || suffixes[1] != "database") {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
                   "database argument missing");
     return;
   }
@@ -248,11 +248,9 @@ void RestClusterHandler::handleCI_doesDatabaseExist(std::vector<std::string> con
 
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
 
-  body->openObject();
-
-  body->add("exists", ci.doesDatabaseExist(suffixes[1]));
-  body->close();
-
+  { VPackObjectBuilder x(&(*body));
+    body->add("exists", ci.doesDatabaseExist(suffixes[2]));
+  }
   generateResult(rest::ResponseCode::OK, body->slice());
   return;
 }

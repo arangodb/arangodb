@@ -41,7 +41,17 @@ function verifyClusterInfoSuite() {
     },
 
     testdoesDatabaseExist: function () {
-      const ret = ci.doesDatabaseExist();
+      const dbn = 'testdb';
+      try {
+        db._createDatabase(dbn);
+        const res = ci.doesDatabaseExist(dbn);
+        assertTrue(res, dbn + " exists.");
+      } finally {
+        db._useDatabase('_system');
+        db._dropDatabase(dbn);
+      }
+      const res = ci.doesDatabaseExist(dbn);
+      assertFalse(res, dbn + " no longer exists.");
     },
     testFlush: function () {
       const ret = ci.flush();
