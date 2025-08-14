@@ -33,8 +33,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace auth {
+namespace arangodb::auth {
 
 // This class represents a 'user' entry.  It contains structures to
 // store the access levels for databases and collections.  The user
@@ -42,7 +41,7 @@ namespace auth {
 // `_users` collection after modifying it.
 
 class User {
-  friend class UserManager;
+  friend class UserManagerImpl;
 
  public:
   static User newUser(std::string const& user, std::string const& pass);
@@ -178,5 +177,4 @@ class User {
   std::set<std::string> _roles;
 #endif
 };
-}  // namespace auth
-}  // namespace arangodb
+}  // namespace arangodb::auth

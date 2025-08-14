@@ -39,23 +39,16 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
-#include "ApplicationFeatures/GreetingsFeaturePhase.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerMock.h"
 #include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "FeaturePhases/BasicFeaturePhaseServer.h"
-#include "FeaturePhases/ClusterFeaturePhase.h"
-#include "FeaturePhases/DatabaseFeaturePhase.h"
-#ifdef USE_V8
-#include "FeaturePhases/V8FeaturePhase.h"
-#endif
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/AgencyMock.h"
 #include "IResearch/ExpressionContextMock.h"
@@ -66,7 +59,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/IndexFactory.h"
 #include "Network/NetworkFeature.h"
-#include "Random/RandomFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -75,12 +67,8 @@
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "RestServer/UpgradeFeature.h"
-#include "RestServer/ViewTypesFeature.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "Statistics/StatisticsFeature.h"
-#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -89,7 +77,6 @@
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
-#include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
@@ -97,7 +84,7 @@
 
 namespace {
 
-struct TestIndex : public arangodb::Index {
+struct TestIndex : arangodb::Index {
   TestIndex(arangodb::IndexId id, arangodb::LogicalCollection& collection,
             arangodb::velocypack::Slice const& definition)
       : arangodb::Index(id, collection, definition) {}
@@ -450,7 +437,7 @@ class IResearchAnalyzerFeatureTest
     server.addFeature<arangodb::aql::OptimizerRulesFeature>(true);
 
     server.startFeatures();
-
+    expectUserManagerCalls();
     auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
 
     auto vocbase =
@@ -462,28 +449,50 @@ class IResearchAnalyzerFeatureTest
         unused);
   }
 
-  ~IResearchAnalyzerFeatureTest() {
-    // Clear the authentication user:
-    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
-    auto* userManager = authFeature.userManager();
-    if (userManager != nullptr) {
-      userManager->removeAllUsers();
-    }
+  void expectUserManagerCalls() {
+    using namespace arangodb;
+    auto* authFeature = AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    auto* um =
+        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
+    EXPECT_NE(um, nullptr);
+
+    using namespace ::testing;
+    EXPECT_CALL(*um, databaseAuthLevel)
+        .WillRepeatedly(WithArgs<0, 1>(
+            [this](std::string const& username, std::string const& dbname) {
+              auto const it = _userMap.find(username);
+              EXPECT_NE(it, _userMap.end());
+              return it->second.databaseAuthLevel(dbname);
+            }));
+    EXPECT_CALL(*um, collectionAuthLevel)
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+                                                 std::string const& dbname,
+                                                 std::string_view cname) {
+          auto const it = _userMap.find(username);
+          if (it == _userMap.end()) {
+            return auth::Level::NONE;
+          }
+          EXPECT_EQ(username, it->second.username());
+          return it->second.collectionAuthLevel(dbname, cname);
+        }));
+    EXPECT_CALL(*um, setAuthInfo)
+        .WillRepeatedly(WithArgs<0>(
+            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
   }
+  arangodb::auth::UserMap _userMap;
 
   void userSetAccessLevel(arangodb::auth::Level db, arangodb::auth::Level col) {
-    auto* authFeature = arangodb::AuthenticationFeature::instance();
-    ASSERT_NE(authFeature, nullptr);
-    auto* userManager = authFeature->userManager();
-    ASSERT_NE(userManager, nullptr);
+    auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
+    auto* um = authFeature.userManager();
+    ASSERT_NE(um, nullptr);
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
     user.grantCollection("testVocbase", "*", col);
     arangodb::auth::UserMap userMap;
     userMap.emplace("testUser", std::move(user));
-    userManager->setAuthInfo(
-        std::move(userMap));  // set user map to avoid loading
-                              // configuration from system database
+    um->setAuthInfo(std::move(userMap));  // set user map to avoid loading
+                                          // configuration from system database
   }
 
   std::shared_ptr<arangodb::ExecContext> getLoggedInContext() const {
