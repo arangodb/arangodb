@@ -106,9 +106,9 @@ class RefactoredSingleServerEdgeCursor {
   using Callback = std::function<void(EdgeDocumentToken&&,
                                       arangodb::velocypack::Slice, size_t)>;
 
-  void readAll(SingleServerProvider<StepType>& provider,
-               aql::TraversalStats& stats, size_t depth,
-               Callback const& callback);
+  void readNext(uint64_t batchSize, SingleServerProvider<StepType>& provider,
+                aql::TraversalStats& stats, size_t depth,
+                Callback const& callback);
 
   void prepareIndexExpressions(aql::Ast* ast);
 
@@ -118,13 +118,15 @@ class RefactoredSingleServerEdgeCursor {
   bool hasDepthSpecificLookup(uint64_t depth) const noexcept;
 
   void rearm(VertexType vertex, uint64_t depth, aql::TraversalStats& stats);
+  auto hasMore(uint64_t depth) -> bool;
 
  private:
   auto getLookupInfos(uint64_t depth) -> std::vector<LookupInfo>&;
 
   aql::Variable const* _tmpVar;
   std::vector<LookupInfo> _lookupInfo;
-  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>> _depthLookupInfo;
+  containers::FlatHashMap<uint64_t, std::vector<LookupInfo>>
+      _depthLookupInfo;  // depth -> lookup info
 
   ResourceMonitor& _monitor;
   transaction::Methods* _trx;
