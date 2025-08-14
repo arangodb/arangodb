@@ -74,22 +74,25 @@ function verifyClusterInfoSuite() {
         const ret = ci.getCollectionInfo(0, 0);
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_HTTP_NOT_FOUND.code);
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
       }
-      print(db)
-      print(db._users._id)
-      print(db._id())
-      db._createDatabase('test')
-      db._useDatabase('test')
-      db._create('test')
-      print(db.test._id)
-      print(db._id())
-      
-      const ret = ci.getCollectionInfo(db._id(), db.test._id);
-      print(ret)
+      const ret = ci.getCollectionInfo("_system", "_graphs");
+      Object.keys(ret).forEach(shard => {
+        assertEqual(ret[shard].length, 2, ret);
+      });
     },
     testgetCollectionInfoCurrent: function () {
-      const ret = ci.getCollectionInfoCurrent(db._id(), db._users._id, db._users.shards()[0]);
+      try {
+        const ret = ci.getCollectionInfoCurrent(0, 0, 0);
+        fail();
+      } catch (err) {
+        assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+      const ret = ci.getCollectionInfoCurrent('_system', '_users', db._users.shards()[0]);
+      assertEqual(ret.indexes.length, 2, ret);
+      assertEqual(ret.shorts.length, 2, ret);
+      assertEqual(ret.servers.length, 2, ret);
+      assertEqual(ret.failoverCandidates.length, 2, ret);
     },
     testgetResponsibleServer: function () {
       let ret = ci.getResponsibleServer(db._users.shards()[0]);
@@ -111,19 +114,19 @@ function verifyClusterInfoSuite() {
         ci.getResponsibleServers(['S00000']);
         fail();
       } catch(err) {
-        assertEqual(err.errorNum, errors.ERROR_HTTP_BAD_PARAMETER.code);
+        assertEqual(err.errorNum, errors.ERROR_BAD_PARAMETER.code);
       }
       try {
         ci.getResponsibleServers([]);
         fail();
       } catch(err) {
-        assertEqual(err.errorNum, errors.ERROR_HTTP_BAD_PARAMETER.code);
+        assertEqual(err.errorNum, errors.ERROR_BAD_PARAMETER.code);
       }
       try {
         ci.getResponsibleServers(null);
         fail();
       } catch(err) {
-        assertEqual(err.errorNum, errors.ERROR_HTTP_BAD_PARAMETER.code);
+        assertEqual(err.errorNum, errors.ERROR_BAD_PARAMETER.code);
       }
     },
     testgetResponsibleShard: function () {
