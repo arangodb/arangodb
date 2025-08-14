@@ -31,6 +31,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -289,10 +290,14 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
-  auto static const allowedReplicationVersions = [] {
-    auto result = std::unordered_set<std::string>();
-    for (auto const& version : replication::allowedVersions) {
-      result.emplace(replication::versionToString(version));
+  auto static allowedReplicationVersions = [] {
+    using namespace arangodb::replication;
+    using namespace arangodb::replication2;
+
+    auto result = std::unordered_set<std::string>{};
+    result.emplace(versionToString(Version::ONE));
+    if (EnableReplication2) {
+      result.emplace(versionToString(Version::TWO));
     }
     return result;
   }();
