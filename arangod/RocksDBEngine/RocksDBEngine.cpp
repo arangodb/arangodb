@@ -1395,7 +1395,6 @@ void RocksDBEngine::stop() {
     while (_backgroundThread->isRunning()) {
       std::this_thread::yield();
     }
-    _backgroundThread.reset();
   }
 
   if (_syncThread) {
@@ -1406,7 +1405,6 @@ void RocksDBEngine::stop() {
     while (_syncThread->isRunning()) {
       std::this_thread::yield();
     }
-    _syncThread.reset();
   }
 
   waitForCompactionJobsToFinish();
@@ -1414,6 +1412,10 @@ void RocksDBEngine::stop() {
 
 void RocksDBEngine::unprepare() {
   TRI_ASSERT(isEnabled());
+  TRI_ASSERT(!_backgroundThread->isRunning());
+  _backgroundThread.reset();
+  TRI_ASSERT(!_syncThread->isRunning());
+  _syncThread.reset();
   waitForCompactionJobsToFinish();
   shutdownRocksDBInstance();
 }
