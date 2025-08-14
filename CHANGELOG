@@ -1,6 +1,13 @@
 devel
 -----
 
+* Add a separate thread to the UserManager to handle the load of the user-cache asynchronously.
+  This pre-loads the user-cache as fast as possible (as soon as the global version changes)
+  Also, compared to the old version, this allows the read-only operation to work on the user-cache 
+  for longer and not block each other while trying to load a new version. On a high load environment this also 
+  means a more responsive UserManager and to prevent the thread responsible for the HTTP server to not getting blocked
+  because of user-cache updates.
+
 * During AQL setup, the Coordinator will no longer block threads while waiting
   for DBServers to finish the query instantiation.
 
