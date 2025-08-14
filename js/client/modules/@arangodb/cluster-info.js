@@ -40,6 +40,7 @@ function flush () {
 function databases () {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-databases`);
   arangosh.checkRequestResult(res);
+  return res.parsedBody.databases;
 }
 function getCollectionInfo () {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-getCollectionInfo`);
