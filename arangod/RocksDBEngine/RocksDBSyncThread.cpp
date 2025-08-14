@@ -101,7 +101,7 @@ void RocksDBSyncThread::beginShutdown() {
     _condition.cv.notify_all();
   }
 
-  { // acquire the mutex (exclusively); all notifySyncListeners() calls that
+  {  // acquire the mutex (exclusively); all notifySyncListeners() calls that
     // happen later (acquiring the shared mutex) will now see that the thread
     // is shutting down and not execute any listeners.
     std::lock_guard lock(_syncListenersMutex);
