@@ -54,7 +54,7 @@ function verifyClusterInfoSuite() {
       assertFalse(res, dbn + " no longer exists.");
     },
     testFlush: function () {
-      const ret = ci.flush();
+      assertTrue(ci.flush());
     },
     testdatabases: function () {
       const ret = ci.databases();

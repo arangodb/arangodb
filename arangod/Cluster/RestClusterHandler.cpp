@@ -290,10 +290,9 @@ void RestClusterHandler::handleCI_flush() {
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   ci.flush();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  body->openObject();
-  body->add("OK", true);
-  body->close();
-
+  { VPackObjectBuilder x(&(*body));
+    body->add("OK", true);
+  }
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 
