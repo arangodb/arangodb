@@ -1078,7 +1078,8 @@ futures::Future<Result> Manager::commitManagedTrx(TransactionId tid,
 
 futures::Future<Result> Manager::abortManagedTrx(TransactionId tid,
                                                  std::string const& database) {
-  return statusChangeWithTimeout(tid, database, transaction::Status::ABORTED);
+  co_return co_await statusChangeWithTimeout(tid, database,
+                                             transaction::Status::ABORTED);
 }
 
 Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
