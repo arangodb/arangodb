@@ -277,7 +277,8 @@ class IndexAggregateScanExecutorTest : public AqlExecutorTestCase<> {
                                    std::move(groups), std::move(aggregations),
                                    // defines projectionFields for iterator
                                    std::move(expressionVariablesToIndexField),
-                                   fakedQuery.get()};
+                                   fakedQuery.get(),
+                                   std::unique_ptr<ResourceUsageScope>{}};
   }
 
  protected:

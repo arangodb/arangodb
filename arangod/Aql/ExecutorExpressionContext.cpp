@@ -28,17 +28,28 @@
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
+#include <Basics/GlobalResourceMonitor.h>
 #include <absl/strings/str_cat.h>
 
 using namespace arangodb::aql;
 
+// ExecutorExpressionContext::ExecutorExpressionContext(
+//     arangodb::transaction::Methods& trx, QueryContext& context,
+//     AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
+//     std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
+//     : QueryExpressionContext(trx, context, cache),
+//       _inputRow(inputRow),
+//       _varsToRegister(varsToRegister) {}
+
 ExecutorExpressionContext::ExecutorExpressionContext(
-    arangodb::transaction::Methods& trx, QueryContext& context,
+    transaction::Methods& trx, QueryContext& context,
     AqlFunctionsInternalCache& cache, InputAqlItemRow const& inputRow,
-    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister)
+    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
+    ResourceMonitor& resourceMonitor)
     : QueryExpressionContext(trx, context, cache),
       _inputRow(inputRow),
-      _varsToRegister(varsToRegister) {}
+      _varsToRegister(varsToRegister),
+      _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {}
 
 void ExecutorExpressionContext::adjustInputRow(
     InputAqlItemRow const& inputRow) noexcept {

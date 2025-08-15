@@ -51,6 +51,7 @@ CountCollectExecutor::CountCollectExecutor(Fetcher&, Infos& infos)
 auto CountCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                        OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, Stats, AqlCall> {
+  LOG_DEVEL << "CountCollectExecutor was called";
   TRI_IF_FAILURE("CountCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }

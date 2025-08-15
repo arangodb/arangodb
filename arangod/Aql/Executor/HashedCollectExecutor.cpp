@@ -62,7 +62,8 @@ HashedCollectExecutorInfos::HashedCollectExecutorInfos(
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
       _vpackOptions(opts),
-      _resourceMonitor(resourceMonitor) {
+      _resourceMonitor(resourceMonitor),
+      _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {
   TRI_ASSERT(!_groupRegisters.empty());
 }
 
@@ -262,6 +263,7 @@ auto HashedCollectExecutor::returnState() const -> ExecutorState {
 auto HashedCollectExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                         OutputAqlItemRow& output)
     -> std::tuple<ExecutorState, NoStats, AqlCall> {
+  LOG_DEVEL << "HashedCollectExecutor was called";
   TRI_IF_FAILURE("HashedCollectExecutor::produceRows") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
@@ -356,6 +358,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
     // where it is unclear who is responsible for the data
     AqlValue a = input.stealValue(reg.second);
     AqlValueGuard guard{a, true};
+    /** _infos.getResourceUsageScope().increase(a.memoryUsage()); **/
     _nextGroup.values.emplace_back(a);
     guard.steal();
   } else {
@@ -371,6 +374,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
       // of responsibilities of tuples.
       AqlValue a = input.getValue(reg.second).clone();
       AqlValueGuard guard{a, true};
+      /** _infos.getResourceUsageScope().increase(a.memoryUsage()); **/
       _nextGroup.values.emplace_back(a);
       guard.steal();
     }
@@ -498,19 +502,20 @@ HashedCollectExecutor::makeAggregateValues() const {
     size += factory->getAggregatorSize();
   }
   void* p = ::operator new(size);
-  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions());
+  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions(),
+                           _infos.getResourceUsageScope());
   return std::unique_ptr<ValueAggregators>(static_cast<ValueAggregators*>(p));
 }
 
 HashedCollectExecutor::ValueAggregators::ValueAggregators(
     std::vector<Aggregator::Factory const*> factories,
-    velocypack::Options const* opts)
+    velocypack::Options const* opts, ResourceUsageScope& scope)
     : _size(factories.size()) {
   TRI_ASSERT(!factories.empty());
   auto* aggregatorPointers = reinterpret_cast<Aggregator**>(this + 1);
   void* aggregators = aggregatorPointers + _size;
   for (auto factory : factories) {
-    factory->createInPlace(aggregators, opts);
+    factory->createInPlace(aggregators, opts, scope);
     *aggregatorPointers = static_cast<Aggregator*>(aggregators);
     ++aggregatorPointers;
     aggregators =

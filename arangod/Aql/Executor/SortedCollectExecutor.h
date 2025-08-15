@@ -60,7 +60,8 @@ class SortedCollectExecutorInfos {
       std::vector<std::string> aggregateTypes,
       std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      velocypack::Options const*);
+      velocypack::Options const*,
+      std::unique_ptr<ResourceUsageScope> usageScope);
 
   SortedCollectExecutorInfos() = delete;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
@@ -90,6 +91,8 @@ class SortedCollectExecutorInfos {
       const {
     return _inputVariables;
   }
+
+  ResourceUsageScope& getResourceUsageScope() const { return *_usageScope; }
 
  private:
   /// @brief aggregate types
@@ -121,6 +124,7 @@ class SortedCollectExecutorInfos {
 
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
+  std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;
@@ -204,6 +208,8 @@ class SortedCollectExecutor {
   [[nodiscard]] auto expectedNumberOfRows(AqlItemBlockInputRange const& input,
                                           AqlCall const& call) const noexcept
       -> size_t;
+
+  ResourceMonitor& getResourceMonitor() const;
 
  private:
   Infos const& infos() const noexcept { return _infos; };

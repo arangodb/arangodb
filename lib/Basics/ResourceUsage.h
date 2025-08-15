@@ -128,6 +128,16 @@ class ResourceUsageScope {
 
   std::uint64_t trackedAndSteal() noexcept;
 
+  std::uint64_t memoryLimit() const noexcept {
+    return _resourceMonitor.memoryLimit();
+  }
+  std::uint64_t peak() const noexcept {
+    return _resourceMonitor.peak();
+  }
+  std::uint64_t current() const noexcept {
+    return _resourceMonitor.current();
+  }
+
  private:
   ResourceMonitor& _resourceMonitor;
   std::uint64_t _value;

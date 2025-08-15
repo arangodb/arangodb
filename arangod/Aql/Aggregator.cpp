@@ -32,6 +32,8 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
+#include "Logger/LogMacros.h"
+
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -150,8 +152,9 @@ class MemoryBlockAllocator {
 
 /// @brief aggregator for LENGTH()
 struct AggregatorLength final : public Aggregator {
-  explicit AggregatorLength(velocypack::Options const* opts)
-      : Aggregator(opts), count(0) {}
+  explicit AggregatorLength(velocypack::Options const* opts,
+                            ResourceUsageScope& scope)
+      : Aggregator(opts, scope), count(0) {}
 
   void reset() override { count = 0; }
 
@@ -166,8 +169,9 @@ struct AggregatorLength final : public Aggregator {
 };
 
 struct AggregatorMin final : public Aggregator {
-  explicit AggregatorMin(velocypack::Options const* opts)
-      : Aggregator(opts), value() {}
+  explicit AggregatorMin(velocypack::Options const* opts,
+                         ResourceUsageScope& scope)
+      : Aggregator(opts, scope), value() {}
 
   ~AggregatorMin() { value.destroy(); }
 
@@ -179,7 +183,9 @@ struct AggregatorMin final : public Aggregator {
          AqlValue::Compare(_vpackOptions, value, cmpValue, true) > 0)) {
       // the value `null` itself will not be used in MIN() to compare lower than
       // e.g. value `false`
+      getResourceUsageScope().decrease(value.memoryUsage());
       value.destroy();
+      getResourceUsageScope().increase(cmpValue.memoryUsage());
       value = cmpValue.clone();
     }
   }
@@ -195,8 +201,9 @@ struct AggregatorMin final : public Aggregator {
 };
 
 struct AggregatorMax final : public Aggregator {
-  explicit AggregatorMax(velocypack::Options const* opts)
-      : Aggregator(opts), value() {}
+  explicit AggregatorMax(velocypack::Options const* opts,
+                         ResourceUsageScope& scope)
+      : Aggregator(opts, scope), value() {}
 
   ~AggregatorMax() { value.destroy(); }
 
@@ -205,7 +212,9 @@ struct AggregatorMax final : public Aggregator {
   void reduce(AqlValue const& cmpValue) override {
     if (value.isEmpty() ||
         AqlValue::Compare(_vpackOptions, value, cmpValue, true) < 0) {
+      getResourceUsageScope().decrease(value.memoryUsage());
       value.destroy();
+      getResourceUsageScope().increase(cmpValue.memoryUsage());
       value = cmpValue.clone();
     }
   }
@@ -221,8 +230,9 @@ struct AggregatorMax final : public Aggregator {
 };
 
 struct AggregatorSum final : public Aggregator {
-  explicit AggregatorSum(velocypack::Options const* opts)
-      : Aggregator(opts), sum(0.0), invalid(false), invoked(false) {}
+  explicit AggregatorSum(velocypack::Options const* opts,
+                         ResourceUsageScope& scope)
+      : Aggregator(opts, scope), sum(0.0), invalid(false), invoked(false) {}
 
   void reset() override {
     sum = 0.0;
@@ -265,8 +275,9 @@ struct AggregatorSum final : public Aggregator {
 
 /// @brief the single-server variant of AVERAGE
 struct AggregatorAverage : public Aggregator {
-  explicit AggregatorAverage(velocypack::Options const* opts)
-      : Aggregator(opts), count(0), sum(0.0), invalid(false) {}
+  explicit AggregatorAverage(velocypack::Options const* opts,
+                             ResourceUsageScope& scope)
+      : Aggregator(opts, scope), count(0), sum(0.0), invalid(false) {}
 
   void reset() override final {
     count = 0;
@@ -311,8 +322,9 @@ struct AggregatorAverage : public Aggregator {
 
 /// @brief the DB server variant of AVERAGE, producing a sum and a count
 struct AggregatorAverageStep1 final : public AggregatorAverage {
-  explicit AggregatorAverageStep1(velocypack::Options const* opts)
-      : AggregatorAverage(opts) {}
+  explicit AggregatorAverageStep1(velocypack::Options const* opts,
+                                  ResourceUsageScope& scope)
+      : AggregatorAverage(opts, scope) {}
 
   // special version that will produce an array with sum and count separately
   AqlValue get() const override {
@@ -337,8 +349,9 @@ struct AggregatorAverageStep1 final : public AggregatorAverage {
 /// @brief the coordinator variant of AVERAGE, aggregating partial sums and
 /// counts
 struct AggregatorAverageStep2 final : public AggregatorAverage {
-  explicit AggregatorAverageStep2(velocypack::Options const* opts)
-      : AggregatorAverage(opts) {}
+  explicit AggregatorAverageStep2(velocypack::Options const* opts,
+                                  ResourceUsageScope& scope)
+      : AggregatorAverage(opts, scope) {}
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isArray()) {
@@ -368,8 +381,9 @@ struct AggregatorAverageStep2 final : public AggregatorAverage {
 
 /// @brief base functionality for VARIANCE
 struct AggregatorVarianceBase : public Aggregator {
-  AggregatorVarianceBase(velocypack::Options const* opts, bool population)
-      : Aggregator(opts),
+  AggregatorVarianceBase(velocypack::Options const* opts, bool population,
+                         ResourceUsageScope& scope)
+      : Aggregator(opts, scope),
         count(0),
         sum(0.0),
         mean(0.0),
@@ -412,8 +426,9 @@ struct AggregatorVarianceBase : public Aggregator {
 
 /// @brief the single server variant of VARIANCE
 struct AggregatorVariance : public AggregatorVarianceBase {
-  AggregatorVariance(velocypack::Options const* opts, bool population)
-      : AggregatorVarianceBase(opts, population) {}
+  AggregatorVariance(velocypack::Options const* opts, bool population,
+                     ResourceUsageScope& scope)
+      : AggregatorVarianceBase(opts, population, scope) {}
 
   AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population) ||
@@ -437,8 +452,9 @@ struct AggregatorVariance : public AggregatorVarianceBase {
 
 /// @brief the DB server variant of VARIANCE/STDDEV
 struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
-  AggregatorVarianceBaseStep1(velocypack::Options const* opts, bool population)
-      : AggregatorVarianceBase(opts, population) {}
+  AggregatorVarianceBaseStep1(velocypack::Options const* opts, bool population,
+                              ResourceUsageScope& scope)
+      : AggregatorVarianceBase(opts, population, scope) {}
 
   AqlValue get() const override {
     builder.clear();
@@ -465,8 +481,9 @@ struct AggregatorVarianceBaseStep1 final : public AggregatorVarianceBase {
 
 /// @brief the coordinator variant of VARIANCE
 struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
-  AggregatorVarianceBaseStep2(velocypack::Options const* opts, bool population)
-      : AggregatorVarianceBase(opts, population) {}
+  AggregatorVarianceBaseStep2(velocypack::Options const* opts, bool population,
+                              ResourceUsageScope& scope)
+      : AggregatorVarianceBase(opts, population, scope) {}
 
   void reset() override {
     AggregatorVarianceBase::reset();
@@ -541,8 +558,9 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
 
 /// @brief the single server variant of STDDEV
 struct AggregatorStddev : public AggregatorVarianceBase {
-  AggregatorStddev(velocypack::Options const* opts, bool population)
-      : AggregatorVarianceBase(opts, population) {}
+  AggregatorStddev(velocypack::Options const* opts, bool population,
+                   ResourceUsageScope& scope)
+      : AggregatorVarianceBase(opts, population, scope) {}
 
   AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population) ||
@@ -566,8 +584,9 @@ struct AggregatorStddev : public AggregatorVarianceBase {
 
 /// @brief the coordinator variant of STDDEV
 struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
-  AggregatorStddevBaseStep2(velocypack::Options const* opts, bool population)
-      : AggregatorVarianceBaseStep2(opts, population) {}
+  AggregatorStddevBaseStep2(velocypack::Options const* opts, bool population,
+                            ResourceUsageScope& scope)
+      : AggregatorVarianceBaseStep2(opts, population, scope) {}
 
   AqlValue get() const override {
     if (invalid || count == 0 || (count == 1 && !population)) {
@@ -597,8 +616,9 @@ struct AggregatorStddevBaseStep2 final : public AggregatorVarianceBaseStep2 {
 
 /// @brief the single-server and DB server variant of UNIQUE
 struct AggregatorUnique : public Aggregator {
-  explicit AggregatorUnique(velocypack::Options const* opts)
-      : Aggregator(opts),
+  explicit AggregatorUnique(velocypack::Options const* opts,
+                            ResourceUsageScope& scope)
+      : Aggregator(opts, scope),
         allocator(1024),
         seen(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(_vpackOptions)) {}
@@ -625,10 +645,21 @@ struct AggregatorUnique : public Aggregator {
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
+    auto before = builder.buffer()->size();
     if (builder.isClosed()) {
       builder.openArray();
     }
+
+    getResourceUsageScope().increase(
+        VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize());
     builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
+    auto after = builder.buffer()->size();
+    getResourceUsageScope().decrease(
+        VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize());
+    getResourceUsageScope().increase(after - before);
+    LOG_DEVEL << "UNIQUE value was added: " << s.toJson() << " ("
+              << after - before
+              << ") current: " << getResourceUsageScope().current();
   }
 
   AqlValue get() const override final {
@@ -636,10 +667,20 @@ struct AggregatorUnique : public Aggregator {
     if (builder.isClosed()) {
       builder.openArray();
     }
-
+    auto before = builder.buffer()->size();
     // always close the Builder
     builder.close();
-    return AqlValue(builder.slice());
+    auto after = builder.buffer()->size();
+    if (after >= before) {
+      getResourceUsageScope().increase(after - before);
+    } else {
+      getResourceUsageScope().decrease(before - after);
+    }
+    AqlValue a{builder.slice()};
+    if (a.memoryUsage() == 0) {
+      getResourceUsageScope().decrease(builder.buffer()->size());
+    }
+    return a;
   }
 
   MemoryBlockAllocator allocator;
@@ -652,8 +693,9 @@ struct AggregatorUnique : public Aggregator {
 
 /// @brief the coordinator variant of UNIQUE
 struct AggregatorUniqueStep2 final : public AggregatorUnique {
-  explicit AggregatorUniqueStep2(velocypack::Options const* opts)
-      : AggregatorUnique(opts) {}
+  explicit AggregatorUniqueStep2(velocypack::Options const* opts,
+                                 ResourceUsageScope& scope)
+      : AggregatorUnique(opts, scope) {}
 
   void reduce(AqlValue const& cmpValue) override final {
     AqlValueMaterializer materializer(_vpackOptions);
@@ -676,6 +718,8 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
       if (builder.isClosed()) {
         builder.openArray();
       }
+      getResourceUsageScope().increase(
+          VPackSlice(reinterpret_cast<uint8_t const*>(pos)).byteSize());
       builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
     }
   }
@@ -683,8 +727,9 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
 
 /// @brief the single-server and DB server variant of SORTED_UNIQUE
 struct AggregatorSortedUnique : public Aggregator {
-  explicit AggregatorSortedUnique(velocypack::Options const* opts)
-      : Aggregator(opts), allocator(1024), seen(_vpackOptions) {}
+  explicit AggregatorSortedUnique(velocypack::Options const* opts,
+                                  ResourceUsageScope& scope)
+      : Aggregator(opts, scope), allocator(1024), seen(_vpackOptions) {}
 
   ~AggregatorSortedUnique() { reset(); }
 
@@ -704,7 +749,9 @@ struct AggregatorSortedUnique : public Aggregator {
       // already saw the same value
       return;
     }
-
+    LOG_DEVEL << "Unique value was added: " << s.toJson() << " ("
+              << s.byteSize() << ")";
+    getResourceUsageScope().increase(s.byteSize());
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
@@ -727,8 +774,9 @@ struct AggregatorSortedUnique : public Aggregator {
 
 /// @brief the coordinator variant of SORTED_UNIQUE
 struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
-  explicit AggregatorSortedUniqueStep2(velocypack::Options const* opts)
-      : AggregatorSortedUnique(opts) {}
+  explicit AggregatorSortedUniqueStep2(velocypack::Options const* opts,
+                                       ResourceUsageScope& scope)
+      : AggregatorSortedUnique(opts, scope) {}
 
   void reduce(AqlValue const& cmpValue) override final {
     AqlValueMaterializer materializer(_vpackOptions);
@@ -745,6 +793,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
         continue;
       }
 
+      getResourceUsageScope().increase(it.byteSize());
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
       seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
@@ -752,8 +801,9 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
 };
 
 struct AggregatorCountDistinct : public Aggregator {
-  explicit AggregatorCountDistinct(velocypack::Options const* opts)
-      : Aggregator(opts),
+  explicit AggregatorCountDistinct(velocypack::Options const* opts,
+                                   ResourceUsageScope& scope)
+      : Aggregator(opts, scope),
         allocator(1024),
         seen(512, basics::VelocyPackHelper::VPackHash(),
              basics::VelocyPackHelper::VPackEqual(_vpackOptions)) {}
@@ -776,6 +826,7 @@ struct AggregatorCountDistinct : public Aggregator {
       return;
     }
 
+    getResourceUsageScope().increase(s.byteSize());
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
@@ -794,13 +845,18 @@ struct AggregatorCountDistinct : public Aggregator {
 
 template<class T>
 struct GenericFactory : Aggregator::Factory {
+  // virtual std::unique_ptr<Aggregator> operator()(
+  //     velocypack::Options const* opts) const override {
+  //   return std::make_unique<T>(opts);
+  // }
   virtual std::unique_ptr<Aggregator> operator()(
-      velocypack::Options const* opts) const override {
-    return std::make_unique<T>(opts);
+      velocypack::Options const* opts,
+      ResourceUsageScope& scope) const override {
+    return std::make_unique<T>(opts, scope);
   }
-  void createInPlace(void* address,
-                     velocypack::Options const* opts) const override {
-    new (address) T(opts);
+  void createInPlace(void* address, velocypack::Options const* opts,
+                     ResourceUsageScope& scope) const override {
+    new (address) T(opts, scope);
   }
   std::size_t getAggregatorSize() const override { return sizeof(T); }
 };
@@ -809,13 +865,18 @@ template<class T>
 struct GenericVarianceFactory : Aggregator::Factory {
   explicit GenericVarianceFactory(bool population) : population(population) {}
 
+  // virtual std::unique_ptr<Aggregator> operator()(
+  //     velocypack::Options const* opts) const override {
+  //   return std::make_unique<T>(opts, population);
+  // }
   virtual std::unique_ptr<Aggregator> operator()(
-      velocypack::Options const* opts) const override {
-    return std::make_unique<T>(opts, population);
+      velocypack::Options const* opts,
+      ResourceUsageScope& scope) const override {
+    return std::make_unique<T>(opts, population, scope);
   }
-  void createInPlace(void* address,
-                     velocypack::Options const* opts) const override {
-    new (address) T(opts, population);
+  void createInPlace(void* address, velocypack::Options const* opts,
+                     ResourceUsageScope& scope) const override {
+    new (address) T(opts, population, scope);
   }
   std::size_t getAggregatorSize() const override { return sizeof(T); }
 
@@ -824,8 +885,9 @@ struct GenericVarianceFactory : Aggregator::Factory {
 
 /// @brief the coordinator variant of COUNT_DISTINCT
 struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
-  explicit AggregatorCountDistinctStep2(velocypack::Options const* opts)
-      : AggregatorCountDistinct(opts) {}
+  explicit AggregatorCountDistinctStep2(velocypack::Options const* opts,
+                                        ResourceUsageScope& scope)
+      : AggregatorCountDistinct(opts, scope) {}
 
   void reduce(AqlValue const& cmpValue) override {
     AqlValueMaterializer materializer(_vpackOptions);
@@ -842,6 +904,7 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
         continue;
       }
 
+      getResourceUsageScope().increase(it.byteSize());
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
       seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
@@ -868,8 +931,9 @@ struct BitFunctionXOr {
 
 template<typename BitFunction>
 struct AggregatorBitFunction : public Aggregator, BitFunction {
-  explicit AggregatorBitFunction(velocypack::Options const* opts)
-      : Aggregator(opts), result(0), invalid(false), invoked(false) {}
+  explicit AggregatorBitFunction(velocypack::Options const* opts,
+                                 ResourceUsageScope& scope)
+      : Aggregator(opts, scope), result(0), invalid(false), invoked(false) {}
 
   void reset() override {
     result = 0;
@@ -919,23 +983,27 @@ struct AggregatorBitFunction : public Aggregator, BitFunction {
 };
 
 struct AggregatorBitAnd : public AggregatorBitFunction<BitFunctionAnd> {
-  explicit AggregatorBitAnd(velocypack::Options const* opts)
-      : AggregatorBitFunction(opts) {}
+  explicit AggregatorBitAnd(velocypack::Options const* opts,
+                            ResourceUsageScope& scope)
+      : AggregatorBitFunction(opts, scope) {}
 };
 
 struct AggregatorBitOr : public AggregatorBitFunction<BitFunctionOr> {
-  explicit AggregatorBitOr(velocypack::Options const* opts)
-      : AggregatorBitFunction(opts) {}
+  explicit AggregatorBitOr(velocypack::Options const* opts,
+                           ResourceUsageScope& scope)
+      : AggregatorBitFunction(opts, scope) {}
 };
 
 struct AggregatorBitXOr : public AggregatorBitFunction<BitFunctionXOr> {
-  explicit AggregatorBitXOr(velocypack::Options const* opts)
-      : AggregatorBitFunction(opts) {}
+  explicit AggregatorBitXOr(velocypack::Options const* opts,
+                            ResourceUsageScope& scope)
+      : AggregatorBitFunction(opts, scope) {}
 };
 
 struct AggregatorMergeLists : public Aggregator {
-  explicit AggregatorMergeLists(velocypack::Options const* opts)
-      : Aggregator(opts) {}
+  explicit AggregatorMergeLists(velocypack::Options const* opts,
+                                ResourceUsageScope& scope)
+      : Aggregator(opts, scope) {}
 
   ~AggregatorMergeLists() { reset(); }
 
@@ -948,6 +1016,7 @@ struct AggregatorMergeLists : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
+    getResourceUsageScope().increase(s.byteSize());
     builder.add(VPackArrayIterator(s));
   }
 
@@ -963,7 +1032,9 @@ struct AggregatorMergeLists : public Aggregator {
 };
 
 struct AggregatorList : public Aggregator {
-  explicit AggregatorList(velocypack::Options const* opts) : Aggregator(opts) {}
+  explicit AggregatorList(velocypack::Options const* opts,
+                          ResourceUsageScope& scope)
+      : Aggregator(opts, scope) {}
 
   ~AggregatorList() { reset(); }
 
@@ -976,6 +1047,7 @@ struct AggregatorList : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
+    getResourceUsageScope().increase(s.byteSize());
     builder.add(s);
   }
 
@@ -1113,20 +1185,21 @@ std::unordered_map<std::string_view, std::string_view> const aliases = {
 }  // namespace
 
 std::unique_ptr<Aggregator> Aggregator::fromTypeString(
-    velocypack::Options const* opts, std::string_view type) {
+    velocypack::Options const* opts, std::string_view type,
+    ResourceUsageScope& scope) {
   // will always return a valid factory or throw an exception
   auto& factory = Aggregator::factoryFromTypeString(type);
 
-  return factory(opts);
+  return factory(opts, scope);
 }
 
 std::unique_ptr<Aggregator> Aggregator::fromVPack(
     velocypack::Options const* opts, arangodb::velocypack::Slice slice,
-    std::string_view nameAttribute) {
+    std::string_view nameAttribute, ResourceUsageScope& scope) {
   VPackSlice variable = slice.get(nameAttribute);
 
   if (variable.isString()) {
-    return fromTypeString(opts, variable.stringView());
+    return fromTypeString(opts, variable.stringView(), scope);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }

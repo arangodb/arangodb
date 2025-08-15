@@ -106,6 +106,7 @@ class HashedCollectExecutorInfos {
     return _inputVariables;
   }
   arangodb::ResourceMonitor& getResourceMonitor() const;
+  ResourceUsageScope& getResourceUsageScope() const { return *_usageScope; }
 
  private:
   /// @brief aggregate types
@@ -137,6 +138,7 @@ class HashedCollectExecutorInfos {
 
   /// @brief resource manager
   arangodb::ResourceMonitor& _resourceMonitor;
+  std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
 /**
@@ -193,7 +195,8 @@ class HashedCollectExecutor {
  private:
   struct ValueAggregators {
     ValueAggregators(std::vector<Aggregator::Factory const*> factories,
-                     velocypack::Options const* opts);
+                     velocypack::Options const* opts,
+                     ResourceUsageScope& scope);
     ~ValueAggregators();
     std::size_t size() const;
     Aggregator& operator[](std::size_t index);

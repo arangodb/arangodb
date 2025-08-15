@@ -81,7 +81,7 @@ class OutputAqlItemRow {
   // responsibility of possibly referenced external memory.
   template<class ItemRowType, class ValueType>
   void moveValueInto(RegisterId registerId, ItemRowType const& sourceRow,
-                     ValueType value);
+                     ValueType value, bool countMemory = true);
 
   // Consume the given shadow row and transform it into a InputAqlItemRow
   // for the next consumer of this block.
@@ -294,7 +294,8 @@ class OutputAqlItemRow {
   /// @brief move the value into the given output registers and count the value
   /// as written in _numValuesWritten.
   template<class ItemRowType, class ValueType>
-  void moveValueWithoutRowCopy(RegisterId registerId, ValueType value);
+  void moveValueWithoutRowCopy(RegisterId registerId, ValueType value,
+                               bool countMemory = true);
 
   template<class ItemRowType>
   void memorizeRow(ItemRowType const& sourceRow);

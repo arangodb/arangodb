@@ -59,7 +59,8 @@ class WindowExecutorInfos {
       WindowBounds const& b, RegisterId rangeRegister,
       std::vector<std::string> aggregateTypes,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      QueryWarnings& warnings, velocypack::Options const* options);
+      QueryWarnings& warnings, velocypack::Options const* options,
+      std::unique_ptr<ResourceUsageScope> usageScope);
 
   WindowExecutorInfos() = delete;
   WindowExecutorInfos(WindowExecutorInfos&&) = default;
@@ -73,6 +74,7 @@ class WindowExecutorInfos {
   std::vector<std::string> const& getAggregateTypes() const;
   QueryWarnings& warnings() const;
   velocypack::Options const* getVPackOptions() const;
+  ResourceUsageScope& getResourceUsageScope() const { return *_usageScope; }
 
  private:
   WindowBounds const& _bounds;
@@ -89,6 +91,8 @@ class WindowExecutorInfos {
 
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
+
+  std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
 class BaseWindowExecutor {

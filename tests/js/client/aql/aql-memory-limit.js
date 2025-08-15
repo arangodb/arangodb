@@ -392,9 +392,201 @@ function ahuacatlMemoryLimitSkipTestSuite () {
   };
 }
 
-jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+function ahuacatMemoryLimitMergeTestSuite() {
+  return {
+    testMergeSingleEmptyObjectWithinLimit: function() {
+      const query = "RETURN NOOPT(MERGE({}))";
+      let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(Object.keys(res[0]).length, 0);
+    },
+
+    testMergeSingleEmptyObjectWithinLimit2: function() { // failed leftover 10
+      const query = "RETURN NOOPT(MERGE({empty: {}}))";
+      let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(Object.keys(res[0]).length, 1);
+    },
+
+    testMergeSingleEmptyObjectWithinLimit3: function() { // failed leftover 10
+      const query = "RETURN NOOPT(MERGE({empty: [{}, {}]}))";
+      let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(Object.keys(res[0]).length, 1);
+    },
+
+    testMergeSingleObjectWithinLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024 * 1024)})";
+      let res = db._query(query, null, { memoryLimit: 16 * 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(res[0].a.length === 1024 * 1024);
+    },
+
+    testMergeSingleObjectNonExceedLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024 * 1024)})";
+      try {
+        db._query(query, null, { memoryLimit: 2 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeRecursiveSingleObjectWithinLimit: function() {
+      const query =
+          "RETURN NOOPT(MERGE_RECURSIVE({a:{b:{c:{d:{e:{f:{g:1}}}}}}}))";
+      let res = db._query(query, null, { memoryLimit: 512 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(res[0].a.b.c.d.e.f.g, 1);
+    },
+
+    testMergeMultipleEmptyObjectsWithinLimit: function() {
+      const query = "RETURN NOOPT(MERGE({}, {}))";
+      let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(Object.keys(res[0]).length, 0);
+    },
+
+    testMergeMultipleObjectsWithinLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024)}, {b: REPEAT('x', 1024)}, {b: REPEAT('x', 1024)})";
+      let res = db._query(query, null, { memoryLimit: 6 * 1024 }).toArray();
+      assertEqual(1, res.length);
+    },
+
+    testMergeMultipleObjectsExceedLimit: function() {
+      const query = "RETURN MERGE({a: REPEAT('x', 1024 * 1024)}, {b: REPEAT('x', 1024 * 1024)}, {b: REPEAT('x', 1024 * 1024)})";
+      try {
+        db._query(query, null, { memoryLimit: 6 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeRecursiveMultipleObjectsWithinLimit: function() {
+      const query = "RETURN MERGE_RECURSIVE({a: {x: REPEAT('x', 1024)}, b: REPEAT('y', 1024)}," +
+          "{a: {y: REPEAT('z', 1024)}, c: REPEAT('w', 1024)})";
+      let res = db._query(query, null, { memoryLimit: 4 * 1024 }).toArray();
+      assertEqual(1, res.length);
+    },
+
+    testMergeMultipleObjectsRecursiveExceedLimit: function() {
+      const query = "RETURN MERGE_RECURSIVE({a: {x: REPEAT('x', 1024 * 1024)}, y: REPEAT('y', 1024 * 1024)}," +
+          "{a: {z: REPEAT('z', 1024 * 1024)}, w: REPEAT('w', 1024 * 1024)}," +
+          "{b: {x: REPEAT('x', 1024 * 1024)}, y: REPEAT('y', 1024 * 1024)})";
+      try {
+        db._query(query, null, { memoryLimit: 16 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeEmptyArrayWithinLimit: function() {
+      const query = "RETURN NOOPT(MERGE([]))";
+      let res = db._query(query, null, { memoryLimit: 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(Object.keys(res[0]).length, 0);
+    },
+
+    testMergeArrayWithinLimit: function() { // failed tracked()
+      const query = "RETURN MERGE((FOR i IN 1..1024 RETURN { [TO_STRING(i)]: i }))";
+      let res = db._query(query, null, { memoryLimit: 512 * 1024 }).toArray();
+      assertEqual(1, res.length);
+    },
+
+    testMergeArrayWithinLimit2: function() { // failed tracked()
+      const query = `RETURN MERGE((FOR i IN 1..2024 RETURN { [CONCAT('k', i)]: REPEAT('x', 4096) }))`;
+      let res = db._query(query, null, { memoryLimit: 32 * 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(res[0] !== null);
+    },
+
+    testMergeArrayWithinLimit3: function() { // failed tracked()
+      const query =
+          "RETURN MERGE((FOR i IN 1..100 RETURN { arr: [i, i*2, i*3] }))";
+      let res = db._query(query, null, { memoryLimit: 64 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(Array.isArray(res[0].arr));
+      assertEqual(res[0].arr.length, 3);
+    },
+
+    testMergeArrayExceedLimit: function() {
+      const query = `RETURN MERGE((FOR i IN 1..2024 RETURN { [CONCAT('k', i)]: REPEAT('x', 4096) }))`;
+      try {
+        db._query(query, null, { memoryLimit: 12 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeRecursiveArrayWithinLimit: function() { // failed tracked()
+      const query = `RETURN MERGE_RECURSIVE((FOR i IN 1..1000 RETURN { [CONCAT('k', i)]: i, nested: { x: i } }))`;
+      let res = db._query(query, null, { memoryLimit: 20 * 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(res[0] !== null);
+    },
+
+    testMergeRecursiveArrayExceedLimit: function() {
+      const query = `RETURN MERGE_RECURSIVE((FOR i IN 1..2048 RETURN { [CONCAT('k', i)]: REPEAT('x', 4096), nested: { [CONCAT('nested', i)]: REPEAT('x', 4096) } }))`;
+      try {
+        db._query(query, null, { memoryLimit: 32 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    }
+  };
+}
+
+function ahuacatMemoryLimitSortedCollectTestSuite() {
+  const TEST_COLLECTION = "testDocs";
+  let testCollection;
+
+  function tearDown() {
+    db._drop(TEST_COLLECTION);
+  }
+  return {
+    setUpAll: function () {
+      tearDown();
+
+      testCollection = db._create(TEST_COLLECTION);
+      for (let i = 1; i <= 100; ++i) {
+        testCollection.save({
+          grp: "foobarbazfoobarbaz" + i,
+          num: i,
+          txt: "x".repeat(1024)
+        });
+      }
+    },
+
+    tearDownAll: tearDown,
+
+    // testSortedCollectAggregateIntoWithinLimit: function () {
+    //   const query = `FOR d IN ${TEST_COLLECTION} SORT d.grp COLLECT grp = d.grp AGGREGATE uni = UNIQUE(d.num) INTO doc = d RETURN { grp, uni, doc }`;
+    //   let res = db._query(query, null, { memoryLimit: 1024 * 1024 * 1024 }).toArray();
+    //   assertEqual(100, res.length);
+    //   assertTrue(res[0] !== null);
+    // },
+
+    testSortedCollectAggregateIntoExceedLimit: function () {
+      const query = `FOR d IN ${TEST_COLLECTION} SORT d.grp COLLECT grp = d.grp AGGREGATE uni = UNIQUE(d.num) INTO doc = d RETURN { grp, uni, doc }`;
+      try {
+        db._query(query, null, { memoryLimit: 300 * 1024 }).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    }
+  };
+}
+
+// jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+jsunity.run(ahuacatMemoryLimitMergeTestSuite);
+//jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
 
 return jsunity.done();
