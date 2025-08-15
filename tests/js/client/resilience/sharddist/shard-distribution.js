@@ -26,12 +26,10 @@
 
 const jsunity = require("jsunity");
 const { deriveTestSuite} = require('@arangodb/test-helper-common');
+const CI = require('@arangodb/cluster-info');
 const {
   getCoordinatorEndpoints, 
   getDBServerEndpoints, 
-  arangoClusterInfoFlush,
-  arangoClusterInfoGetCollectionInfo,
-  arangoClusterInfoGetCollectionInfoCurrent,
   getDBServers
 } = require('@arangodb/test-helper');
 const expect = require('chai').expect;
@@ -220,15 +218,15 @@ function ShardDistributionTest({replVersion}) {
     if (replVersion === "2") {
       return true;
     }
-    arangoClusterInfoFlush();
-    var cinfo = arangoClusterInfoGetCollectionInfo(
+    CI.flush();
+    var cinfo = CI.getCollectionInfo(
         dbname, collection);
     var shards = Object.keys(cinfo.shards);
     var replFactor = cinfo.shards[shards[0]].length;
     var count = 0;
     while (++count <= 600) {
       var ccinfo = shards.map(
-          s => arangoClusterInfoGetCollectionInfoCurrent(
+          s => CI.getCollectionInfoCurrent(
               dbname, collection, s)
       );
       let replicas = ccinfo.map(s => s.servers);
@@ -241,7 +239,7 @@ function ShardDistributionTest({replVersion}) {
             JSON.stringify(replicas));
       }
       wait(0.5);
-      arangoClusterInfoFlush();
+      CI.flush();
     }
     console.error(`Collection "${collection}" failed to get all followers in sync after 600 sec`);
     return false;
