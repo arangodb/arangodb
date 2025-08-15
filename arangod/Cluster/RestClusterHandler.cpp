@@ -568,12 +568,9 @@ void RestClusterHandler::handleCI_getResponsibleShard(
     return;
   }
 
-  if (suffixes.size() < 4 ||
-      suffixes[1] != "databaseName" ||
-      suffixes[3] != "collectionName" ||
-      suffixes[5] != "documentIsComplete") {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_BAD_PARAMETER,
+  if (suffixes.size() < 4 || suffixes[1] != "databaseName" ||
+      suffixes[3] != "collectionName" || suffixes[5] != "documentIsComplete") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "collectionName, documentIsComplete arguments are missing");
     return;
   }
@@ -592,26 +589,25 @@ void RestClusterHandler::handleCI_getResponsibleShard(
 
   auto collInfo = ci.getCollectionNT(databaseName, collectionName);
   if (collInfo == nullptr) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_BAD_PARAMETER,
-                  ClusterInfo::getCollectionNotFoundMsg(
-                    databaseName, collectionName));
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+        ClusterInfo::getCollectionNotFoundMsg(databaseName, collectionName));
     return;
   }
 
   bool usesDefaultShardingAttributes;
 
   auto maybeShard = collInfo->getResponsibleShard(
-    document, documentIsComplete, usesDefaultShardingAttributes);
+      document, documentIsComplete, usesDefaultShardingAttributes);
 
   if (maybeShard.fail()) {
-    generateError(rest::ResponseCode::BAD,
-                  TRI_ERROR_BAD_PARAMETER,
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "no shard found for the document");
     return;
   }
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  { VPackObjectBuilder y(&(*body));
+  {
+    VPackObjectBuilder y(&(*body));
     body->add("shardId", std::string{maybeShard.get()});
     body->add("usesDefaultShardingAttributes", usesDefaultShardingAttributes);
   }
