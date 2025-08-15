@@ -361,6 +361,7 @@ class StaticStrings {
   static std::string const Id;
   static std::string const Index;
   static std::string const Leader;
+  static std::string const Unconfigured;
   static std::string const LocalStatus;
   static std::string const Participants;
   static std::string const ServerId;

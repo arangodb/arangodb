@@ -100,6 +100,7 @@ add_library(arango_basic_utils STATIC
         Basics/Guarded.h
         Basics/Identifier.cpp
         Basics/InputProcessors.cpp
+        Basics/MaintainerMode.h
         Basics/NumberOfCores.cpp
         Basics/PageSize.cpp
         Basics/PhysicalMemory.cpp
