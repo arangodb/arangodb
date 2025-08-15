@@ -664,14 +664,6 @@ exports.getDbPath = function () {
   return arango.POST("/_admin/execute", `return require("internal").db._path();`);
 };
 
-exports.getResponsibleShardFromClusterInfo = function (vertexCollectionId, v) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleShard(${JSON.stringify(vertexCollectionId)}, ${JSON.stringify(v)})`);
-};
-
-exports.getResponsibleServersFromClusterInfo = function (arg) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleServers(${JSON.stringify(arg)});`);
-};
-
 exports.getAllMetricsFromEndpoints = function (roles = "") {
   const isCluster = require("internal").isCluster();
   

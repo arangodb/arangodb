@@ -63,9 +63,10 @@ function getResponsibleServers (shardIDs) {
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
-function getResponsibleShard (collectionID, documentKey, parseSuccess) {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info-getResponsibleShard/collectionID/${collectionID}/documentKey/${documentKey}/parseSuccess/${parseSuccess}`);
+function getResponsibleShard (collectionName, document, documentIsComplete) {
+  let res = arango.POST_RAW(`_api/cluster/cluster-info-getResponsibleShard/databaseName/${arango.getDatabaseName()}/collectionName/${collectionName}/documentIsComplete/${documentIsComplete}`, document);
   arangosh.checkRequestResult(res);
+  return res.parsedBody;
 }
 function getServerEndpoint (serverID) {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-getServerEndpoint/serverID/${serverID}`);
