@@ -105,26 +105,24 @@ RestStatus RestClusterHandler::execute() {
       handleCI_waitForPlanVersion(suffixes);
       return RestStatus::DONE;
     }
-  } else {
-    if (_request->requestType() != RequestType::GET) {
-      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
-                    "only the GET method is allowed");
-      return RestStatus::DONE;
-    }
+  }
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return RestStatus::DONE;
+  }
 
-    std::vector<std::string> const& suffixes = _request->suffixes();
-    if (!suffixes.empty()) {
-      if (suffixes[0] == "endpoints") {
-        handleCommandEndpoints();
-        return RestStatus::DONE;
-      } else if (suffixes[0] == "agency-dump") {
-        handleAgencyDump();
-        return RestStatus::DONE;
-      } else if (suffixes[0] == "agency-cache") {
-        handleAgencyCache();
-        return RestStatus::DONE;
-      }
+  if (!suffixes.empty()) {
+    if (suffixes[0] == "endpoints") {
+      handleCommandEndpoints();
+      return RestStatus::DONE;
+    } else if (suffixes[0] == "agency-dump") {
+      handleAgencyDump();
+      return RestStatus::DONE;
+    } else if (suffixes[0] == "agency-cache") {
+      handleAgencyCache();
+      return RestStatus::DONE;
     }
   }
   generateError(
