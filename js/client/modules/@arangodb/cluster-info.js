@@ -1,0 +1,126 @@
+/* jshint strict: false */
+/* global arango */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Wilfried Goesgens
+// / @author Copyright 2025, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
+const arangosh = require('@arangodb/arangosh');
+
+
+function doesDatabaseExist (database) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/does_database_exist/database/${database}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.exists;
+}
+function flush () {
+  let res = arango.PUT_RAW(`_api/cluster/cluster-info/flush`, "");
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.OK;
+}
+function databases () {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/databases`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.databases;
+}
+function getCollectionInfo (databaseName, collectionName) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_collection_info/databaseName/${databaseName}/collectionName/${collectionName}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function getCollectionInfoCurrent (databaseName, collectionName, shardID) {
+  let res = arango.GET_RAW(
+    `_api/cluster/cluster-info/get_collection_info_current/databaseName/${databaseName}/collectionName/${collectionName}/shardID/${shardID}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function getResponsibleServer (shardID) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_responsible_server/shardID/${shardID}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function getResponsibleServers (shardIDs) {
+  let res = arango.POST_RAW(`_api/cluster/cluster-info/get_responsible_servers`, shardIDs);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function getResponsibleShard (collectionName, document, documentIsComplete) {
+  let res = arango.POST_RAW(`_api/cluster/cluster-info/get_responsible_shard/databaseName/${arango.getDatabaseName()}/collectionName/${collectionName}/documentIsComplete/${documentIsComplete}`, document);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function getServerEndpoint (serverID) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_server_endpoint/serverID/${serverID}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.endpoint;
+}
+function getServerName (endpoint) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_server_name/${encodeURIComponent(endpoint)}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.serverName;
+}
+function getDBServers () {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_db_servers`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function getCoordinators () {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_coordinators`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function uniqid (count) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/uniqid/${count}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function getAnalyzersRevision (database) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_analyzers_revision/${database}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+function waitForPlanVersion (versionToWaitFor) {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/wait_for_plan_version/${versionToWaitFor}`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody;
+}
+
+
+
+exports.doesDatabaseExist = doesDatabaseExist;
+exports.flush = flush;
+exports.databases = databases;
+exports.getCollectionInfo = getCollectionInfo;
+exports.getCollectionInfoCurrent = getCollectionInfoCurrent;
+exports.getResponsibleServer = getResponsibleServer;
+exports.getResponsibleServers = getResponsibleServers;
+exports.getResponsibleShard = getResponsibleShard;
+exports.getServerEndpoint = getServerEndpoint;
+exports.getServerName = getServerName;
+exports.getDBServers = getDBServers;
+exports.getCoordinators = getCoordinators;
+exports.uniqid = uniqid;
+exports.getAnalyzersRevision = getAnalyzersRevision;
+exports.waitForPlanVersion = waitForPlanVersion;
+
+
+

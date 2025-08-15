@@ -81,15 +81,20 @@ exports.checkRequestResult = function (requestResult) {
 
   if (requestResult.hasOwnProperty('error')) {
     if (requestResult.error) {
-      if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
-        throw new TypeError(requestResult.errorMessage);
+      if (requestResult.hasOwnProperty('parsedBody') && requestResult.parsedBody.error) {
+        const error = new ArangoError(requestResult.parsedBody);
+        error.message = requestResult.parsedBody.errorMessage;
+        throw error;
+      } else {
+        if (requestResult.errorNum === arangodb.ERROR_TYPE_ERROR) {
+          throw new TypeError(requestResult.errorMessage);
+        }
+
+        const error = new ArangoError(requestResult);
+        error.message = requestResult.message;
+        throw error;
       }
-
-      const error = new ArangoError(requestResult);
-      error.message = requestResult.message;
-      throw error;
     }
-
     // remove the property from the original object
     delete requestResult.error;
   }

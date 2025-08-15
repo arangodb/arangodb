@@ -20,10 +20,12 @@
 ///
 /// @author Simon Grätzer
 /// @author Kaveh Vahedipour
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestClusterHandler.h"
 
+#include "Basics/StringUtils.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
@@ -32,9 +34,12 @@
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/CollectionInfoCurrent.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/vocbase.h"
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
@@ -49,6 +54,61 @@ RestClusterHandler::RestClusterHandler(ArangodServer& server,
     : RestBaseHandler(server, request, response) {}
 
 RestStatus RestClusterHandler::execute() {
+  std::vector<std::string> const& suffixes = _request->suffixes();
+  if (!suffixes.empty()) {
+    if (suffixes[0] == "cluster-info") {
+      if (suffixes.size() == 1) {
+        handleClusterInfo();
+        return RestStatus::DONE;
+      }
+      if (suffixes[1] == "does_database_exist") {
+        handleCI_doesDatabaseExist(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "flush") {
+        handleCI_flush();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "databases") {
+        handleCI_databases();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_collection_info") {
+        handleCI_getCollectionInfo(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_collection_info_current") {
+        handleCI_getCollectionInfoCurrent(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_responsible_server") {
+        handleCI_getResponsibleServer(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_responsible_servers") {
+        handleCI_getResponsibleServers();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_responsible_shard") {
+        handleCI_getResponsibleShard(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_server_endpoint") {
+        handleCI_getServerEndpoint(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_server_name") {
+        handleCI_getServerName(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_db_servers") {
+        handleCI_getDBServers();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_coordinators") {
+        handleCI_getCoordinators();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "uniqid") {
+        handleCI_uniqid(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_analyzers_revision") {
+        handleCI_getAnalyzersRevision(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "wait_for_plan_version") {
+        handleCI_waitForPlanVersion(suffixes);
+        return RestStatus::DONE;
+      }
+    }
+  }
   if (_request->requestType() != RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
@@ -56,7 +116,6 @@ RestStatus RestClusterHandler::execute() {
     return RestStatus::DONE;
   }
 
-  std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty()) {
     if (suffixes[0] == "endpoints") {
       handleCommandEndpoints();
@@ -67,12 +126,8 @@ RestStatus RestClusterHandler::execute() {
     } else if (suffixes[0] == "agency-cache") {
       handleAgencyCache();
       return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info") {
-      handleClusterInfo();
-      return RestStatus::DONE;
     }
   }
-
   generateError(
       Result(TRI_ERROR_HTTP_NOT_FOUND,
              "expecting /_api/cluster/[endpoints,agency-dump,agency-cache]"));
@@ -138,7 +193,7 @@ void RestClusterHandler::handleAgencyCache() {
   generateResult(rest::ResponseCode::OK, acb->slice());
 }
 
-void RestClusterHandler::handleClusterInfo() {
+bool RestClusterHandler::isAdmin() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af->isActive() && !_request->user().empty()) {
     auth::Level lvl;
@@ -151,14 +206,605 @@ void RestClusterHandler::handleClusterInfo() {
     if (lvl < auth::Level::RW) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
                     "you need admin rights to produce a cluster info dump");
-      return;
+      return false;
     }
   }
+  return true;
+}
 
+void RestClusterHandler::handleClusterInfo() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   auto dump = ci.toVelocyPack();
 
   generateResult(rest::ResponseCode::OK, dump.slice());
+}
+
+void RestClusterHandler::handleCI_doesDatabaseExist(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  if (suffixes.size() < 4 || suffixes[2] != "database") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "database argument missing");
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+
+  {
+    VPackObjectBuilder x(&(*body));
+    body->add("exists", ci.doesDatabaseExist(suffixes[3]));
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+  return;
+}
+void RestClusterHandler::handleCI_databases() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::vector<DatabaseID> res = ci.databases();
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder x(&(*body));
+    body->add(VPackValue("databases"));
+    {
+      VPackArrayBuilder x(&(*body));
+      std::vector<DatabaseID>::iterator it;
+      for (it = res.begin(); it != res.end(); ++it) {
+        body->add(VPackValue(*it));
+      }
+    }
+  }
+
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+
+void RestClusterHandler::handleCI_flush() {
+  if (_request->requestType() != RequestType::PUT) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  ci.flush();
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder x(&(*body));
+    body->add("OK", true);
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+
+void RestClusterHandler::handleCI_getCollectionInfo(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (suffixes.size() < 6 || suffixes[2] != "databaseName" ||
+      suffixes[4] != "collectionName") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "database and collection arguments are missing");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  std::string const& databaseName = suffixes[3];
+  std::string const& collectionName = suffixes[5];
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::shared_ptr<LogicalCollection> col =
+      ci.getCollectionNT(databaseName, collectionName);
+  if (col == nullptr) {
+    generateError(
+        rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        ClusterInfo::getCollectionNotFoundMsg(databaseName, collectionName));
+    return;
+  }
+
+  std::unordered_set<std::string> ignoreKeys{
+      StaticStrings::AllowUserKeys,
+      "avoidServers",
+      StaticStrings::DataSourceCid,
+      StaticStrings::DataSourceGuid,
+      "count",
+      StaticStrings::DistributeShardsLike,
+      StaticStrings::KeyOptions,
+      StaticStrings::NumberOfShards,
+      "path",
+      StaticStrings::DataSourcePlanId,
+      StaticStrings::Version,
+      StaticStrings::ObjectId};
+  VPackBuilder infoBuilder = col->toVelocyPackIgnore(
+      ignoreKeys, LogicalDataSource::Serialization::List);
+  VPackSlice info = infoBuilder.slice();
+
+  TRI_ASSERT(info.isObject());
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  // Compute ShardShorts
+  auto serverAliases = ci.getServerAliases();
+  VPackSlice shards = info.get("shards");
+  TRI_ASSERT(shards.isObject());
+  {
+    VPackObjectBuilder x(&(*body));
+    body->add(VPackValue("shards"));
+    {
+      VPackObjectBuilder y(&(*body));
+      for (auto const& p : VPackObjectIterator(shards)) {
+        TRI_ASSERT(p.value.isArray());
+        body->add(p.key);
+        {
+          VPackArrayBuilder z(&(*body));
+          for (VPackSlice s : VPackArrayIterator(p.value)) {
+            try {
+              std::string t = s.copyString();
+              if (t.at(0) == '_') {
+                t = t.substr(1);
+              }
+              if (auto it = serverAliases.find(t); it != serverAliases.end()) {
+                body->add(VPackValue(it->second));
+              }
+            } catch (...) {
+            }
+          }
+        }
+      }
+    }
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getCollectionInfoCurrent(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (suffixes.size() < 7 || suffixes[2] != "databaseName" ||
+      suffixes[4] != "collectionName" || suffixes[6] != "shardID") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "database, collection, shardID arguments are missing");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  std::string const& databaseID = suffixes[3];
+  std::string const& collectionName = suffixes[5];
+  auto maybeShardID = ShardID::shardIdFromString(suffixes[7]);
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::shared_ptr<LogicalCollection> col =
+      ci.getCollectionNT(databaseID, collectionName);
+  if (col == nullptr) {
+    generateError(
+        rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+        ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionName));
+    return;
+  }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  // First some stuff from Plan for which Current does not make sense:
+  auto cid = std::to_string(col->id().id());
+  std::string const& name = col->name();
+  {
+    VPackObjectBuilder x(&(*body));
+    body->add("id", cid);
+    body->add("name", name);
+
+    std::shared_ptr<CollectionInfoCurrent> cic =
+        ci.getCollectionCurrent(databaseID, cid);
+
+    body->add("currentVersion", (double)cic->getCurrentVersion());
+    body->add("type", (int)col->type());
+
+    auto& shardID = maybeShardID.get();
+
+    VPackSlice slice = cic->getIndexes(shardID);
+    body->add("indexes", slice);
+
+    // Finally, report any possible error:
+    bool error = cic->error(shardID);
+    body->add(StaticStrings::Error, error);
+    if (error) {
+      body->add(StaticStrings::ErrorNum, cic->errorNum(shardID));
+      body->add(StaticStrings::ErrorMessage, cic->errorMessage(shardID));
+    }
+    auto servers = cic->servers(shardID);
+
+    body->add(VPackValue("shorts"));
+    {
+      VPackArrayBuilder y(&(*body));
+      auto serverAliases = ci.getServerAliases();
+      for (auto const& s : servers) {
+        try {
+          if (auto it = serverAliases.find(s); it != serverAliases.end()) {
+            body->add(VPackValue(it->second));
+          }
+        } catch (...) {
+        }
+      }
+    }
+    body->add(VPackValue("servers"));
+    {
+      VPackArrayBuilder y(&(*body));
+      for (auto const& s : servers) {
+        body->add(VPackValue(s));
+      }
+    }
+    body->add(VPackValue("failoverCandidates"));
+    {
+      VPackArrayBuilder y(&(*body));
+      servers = cic->failoverCandidates(shardID);
+      for (auto const& s : servers) {
+        body->add(VPackValue(s));
+      }
+    }
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getResponsibleServer(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (suffixes.size() < 3 || suffixes[2] != "shardID") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "shardID argument is missing");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  auto maybeShardID = ShardID::shardIdFromString(suffixes[3]);
+  if (maybeShardID.fail()) {
+    // Asking for non-shard name pattern.
+    // Compatibility with original API return empty array.
+    VPackArrayBuilder y(&(*body));
+  } else {
+    auto result = ci.getResponsibleServer(maybeShardID.get());
+    {
+      VPackArrayBuilder x(&(*body));
+      for (auto const& s : *result) {
+        body->add(VPackValue(s));
+      }
+    }
+  }
+
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getResponsibleServers() {
+  if (_request->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the POST method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  bool parseSuccess = false;
+  VPackSlice postBody = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || !postBody.isArray()) {
+    // error message generated in parseVPackBody
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "shardID argument is missing");
+    return;
+  }
+  containers::FlatHashSet<ShardID> shardIds;
+  VPackArrayIterator itBody(postBody);
+  while (itBody.valid()) {
+    auto shardID = (*itBody).stringView();
+    auto maybeShard = ShardID::shardIdFromString(shardID);
+    if (maybeShard.fail()) {
+      // For API compatibility we throw DataSourceNotFound error here
+      // And ignore the parsing issue. (Illegally named shard cannot be found)
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    absl::StrCat("no shard found with ID ", shardID));
+      return;
+    }
+    shardIds.emplace(std::move(maybeShard.get()));
+    itBody.next();
+  }
+
+  if (shardIds.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "no shard found");
+    return;
+  }
+
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto result = ci.getResponsibleServers(shardIds);
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder y(&(*body));
+    for (auto const& it : result) {
+      body->add(std::string{it.first}, VPackValue(it.second));
+    }
+  }
+
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getResponsibleShard(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != rest::RequestType::POST) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the POST method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+
+  if (suffixes.size() < 5 || suffixes[2] != "databaseName" ||
+      suffixes[4] != "collectionName" || suffixes[6] != "documentIsComplete") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "collectionName, documentIsComplete arguments are missing");
+    return;
+  }
+  bool parseSuccess = false;
+  VPackSlice document = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || !document.isObject()) {
+    // error message generated in parseVPackBody
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "Document argument is not parseable");
+    return;
+  }
+  auto databaseName = suffixes[3];
+  auto collectionName = suffixes[5];
+  bool documentIsComplete = suffixes[7] == "true";
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+  auto collInfo = ci.getCollectionNT(databaseName, collectionName);
+  if (collInfo == nullptr) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+        ClusterInfo::getCollectionNotFoundMsg(databaseName, collectionName));
+    return;
+  }
+
+  bool usesDefaultShardingAttributes;
+
+  auto maybeShard = collInfo->getResponsibleShard(
+      document, documentIsComplete, usesDefaultShardingAttributes);
+
+  if (maybeShard.fail()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "no shard found for the document");
+    return;
+  }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder y(&(*body));
+    body->add("shardId", std::string{maybeShard.get()});
+    body->add("usesDefaultShardingAttributes", usesDefaultShardingAttributes);
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getServerEndpoint(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  if (suffixes.size() < 4 || suffixes[2] != "serverID") {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "serverID argument is missing");
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::string endpoint = ci.getServerEndpoint(suffixes[3]);
+  if (endpoint.length() == 0) {
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
+                  "No server found by that ID");
+    return;
+  }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder x(&(*body));
+    body->add("endpoint", endpoint);
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getServerName(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  if (suffixes.size() < 3) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "serverName argument is missing");
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::string serverName =
+      ci.getServerName(basics::StringUtils::urlDecode(suffixes[2]));
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder x(&(*body));
+    body->add("serverName", serverName);
+  }
+
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getDBServers() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto DBServers = ci.getCurrentDBServers();
+  auto serverAliases = ci.getServerAliases();
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder x(&(*body));
+    for (size_t i = 0; i < DBServers.size(); ++i) {
+      {
+        VPackObjectBuilder x(&(*body));
+        auto id = DBServers[i];
+        body->add("serverId", id);
+        auto itr = serverAliases.find(id);
+
+        if (itr != serverAliases.end()) {
+          body->add("serverName", itr->second);
+        } else {
+          body->add("serverName", id);
+        }
+      }
+    }
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getCoordinators() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::vector<std::string> coordinators = ci.getCurrentCoordinators();
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackArrayBuilder x(&(*body));
+    for (size_t i = 0; i < coordinators.size(); ++i) {
+      ServerID const sid = coordinators[i];
+      body->add(VPackValue(sid));
+    }
+  }
+
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_uniqid(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  if (suffixes.size() < 3) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "serverID argument is missing");
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  uint64_t value = ci.uniqid(basics::StringUtils::uint64(suffixes[2]));
+  body->add(VPackValue(value));
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getAnalyzersRevision(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
+                  "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  if (suffixes.size() < 3) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "database argument is missing");
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  auto const analyzerRevision = ci.getAnalyzersRevision(suffixes[2]);
+
+  if (!analyzerRevision) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "<databaseName> is invalid");
+    return;
+  }
+
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  analyzerRevision->toVelocyPack(*body);
+
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_waitForPlanVersion(
+    std::vector<std::string> const& suffixes) {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_BAD_PARAMETER, "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  if (suffixes.size() < 3) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "time wait argument is missing");
+    return;
+  }
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  VPackBuilder result;
+  auto fut = ci.waitForPlanVersion(basics::StringUtils::uint64(suffixes[2]));
+  // Block and wait.
+  fut.wait();
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+
+  generateResult(rest::ResponseCode::OK, body->slice());
 }
 
 /// @brief returns information about all coordinator endpoints

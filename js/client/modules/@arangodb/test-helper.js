@@ -585,11 +585,9 @@ exports.getServersByType = function (type) {
 };
 
 exports.getEndpointById = function (id) {
-  const toEndpoint = (d) => (d.endpoint);
-
   const instanceInfo = exports.getInstanceInfo();
-  const instance = instanceInfo.arangods.find(d => d.id === id);
-  return endpointToURL(toEndpoint(instance));
+  const instance = instanceInfo.arangods.find(d => d.id === id || id === d.shortName);
+  return instance.url;
 };
 
 exports.getUrlById = function (id) {
@@ -664,14 +662,6 @@ exports.getMinReplicationFactor = function () {
 
 exports.getDbPath = function () {
   return arango.POST("/_admin/execute", `return require("internal").db._path();`);
-};
-
-exports.getResponsibleShardFromClusterInfo = function (vertexCollectionId, v) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleShard(${JSON.stringify(vertexCollectionId)}, ${JSON.stringify(v)})`);
-};
-
-exports.getResponsibleServersFromClusterInfo = function (arg) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleServers(${JSON.stringify(arg)});`);
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
@@ -752,10 +742,6 @@ exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };
 
-exports.arangoClusterInfoFlush = function () {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
-};
-
 exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
   return arango.POST("/_admin/execute", 
     `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
@@ -767,14 +753,6 @@ exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, 
       ${JSON.stringify(dbName)}, 
       ${JSON.stringify(collName)}, 
       ${JSON.stringify(shard)})`);
-};
-
-exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
-};
-
-exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
 };
 
 const shardIdToLogId = function (shardId) {
