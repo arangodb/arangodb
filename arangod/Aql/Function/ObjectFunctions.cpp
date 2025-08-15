@@ -237,12 +237,13 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
       }
     }
 
-    size_t oldCapacity = builder.buffer()->byteSize();
-    size_t oldByteSize = builder.size();
+    // size_t oldCapacity = builder.buffer()->byteSize();
+    // size_t oldByteSize = builder.size();
 
-    AqlValue res{builder.slice(), oldByteSize};
+    AqlValue res{builder.slice(), builder.size()};
     if (usageScope && res.memoryUsage() > 0) {
-      TRI_ASSERT(usageScope->tracked() == oldCapacity + oldByteSize);
+      //TRI_ASSERT(usageScope->tracked() == oldCapacity + oldByteSize);
+      TRI_ASSERT(usageScope->tracked() == builder.buffer()->byteSize());
       LOG_DEVEL << "At the end of MERGE: current: " << usageScope->current();
       LOG_DEVEL << "Stolen memory usage: " << usageScope->tracked();
       usageScope->steal();

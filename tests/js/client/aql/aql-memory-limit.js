@@ -489,20 +489,20 @@ function ahuacatMemoryLimitMergeTestSuite() {
       assertEqual(Object.keys(res[0]).length, 0);
     },
 
-    testMergeArrayWithinLimit: function() {
+    testMergeArrayWithinLimit: function() { // failed tracked()
       const query = "RETURN MERGE((FOR i IN 1..1024 RETURN { [TO_STRING(i)]: i }))";
       let res = db._query(query, null, { memoryLimit: 512 * 1024 }).toArray();
       assertEqual(1, res.length);
     },
 
-    testMergeArrayWithinLimit2: function() {
+    testMergeArrayWithinLimit2: function() { // failed tracked()
       const query = `RETURN MERGE((FOR i IN 1..2024 RETURN { [CONCAT('k', i)]: REPEAT('x', 4096) }))`;
       let res = db._query(query, null, { memoryLimit: 32 * 1024 * 1024 }).toArray();
       assertEqual(1, res.length);
       assertTrue(res[0] !== null);
     },
 
-    testMergeArrayWithinLimit3: function() {
+    testMergeArrayWithinLimit3: function() { // failed tracked()
       const query =
           "RETURN MERGE((FOR i IN 1..100 RETURN { arr: [i, i*2, i*3] }))";
       let res = db._query(query, null, { memoryLimit: 64 * 1024 }).toArray();
@@ -521,7 +521,7 @@ function ahuacatMemoryLimitMergeTestSuite() {
       }
     },
 
-    testMergeRecursiveArrayWithinLimit: function() {
+    testMergeRecursiveArrayWithinLimit: function() { // failed tracked()
       const query = `RETURN MERGE_RECURSIVE((FOR i IN 1..1000 RETURN { [CONCAT('k', i)]: i, nested: { x: i } }))`;
       let res = db._query(query, null, { memoryLimit: 20 * 1024 * 1024 }).toArray();
       assertEqual(1, res.length);
@@ -540,10 +540,53 @@ function ahuacatMemoryLimitMergeTestSuite() {
   };
 }
 
+function ahuacatMemoryLimitSortedCollectTestSuite() {
+  const TEST_COLLECTION = "testDocs";
+  let testCollection;
+
+  function tearDown() {
+    db._drop(TEST_COLLECTION);
+  }
+  return {
+    setUpAll: function () {
+      tearDown();
+
+      testCollection = db._create(TEST_COLLECTION);
+      for (let i = 1; i <= 100; ++i) {
+        testCollection.save({
+          grp: "foobarbazfoobarbaz" + i,
+          num: i,
+          txt: "x".repeat(1024)
+        });
+      }
+    },
+
+    tearDownAll: tearDown,
+
+    // testSortedCollectAggregateIntoWithinLimit: function () {
+    //   const query = `FOR d IN ${TEST_COLLECTION} SORT d.grp COLLECT grp = d.grp AGGREGATE uni = UNIQUE(d.num) INTO doc = d RETURN { grp, uni, doc }`;
+    //   let res = db._query(query, null, { memoryLimit: 1024 * 1024 * 1024 }).toArray();
+    //   assertEqual(100, res.length);
+    //   assertTrue(res[0] !== null);
+    // },
+
+    testSortedCollectAggregateIntoExceedLimit: function () {
+      const query = `FOR d IN ${TEST_COLLECTION} SORT d.grp COLLECT grp = d.grp AGGREGATE uni = UNIQUE(d.num) INTO doc = d RETURN { grp, uni, doc }`;
+      try {
+        db._query(query, null, { memoryLimit: 300 * 1024 }).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    }
+  };
+}
+
 // jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
 // jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
 // jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
 // jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
 jsunity.run(ahuacatMemoryLimitMergeTestSuite);
+//jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
 
 return jsunity.done();

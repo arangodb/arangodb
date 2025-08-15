@@ -121,7 +121,7 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
     }
     size_t afterOpenArray = _buffer.size();
     infos.getResourceUsageScope().increase(afterOpenArray - beforeOpenArray);
-    addLine(input);
+    
   } else {
     // We still need an open array...
     _builder.openArray();
