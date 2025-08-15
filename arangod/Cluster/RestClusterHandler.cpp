@@ -398,15 +398,15 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(
     return;
   }
   std::string const& databaseID = suffixes[2];
-  std::string const& collectionID = suffixes[4];
+  std::string const& collectionName = suffixes[4];
   auto maybeShardID = ShardID::shardIdFromString(suffixes[6]);
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
-      ci.getCollectionNT(databaseID, collectionID);
+      ci.getCollectionNT(databaseID, collectionName);
   if (col == nullptr) {
     generateError(
         rest::ResponseCode::NOT_FOUND, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionID));
+        ClusterInfo::getCollectionNotFoundMsg(databaseID, collectionName));
     return;
   }
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
@@ -558,7 +558,7 @@ void RestClusterHandler::handleCI_getResponsibleServers() {
 }
 void RestClusterHandler::handleCI_getResponsibleShard(
     std::vector<std::string> const& suffixes) {
-  if (_request->requestType() != rest::RequestType::GET) {
+  if (_request->requestType() != rest::RequestType::POST) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "only the POST method is allowed");
@@ -566,49 +566,56 @@ void RestClusterHandler::handleCI_getResponsibleShard(
   }
   if (!isAdmin()) {
     return;
-  } /*
-   if (suffixes.size() < 6 ||
-       suffixes[1] != "collectionID" ||
-       suffixes[3] != "documentKey" ||
-       suffixes[5] != "documentIsComplete") {
-       generateError(rest::ResponseCode::ERROR_HTTP_BAD_PARAMETER,
-                   TRI_ERROR_BAD_PARAMETER,
-                   "collectionId, document, documentIsComplete arguments are
-   missing"); return;
-   }
-   bool documentIsComplete = suffixes[6] == 'true';
-   auto document = suffixes[4];
-   auto collectionId = suffixes[2];
-   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+  }
 
-   TRI_vocbase_t& vocbase();
-   /// auto& vocbase = GetContextVocBase(); // todo
-   auto collInfo = ci.getCollectionNT(vocbase.name(), collectionId);
-   if (collInfo == nullptr) {
-     generateError(rest::ResponseCode::BAD,
-                   TRI_ERROR_BAD_PARAMETER,
-                   ClusterInfo::getCollectionNotFoundMsg(
-                     vocbase.name(), collectionId));
-     return;
-   }
+  if (suffixes.size() < 4 ||
+      suffixes[1] != "databaseName" ||
+      suffixes[3] != "collectionName" ||
+      suffixes[5] != "documentIsComplete") {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
+                  "collectionName, documentIsComplete arguments are missing");
+    return;
+  }
+  bool parseSuccess = false;
+  VPackSlice document = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess || !document.isObject()) {
+    // error message generated in parseVPackBody
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "Document argument is not parseable");
+    return;
+  }
+  auto databaseName = suffixes[2];
+  auto collectionName = suffixes[4];
+  bool documentIsComplete = suffixes[6] == "true";
+  auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
-   bool usesDefaultShardingAttributes;
+  auto collInfo = ci.getCollectionNT(databaseName, collectionName);
+  if (collInfo == nullptr) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
+                  ClusterInfo::getCollectionNotFoundMsg(
+                    databaseName, collectionName));
+    return;
+  }
 
-   auto maybeShard = collInfo->getResponsibleShard(
-       document, documentIsComplete, usesDefaultShardingAttributes);
+  bool usesDefaultShardingAttributes;
 
-   if (maybeShard.fail()) {
-     generateError(rest::ResponseCode::BAD,
-                   TRI_ERROR_BAD_PARAMETER,
-                   maybeShard.result());
-     return;
-   }
-   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-   { VPackObjectBuilder y(&(*body));
-     body->add("shardId", std::string{maybeShard.get()});
-     body->add("usesDefaultShardingAttributes", usesDefaultShardingAttributes);
-   }
-   generateResult(rest::ResponseCode::OK, body->slice());*/
+  auto maybeShard = collInfo->getResponsibleShard(
+    document, documentIsComplete, usesDefaultShardingAttributes);
+
+  if (maybeShard.fail()) {
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_BAD_PARAMETER,
+                  "no shard found for the document");
+    return;
+  }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  { VPackObjectBuilder y(&(*body));
+    body->add("shardId", std::string{maybeShard.get()});
+    body->add("usesDefaultShardingAttributes", usesDefaultShardingAttributes);
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_getServerEndpoint(
     std::vector<std::string> const& suffixes) {

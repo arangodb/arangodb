@@ -130,8 +130,13 @@ function verifyClusterInfoSuite() {
       }
     },
     testgetResponsibleShard: function () {
-      // TODO vocbase
-      // const ret = ci.getResponsibleShard(collectionID, documentKey, parseSuccess);
+      try {
+        db._create('test');
+        db.test.save({_key: 'test', foo: true});
+        ci.getResponsibleShard("test", {_key: "test"}, false);
+      } finally {
+        db._drop('test');
+      }
     },
     testgetServerEndpoint: function () {
       // aim for db-servers, these got server ids:
