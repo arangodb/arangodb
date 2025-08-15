@@ -491,9 +491,7 @@ void RestClusterHandler::handleCI_getResponsibleServer(
   if (maybeShardID.fail()) {
     // Asking for non-shard name pattern.
     // Compatibility with original API return empty array.
-    {
-      VPackArrayBuilder y(&(*body));
-    }
+    VPackArrayBuilder y(&(*body));
   } else {
     auto result = ci.getResponsibleServer(maybeShardID.get());
     {
