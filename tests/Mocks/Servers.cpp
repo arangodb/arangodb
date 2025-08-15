@@ -38,6 +38,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryInfoLoggerFeature.h"
 #include "Async/async.h"
+#include "Auth/UserManagerMock.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
 #include "Basics/files.h"
@@ -300,6 +301,17 @@ void MockServer::startFeatures() {
       }
       try {
         f.prepare();
+        if (f.name() == AuthenticationFeature::name()) {
+          auto& auth = static_cast<AuthenticationFeature&>(f);
+          std::unique_ptr<auth::UserManager> userManager(
+              new testing::StrictMock<auth::UserManagerMock>());
+          if (auth.userManager() != nullptr) {
+            // prepare should have created a userManager
+            // If there is none, there was a reason for that, we do not want to
+            // overwrite that.
+            auth.setUserManager(std::move(userManager));
+          }
+        }
       } catch (...) {
         LOG_DEVEL << "unexpected exception in "
                   << boost::core::demangle(typeid(f).name()) << "::prepare";

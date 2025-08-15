@@ -26,7 +26,7 @@
 #include "Mocks/Servers.h"
 
 #include "Agency/AgencyComm.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerImpl.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -36,8 +36,26 @@ namespace arangodb {
 namespace tests {
 namespace auth_info_test {
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+
 class UserManagerClusterTest : public ::testing::Test {
  public:
+  UserManagerClusterTest() {
+    TRI_AddFailurePointDebugging("UserManager::performDBLookup");
+    auto& auth = _server.getFeature<AuthenticationFeature>();
+    // we are testing the proper implementation of the userManager, not the
+    // mock.
+    auth.setUserManager(
+        std::make_unique<auth::UserManagerImpl>(_server.server()));
+    auto* um = auth.userManager();
+    um->loadUserCacheAndStartUpdateThread();
+  }
+
+  ~UserManagerClusterTest() {
+    auto um = _server.getFeature<AuthenticationFeature>().userManager();
+    um->shutdown();
+    TRI_RemoveFailurePointDebugging("UserManager::performDBLookup");
+  }
   mocks::MockCoordinator _server{"CRDN_0001"};
 
  protected:
@@ -76,168 +94,79 @@ class UserManagerClusterTest : public ::testing::Test {
   }
 };
 
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-namespace {
-static char const* FailureOnLoadDB = "UserManager::performDBLookup";
-}
-
-TEST_F(UserManagerClusterTest, regression_forgotten_update) {
-  /* The following order of events did lead to a missing update:
-   * 1. um->triggerLocalReload();
-   * 2. um->triggerGlobalReload();
-   * 3. heartbeat
-   * 4. um->loadFromDB();
-   *
-   * 1. and 2. moved internal versions forward two times
-   * 3. heartbeat resets one of the movings
-   * 4. Does not perform the actual load, as the heartbeat reset indicates
-   * everything is okay.
-   */
-
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
-  auto um = userManager();
-  // If for some reason this EXPECT ever triggers, we can
-  // inject either the AgencyValue into the UserManager
-  // or vice-versa. This is just an assertion that we
-  // expect everything to start at default (1).
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  um->triggerLocalReload();
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  um->triggerGlobalReload();
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  /*
-   * This is the correct test here, the heartbeat has
-   * a side-effect, but that is simply untestable in the
-   * current design. So the only thing i could
-   * fall back to is to assert that the UserVersions in the agency
-   * do stay aligned.
-   *
-   * this->simulateOneHeartbeat();
-   */
-  // This needs to trigger a reload from DB
-  try {
-    um->userExists("unknown user");
-    FAIL();
-  } catch (arangodb::basics::Exception const& e) {
-    // This Execption indicates that we got past the version
-    // checks and would contact DBServer now.
-    // This is not under test here, we only want to test that we load
-    // the plan
-    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
-  } catch (...) {
-    FAIL();
-  }
-}
-
 TEST_F(UserManagerClusterTest, cacheRevalidationShouldKeepVersionsInLine) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
+
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager
-  // or vice-versa. This is just an assertion that we
+  // or vice versa. This is just an assertion that we
   // expect everything to start at default (1).
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
+  auto const firstGlobalVersion = um->globalVersion();
+  EXPECT_EQ(firstGlobalVersion, getAgencyUserVersion());
 
-  try {
-    // This needs to trigger a reload from DB
-    // Internally it will do local, global, and loadFromDB.
-    um->triggerCacheRevalidation();
-    FAIL();
-  } catch (arangodb::basics::Exception const& e) {
-    // This Execption indicates that we got past the version
-    // checks and would contact DBServer now.
-    // This is not under test here, we only want to test that we load
-    // the plan
-    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
-  } catch (...) {
-    FAIL();
-  }
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-}
-
-TEST_F(UserManagerClusterTest,
-       triggerLocalReloadShouldNotUpdateClusterVersion) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
-  auto um = userManager();
-  // If for some reason this EXPECT ever triggers, we can
-  // inject either the AgencyValue into the UserManager
-  // or vice-versa. This is just an assertion that we
-  // expect everything to start at default (1).
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  uint64_t versionBefore = getAgencyUserVersion();
-
-  um->triggerLocalReload();
-  EXPECT_EQ(versionBefore, getAgencyUserVersion());
-
-  /*
-   * This is the correct test here, see above
-   *
-   * this->simulateOneHeartbeat();
-   */
   // This needs to trigger a reload from DB
-  try {
-    um->userExists("unknown user");
-    FAIL();
-  } catch (arangodb::basics::Exception const& e) {
-    // This Execption indicates that we got past the version
-    // checks and would contact DBServer now.
-    // This is not under test here, we only want to test that we load
-    // the plan
-    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
-  } catch (...) {
-    FAIL();
-  }
+  // Internally it will do globalReload, setGlobalVersion, and blocks
+  // until the internal thread synchronizes the versions (internal and global).
+  auto const internalVersionBeforeReload = um->internalVersion();
+  um->triggerCacheRevalidation();
+
+  // we returned here, so we expect the global and internal version
+  // to be increased and equal
+  EXPECT_GT(um->globalVersion(), firstGlobalVersion);
+  EXPECT_GT(um->globalVersion(), internalVersionBeforeReload);
+
+  EXPECT_GT(um->internalVersion(), firstGlobalVersion);
+  EXPECT_GT(um->internalVersion(), internalVersionBeforeReload);
+
+  EXPECT_EQ(um->globalVersion(), um->internalVersion());
+
+  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
 }
 
 TEST_F(UserManagerClusterTest, triggerGlobalReloadShouldUpdateClusterVersion) {
-  TRI_AddFailurePointDebugging(FailureOnLoadDB);
-  auto guard = arangodb::scopeGuard(
-      []() noexcept { TRI_RemoveFailurePointDebugging(FailureOnLoadDB); });
-
   auto um = userManager();
   // If for some reason this EXPECT ever triggers, we can
   // inject either the AgencyValue into the UserManager
-  // or vice-versa. This is just an assertion that we
+  // or vice versa. This is just an assertion that we
   // expect everything to start at default (1).
-  EXPECT_EQ(um->globalVersion(), getAgencyUserVersion());
-
-  uint64_t versionBefore = getAgencyUserVersion();
+  uint64_t const versionBeforeGlobalReload = getAgencyUserVersion();
+  EXPECT_EQ(um->globalVersion(), versionBeforeGlobalReload);
 
   um->triggerGlobalReload();
-  // The version in the Agency needs to be increased
-  EXPECT_LT(versionBefore, getAgencyUserVersion());
 
-  /*
-   * This is the correct test here, see above
-   *
-   * this->simulateOneHeartbeat();
-   */
-  // This needs to trigger a reload from DB
-  try {
-    um->userExists("unknown user");
-    FAIL();
-  } catch (arangodb::basics::Exception const& e) {
-    // This Execption indicates that we got past the version
-    // checks and would contact DBServer now.
-    // This is not under test here, we only want to test that we load
-    // the plan
-    EXPECT_EQ(e.code(), TRI_ERROR_DEBUG);
-  } catch (...) {
-    FAIL();
+  auto const versionAfterGlobalReload = getAgencyUserVersion();
+
+  // The version in the Agency needs to be increased
+  EXPECT_LT(versionBeforeGlobalReload, versionAfterGlobalReload);
+
+  // before the heartbeat we internally still have the state of
+  // global & internal version being equal, because no-one yet gave the new
+  // agency version to the user-manager
+  EXPECT_EQ(um->globalVersion(), versionBeforeGlobalReload);
+  EXPECT_EQ(um->internalVersion(), versionBeforeGlobalReload);
+
+  // Simulate heart beat
+  // This internally will increase the globalVersion and trigger the
+  // UpdateThread to start and preload the user cache
+  um->setGlobalVersion(versionAfterGlobalReload);
+
+  // but this call to setGlobalVersion is not blocking, so we need to wait here
+  // for the internal version to be updated
+  auto const start = std::chrono::system_clock::now();
+  auto now = std::chrono::system_clock::now();
+  while (now - start < std::chrono::seconds(5)) {
+    if (versionAfterGlobalReload <= um->internalVersion()) {
+      break;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    now = std::chrono::system_clock::now();
   }
+
+  // should now have parity between the internal, global and agency version
+  // but it should not have touched the agency version
+  EXPECT_EQ(versionAfterGlobalReload, getAgencyUserVersion());
+  EXPECT_EQ(um->globalVersion(), versionAfterGlobalReload);
+  EXPECT_EQ(um->internalVersion(), versionAfterGlobalReload);
 }
 
 #endif
