@@ -585,11 +585,9 @@ exports.getServersByType = function (type) {
 };
 
 exports.getEndpointById = function (id) {
-  const toEndpoint = (d) => (d.endpoint);
-
   const instanceInfo = exports.getInstanceInfo();
-  const instance = instanceInfo.arangods.find(d => d.id === id);
-  return endpointToURL(toEndpoint(instance));
+  const instance = instanceInfo.arangods.find(d => d.id === id || id === d.shortName);
+  return instance.url;
 };
 
 exports.getUrlById = function (id) {
