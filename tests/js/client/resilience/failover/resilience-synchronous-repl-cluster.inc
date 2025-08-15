@@ -28,6 +28,7 @@
 'use strict';
 
 (function () {
+  const IM = GLOBAL.instanceManager;
   const arangodb = require("@arangodb");
   const db = arangodb.db;
   const ERRORS = arangodb.errors;
@@ -40,7 +41,6 @@
     getEndpointById,
     getDBServers
   } = require("@arangodb/test-helper");
-
   let cn = "UnitTestSyncRep";
   let c;
   let cinfo;
@@ -102,11 +102,7 @@
   /// @brief heal any not fixed instances
   ////////////////////////////////////////////////////////////////////////////////
   function healAny() {
-    failedPIDs.forEach(pid => {
-      console.warn(`heal any: healing ${pid}`);
-      assertTrue(continueExternal(pid));
-    });
-    failedPIDs = [];
+    IM.continueServerWaitOk();
   }
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -115,17 +111,8 @@
 
   function failFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
-    var pid = arangods[pos].pid;
-    failedPIDs.push(pid);
-    assertTrue(suspendExternal(pid));
+    IM.stopServerWaitFailed(follower);
     console.info("Have failed follower", follower);
-    return pos;
   }
 
 
@@ -135,15 +122,7 @@
 
   function healFollower() {
     var follower = cinfo.shards[shards[0]][1];
-    var endpoint = getEndpointById(follower);
-    let arangods = getDBServers();
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
-    var pid = arangods[pos].pid;
-    assertTrue(continueExternal(pid));
-    failedPIDs.splice(failedPIDs.indexOf(pid), 1);
+    IM.continueServerWaitOk(follower);
     console.info("Have healed follower", follower);
   }
 
@@ -153,15 +132,7 @@
 
   function failLeader() {
     var leader = cinfo.shards[shards[0]][0];
-    var endpoint = getEndpointById(leader);
-    let arangods = getDBServers();
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
-    var pid = arangods[pos].pid;
-    failedPIDs.push(pid);
-    assertTrue(suspendExternal(pid));
+    IM.stopServerWaitFailed(leader);
     console.info("Have failed leader", leader);
     return leader;
   }
@@ -172,15 +143,7 @@
 
   function healLeader() {
     var leader = cinfo.shards[shards[0]][0];
-    var endpoint = getEndpointById(leader);
-    let arangods = getDBServers();
-    // Now look for instanceManager:
-    var pos = _.findIndex(arangods,
-      x => x.url === endpoint);
-    assertTrue(pos >= 0);
-    var pid = arangods[pos].pid;
-    assertTrue(continueExternal(pid));
-    failedPIDs.splice(failedPIDs.indexOf(pid), 1);
+    IM.continueServerWaitOk(leader);
     console.info("Have healed leader", leader);
   }
 

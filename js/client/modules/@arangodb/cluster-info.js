@@ -45,7 +45,7 @@ function databases () {
 function getCollectionInfo (databaseName, collectionName) {
   let res = arango.GET_RAW(`_api/cluster/cluster-info-getCollectionInfo/databaseName/${databaseName}/collectionName/${collectionName}`);
   arangosh.checkRequestResult(res);
-  return res.parsedBody.shardShorts;
+  return res.parsedBody;
 }
 function getCollectionInfoCurrent (databaseName, collectionName, shardID) {
   let res = arango.GET_RAW(

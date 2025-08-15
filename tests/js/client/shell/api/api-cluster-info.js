@@ -77,8 +77,8 @@ function verifyClusterInfoSuite() {
         assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
       }
       const ret = ci.getCollectionInfo("_system", "_graphs");
-      Object.keys(ret).forEach(shard => {
-        assertEqual(ret[shard].length, 2, ret);
+      Object.keys(ret.shards).forEach(shard => {
+        assertEqual(ret.shards[shard].length, 2, ret);
       });
     },
     testgetCollectionInfoCurrent: function () {

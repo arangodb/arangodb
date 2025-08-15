@@ -350,7 +350,7 @@ void RestClusterHandler::handleCI_getCollectionInfo(std::vector<std::string> con
   VPackSlice shards = info.get("shards");
   TRI_ASSERT(shards.isObject());
   { VPackObjectBuilder x(&(*body));
-    body->add(VPackValue("shardShorts"));
+    body->add(VPackValue("shards"));
     { VPackObjectBuilder y(&(*body));
       for (auto const& p : VPackObjectIterator(shards)) {
         TRI_ASSERT(p.value.isArray());
