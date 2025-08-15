@@ -35,15 +35,13 @@ const internal = require("internal");
 const {errors, wait} = internal;
 const supervisionState = require("@arangodb/testutils/cluster-test-helper").supervisionState;
 const queryAgencyJob = require("@arangodb/testutils/cluster-test-helper").queryAgencyJob;
+const CI = require('@arangodb/cluster-info');
 const {getServersByType, deriveTestSuite, getUrlById, versionHas } = require('@arangodb/test-helper-common');
 const isCov = versionHas('coverage');
 const request = require('@arangodb/request');
 const helper = require("@arangodb/testutils/replicated-logs-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const {
-  arangoClusterInfoGetCollectionInfo,
-  arangoClusterInfoGetCollectionInfoCurrent,
-  arangoClusterInfoFlush,
   getDBServers,
   getAgents,
   getEndpointById,
@@ -79,9 +77,9 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
-    arangoClusterInfoFlush();
+    CI.flush();
     for (var i = 0; i < c.length; ++i) {
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           database, c[i].name());
       var shards = Object.keys(cinfo.shards);
       var replFactor = cinfo.shards[shards[0]].length;
@@ -89,7 +87,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var maxCount = (isCov)? 1800 : 180;
       while (++count <= maxCount) {
         var ccinfo = shards.map(
-            s => arangoClusterInfoGetCollectionInfoCurrent(
+            s => CI.getCollectionInfoCurrent(
                 database, c[i].name(), s)
         );
         var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
@@ -101,7 +99,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
           break;
         }
         wait(isCov ? 1.5 : 0.5);
-        arangoClusterInfoFlush();
+        CI.flush();
       }
       if (count > 120) {
         return false;
@@ -117,14 +115,14 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
   function waitForIncompleteMoveShard(database, collection, replFactor) {
     console.info("Waiting for incomplete move shard to settle...");
-    arangoClusterInfoFlush();
-    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
+    CI.flush();
+    var cinfo = CI.getCollectionInfo(database, collection);
     var shards = Object.keys(cinfo.shards);
     var count = 0;
     var maxCount = (isCov)? 1800 : 180;
     while (++count <= maxCount) {
       var ccinfo = shards.map(
-          s => arangoClusterInfoGetCollectionInfoCurrent(
+          s => CI.getCollectionInfoCurrent(
               database, collection, s)
       );
       var replicas = ccinfo.map(s => [s.servers.length, s.failoverCandidates.length]);
@@ -136,7 +134,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         break;
       }
       wait(isCov ? 1.5 : 0.5);
-      arangoClusterInfoFlush();
+      CI.flush();
     }
     if (count > 120) {
       return false;
@@ -217,7 +215,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       toCollNr = c.length - 1;
     }
     for (var i = fromCollNr; i <= toCollNr; ++i) {
-      arangoClusterInfoFlush();
+      CI.flush();
       var servers = findCollectionServers(dbn, c[i].name(), replVersion);
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
         return false;
@@ -226,11 +224,11 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       // Now check current as well:
       if (replVersion !== "2") {
         var collInfo =
-            arangoClusterInfoGetCollectionInfo(dbn, c[i].name());
+            CI.getCollectionInfo(dbn, c[i].name());
         var shards = collInfo.shards;
         var collInfoCurr =
             Object.keys(shards).map(
-                s => arangoClusterInfoGetCollectionInfoCurrent(
+                s => CI.getCollectionInfoCurrent(
                     dbn, c[i].name(), s).servers);
         // quick hack here, if the list of servers has length one, we map it to -1
         // thus the check below will not return false in the case replFact === 1
@@ -248,7 +246,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
   function findLeaderShardsForServer(id) {
     let result = [];
     for (var i = 0; i <  c.length ; ++i) {
-      arangoClusterInfoFlush();
+      CI.flush();
       var servers = findCollectionServers(dbn, c[i].name(), replVersion);
       if (servers.indexOf(id) === 0 && servers.length !== 1) {
         result.push(c[i].name());
@@ -312,16 +310,16 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 
         while (--count > 0) {
           wait(isCov ? 1.5 : 1.0);
-          arangoClusterInfoFlush();
+          CI.flush();
           var servers = findCollectionServers(dbn, c[i].name(), replVersion);
           if (servers.indexOf(id) === -1) {
             // Now check current as well:
             /*var collInfo =
-                arangoClusterInfoGetCollectionInfo(dbn, c[i].name());
+                CI.getCollectionInfo(dbn, c[i].name());
             var shards = collInfo.shards;
             var collInfoCurr =
                 Object.keys(shards).map(
-                  s => arangoClusterInfoGetCollectionInfoCurrent(
+                  s => CI.getCollectionInfoCurrent(
                     dbn, c[i].name(), s).servers);
             var idxs = collInfoCurr.map(l => l.indexOf(id));
             ok = true;
@@ -814,7 +812,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
@@ -832,7 +830,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[0].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[0].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[0]._id, shard, fromServer, toServer, false, "Finished"));
@@ -851,7 +849,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -870,7 +868,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[1];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -889,7 +887,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[2];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -908,7 +906,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -927,7 +925,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = servers[1];
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -1089,7 +1087,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
@@ -1139,7 +1137,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         IM.debugSetFailAt("Maintenance::doNotRemoveUnPlannedFollowers", instanceRole.dbServer, leaderUrl);
 
         var toServer = findServerNotOnList(servers);
-        var cinfo = arangoClusterInfoGetCollectionInfo(
+        var cinfo = CI.getCollectionInfo(
             dbn, c[1].name());
         var shard = Object.keys(cinfo.shards)[0];
         assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
@@ -1176,7 +1174,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
       var toServer = findServerNotOnList(servers);
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
@@ -1212,7 +1210,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var servers = findCollectionServers(dbn, c[0].name(), replVersion);
         var fromServer = servers[0];
         var toServer = findServerNotOnList(servers);
-        var cinfo = arangoClusterInfoGetCollectionInfo(
+        var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
         let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
@@ -1249,7 +1247,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var servers = findCollectionServers(dbn, c[0].name(), replVersion);
         var fromServer = servers[0];
         var toServer = findServerNotOnList(servers);
-        var cinfo = arangoClusterInfoGetCollectionInfo(
+        var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
         let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
@@ -1290,7 +1288,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       assertTrue(waitForSynchronousReplication(dbn));
       var servers = findCollectionServers(dbn, c[1].name(), replVersion);
       var fromServer = servers[0];
-      var cinfo = arangoClusterInfoGetCollectionInfo(
+      var cinfo = CI.getCollectionInfo(
           dbn, c[1].name());
       var shard = Object.keys(cinfo.shards)[0];
       assertTrue(maintenanceMode("on"));
@@ -1328,7 +1326,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         assertTrue(waitForSynchronousReplication(dbn));
         var servers = findCollectionServers(dbn, c[0].name(), replVersion);
         var fromServer = servers[0];
-        var cinfo = arangoClusterInfoGetCollectionInfo(
+        var cinfo = CI.getCollectionInfo(
             dbn, c[0].name());
         var shard = Object.keys(cinfo.shards)[0];
         let result = cleanOutServer(fromServer, true);
