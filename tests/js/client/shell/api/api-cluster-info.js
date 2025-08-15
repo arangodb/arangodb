@@ -1,5 +1,5 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail, arango, GLOBAL */
+/* global assertTrue, assertFalse, assertEqual, fail, arango, db, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -151,7 +151,7 @@ function verifyClusterInfoSuite() {
       }
     },
     testgetServerName: function () {
-      assertEqual(ci.getServerName(IM.arangods[3].endpoint), IM.arangods[3].id)
+      assertEqual(ci.getServerName(IM.arangods[3].endpoint), IM.arangods[3].id);
       assertEqual(ci.getServerName("xxx"), "");
     },
     testgetDBServers: function () {
