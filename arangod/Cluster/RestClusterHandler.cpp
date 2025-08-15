@@ -57,53 +57,56 @@ RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty()) {
     if (suffixes[0] == "cluster-info") {
-      handleClusterInfo();
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-doesDatabaseExist") {
-      handleCI_doesDatabaseExist(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-flush") {
-      handleCI_flush();
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-databases") {
-      handleCI_databases();
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getCollectionInfo") {
-      handleCI_getCollectionInfo(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getCollectionInfoCurrent") {
-      handleCI_getCollectionInfoCurrent(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getResponsibleServer") {
-      handleCI_getResponsibleServer(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getResponsibleServers") {
-      handleCI_getResponsibleServers();
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getResponsibleShard") {
-      handleCI_getResponsibleShard(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getServerEndpoint") {
-      handleCI_getServerEndpoint(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getServerName") {
-      handleCI_getServerName(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getDBServers") {
-      handleCI_getDBServers();
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getCoordinators") {
-      handleCI_getCoordinators();
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-uniqid") {
-      handleCI_uniqid(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-getAnalyzersRevision") {
-      handleCI_getAnalyzersRevision(suffixes);
-      return RestStatus::DONE;
-    } else if (suffixes[0] == "cluster-info-waitForPlanVersion") {
-      handleCI_waitForPlanVersion(suffixes);
-      return RestStatus::DONE;
+      if (suffixes.size() == 1) {
+        handleClusterInfo();
+        return RestStatus::DONE;
+      }
+      if (suffixes[1] == "does_database_exist") {
+        handleCI_doesDatabaseExist(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "flush") {
+        handleCI_flush();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "databases") {
+        handleCI_databases();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_collection_info") {
+        handleCI_getCollectionInfo(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_collection_info_current") {
+        handleCI_getCollectionInfoCurrent(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_responsible_server") {
+        handleCI_getResponsibleServer(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_responsible_servers") {
+        handleCI_getResponsibleServers();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_responsible_shard") {
+        handleCI_getResponsibleShard(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_server_endpoint") {
+        handleCI_getServerEndpoint(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_server_name") {
+        handleCI_getServerName(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_db_servers") {
+        handleCI_getDBServers();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_coordinators") {
+        handleCI_getCoordinators();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "uniqid") {
+        handleCI_uniqid(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_analyzers_revision") {
+        handleCI_getAnalyzersRevision(suffixes);
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "wait_for_plan_version") {
+        handleCI_waitForPlanVersion(suffixes);
+        return RestStatus::DONE;
+      }
     }
   }
   if (_request->requestType() != RequestType::GET) {
@@ -236,7 +239,7 @@ void RestClusterHandler::handleCI_doesDatabaseExist(
   if (!isAdmin()) {
     return;
   }
-  if (suffixes.size() < 3 || suffixes[1] != "database") {
+  if (suffixes.size() < 4 || suffixes[2] != "database") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "database argument missing");
     return;
@@ -247,7 +250,7 @@ void RestClusterHandler::handleCI_doesDatabaseExist(
 
   {
     VPackObjectBuilder x(&(*body));
-    body->add("exists", ci.doesDatabaseExist(suffixes[2]));
+    body->add("exists", ci.doesDatabaseExist(suffixes[3]));
   }
   generateResult(rest::ResponseCode::OK, body->slice());
   return;
@@ -308,8 +311,8 @@ void RestClusterHandler::handleCI_getCollectionInfo(
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 5 || suffixes[1] != "databaseName" ||
-      suffixes[3] != "collectionName") {
+  if (suffixes.size() < 6 || suffixes[2] != "databaseName" ||
+      suffixes[4] != "collectionName") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "database and collection arguments are missing");
     return;
@@ -317,8 +320,8 @@ void RestClusterHandler::handleCI_getCollectionInfo(
   if (!isAdmin()) {
     return;
   }
-  std::string const& databaseName = suffixes[2];
-  std::string const& collectionName = suffixes[4];
+  std::string const& databaseName = suffixes[3];
+  std::string const& collectionName = suffixes[5];
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseName, collectionName);
@@ -388,8 +391,8 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 6 || suffixes[1] != "databaseName" ||
-      suffixes[3] != "collectionName" || suffixes[5] != "shardID") {
+  if (suffixes.size() < 7 || suffixes[2] != "databaseName" ||
+      suffixes[4] != "collectionName" || suffixes[6] != "shardID") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "database, collection, shardID arguments are missing");
     return;
@@ -397,9 +400,9 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(
   if (!isAdmin()) {
     return;
   }
-  std::string const& databaseID = suffixes[2];
-  std::string const& collectionName = suffixes[4];
-  auto maybeShardID = ShardID::shardIdFromString(suffixes[6]);
+  std::string const& databaseID = suffixes[3];
+  std::string const& collectionName = suffixes[5];
+  auto maybeShardID = ShardID::shardIdFromString(suffixes[7]);
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionName);
@@ -477,7 +480,7 @@ void RestClusterHandler::handleCI_getResponsibleServer(
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 2 || suffixes[1] != "shardID") {
+  if (suffixes.size() < 3 || suffixes[2] != "shardID") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "shardID argument is missing");
     return;
@@ -487,7 +490,7 @@ void RestClusterHandler::handleCI_getResponsibleServer(
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  auto maybeShardID = ShardID::shardIdFromString(suffixes[2]);
+  auto maybeShardID = ShardID::shardIdFromString(suffixes[3]);
   if (maybeShardID.fail()) {
     // Asking for non-shard name pattern.
     // Compatibility with original API return empty array.
@@ -568,8 +571,8 @@ void RestClusterHandler::handleCI_getResponsibleShard(
     return;
   }
 
-  if (suffixes.size() < 4 || suffixes[1] != "databaseName" ||
-      suffixes[3] != "collectionName" || suffixes[5] != "documentIsComplete") {
+  if (suffixes.size() < 5 || suffixes[2] != "databaseName" ||
+      suffixes[4] != "collectionName" || suffixes[6] != "documentIsComplete") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "collectionName, documentIsComplete arguments are missing");
     return;
@@ -582,9 +585,9 @@ void RestClusterHandler::handleCI_getResponsibleShard(
                   "Document argument is not parseable");
     return;
   }
-  auto databaseName = suffixes[2];
-  auto collectionName = suffixes[4];
-  bool documentIsComplete = suffixes[6] == "true";
+  auto databaseName = suffixes[3];
+  auto collectionName = suffixes[5];
+  bool documentIsComplete = suffixes[7] == "true";
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   auto collInfo = ci.getCollectionNT(databaseName, collectionName);
@@ -624,12 +627,13 @@ void RestClusterHandler::handleCI_getServerEndpoint(
   if (!isAdmin()) {
     return;
   }
-  if (suffixes.size() < 3 || suffixes[1] != "serverID") {
+  if (suffixes.size() < 4 || suffixes[2] != "serverID") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "serverID argument is missing");
+    return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  std::string endpoint = ci.getServerEndpoint(suffixes[2]);
+  std::string endpoint = ci.getServerEndpoint(suffixes[3]);
   if (endpoint.length() == 0) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                   "No server found by that ID");
@@ -653,9 +657,14 @@ void RestClusterHandler::handleCI_getServerName(
   if (!isAdmin()) {
     return;
   }
+  if (suffixes.size() < 3) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "serverName argument is missing");
+    return;
+  }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::string serverName =
-      ci.getServerName(basics::StringUtils::urlDecode(suffixes[1]));
+      ci.getServerName(basics::StringUtils::urlDecode(suffixes[2]));
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
   {
     VPackObjectBuilder x(&(*body));
@@ -733,9 +742,13 @@ void RestClusterHandler::handleCI_uniqid(
   if (!isAdmin()) {
     return;
   }
+  if (suffixes.size() < 3) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "serverID argument is missing");
+  }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
-  uint64_t value = ci.uniqid(basics::StringUtils::uint64(suffixes[1]));
+  uint64_t value = ci.uniqid(basics::StringUtils::uint64(suffixes[2]));
   body->add(VPackValue(value));
   generateResult(rest::ResponseCode::OK, body->slice());
 }
@@ -750,13 +763,13 @@ void RestClusterHandler::handleCI_getAnalyzersRevision(
   if (!isAdmin()) {
     return;
   }
-  if (suffixes.size() < 2) {
+  if (suffixes.size() < 3) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "database argument is missing");
     return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
-  auto const analyzerRevision = ci.getAnalyzersRevision(suffixes[1]);
+  auto const analyzerRevision = ci.getAnalyzersRevision(suffixes[2]);
 
   if (!analyzerRevision) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
@@ -779,14 +792,14 @@ void RestClusterHandler::handleCI_waitForPlanVersion(
   if (!isAdmin()) {
     return;
   }
-  if (suffixes.size() < 2) {
+  if (suffixes.size() < 3) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "time wait argument is missing");
     return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   VPackBuilder result;
-  auto fut = ci.waitForPlanVersion(basics::StringUtils::uint64(suffixes[1]));
+  auto fut = ci.waitForPlanVersion(basics::StringUtils::uint64(suffixes[2]));
   // Block and wait.
   fut.wait();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
