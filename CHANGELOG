@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-1732 and BTS-2177: Possible crashes during shutdown, and maintainer
+  mode (i.e. non-production) assertions during tests.
+
 * During AQL setup, the Coordinator will no longer block threads while waiting
   for DBServers to finish the query instantiation.
 
