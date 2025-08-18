@@ -39,7 +39,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
@@ -403,6 +402,11 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(
   std::string const& databaseID = suffixes[3];
   std::string const& collectionName = suffixes[5];
   auto maybeShardID = ShardID::shardIdFromString(suffixes[7]);
+  if (maybeShardID.fail()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "invalid shardID");
+    return;
+  }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseID, collectionName);
@@ -480,12 +484,12 @@ void RestClusterHandler::handleCI_getResponsibleServer(
                   "only the GET method is allowed");
     return;
   }
+  if (!isAdmin()) {
+    return;
+  }
   if (suffixes.size() < 3 || suffixes[2] != "shardID") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "shardID argument is missing");
-    return;
-  }
-  if (!isAdmin()) {
     return;
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
@@ -574,15 +578,13 @@ void RestClusterHandler::handleCI_getResponsibleShard(
   if (suffixes.size() < 5 || suffixes[2] != "databaseName" ||
       suffixes[4] != "collectionName" || suffixes[6] != "documentIsComplete") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "collectionName, documentIsComplete arguments are missing");
+                  "databaseName, collectionName, documentIsComplete arguments are missing");
     return;
   }
   bool parseSuccess = false;
   VPackSlice document = this->parseVPackBody(parseSuccess);
   if (!parseSuccess || !document.isObject()) {
     // error message generated in parseVPackBody
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "Document argument is not parseable");
     return;
   }
   auto databaseName = suffixes[3];
@@ -744,7 +746,7 @@ void RestClusterHandler::handleCI_uniqid(
   }
   if (suffixes.size() < 3) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "serverID argument is missing");
+                  "count of requested IDs argument is missing");
   }
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
