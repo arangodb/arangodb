@@ -203,7 +203,6 @@ bool DBServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
                 auto etkn =
                     EdgeDocumentToken(cursor->collection()->id(), token);
                 callback(std::move(etkn), edge, _currentCursor);
-                }
                 return true;
               }
               return false;

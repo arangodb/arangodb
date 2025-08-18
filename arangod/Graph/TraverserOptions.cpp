@@ -657,9 +657,9 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           aql::AstNode* condition,
                                           uint64_t depth,
                                           TRI_edge_direction_e direction) {
-  auto& list = _depthLookupInfo[depth];
-  injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         /*onlyEdgeIndexes*/ false, direction, depth);
+  _depthLookupInfo[depth].emplace_back(
+      createLookupInfo(plan, collectionName, attributeName, condition,
+                       /*onlyEdgeIndexes*/ false, direction, depth));
 }
 
 bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {
