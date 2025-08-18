@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix unique _key generation in two cases: AQL INSERT operations in a loop
+  without user specified _key in collections with exactly one shard or with
+  multiple shard, non-standard sharding and `forceOneShardAttributeValue`.
+
 * Add a separate thread to the UserManager to handle the load of the user-cache asynchronously.
   This pre-loads the user-cache as fast as possible (as soon as the global version changes)
   Also, compared to the old version, this allows the read-only operation to work on the user-cache 
