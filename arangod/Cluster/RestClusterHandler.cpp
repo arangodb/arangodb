@@ -105,6 +105,15 @@ RestStatus RestClusterHandler::execute() {
       } else if (suffixes[1] == "wait_for_plan_version") {
         handleCI_waitForPlanVersion(suffixes);
         return RestStatus::DONE;
+      } else if (suffixes[1] == "get_max_number_of_shards") {
+        handleCI_getMaxNumberOfShards();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_max_replication_factor") {
+        handleCI_getMaxReplicationFactor();
+        return RestStatus::DONE;
+      } else if (suffixes[1] == "get_min_replication_factor") {
+        handleCI_getMinReplicationFactor();
+        return RestStatus::DONE;
       }
     }
   }
@@ -578,7 +587,8 @@ void RestClusterHandler::handleCI_getResponsibleShard(
   if (suffixes.size() < 5 || suffixes[2] != "databaseName" ||
       suffixes[4] != "collectionName" || suffixes[6] != "documentIsComplete") {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "databaseName, collectionName, documentIsComplete arguments are missing");
+                  "databaseName, collectionName, documentIsComplete arguments "
+                  "are missing");
     return;
   }
   bool parseSuccess = false;
@@ -694,7 +704,7 @@ void RestClusterHandler::handleCI_getDBServers() {
     VPackArrayBuilder x(&(*body));
     for (size_t i = 0; i < DBServers.size(); ++i) {
       {
-        VPackObjectBuilder x(&(*body));
+        VPackObjectBuilder y(&(*body));
         auto id = DBServers[i];
         body->add("serverId", id);
         auto itr = serverAliases.find(id);
@@ -806,6 +816,58 @@ void RestClusterHandler::handleCI_waitForPlanVersion(
   fut.wait();
   std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
 
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+
+void RestClusterHandler::handleCI_getMaxNumberOfShards() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_BAD_PARAMETER, "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder y(&(*body));
+    body->add("maxNumberOfShards",
+              server().getFeature<ClusterFeature>().maxNumberOfShards());
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getMaxReplicationFactor() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_BAD_PARAMETER, "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder y(&(*body));
+    body->add("maxReplicationfactor",
+              server().getFeature<ClusterFeature>().maxReplicationFactor());
+  }
+  generateResult(rest::ResponseCode::OK, body->slice());
+}
+void RestClusterHandler::handleCI_getMinReplicationFactor() {
+  if (_request->requestType() != RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_BAD_PARAMETER, "only the GET method is allowed");
+    return;
+  }
+  if (!isAdmin()) {
+    return;
+  }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  {
+    VPackObjectBuilder y(&(*body));
+    body->add("minReplicationfactor",
+              server().getFeature<ClusterFeature>().minReplicationFactor());
+  }
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 

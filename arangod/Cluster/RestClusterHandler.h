@@ -65,5 +65,8 @@ class RestClusterHandler : public arangodb::RestBaseHandler {
   void handleCI_uniqid(std::vector<std::string> const& suffixes);
   void handleCI_getAnalyzersRevision(std::vector<std::string> const& suffixes);
   void handleCI_waitForPlanVersion(std::vector<std::string> const& suffixes);
+  void handleCI_getMaxNumberOfShards();
+  void handleCI_getMaxReplicationFactor();
+  void handleCI_getMinReplicationFactor();
 };
 }  // namespace arangodb

@@ -104,7 +104,23 @@ function waitForPlanVersion (versionToWaitFor) {
   return res.parsedBody;
 }
 
+function getMaxNumberOfShards () {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_max_number_of_shards`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.maxNumberOfShards;
+}
 
+function getMaxReplicationFactor () {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_max_replication_factor`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.maxReplicationfactor;
+}
+
+function getMinReplicationFactor () {
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_min_replication_factor`);
+  arangosh.checkRequestResult(res);
+  return res.parsedBody.minReplicationfactor;
+}
 
 exports.doesDatabaseExist = doesDatabaseExist;
 exports.flush = flush;
@@ -121,6 +137,6 @@ exports.getCoordinators = getCoordinators;
 exports.uniqid = uniqid;
 exports.getAnalyzersRevision = getAnalyzersRevision;
 exports.waitForPlanVersion = waitForPlanVersion;
-
-
-
+exports.getMaxNumberOfShards = getMaxNumberOfShards;
+exports.getMaxReplicationFactor = getMaxReplicationFactor;
+exports.getMinReplicationFactor = getMinReplicationFactor;

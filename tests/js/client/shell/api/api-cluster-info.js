@@ -86,7 +86,7 @@ function verifyClusterInfoSuite() {
         const ret = ci.getCollectionInfoCurrent(0, 0, 0);
         fail();
       } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+        assertEqual(err.errorNum, errors.ERROR_BAD_PARAMETER.code);
       }
       const ret = ci.getCollectionInfoCurrent('_system', '_users', db._users.shards()[0]);
       assertEqual(ret.indexes.length, 2, ret);
@@ -179,6 +179,15 @@ function verifyClusterInfoSuite() {
     },
     testwaitForPlanVersion: function () {
       const ret = ci.waitForPlanVersion();
+    },
+    testgetMaxNumberOfShards: function() {
+      const ret = ci.getMaxNumberOfShards();
+    },
+    testgetMaxReplicationFactor: function() {
+      const ret = ci.getMaxReplicationFactor();
+    },
+    testgetMinReplicationFactor: function() {
+      const ret = ci.getMinReplicationFactor();
     }
   };
 };
