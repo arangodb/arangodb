@@ -42,6 +42,7 @@
 #include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -358,21 +359,22 @@ void RestClusterHandler::handleCI_getCollectionInfo(
   VPackSlice info = infoBuilder.slice();
 
   TRI_ASSERT(info.isObject());
-  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  std::shared_ptr<VPackBuilder> serverAliasesShorts =
+      std::make_shared<VPackBuilder>();
   // Compute ShardShorts
   auto serverAliases = ci.getServerAliases();
   VPackSlice shards = info.get("shards");
   TRI_ASSERT(shards.isObject());
   {
-    VPackObjectBuilder x(&(*body));
-    body->add(VPackValue("shards"));
+    VPackObjectBuilder x(&(*serverAliasesShorts));
+    serverAliasesShorts->add(VPackValue("shardShorts"));
     {
-      VPackObjectBuilder y(&(*body));
+      VPackObjectBuilder y(&(*serverAliasesShorts));
       for (auto const& p : VPackObjectIterator(shards)) {
         TRI_ASSERT(p.value.isArray());
-        body->add(p.key);
+        serverAliasesShorts->add(p.key);
         {
-          VPackArrayBuilder z(&(*body));
+          VPackArrayBuilder z(&(*serverAliasesShorts));
           for (VPackSlice s : VPackArrayIterator(p.value)) {
             try {
               std::string t = s.copyString();
@@ -380,7 +382,7 @@ void RestClusterHandler::handleCI_getCollectionInfo(
                 t = t.substr(1);
               }
               if (auto it = serverAliases.find(t); it != serverAliases.end()) {
-                body->add(VPackValue(it->second));
+                serverAliasesShorts->add(VPackValue(it->second));
               }
             } catch (...) {
             }
@@ -389,6 +391,9 @@ void RestClusterHandler::handleCI_getCollectionInfo(
       }
     }
   }
+  std::shared_ptr<VPackBuilder> body = std::make_shared<VPackBuilder>();
+  VPackCollection::merge(*body, serverAliasesShorts->slice(),
+                         infoBuilder.slice(), true, false);
   generateResult(rest::ResponseCode::OK, body->slice());
 }
 void RestClusterHandler::handleCI_getCollectionInfoCurrent(
