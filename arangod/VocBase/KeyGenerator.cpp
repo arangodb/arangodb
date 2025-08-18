@@ -291,7 +291,8 @@ class TraditionalKeyGeneratorSingle final : public TraditionalKeyGenerator {
                                          bool allowUserKeys, uint64_t lastValue)
       : TraditionalKeyGenerator(collection, allowUserKeys),
         _lastValue(lastValue) {
-    TRI_ASSERT(!ServerState::instance()->isCoordinator());
+    TRI_ASSERT(!ServerState::instance()->isCoordinator() &&
+               !ServerState::instance()->isDBServer());
   }
 
   /// @brief build a VelocyPack representation of the generator in the builder
@@ -368,14 +369,15 @@ class TraditionalKeyGeneratorCoordinator final
   explicit TraditionalKeyGeneratorCoordinator(
       ClusterInfo& ci, LogicalCollection const& collection, bool allowUserKeys)
       : TraditionalKeyGenerator(collection, allowUserKeys), _ci(ci) {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+               ServerState::instance()->isDBServer());
   }
 
  private:
   /// @brief generate a key value (internal)
   uint64_t generateValue() override {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
-    TRI_ASSERT(_collection.numberOfShards() != 1 || _collection.isSmart());
+    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+               ServerState::instance()->isDBServer());
     TRI_IF_FAILURE("KeyGenerator::generateOnCoordinator") {
       // for testing purposes only
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -496,8 +498,6 @@ class PaddedKeyGeneratorSingle final : public PaddedKeyGenerator {
  private:
   /// @brief generate a key
   uint64_t generateValue() override {
-    TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-               _collection.numberOfShards() == 1);
     TRI_IF_FAILURE("KeyGenerator::generateOnSingleServer") {
       // for testing purposes only
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -519,14 +519,15 @@ class PaddedKeyGeneratorCoordinator final : public PaddedKeyGenerator {
                                          LogicalCollection const& collection,
                                          bool allowUserKeys, uint64_t lastValue)
       : PaddedKeyGenerator(collection, allowUserKeys, lastValue), _ci(ci) {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+               ServerState::instance()->isDBServer());
   }
 
  private:
   /// @brief generate a key value (internal)
   uint64_t generateValue() override {
-    TRI_ASSERT(ServerState::instance()->isCoordinator());
-    TRI_ASSERT(_collection.numberOfShards() != 1 || _collection.isSmart());
+    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
+               ServerState::instance()->isDBServer());
     TRI_IF_FAILURE("KeyGenerator::generateOnCoordinator") {
       // for testing purposes only
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -717,7 +718,20 @@ std::unordered_map<GeneratorMapType,
         bool allowUserKeys = basics::VelocyPackHelper::getBooleanValue(
             options, StaticStrings::AllowUserKeys, true);
 
-        if (ServerState::instance()->isCoordinator()) {
+        if (ServerState::instance()->isCoordinator() ||
+            ServerState::instance()->isDBServer()) {
+          // We are in a cluster where keys need to be globally unique. Under
+          // normal circumstances, coordinators create the keys.
+          // However, there are cases, in which this can happen on a DBServer,
+          // amongst them are:
+          //  - collections with a single shard and an AQL query which does
+          //    INSERT in a loop, no _key given by query
+          //  - collections with multiple shards, non-standard sharding, an
+          //    AQL query which does INSERT in a loop, no key given by query
+          //    and usage of the option `forceOneShardAttributeValue`
+          // In these cases we have to generate a key using a cluster-wide
+          // unique identifier, so we use the "Coordinator" key generator
+          // also on DBServers.
           auto& ci = collection.vocbase()
                          .server()
                          .getFeature<ClusterFeature>()
@@ -802,7 +816,20 @@ std::unordered_map<GeneratorMapType,
         bool allowUserKeys = basics::VelocyPackHelper::getBooleanValue(
             options, StaticStrings::AllowUserKeys, true);
 
-        if (ServerState::instance()->isCoordinator()) {
+        if (ServerState::instance()->isCoordinator() ||
+            ServerState::instance()->isDBServer()) {
+          // We are in a cluster where keys need to be globally unique. Under
+          // normal circumstances, coordinators create the keys.
+          // However, there are cases, in which this can happen on a DBServer,
+          // amongst them are:
+          //  - collections with a single shard and an AQL query which does
+          //    INSERT in a loop, no _key given by query
+          //  - collections with multiple shards, non-standard sharding, an
+          //    AQL query which does INSERT in a loop, no key given by query
+          //    and usage of the option `forceOneShardAttributeValue`
+          // In these cases we have to generate a key using a cluster-wide
+          // unique identifier, so we use the "Coordinator" key generator
+          // also on DBServers.
           auto& ci = collection.vocbase()
                          .server()
                          .getFeature<ClusterFeature>()
