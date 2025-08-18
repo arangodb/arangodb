@@ -1,15 +1,31 @@
 devel
 -----
 
-* delete the Coordinator-V8 wrappers for the agency.
+* Add a separate thread to the UserManager to handle the load of the user-cache asynchronously.
+  This pre-loads the user-cache as fast as possible (as soon as the global version changes)
+  Also, compared to the old version, this allows the read-only operation to work on the user-cache 
+  for longer and not block each other while trying to load a new version. On a high load environment this also 
+  means a more responsive UserManager and to prevent the thread responsible for the HTTP server to not getting blocked
+  because of user-cache updates.
+
+* During AQL setup, the Coordinator will no longer block threads while waiting
+  for DBServers to finish the query instantiation.
+
+* Add faiss and openmp versions in --version output of arangod.
+
+* Fix BTS-2171: Reduce the amount of code executed on dedicated network threads,
+  which might have reduced its throughput or delayed processing of other network
+  responses.
+
+* Updated ArangoDB Starter to v0.19.13.
+
+* Delete the Coordinator-V8 wrappers for the agency.
 
 * Deprecate rocksdb.transaction-lock-timeout option since we would
   internally change this to a different value.
 
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
   dependencies.
-
-* Updated ArangoDB Starter to v0.19.13-preview-3.
 
 * Upgraded OpenSSL to 3.5.2
 
