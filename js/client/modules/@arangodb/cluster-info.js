@@ -27,20 +27,10 @@
 const arangosh = require('@arangodb/arangosh');
 
 
-function doesDatabaseExist (database) {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/does_database_exist/database/${database}`);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody.exists;
-}
 function flush () {
   let res = arango.PUT_RAW(`_api/cluster/cluster-info/flush`, "");
   arangosh.checkRequestResult(res);
   return res.parsedBody.OK;
-}
-function databases () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/databases`);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody.databases;
 }
 function getCollectionInfo (databaseName, collectionName) {
   let res = arango.GET_RAW(`_api/cluster/cluster-info/get_collection_info/databaseName/${databaseName}/collectionName/${collectionName}`);
@@ -53,11 +43,6 @@ function getCollectionInfoCurrent (databaseName, collectionName, shardID) {
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
-function getResponsibleServer (shardID) {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_responsible_server/shardID/${shardID}`);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody;
-}
 function getResponsibleServers (shardIDs) {
   let res = arango.POST_RAW(`_api/cluster/cluster-info/get_responsible_servers`, shardIDs);
   arangosh.checkRequestResult(res);
@@ -65,31 +50,6 @@ function getResponsibleServers (shardIDs) {
 }
 function getResponsibleShard (collectionName, document, documentIsComplete) {
   let res = arango.POST_RAW(`_api/cluster/cluster-info/get_responsible_shard/databaseName/${arango.getDatabaseName()}/collectionName/${collectionName}/documentIsComplete/${documentIsComplete}`, document);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody;
-}
-function getServerEndpoint (serverID) {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_server_endpoint/serverID/${serverID}`);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody.endpoint;
-}
-function getServerName (endpoint) {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_server_name/${encodeURIComponent(endpoint)}`);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody.serverName;
-}
-function getDBServers () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_db_servers`);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody;
-}
-function getCoordinators () {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_coordinators`);
-  arangosh.checkRequestResult(res);
-  return res.parsedBody;
-}
-function uniqid (count) {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/uniqid/${count}`);
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
@@ -122,19 +82,11 @@ function getMinReplicationFactor () {
   return res.parsedBody.minReplicationfactor;
 }
 
-exports.doesDatabaseExist = doesDatabaseExist;
 exports.flush = flush;
-exports.databases = databases;
 exports.getCollectionInfo = getCollectionInfo;
 exports.getCollectionInfoCurrent = getCollectionInfoCurrent;
-exports.getResponsibleServer = getResponsibleServer;
 exports.getResponsibleServers = getResponsibleServers;
 exports.getResponsibleShard = getResponsibleShard;
-exports.getServerEndpoint = getServerEndpoint;
-exports.getServerName = getServerName;
-exports.getDBServers = getDBServers;
-exports.getCoordinators = getCoordinators;
-exports.uniqid = uniqid;
 exports.getAnalyzersRevision = getAnalyzersRevision;
 exports.waitForPlanVersion = waitForPlanVersion;
 exports.getMaxNumberOfShards = getMaxNumberOfShards;

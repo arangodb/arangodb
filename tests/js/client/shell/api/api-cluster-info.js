@@ -40,34 +40,8 @@ function verifyClusterInfoSuite() {
     tearDown: function () {
     },
 
-    testdoesDatabaseExist: function () {
-      const dbn = 'testdb';
-      try {
-        db._createDatabase(dbn);
-        const res = ci.doesDatabaseExist(dbn);
-        assertTrue(res, dbn + " exists.");
-      } finally {
-        db._useDatabase('_system');
-        db._dropDatabase(dbn);
-      }
-      const res = ci.doesDatabaseExist(dbn);
-      assertFalse(res, dbn + " no longer exists.");
-    },
     testFlush: function () {
       assertTrue(ci.flush());
-    },
-    testDatabases: function () {
-      const dbn = 'testdb';
-      const ret = ci.databases();
-      assertEqual(ret.length, 1, ret);
-      try {
-        db._createDatabase(dbn);
-        const ret = ci.databases();
-        assertEqual(ret.length, 2, ret);
-      } finally {
-        db._useDatabase('_system');
-        db._dropDatabase(dbn);
-      }
     },
     testgetCollectionInfo: function () {
       try {
@@ -93,12 +67,6 @@ function verifyClusterInfoSuite() {
       assertEqual(ret.shorts.length, 2, ret);
       assertEqual(ret.servers.length, 2, ret);
       assertEqual(ret.failoverCandidates.length, 2, ret);
-    },
-    testgetResponsibleServer: function () {
-      let ret = ci.getResponsibleServer(db._users.shards()[0]);
-      assertEqual(ret.length, 2, ret);
-      ret = ci.getResponsibleServer("xxx");
-      assertEqual(ret.length, 0, ret);
     },
     testgetResponsibleServers: function () {
       let shardIDs = [];
@@ -137,40 +105,6 @@ function verifyClusterInfoSuite() {
       } finally {
         db._drop('test');
       }
-    },
-    testgetServerEndpoint: function () {
-      // aim for db-servers, these got server ids:
-      const ret = ci.getServerEndpoint(IM.arangods[3].id);
-      assertEqual(ret, IM.arangods[3].endpoint);
-      try {
-        ci.getServerEndpoint("PRMR-00000000-0000-0000-0000-000000000000");
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_HTTP_NOT_FOUND.code);
-      }
-      try {
-        ci.getServerEndpoint("not valid");
-        fail();
-      } catch (err) {
-        assertEqual(err.errorNum, errors.ERROR_HTTP_SERVICE_UNAVAILABLE.code);
-      }
-    },
-    testgetServerName: function () {
-      assertEqual(ci.getServerName(IM.arangods[3].endpoint), IM.arangods[3].id);
-      assertEqual(ci.getServerName("xxx"), "");
-    },
-    testgetDBServers: function () {
-      const ret = ci.getDBServers();
-      assertEqual(ret.length, IM.options.dbServers, ret);
-    },
-    testgetCoordinators: function () {
-      const ret = ci.getCoordinators();
-      assertEqual(ret.length, IM.options.coordinators, ret);
-    },
-    testUniqid: function () {
-      const ret1 = ci.uniqid(100);
-      const ret2 = ci.uniqid(100);
-      assertTrue(ret2 - ret1 >= 100);
     },
     testgetAnalyzersRevision: function () {
       const ret = ci.getAnalyzersRevision('_system');
