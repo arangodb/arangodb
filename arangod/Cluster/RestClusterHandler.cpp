@@ -232,14 +232,13 @@ void RestClusterHandler::handleCI_getCollectionInfo(
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 6 || suffixes[2] != "databaseName" ||
-      suffixes[4] != "collectionName") {
+  if (suffixes.size() < 4) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "database and collection arguments are missing");
     return;
   }
-  std::string const& databaseName = suffixes[3];
-  std::string const& collectionName = suffixes[5];
+  std::string const& databaseName = suffixes[2];
+  std::string const& collectionName = suffixes[3];
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
   std::shared_ptr<LogicalCollection> col =
       ci.getCollectionNT(databaseName, collectionName);
@@ -313,15 +312,14 @@ void RestClusterHandler::handleCI_getCollectionInfoCurrent(
                   "only the GET method is allowed");
     return;
   }
-  if (suffixes.size() < 7 || suffixes[2] != "databaseName" ||
-      suffixes[4] != "collectionName" || suffixes[6] != "shardID") {
+  if (suffixes.size() < 4) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "database, collection, shardID arguments are missing");
     return;
   }
-  std::string const& databaseID = suffixes[3];
-  std::string const& collectionName = suffixes[5];
-  auto maybeShardID = ShardID::shardIdFromString(suffixes[7]);
+  std::string const& databaseID = suffixes[2];
+  std::string const& collectionName = suffixes[3];
+  auto maybeShardID = ShardID::shardIdFromString(suffixes[4]);
   if (maybeShardID.fail()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "invalid shardID");
@@ -453,8 +451,7 @@ void RestClusterHandler::handleCI_getResponsibleShard(
                   "only the POST method is allowed");
     return;
   }
-  if (suffixes.size() < 5 || suffixes[2] != "databaseName" ||
-      suffixes[4] != "collectionName" || suffixes[6] != "documentIsComplete") {
+  if (suffixes.size() < 4) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "databaseName, collectionName, documentIsComplete arguments "
                   "are missing");
@@ -466,9 +463,9 @@ void RestClusterHandler::handleCI_getResponsibleShard(
     // error message generated in parseVPackBody
     return;
   }
-  auto databaseName = suffixes[3];
-  auto collectionName = suffixes[5];
-  bool documentIsComplete = suffixes[7] == "true";
+  auto databaseName = suffixes[2];
+  auto collectionName = suffixes[3];
+  bool documentIsComplete = suffixes[4] == "true";
   auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
 
   auto collInfo = ci.getCollectionNT(databaseName, collectionName);

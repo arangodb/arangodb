@@ -33,13 +33,13 @@ function flush () {
   return res.parsedBody.OK;
 }
 function getCollectionInfo (databaseName, collectionName) {
-  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_collection_info/databaseName/${databaseName}/collectionName/${collectionName}`);
+  let res = arango.GET_RAW(`_api/cluster/cluster-info/get_collection_info/${databaseName}/${collectionName}`);
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
 function getCollectionInfoCurrent (databaseName, collectionName, shardID) {
   let res = arango.GET_RAW(
-    `_api/cluster/cluster-info/get_collection_info_current/databaseName/${databaseName}/collectionName/${collectionName}/shardID/${shardID}`);
+    `_api/cluster/cluster-info/get_collection_info_current/${databaseName}/${collectionName}/${shardID}`);
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
@@ -49,7 +49,7 @@ function getResponsibleServers (shardIDs) {
   return res.parsedBody;
 }
 function getResponsibleShard (collectionName, document, documentIsComplete) {
-  let res = arango.POST_RAW(`_api/cluster/cluster-info/get_responsible_shard/databaseName/${arango.getDatabaseName()}/collectionName/${collectionName}/documentIsComplete/${documentIsComplete}`, document);
+  let res = arango.POST_RAW(`_api/cluster/cluster-info/get_responsible_shard/${arango.getDatabaseName()}/${collectionName}/${documentIsComplete}`, document);
   arangosh.checkRequestResult(res);
   return res.parsedBody;
 }
