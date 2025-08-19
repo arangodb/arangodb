@@ -27,7 +27,10 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <omp.h>
+#include <sys/types.h>
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
@@ -40,15 +43,17 @@
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
-#include <sys/types.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
-#include <omp.h>
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
+#include "Aql/ExecutorExpressionContext.h"
+#include "Aql/DocumentExpressionContext.h"
+
 #include "faiss/IndexFlat.h"
 #include "faiss/IndexIVFFlat.h"
 #include "faiss/MetricType.h"
@@ -78,17 +83,29 @@ faiss::MetricType metricToFaissMetric(SimilarityMetric const metric) {
   }
 }
 
+struct SearchParametersContext {
+  transaction::Methods* trx;
+  aql::Expression* filterExpression;
+  std::optional<aql::InputAqlItemRow> inputRow;
+  aql::QueryContext* queryContext;
+  std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
+      filterVarsToRegs;
+  aql::Variable const* documentVariable;
+};
+
 struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
-                               transaction::Methods* trx,
+                               SearchParametersContext& searchParametersContext,
                                std::size_t listNumber, std::size_t codeSize)
       : InvertedListsIterator(),
         _index(index),
+        _collection(collection),
+        _searchParametersContext(searchParametersContext),
         _listNumber(listNumber),
         _codeSize(codeSize) {
-    RocksDBTransactionMethods* mthds =
-        RocksDBTransactionState::toMethods(trx, collection->id());
+    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
+        searchParametersContext.trx, collection->id());
     TRI_ASSERT(index->columnFamily() ==
                RocksDBColumnFamilyManager::get(
                    RocksDBColumnFamilyManager::Family::VectorIndex));
@@ -99,13 +116,79 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
 
     _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
     _it->Seek(_rocksdbKey.string());
+    if (_searchParametersContext.filterExpression) {
+      setToValidIterator();
+    }
   }
 
   [[nodiscard]] bool is_available() const override {
     return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
   }
 
-  void next() override { _it->Next(); }
+  void setToValidIterator() {
+    while (_it->Valid()) {
+      // if (_it->Valid()) {
+      // Now we need to filter
+      // 1. Get document ID
+
+      auto const docId = RocksDBKey::indexDocumentId(_it->key());
+      std::vector<LocalDocumentId> docIds{docId};
+
+      // 2. Materialize the whole document
+      VPackSlice document;
+      LocalDocumentId documentId;
+      _collection->getPhysical()->lookup(
+          _searchParametersContext.trx, docId,
+          [&](LocalDocumentId token, aql::DocumentData&& /*data */,
+              VPackSlice doc) {
+            LOG_DEVEL << ADB_HERE << " token: " << token
+                      << " doc: " << doc.toJson();
+            document = doc;
+            documentId = token;
+            return true;
+          },
+          {.countBytes = true});
+      LOG_DEVEL << "Vector document materialized: " << document.toJson();
+
+      velocypack::Options opts;
+      velocypack::Builder builder;
+      (*_searchParametersContext.inputRow).toSimpleVelocyPack(&opts, builder);
+      LOG_DEVEL << ADB_HERE << builder.toJson();
+
+      // 3. Run the expression
+      TRI_ASSERT(_searchParametersContext.inputRow.has_value());
+      TRI_ASSERT(_searchParametersContext.queryContext != nullptr);
+      TRI_ASSERT(_searchParametersContext.filterVarsToRegs != nullptr);
+      TRI_ASSERT(_searchParametersContext.documentVariable != nullptr);
+
+      aql::GenericDocumentExpressionContext ctx(
+          *_searchParametersContext.trx, *_searchParametersContext.queryContext,
+          _aqlFunctionsInternalCache,
+          *_searchParametersContext.filterVarsToRegs,
+          *_searchParametersContext.inputRow,
+          _searchParametersContext.documentVariable);
+      ctx.setCurrentDocument(document);
+      bool mustDestroy;  // will get filled by execution
+      aql::AqlValue a =
+          _searchParametersContext.filterExpression->execute(&ctx, mustDestroy);
+      LOG_DEVEL << ADB_HERE << "This is the value: " << a.toBoolean();
+      aql::AqlValueGuard guard(a, mustDestroy);
+      if (a.toBoolean()) {
+        // No need to advance iterator further this is good
+        break;
+      }
+
+      _it->Next();
+    }
+  }
+
+  void next() override {
+    LOG_DEVEL << ADB_HERE;
+    _it->Next();
+    if (_searchParametersContext.filterExpression) {
+      setToValidIterator();
+    }
+  }
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override {
     auto const docId = RocksDBKey::indexDocumentId(_it->key());
@@ -117,6 +200,9 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
  private:
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index = nullptr;
+  LogicalCollection* _collection;
+  SearchParametersContext& _searchParametersContext;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   std::unique_ptr<rocksdb::Iterator> _it;
   std::size_t _listNumber;
@@ -168,8 +254,10 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
 
   faiss::InvertedListsIterator* get_iterator(std::size_t listNumber,
                                              void* context) const override {
-    auto trx = static_cast<transaction::Methods*>(context);
-    return new RocksDBInvertedListsIterator(_index, _collection, trx,
+    auto* searchParametersContext =
+        static_cast<SearchParametersContext*>(context);
+    return new RocksDBInvertedListsIterator(_index, _collection,
+                                            *searchParametersContext,
                                             listNumber, this->code_size);
   }
 
@@ -311,12 +399,15 @@ void RocksDBVectorIndex::toVelocyPack(
 }
 
 std::pair<std::vector<VectorIndexLabelId>, std::vector<float>>
-RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
-                              SearchParameters const& searchParameters,
-                              RocksDBMethods* rocksDBMethods,
-                              transaction::Methods* trx,
-                              std::shared_ptr<LogicalCollection> collection,
-                              std::size_t count, std::size_t topK) {
+RocksDBVectorIndex::readBatch(
+    std::vector<float>& inputs, SearchParameters const& searchParameters,
+    RocksDBMethods* rocksDBMethods, transaction::Methods* trx,
+    std::shared_ptr<LogicalCollection> collection, std::size_t count,
+    std::size_t topK, aql::Expression* filterExpression,
+    aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
+    std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
+        filterVarsToRegs,
+    aql::Variable const* documentVariable) {
   TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
       << "Number of components does not match vectors dimensions, topK: "
       << topK << ", count: " << count
@@ -331,9 +422,19 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   }
 
   faiss::SearchParametersIVF searchParametersIvf;
+  SearchParametersContext searchCtx{};
+  searchCtx.trx = trx;
+  searchCtx.filterExpression = filterExpression;
+  if (inputRow != nullptr) {
+    searchCtx.inputRow = *inputRow;
+  }
+  searchCtx.queryContext = &queryContext;
+  searchCtx.filterVarsToRegs = &filterVarsToRegs;
+  searchCtx.documentVariable = documentVariable;
+
   searchParametersIvf.nprobe =
       searchParameters.nProbe.value_or(_definition.defaultNProbe);
-  searchParametersIvf.inverted_list_context = trx;
+  searchParametersIvf.inverted_list_context = &searchCtx;
   _faissIndex->search(count, inputs.data(), topK, distances.data(),
                       labels.data(), &searchParametersIvf);
 
