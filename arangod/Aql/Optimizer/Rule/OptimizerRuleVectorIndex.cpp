@@ -47,7 +47,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE_ENABLED true
+#define LOG_RULE_ENABLED false
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
@@ -330,8 +330,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       auto limit = limitNode->limit();
       auto* inVariable = plan->getAst()->variables()->createTemporaryVariable();
 
-      LOG_DEVEL << "SHOW PLAN";
-      plan->show();
       auto* queryPointCalculationNode = plan->createNode<CalculationNode>(
           plan.get(), plan->nextId(),
           std::make_unique<Expression>(plan->getAst(),
@@ -354,7 +352,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                "CalculationNode?";
         auto const* calcNode =
             ExecutionNode::castTo<CalculationNode const*>(calculationNode);
-        LOG_DEVEL << "Expression calcNode: " << calcNode->expression();
         filterExpression = calcNode->expression();
 
         plan->unlinkNode(maybeFilterNode);
@@ -383,8 +380,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       plan->unlinkNode(distanceCalculationNode);
 
       modified = true;
-      LOG_DEVEL << "After optimizing";
-      plan->show();
       break;
     }
   }

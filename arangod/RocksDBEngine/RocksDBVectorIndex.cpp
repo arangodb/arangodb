@@ -127,33 +127,24 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
 
   void setToValidIterator() {
     while (_it->Valid()) {
-      // if (_it->Valid()) {
-      // Now we need to filter
-      // 1. Get document ID
-
       auto const docId = RocksDBKey::indexDocumentId(_it->key());
       std::vector<LocalDocumentId> docIds{docId};
 
-      // 2. Materialize the whole document
       VPackSlice document;
       LocalDocumentId documentId;
       _collection->getPhysical()->lookup(
           _searchParametersContext.trx, docId,
           [&](LocalDocumentId token, aql::DocumentData&& /*data */,
               VPackSlice doc) {
-            LOG_DEVEL << ADB_HERE << " token: " << token
-                      << " doc: " << doc.toJson();
             document = doc;
             documentId = token;
             return true;
           },
           {.countBytes = true});
-      LOG_DEVEL << "Vector document materialized: " << document.toJson();
 
       velocypack::Options opts;
       velocypack::Builder builder;
       (*_searchParametersContext.inputRow).toSimpleVelocyPack(&opts, builder);
-      LOG_DEVEL << ADB_HERE << builder.toJson();
 
       // 3. Run the expression
       TRI_ASSERT(_searchParametersContext.inputRow.has_value());
@@ -171,7 +162,6 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
       bool mustDestroy;  // will get filled by execution
       aql::AqlValue a =
           _searchParametersContext.filterExpression->execute(&ctx, mustDestroy);
-      LOG_DEVEL << ADB_HERE << "This is the value: " << a.toBoolean();
       aql::AqlValueGuard guard(a, mustDestroy);
       if (a.toBoolean()) {
         // No need to advance iterator further this is good
@@ -183,7 +173,6 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   }
 
   void next() override {
-    LOG_DEVEL << ADB_HERE;
     _it->Next();
     if (_searchParametersContext.filterExpression) {
       setToValidIterator();
