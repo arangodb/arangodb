@@ -345,9 +345,9 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       if (maybeFilterNode) {
         // auto filterNode = ExecutionNode::castTo<FilterNode
         // const*>(maybeFilterNode);
-        auto* calculationNode = maybeFilterNode->getFirstParent();
-        // This is wrong I need to check that the input variable of FilterNode
-        // is same as output of CalculationNode
+        auto* calculationNode = maybeFilterNode->getFirstDependency();
+        // TODO This is wrong I need to check that the input variable of
+        // FilterNode is same as output of CalculationNode
         TRI_ASSERT(calculationNode != nullptr &&
                    calculationNode->getType() == EN::CALCULATION)
             << "Can we ever have a FilterNode which does not depend on "
