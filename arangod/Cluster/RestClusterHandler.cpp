@@ -104,8 +104,7 @@ RestStatus RestClusterHandler::execute() {
         handleCI_getMinReplicationFactor();
         return RestStatus::DONE;
       } else {
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND,
+        generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       "no such handler in the cluster info.");
         return RestStatus::DONE;
       }
@@ -130,10 +129,9 @@ RestStatus RestClusterHandler::execute() {
       return RestStatus::DONE;
     }
   }
-  generateError(
-      Result(TRI_ERROR_HTTP_NOT_FOUND,
-             "expecting /_api/cluster/[endpoints,agency-dump,"
-             "agency-cache,cluster-info]"));
+  generateError(Result(TRI_ERROR_HTTP_NOT_FOUND,
+                       "expecting /_api/cluster/[endpoints,agency-dump,"
+                       "agency-cache,cluster-info]"));
 
   return RestStatus::DONE;
 }
