@@ -260,7 +260,6 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
-    um->triggerLocalReload();
     um->triggerGlobalReload();  // noop except on coordinator
   }
 
@@ -534,9 +533,9 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auth::Level lvl;
     if (args.Length() == 3) {
       std::string collection = TRI_ObjectToString(isolate, args[2]);
-      lvl = um->collectionAuthLevel(username, dbname, collection);
+      lvl = um->collectionAuthLevel(username, dbname, collection, false);
     } else {
-      lvl = um->databaseAuthLevel(username, dbname);
+      lvl = um->databaseAuthLevel(username, dbname, false);
     }
 
     if (lvl == auth::Level::RO) {
@@ -552,7 +551,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_GET_SERVER_GLOBALS(ArangodServer);
     v8g->server().getFeature<DatabaseFeature>().enumerateDatabases(
         [&](TRI_vocbase_t& vocbase) -> void {
-          auto lvl = um->databaseAuthLevel(username, vocbase.name());
+          auto lvl = um->databaseAuthLevel(username, vocbase.name(), false);
 
           if (lvl != auth::Level::NONE) {  // hide non accessible collections
             result

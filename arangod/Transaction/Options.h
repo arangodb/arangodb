@@ -108,10 +108,9 @@ struct Options {
   bool requiresReplication = true;
 
   /// @brief If set to true, the transaction is started without acquiring a
-  /// snapshot. The snapshot can be acquired at a later point by calling
-  /// `ensureSnapshot`. This allows us to lock the used keys before the
+  /// snapshot. This allows us to lock the used keys before the
   /// snapshot is acquired in order to avoid write-write conflict.
-  bool delaySnapshot = false;
+  bool avoidSnapshot = false;
 
   /// @brief if set to true, skips the fast, unordered lock round and always
   /// uses the sequential, ordered lock round.

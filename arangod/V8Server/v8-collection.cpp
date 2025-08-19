@@ -744,7 +744,7 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   bool payloadIsArray = args[0]->IsArray();
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
+  trxOpts.avoidSnapshot = !payloadIsArray;  // for now we only enable this for
                                             // single document operations
 
   VPackSlice toRemove = searchBuilder.slice();
@@ -845,7 +845,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_ASSERT(toRemove.isObject());
 
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = true;
+  trxOpts.avoidSnapshot = true;
 
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
@@ -1534,7 +1534,7 @@ static void ModifyVocbaseCol(TRI_voc_document_operation_e operation,
 
   bool payloadIsArray = args[0]->IsArray();
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
+  trxOpts.avoidSnapshot = !payloadIsArray;  // for now we only enable this for
                                             // single document operations
 
   // Now start the transaction:
@@ -1656,7 +1656,7 @@ static void ModifyVocbase(TRI_voc_document_operation_e operation,
   }
 
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = true;
+  trxOpts.avoidSnapshot = true;
 
   SingleCollectionTransaction trx(
       std::shared_ptr<transaction::Context>(
@@ -1954,7 +1954,7 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
   }
 
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = !payloadIsArray;  // for now we only enable this for
+  trxOpts.avoidSnapshot = !payloadIsArray;  // for now we only enable this for
                                             // single document operations
 
   auto origin = transaction::OperationOriginREST{"inserting document(s)"};
