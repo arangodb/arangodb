@@ -132,7 +132,7 @@ function KeyGenerationOneShardSuite() {
     },
 
     testKeyGenerationOneShardCollectionWithPaddedKeyOptions: function () {
-      // Create a collection with exactly one shard and custom key options
+      // Create a collection with exactly one shard and padded key options
       let c = db._create(cn, { 
       numberOfShards: 1,
         keyOptions: { 
@@ -255,7 +255,7 @@ function KeyGenerationOneShardSuite() {
     },
 
     testKeyGenerationMultiShardCollectionForcedWithPaddedKeyOptions: function () {
-      // Create a collection with exactly one shard and custom key options
+      // Create a collection with exactly one shard and padded key options
       let c = db._create(cn, { 
         numberOfShards: 3,
         shardKeys: ["s"],
