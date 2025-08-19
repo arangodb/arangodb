@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertNotUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, fail, db._query */
+/*global assertUndefined, assertNotUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, fail, db._query, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -481,7 +481,7 @@ function iResearchFeatureAqlTestSuite () {
 
       // force server-side V8 garbage collection
       if (db._connection !== undefined) { // client test
-        arango.POST('/_admin/execute?returnAsJSON=true', 'require("internal").wait(0.1, true);');
+        GLOBAL.instanceManager.waitOnServerForGC(undefined, undefined, 0.1);
       } else {
         require("internal").wait(0.1, true);
       }

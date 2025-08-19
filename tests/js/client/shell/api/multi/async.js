@@ -142,10 +142,9 @@ function dealing_with_async_requestsSuite () {
     },
 
     test_checks_whether_a_failing_action_returns_status_202: function() {
-      let cmd = "/_admin/execute";
-      let body = "fail();";
+      let cmd = "/_api/notacursor";;
+      let body = '{"query": "this is not a love song"}';
       let doc = arango.POST_RAW(cmd, body, { "X-Arango-Async": "true" });
-
       assertEqual(doc.code, 202);
       assertFalse(doc.headers.hasOwnProperty("x-arango-async-id"));
       assertEqual(doc.parsedBody, undefined);
