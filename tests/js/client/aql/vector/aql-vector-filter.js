@@ -55,7 +55,7 @@ function VectorIndexL2FilterTestSuite() {
     const dimension = 500;
     const numberOfDocs = 500;
     const seed = randomInteger();
-    const nProbe = 10;
+    const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
@@ -93,9 +93,9 @@ function VectorIndexL2FilterTestSuite() {
                 params: {
                     metric: "l2",
                     dimension: dimension,
-                    nLists: 10,
+                    nLists: nProbeAndNlists,
                     trainingIterations: 10,
-                    defaultNProbe: nProbe,
+                    defaultNProbe: nProbeAndNlists,
                 },
             });
         },
