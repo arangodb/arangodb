@@ -426,6 +426,7 @@ function VectorIndexCosineFilterTestSuite() {
     const dimension = 500;
     const numberOfDocs = 1000;
     const seed = 12;
+    const nProbeAndNlists = 10;
 
     return {
         setUpAll: function() {
@@ -462,7 +463,8 @@ function VectorIndexCosineFilterTestSuite() {
                 params: {
                     metric: "cosine",
                     dimension: dimension,
-                    nLists: 10
+                    nLists: nProbeAndNlists,
+                    defaultNProbe: nProbeAndNlists,
                 },
             });
         },
@@ -658,7 +660,7 @@ function VectorIndexCosineFilterTestSuite() {
             const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(1, indexNodes.length, "Should have vector search node");
-            assertEqual(1, filterNodes.length, "Should have filter node");
+            assertEqual(0, filterNodes.length, "Should not have filter node");
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 6, "Results should be limited to 6");
