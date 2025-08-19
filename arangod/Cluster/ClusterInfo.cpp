@@ -620,6 +620,11 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     return idCounter.fetch_add(1);
   }
 
+  TRI_IF_FAILURE("always-fetch-new-cluster-wide-uniqid") {
+    uint64_t result = _agency.uniqid(count, 0.0);
+    return result;
+  }
+
   std::lock_guard mutexLocker{_idLock};
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
