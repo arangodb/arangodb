@@ -81,7 +81,6 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
-      print(res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -124,7 +123,6 @@ function KeyGenerationOneShardSuite() {
 
       // Verify the documents exist in the collection
       let allDocs = c.toArray();
-      print(allDocs);
       assertEqual(2, allDocs.length, "Collection should return exactly 2 documents");
 
       // Check that the keys are large:
@@ -150,7 +148,6 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
-      print(res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -180,13 +177,12 @@ function KeyGenerationOneShardSuite() {
       
       // Verify the documents exist in the collection
       let allDocs = c.toArray();
-      print(allDocs);
       assertEqual(2, allDocs.length, "Collection should return exactly 2 documents");
 
-      // Check that the keys are large:
-      let keys = allDocs.map(doc => parseInt(doc._key)).sort((a, b) => a - b);
-      assertTrue(keys[0] >= 100000000, "First key must be at least 1000000000");
-      assertTrue(keys[1] >= 100000000, "Second key be must be at leaset 100000000");
+      // Check that the keys are large, note that in the padded case we see hex numbers!:
+      let keys = allDocs.map(doc => doc._key);
+      assertTrue(keys[0] >= "0000000005f5e100", "First key must be at least 0000000005f5e100");
+      assertTrue(keys[1] >= "0000000005f5e100", "Second key must be at least 0000000005f5e100");
     },
 
   };
