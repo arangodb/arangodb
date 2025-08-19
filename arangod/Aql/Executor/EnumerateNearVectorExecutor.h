@@ -48,7 +48,9 @@ struct EnumerateNearVectorsExecutorInfos {
       RegisterId inNmDocId, RegisterId outDocRegId, RegisterId outDistanceRegId,
       transaction::Methods::IndexHandle index, QueryContext& queryContext,
       aql::Collection const* collection, std::size_t topK, std::size_t offset,
-      SearchParameters searchParameters, Expression* filterExpression)
+      SearchParameters searchParameters, Expression* filterExpression,
+      std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
+      Variable const* documentVariable)
       : inputReg(inNmDocId),
         outDocumentIdReg(outDocRegId),
         outDistancesReg(outDistanceRegId),
@@ -58,7 +60,9 @@ struct EnumerateNearVectorsExecutorInfos {
         topK(topK),
         offset(offset),
         searchParameters(searchParameters),
-        filterExpression(filterExpression) {}
+        filterExpression(filterExpression),
+        filterVarsToRegs(filterVarsToRegs),
+        documentVariable(documentVariable) {}
 
   EnumerateNearVectorsExecutorInfos() = delete;
   EnumerateNearVectorsExecutorInfos(EnumerateNearVectorsExecutorInfos&&) =
@@ -69,6 +73,11 @@ struct EnumerateNearVectorsExecutorInfos {
 
   // total number of result per one query point
   std::size_t getNumberOfResults() const noexcept { return topK + offset; }
+
+  std::vector<std::pair<VariableId, RegisterId>> const& getVarsToRegister()
+      const noexcept {
+    return filterVarsToRegs;
+  }
 
   /// @brief register to store local document id
   RegisterId const inputReg;
@@ -84,6 +93,8 @@ struct EnumerateNearVectorsExecutorInfos {
   std::size_t offset;
   SearchParameters searchParameters;
   Expression* filterExpression;
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+  Variable const* documentVariable{nullptr};
 };
 
 class EnumerateNearVectorsExecutor {
