@@ -1429,9 +1429,7 @@ function AdvancedVectorFilteringTestSuite() {
 }
 
 jsunity.run(VectorIndexL2FilterTestSuite);
-/*jsunity.run(VectorIndexCosineFilterTestSuite);*/
-/*jsunity.run(VectorIndexInnerProductFilterTestSuite);*/
-/*jsunity.run(MultipleVectorIndexesOnField);*/
-/*jsunity.run(AdvancedVectorFilteringTestSuite);*/
+jsunity.run(VectorIndexCosineFilterTestSuite);
+jsunity.run(VectorIndexInnerProductFilterTestSuite);
 
 return jsunity.done();
