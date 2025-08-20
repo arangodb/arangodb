@@ -142,16 +142,12 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
           },
           {.countBytes = true});
 
-      velocypack::Options opts;
-      velocypack::Builder builder;
-      (*_searchParametersContext.inputRow).toSimpleVelocyPack(&opts, builder);
-
-      // 3. Run the expression
       TRI_ASSERT(_searchParametersContext.inputRow.has_value());
       TRI_ASSERT(_searchParametersContext.queryContext != nullptr);
       TRI_ASSERT(_searchParametersContext.filterVarsToRegs != nullptr);
       TRI_ASSERT(_searchParametersContext.documentVariable != nullptr);
 
+      // 3. Run the expression
       aql::GenericDocumentExpressionContext ctx(
           *_searchParametersContext.trx, *_searchParametersContext.queryContext,
           _aqlFunctionsInternalCache,
