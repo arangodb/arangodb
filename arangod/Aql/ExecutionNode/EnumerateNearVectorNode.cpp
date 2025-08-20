@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorNode.h"
-#include <utility>
 
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionEngine.h"
@@ -113,8 +112,6 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-  VectorIndexFilterCoveringVars filterCoveringVars;
-
   // We have filter expression
   if (_filterExpression) {
     VarSet inVars;
@@ -122,7 +119,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
     filterVarsToRegs.reserve(inVars.size());
 
-    // Here we take all variables in the xpression
+    // Here we take all variables in the expression
     for (auto const& var : inVars) {
       TRI_ASSERT(var != nullptr);
       if (var->id == _oldDocumentVariable->id) {
