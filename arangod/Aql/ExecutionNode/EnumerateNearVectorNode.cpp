@@ -49,6 +49,7 @@ constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 constexpr std::string_view kOffset = "offset";
 constexpr std::string_view kSearchParameters = "searchParameters";
+constexpr std::string_view kFilterExpression = "filterExpression";
 }  // namespace
 
 EnumerateNearVectorNode::EnumerateNearVectorNode(
@@ -205,6 +206,10 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(VPackValue(kSearchParameters));
   builder.add(velocypack::serialize(_searchParameters));
+  if (_filterExpression != nullptr) {
+    builder.add(VPackValue(kFilterExpression));
+    _filterExpression->toVelocyPack(builder, flags);
+  }
 
   CollectionAccessingNode::toVelocyPack(builder, flags);
 
@@ -233,6 +238,13 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       !res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "Deserialization of searchParameters has failed!");
+  }
+
+  VPackSlice p = base.get(kFilterExpression);
+  if (!p.isNone()) {
+    Ast* ast = plan->getAst();
+    // new AstNode is memory-managed by the Ast
+    _filterExpression = std::make_unique<Expression>(ast, ast->createNode(p));
   }
 
   _index = collection()->indexByIdentifier(iid);
