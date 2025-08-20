@@ -339,7 +339,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       // Remove filter node
       // Take expression from CalculationNode and move it into
       // EnumerateNearVectorNode
-      Expression* filterExpression{nullptr};
+      std::unique_ptr<Expression> filterExpression{nullptr};
       if (maybeFilterNode) {
         // auto filterNode = ExecutionNode::castTo<FilterNode
         // const*>(maybeFilterNode);
@@ -352,7 +352,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                "CalculationNode?";
         auto const* calcNode =
             ExecutionNode::castTo<CalculationNode const*>(calculationNode);
-        filterExpression = calcNode->expression();
+        TRI_ASSERT(calcNode->expression() != nullptr);
+        filterExpression = calcNode->expression()->clone(plan->getAst());
 
         plan->unlinkNode(maybeFilterNode);
         plan->unlinkNode(calculationNode);
@@ -361,7 +362,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
           limitNode->offset(), std::move(searchParameters),
-          enumerateCollectionNode->collection(), index, filterExpression);
+          enumerateCollectionNode->collection(), index,
+          std::move(filterExpression));
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(
