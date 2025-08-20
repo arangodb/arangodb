@@ -132,6 +132,33 @@ function VectorIndexL2FilterTestSuite() {
             }
         },
 
+        testApproxL2WithDoubleLoop: function() {
+            const query = aql`
+              FOR docOuter IN ${collection}
+              FOR docInner IN ${collection}
+              FILTER docOuter.val > 3
+              SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
+              LIMIT 5 RETURN docInner
+              `;
+
+            const plan = db
+                ._createStatement(query)
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+
+            const results = db._query(query).toArray();
+            assertEqual(5, results.length);
+
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val > 3, "Filter not applied correctly: " + JSON.stringify(results));
+            }
+        },
+
         testApproxL2WithFilterNoMatches: function() {
             const query =
                 "FOR d IN " +
