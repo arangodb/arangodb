@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnumerateNearVectorNode.h"
+#include <utility>
 
 #include "Aql/ExecutionNode/EnumerateNearVectorNode.h"
 #include "Aql/ExecutionEngine.h"
@@ -56,7 +57,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     Variable const* documentOutVariable, Variable const* distanceOutVariable,
     std::size_t limit, bool ascending, std::size_t offset,
     SearchParameters searchParameters, aql::Collection const* collection,
-    transaction::Methods::IndexHandle indexHandle, Expression* filterExpression)
+    transaction::Methods::IndexHandle indexHandle,
+    std::unique_ptr<Expression> filterExpression)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
       _inVariable(inVariable),
@@ -68,7 +70,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
-      _filterExpression(filterExpression) {}
+      _filterExpression(std::move(filterExpression)) {}
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
   return ENUMERATE_NEAR_VECTORS;
@@ -139,7 +141,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
       engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
-      _searchParameters, _filterExpression, std::move(filterVarsToRegs),
+      _searchParameters, _filterExpression.get(), std::move(filterVarsToRegs),
       _oldDocumentVariable);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
@@ -153,7 +155,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, _filterExpression);
+      collection(), _index, _filterExpression->clone(_plan->getAst()));
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }

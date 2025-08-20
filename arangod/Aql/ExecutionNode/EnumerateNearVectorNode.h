@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
@@ -52,7 +53,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           SearchParameters searchParameters,
                           aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle,
-                          Expression* filterExpression);
+                          std::unique_ptr<Expression> filterExpression);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -115,7 +116,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// @brief selected index for vector search
   transaction::Methods::IndexHandle _index;
 
-  // @brief if filter was set this is the filtering expression
-  Expression* _filterExpression;
+  /// @brief filter expression if filter was pushed down into this node
+  std::unique_ptr<Expression> _filterExpression;
 };
 }  // namespace arangodb::aql
