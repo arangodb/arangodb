@@ -156,7 +156,10 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, _filterExpression->clone(_plan->getAst()));
+      collection(), _index, nullptr);
+  if (_filterExpression) {
+    c->_filterExpression = _filterExpression->clone(plan->getAst(), true);
+  }
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
