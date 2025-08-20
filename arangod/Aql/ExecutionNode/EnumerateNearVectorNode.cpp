@@ -123,12 +123,6 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     for (auto const& var : inVars) {
       TRI_ASSERT(var != nullptr);
       if (var->id == _oldDocumentVariable->id) {
-        // if the index covers the filter projections, then don't add the
-        // document variable to the filter vars. It is not used and will cause
-        // an error during register planning.
-        // For vector enumerate we always materialize the document id later, so
-        // we do not need to special-case projections here. Keep it simple and
-        // include all variables except the old document variable.
         continue;
       }
       auto regId = variableToRegisterId(var);

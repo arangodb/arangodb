@@ -161,7 +161,6 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
         break;
       }
 
-      // 3. Run the expression
       _it->Next();
     }
   }

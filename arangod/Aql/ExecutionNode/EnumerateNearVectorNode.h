@@ -79,10 +79,6 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
-  // TODO extract this, there is same in IndexNode
-  using VectorIndexFilterCoveringVars =
-      std::unordered_map<Variable const*, size_t>;
-
  protected:
   CostEstimate estimateCost() const override;
 
