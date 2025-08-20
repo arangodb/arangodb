@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add filtering support for vector index queries. Filter conditions can now be
+  pushed down into vector similarity searches, improving query performance by
+  evaluating filters during the index scan rather than as a post-processing step.
+
 * Add a separate thread to the UserManager to handle the load of the user-cache asynchronously.
   This pre-loads the user-cache as fast as possible (as soon as the global version changes)
   Also, compared to the old version, this allows the read-only operation to work on the user-cache 
