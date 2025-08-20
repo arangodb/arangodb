@@ -127,8 +127,8 @@ function KeyGenerationOneShardSuite() {
 
       // Check that the keys are large:
       let keys = allDocs.map(doc => parseInt(doc._key)).sort((a, b) => a - b);
-      assertTrue(keys[0] >= 100000000, "First key must be at least 1000000000");
-      assertTrue(keys[1] >= 100000000, "Second key be must be at leaset 100000000");
+      assertTrue(keys[0] >= 100000000, `First key must be at least 100000000 and not ${keys[0]}`);
+      assertTrue(keys[1] >= 100000000, `Second key be must be at leaset 100000000 and not ${keys[1]}`);
     },
 
     testKeyGenerationOneShardCollectionWithPaddedKeyOptions: function () {
@@ -181,8 +181,8 @@ function KeyGenerationOneShardSuite() {
 
       // Check that the keys are large, note that in the padded case we see hex numbers!:
       let keys = allDocs.map(doc => doc._key);
-      assertTrue(keys[0] >= "0000000005f5e100", "First key must be at least 0000000005f5e100");
-      assertTrue(keys[1] >= "0000000005f5e100", "Second key must be at least 0000000005f5e100");
+      assertTrue(keys[0] >= "0000000005f5e100", `First key must be at least 0000000005f5e100 and not ${keys[0]}`);
+      assertTrue(keys[1] >= "0000000005f5e100", `Second key must be at least 0000000005f5e100 and not ${keys[1]}`);
     },
 
     testKeyGenerationMultiShardCollectionForced: function () {
@@ -250,7 +250,7 @@ function KeyGenerationOneShardSuite() {
 
       // Check that the keys are large:
       let keys = allDocs.map(doc => parseInt(doc._key)).sort((a, b) => a - b);
-      assertTrue(keys[0] >= 100000000, "First key must be at least 1000000000");
+      assertTrue(keys[0] >= 100000000, "First key must be at least 100000000");
       assertTrue(keys[1] >= 100000000, "Second key be must be at leaset 100000000");
     },
 
@@ -305,8 +305,8 @@ function KeyGenerationOneShardSuite() {
 
       // Check that the keys are large, note that in the padded case we see hex numbers!:
       let keys = allDocs.map(doc => doc._key);
-      assertTrue(keys[0] >= "0000000005f5e100", "First key must be at least 0000000005f5e100");
-      assertTrue(keys[1] >= "0000000005f5e100", "Second key must be at least 0000000005f5e100");
+      assertTrue(keys[0] >= "0000000005f5e100", `First key must be at least 0000000005f5e100 and not ${keys[0]}`);
+      assertTrue(keys[1] >= "0000000005f5e100", `Second key must be at least 0000000005f5e100 and not ${keys[1]}`);
     },
 
   };
