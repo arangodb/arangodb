@@ -106,9 +106,6 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
         _codeSize(codeSize) {
     RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
         searchParametersContext.trx, collection->id());
-    TRI_ASSERT(index->columnFamily() ==
-               RocksDBColumnFamilyManager::get(
-                   RocksDBColumnFamilyManager::Family::VectorIndex));
 
     _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
       TRI_ASSERT(opts.prefix_same_as_start);
@@ -125,45 +122,46 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
     return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
   }
 
+  // This should be only called when we have filterExpression
   void setToValidIterator() {
+    TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
+    TRI_ASSERT(_searchParametersContext.inputRow.has_value());
+    TRI_ASSERT(_searchParametersContext.queryContext != nullptr);
+    TRI_ASSERT(_searchParametersContext.filterVarsToRegs != nullptr);
+    TRI_ASSERT(_searchParametersContext.documentVariable != nullptr);
+
     while (_it->Valid()) {
       auto const docId = RocksDBKey::indexDocumentId(_it->key());
-      std::vector<LocalDocumentId> docIds{docId};
 
-      VPackSlice document;
-      LocalDocumentId documentId;
+      bool continueIteration;
       _collection->getPhysical()->lookup(
           _searchParametersContext.trx, docId,
           [&](LocalDocumentId token, aql::DocumentData&& /*data */,
               VPackSlice doc) {
-            document = doc;
-            documentId = token;
+            aql::GenericDocumentExpressionContext ctx(
+                *_searchParametersContext.trx,
+                *_searchParametersContext.queryContext,
+                _aqlFunctionsInternalCache,
+                *_searchParametersContext.filterVarsToRegs,
+                *_searchParametersContext.inputRow,
+                _searchParametersContext.documentVariable);
+            ctx.setCurrentDocument(doc);
+            bool mustDestroy;  // will get filled by execution
+            aql::AqlValue a =
+                _searchParametersContext.filterExpression->execute(&ctx,
+                                                                   mustDestroy);
+            aql::AqlValueGuard guard(a, mustDestroy);
+            continueIteration = a.toBoolean();
+
             return true;
           },
           {.countBytes = true});
 
-      TRI_ASSERT(_searchParametersContext.inputRow.has_value());
-      TRI_ASSERT(_searchParametersContext.queryContext != nullptr);
-      TRI_ASSERT(_searchParametersContext.filterVarsToRegs != nullptr);
-      TRI_ASSERT(_searchParametersContext.documentVariable != nullptr);
-
-      // 3. Run the expression
-      aql::GenericDocumentExpressionContext ctx(
-          *_searchParametersContext.trx, *_searchParametersContext.queryContext,
-          _aqlFunctionsInternalCache,
-          *_searchParametersContext.filterVarsToRegs,
-          *_searchParametersContext.inputRow,
-          _searchParametersContext.documentVariable);
-      ctx.setCurrentDocument(document);
-      bool mustDestroy;  // will get filled by execution
-      aql::AqlValue a =
-          _searchParametersContext.filterExpression->execute(&ctx, mustDestroy);
-      aql::AqlValueGuard guard(a, mustDestroy);
-      if (a.toBoolean()) {
-        // No need to advance iterator further this is good
+      if (!continueIteration) {
         break;
       }
 
+      // 3. Run the expression
       _it->Next();
     }
   }
@@ -184,8 +182,8 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
 
  private:
   RocksDBKey _rocksdbKey;
-  arangodb::RocksDBVectorIndex* _index = nullptr;
-  LogicalCollection* _collection;
+  arangodb::RocksDBVectorIndex* _index{nullptr};
+  LogicalCollection* _collection{nullptr};
   SearchParametersContext& _searchParametersContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
