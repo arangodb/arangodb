@@ -39,7 +39,7 @@ commands:
         type: string
     steps:
       - run:
-          name: Checkout ArangoDB
+          name: Checkout RTA
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
             mkdir -p << parameters.destination >>
