@@ -381,12 +381,16 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
         // some thread is still working on our prefetch task
         // -> we need to wait for that task to finish first!
         _prefetchTask->waitFor();
-      } else {
-        // We took responsibility for the prefetch task, but we are not going to
-        // run anything, this in the shutdown process.
-        // We will simply discard the task
-        _prefetchTask->discard(/*isFinished*/ false);
       }
+      // We either claimed the task, or it is finished. Now we have to discard
+      // it, for two reasons:
+      // 1) The state must not stay InProgress, so a second call to
+      //    `stopAsyncTasks()`, which is currently done, will not wait forever.
+      // 2) We must destroy the result, so a possible SharedAqlItemBlockPtr will
+      //    return the AqlItemBlock to the AqlItemBlockManager. Note that a task
+      //    in the scheduler queue will keep the prefetch task alive, possibly
+      //    for longer than the query itself.
+      _prefetchTask->discard(/*isFinished*/ false);
     }
   }
 }
