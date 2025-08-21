@@ -1143,6 +1143,16 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                                   block->getPlanNode()->id().id(), ": ",
                                   block->getPlanNode()->getTypeString(), "]")});
               }
+
+              TRI_IF_FAILURE("AsyncPrefetch::delayDestructor") {
+                // Delay the destruction of `task` to make it likely that the
+                // Query, and with it the AqlItemBlockManager, is destructed
+                // before the PrefetchTask. That way we can assert that the
+                // result, and possible SharedAqlItemBlockPtrs in it, will be
+                // destroyed before the AqlItemBlockManager.
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(1ms);
+              }
             });
 
         if (!queued) {
