@@ -144,7 +144,7 @@ dump_with_crashes_non_parallel size=medium parallelity=1 priority=2000 -- --dump
 audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
 
 # Full Tests Single Server
-shell_fuzzer full !coverage cluster priority=500 parallelity=6 size=big -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
+shell_fuzzer full !coverage cluster priority=500 parallelity=6 size=large -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
 shell_fuzzer full !coverage single priority=500 -- --dumpAgencyOnError true --extraArgs:experimental-vector-index true
 authentication_parameters single full priority=1000
 config single full priority=1000

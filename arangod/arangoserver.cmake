@@ -5,7 +5,7 @@ add_library(arangoserver STATIC
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
-  Auth/UserManager.cpp
+  Auth/UserManagerImpl.cpp
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
