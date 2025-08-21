@@ -42,13 +42,7 @@ commands:
           name: Checkout RTA
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            mkdir -p << parameters.destination >>
-            cd << parameters.destination >>
-            echo << pipeline.git.revision >>
-            git init
-            git remote add origin git@github.com:arangodb/release-test-automation.git
-            echo "Fetching stuff"
-            git checkout main
+            git clone git@github.com:arangodb/release-test-automation.git <<parameters.destination>>
 
 jobs:
   build-test-docker-image:
