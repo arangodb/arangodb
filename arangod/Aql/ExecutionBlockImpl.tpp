@@ -384,12 +384,15 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
       }
       // We either claimed the task, or it is finished. Now we have to discard
       // it, for two reasons:
-      // 1) The state must not stay InProgress, so a second call to
-      //    `stopAsyncTasks()`, which is currently done, will not wait forever.
-      // 2) We must destroy the result, so a possible SharedAqlItemBlockPtr will
-      //    return the AqlItemBlock to the AqlItemBlockManager. Note that a task
-      //    in the scheduler queue will keep the prefetch task alive, possibly
-      //    for longer than the query itself.
+      // 1) The state must not stay InProgress (if we claimed the task), so a
+      //    second call to `stopAsyncTasks()`, which is currently done, will not
+      //    wait forever.
+      // 2) We must destroy the result (if the task finished), so a possible
+      //    SharedAqlItemBlockPtr will return the AqlItemBlock to the
+      //    AqlItemBlockManager. Note that the callback executed by the
+      //    scheduler queue will release its shared_ptr to the prefetch task
+      //    after it has finished; so it is possible that the task outlives the
+      //    query, and thus the AqlItemBlockManager.
       _prefetchTask->discard(/*isFinished*/ false);
     }
   }
