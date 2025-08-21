@@ -88,9 +88,11 @@ jobs:
           name: Build RTA Docker Image
           command: |
             set -x
+            cd /home/circleci/project/scripts/docker/test
+            TAG="$(cat << parameters.arch >>-tag.txt)"
             cd /home/circleci/project-rta
             image=<< parameters.image >>
-            ./jenkins/build_and_push_circle-ci-containers.sh "$image" "$(cat << parameters.arch >>-tag.txt)"
+            ./jenkins/build_and_push_circle-ci-containers.sh "${image}" "${TAG}"
       - run:
           name: Build GO Docker Image
           command: |
