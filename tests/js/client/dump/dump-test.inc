@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango, print */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango, print, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -1551,7 +1551,8 @@
           // cluster wide unique ids. Here, we check that after the
           // hotbackup restore the number in /arango/Sync/LatestID
           // in the agency is lower again.
-          let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(1)"));
+          const IM = GLOBAL.instanceManager;
+          let next = IM.agencyMgr.uniqId(1);
           assertTrue(next < 100000000, "expected next uniqid after restore to be less than 100000000, not " + next);
         }
       },

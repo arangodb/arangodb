@@ -48,8 +48,8 @@ RestStatus RestAuthReloadHandler::execute() {
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
-    um->triggerLocalReload();
-    um->triggerGlobalReload();  // noop except on coordinator
+    // Blocks until we see a newer version of the users
+    um->triggerCacheRevalidation();
   }
 
   VPackBuilder result;

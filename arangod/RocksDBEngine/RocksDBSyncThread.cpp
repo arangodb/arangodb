@@ -96,9 +96,16 @@ Result RocksDBSyncThread::sync(rocksdb::DB* db) {
 void RocksDBSyncThread::beginShutdown() {
   Thread::beginShutdown();
 
-  // wake up the thread that may be waiting in run()
-  std::lock_guard guard{_condition.mutex};
-  _condition.cv.notify_all();
+  {  // wake up the thread that may be waiting in run()
+    std::lock_guard guard{_condition.mutex};
+    _condition.cv.notify_all();
+  }
+
+  {  // acquire the mutex (exclusively); all notifySyncListeners() calls that
+    // happen later (acquiring the shared mutex) will now see that the thread
+    // is shutting down and not execute any listeners.
+    std::lock_guard lock(_syncListenersMutex);
+  }
 }
 
 void RocksDBSyncThread::registerSyncListener(
@@ -206,6 +213,16 @@ void RocksDBSyncThread::run() {
 void RocksDBSyncThread::notifySyncListeners(
     rocksdb::SequenceNumber seq) noexcept {
   std::shared_lock lock(_syncListenersMutex);
+  if (isStopping()) {
+    // The thread should be stopped exactly during RocksDBEngine::stop(), so
+    // we have to be in a shutdown.
+    TRI_ASSERT(_engine.server().isStopping());
+    // It's no longer safe to execute listeners. Dependencies of RocksDBEngine
+    // might be stopped already, or at any moment.
+    // It should be OK not to execute them, because a crash could also leave us
+    // in a state where they haven't been executed.
+    return;
+  }
   for (auto& listener : _syncListeners) {
     listener->onSync(seq);
   }

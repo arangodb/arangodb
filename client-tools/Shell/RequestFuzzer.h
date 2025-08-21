@@ -63,11 +63,16 @@ class RequestFuzzer {
   };
 
  public:
-  RequestFuzzer(std::optional<uint32_t> numIt, std::optional<uint32_t> seed)
+  RequestFuzzer(std::optional<uint32_t> numIt,
+                std::vector<std::string> const& wordListForKeys,
+                std::vector<std::string> const& wordListForRoute,
+                std::optional<uint32_t> seed)
       : _numIterations(numIt.value_or(defaultNumIterations)),
         _seed(seed.value_or(std::random_device()())),
         _randContext{_seed},
-        _headerSplitInLines{} {}
+        _headerSplitInLines{},
+        _wordListForKeys(wordListForKeys),
+        _wordListForRoute(wordListForRoute) {}
 
   [[nodiscard]] uint32_t getSeed() const noexcept { return _seed; }
 
@@ -104,6 +109,9 @@ class RequestFuzzer {
   static constexpr uint32_t kArrayNumMembers = 4;
 
   uint32_t _recursionDepth = 0;
+  const std::vector<std::string>& _wordListForKeys;
+  const std::vector<std::string>& _wordListForRoute;
+
   std::vector<std::unordered_set<std::string>> _tempObjectKeys;
   std::unordered_set<std::string> _usedKeys;
 };

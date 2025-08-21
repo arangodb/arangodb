@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango, assertEqual, assertTrue, assertFalse */
+/* global print, arango, assertEqual, assertTrue, assertFalse, GLOBAL */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -500,9 +500,10 @@ function dumpTestSuite() {
         // `tests/js/server/dump/dump-test.js`) that the lower number
         // has been stored in the hotbackup and restored in the restore
         // process.
-        let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        const IM = GLOBAL.instanceManager;
+        let next = IM.agencyMgr.uniqId(100000000);
         assertTrue(next < 100000000, "expected next uniqid in agency to be less than 100000000, not " + next);
-        next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        next = IM.agencyMgr.uniqId(100000000);
         assertTrue(next > 100000000, "expected next uniqid in agency to be greater than 100000000, not " + next);
       }
     }
