@@ -31,8 +31,7 @@ commands:
             git init
             git remote add origin git@github.com:arangodb/arangodb.git
             echo "Fetching stuff"
-            git fetch --depth 1 origin << pipeline.git.revision >>
-            git checkout << pipeline.git.revision >>
+            git checkout main
   checkout-rta:
     parameters:
       destination:
