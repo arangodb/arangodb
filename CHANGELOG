@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-2211: AQL queries using the async-prefetch rule, which result in a
+  failure due to a runtime exception or possibly a kill, had a possible race
+  during query destruction that could result in undefined behavior (e.g.
+  memory leaks or crashes).
+
 * Add a separate thread to the UserManager to handle the load of the user-cache asynchronously.
   This pre-loads the user-cache as fast as possible (as soon as the global version changes)
   Also, compared to the old version, this allows the read-only operation to work on the user-cache 
