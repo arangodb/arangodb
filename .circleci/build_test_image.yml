@@ -91,8 +91,8 @@ jobs:
             docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
             docker tag $image:latest-<< parameters.arch >> $image:latest
             docker push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
-          name: Build RTA Docker Image
       - run:
+          name: Build RTA Docker Image
           command: |
             set -x
             cd /home/circleci/project-rta
