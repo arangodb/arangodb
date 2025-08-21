@@ -90,6 +90,7 @@ jobs:
             set -x
             TAG="$(cat /home/circleci/project/scripts/docker/<< parameters.arch >>-tag.txt)"
             cd /home/circleci/project-rta
+            ls -alh
             image=<< parameters.image >>
             ./jenkins/build_and_push_circle-ci-containers.sh "${image}" "${TAG}"
       - run:
