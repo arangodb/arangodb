@@ -662,6 +662,7 @@ jobs:
       - run:
           name: Clone RTA
           command: |
+            set + x
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
@@ -670,6 +671,7 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
+            set +x
             pwd
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
