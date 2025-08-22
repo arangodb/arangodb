@@ -653,6 +653,9 @@ jobs:
       arangosh_args:
         type: string
         default: ""
+      docker_image:
+        type: string
+        default: "<< pipeline.parameters.test-docker-image >>"
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -693,7 +696,7 @@ jobs:
             fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
-            DOCKER_CONTAINER="<< pipeline.parameters.test-docker-image >>"
+            DOCKER_CONTAINER="<< parameters.docker_image >>"
             bash -x ./jenkins/circleci_tar.sh \
               --no-checkdata \
               --no-run-upgrade  \
