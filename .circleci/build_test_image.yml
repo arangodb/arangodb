@@ -147,6 +147,8 @@ jobs:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - checkout-arangodb:
           destination: /home/circleci/project
+      - checkout-rta:
+          destination: /home/circleci/project-rta
       - attach_workspace:
           at: .
       - setup_remote_docker:
@@ -163,8 +165,9 @@ jobs:
       - run:
           name: Build RTA container manifest
           command: |
+            TAG="$(cat /home/circleci/project/scripts/docker/<< parameters.arch >>-tag.txt)"
             cd /home/circleci/project-rta
-            ./jenkins/build_and_push_circle-ci-manifest.sh << parameters.image >> $(cat amd64-tag.txt)
+            ./jenkins/build_and_push_circle-ci-manifest.sh << parameters.image >> $TAG
       - run:
           name: Build go test container manifest
           command: |
