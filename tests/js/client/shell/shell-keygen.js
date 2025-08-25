@@ -1138,31 +1138,17 @@ function KeyGenerationLocationSuite() {
       db._drop(cn);
     },
 
-    testThatFailurePointsWork1: function () {
-      if (!cluster) {
-        return;
-      }
-
-      let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 1});
-
-      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer", filter);
-      try {
-        c.insert({});
-      } catch (err) {
-        assertEqual(ERRORS.ERROR_DEBUG.code, err.errorNum);
-      }
-    },
-
-    testThatFailurePointsWork2: function () {
+    testThatFailurePointsWork: function () {
       if (!cluster) {
         return;
       }
 
       let c = db._create(cn, {keyOptions: {type: "traditional"}, numberOfShards: 2});
 
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator");
       try {
         c.insert({});
+        fail();
       } catch (err) {
         assertEqual(ERRORS.ERROR_DEBUG.code, err.errorNum);
       }
@@ -1173,8 +1159,8 @@ function KeyGenerationLocationSuite() {
         return;
       }
 
-      // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      // fail if we generate a key with the single server key generator
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1});
@@ -1209,8 +1195,8 @@ function KeyGenerationLocationSuite() {
         return;
       }
 
-      // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      // fail if we generate a key with the single server key generator:
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
 
       generators().forEach((generator) => {
         let c = db._create(cn, {keyOptions: {type: generator}, numberOfShards: 1, shardKeys: ["id"]});
@@ -1246,8 +1232,8 @@ function KeyGenerationLocationSuite() {
         return;
       }
 
-      // fail if we generate a key on a coordinator
-      IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+      // fail if we generate a key with the single server key generator:
+      IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
 
       db._createDatabase(cn, {sharding: "single"});
       try {
@@ -1408,8 +1394,8 @@ function KeyGenerationLocationSmartGraphSuite() {
 
     testSingleShardSmartVertexInserts: function () {
       if (cluster) {
-        // fail if we generate a key on a coordinator
-        IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
+        // fail if we generate a key with the single server key generator
+        IM.debugSetFailAt("KeyGenerator::generateOnSingleServer");
       } else {
         // single server: we can actually get here with the SmartGraph simulator!
         IM.debugSetFailAt("KeyGenerator::generateOnCoordinator", filter);
