@@ -5,6 +5,9 @@ devel
   without user specified _key in collections with exactly one shard or with
   multiple shard, non-standard sharding and `forceOneShardAttributeValue`.
 
+* Fix BTS-1732 and BTS-2177: Possible crashes during shutdown, and maintainer
+  mode (i.e. non-production) assertions during tests.
+
 * Add a separate thread to the UserManager to handle the load of the user-cache asynchronously.
   This pre-loads the user-cache as fast as possible (as soon as the global version changes)
   Also, compared to the old version, this allows the read-only operation to work on the user-cache 

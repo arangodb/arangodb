@@ -1173,7 +1173,7 @@ class instanceManager {
   }
   continueServerWaitOk(urlIDOrShortName) {
     this.arangods.forEach(arangod => {
-      if (!arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
+      if (urlIDOrShortName !== undefined && !arangod.matches(instanceRole.dbServer, urlIDOrShortName)) {
         return;
       }
       arangod.resume();

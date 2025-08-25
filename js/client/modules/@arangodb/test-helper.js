@@ -42,6 +42,7 @@ const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
+const CI = require('@arangodb/cluster-info');
 const arangosh = require('@arangodb/arangosh');
 const pu = require('@arangodb/testutils/process-utils');
 const jsunity = require('jsunity');
@@ -585,11 +586,9 @@ exports.getServersByType = function (type) {
 };
 
 exports.getEndpointById = function (id) {
-  const toEndpoint = (d) => (d.endpoint);
-
   const instanceInfo = exports.getInstanceInfo();
-  const instance = instanceInfo.arangods.find(d => d.id === id);
-  return endpointToURL(toEndpoint(instance));
+  const instance = instanceInfo.arangods.find(d => d.id === id || id === d.shortName);
+  return instance.url;
 };
 
 exports.getUrlById = function (id) {
@@ -650,28 +649,8 @@ exports.deactivateFailure = function (name) {
   });
 };
 
-exports.getMaxNumberOfShards = function () {
-  return arango.POST("/_admin/execute", "return require('internal').maxNumberOfShards;");
-};
-
-exports.getMaxReplicationFactor = function () {
-  return arango.POST("/_admin/execute", "return require('internal').maxReplicationFactor;");
-};
-
-exports.getMinReplicationFactor = function () {
-  return arango.POST("/_admin/execute", "return require('internal').minReplicationFactor;");
-};
-
 exports.getDbPath = function () {
   return arango.POST("/_admin/execute", `return require("internal").db._path();`);
-};
-
-exports.getResponsibleShardFromClusterInfo = function (vertexCollectionId, v) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleShard(${JSON.stringify(vertexCollectionId)}, ${JSON.stringify(v)})`);
-};
-
-exports.getResponsibleServersFromClusterInfo = function (arg) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleServers(${JSON.stringify(arg)});`);
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
@@ -748,35 +727,6 @@ exports.getAgentEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.agent);
 };
 
-exports.uniqid = function  () {
-  return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
-};
-
-exports.arangoClusterInfoFlush = function () {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
-};
-
-exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
-  return arango.POST("/_admin/execute", 
-    `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
-};
-
-exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, shard) {
-  return arango.POST("/_admin/execute", 
-    `return global.ArangoClusterInfo.getCollectionInfoCurrent(
-      ${JSON.stringify(dbName)}, 
-      ${JSON.stringify(collName)}, 
-      ${JSON.stringify(shard)})`);
-};
-
-exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
-};
-
-exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
-};
-
 const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
@@ -806,7 +756,7 @@ const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
 
 
 exports.findCollectionServers = function (database, collection, replVersion="1") {
-  var cinfo = exports.arangoClusterInfoGetCollectionInfo(database, collection);
+  var cinfo = CI.getCollectionInfo(database, collection);
   var shard = Object.keys(cinfo.shards)[0];
 
   if (replVersion === "2") {
