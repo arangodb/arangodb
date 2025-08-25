@@ -167,7 +167,7 @@ jobs:
           command: |
             TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
             cd /home/circleci/project-rta
-            ./jenkins/build_and_push_circle-ci-manifest.sh << parameters.image >> $TAG
+            ./jenkins/build_and_push_circle-ci-manifests.sh << parameters.image >> $TAG
       - run:
           name: Build go test container manifest
           command: |
