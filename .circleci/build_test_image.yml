@@ -165,7 +165,7 @@ jobs:
       - run:
           name: Build RTA container manifest
           command: |
-            TAG="$(cat /home/circleci/project/scripts/docker/<< parameters.arch >>-tag.txt)"
+            TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
             cd /home/circleci/project-rta
             ./jenkins/build_and_push_circle-ci-manifest.sh << parameters.image >> $TAG
       - run:
