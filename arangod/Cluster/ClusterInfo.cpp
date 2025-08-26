@@ -620,6 +620,11 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     return idCounter.fetch_add(1);
   }
 
+  TRI_IF_FAILURE("always-fetch-new-cluster-wide-uniqid") {
+    uint64_t result = _agency.uniqid(count, 0.0);
+    return result;
+  }
+
   std::lock_guard mutexLocker{_idLock};
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
@@ -659,6 +664,21 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
 
   TRI_ASSERT(result != 0);
   return result;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get a number of cluster-wide unique IDs, returns the first
+/// one and guarantees that <number> are reserved for the caller.
+/// This variant uses _agency to directly get things from the agency.
+//////////////////////////////////////////////////////////////////////////////
+
+std::optional<uint64_t> ClusterInfo::uniqidFromAgency(uint64_t number) {
+  try {
+    uint64_t result = _agency.uniqid(number, 0.0);
+    return {result};
+  } catch (...) {
+    return {};
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

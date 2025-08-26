@@ -1,3 +1,11 @@
+3.12.5.3 (XXXX-XX-XX)
+---------------------
+
+* Fix unique _key generation in two cases: AQL INSERT operations in a loop
+  without user specified _key in collections with exactly one shard or with
+  multiple shard, non-standard sharding and `forceOneShardAttributeValue`.
+
+
 3.12.5.2 (2025-08-01)
 ---------------------
 

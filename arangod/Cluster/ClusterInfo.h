@@ -316,6 +316,15 @@ class ClusterInfo final {
 
   uint64_t uniqid(uint64_t = 1);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief get a number of cluster-wide unique IDs, returns the first
+  /// one and guarantees that <number> are reserved for the caller.
+  /// This variant uses _agency to directly get things from the agency.
+  /// If the optional value is empty, an error occurred.
+  //////////////////////////////////////////////////////////////////////////////
+
+  std::optional<uint64_t> uniqidFromAgency(uint64_t number);
+
   /**
    * @brief Agency dump including replicated log and compaction
    * @param  body  Builder to fill with dump
