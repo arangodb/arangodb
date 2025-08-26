@@ -347,28 +347,61 @@ RocksDBVectorIndex::readBatch(std::vector<float>& inputs,
   return {std::move(labels), std::move(distances)};
 }
 
-Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice doc,
-                                                  std::vector<float>& input) {
+Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
+                                                  std::vector<float>& output) {
   TRI_ASSERT(_fields.size() == 1);
-  VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
-  input.clear();
-  input.reserve(_definition.dimension);
-  if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
-    return {TRI_ERROR_BAD_PARAMETER, res.error()};
-  }
 
-  if (input.size() != static_cast<std::size_t>(_definition.dimension)) {
-    return {TRI_ERROR_BAD_PARAMETER,
-            fmt::format("input vector of {} dimension does not have the "
-                        "correct dimension of {}",
-                        input.size(), _definition.dimension)};
-  }
+  try {
+    VPackSlice value = rocksutils::accessDocumentPath(doc, _fields[0]);
 
-  if (_definition.metric == SimilarityMetric::kCosine) {
-    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
-  }
+    // this fails if index is not sparse
+    if (value.isNone()) {
+      return {TRI_ERROR_BAD_PARAMETER,
+              fmt::format("vector field not present in document {}",
+                          transaction::helpers::extractKeyFromDocument(doc)
+                              .copyString()
+                              .c_str())};
+    }
 
-  return {};
+    if (!value.isArray()) {
+      return {TRI_ERROR_TYPE_ERROR,
+              fmt::format("array expected for vector attribute for document {}",
+                          transaction::helpers::extractKeyFromDocument(doc)
+                              .copyString()
+                              .c_str())};
+    }
+
+    if (value.length() != _definition.dimension) {
+      return {TRI_ERROR_TYPE_ERROR,
+              fmt::format(
+                  "provided vector is not of matching dimension for document "
+                  "{}, index dimension: {}, document dimension: {}",
+                  transaction::helpers::extractKeyFromDocument(doc)
+                      .copyString()
+                      .c_str(),
+                  _definition.dimension, value.length())};
+    }
+
+    // We don't make assumptions here if output contains one or more vectors
+    for (auto const d : VPackArrayIterator(value)) {
+      if (not d.isNumber<double>()) {
+        return {
+            TRI_ERROR_TYPE_ERROR,
+            fmt::format("vector contains data not representable as double for "
+                        "document {}",
+                        transaction::helpers::extractKeyFromDocument(doc)
+                            .copyString()
+                            .c_str())};
+      }
+      output.push_back(d.getNumericValue<double>());
+    }
+
+    return {};
+  } catch (velocypack::Exception const& e) {
+    return {TRI_ERROR_TYPE_ERROR,
+            fmt::format("deserialization error when accessing a document: {}",
+                        e.what())};
+  }
 }
 
 /// @brief inserts a document into the index
@@ -379,8 +412,18 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
                                   OperationOptions const& /*options*/,
                                   bool /*performChecks*/) {
   std::vector<float> input;
-  if (auto res = readDocumentVectorData(doc, input); res.fail()) {
+  input.reserve(_definition.dimension);
+  if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
+    // We ignore the documents without the embedding field if the index is
+    // sparse
+    if (_sparse && res.is(TRI_ERROR_BAD_PARAMETER)) {
+      return {};
+    }
     return res;
+  }
+
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
   faiss::idx_t listId{0};
@@ -421,8 +464,14 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   while (counter < trainingDataSize && it->Valid()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
     auto doc = VPackSlice(reinterpret_cast<uint8_t const*>(it->value().data()));
-    if (auto res = readDocumentVectorData(doc, input); res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
+    // TODO Don't use input array only trainingData array
+    if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
+      if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
+        it->Next();
+        continue;
+      }
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
+                                     "invalid index type definition");
     }
 
     trainingData.insert(trainingData.end(), input.begin(), input.end());
@@ -432,10 +481,21 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
     ++counter;
   }
 
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimension, counter, trainingData.data());
+  }
+
   LOG_VECTOR_INDEX("a162b", INFO, Logger::FIXME)
       << "Loaded " << counter << " vectors. Start training process on "
       << _definition.nLists << " centroids.";
 
+  if (trainingData.size() == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_NOT_IMPLEMENTED,
+        "For the vector index to be created documents "
+        "must be present in the respective collection for the training "
+        "process.");
+  }
   _faissIndex->train(counter, trainingData.data());
   LOG_VECTOR_INDEX("a160b", INFO, Logger::FIXME) << "Finished training.";
 
@@ -457,8 +517,13 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
                                   velocypack::Slice doc,
                                   OperationOptions const& /*options*/) {
   std::vector<float> input;
-  if (auto res = readDocumentVectorData(doc, input); res.fail()) {
+  input.reserve(_definition.dimension);
+  if (auto const res = readDocumentVectorData(doc, input); res.fail()) {
     return res;
+  }
+
+  if (_definition.metric == SimilarityMetric::kCosine) {
+    faiss::fvec_renorm_L2(_definition.dimension, 1, input.data());
   }
 
   faiss::idx_t listId{0};
@@ -466,7 +531,7 @@ Result RocksDBVectorIndex::remove(transaction::Methods& /*trx*/,
   _faissIndex->quantizer->assign(1, input.data(), &listId);
   RocksDBKey rocksdbKey;
   rocksdbKey.constructVectorIndexValue(objectId(), listId, documentId);
-  auto status = methods->Delete(_cf, rocksdbKey);
+  auto const status = methods->Delete(_cf, rocksdbKey);
 
   if (!status.ok()) {
     // Here we need to throw since there is no way to return the status
@@ -603,47 +668,6 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
-  auto extractDocumentVector =
-      [&](velocypack::Slice doc, std::vector<basics::AttributeName> const& path,
-          std::vector<float>& output) {
-        try {
-          auto v = rocksutils::accessDocumentPath(doc, path);
-          if (!v.isArray()) {
-            THROW_ARANGO_EXCEPTION_FORMAT(
-                TRI_ERROR_TYPE_ERROR,
-                "array expected for vector attribute for document %s",
-                transaction::helpers::extractKeyFromDocument(doc)
-                    .copyString()
-                    .c_str());
-          }
-          if (v.length() != _definition.dimension) {
-            THROW_ARANGO_EXCEPTION_FORMAT(
-                TRI_ERROR_TYPE_ERROR,
-                "provided vector is not of matching dimension for document %s",
-                transaction::helpers::extractKeyFromDocument(doc)
-                    .copyString()
-                    .c_str());
-          }
-          for (auto d : VPackArrayIterator(v)) {
-            if (not d.isNumber<double>()) {
-              THROW_ARANGO_EXCEPTION_FORMAT(
-                  TRI_ERROR_TYPE_ERROR,
-                  "vector contains data not representable as double for "
-                  "document %s",
-                  transaction::helpers::extractKeyFromDocument(doc)
-                      .copyString()
-                      .c_str());
-            }
-            output.push_back(d.getNumericValue<double>());
-          }
-        } catch (velocypack::Exception const& e) {
-          LOG_DEVEL << doc.toJson();
-          THROW_ARANGO_EXCEPTION_FORMAT(
-              TRI_ERROR_TYPE_ERROR,
-              "deserialization error when accessing a document: %s", e.what());
-        }
-      };
-
   auto readDocuments = [&] {
     // This is a simple implementation, using a single thread.
     // If reading becomes the bottleneck, we can always adapt the parallel index
@@ -665,7 +689,16 @@ Result RocksDBVectorIndex::ingestVectors(
       while (documentIterator->Valid() && not hasError.load()) {
         LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
         VPackSlice doc = RocksDBValue::data(documentIterator->value());
-        extractDocumentVector(doc, _fields[0], batch->vectors);
+        if (auto const res = readDocumentVectorData(doc, batch->vectors);
+            res.fail()) {
+          // If the documents does not have an embedding attribute and the index
+          // is sparse skip
+          if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
+            documentIterator->Next();
+            continue;
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
         batch->docIds.push_back(docId);
         documentIterator->Next();
 
@@ -680,6 +713,7 @@ Result RocksDBVectorIndex::ingestVectors(
           batch = prepareBatch();
         }
       }
+
       if (_definition.metric == SimilarityMetric::kCosine) {
         faiss::fvec_renorm_L2(_definition.dimension, batch->docIds.size(),
                               batch->vectors.data());

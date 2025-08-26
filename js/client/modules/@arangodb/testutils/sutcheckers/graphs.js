@@ -46,7 +46,7 @@ exports.checker = class {
       this.runner.setResult(te, false, {
         status: false,
         message: 'failed to fetch the graphs: ' + x.message
-      });
+      }, this.name);
       return false;
     }
     if (graphs && graphs.count() !== this.graphCount) {
@@ -54,7 +54,7 @@ exports.checker = class {
         status: false,
         message: 'Cleanup of graphs missing - found graph definitions: ' +
           JSON.stringify(graphs.toArray())
-      });
+      }, this.name);
       this.graphCount = graphs.count();
       return false;
     }

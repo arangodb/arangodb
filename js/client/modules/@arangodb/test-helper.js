@@ -953,3 +953,64 @@ exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFil
   sanHnd.fetchSanFileAfterExit(actualRc.pid);
   return actualRc;
 };
+
+function createCollectionDataFile(data, path, cn, split) {
+  const prefix = cn + "_" + require("@arangodb/crypto").md5(cn);
+  let write = (data, fn) => {
+    fs.write(fs.join(path, fn), data.map((d) => JSON.stringify(d)).join('\n'));
+  };
+
+  if (split) {
+    const n = data.length;
+    let id = 0; // file number
+    let s = 0;
+    for (let i = 0; i <= n; ++i) {
+      if (i - s >= (n / 5) || i === n) {
+        write(data.slice(s, i), prefix + "." + (id++) + ".data.json");
+        s = i;
+      }
+    }
+  } else {
+    write(data, prefix + ".data.json");
+  }
+};
+
+function createCollectionStructureFile(path, cn) {
+  let fn = fs.join(path, cn + ".structure.json");
+  fs.write(fn, JSON.stringify({
+    indexes: [],
+    parameters: {
+      name: cn,
+      numberOfShards: 3,
+      type: 2
+    }
+  }));
+}
+
+function createCollectionFiles(path, cn, split) {
+  createCollectionStructureFile(path, cn);
+  let data = [];
+  for (let i = 0; i < 1000; ++i) {
+    data.push({type: 2300, data: {_key: "test" + i, value: i}});
+  }
+  createCollectionDataFile(data, path, cn, /*split*/ false);
+  return data;
+}
+
+function createDumpJsonFile(path, databaseName, id) {
+  let fn = fs.join(path, "dump.json");
+  fs.write(fn, JSON.stringify({
+    database: databaseName,
+    properties: {
+      name: databaseName,
+      id: id
+    }
+  }));
+}
+
+exports.dumpUtils =  {
+  createCollectionDataFile: createCollectionDataFile,
+  createCollectionStructureFile: createCollectionStructureFile,
+  createCollectionFiles: createCollectionFiles,
+  createDumpJsonFile: createDumpJsonFile,
+};

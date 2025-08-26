@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Async/Registry/promise.h"
+#include "Logger/LogContext.h"
 #include "TaskMonitoring/task.h"
 #include "Utils/ExecContext.h"
 
@@ -31,7 +32,7 @@ namespace arangodb {
 /**
    Global context in arangodb
 
-   In an asyncronous coroutine we need to capture this context when suspending
+   In an asynchronous coroutine we need to capture this context when suspending
    and resetting it when resuming to make sure that the global variables are set
    correctly.
  */
@@ -39,16 +40,18 @@ struct Context {
   std::shared_ptr<ExecContext const> _execContext;
   async_registry::CurrentRequester _requester;
   task_monitoring::Task* _task;
+  LogContext _logContext;
 
   Context()
       : _execContext{ExecContext::currentAsShared()},
         _requester{std::move(*async_registry::get_current_coroutine())},
-        _task{*task_monitoring::get_current_task()} {}
+        _task{*task_monitoring::get_current_task()},
+        _logContext{LogContext::current()} {}
 
   Context(Context const& other) = delete;
   auto operator=(Context const& other) -> Context& = delete;
+  auto operator=(Context&& other) noexcept -> Context& = default;
   Context(Context&& other) = default;
-  auto operator=(Context&& other) -> Context& = default;
 
   auto set() -> void {
     ExecContext::set(_execContext);
@@ -56,6 +59,7 @@ struct Context {
       *async_registry::get_current_coroutine() = _requester;
     }
     *task_monitoring::get_current_task() = _task;
+    LogContext::setCurrent(_logContext);
   }
 
   auto update() -> void {
@@ -64,6 +68,7 @@ struct Context {
       _requester = *async_registry::get_current_coroutine();
     }
     _task = *task_monitoring::get_current_task();
+    _logContext = LogContext::current();
   }
 
   ~Context() = default;
