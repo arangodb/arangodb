@@ -2098,6 +2098,17 @@ async<void> RestAdminClusterHandler::handleUniqId() {
   }
 }
 
+// The following RestHandler method has two purposes:
+//  (1) Fetch and reserve a certain range of globally-unique IDs from the
+//      cluster. This is, when the `number` query parameter is given.
+//  (2) Make sure that subsequent ranges which anybody will reserve will
+//      always be ranges whose members are larger than the given value.
+//      This is, then the `minimum` query parameter is given.
+// In the first case, there is a limitation to at most 1000000 keys at
+// a time, in the second case the minimum must be at most 2^60 and if the
+// currently maximal ID is already larger, nothing is done.
+// Both cases return a range of reserved keys.
+
 async<void> RestAdminClusterHandler::handlePutUniqId() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
