@@ -51,20 +51,6 @@ for (let l of rightLevels) {
   colLevel[l] = new Set();
 }
 
-const executeJS = (code) => {
-  const dbName = '_system';
-  let httpOptions = pu.makeAuthorizationHeaders({
-    username: 'root',
-    password: ''
-  }, {});
-  httpOptions.method = 'POST';
-  httpOptions.timeout = 1800;
-  httpOptions.returnBodyOnError = true;
-  return download(arango.getEndpoint().replace('tcp', 'http') + `/_db/${dbName}/_admin/execute?returnAsJSON=true`,
-    code,
-    httpOptions);
-};
-
 // The Naming Convention will be
 // UnitTest_server-level_db-level_col-level
 //

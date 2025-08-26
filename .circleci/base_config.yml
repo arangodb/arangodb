@@ -19,10 +19,10 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:15"
+    default: "arangodb/ubuntubuildarangodb-devel:16"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5b5ffda4
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-9cfa8ba1
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -653,6 +653,9 @@ jobs:
       arangosh_args:
         type: string
         default: ""
+      docker_image:
+        type: string
+        default: "<< pipeline.parameters.test-docker-image >>"
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -662,6 +665,7 @@ jobs:
       - run:
           name: Clone RTA
           command: |
+            set + x
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
@@ -670,6 +674,7 @@ jobs:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
           command: |
+            set +x
             pwd
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
@@ -691,6 +696,7 @@ jobs:
             fi
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation
+            export DOCKER_CONTAINER="<< parameters.docker_image >>"
             bash -x ./jenkins/circleci_tar.sh \
               --no-checkdata \
               --no-run-upgrade  \

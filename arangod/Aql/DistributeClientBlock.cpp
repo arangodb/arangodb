@@ -88,15 +88,15 @@ auto DistributeClientBlock::clear() -> void {
 auto DistributeClientBlock::addBlock(SkipResult const& skipResult,
                                      SharedAqlItemBlockPtr block,
                                      std::vector<size_t> usedIndexes) -> void {
+  TRI_ASSERT(!usedIndexes.empty() || block == nullptr);
   if (gotHardLimit()) {
     // We have already seen a hard limit, so we do not need to add more data.
-    TRI_ASSERT(!block->hasShadowRows())
+    TRI_ASSERT(block == nullptr || !block->hasShadowRows())
         << "The logic here is not implemented yet for subqueries. If we want "
            "to activate it, we need to move the ShadowRow over even if we have "
            "seen a hardLimit.";
     return;
   }
-  TRI_ASSERT(!usedIndexes.empty() || block == nullptr);
   _queue.emplace_back(skipResult, std::move(block), std::move(usedIndexes));
 }
 

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceInfo */
+/*global assertTrue, assertFalse, assertEqual, fail, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -32,9 +32,11 @@ const internal = require('internal');
 const wait = require("internal").wait;
 const continueExternal = require("internal").continueExternal;
 const {
-  agency, 
   getDBServers
 } = require("@arangodb/test-helper");
+
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -53,7 +55,7 @@ function SynchronousReplicationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testInquiry : function () {
       console.warn("Checking inquiry");
-      var writeResult = agency.call("write",
+      var writeResult = AM.call("write",
         [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
       console.log(
         "Inquired successfully a matched precondition under 503 response from write");
@@ -62,19 +64,19 @@ function SynchronousReplicationSuite () {
       assertTrue("results" in writeResult);
       assertTrue(writeResult.results[0]>0);
       try {
-        writeResult = agency.call("write",
+        writeResult = AM.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
         fail();
       } catch (e1) {
         console.log(
           "Inquired successfully a failed precondition under 503 response from write");
       }
-      writeResult = agency.call("write",
+      writeResult = AM.call("write",
         [[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
       console.log(
         "Inquired successfully a matched precondition under 0 response from write");
       try {
-        writeResult = agency.call("write",
+        writeResult = AM.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
         fail();
       } catch (e1) {
@@ -140,7 +142,7 @@ function SynchronousReplicationSuite () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
 
       // Heal follower
-      assertTrue(continueExternal(getDBServers()[failedPos].pid));
+      IM.continueServerWaitOk();
     },
   };
 }

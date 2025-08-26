@@ -26,7 +26,69 @@
 
 const jsunity = require("jsunity");
 const internal = require('internal');
+const fs = require('fs');
 const IM = global.instanceManager;
+const ct = require('@arangodb/testutils/client-tools');
+
+const wordListForRoute = [
+  "/_db", "/_admin", "/_api", "/_system", "/_cursor", "/version", "/status",
+  "/license", "/collection", "/database", "/current", "/log", "/"
+];
+
+const wordListForKeys = [
+  "Accept",
+  "",
+  "Accept-Charset",
+  "Accept-Encoding",
+  "Accept-Language",
+  "Accept-Ranges",
+  "Allow",
+  "Authorization",
+  "Cache-control",
+  "Connection",
+  "Content-encoding",
+  "Content-language",
+  "Content-location",
+  "Content-MD5",
+  "Content-range",
+  "Content-type",
+  "Date",
+  "ETag",
+  "Expect",
+  "Expires",
+  "From",
+  "Host",
+  "If-Match",
+  "If-modified-since",
+  "If-none-match",
+  "If-range",
+  "If-unmodified-since",
+  "Last-modified",
+  "Location",
+  "Max-forwards",
+  "Pragma",
+  "Proxy-authenticate",
+  "Proxy-authorization",
+  "Range",
+  "Referer",
+  "Retry-after",
+  "Server",
+  "TE",
+  "Trailer",
+  "Transfer-encoding",
+  "Upgrade",
+  "User-agent",
+  "Vary",
+  "Via",
+  "Warning",
+  "Www-authenticate",
+  "random"
+];
+
+const messages = [
+  "creating data",
+  "cleaning up"
+];
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Http Request Fuzzer suite
@@ -34,9 +96,25 @@ const IM = global.instanceManager;
 function httpRequestsFuzzerTestSuite() {
   return {
     setUpAll: function () {
+      let moreargv = [];
+      let logFile = fs.join(fs.getTempPath(), `rta_out_create.log`);
+      let rc = ct.run.rtaMakedata(IM.options, IM, 0, messages[0], logFile, moreargv);
+      if (!rc.status) {
+        let rx = new RegExp(/\\n/g);
+        throw("http_fuzz: failed to create testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
+      }
+
       IM.rememberConnection();
     },
     tearDown: function () {
+      let moreargv = [];
+      let logFile = fs.join(fs.getTempPath(), `rta_out_clean.log`);
+      let rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
+      if (!rc.status) {
+        let rx = new RegExp(/\\n/g);
+        print("http_fuzz: failed to clear testdatas:\n" + fs.read(logFile).replace(rx, '\n'));
+      }
+
       IM.gatherNetstat();
       IM.printNetstat();
     },
@@ -50,7 +128,7 @@ function httpRequestsFuzzerTestSuite() {
           IM.gatherNetstat();
           IM.printNetstat();
           for (let i = 0; i < 15; ++i) {
-            let response = arango.fuzzRequests(25000, i);
+            let response = arango.fuzzRequests(25000, i, wordListForRoute, wordListForKeys);
             assertTrue(response.hasOwnProperty("seed"));
             assertTrue(response.hasOwnProperty("totalRequests"));
             let numReqs = response["totalRequests"];
@@ -89,7 +167,7 @@ function httpRequestsFuzzerTestSuite() {
           IM.gatherNetstat();
           IM.printNetstat();
           for (let i = 0; i < 10; ++i) {
-            let response = arango.fuzzRequests(1, 10);
+            let response = arango.fuzzRequests(1, 10, wordListForRoute, wordListForKeys);
             assertTrue(response.hasOwnProperty("seed"));
             let seed = response["seed"];
             assertTrue(response.hasOwnProperty("totalRequests"));
@@ -111,7 +189,7 @@ function httpRequestsFuzzerTestSuite() {
             }
             assertEqual(numReqs, tempSum);
 
-            let newResponse = arango.fuzzRequests(1, 10, seed);
+            let newResponse = arango.fuzzRequests(1, 10, wordListForRoute, wordListForKeys, seed);
             assertEqual(response, newResponse);
             assertTrue(response.hasOwnProperty("seed"));
             assertTrue(response.hasOwnProperty("totalRequests"));

@@ -126,528 +126,6 @@ static void CreateAgencyException(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compares and swaps a value in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_CasAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() < 3) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "cas(<key>, <oldValue>, <newValue>, <ttl>, <timeout>, <throw>)");
-  }
-
-  std::string const key = TRI_ObjectToString(isolate, args[0]);
-
-  VPackBuilder oldBuilder;
-  TRI_V8ToVPack(isolate, oldBuilder, args[1], false);
-
-  VPackBuilder newBuilder;
-  TRI_V8ToVPack(isolate, newBuilder, args[2], false);
-
-  double ttl = 0.0;
-  if (args.Length() > 3) {
-    ttl = TRI_ObjectToDouble(isolate, args[3]);
-  }
-
-  double timeout = 1.0;
-  if (args.Length() > 4) {
-    timeout = TRI_ObjectToDouble(isolate, args[4]);
-  }
-
-  bool shouldThrow = false;
-  if (args.Length() > 5) {
-    shouldThrow = TRI_ObjectToBoolean(isolate, args[5]);
-  }
-
-  AgencyComm comm(v8g->server());
-  AgencyCommResult result =
-      comm.casValue(key, oldBuilder.slice(), newBuilder.slice(), ttl, timeout);
-
-  if (!result.successful()) {
-    if (!shouldThrow) {
-      TRI_V8_RETURN_FALSE();
-    }
-
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a directory in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_CreateDirectoryAgency(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("createDirectory(<key>)");
-  }
-
-  std::string const key = TRI_ObjectToString(isolate, args[0]);
-
-  AgencyComm comm(v8g->server());
-  AgencyCommResult result = comm.createDirectory(key);
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the agency is enabled
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_IsEnabledAgency(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("isEnabled()");
-  }
-
-  if (AsyncAgencyCommManager::isEnabled()) {
-    TRI_V8_RETURN_TRUE();
-  }
-
-  TRI_V8_RETURN_FALSE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief increase the version number
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_IncreaseVersionAgency(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("increaseVersion(<key>)");
-  }
-
-  std::string const key = TRI_ObjectToString(isolate, args[0]);
-
-  AgencyComm comm(v8g->server());
-  if (!comm.increaseVersion(key)) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "unable to increase version");
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets a value from the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_GetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("get(<key>)");
-  }
-
-  std::string const key = TRI_ObjectToString(isolate, args[0]);
-  AgencyComm comm(v8g->server());
-  AgencyCommResult result = comm.getValues(key);
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  v8::Handle<v8::Object> l = v8::Object::New(isolate);
-
-  // return just the value for each key
-
-  for (auto const& a : VPackArrayIterator(result.slice())) {
-    for (auto const& o : VPackObjectIterator(a)) {
-      std::string const key = o.key.copyString();
-      VPackSlice const slice = o.value;
-
-      if (!slice.isNone()) {
-        l->Set(context, TRI_V8_STD_STRING(isolate, key),
-               TRI_VPackToV8(isolate, slice))
-            .FromMaybe(false);
-      }
-    }
-  }
-
-  TRI_V8_RETURN(l);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief read transaction to the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_APIAgency(std::string const& envelope,
-                         v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(std::string(envelope) + "([[...]])");
-  }
-
-  VPackBuilder builder;
-  TRI_V8ToVPack(isolate, builder, args[0], false);
-
-  AgencyComm comm(v8g->server());
-  AgencyCommResult result = comm.sendWithFailover(
-      arangodb::rest::RequestType::POST,
-      AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
-      std::string("/_api/agency/") + envelope, builder.slice());
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  auto l = TRI_VPackToV8(isolate, result.slice());
-
-  TRI_V8_RETURN(l);
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_ReadAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_APIAgency("read", args);
-}
-
-static void JS_WriteAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_APIAgency("write", args);
-}
-
-static void JS_TransactAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_APIAgency("transact", args);
-}
-
-static void JS_TransientAgency(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  JS_APIAgency("transient", args);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief acquires a write-lock in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes a value from the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_RemoveAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("remove(<key>, <recursive>)");
-  }
-
-  std::string const key = TRI_ObjectToString(isolate, args[0]);
-  bool recursive = false;
-
-  if (args.Length() > 1) {
-    recursive = TRI_ObjectToBoolean(isolate, args[1]);
-  }
-
-  AgencyComm comm(v8g->server());
-  AgencyCommResult result = comm.removeValues(key, recursive);
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets a value in the agency
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() < 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("set(<key>, <value>, <ttl>)");
-  }
-
-  std::string const key = TRI_ObjectToString(isolate, args[0]);
-
-  VPackBuilder builder;
-  TRI_V8ToVPack(isolate, builder, args[1], false);
-
-  double ttl = 0.0;
-  if (args.Length() > 2) {
-    ttl = TRI_ObjectToDouble(isolate, args[2]);
-  }
-
-  AgencyComm comm(v8g->server());
-  AgencyCommResult result = comm.setValue(key, builder.slice(), ttl);
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the agency summery
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate)
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() > 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("agency()");
-  }
-
-  VPackBuilder builder;
-
-  AgencyComm comm(v8g->server());
-  AgencyCommResult result = comm.sendWithFailover(
-      arangodb::rest::RequestType::GET,
-      AgencyCommHelper::CONNECTION_OPTIONS._requestTimeout,
-      std::string("/_api/agency/config"), builder.slice());
-
-  if (!result.successful()) {
-    THROW_AGENCY_EXCEPTION(result);
-  }
-
-  auto l = TRI_VPackToV8(isolate, result.slice());
-
-  TRI_V8_RETURN(l);
-  TRI_V8_TRY_CATCH_END
-}
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the agency endpoints
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_EndpointsAgency(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-  auto context = TRI_IGETC;
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("endpoints()");
-  }
-
-  auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
-  // make the list of endpoints unique
-  std::sort(endpoints.begin(), endpoints.end());
-  endpoints.assign(endpoints.begin(),
-                   std::unique(endpoints.begin(), endpoints.end()));
-
-  v8::Handle<v8::Array> l = v8::Array::New(isolate);
-
-  for (size_t i = 0; i < endpoints.size(); ++i) {
-    std::string const endpoint = endpoints[i];
-
-    l->Set(context, (uint32_t)i, TRI_V8_STD_STRING(isolate, endpoint))
-        .FromMaybe(false);
-  }
-
-  TRI_V8_RETURN(l);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the agency prefix
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_PrefixAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  std::string const prefix = AgencyCommHelper::path();
-
-  TRI_V8_RETURN_STD_STRING(prefix);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a uniqid
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_UniqidAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() > 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("uniqid(<count>, <timeout>)");
-  }
-
-  uint64_t count = 1;
-  if (args.Length() > 0) {
-    count = TRI_ObjectToUInt64(isolate, args[0], true);
-  }
-
-  if (count < 1 || count > 100000000) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("<count> is invalid");
-  }
-
-  double timeout = 0.0;
-  if (args.Length() > 1) {
-    timeout = TRI_ObjectToDouble(isolate, args[1]);
-  }
-
-  AgencyComm comm(v8g->server());
-  uint64_t result = comm.uniqid(count, timeout);
-
-  std::string const value = StringUtils::itoa(result);
-
-  TRI_V8_RETURN_STD_STRING(value);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the agency version
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_VersionAgency(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  onlyInCluster();
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  V8SecurityFeature& v8security = v8g->server().getFeature<V8SecurityFeature>();
-  if (!v8security.isInternalContext(isolate) &&
-      !v8security.isAdminScriptContext(isolate)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_FORBIDDEN, "not allowed to execute this agency operation");
-  }
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("version()");
-  }
-
-  AgencyComm comm(v8g->server());
-  auto const version = comm.version();
-
-  TRI_V8_RETURN_STD_STRING_VIEW(version);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a specific database exists
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1376,6 +854,57 @@ static void JS_setFoxxmasterQueueupdate(
 
   TRI_V8_TRY_CATCH_END
 }
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+
+static void JS_systemCollectionsCreated(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("systemCollectionsCreated([setTo])");
+  }
+
+  bool set = false;
+  bool setTo = false;
+  if (args.Length() == 1) {
+    set = true;
+    setTo = TRI_ObjectToBoolean(isolate, args[0]);
+  }
+
+  if (AsyncAgencyCommManager::isEnabled()) {
+    TRI_GET_SERVER_GLOBALS(ArangodServer);
+    AgencyComm comm(v8g->server());
+    std::string key = "SystemCollectionsCreated";
+    VPackSlice val = setTo ? VPackSlice::trueSlice() : VPackSlice::falseSlice();
+    if (set) {
+      AgencyCommResult result = comm.setValue(key, val, 0.0);
+      if (result.successful()) {
+        result = comm.increment("Current/Version");
+      }
+      if (!result.successful() &&
+          result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
+          !v8g->server().isStopping()) {
+        // gracefully ignore any shutdown errors here
+        THROW_AGENCY_EXCEPTION(result);
+      }
+    } else {
+      AgencyCommResult result = comm.getValues(key);
+      if (!result.successful() &&
+          result.errorCode() != TRI_ERROR_SHUTTING_DOWN &&
+          !v8g->server().isStopping()) {
+        // gracefully ignore any shutdown errors here
+        THROW_AGENCY_EXCEPTION(result);
+      }
+      setTo = basics::VelocyPackHelper::getBooleanValue(
+          result.slice()[0].get("arango"), key, false);
+    }
+  }
+  TRI_V8_RETURN_BOOL(setTo);
+  TRI_V8_TRY_CATCH_END
+}
 
 static void JS_GetFoxxmasterSince(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -1688,68 +1217,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::Handle<v8::FunctionTemplate> ft;
 
   // ...........................................................................
-  // generate the agency template
-  // ...........................................................................
-
-  ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgency"));
-
-  rt = ft->InstanceTemplate();
-  rt->SetInternalFieldCount(2);
-
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "agency"),
-                       JS_Agency);
-
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"),
-                       JS_ReadAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"),
-                       JS_WriteAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "transact"),
-                       JS_TransactAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "transient"),
-                       JS_TransientAgency);
-
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "cas"),
-                       JS_CasAgency);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "createDirectory"),
-                       JS_CreateDirectoryAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "get"),
-                       JS_GetAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isEnabled"),
-                       JS_IsEnabledAgency);
-  TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING(isolate, "increaseVersion"),
-                       JS_IncreaseVersionAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "remove"),
-                       JS_RemoveAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "set"),
-                       JS_SetAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "endpoints"),
-                       JS_EndpointsAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "prefix"),
-                       JS_PrefixAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "uniqid"),
-                       JS_UniqidAgency);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "version"),
-                       JS_VersionAgency);
-
-  v8g->AgencyTempl.Reset(isolate, rt);
-  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgencyCtor"));
-
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAgencyCtor"),
-      ft->GetFunction(TRI_IGETC).FromMaybe(v8::Local<v8::Function>()), true);
-
-  // register the global object
-  v8::Handle<v8::Object> aa =
-      rt->NewInstance(TRI_IGETC).FromMaybe(v8::Local<v8::Object>());
-  if (!aa.IsEmpty()) {
-    TRI_AddGlobalVariableVocbase(
-        isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAgency"), aa);
-  }
-
-  // ...........................................................................
   // generate the cluster info template
   // ...........................................................................
 
@@ -1829,6 +1296,9 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_AddressServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "id"),
                        JS_IdServerState);
+  TRI_AddMethodVocbase(isolate, rt,
+                       TRI_V8_ASCII_STRING(isolate, "systemCollectionsCreated"),
+                       JS_systemCollectionsCreated);
   TRI_AddMethodVocbase(isolate, rt,
                        TRI_V8_ASCII_STRING(isolate, "isFoxxmaster"),
                        JS_isFoxxmaster);

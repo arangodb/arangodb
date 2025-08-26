@@ -329,7 +329,7 @@ Coordinators.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::Enterprise))
       .setLongDescription(R"(If set to `true`, forces the cluster into creating
-all future collections with only a single shard and using the same DB-Server as
+all future collections with only a single shard and using the same DB-Server
 as these collections' shards leader. All collections created this way are
 eligible for specific AQL query optimizations that can improve query performance
 and provide advanced transactional guarantees.

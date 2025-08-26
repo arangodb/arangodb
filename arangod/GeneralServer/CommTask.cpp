@@ -37,7 +37,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/LogMacros.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/GeneralResponse.h"
@@ -285,8 +284,8 @@ CommTask::Flow CommTask::prepareExecution(
         // have been authenticated with a superuser JWT token. In this case,
         // we must not check the databaseAuthLevel here.
         if (_auth->userManager() != nullptr && !req.user().empty()) {
-          lvl = _auth->userManager()->databaseAuthLevel(req.user(),
-                                                        req.databaseName());
+          lvl = _auth->userManager()->databaseAuthLevel(
+              req.user(), req.databaseName(), false);
         } else {
           lvl = auth::Level::RW;
         }

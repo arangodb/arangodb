@@ -1387,9 +1387,10 @@ static void ClientConnection_httpFuzzRequests(
     return;
   }
 
+  auto context = TRI_IGETC;
   // get the connection
   V8ClientConnection* v8connection = TRI_UnwrapClass<V8ClientConnection>(
-      args.Holder(), WRAP_TYPE_CONNECTION, TRI_IGETC);
+      args.Holder(), WRAP_TYPE_CONNECTION, context);
 
   if (v8connection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(
@@ -1397,9 +1398,10 @@ static void ClientConnection_httpFuzzRequests(
         "instance.");
   }
 
-  if (args.Length() < 2 || args.Length() > 3) {
+  if (args.Length() < 4 || args.Length() > 5) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "fuzzRequests(<numRequests>, <numIterations> [, <seed>])");
+        "fuzzRequests(<numRequests>, <numIterations>, <wordListForKeys>, "
+        "<wordListForRoute> [, <seed>])");
   }
 
   // arg0 = number of requests, arg1 = number of iterations, arg2 = seed for
@@ -1411,15 +1413,61 @@ static void ClientConnection_httpFuzzRequests(
     TRI_V8_THROW_EXCEPTION_USAGE("<numIterations> is expected to be <= 256");
   }
 
-  std::optional<uint32_t> seed;
-  if (args.Length() > 2) {
-    if (!args[2]->IsUint32()) {
-      TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
+  std::vector<std::string> wordListForKeys;
+
+  v8::Handle<v8::Value> a = args[2];
+  if (a->IsArray()) {
+    v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+    uint32_t const n = arr->Length();
+
+    wordListForKeys.reserve(n - 1);
+    for (uint32_t i = 0; i < n; ++i) {
+      TRI_Utf8ValueNFC keyStr(
+          isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
+
+      if (*keyStr == nullptr) {
+        wordListForKeys.push_back("");
+      } else {
+        wordListForKeys.push_back(*keyStr);
+      }
     }
-    seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[2], false));
+  } else {
+    TRI_V8_THROW_TYPE_ERROR("<wordListForKeys> must be an array of strings");
   }
 
-  fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts), seed);
+  std::vector<std::string> wordListForRoute;
+
+  a = args[3];
+  if (a->IsArray()) {
+    v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
+
+    uint32_t const n = arr->Length();
+    wordListForRoute.reserve(n - 1);
+    for (uint32_t i = 0; i < n; ++i) {
+      TRI_Utf8ValueNFC routeStr(
+          isolate, arr->Get(context, i).FromMaybe(v8::Handle<v8::Value>()));
+
+      if (*routeStr == nullptr) {
+        wordListForRoute.push_back("");
+      } else {
+        wordListForRoute.push_back(*routeStr);
+      }
+    }
+  } else {
+    TRI_V8_THROW_TYPE_ERROR("<wordListForRoute> must be an array of strings");
+  }
+
+  std::optional<uint32_t> seed;
+  if (args.Length() > 4) {
+    if (!args[4]->IsUint32()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("<seed> must be an unsigned int.");
+    }
+    seed = static_cast<uint32_t>(TRI_ObjectToUInt64(isolate, args[4], false));
+  }
+
+  fuzzer::RequestFuzzer fuzzer(static_cast<uint32_t>(numIts), wordListForKeys,
+                               wordListForRoute, seed);
   if (!seed.has_value()) {
     // log the random seed value for later reproducibility.
     // log level must be warning here because log levels < WARN are suppressed

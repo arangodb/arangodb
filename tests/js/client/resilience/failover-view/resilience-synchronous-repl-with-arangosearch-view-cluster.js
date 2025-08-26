@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertFalse, assertEqual, fail, instanceManager */
+/*global assertTrue, assertFalse, assertEqual, fail, GLOBAL */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -37,13 +37,13 @@ const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const download = require('internal').download;
 const {
-  arangoClusterInfoFlush, 
   getDBServers,
-  arangoClusterInfoGetCollectionInfo,
-  arangoClusterInfoGetCollectionInfoCurrent,
   getEndpointById,
-  agency
 } = require("@arangodb/test-helper");
+const CI = require('@arangodb/cluster-info');
+
+const IM = GLOBAL.instanceManager;
+const AM = IM.agencyMgr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -63,7 +63,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
-    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
+    var cinfo = CI.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -73,7 +73,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionShardServers(database, collection) {
-    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
+    var cinfo = CI.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -84,14 +84,14 @@ function SynchronousReplicationWithViewSuite () {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
-    arangoClusterInfoFlush();
-    cinfo = arangoClusterInfoGetCollectionInfo(database, cn);
+    CI.flush();
+    cinfo = CI.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
     var replicas;
     while (++count <= 300) {
       ccinfo = shards.map(
-        s => arangoClusterInfoGetCollectionInfoCurrent(database, cn, s)
+        s => CI.getCollectionInfoCurrent(database, cn, s)
       );
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => s.servers.length);
@@ -110,7 +110,7 @@ function SynchronousReplicationWithViewSuite () {
         return true;
       }  
       wait(0.5);
-      arangoClusterInfoFlush();
+      CI.flush();
     }
     console.error("Replication did not finish");
     return false;
@@ -599,7 +599,7 @@ function SynchronousReplicationWithViewSuite () {
       if(failedState.follower != null) healFollower(failedState.follower);
       db._drop(cn);
       viewOperations("drop");
-      //global.ArangoAgency.set('Target/FailedServers', {});
+      //AM.set('Target/FailedServers', {});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -607,7 +607,7 @@ function SynchronousReplicationWithViewSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testInquiry : function () {
       console.warn("Checking inquiry");
-      var writeResult = agency.call("write", [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
+      var writeResult = AM.call("write", [[{"a":1},{"a":{"oldEmpty":true}},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
       console.log(
         "Inquired successfully a matched precondition under 503 response from write");
       assertTrue(typeof writeResult === "object");
@@ -615,19 +615,19 @@ function SynchronousReplicationWithViewSuite () {
       assertTrue("results" in writeResult);
       assertTrue(writeResult.results[0]>0);
       try {
-        writeResult = agency.call("write",
+        writeResult = AM.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_503"]]);
         fail();
       } catch (e1) {
         console.log(
           "Inquired successfully a failed precondition under 503 response from write");
       }
-      writeResult = agency.call("write",
+      writeResult = AM.call("write",
         [[{"a":1},{"a":1},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
       console.log(
         "Inquired successfully a matched precondition under 0 response from write");
       try {
-        writeResult = agency.call("write",
+        writeResult = AM.call("write",
           [[{"a":1},{"a":0},"INTEGRATION_TEST_INQUIRY_ERROR_0"]]);
         fail();
       } catch (e1) {
