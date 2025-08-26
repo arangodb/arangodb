@@ -1495,7 +1495,9 @@ function UpsertKeyGenerationSuite() {
           // UPSERT should not fail because key generation happens on coordinator
           let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1, id: "test"} UPDATE {value:1} INTO ${cn} RETURN NEW`);
           assertEqual(1, result.toArray().length);
-          assertEqual(1, c.count());
+          result = db._query(`UPSERT {value:2, id: "test"} INSERT {Hello:1, value:2, id: "test"} UPDATE {value:2} INTO ${cn} RETURN NEW`);
+          assertEqual(1, result.toArray().length);
+          assertEqual(2, c.count());
         } finally {
           db._drop(cn);
         }
@@ -1518,7 +1520,7 @@ function UpsertKeyGenerationSuite() {
       graphs._create(gn, [graphs._relation(en, vn, vn)], null, smartGraphProperties);
       try {
         // UPSERT should not fail because key generation uses proper generator
-        let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1} UPDATE {value:1} INTO ${vn} RETURN NEW`);
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1"} UPDATE {value:"1"} INTO ${vn} RETURN NEW`);
         assertEqual(1, result.toArray().length);
         assertEqual(1, db[vn].count());
       } finally {
@@ -1542,7 +1544,7 @@ function UpsertKeyGenerationSuite() {
       graphs._create(gn, [graphs._relation(en, vn, vn)], null, smartGraphProperties);
       try {
         // UPSERT should not fail because key generation uses proper generator
-        let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1, _from: "${vn}/test:1", _to: "${vn}/test:1"} UPDATE {value:1} INTO ${en} RETURN NEW`);
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1", _from: "${vn}/test:1", _to: "${vn}/test:1"} UPDATE {value:"1"} INTO ${en} RETURN NEW`);
         assertEqual(1, result.toArray().length);
         assertEqual(1, db[en].count());
       } finally {
@@ -1614,7 +1616,7 @@ function UpsertKeyGenerationSuite() {
       graphs._create(gn, [graphs._relation(en, vn, vn)], null, disjointSmartGraphProperties);
       try {
         // UPSERT should not fail because key generation uses proper generator
-        let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1} UPDATE {value:1} INTO ${vn} RETURN NEW`);
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1"} UPDATE {value:"1"} INTO ${vn} RETURN NEW`);
         assertEqual(1, result.toArray().length);
         assertEqual(1, db[vn].count());
       } finally {
@@ -1639,7 +1641,7 @@ function UpsertKeyGenerationSuite() {
       graphs._create(gn, [graphs._relation(en, vn, vn)], null, disjointSmartGraphProperties);
       try {
         // UPSERT should not fail because key generation uses proper generator
-        let result = db._query(`UPSERT {value:1} INSERT {Hello:1, value:1, _from: "${vn}/test:1", _to: "${vn}/test:1"} UPDATE {value:1} INTO ${en} RETURN NEW`);
+        let result = db._query(`UPSERT {value:"1"} INSERT {Hello:1, value:"1", _from: "${vn}/test:1", _to: "${vn}/test:1"} UPDATE {value:"1"} INTO ${en} RETURN NEW`);
         assertEqual(1, result.toArray().length);
         assertEqual(1, db[en].count());
       } finally {
