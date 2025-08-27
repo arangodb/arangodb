@@ -28,7 +28,8 @@
 #include "Cluster/ClusterEdgeCursor.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/ClusterTraverserCache.h"
-#include "Graph/Cursors/NewDBServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerIndexCursor.h"
 #include "Indexes/Index.h"
 #include "Transaction/Helpers.h"
 
@@ -204,8 +205,8 @@ std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
   }
 
   return std::make_unique<
-      graph::DBServerEdgeCursor<graph::CollectionIndexCursor>>(
-      graph::DBServerEdgeCursor(graph::createCollectionIndexCursors(
+      graph::DBServerEdgeCursor<graph::DBServerIndexCursor>>(
+      graph::DBServerEdgeCursor(graph::createDBServerIndexCursors(
           backward ? _reverseLookupInfos : _baseLookupInfos, _tmpVar, trx(),
           cache(), query().resourceMonitor())));
 }

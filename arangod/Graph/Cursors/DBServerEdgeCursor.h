@@ -18,102 +18,102 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
 #include <string_view>
 #include <vector>
 
-#include "Graph/BaseOptions.h"
 #include "Graph/Cursors/EdgeCursor.h"
-#include "Indexes/IndexIterator.h"
 
-namespace arangodb {
-class LocalDocumentId;
-class LogicalCollection;
-struct ResourceMonitor;
+namespace arangodb::graph {
 
-namespace aql {
-struct Variable;
-}
-
-namespace transaction {
-class Methods;
-}
-
-namespace velocypack {
-class Slice;
-}
-
-namespace graph {
-struct BaseOptions;
-
+template<typename T>
+concept IndexCursor = requires(T t, EdgeCursor::Callback const& callback,
+                               std::string_view vertex) {
+  {t.all(callback)};
+  { t.next(callback) } -> std::convertible_to<bool>;
+  { t.rearm(vertex) };
+};
+template<IndexCursor T>
 class DBServerEdgeCursor final : public EdgeCursor {
+ public:
  private:
-  struct CursorInfo {
-    std::unique_ptr<IndexIterator> cursor;
-    uint16_t coveringIndexPosition;
-
-    CursorInfo(std::unique_ptr<IndexIterator> cursor,
-               uint16_t coveringIndexPosition) noexcept
-        : cursor(std::move(cursor)),
-          coveringIndexPosition(coveringIndexPosition) {}
-
-    CursorInfo(CursorInfo const&) = delete;
-    CursorInfo& operator=(CursorInfo const&) = delete;
-    CursorInfo(CursorInfo&&) noexcept = default;
-    CursorInfo& operator=(CursorInfo&&) noexcept = default;
-  };
-
-  BaseOptions const* _opts;
-  ResourceMonitor& _monitor;
-  transaction::Methods* _trx;
-  aql::Variable const* _tmpVar;
-  std::vector<std::vector<CursorInfo>> _cursors;
-  size_t _currentCursor;
-  size_t _currentSubCursor;
-  std::vector<LocalDocumentId> _cache;
-  size_t _cachePos;
-  std::vector<BaseOptions::LookupInfo> const& _lookupInfo;
+  // per collection there can be several index cursors
+  std::vector<std::vector<T>> _cursors;
+  size_t _currentCursor = 0;
+  size_t _currentSubCursor = 0;
 
  public:
-  explicit DBServerEdgeCursor(
-      BaseOptions* options, aql::Variable const* tmpVar,
-      std::vector<BaseOptions::LookupInfo> const& lookupInfo);
+  DBServerEdgeCursor(std::vector<std::vector<T>> cursors)
+      : _cursors{std::move(cursors)} {}
 
-  ~DBServerEdgeCursor();
+  bool next(EdgeCursor::Callback const& callback) override {
+    if (_currentCursor == _cursors.size()) {
+      return false;
+    }
 
-  bool next(EdgeCursor::Callback const& callback) override;
-  void readAll(EdgeCursor::Callback const& callback) override;
+    TRI_ASSERT(_cursors[_currentCursor].size() > _currentSubCursor);
+
+    do {
+      if (_cursors[_currentCursor].empty()) {
+        if (!advanceCursor()) {
+          return false;
+        }
+      } else {
+        if (_cursors[_currentCursor][_currentSubCursor].next(callback)) {
+          return true;
+        } else {
+          if (!advanceCursor()) {
+            return false;
+          }
+        }
+      }
+    } while (true);
+  }
+
+  void readAll(EdgeCursor::Callback const& callback) override {
+    for (_currentCursor = 0; _currentCursor < _cursors.size();
+         ++_currentCursor) {
+      auto& cursorSet = _cursors[_currentCursor];
+      for (auto& cursor : cursorSet) {
+        cursor.all(callback);
+      }
+    }
+  }
+
+  void rearm(std::string_view vertex, uint64_t depth) override {
+    _currentCursor = 0;
+    _currentSubCursor = 0;
+
+    for (auto& collectionCursors : _cursors) {
+      for (auto& indexCursor : collectionCursors) {
+        indexCursor.rearm(vertex);
+      }
+    }
+  }
 
   /// @brief number of HTTP requests performed. always 0 in single server
   std::uint64_t httpRequests() const override { return 0; }
 
-  void rearm(std::string_view vertex, uint64_t depth) override;
-
  private:
   // returns false if cursor can not be further advanced
-  bool advanceCursor(IndexIterator*& cursor,
-                     std::vector<CursorInfo>*& cursorSet);
-
-  void getDocAndRunCallback(IndexIterator*,
-                            EdgeCursor::Callback const& callback);
-  std::function<bool(LocalDocumentId, IndexIteratorCoveringData&)>
-  coveringCallback(bool& operationSuccessful, DataSourceId const& sourceId,
-                   size_t cursorId, uint16_t coveringPosition,
-                   EdgeCursor::Callback const& callback);
-  std::function<bool(LocalDocumentId, aql::DocumentData&&, VPackSlice)>
-  nonCoveringCallback(DataSourceId const& sourceId, size_t cursorId,
-                      EdgeCursor::Callback const& callback);
-
-  void buildLookupInfo(std::string_view vertex);
-
-  void addCursor(BaseOptions::LookupInfo const& info, std::string_view vertex);
+  bool advanceCursor() {
+    TRI_ASSERT(!_cursors.empty());
+    ++_currentSubCursor;
+    if (_currentSubCursor >= _cursors[_currentCursor].size()) {
+      ++_currentCursor;
+      _currentSubCursor = 0;
+      if (_currentCursor == _cursors.size()) {
+        // We are done, all cursors exhausted.
+        return false;
+      }
+    }
+    // If we switch the cursor. We have to clear the cache.
+    return true;
+  }
 };
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph

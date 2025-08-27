@@ -21,7 +21,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "NewDBServerEdgeCursor.h"
+#include "DBServerIndexCursor.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/AttributeNamePath.h"
@@ -88,23 +88,23 @@ uint16_t getCoveringPosition(std::shared_ptr<Index> const& index,
 }
 }  // namespace
 
-auto arangodb::graph::createCollectionIndexCursors(
+auto arangodb::graph::createDBServerIndexCursors(
     std::vector<BaseOptions::LookupInfo> const& lookupInfos,
     aql::Variable const* tmpVar, transaction::Methods* trx,
     TraverserCache* traverserCache, ResourceMonitor& monitor)
-    -> std::vector<std::vector<CollectionIndexCursor>> {
-  std::vector<std::vector<CollectionIndexCursor>> cursors;
+    -> std::vector<std::vector<DBServerIndexCursor>> {
+  std::vector<std::vector<DBServerIndexCursor>> cursors;
   cursors.resize(lookupInfos.size());
   size_t infoCount = 0;
   for (auto const& info : lookupInfos) {
-    std::vector<CollectionIndexCursor> cursorsForOneCollection;
+    std::vector<DBServerIndexCursor> cursorsForOneCollection;
     cursorsForOneCollection.reserve(info.idxHandles.size());
 
     for (std::shared_ptr<Index> const& index : info.idxHandles) {
       auto coveringPosition =
           getCoveringPosition(index, info.direction, monitor);
 
-      cursorsForOneCollection.emplace_back(CollectionIndexCursor{
+      cursorsForOneCollection.emplace_back(DBServerIndexCursor{
           index, infoCount, coveringPosition, info.indexCondition,
           info.conditionNeedUpdate
               ? std::optional<size_t>{info.conditionMemberToUpdate}
@@ -117,7 +117,7 @@ auto arangodb::graph::createCollectionIndexCursors(
   return cursors;
 }
 
-void CollectionIndexCursor::all(EdgeCursor::Callback const& callback) {
+void DBServerIndexCursor::all(EdgeCursor::Callback const& callback) {
   TRI_ASSERT(_cursor != nullptr);
 
   if (aql::Projections::isCoveringIndexPosition(_coveringIndexPosition)) {
@@ -143,7 +143,7 @@ void CollectionIndexCursor::all(EdgeCursor::Callback const& callback) {
   _traverserCache->incrCacheMisses(cm);
 }
 
-bool CollectionIndexCursor::next(EdgeCursor::Callback const& callback) {
+bool DBServerIndexCursor::next(EdgeCursor::Callback const& callback) {
   TRI_ASSERT(_cursor != nullptr);
 
   if (_cachePos < _cache.size()) {
@@ -202,7 +202,7 @@ bool CollectionIndexCursor::next(EdgeCursor::Callback const& callback) {
   return true;
 }
 
-void CollectionIndexCursor::rearm(std::string_view vertex) {
+void DBServerIndexCursor::rearm(std::string_view vertex) {
   _cache.clear();
   _cachePos = 0;
 
@@ -243,7 +243,7 @@ void CollectionIndexCursor::rearm(std::string_view vertex) {
   }
 }
 
-void CollectionIndexCursor::prepareIndexCondition(std::string_view vertex) {
+void DBServerIndexCursor::prepareIndexCondition(std::string_view vertex) {
   auto& node = _indexCondition;
   TRI_ASSERT(node->numMembers() > 0);
   if (_conditionMemberToUpdate.has_value()) {
@@ -262,9 +262,9 @@ void CollectionIndexCursor::prepareIndexCondition(std::string_view vertex) {
 }
 
 std::function<bool(LocalDocumentId, aql::DocumentData&&, VPackSlice)>
-CollectionIndexCursor::nonCoveringCallback(
-    DataSourceId const& sourceId, size_t cursorId,
-    EdgeCursor::Callback const& callback) {
+DBServerIndexCursor::nonCoveringCallback(DataSourceId const& sourceId,
+                                         size_t cursorId,
+                                         EdgeCursor::Callback const& callback) {
   return [=](LocalDocumentId token, aql::DocumentData&&, VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
     if (_trx->skipInaccessible()) {
@@ -282,11 +282,11 @@ CollectionIndexCursor::nonCoveringCallback(
   };
 }
 std::function<bool(LocalDocumentId, IndexIteratorCoveringData&)>
-CollectionIndexCursor::coveringCallback(bool& operationSuccessful,
-                                        DataSourceId const& sourceId,
-                                        size_t cursorId,
-                                        uint16_t coveringPosition,
-                                        EdgeCursor::Callback const& callback) {
+DBServerIndexCursor::coveringCallback(bool& operationSuccessful,
+                                      DataSourceId const& sourceId,
+                                      size_t cursorId,
+                                      uint16_t coveringPosition,
+                                      EdgeCursor::Callback const& callback) {
   return [=, &operationSuccessful](LocalDocumentId token,
                                    IndexIteratorCoveringData& covering) {
     TRI_ASSERT(covering.isArray());

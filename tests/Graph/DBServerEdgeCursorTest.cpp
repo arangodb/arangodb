@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <unordered_set>
-#include "Graph/Cursors/NewDBServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "VocBase/Identifiers/DataSourceId.h"
