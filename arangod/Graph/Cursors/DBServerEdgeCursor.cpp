@@ -206,79 +206,74 @@ bool DBServerEdgeCursor::next(EdgeCursor::Callback const& callback) {
     return false;
   }
 
-  // There is still something in the cache
-  if (_cachePos < _cache.size()) {
-    // get the collection
-    getDocAndRunCallback(
-        _cursors[_currentCursor][_currentSubCursor].cursor.get(), callback);
-    return true;
-  }
-
-  // We need to refill the cache.
-  _cachePos = 0;
-  auto* cursorSet = &_cursors[_currentCursor];
-
   // get current cursor
+  auto* cursorSet = &_cursors[_currentCursor];
   auto cursor = (*cursorSet)[_currentSubCursor].cursor.get();
   uint16_t coveringPosition =
       (*cursorSet)[_currentSubCursor].coveringIndexPosition;
   TRI_ASSERT(cursor != nullptr);
 
+  // There is still something in the cache
+  if (_cachePos < _cache.size()) {
+    // get the collection
+    auto cb = nonCoveringCallback(cursor->collection()->id(), _currentCursor,
+                                  callback);
+    cursor->collection()->getPhysical()->lookup(_trx, _cache[_cachePos++], cb,
+                                                {.countBytes = true});
+    return true;
+  }
+
+  // We need to refill the cache.
+  _cachePos = 0;
   // NOTE: We cannot clear the cache,
   // because the cursor expects it to be filled.
+
+  if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
+    bool operationSuccessful = false;
+    do {
+      if (cursorSet->empty() || !cursor->hasMore()) {
+        if (!advanceCursor(cursor, cursorSet)) {
+          return false;
+        }
+      } else {
+        auto cb =
+            coveringCallback(operationSuccessful, cursor->collection()->id(),
+                             _currentCursor, coveringPosition, callback);
+        cursor->nextCovering(cb, 1);
+        if (operationSuccessful) {
+          return true;
+        }
+      }
+    } while (!operationSuccessful);
+  }
+
+  TRI_ASSERT(!aql::Projections::isCoveringIndexPosition(coveringPosition));
+
   do {
     if (cursorSet->empty() || !cursor->hasMore()) {
       if (!advanceCursor(cursor, cursorSet)) {
         return false;
       }
     } else {
-      if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
-        bool operationSuccessful = false;
-        cursor->nextCovering(
-            [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
-              TRI_ASSERT(covering.isArray());
-              VPackSlice edge = covering.at(coveringPosition);
-              TRI_ASSERT(edge.isString());
-
-              if (token.isSet()) {
-#ifdef USE_ENTERPRISE
-                if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-                  return false;
-                }
-#endif
-                operationSuccessful = true;
-                auto etkn =
-                    EdgeDocumentToken(cursor->collection()->id(), token);
-                callback(std::move(etkn), edge, _currentCursor);
-                return true;
-              }
-              return false;
-            },
-            1);
-        // TODO: why are we calling this for just one document, but the
-        // non-covering part we call for 1000 documents at a time?
-        if (operationSuccessful) {
-          return true;
-        }
-      } else {
-        _cache.clear();
-        bool tmp = cursor->next(
-            [&](LocalDocumentId token) {
-              if (token.isSet()) {
-                // Document found
-                _cache.emplace_back(token);
-                return true;
-              }
-              return false;
-            },
-            1000);
-        TRI_ASSERT(tmp == cursor->hasMore());
-      }
+      _cache.clear();
+      bool tmp = cursor->next(
+          [&](LocalDocumentId token) {
+            if (token.isSet()) {
+              _cache.emplace_back(token);
+              return true;
+            }
+            return false;
+          },
+          1000);
+      TRI_ASSERT(tmp == cursor->hasMore());
     }
   } while (_cache.empty());
   TRI_ASSERT(!_cache.empty());
   TRI_ASSERT(_cachePos < _cache.size());
-  getDocAndRunCallback(cursor, callback);
+  auto cb =
+      nonCoveringCallback(cursor->collection()->id(), _currentCursor, callback);
+  cursor->collection()->getPhysical()->lookup(_trx, _cache[_cachePos++], cb,
+                                              {.countBytes = true});
   return true;
 }
 
