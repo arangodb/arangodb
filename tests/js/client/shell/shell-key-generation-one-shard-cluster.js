@@ -81,6 +81,7 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
+      console.error("Habakuk1:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -148,6 +149,7 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
+      console.error("Habakuk2:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -204,6 +206,7 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
+      console.error("Habakuk:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -272,6 +275,7 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
+      console.error("Habakuk3:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
