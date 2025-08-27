@@ -30,6 +30,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>
 
+#include "Agency/AgencyComm.h"
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/Supervision.h"
@@ -329,6 +330,7 @@ RestAdminClusterHandler::RestAdminClusterHandler(ArangodServer& server,
 
 std::string const RestAdminClusterHandler::Health = "health";
 std::string const RestAdminClusterHandler::NumberOfServers = "numberOfServers";
+std::string const RestAdminClusterHandler::UniqId = "uniqId";
 std::string const RestAdminClusterHandler::Maintenance = "maintenance";
 std::string const RestAdminClusterHandler::NodeVersion = "nodeVersion";
 std::string const RestAdminClusterHandler::NodeEngine = "nodeEngine";
@@ -398,6 +400,9 @@ auto RestAdminClusterHandler::executeAsync() -> futures::Future<futures::Unit> {
       co_return;
     } else if (command == NumberOfServers) {
       co_await handleNumberOfServers();
+      co_return;
+    } else if (command == UniqId) {
+      co_await handleUniqId();
       co_return;
     } else if (command == Maintenance) {
       co_await handleMaintenance();
@@ -2067,6 +2072,168 @@ async<void> RestAdminClusterHandler::handleNumberOfServers() {
       generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                     TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
       co_return;
+  }
+}
+
+async<void> RestAdminClusterHandler::handleUniqId() {
+  if (!ServerState::instance()->isCoordinator()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "only allowed on coordinators");
+    co_return;
+  }
+
+  // Only PUT method is allowed and always requires admin privileges
+  if (!ExecContext::current().isAdminUser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
+    co_return;
+  }
+
+  switch (request()->requestType()) {
+    case rest::RequestType::PUT:
+      co_return co_await handlePutUniqId();
+    default:
+      generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                    TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+      co_return;
+  }
+}
+
+// The following RestHandler method has two purposes:
+//  (1) Fetch and reserve a certain range of globally-unique IDs from the
+//      cluster. This is, when the `number` query parameter is given.
+//  (2) Make sure that subsequent ranges which anybody will reserve will
+//      always be ranges whose members are larger than the given value.
+//      This is, then the `minimum` query parameter is given.
+// In the first case, there is a limitation to at most 1000000 keys at
+// a time, in the second case the minimum must be at most 2^60 and if the
+// currently maximal ID is already larger, nothing is done.
+// Both cases return a range of reserved keys.
+
+async<void> RestAdminClusterHandler::handlePutUniqId() {
+  if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                  "not allowed on single servers");
+    co_return;
+  }
+
+  // Parse query parameters
+  auto& req = *request();
+
+  std::string numberParam = req.value("number");
+  std::string minimumParam = req.value("minimum");
+
+  // Validate that exactly one parameter is provided
+  if (numberParam.empty() && minimumParam.empty()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                  "either 'number' or 'minimum' parameter must be provided");
+    co_return;
+  }
+
+  if (!numberParam.empty() && !minimumParam.empty()) {
+    generateError(
+        rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+        "only one of 'number' or 'minimum' parameter can be provided");
+    co_return;
+  }
+
+  try {
+    uint64_t smallest, largest;
+
+    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+
+    if (!numberParam.empty()) {
+      // Mode 1: Get a specific number of unique IDs
+      uint64_t number;
+      try {
+        number = std::stoull(numberParam);
+      } catch (std::exception const&) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "parameter 'number' must be a valid positive integer");
+        co_return;
+      }
+
+      if (number < 1 || number > 1000000) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "parameter 'number' must be between 1 and 1000000");
+        co_return;
+      }
+
+      // Use AgencyComm via ClusterInfo to get unique IDs:
+      auto val = ci.uniqidFromAgency(number);
+      if (!val.has_value()) {
+        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "could not talk to agency");
+        co_return;
+      }
+
+      smallest = val.value();
+      largest = smallest + number - 1;
+
+    } else {
+      // Mode 2: Ensure LatestID is at least the minimum value
+      uint64_t minimum;
+      try {
+        minimum = std::stoull(minimumParam);
+      } catch (std::exception const&) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "parameter 'minimum' must be a valid positive integer");
+        co_return;
+      }
+
+      // Limit to 2^60
+      constexpr uint64_t maxValue = 1ULL << 60;
+      if (minimum > maxValue) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                      "parameter 'minimum' must not exceed 2^60");
+        co_return;
+      }
+
+      // Read current LatestID to see if we need to update it
+      auto val = ci.uniqidFromAgency(1);
+      if (!val.has_value()) {
+        generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                      TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                      "could not talk to agency");
+        co_return;
+      }
+      uint64_t currentValue = val.value();
+
+      if (currentValue >= minimum) {
+        // Current value is already >= minimum, return current range
+        smallest = currentValue;
+        largest = currentValue;
+      } else {
+        // Need to update LatestID to minimum
+        uint64_t diff = minimum - currentValue;
+        val = ci.uniqidFromAgency(diff);
+        if (!val.has_value()) {
+          generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+                        "could not talk to agency");
+          co_return;
+        }
+        smallest = val.value();
+        largest = smallest + diff - 1;
+      }
+    }
+
+    // Generate response JSON
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder ob(&builder);
+      builder.add("smallest", VPackValue(std::to_string(smallest)));
+      builder.add("largest", VPackValue(std::to_string(largest)));
+    }
+
+    generateOk(rest::ResponseCode::OK, builder);
+
+  } catch (basics::Exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
+  } catch (std::exception const& e) {
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
+                  e.what());
   }
 }
 
