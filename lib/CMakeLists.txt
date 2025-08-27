@@ -80,6 +80,7 @@ add_library(arango_basic_utils STATIC
         Basics/ReadWriteSpinLock.cpp
         Basics/ResourceUsage.cpp
         Basics/StringBufferAdvanced.cpp
+        Basics/SupervisedBuffer.h
         Basics/Utf8Helper.cpp
         Basics/VelocyPackHelper.cpp
         Basics/csv.cpp

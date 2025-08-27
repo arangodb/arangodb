@@ -304,7 +304,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
     ASSERT_TRUE(
         trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
 
-    auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
+    auto doc = arangodb::velocypack::Parser::fromJson(
+        "{ \"_key\": \"blablabla\", \"abc\": 1}");
 
     OperationOptions opts;
     auto opRes = trx.insert(coll->name(), doc->slice(), opts);

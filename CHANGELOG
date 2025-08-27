@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix unique _key generation in two cases: AQL INSERT operations in a loop
+  without user specified _key in collections with exactly one shard or with
+  multiple shard, non-standard sharding and `forceOneShardAttributeValue`.
+
 * Fix BTS-1732 and BTS-2177: Possible crashes during shutdown, and maintainer
   mode (i.e. non-production) assertions during tests.
 
