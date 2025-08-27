@@ -39,12 +39,11 @@ const internal = require('internal');
 // second inst - subInstanceTemp  --     not needed /tmp/xxx-arangosh/permissions/subinstance_tmp_directory
 
 
-let rootDir = fs.join(fs.getTempPath(), '..');
+let rootDir = process.env['instanceRoot'];
 let subInstanceTemp; //not set for subinstance
 let testFilesDir = fs.join(rootDir, 'test_file_tree');
 
 if (getOptions === true) {
-  rootDir = fs.join(fs.getTempPath(), 'permissions');
   subInstanceTemp = fs.join(rootDir, 'subinstance_temp_directory');
   testFilesDir = fs.join(rootDir, 'test_file_tree');
   fs.makeDirectoryRecursive(subInstanceTemp);
