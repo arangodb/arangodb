@@ -36,6 +36,7 @@
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -124,6 +125,52 @@ void DBServerEdgeCursor::getDocAndRunCallback(
   };
   collection->getPhysical()->lookup(_trx, etkn.localDocumentId(), cb,
                                     {.countBytes = true});
+}
+std::function<bool(LocalDocumentId, aql::DocumentData&&, VPackSlice)>
+DBServerEdgeCursor::nonCoveringCallback(DataSourceId const& sourceId,
+                                        size_t cursorId,
+                                        EdgeCursor::Callback const& callback) {
+  return [=](LocalDocumentId token, aql::DocumentData&&, VPackSlice edgeDoc) {
+#ifdef USE_ENTERPRISE
+    if (_trx->skipInaccessible()) {
+      // TODO: we only need to check one of these
+      VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
+      VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+      if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
+        return false;
+      }
+    }
+#endif
+    _opts->cache()->incrDocuments();
+    callback(EdgeDocumentToken(sourceId, token), edgeDoc, cursorId);
+    return true;
+  };
+}
+std::function<bool(LocalDocumentId, IndexIteratorCoveringData&)>
+DBServerEdgeCursor::coveringCallback(bool& operationSuccessful,
+                                     DataSourceId const& sourceId,
+                                     size_t cursorId, uint16_t coveringPosition,
+                                     EdgeCursor::Callback const& callback) {
+  return [=, &operationSuccessful](LocalDocumentId token,
+                                   IndexIteratorCoveringData& covering) {
+    TRI_ASSERT(covering.isArray());
+    VPackSlice edge = covering.at(coveringPosition);
+    TRI_ASSERT(edge.isString());
+
+    if (token.isSet()) {
+#ifdef USE_ENTERPRISE
+      if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
+        return false;
+      }
+#endif
+      operationSuccessful = true;
+      _opts->cache()->incrDocuments();
+      auto etkn = EdgeDocumentToken(sourceId, token);
+      callback(EdgeDocumentToken(sourceId, token), edge, cursorId);
+      return true;
+    }
+    return false;
+  };
 }
 
 bool DBServerEdgeCursor::advanceCursor(IndexIterator*& cursor,
@@ -246,43 +293,13 @@ void DBServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
       auto cid = collection->id();
 
       if (aql::Projections::isCoveringIndexPosition(coveringPosition)) {
-        // thanks AppleClang for having to declare this extra variable!
-        uint16_t cv = coveringPosition;
+        bool operationSuccessful = true;
 
-        cursor->allCovering(
-            [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
-              TRI_ASSERT(covering.isArray());
-              VPackSlice edge = covering.at(cv);
-              TRI_ASSERT(edge.isString());
-
-#ifdef USE_ENTERPRISE
-              if (_trx->skipInaccessible() && CheckInaccessible(_trx, edge)) {
-                return false;
-              }
-#endif
-              _opts->cache()->incrDocuments();
-              callback(EdgeDocumentToken(cid, token), edge, cursorId);
-              return true;
-            });
+        auto cb = coveringCallback(operationSuccessful, cid, cursorId,
+                                   coveringPosition, callback);
+        cursor->allCovering(cb);
       } else {
-        auto cb = [&](LocalDocumentId token, aql::DocumentData&&,
-                      VPackSlice edgeDoc) {
-#ifdef USE_ENTERPRISE
-          if (_trx->skipInaccessible()) {
-            // TODO: we only need to check one of these
-            VPackSlice from =
-                transaction::helpers::extractFromFromDocument(edgeDoc);
-            VPackSlice to =
-                transaction::helpers::extractToFromDocument(edgeDoc);
-            if (CheckInaccessible(_trx, from) || CheckInaccessible(_trx, to)) {
-              return false;
-            }
-          }
-#endif
-          _opts->cache()->incrDocuments();
-          callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
-          return true;
-        };
+        auto cb = nonCoveringCallback(cid, cursorId, callback);
         cursor->all([&](LocalDocumentId token) {
           return collection->getPhysical()
               ->lookup(_trx, token, cb, {.countBytes = true})

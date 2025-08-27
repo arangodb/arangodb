@@ -102,6 +102,13 @@ class DBServerEdgeCursor final : public EdgeCursor {
 
   void getDocAndRunCallback(IndexIterator*,
                             EdgeCursor::Callback const& callback);
+  std::function<bool(LocalDocumentId, IndexIteratorCoveringData&)>
+  coveringCallback(bool& operationSuccessful, DataSourceId const& sourceId,
+                   size_t cursorId, uint16_t coveringPosition,
+                   EdgeCursor::Callback const& callback);
+  std::function<bool(LocalDocumentId, aql::DocumentData&&, VPackSlice)>
+  nonCoveringCallback(DataSourceId const& sourceId, size_t cursorId,
+                      EdgeCursor::Callback const& callback);
 
   void buildLookupInfo(std::string_view vertex);
 
