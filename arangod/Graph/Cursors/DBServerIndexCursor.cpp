@@ -265,7 +265,8 @@ std::function<bool(LocalDocumentId, aql::DocumentData&&, VPackSlice)>
 DBServerIndexCursor::nonCoveringCallback(DataSourceId const& sourceId,
                                          size_t cursorId,
                                          EdgeCursor::Callback const& callback) {
-  return [=](LocalDocumentId token, aql::DocumentData&&, VPackSlice edgeDoc) {
+  return [=, this](LocalDocumentId token, aql::DocumentData&&,
+                   VPackSlice edgeDoc) {
 #ifdef USE_ENTERPRISE
     if (_trx->skipInaccessible()) {
       // TODO: we only need to check one of these
@@ -287,8 +288,8 @@ DBServerIndexCursor::coveringCallback(bool& operationSuccessful,
                                       size_t cursorId,
                                       uint16_t coveringPosition,
                                       EdgeCursor::Callback const& callback) {
-  return [=, &operationSuccessful](LocalDocumentId token,
-                                   IndexIteratorCoveringData& covering) {
+  return [=, this, &operationSuccessful](LocalDocumentId token,
+                                         IndexIteratorCoveringData& covering) {
     TRI_ASSERT(covering.isArray());
     VPackSlice edge = covering.at(coveringPosition);
     TRI_ASSERT(edge.isString());
