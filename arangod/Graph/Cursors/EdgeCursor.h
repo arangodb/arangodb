@@ -45,10 +45,19 @@ class EdgeCursor {
  public:
   virtual ~EdgeCursor() = default;
 
+  // callback on next EdgeDocumentToken and Slice that contains the
+  // other side of the edge (we are standing on a node and want to iterate
+  // connected edges)
+  // parameters: EdgeDocumentToken&& eid, Slice edge, size_t cursorId
   using Callback = std::function<void(EdgeDocumentToken&&,
                                       arangodb::velocypack::Slice, size_t)>;
 
   virtual bool next(Callback const&) = 0;
+
+  /// Calls the callback on the next batchSize items. Returns true if the
+  /// callback was executed on batchSize items. Returns false if the cursor
+  /// was exhausted before batchSize items were processed.
+  virtual bool nextBatch(Callback const&, uint64_t batchSize) = 0;
 
   virtual void readAll(Callback const&) = 0;
 

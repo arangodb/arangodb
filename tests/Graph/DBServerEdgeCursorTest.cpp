@@ -49,6 +49,21 @@ struct MockIndexCursor {
     _nextPosition++;
     return true;
   }
+  uint64_t nextBatch(EdgeCursor::Callback const& callback, uint64_t batchSize) {
+    uint64_t count = 0;
+    while (count < batchSize) {
+      if (_nextPosition >= _ids[_currentVertex].size()) {
+        return count;
+      }
+      callback(EdgeDocumentToken{DataSourceId{1},
+                                 _ids[_currentVertex][_nextPosition]},
+               velocypack::Slice{}, 0);
+      _nextPosition++;
+      count++;
+    }
+    return count;
+  }
+
   void rearm(std::string_view vertex) {
     _currentVertex = vertex;
     _nextPosition = 0;
@@ -175,6 +190,62 @@ TEST(DBServerEdgeCursorTest, reads_next_edges_of_rearmed_vertex) {
         counter++;
         return;
       }));
+  EXPECT_EQ(counter, 1);
+  EXPECT_EQ(documents,
+            (std::unordered_multiset<LocalDocumentId>{LocalDocumentId{13}}));
+}
+
+TEST(DBServerEdgeCursorTest, reads_next_batch_of_edges_of_rearmed_vertex) {
+  auto cursor = DBServerEdgeCursor<MockIndexCursor>({{MockIndexCursor{
+      {{"v/1", {LocalDocumentId{13}}},
+       {"v/0",
+        {LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}}}}}});
+
+  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+
+  std::unordered_multiset<LocalDocumentId> documents;
+  size_t counter = 0;
+  EXPECT_TRUE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      2));
+  EXPECT_EQ(counter, 2);
+
+  EXPECT_TRUE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      0));  // batch size 0
+  EXPECT_EQ(counter, 2);
+
+  EXPECT_FALSE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      2));
+  EXPECT_EQ(counter, 3);
+  EXPECT_EQ(documents,
+            (std::unordered_multiset<LocalDocumentId>{
+                LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}));
+
+  cursor.rearm("v/1", 0); /* rearm to vertex 1 - depth is ignored */
+
+  documents = {};
+  counter = 0;
+  EXPECT_FALSE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      2));
   EXPECT_EQ(counter, 1);
   EXPECT_EQ(documents,
             (std::unordered_multiset<LocalDocumentId>{LocalDocumentId{13}}));
@@ -325,6 +396,91 @@ TEST(DBServerEdgeCursorTest, combines_next_edges_of_all_internal_cursors) {
         counter++;
         return;
       }));
+  EXPECT_EQ(counter, 0);
+  EXPECT_EQ(documents, (std::unordered_multiset<LocalDocumentId>{}));
+}
+
+TEST(DBServerEdgeCursorTest,
+     combines_next_batch_of_edges_of_all_internal_cursors) {
+  auto cursor = DBServerEdgeCursor<MockIndexCursor>(
+      {{MockIndexCursor{{{"v/1", {LocalDocumentId{13}}},
+                         {"v/0", {LocalDocumentId{1}, LocalDocumentId{5}}}}},
+        MockIndexCursor{{{"v/0", {LocalDocumentId{1}}},
+                         {"v/5", {LocalDocumentId{1}, LocalDocumentId{9}}}}}},
+       {MockIndexCursor{{
+           {"v/1", {LocalDocumentId{15}}},
+           {"v/0", {LocalDocumentId{2}}},
+           {"v/7", {LocalDocumentId{4}, LocalDocumentId{5}}},
+       }}}});
+
+  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+
+  std::unordered_multiset<LocalDocumentId> documents;
+  size_t counter = 0;
+  EXPECT_TRUE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      2));
+  EXPECT_EQ(counter, 2);
+
+  EXPECT_TRUE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      1));
+  EXPECT_EQ(counter, 3);
+
+  EXPECT_FALSE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      3));
+  EXPECT_EQ(counter, 4);
+  EXPECT_EQ(documents, (std::unordered_multiset<LocalDocumentId>{
+                           LocalDocumentId{1}, LocalDocumentId{5},
+                           LocalDocumentId{1}, LocalDocumentId{2}}));
+
+  cursor.rearm("v/1", 0); /* rearm to vertex 1 - depth is ignored */
+
+  documents = {};
+  counter = 0;
+  EXPECT_TRUE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      2));
+  EXPECT_EQ(counter, 2);
+
+  EXPECT_FALSE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        counter++;
+        return;
+      },
+      2));
+  EXPECT_EQ(counter, 2);
+  EXPECT_EQ(documents, (std::unordered_multiset<LocalDocumentId>{
+                           LocalDocumentId{13}, LocalDocumentId{15}}));
+
+  cursor.rearm("v/9", 0); /* rearm to vertex 9 - depth is ignored */
+
+  documents = {};
+  counter = 0;
+  EXPECT_FALSE(cursor.nextBatch(
+      [&](EdgeDocumentToken&& eid, velocypack::Slice edge, size_t cursorId) {
+        documents.emplace(eid.localDocumentId());
+        counter++;
+        return;
+      },
+      2));
   EXPECT_EQ(counter, 0);
   EXPECT_EQ(documents, (std::unordered_multiset<LocalDocumentId>{}));
 }

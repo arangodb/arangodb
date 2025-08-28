@@ -32,9 +32,10 @@ namespace arangodb::graph {
 
 template<typename T>
 concept IndexCursor = requires(T t, EdgeCursor::Callback const& callback,
-                               std::string_view vertex) {
+                               std::string_view vertex, uint64_t batchSize) {
   {t.all(callback)};
   { t.next(callback) } -> std::convertible_to<bool>;
+  { t.nextBatch(callback, batchSize) } -> std::same_as<uint64_t>;
   { t.rearm(vertex) };
 };
 
@@ -55,11 +56,19 @@ class DBServerEdgeCursor final : public EdgeCursor {
   DBServerEdgeCursor(std::vector<T> cursors) : _cursors{std::move(cursors)} {}
 
   bool next(EdgeCursor::Callback const& callback) override {
+    return nextBatch(callback, 1);
+  }
+
+  bool nextBatch(EdgeCursor::Callback const& callback,
+                 uint64_t batchSize) override {
+    uint64_t requiredItems = batchSize;
     do {
       if (_currentCursor == _cursors.size()) {
         return false;
       }
-      if (_cursors[_currentCursor].next(callback)) {
+      requiredItems -=
+          _cursors[_currentCursor].nextBatch(callback, requiredItems);
+      if (requiredItems == 0) {
         return true;
       }
       _currentCursor++;
