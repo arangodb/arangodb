@@ -48,6 +48,7 @@
 #include "Aql/Timing.h"
 #include "Assertions/Assert.h"
 #include "Async/async.h"
+#include "Async/SuspensionCounter.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
@@ -712,16 +713,14 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 }
 
 /// @brief execute an AQL query
-ExecutionState Query::execute(QueryResult& queryResult) {
+futures::Future<futures::Unit> Query::execute(
+    QueryResult& queryResult, SuspensionCounter& suspensionCounter) {
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
 
   try {
     if (killed()) {
-      if (_executionPhase == ExecutionPhase::PREPARE) {
-        TRI_ASSERT(_prepareResult.valid());
-      }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
 
@@ -747,40 +746,16 @@ ExecutionState Query::execute(QueryResult& queryResult) {
               // Note: cached queries were never done with dirty reads,
               // so we can always hand out the result here without extra
               // HTTP header.
-              return ExecutionState::DONE;
+              co_return;
             }
             // if no permissions, fall through to regular querying
           }
         }
 
-        TRI_ASSERT(!_prepareResult.valid());
         // will throw if it fails
-        auto prepare = [this]() -> futures::Future<futures::Unit> {
-          if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-            co_return co_await prepareQuery();
-          }
-          co_return;
-        }();
-        _executionPhase = ExecutionPhase::PREPARE;
-        if (!prepare.isReady()) {
-          std::move(prepare).thenFinal(
-              [this, sqs = sharedState()](auto&& tryResult) {
-                sqs->executeAndWakeup([this, tryResult = std::move(tryResult)] {
-                  _prepareResult = std::move(tryResult);
-                  TRI_ASSERT(_prepareResult.valid());
-                  return true;
-                });
-              });
-          return ExecutionState::WAITING;
-        } else {
-          _prepareResult = std::move(prepare).result();
-          TRI_ASSERT(_prepareResult.valid());
+        if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
+          co_await prepareQuery();
         }
-      }
-        [[fallthrough]];
-      case ExecutionPhase::PREPARE: {
-        TRI_ASSERT(_prepareResult.valid());
-        _prepareResult.throwIfFailed();
 
         logAtStart();
         if (_planCacheKey.has_value()) {
@@ -825,16 +800,34 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         // In case of WAITING we return, this function is repeatable!
         // In case of HASMORE we loop
         while (true) {
-          auto const& [state, skipped, block] = engine->execute(::defaultStack);
-          // The default call asks for No skips.
-          TRI_ASSERT(skipped.nothingSkipped());
-          if (state == ExecutionState::WAITING) {
-            return state;
-          }
+          auto const& [state, block] = co_await waitingFunToCoro(
+              suspensionCounter,
+              [&]() -> std::optional<
+                        std::tuple<ExecutorState, SharedAqlItemBlockPtr>> {
+                auto&& [state, skipped, block] =
+                    engine->execute(::defaultStack);
+                // The default call asks for No skips.
+                TRI_ASSERT(skipped.nothingSkipped());
+                switch (state) {
+                  case ExecutionState::WAITING:
+                    return std::nullopt;
+                  case ExecutionState::HASMORE:
+                    return std::optional<
+                        std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
+                        std::in_place, ExecutorState::HASMORE,
+                        std::move(block)};
+                  case ExecutionState::DONE:
+                    return std::optional<
+                        std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
+                        std::in_place, ExecutorState::DONE, std::move(block)};
+                  default:
+                    ADB_PROD_CRASH() << "Invalid execution state " << state;
+                }
+              });
 
           // block == nullptr => state == DONE
           if (block == nullptr) {
-            TRI_ASSERT(state == ExecutionState::DONE);
+            TRI_ASSERT(state == ExecutorState::DONE);
             break;
           }
 
@@ -864,7 +857,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             _resultMemoryUsage += diff;
           }
 
-          if (state == ExecutionState::DONE) {
+          if (state == ExecutorState::DONE) {
             trackExecutionEnd();
             break;
           }
@@ -905,20 +898,29 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         [[fallthrough]];
       case ExecutionPhase::FINALIZE: {
-        if (!queryResult.extra) {
-          queryResult.extra = std::make_shared<VPackBuilder>();
-        }
-        // will set warnings, stats, profile and cleanup plan and engine
-        auto state = finalize(*queryResult.extra);
-        bool isCachingAllowed = !_transactionContext->isStreaming() ||
-                                _trx->state()->isReadOnlyTransaction();
-        if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
-            isCachingAllowed) {
-          _cacheEntry->_stats = queryResult.extra;
-          QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
-        }
+        co_await waitingFunToCoro(
+            suspensionCounter, [&]() -> std::optional<std::monostate> {
+              if (!queryResult.extra) {
+                queryResult.extra = std::make_shared<VPackBuilder>();
+              }
+              // will set warnings, stats, profile and cleanup plan and engine
+              auto state = finalize(*queryResult.extra);
+              bool isCachingAllowed = !_transactionContext->isStreaming() ||
+                                      _trx->state()->isReadOnlyTransaction();
+              if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
+                  isCachingAllowed) {
+                _cacheEntry->_stats = queryResult.extra;
+                QueryCache::instance()->store(&_vocbase,
+                                              std::move(_cacheEntry));
+              }
 
-        return state;
+              if (state == ExecutionState::WAITING) {
+                return std::nullopt;
+              } else {
+                return std::monostate{};
+              }
+            });
+        co_return;
       }
     }
     // We should not be able to get here
@@ -944,7 +946,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     queryResult.reset(result());
   }
 
-  return ExecutionState::DONE;
+  co_return;
 }
 
 /**
@@ -958,23 +960,16 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  */
 QueryResult Query::executeSync() {
   _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
-  std::shared_ptr<SharedQueryState> ss;
 
+  auto ss = sharedState();
+  TRI_ASSERT(ss != nullptr);
+  auto suspensionCounter = SuspensionCounter{};
+  ss->setWakeupHandler([&] {
+    return !suspensionCounter.notify();
+  });
   QueryResult queryResult;
-  do {
-    auto state = execute(queryResult);
-    if (state != ExecutionState::WAITING) {
-      TRI_ASSERT(state == ExecutionState::DONE);
-      return queryResult;
-    }
-
-    if (!ss) {
-      ss = sharedState();
-    }
-
-    TRI_ASSERT(ss != nullptr);
-    ss->waitForAsyncWakeup();
-  } while (true);
+  execute(queryResult, suspensionCounter).waitAndGet();
+  return queryResult;
 }
 
 #ifdef USE_V8
@@ -2656,8 +2651,6 @@ auto aql::toString(Query::ExecutionPhase phase) -> std::string_view {
   switch (phase) {
     case Query::ExecutionPhase::INITIALIZE:
       return "INITIALIZE";
-    case Query::ExecutionPhase::PREPARE:
-      return "PREPARE";
     case Query::ExecutionPhase::EXECUTE:
       return "EXECUTE";
     case Query::ExecutionPhase::FINALIZE:
