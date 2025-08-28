@@ -92,26 +92,23 @@ auto arangodb::graph::createDBServerIndexCursors(
     std::vector<BaseOptions::LookupInfo> const& lookupInfos,
     aql::Variable const* tmpVar, transaction::Methods* trx,
     TraverserCache* traverserCache, ResourceMonitor& monitor)
-    -> std::vector<std::vector<DBServerIndexCursor>> {
-  std::vector<std::vector<DBServerIndexCursor>> cursors;
-  cursors.resize(lookupInfos.size());
+    -> std::vector<DBServerIndexCursor> {
+  std::vector<DBServerIndexCursor> cursors;
+  // there are at least lookupInfo.size() many cursors
+  cursors.reserve(lookupInfos.size());
   size_t infoCount = 0;
   for (auto const& info : lookupInfos) {
-    std::vector<DBServerIndexCursor> cursorsForOneCollection;
-    cursorsForOneCollection.reserve(info.idxHandles.size());
-
     for (std::shared_ptr<Index> const& index : info.idxHandles) {
       auto coveringPosition =
           getCoveringPosition(index, info.direction, monitor);
 
-      cursorsForOneCollection.emplace_back(DBServerIndexCursor{
+      cursors.emplace_back(DBServerIndexCursor{
           index, infoCount, coveringPosition, info.indexCondition,
           info.conditionNeedUpdate
               ? std::optional<size_t>{info.conditionMemberToUpdate}
               : std::nullopt,
           trx, traverserCache, tmpVar, monitor});
     }
-    cursors.emplace_back(std::move(cursorsForOneCollection));
     infoCount++;
   }
   return cursors;

@@ -108,7 +108,7 @@ auto createDBServerIndexCursors(
     std::vector<BaseOptions::LookupInfo> const& lookupInfos,
     aql::Variable const* tmpVar, transaction::Methods* trx,
     TraverserCache* traverserCache, ResourceMonitor& monitor)
-    -> std::vector<std::vector<DBServerIndexCursor>>;
+    -> std::vector<DBServerIndexCursor>;
 
 }  // namespace graph
 }  // namespace arangodb

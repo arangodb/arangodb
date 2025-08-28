@@ -63,7 +63,7 @@ struct MockIndexCursor {
 TEST(DBServerEdgeCursorTest, empty_cursor_does_not_do_anything) {
   auto cursor = DBServerEdgeCursor<MockIndexCursor>({});
 
-  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+  cursor.rearm("v/0", 0);
 
   size_t counter = 0;
   cursor.readAll(
@@ -73,7 +73,7 @@ TEST(DBServerEdgeCursorTest, empty_cursor_does_not_do_anything) {
       });
   EXPECT_EQ(counter, 0);
 
-  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+  cursor.rearm("v/0", 0);
 
   counter = 0;
   EXPECT_FALSE(cursor.next(
@@ -85,12 +85,12 @@ TEST(DBServerEdgeCursorTest, empty_cursor_does_not_do_anything) {
 }
 
 TEST(DBServerEdgeCursorTest, reads_all_edges_of_rearmed_vertex) {
-  auto cursor = DBServerEdgeCursor<MockIndexCursor>({{MockIndexCursor{
+  auto cursor = DBServerEdgeCursor<MockIndexCursor>({MockIndexCursor{
       {{"v/1", {LocalDocumentId{13}}},
        {"v/0",
-        {LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}}}}}});
+        {LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}}}}});
 
-  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+  cursor.rearm("v/0", 0);
 
   std::unordered_multiset<LocalDocumentId> documents;
   cursor.readAll(
@@ -102,7 +102,7 @@ TEST(DBServerEdgeCursorTest, reads_all_edges_of_rearmed_vertex) {
             (std::unordered_multiset<LocalDocumentId>{
                 LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}));
 
-  cursor.rearm("v/1", 0); /* rearm to vertex 1 - depth is ignored */
+  cursor.rearm("v/1", 0);
 
   documents = {};
   cursor.readAll(
@@ -115,12 +115,12 @@ TEST(DBServerEdgeCursorTest, reads_all_edges_of_rearmed_vertex) {
 }
 
 TEST(DBServerEdgeCursorTest, reads_next_edges_of_rearmed_vertex) {
-  auto cursor = DBServerEdgeCursor<MockIndexCursor>({{MockIndexCursor{
+  auto cursor = DBServerEdgeCursor<MockIndexCursor>({MockIndexCursor{
       {{"v/1", {LocalDocumentId{13}}},
        {"v/0",
-        {LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}}}}}});
+        {LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}}}}});
 
-  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+  cursor.rearm("v/0", 0);
 
   std::unordered_multiset<LocalDocumentId> documents;
   size_t counter = 0;
@@ -158,7 +158,7 @@ TEST(DBServerEdgeCursorTest, reads_next_edges_of_rearmed_vertex) {
             (std::unordered_multiset<LocalDocumentId>{
                 LocalDocumentId{1}, LocalDocumentId{5}, LocalDocumentId{3}}));
 
-  cursor.rearm("v/1", 0); /* rearm to vertex 1 - depth is ignored */
+  cursor.rearm("v/1", 0);
 
   documents = {};
   counter = 0;
@@ -182,17 +182,18 @@ TEST(DBServerEdgeCursorTest, reads_next_edges_of_rearmed_vertex) {
 
 TEST(DBServerEdgeCursorTest, combines_all_edges_of_all_internal_cursors) {
   auto cursor = DBServerEdgeCursor<MockIndexCursor>(
-      {{MockIndexCursor{{{"v/1", {LocalDocumentId{13}}},
-                         {"v/0", {LocalDocumentId{1}, LocalDocumentId{5}}}}},
-        MockIndexCursor{{{"v/0", {LocalDocumentId{1}}},
-                         {"v/5", {LocalDocumentId{1}, LocalDocumentId{9}}}}}},
-       {MockIndexCursor{{
-           {"v/1", {LocalDocumentId{15}}},
-           {"v/0", {LocalDocumentId{2}}},
-           {"v/7", {LocalDocumentId{4}, LocalDocumentId{5}}},
-       }}}});
+      {MockIndexCursor{{{"v/1", {LocalDocumentId{13}}},
+                        {"v/0", {LocalDocumentId{1}, LocalDocumentId{5}}}}},
+       MockIndexCursor{{{"v/0", {LocalDocumentId{1}}},
+                        {"v/5", {LocalDocumentId{1}, LocalDocumentId{9}}}}},
+       MockIndexCursor{{{"v/1", {LocalDocumentId{15}}},
+                        {"v/0", {LocalDocumentId{2}}},
+                        {
+                            "v/7",
+                            {LocalDocumentId{4}, LocalDocumentId{5}},
+                        }}}});
 
-  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+  cursor.rearm("v/0", 0);
 
   std::unordered_multiset<LocalDocumentId> documents;
   cursor.readAll(
@@ -204,7 +205,7 @@ TEST(DBServerEdgeCursorTest, combines_all_edges_of_all_internal_cursors) {
                            LocalDocumentId{1}, LocalDocumentId{5},
                            LocalDocumentId{1}, LocalDocumentId{2}}));
 
-  cursor.rearm("v/1", 0); /* rearm to vertex 1 - depth is ignored */
+  cursor.rearm("v/1", 0);
 
   documents = {};
   cursor.readAll(
@@ -215,7 +216,7 @@ TEST(DBServerEdgeCursorTest, combines_all_edges_of_all_internal_cursors) {
   EXPECT_EQ(documents, (std::unordered_multiset<LocalDocumentId>{
                            LocalDocumentId{13}, LocalDocumentId{15}}));
 
-  cursor.rearm("v/9", 0); /* rearm to vertex 9 - depth is ignored */
+  cursor.rearm("v/9", 0);
 
   documents = {};
   cursor.readAll(
@@ -228,17 +229,18 @@ TEST(DBServerEdgeCursorTest, combines_all_edges_of_all_internal_cursors) {
 
 TEST(DBServerEdgeCursorTest, combines_next_edges_of_all_internal_cursors) {
   auto cursor = DBServerEdgeCursor<MockIndexCursor>(
-      {{MockIndexCursor{{{"v/1", {LocalDocumentId{13}}},
-                         {"v/0", {LocalDocumentId{1}, LocalDocumentId{5}}}}},
-        MockIndexCursor{{{"v/0", {LocalDocumentId{1}}},
-                         {"v/5", {LocalDocumentId{1}, LocalDocumentId{9}}}}}},
-       {MockIndexCursor{{
-           {"v/1", {LocalDocumentId{15}}},
-           {"v/0", {LocalDocumentId{2}}},
-           {"v/7", {LocalDocumentId{4}, LocalDocumentId{5}}},
-       }}}});
+      {MockIndexCursor{{{"v/1", {LocalDocumentId{13}}},
+                        {"v/0", {LocalDocumentId{1}, LocalDocumentId{5}}}}},
+       MockIndexCursor{{{"v/0", {LocalDocumentId{1}}},
+                        {"v/5", {LocalDocumentId{1}, LocalDocumentId{9}}}}},
+       MockIndexCursor{{{"v/1", {LocalDocumentId{15}}},
+                        {"v/0", {LocalDocumentId{2}}},
+                        {
+                            "v/7",
+                            {LocalDocumentId{4}, LocalDocumentId{5}},
+                        }}}});
 
-  cursor.rearm("v/0", 0); /* rearm to vertex 0 - depth is ignored */
+  cursor.rearm("v/0", 0);
 
   std::unordered_multiset<LocalDocumentId> documents;
   size_t counter = 0;
@@ -284,7 +286,7 @@ TEST(DBServerEdgeCursorTest, combines_next_edges_of_all_internal_cursors) {
                            LocalDocumentId{1}, LocalDocumentId{5},
                            LocalDocumentId{1}, LocalDocumentId{2}}));
 
-  cursor.rearm("v/1", 0); /* rearm to vertex 1 - depth is ignored */
+  cursor.rearm("v/1", 0);
 
   documents = {};
   counter = 0;
@@ -313,7 +315,7 @@ TEST(DBServerEdgeCursorTest, combines_next_edges_of_all_internal_cursors) {
   EXPECT_EQ(documents, (std::unordered_multiset<LocalDocumentId>{
                            LocalDocumentId{13}, LocalDocumentId{15}}));
 
-  cursor.rearm("v/9", 0); /* rearm to vertex 9 - depth is ignored */
+  cursor.rearm("v/9", 0);
 
   documents = {};
   counter = 0;
