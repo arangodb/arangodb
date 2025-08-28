@@ -621,6 +621,10 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
   }
 
   TRI_IF_FAILURE("always-fetch-new-cluster-wide-uniqid") {
+    LOG_TOPIC("35234", ERR, Logger::CLUSTER)
+        << "Failure point 'always-fetch-new-cluster-wide-uniqid' is active. "
+           "Fetching new IDs from agency, server role: "
+        << ServerState::instance()->getRole();
     uint64_t result = _agency.uniqid(count, 0.0);
     return result;
   }

@@ -253,8 +253,8 @@ function KeyGenerationOneShardSuite() {
 
       // Check that the keys are large:
       let keys = allDocs.map(doc => parseInt(doc._key)).sort((a, b) => a - b);
-      assertTrue(keys[0] >= 100000000, "First key must be at least 100000000");
-      assertTrue(keys[1] >= 100000000, "Second key be must be at leaset 100000000");
+      assertTrue(keys[0] >= 100000000, `First key must be at least 100000000 and not ${keys[0]}`);
+      assertTrue(keys[1] >= 100000000, `Second key be must be at leaset 100000000 and not ${keys[1]}`);
     },
 
     testKeyGenerationMultiShardCollectionForcedWithPaddedKeyOptions: function () {
