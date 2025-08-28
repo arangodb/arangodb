@@ -386,7 +386,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (ec == asio_ns::error::misc_errors::eof) {
       err = llhttp_finish(&_parser);
     } else {
-      LOG_TOPIC("395fe", TRACE, Logger::REQUESTS)
+      LOG_TOPIC("395fe", DEBUG, Logger::REQUESTS)
           << "Error while reading from socket: '" << ec.message() << "'";
       err = HPE_INVALID_EOF_STATE;
     }
@@ -419,7 +419,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
         }
       } catch (...) {
         // If sending the error response fails, just continue to close
-        LOG_TOPIC("595ff", DEBUG, Logger::REQUESTS)
+        LOG_TOPIC("595ff", TRACE, Logger::REQUESTS)
             << "Failed to send error response for HTTP parsing failure";
       }
     }
