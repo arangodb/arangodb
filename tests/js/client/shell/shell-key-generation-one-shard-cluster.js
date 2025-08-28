@@ -54,7 +54,7 @@ function KeyGenerationOneShardSuite() {
     },
 
     tearDown: function () {
-      IM.debugClearFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
+      IM.debugClearFailAt('always-fetch-new-cluster-wide-uniqid' /*, instanceRole.dbServer*/);
       // Clean up the test collection
       try {
         db._drop(cn);
@@ -203,7 +203,7 @@ function KeyGenerationOneShardSuite() {
       assertEqual(cn, c.name(), "Collection name should match");
 
       // Set failure points to always fetch new cluster-wide unique IDs from agency on dbservers:
-      IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
+      IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid' /*, instanceRole.dbServer*/);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
       console.error("Habakuk:", res);
@@ -218,6 +218,7 @@ function KeyGenerationOneShardSuite() {
           RETURN NEW
       `;
 
+      db._explain(query, {}, {forceOneShardAttributeValue: "a"});
       let result = db._query(query, {}, {forceOneShardAttributeValue: "a"}).toArray();
 
       // Verify we got 2 results back
@@ -272,7 +273,7 @@ function KeyGenerationOneShardSuite() {
       assertEqual(3, c.shards().length, "Collection should have exactly three shards");
 
       // Set failure points to always fetch new cluster-wide unique IDs from agency on dbservers:
-      IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
+      IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid' /*, instanceRole.dbServer */);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
       console.error("Habakuk3:", res);
@@ -287,6 +288,7 @@ function KeyGenerationOneShardSuite() {
           RETURN NEW
       `;
 
+      db._explain(query, {}, {forceOneShardAttributeValue: "a"});
       let result = db._query(query, {}, {forceOneShardAttributeValue: "a"}).toArray();
 
       // Verify we got 2 results back
