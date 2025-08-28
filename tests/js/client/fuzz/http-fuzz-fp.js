@@ -83,7 +83,35 @@ const wordListForKeys = [
   "Via",
   "Warning",
   "Www-authenticate",
-  "random"
+  "random",
+  "x-arango-allow-dirty-read",
+  "x-arango-aql-document-aql",
+  "x-arango-async",
+  "x-arango-async-id",
+  "x-arango-dump-auth-user",
+  "x-arango-dump-block-counts",
+  "x-arango-dump-id",
+  "x-arango-dump-shard-id",
+  "x-arango-endpoint",
+  "x-arango-error-codes",
+  "x-arango-errors",
+  "x-arango-errors, x-arango-async-id",
+  "x-arango-fast-path",
+  "x-arango-frontend",
+  "x-arango-hlc",
+  "x-arango-lz4",
+  "x-arango-potential-dirty-read",
+  "x-arango-queue-time-seconds",
+  "x-arango-replication-active",
+  "x-arango-replication-checkmore",
+  "x-arango-replication-frompresent",
+  "x-arango-replication-lastincluded",
+  "x-arango-replication-lastscanned",
+  "x-arango-replication-lasttick",
+  "x-arango-request-forwarded-to",
+  "x-arango-source",
+  "x-arango-trx-body",
+  "x-arango-trx-id"
 ];
 
 const messages = [
@@ -99,13 +127,21 @@ function httpRequestsFuzzerTestSuite() {
     db._databases().forEach (database => {
       db._useDatabase(database);
       db._collections().forEach(col => {
-        wordListForRoute.push(`_db/${database}/collection/${col.name()}`);
+        wordListForRoute.push(`_db/${database}/_api/collection/${col.name()}`);
+        col.indexes().forEach(idx => {
+          wordListForRoute.push(`_db/${database}/_api/index/${encodeURIComponent(idx.id)}1`);
+        });
       });
       db._analyzers.toArray().forEach(an => {
-        wordListForRoute.push(`_api/analyzers/${an.name}`);
+        wordListForRoute.push(`_db/${database}/_api/analyzer/${an.name}`);
+      });
+      db._views().forEach(view => {
+        wordListForRoute.push(`_db/${database}/_api/view/${view.name()}`);
+        wordListForRoute.push(`_db/${database}/_api/view/${view.name()}/properties`);
       });
       
     });
+    print(wordListForRoute);
     db._useDatabase("_system");
   };
   return {
