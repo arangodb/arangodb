@@ -313,6 +313,9 @@ bool Query::killed() const {
 /// @brief set the query to killed
 void Query::kill() {
   auto const wasKilled = _queryKilled.exchange(true, std::memory_order_acq_rel);
+  TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+    _queryKilled.notify_one();
+  }
   if (ServerState::instance()->isCoordinator() && !wasKilled) {
     setResult({TRI_ERROR_QUERY_KILLED});
     cleanupPlanAndEngine(/*sync*/ false);
@@ -496,6 +499,25 @@ async<void> Query::prepareQuery() {
       _queryProfile->registerInQueryList();
     }
     registerQueryInTransactionState();
+
+    // suspend during prepare, but after register in query list: the latter is
+    // necessary so the query can be seen and killed by the test
+    TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+      using namespace std::chrono_literals;
+      auto* const scheduler = SchedulerFeature::SCHEDULER;
+
+      // switch threads, let the original one suspend
+      co_await scheduler->yield();
+      // now wait for the query to be killed, and the cleanup to finally trigger
+      // a wakeup
+      _queryKilled.wait(false);                        // false -> true
+      _shutdownState.wait(ShutdownState::None);        // None -> InProgress
+      _shutdownState.wait(ShutdownState::InProgress);  // InProgress -> Done
+      TRI_ASSERT(_shutdownState == ShutdownState::Done);
+      // Right after the shutdown state is set to Done, the wakeup follows.
+      // Give it a while, then continue.
+      std::this_thread::sleep_for(1ms);
+    }
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
@@ -697,6 +719,9 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
   try {
     if (killed()) {
+      if (_executionPhase == ExecutionPhase::PREPARE) {
+        TRI_ASSERT(_prepareResult.valid());
+      }
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
     }
 
@@ -2348,6 +2373,9 @@ ExecutionState Query::cleanupTrxAndEngines() {
           _sharedState->executeAndWakeup([&] {
             _shutdownState.store(ShutdownState::Done,
                                  std::memory_order_relaxed);
+            TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+              _shutdownState.notify_one();
+            }
             return true;
           });
         });
