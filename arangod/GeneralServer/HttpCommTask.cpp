@@ -386,7 +386,7 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
     if (ec == asio_ns::error::misc_errors::eof) {
       err = llhttp_finish(&_parser);
     } else {
-      LOG_TOPIC("395fe", DEBUG, Logger::REQUESTS)
+      LOG_TOPIC("395fe", TRACE, Logger::REQUESTS)
           << "Error while reading from socket: '" << ec.message() << "'";
       err = HPE_INVALID_EOF_STATE;
     }
