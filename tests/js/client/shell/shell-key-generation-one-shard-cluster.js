@@ -29,7 +29,7 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require("internal");
-const isCluster = internal.isCluster();
+const isEnterprise = internal.isEnterprise();
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
@@ -81,7 +81,6 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
-      console.error("Habakuk1:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -149,7 +148,6 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid', instanceRole.dbServer);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
-      console.error("Habakuk2:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -188,6 +186,10 @@ function KeyGenerationOneShardSuite() {
     },
 
     testKeyGenerationMultiShardCollectionForced: function () {
+      if (!isEnterprise) {
+        // forceOneShardAttributeValue does not exist in community
+        return;
+      }
       // Create a collection with 3 shards:
       let c = db._create(cn, { 
         numberOfShards: 3,
@@ -206,7 +208,6 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid' /*, instanceRole.dbServer*/);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
-      console.error("Habakuk:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -218,7 +219,6 @@ function KeyGenerationOneShardSuite() {
           RETURN NEW
       `;
 
-      db._explain(query, {}, {forceOneShardAttributeValue: "a"});
       let result = db._query(query, {}, {forceOneShardAttributeValue: "a"}).toArray();
 
       // Verify we got 2 results back
@@ -259,6 +259,10 @@ function KeyGenerationOneShardSuite() {
     },
 
     testKeyGenerationMultiShardCollectionForcedWithPaddedKeyOptions: function () {
+      if (!isEnterprise) {
+        // forceOneShardAttributeValue does not exist in community
+        return;
+      }
       // Create a collection with exactly one shard and padded key options
       let c = db._create(cn, { 
         numberOfShards: 3,
@@ -276,7 +280,6 @@ function KeyGenerationOneShardSuite() {
       IM.debugSetFailAt('always-fetch-new-cluster-wide-uniqid' /*, instanceRole.dbServer */);
 
       let res = arango.PUT("/_admin/cluster/uniqId?minimum=100000000",{});
-      console.error("Habakuk3:", res);
       assertFalse(res.error);
       assertEqual(200, res.code, `must return HTTP code 200 but got ${res.code}`);
 
@@ -288,7 +291,6 @@ function KeyGenerationOneShardSuite() {
           RETURN NEW
       `;
 
-      db._explain(query, {}, {forceOneShardAttributeValue: "a"});
       let result = db._query(query, {}, {forceOneShardAttributeValue: "a"}).toArray();
 
       // Verify we got 2 results back
