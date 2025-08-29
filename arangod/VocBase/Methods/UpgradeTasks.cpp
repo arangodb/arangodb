@@ -578,17 +578,23 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
           << "could not add database user " << user << ": "
           << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
-      um->updateUser(user, [&](auth::User& user) {
-        user.setUserData(VPackBuilder(extra));
-        return TRI_ERROR_NO_ERROR;
-      });
+      um->updateUser(
+          user,
+          [&](auth::User& user) {
+            user.setUserData(VPackBuilder(extra));
+            return TRI_ERROR_NO_ERROR;
+          },
+          true);
     }
 
-    res = um->updateUser(user, [&](auth::User& entry) {
-      entry.grantDatabase(vocbase.name(), auth::Level::RW);
-      entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
-      return TRI_ERROR_NO_ERROR;
-    });
+    res = um->updateUser(
+        user,
+        [&](auth::User& entry) {
+          entry.grantDatabase(vocbase.name(), auth::Level::RW);
+          entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
+          return TRI_ERROR_NO_ERROR;
+        },
+        true);
     if (res.fail()) {
       LOG_TOPIC("60019", WARN, Logger::STARTUP)
           << "could not set permissions for new user " << user << ": "

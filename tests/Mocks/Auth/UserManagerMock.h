@@ -46,7 +46,7 @@ struct UserManagerMock : UserManager {
               (override));
   MOCK_METHOD(Result, enumerateUsers, (std::function<bool(User&)>&&, bool),
               (override));
-  MOCK_METHOD(Result, updateUser, (std::string const&, UserCallback&&),
+  MOCK_METHOD(Result, updateUser, (std::string const&, UserCallback&&, bool),
               (override));
   MOCK_METHOD(Result, accessUser, (std::string const&, ConstUserCallback&&),
               (override));

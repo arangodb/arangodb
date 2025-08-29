@@ -83,7 +83,8 @@ class UserManager {
                                 bool retryOnConflict) = 0;
 
   // Update specific user
-  virtual Result updateUser(std::string const& user, UserCallback&&) = 0;
+  virtual Result updateUser(std::string const& user, UserCallback&&,
+                            bool retryOnConflict) = 0;
 
   // Access user without modifying it
   virtual Result accessUser(std::string const& user, ConstUserCallback&&) = 0;

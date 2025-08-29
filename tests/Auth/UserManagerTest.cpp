@@ -163,7 +163,10 @@ TEST_F(UserManagerTest, usermanager_should_throw_if_called_too_early) {
               Throws<basics::Exception>(
                   Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
   EXPECT_THAT(
-      [&] { um.updateUser("username", [](auto&) { return Result(); }); },
+      [&] {
+        um.updateUser(
+            "username", [](auto&) { return Result(); }, false);
+      },
       Throws<basics::Exception>(
           Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
   EXPECT_THAT(

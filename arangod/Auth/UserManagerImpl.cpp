@@ -535,6 +535,8 @@ Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
                                        bool const retryOnConflict) {
   checkIfUserDataIsAvailable();
 
+  auto const currentInternalVersion =
+      _internalVersion.load(std::memory_order::relaxed);
   std::vector<User> toUpdate;
   {  // users are later updated with rev ID for consistency
     READ_LOCKER(readGuard, _userCacheLock);
@@ -557,10 +559,8 @@ Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
       if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
         res.reset();
         // We ran into a conflict, and we have to retry
-        // so we either wait for the update thread to re-run/finish, which is
-        // blocking anyway so we can also just reload synchronously here
-        // directly.
-        loadFromDB();
+        // so we wait for the update thread to re-run/finish
+        _internalVersion.wait(currentInternalVersion);
         READ_LOCKER(readGuard, _userCacheLock);
         UserMap::iterator it2 = _userCache.find(it->username());
         if (it2 != _userCache.end()) {
@@ -583,33 +583,47 @@ Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
   return res;
 }
 
-Result UserManagerImpl::updateUser(std::string const& name,
-                                   UserCallback&& func) {
+Result UserManagerImpl::updateUser(std::string const& name, UserCallback&& func,
+                                   bool const retryOnConflict) {
   if (name.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
 
   checkIfUserDataIsAvailable();
 
-  // we require a consistent view on the user object
-  READ_LOCKER(readGuard, _userCacheLock);
+  Result r;
+  do {
+    auto const currentInternalVersion =
+        _internalVersion.load(std::memory_order::relaxed);
+    // we require a consistent view on the user object
+    READ_LOCKER(readGuard, _userCacheLock);
 
-  UserMap::iterator it = _userCache.find(name);
-  if (it == _userCache.end()) {
-    return TRI_ERROR_USER_NOT_FOUND;
-  }
+    UserMap::iterator it = _userCache.find(name);
+    if (it == _userCache.end()) {
+      return TRI_ERROR_USER_NOT_FOUND;
+    }
 
-  LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
-  User user = it->second;  // make a copy
-  TRI_ASSERT(!user.key().empty() && user.rev().isSet());
-  Result r = func(user);
-  if (r.fail()) {
-    return r;
-  }
-  r = storeUserInternal(user, /*replace*/ true);
+    LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION)
+        << "Updating user " << name;
+    User user = it->second;  // make a copy
+    TRI_ASSERT(!user.key().empty() && user.rev().isSet());
+    r = func(user);
+    if (r.fail()) {
+      return r;
+    }
+    r = storeUserInternal(user, /*replace*/ true);
 
-  // cannot hold _userCacheLock while  invalidating token cache
-  readGuard.unlock();
+    // cannot hold _userCacheLock while invalidating/reloading user cache
+    readGuard.unlock();
+
+    if (retryOnConflict && r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+      // We ran into a conflict, so we know that there is a new globalVersion
+      // on the way. So we wait here on the lower-bound version that we tried
+      // to update on and retry again with after we receive the latest _users.
+      _internalVersion.wait(currentInternalVersion);
+    }
+  } while (retryOnConflict && r.is(TRI_ERROR_ARANGO_CONFLICT));
+
   if (r.ok() || r.is(TRI_ERROR_ARANGO_CONFLICT)) {
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
@@ -767,8 +781,8 @@ Result UserManagerImpl::accessTokens(std::string const& user,
 
 Result UserManagerImpl::deleteAccessToken(std::string const& user,
                                           uint64_t id) {
-  Result result =
-      updateUser(user, [&](User& u) { return u.deleteAccessToken(id); });
+  Result result = updateUser(
+      user, [&](User& u) { return u.deleteAccessToken(id); }, true);
 
   return result;
 }
@@ -777,9 +791,10 @@ Result UserManagerImpl::createAccessToken(std::string const& user,
                                           std::string const& name,
                                           double validUntil,
                                           velocypack::Builder& builder) {
-  Result result = updateUser(user, [&](User& u) {
-    return u.createAccessToken(name, validUntil, builder);
-  });
+  Result result = updateUser(
+      user,
+      [&](User& u) { return u.createAccessToken(name, validUntil, builder); },
+      false);
 
   return result;
 }

@@ -66,7 +66,8 @@ class UserManagerImpl final : public UserManager {
   Result enumerateUsers(std::function<bool(User&)>&&,
                         bool retryOnConflict) override;
 
-  Result updateUser(std::string const& user, UserCallback&&) override;
+  Result updateUser(std::string const& user, UserCallback&&,
+                    bool retryOnConflict) override;
 
   Result accessUser(std::string const& user, ConstUserCallback&&) override;
 
