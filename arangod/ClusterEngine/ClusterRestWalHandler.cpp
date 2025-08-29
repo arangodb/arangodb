@@ -80,7 +80,8 @@ RestStatus ClusterRestWalHandler::execute() {
       return RestStatus::DONE;
     }
 #endif
-    server().getFeature<EngineSelectorFeature>()
+    server()
+        .getFeature<EngineSelectorFeature>()
         .engine()
         .waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
