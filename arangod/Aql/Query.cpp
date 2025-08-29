@@ -317,9 +317,18 @@ void Query::kill() {
   TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
     _queryKilled.notify_one();
   }
-  if (ServerState::instance()->isCoordinator() && !wasKilled) {
-    setResult({TRI_ERROR_QUERY_KILLED});
-    cleanupPlanAndEngine(/*sync*/ false);
+  if (!wasKilled) {
+    if (ServerState::instance()->isCoordinator()) {
+      setResult({TRI_ERROR_QUERY_KILLED});
+      cleanupPlanAndEngine(/*sync*/ false);
+    } else {
+      _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
+      TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
+        // this failure point makes the corresponding test work in single server,
+        // though the actual bug could only occur in a cluster setting.
+        _shutdownState.notify_one();
+      }
+    }
   }
 }
 
