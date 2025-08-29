@@ -964,9 +964,7 @@ QueryResult Query::executeSync() {
   auto ss = sharedState();
   TRI_ASSERT(ss != nullptr);
   auto suspensionCounter = SuspensionCounter{};
-  ss->setWakeupHandler([&] {
-    return !suspensionCounter.notify();
-  });
+  ss->setWakeupHandler([&] { return !suspensionCounter.notify(); });
   QueryResult queryResult;
   execute(queryResult, suspensionCounter).waitAndGet();
   return queryResult;
