@@ -36,6 +36,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/SuspensionCounter.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogTopic.h"
@@ -143,15 +144,8 @@ class SortLimitTest
         ctx, arangodb::aql::QueryString(queryString), nullptr,
         arangodb::aql::QueryOptions(options->slice()));
     arangodb::aql::QueryResult result;
-
-    while (true) {
-      auto state = query->execute(result);
-      if (state == arangodb::aql::ExecutionState::WAITING) {
-        query->sharedState()->waitForAsyncWakeup();
-      } else {
-        break;
-      }
-    }
+    arangodb::SuspensionCounter suspensionCounter;
+    query->execute(result, suspensionCounter).waitAndGet();
 
     EXPECT_TRUE(result.result.ok());
     auto slice = result.data->slice();

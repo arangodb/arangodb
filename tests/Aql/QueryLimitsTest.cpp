@@ -21,12 +21,12 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/SuspensionCounter.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -64,14 +64,9 @@ class AqlQueryLimitsTest
             arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
     arangodb::aql::QueryResult result;
-    while (true) {
-      auto state = query->execute(result);
-      if (state == arangodb::aql::ExecutionState::WAITING) {
-        query->sharedState()->waitForAsyncWakeup();
-      } else {
-        break;
-      }
-    }
+    arangodb::SuspensionCounter suspensionCounter;
+    query->execute(result, suspensionCounter).waitAndGet();
+
     return result;
   }
 };

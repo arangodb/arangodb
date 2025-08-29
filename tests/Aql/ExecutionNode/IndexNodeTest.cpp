@@ -30,6 +30,7 @@
 #include "Aql/Query.h"
 #include "Aql/SharedQueryState.h"
 #include "Async/async.h"
+#include "Async/SuspensionCounter.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
@@ -85,14 +86,9 @@ arangodb::aql::QueryResult executeQuery(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
   arangodb::aql::QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == arangodb::aql::ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
+  arangodb::SuspensionCounter suspensionCounter;
+  query->execute(result, suspensionCounter).waitAndGet();
+
   return result;
 }
 

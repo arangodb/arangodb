@@ -24,6 +24,7 @@
 #include "Aql/Query.h"
 
 #include "Aql/SharedQueryState.h"
+#include "Async/SuspensionCounter.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
@@ -53,14 +54,8 @@ static arangodb::aql::QueryResult executeQuery(
       ctx, arangodb::aql::QueryString(queryString), nullptr);
 
   arangodb::aql::QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == arangodb::aql::ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
+  arangodb::SuspensionCounter suspensionCounter;
+  query->execute(result, suspensionCounter).waitAndGet();
 
   return result;
 }

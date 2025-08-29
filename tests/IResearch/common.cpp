@@ -35,6 +35,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Async/async.h"
+#include "Async/SuspensionCounter.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -602,14 +603,9 @@ arangodb::aql::QueryResult executeQuery(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
   arangodb::aql::QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == arangodb::aql::ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
+  SuspensionCounter suspensionCounter;
+  query->execute(result, suspensionCounter).waitAndGet();
+
   return result;
 }
 
