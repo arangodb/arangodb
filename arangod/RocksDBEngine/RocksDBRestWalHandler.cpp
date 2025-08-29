@@ -72,6 +72,19 @@ RestStatus RocksDBRestWalHandler::execute() {
       properties();
       return RestStatus::DONE;
     }
+  } else if (operation == "wait_for_estimator_sync" && (
+              ServerState::instance()->isCoordinator() ||
+              ServerState::instance()->isSingleServer()) ) {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "system level access is needed for this API");
+      return RestStatus::DONE;
+    }
+#endif
+    server().getFeature<EngineSelectorFeature>()
+      .engine()
+      .waitForEstimatorSync();
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
