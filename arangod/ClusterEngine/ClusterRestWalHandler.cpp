@@ -81,8 +81,8 @@ RestStatus ClusterRestWalHandler::execute() {
     }
 #endif
     server().getFeature<EngineSelectorFeature>()
-      .engine()
-      .waitForEstimatorSync();
+        .engine()
+        .waitForEstimatorSync();
     generateResult(rest::ResponseCode::OK,
                    arangodb::velocypack::Slice::emptyObjectSlice());
     return RestStatus::DONE;
