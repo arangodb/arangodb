@@ -57,6 +57,7 @@ struct DBServerIndexCursor {
   bool next(EdgeCursor::Callback const& callback);
   uint64_t nextBatch(EdgeCursor::Callback const& callback, uint64_t batchSize);
   void rearm(std::string_view vertex);
+  bool hasMore() const;
 
   DBServerIndexCursor(std::shared_ptr<arangodb::Index> idxHandle,
                       size_t cursorId, uint16_t coveringIndexPosition,

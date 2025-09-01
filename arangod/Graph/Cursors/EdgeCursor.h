@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string_view>
 
 namespace arangodb {
@@ -61,9 +62,12 @@ class EdgeCursor {
 
   virtual void readAll(Callback const&) = 0;
 
-  virtual std::uint64_t httpRequests() const = 0;
-
   virtual void rearm(std::string_view vid, uint64_t depth) = 0;
+
+  virtual bool hasMore() const = 0;
+  virtual std::uint64_t httpRequests() const = 0;
+  virtual std::optional<std::string_view> currentVertex() const = 0;
+  virtual std::optional<uint64_t> currentDepth() const = 0;
 };
 
 }  // namespace graph

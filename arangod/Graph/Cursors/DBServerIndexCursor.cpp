@@ -213,6 +213,16 @@ uint64_t DBServerIndexCursor::nextBatch(EdgeCursor::Callback const& callback,
   return successfulItems;
 }
 
+bool DBServerIndexCursor::hasMore() const {
+  if (_cursor == nullptr) {
+    return false;
+  }
+  if (not _cache.empty()) {
+    return _cachePos < _cache.size();
+  }
+  return _cursor->hasMore();
+}
+
 void DBServerIndexCursor::rearm(std::string_view vertex) {
   _cache.clear();
   _cachePos = 0;

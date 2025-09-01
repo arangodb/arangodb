@@ -37,6 +37,7 @@ concept IndexCursor = requires(T t, EdgeCursor::Callback const& callback,
   { t.next(callback) } -> std::convertible_to<bool>;
   { t.nextBatch(callback, batchSize) } -> std::same_as<uint64_t>;
   { t.rearm(vertex) };
+  { t.hasMore() } -> std::convertible_to<const bool>;
 };
 
 /**
@@ -51,9 +52,13 @@ class DBServerEdgeCursor final : public EdgeCursor {
  private:
   std::vector<T> _cursors;
   size_t _currentCursor = 0;
+  std::optional<std::string_view> _currentVertex;
+  std::optional<uint64_t> _depth;
 
  public:
-  DBServerEdgeCursor(std::vector<T> cursors) : _cursors{std::move(cursors)} {}
+  DBServerEdgeCursor(std::vector<T> cursors,
+                     std::optional<uint64_t> depth = std::nullopt)
+      : _cursors{std::move(cursors)}, _depth{depth} {}
 
   bool next(EdgeCursor::Callback const& callback) override {
     return nextBatch(callback, 1);
@@ -89,11 +94,27 @@ class DBServerEdgeCursor final : public EdgeCursor {
    */
   void rearm(std::string_view vertex, uint64_t /*depth*/) override {
     _currentCursor = 0;
+    _currentVertex = vertex;
 
     for (auto& cursor : _cursors) {
       cursor.rearm(vertex);
     }
   }
+
+  bool hasMore() const override {
+    if (_currentCursor >= _cursors.size()) {
+      return false;
+    }
+
+    return _cursors[_currentCursor].hasMore() ||
+           (_currentCursor + 1 < _cursors.size() &&
+            _cursors[_currentCursor + 1].hasMore());
+  }
+
+  std::optional<std::string_view> currentVertex() const override {
+    return _currentVertex;
+  }
+  std::optional<uint64_t> currentDepth() const override { return {_depth}; }
 
   /** Gives number of HTTP requests performed.
 
