@@ -110,8 +110,9 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Slice, size_t,
-                arangodb::velocypack::Builder&);
+  void getEdges(graph::EdgeCursor* cursor, std::string_view vertex,
+                size_t depth, arangodb::velocypack::Builder&);
+  void addStatistics(VPackBuilder& builder);
 
   graph::EdgeCursor* getCursor(std::string_view nextVertex,
                                uint64_t currentDepth);

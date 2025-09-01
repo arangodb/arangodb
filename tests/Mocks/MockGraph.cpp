@@ -339,7 +339,7 @@ MockGraph::simulateApi(
           server.server(), fakeRequest.release(), fakeResponse.release(),
           &queryRegistry};
 
-      std::ignore = testee.execute();
+      testee.executeAsync().wait();
 
       auto res = testee.stealResponse();
       FixCustomTypesResponse(res.get(), opts.query());
@@ -374,7 +374,7 @@ MockGraph::simulateApi(
           server.server(), fakeRequest.release(), fakeResponse.release(),
           &queryRegistry};
 
-      std::ignore = testee.execute();
+      testee.executeAsync().wait();
 
       auto res = testee.stealResponse();
       FixCustomTypesResponse(res.get(), opts.query());

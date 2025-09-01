@@ -49,10 +49,11 @@ InternalRestTraverserHandler::InternalRestTraverserHandler(
   TRI_ASSERT(_registry != nullptr);
 }
 
-RestStatus InternalRestTraverserHandler::execute() {
+auto InternalRestTraverserHandler::executeAsync()
+    -> futures::Future<futures::Unit> {
   if (!ServerState::instance()->isDBServer()) {
     generateForbidden();
-    return RestStatus::DONE;
+    co_return;
   }
 
   // extract the sub-request type
@@ -86,8 +87,7 @@ RestStatus InternalRestTraverserHandler::execute() {
     generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
 
-  // this handler is done
-  return RestStatus::DONE;
+  co_return;
 }
 
 void InternalRestTraverserHandler::queryEngine() {
@@ -111,6 +111,7 @@ void InternalRestTraverserHandler::queryEngine() {
 
   bool parseSuccess = true;
   VPackSlice body = this->parseVPackBody(parseSuccess);
+  LOG_DEVEL << "body: " << inspection::json(body);
 
   if (!parseSuccess) {
     generateError(
@@ -196,8 +197,33 @@ void InternalRestTraverserHandler::queryEngine() {
         VPackSlice variables = body.get("variables");
         eng->injectVariables(variables);
 
-        eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
-        break;
+        std::vector<std::string_view> vertices;
+        if (keysSlice.isArray()) {
+          for (VPackSlice v : VPackArrayIterator(keysSlice)) {
+            TRI_ASSERT(v.isString());
+            vertices.emplace_back(v.stringView());
+          }
+        } else if (keysSlice.isString()) {
+          vertices.emplace_back(keysSlice.stringView());
+        } else {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+        }
+        auto depth = depthSlice.getNumericValue<size_t>();
+
+        result.openObject();
+        result.add(VPackValue(StaticStrings::GraphQueryEdges));
+        result.openArray(true);
+        for (auto const& vertex : vertices) {
+          cursor = eng->getCursor(vertex, depth);
+          eng->getEdges(cursor, vertex, depth, result);
+        }
+        result.close();
+        // statistics
+        eng->addStatistics(result);
+        result.close();
+
+        generateResult(ResponseCode::OK, result.slice(), engine->context());
+        return;
       }
       case BaseEngine::EngineType::SHORTESTPATH: {
         VPackSlice bwSlice = body.get("backward");

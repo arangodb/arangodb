@@ -286,51 +286,29 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
   return cursor;
 }
 
-void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
-                                   VPackBuilder& builder) {
-  auto outputVertex = [this](VPackBuilder& builder, VPackSlice vertex,
-                             size_t depth) {
-    TRI_ASSERT(vertex.isString());
-
-    graph::EdgeCursor* cursor = getCursor(vertex.stringView(), depth);
-
-    cursor->readAll(
-        [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-          if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid);
+void BaseTraverserEngine::getEdges(EdgeCursor* cursor, std::string_view vertex,
+                                   size_t depth, VPackBuilder& builder) {
+  cursor->readAll(
+      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+        if (edge.isString()) {
+          edge = _opts->cache()->lookupToken(eid);
+        }
+        if (edge.isNull()) {
+          return;
+        }
+        if (_opts->evaluateEdgeExpression(edge, vertex, depth, cursorId)) {
+          if (!options().getEdgeProjections().empty()) {
+            VPackObjectBuilder guard(&builder);
+            options().getEdgeProjections().toVelocyPackFromDocument(
+                builder, edge, _trx.get());
+          } else {
+            builder.add(edge);
           }
-          if (edge.isNull()) {
-            return;
-          }
-          if (_opts->evaluateEdgeExpression(edge, vertex.stringView(), depth,
-                                            cursorId)) {
-            if (!options().getEdgeProjections().empty()) {
-              VPackObjectBuilder guard(&builder);
-              options().getEdgeProjections().toVelocyPackFromDocument(
-                  builder, edge, _trx.get());
-            } else {
-              builder.add(edge);
-            }
-          }
-        });
-  };
+        }
+      });
+}
 
-  TRI_ASSERT(vertex.isString() || vertex.isArray());
-  builder.openObject();
-  builder.add(VPackValue(StaticStrings::GraphQueryEdges));
-  builder.openArray(true);
-  if (vertex.isArray()) {
-    for (VPackSlice v : VPackArrayIterator(vertex)) {
-      outputVertex(builder, v, depth);
-    }
-  } else if (vertex.isString()) {
-    outputVertex(builder, vertex, depth);
-    // Result now contains all valid edges, probably multiples.
-  } else {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
-  builder.close();
-  // statistics
+void BaseTraverserEngine::addStatistics(VPackBuilder& builder) {
   builder.add("readIndex",
               VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
   builder.add("filtered", VPackValue(_opts->cache()->getAndResetFiltered()));
@@ -341,7 +319,6 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
               VPackValue(_opts->cache()->getAndResetCursorsCreated()));
   builder.add("cursorsRearmed",
               VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
-  builder.close();
 }
 
 bool BaseTraverserEngine::produceVertices() const {
