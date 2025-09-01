@@ -53,6 +53,8 @@ class UserManagerImpl final : public UserManager {
   void loadUserCacheAndStartUpdateThread() noexcept override;
   void setGlobalVersion(uint64_t version) noexcept override;
   [[nodiscard]] uint64_t globalVersion() const noexcept override;
+
+  static void triggerGlobalReload(ArangodServer&);
   void triggerGlobalReload() const override;
   void triggerCacheRevalidation() override;
   void createRootUser() override;

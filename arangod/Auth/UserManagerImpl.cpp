@@ -464,13 +464,17 @@ uint64_t UserManagerImpl::globalVersion() const noexcept {
   return _globalVersion.load(std::memory_order_acquire);
 }
 
-/// Trigger eventual reload, user facing API call
 void UserManagerImpl::triggerGlobalReload() const {
+  triggerGlobalReload(_server);
+}
+
+/// Trigger eventual reload, user facing API call
+void UserManagerImpl::triggerGlobalReload(ArangodServer& server) {
   if (!ServerState::instance()->isCoordinator()) {
     return;
   }
   // tell other coordinators to reload as well
-  AgencyComm agency(_server);
+  AgencyComm agency(server);
   AgencyWriteTransaction incrementVersion({AgencyOperation(
       "Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP)});
 
