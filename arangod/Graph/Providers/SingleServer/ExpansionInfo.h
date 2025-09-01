@@ -18,32 +18,30 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Tobias Gödderz
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <string>
-#include <string_view>
+#include "Graph/EdgeDocumentToken.h"
 
-#include <ProgramOptions/Parameters.h>
-#include <Basics/ResultT.h>
+namespace arangodb::graph {
 
-namespace arangodb {
-template<typename T>
-class ResultT;
-}
-namespace arangodb::velocypack {
-class Slice;
-}
+struct ExpansionInfo {
+  EdgeDocumentToken eid;
+  std::vector<uint8_t> edgeData;  // keeps allocation
+  size_t cursorId;
+  ExpansionInfo(EdgeDocumentToken eid, VPackSlice edge, size_t cursorId)
+      : eid(eid), cursorId(cursorId) {
+    edgeData.resize(edge.byteSize());
+    memcpy(edgeData.data(), edge.start(), edge.byteSize());
+  }
+  ExpansionInfo(ExpansionInfo const& other) = delete;
+  ExpansionInfo(ExpansionInfo&& other) = default;
+  VPackSlice edge() const noexcept { return VPackSlice(edgeData.data()); }
+  size_t size() const noexcept {
+    return sizeof(ExpansionInfo) + edgeData.size();
+  }
+};
+using NeighbourBatch = std::shared_ptr<std::vector<ExpansionInfo>>;
 
-namespace arangodb::replication {
-
-enum class Version { ONE = 1, TWO = 2 };
-
-auto parseVersion(std::string_view version) -> ResultT<replication::Version>;
-auto parseVersion(velocypack::Slice version) -> ResultT<replication::Version>;
-
-auto versionToString(Version version) -> std::string_view;
-
-}  // namespace arangodb::replication
+}  // namespace arangodb::graph
