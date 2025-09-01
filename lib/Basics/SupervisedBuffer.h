@@ -11,11 +11,11 @@ class SupervisedBuffer : public Buffer<uint8_t> {
   SupervisedBuffer() = delete;
 
   explicit SupervisedBuffer(arangodb::ResourceMonitor& monitor)
-      : _usageScope(monitor) {}
+      : _usageScope(std::make_unique<ResourceUsageScope>(monitor, 0)) {}
 
   uint8_t* steal() noexcept override {
     uint8_t* ptr = Buffer<uint8_t>::steal();
-    _usageScope.revert();
+    _usageScope->revert();
     return ptr;
   }
 
@@ -25,7 +25,7 @@ class SupervisedBuffer : public Buffer<uint8_t> {
     Buffer<uint8_t>::grow(length);
     auto newCapacity = this->capacity();
     if (newCapacity > currentCapacity) {
-      _usageScope.increase(newCapacity - currentCapacity);
+      _usageScope->increase(newCapacity - currentCapacity);
     }
   }
 
@@ -35,11 +35,11 @@ class SupervisedBuffer : public Buffer<uint8_t> {
     auto after = this->capacity();
     // if before > after, means that it has released usage from the heap
     if (before > after) {
-      _usageScope.decrease(before - after);
+      _usageScope->decrease(before - after);
     }
   }
 
-  arangodb::ResourceUsageScope _usageScope;
+  std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
 }  // namespace arangodb::velocypack
