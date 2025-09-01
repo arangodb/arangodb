@@ -24,7 +24,6 @@
 #include "Aql/Query.h"
 
 #include "Aql/SharedQueryState.h"
-#include "Async/SuspensionCounter.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
