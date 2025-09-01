@@ -763,7 +763,13 @@ futures::Future<futures::Unit> Query::execute(
 
         // will throw if it fails
         if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          co_await prepareQuery();
+          auto prepareFut = prepareQuery();
+          if (_queryApiSynchronicity == QueryApiSynchronicity::Synchronous) {
+            // make sure we don't suspend with a synchronous api; the caller
+            // will rely upon suspends happening only due to WAITING.
+            TRI_ASSERT(prepareFut.valid());
+          }
+          co_await std::move(prepareFut);
         }
 
         logAtStart();
@@ -806,7 +812,8 @@ futures::Future<futures::Unit> Query::execute(
         RegisterId const resultRegister = engine->resultRegister();
 
         // We loop as long as we are having ExecState::DONE returned
-        // In case of WAITING we return, this function is repeatable!
+        // WAITING is handled inside the loop, and can't escape from this
+        // function; instead, we suspend the coroutine.
         // In case of HASMORE we loop
         while (true) {
           auto const& [state, block] = co_await waitingFunToCoro(
@@ -972,10 +979,21 @@ QueryResult Query::executeSync() {
 
   auto ss = sharedState();
   TRI_ASSERT(ss != nullptr);
-  auto suspensionCounter = SuspensionCounter{};
-  ss->setWakeupHandler([&] { return !suspensionCounter.notify(); });
+
+  ss->resetWakeupHandler();
+
   QueryResult queryResult;
-  execute(queryResult, suspensionCounter).waitAndGet();
+  auto suspensionCounter = SuspensionCounter{};
+  auto future = execute(queryResult, suspensionCounter);
+  while (!future.isReady()) {
+    ss->waitForAsyncWakeup();
+    auto resumed = suspensionCounter.notify();
+    // this is the single thread that both starts the coroutine in the first
+    // place (by calling execute), and possibly resumes it after suspension
+    // (by calling notify). This means we can only call notify (again) when
+    // the coroutine is already suspended.
+    TRI_ASSERT(resumed);
+  }
   return queryResult;
 }
 
