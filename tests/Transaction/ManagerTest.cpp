@@ -53,11 +53,7 @@ static arangodb::aql::QueryResult executeQuery(
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), nullptr);
 
-  arangodb::aql::QueryResult result;
-  arangodb::SuspensionCounter suspensionCounter;
-  query->execute(result, suspensionCounter).waitAndGet();
-
-  return result;
+  return query->executeSync();
 }
 
 // -----------------------------------------------------------------------------

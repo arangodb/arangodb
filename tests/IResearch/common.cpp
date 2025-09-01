@@ -602,11 +602,7 @@ arangodb::aql::QueryResult executeQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  arangodb::aql::QueryResult result;
-  SuspensionCounter suspensionCounter;
-  query->execute(result, suspensionCounter).waitAndGet();
-
-  return result;
+  return query->executeSync();
 }
 
 std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(

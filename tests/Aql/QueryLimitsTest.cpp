@@ -63,11 +63,7 @@ class AqlQueryLimitsTest
         arangodb::aql::QueryOptions(
             arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-    arangodb::aql::QueryResult result;
-    arangodb::SuspensionCounter suspensionCounter;
-    query->execute(result, suspensionCounter).waitAndGet();
-
-    return result;
+    return query->executeSync();
   }
 };
 
