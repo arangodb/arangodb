@@ -48,13 +48,14 @@ WindowExecutorInfos::WindowExecutorInfos(
     WindowBounds const& bounds, RegisterId rangeRegister,
     std::vector<std::string> aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    QueryWarnings& w, velocypack::Options const* opts)
+    QueryWarnings& w, velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
     : _bounds(bounds),
       _rangeRegister(rangeRegister),
       _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
       _warnings(w),
-      _vpackOptions(opts) {
+      _vpackOptions(opts),
+      _resourceMonitor(resourceMonitor) {
   TRI_ASSERT(!_aggregateRegisters.empty());
 }
 
@@ -92,7 +93,8 @@ BaseWindowExecutor::AggregatorList BaseWindowExecutor::createAggregators(
   // initialize aggregators
   for (auto const& r : infos.getAggregateTypes()) {
     auto& factory = Aggregator::factoryFromTypeString(r);
-    aggregators.emplace_back(factory(infos.getVPackOptions()));
+    aggregators.emplace_back(
+        factory(infos.getVPackOptions(), infos.getResourceMonitor()));
   }
 
   return aggregators;

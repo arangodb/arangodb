@@ -53,7 +53,7 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
       _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(
-        Aggregator::fromTypeString(infos.getVPackOptions(), aggName));
+        Aggregator::fromTypeString(infos.getVPackOptions(), aggName, infos.resourceMonitor()));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
 }
