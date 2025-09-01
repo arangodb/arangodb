@@ -166,10 +166,13 @@ jobs:
       - run:
           name: Checkout
           command: |
+            mkdir .circleci
+            cd .circleci
             git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
             cd arangodb
             git sparse-checkout set --no-cone tests/*txt .circleci
             git checkout $CIRCLE_SHA1
+            ls -lR
             # We do not want to clone the whole repository since we only need a few files.
             # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
             #mkdir .circleci
@@ -213,11 +216,11 @@ jobs:
           name: Generate config
           command: |
             if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
-              cp .circleci/build_test_image.yml continuation_config.yml
+              cp .circleci/arangodb/build_test_image.yml continuation_config.yml
             else
               set -x
               pip install pyyaml
-              python3 ".circleci/generate_config.py" \
+              python3 ".circleci//arangodb/generate_config.py" \
                 --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
@@ -230,7 +233,7 @@ jobs:
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
                 --test-branches "<<parameters.config-definitions-branches>>" \
                 -o continuation_config.yml \
-                ./.circleci/base_config.yml \
+                ./.circleci/arangodb/base_config.yml \
                 << parameters.definitions >>
             fi
 
