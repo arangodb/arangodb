@@ -301,9 +301,9 @@ void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex,
 }
 
 template<class Step>
-void RefactoredSingleServerEdgeCursor<Step>::readAll(
-    SingleServerProvider<Step>& provider, aql::TraversalStats& stats,
-    size_t depth, Callback const& callback) {
+void RefactoredSingleServerEdgeCursor<Step>::readNext(
+    uint64_t batchSize, SingleServerProvider<Step>& provider,
+    aql::TraversalStats& stats, size_t depth, Callback const& callback) {
   TRI_ASSERT(!getLookupInfos(depth).empty());
   transaction::BuilderLeaser tmpBuilder(_trx);
 
@@ -317,6 +317,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     }
     return evaluateEdgeExpression(expression, edge);
   };
+  uint64_t items = 0;
 
   for (auto& lookupInfo : getLookupInfos(depth)) {
     auto cursorID = lookupInfo.getCursorID();
@@ -333,7 +334,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
     if (!_requiresFullDocument &&
         aql::Projections::isCoveringIndexPosition(coveringPosition)) {
       // use covering index and projections
-      cursor.allCovering(
+      cursor.nextCovering(
           [&](LocalDocumentId token, IndexIteratorCoveringData& covering) {
             stats.incrScannedIndex(1);
 
@@ -356,8 +357,10 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
             }
 
             callback(std::move(edgeToken), edge, cursorID);
+            items++;
             return true;
-          });
+          },
+          batchSize);
     } else {
       // fetch full documents
       auto cb = [&](LocalDocumentId token, aql::DocumentData&&,
@@ -387,17 +390,24 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
         callback(std::move(edgeToken), edgeDoc, cursorID);
         return true;
       };
-      cursor.all([&](LocalDocumentId token) {
-        return collection->getPhysical()
-            ->lookup(_trx, token, cb, {.countBytes = true})
-            .ok();
-      });
+      cursor.next(
+          [&](LocalDocumentId token) {
+            items++;
+            return collection->getPhysical()
+                ->lookup(_trx, token, cb, {.countBytes = true})
+                .ok();
+          },
+          batchSize);
     }
 
     // update cache hits and misses
     auto [ch, cm] = cursor.getAndResetCacheStats();
     stats.incrCacheHits(ch);
     stats.incrCacheMisses(cm);
+
+    if (items == batchSize) {
+      return;  // early return if we already found batchSize entries
+    }
   }
 }
 
@@ -446,6 +456,16 @@ void RefactoredSingleServerEdgeCursor<Step>::prepareIndexExpressions(
       info.calculateIndexExpressions(ast, _expressionCtx);
     }
   }
+}
+
+template<typename Step>
+auto RefactoredSingleServerEdgeCursor<Step>::hasMore(uint64_t depth) -> bool {
+  for (auto& lookupInfo : getLookupInfos(depth)) {
+    if (lookupInfo.cursor().hasMore()) {
+      return true;
+    }
+  }
+  return false;
 }
 
 template<class StepType>
