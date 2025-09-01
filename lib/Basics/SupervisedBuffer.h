@@ -15,7 +15,7 @@ class SupervisedBuffer : public Buffer<uint8_t> {
 
   uint8_t* steal() noexcept override {
     uint8_t* ptr = Buffer<uint8_t>::steal();
-    _usageScope.steal();
+    _usageScope.revert();
     return ptr;
   }
 
