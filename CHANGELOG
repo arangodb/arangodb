@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2212: Fix a hang on singleserver upgrades. Some of the Upgrade tasks needed 
+  the UserManager to function properly.  
+
 * Fix BTS-2178: If the URL in an HTTP request is bad, the server will
   now not simply close the connection but give a proper response.
 
