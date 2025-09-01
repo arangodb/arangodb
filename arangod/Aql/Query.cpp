@@ -849,6 +849,7 @@ futures::Future<futures::Unit> Query::execute(
                         ADB_PROD_CRASH() << "Invalid execution state " << state;
                     }
                   });
+              break;
             }
             case QueryApiSynchronicity::Synchronous: {
               std::tie(state, block) = std::invoke(
@@ -874,6 +875,7 @@ futures::Future<futures::Unit> Query::execute(
                       }
                     }
                   });
+              break;
             }
           }
 
