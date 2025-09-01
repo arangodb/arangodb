@@ -203,6 +203,7 @@ jobs:
             if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
               cp .circleci/build_test_image.yml continuation_config.yml
             else
+              ls -lR
               set -x
               pip install pyyaml
               python3 ".circleci/generate_config.py" \
