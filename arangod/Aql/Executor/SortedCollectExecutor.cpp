@@ -50,6 +50,7 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
     : groupLength(0),
       infos(infos),
       _lastInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
+      _buffer(velocypack::SupervisedBuffer(infos.resourceMonitor())),
       _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
     aggregators.emplace_back(

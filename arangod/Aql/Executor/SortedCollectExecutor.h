@@ -146,7 +146,7 @@ class SortedCollectExecutor {
     size_t groupLength;
     Infos& infos;
     InputAqlItemRow _lastInputRow;
-    arangodb::velocypack::Buffer<uint8_t> _buffer;
+    arangodb::velocypack::SupervisedBuffer _buffer;
     arangodb::velocypack::Builder _builder;
 
     CollectGroup() = delete;
