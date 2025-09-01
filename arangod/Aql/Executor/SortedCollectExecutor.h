@@ -60,7 +60,7 @@ class SortedCollectExecutorInfos {
       std::vector<std::string> aggregateTypes,
       std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
       std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-      velocypack::Options const*);
+      velocypack::Options const*, ResourceMonitor& resourceMonitor);
 
   SortedCollectExecutorInfos() = delete;
   SortedCollectExecutorInfos(SortedCollectExecutorInfos&&) = default;
@@ -90,6 +90,10 @@ class SortedCollectExecutorInfos {
       const {
     return _inputVariables;
   }
+
+  ResourceMonitor& resourceMonitor() const { return _resourceMonitor; }
+
+  ResourceUsageScope& resourceUsageScope() const { return *_usageScope; }
 
  private:
   /// @brief aggregate types
@@ -121,6 +125,9 @@ class SortedCollectExecutorInfos {
 
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
+
+  ResourceMonitor& _resourceMonitor;
+  std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
 typedef std::vector<std::unique_ptr<Aggregator>> AggregateValuesType;

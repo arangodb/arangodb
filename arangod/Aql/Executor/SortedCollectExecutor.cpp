@@ -107,7 +107,9 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
     size_t i = 0;
     _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
-      this->groupValues[i] = input.getValue(it.second).clone();
+      AqlValue val = input.getValue(it.second).clone();
+      infos.resourceUsageScope().increase(val.memoryUsage());
+      this->groupValues[i] = val;
       ++i;
     }
 
@@ -124,7 +126,7 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
     Variable const* expressionVariable, std::vector<std::string> aggregateTypes,
     std::vector<std::pair<std::string, RegisterId>>&& inputVariables,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    velocypack::Options const* opts)
+    velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
     : _aggregateTypes(std::move(aggregateTypes)),
       _aggregateRegisters(std::move(aggregateRegisters)),
       _groupRegisters(std::move(groupRegisters)),
@@ -132,7 +134,9 @@ SortedCollectExecutorInfos::SortedCollectExecutorInfos(
       _expressionRegister(expressionRegister),
       _inputVariables(std::move(inputVariables)),
       _expressionVariable(expressionVariable),
-      _vpackOptions(opts) {}
+      _vpackOptions(opts),
+      _resourceMonitor(resourceMonitor),
+      _usageScope(std::make_unique<ResourceUsageScope>(resourceMonitor, 0)) {}
 
 SortedCollectExecutor::SortedCollectExecutor(Fetcher&, Infos& infos)
     : _infos(infos), _currentGroup(infos) {
@@ -250,6 +254,8 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     output.moveValueInto(it.first, _lastInputRow, &guard);
     // ownership of value is transferred into res
     this->groupValues[i].erase();
+
+    infos.resourceUsageScope().decrease(val.memoryUsage());
     ++i;
   }
 
