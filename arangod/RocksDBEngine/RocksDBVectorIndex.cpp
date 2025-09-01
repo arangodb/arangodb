@@ -125,10 +125,6 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   // This should be only called when we have filterExpression
   void setToValidIterator() {
     TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
-    TRI_ASSERT(_searchParametersContext.inputRow.has_value());
-    TRI_ASSERT(_searchParametersContext.queryContext != nullptr);
-    TRI_ASSERT(_searchParametersContext.filterVarsToRegs != nullptr);
-    TRI_ASSERT(_searchParametersContext.documentVariable != nullptr);
 
     while (_it->Valid()) {
       auto const docId = RocksDBKey::indexDocumentId(_it->key());

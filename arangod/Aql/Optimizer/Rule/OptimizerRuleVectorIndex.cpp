@@ -238,6 +238,25 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
   return vectorIndexes;
 }
 
+bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
+                                    auto& filterExpression) {
+  auto* maybeCalculationNode = maybeFilterNode->getFirstDependency();
+  // We always expect a calculationNode in this scenario
+  if (maybeCalculationNode == nullptr ||
+      maybeCalculationNode->getType() != EN::CALCULATION) {
+    return true;
+  }
+  auto const* calculationNode =
+      ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
+  TRI_ASSERT(calculationNode->expression() != nullptr);
+  filterExpression = calculationNode->expression()->clone(plan->getAst());
+
+  plan->unlinkNode(maybeFilterNode);
+  plan->unlinkNode(maybeCalculationNode);
+
+  return false;
+}
+
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
@@ -330,24 +349,16 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        approximatedAttributeExpression),
           inVariable);
 
-      // Remove filter node
-      // Take expression from CalculationNode and move it into
-      // EnumerateNearVectorNode
+      // If there is a FilterNode it comes with CalculationNode, we remove it
+      // and handle it in EnumerateNearVectorNode
+      // TODO Check if IndexNode always does this
       std::unique_ptr<Expression> filterExpression{nullptr};
       if (maybeFilterNode) {
-        auto* maybeCalculationNode = maybeFilterNode->getFirstDependency();
-        // We always expect a calculationNode in this scenario
-        if (maybeCalculationNode == nullptr ||
-            maybeCalculationNode->getType() != EN::CALCULATION) {
+        if (bool shouldContinue = removeFilterAndCalculationNode(
+                maybeFilterNode, plan, filterExpression);
+            shouldContinue) {
           continue;
         }
-        auto const* calculationNode =
-            ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
-        TRI_ASSERT(calculationNode->expression() != nullptr);
-        filterExpression = calculationNode->expression()->clone(plan->getAst());
-
-        plan->unlinkNode(maybeFilterNode);
-        plan->unlinkNode(maybeCalculationNode);
       }
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,

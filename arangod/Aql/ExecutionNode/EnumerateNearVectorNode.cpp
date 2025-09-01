@@ -116,7 +116,6 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   if (_filterExpression) {
     VarSet inVars;
     _filterExpression->variables(inVars);
-
     filterVarsToRegs.reserve(inVars.size());
 
     // Here we take all variables in the expression
