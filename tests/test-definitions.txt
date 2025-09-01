@@ -1,3 +1,4 @@
+kaputt
 # test_suite [flags ...] -- [additional-params...]
 # for possible flags and params see
 # https://github.com/arangodb/oskar#testing
