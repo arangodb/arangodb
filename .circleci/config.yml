@@ -166,19 +166,23 @@ jobs:
       - run:
           name: Checkout
           command: |
+            git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
+            cd arangodb
+            git sparse-checkout set --no-cone tests/*txt
+            git checkout $CIRCLE_SHA1
             # We do not want to clone the whole repository since we only need a few files.
             # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
-            mkdir .circleci
-            cd .circleci
-            API_RESPONSE=$(curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1)
-            echo "API Response: $API_RESPONSE"
-            # Check if it's an error
-            if echo "$API_RESPONSE" | jq -e '.message' > /dev/null 2>&1; then
-              echo "Error from GitHub API: $(echo "$API_RESPONSE" | jq -r '.message')"
-              exit 1
-            fi
-            (echo "$API_RESPONSE" | jq ".[].download_url" | xargs wget)
-            (mkdir tests && cd tests && for def in << parameters.definitions >>; do wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/$def; done)
+            #mkdir .circleci
+            #cd .circleci
+            #API_RESPONSE=$(curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1)
+            #echo "API Response: $API_RESPONSE"
+            ## Check if it's an error
+            #if echo "$API_RESPONSE" | jq -e '.message' > /dev/null 2>&1; then
+            #  echo "Error from GitHub API: $(echo "$API_RESPONSE" | jq -r '.message')"
+            #  exit 1
+            #fi
+            #(echo "$API_RESPONSE" | jq ".[].download_url" | xargs wget)
+            #(mkdir tests && cd tests && for def in << parameters.definitions >>; do wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/$def; done)
 
       - add_ssh_keys:
           fingerprints:
