@@ -79,6 +79,12 @@ RestStatus ClusterRestWalHandler::execute() {
                     "system level access is needed for this API");
       return RestStatus::DONE;
     }
+#else
+    if (!ExecContext::current().isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce a cluster info dump");
+      return RestStatus::DONE;
+    }
 #endif
     server()
         .getFeature<EngineSelectorFeature>()
