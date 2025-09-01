@@ -170,7 +170,6 @@ jobs:
             cd arangodb
             git sparse-checkout set --no-cone tests/*txt .circleci
             git checkout $CIRCLE_SHA1
-            ls -laR
             mv tests ..
             mv .circleci ..
       - add_ssh_keys:
