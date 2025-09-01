@@ -200,7 +200,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief execute an AQL query
   futures::Future<futures::Unit> execute(QueryResult& res,
-                                         SuspensionCounter& suspensionCounter);
+                                         SuspensionCounter* suspensionCounter);
 
   /// @brief execute an AQL query and block this thread in case we
   ///        need to wait.

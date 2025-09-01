@@ -324,8 +324,8 @@ void Query::kill() {
     } else {
       _shutdownState.store(ShutdownState::Done, std::memory_order_relaxed);
       TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
-        // this failure point makes the corresponding test work in single server,
-        // though the actual bug could only occur in a cluster setting.
+        // this failure point makes the corresponding test work in single
+        // server, though the actual bug could only occur in a cluster setting.
         _shutdownState.notify_one();
       }
     }
@@ -723,7 +723,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
 /// @brief execute an AQL query
 futures::Future<futures::Unit> Query::execute(
-    QueryResult& queryResult, SuspensionCounter& suspensionCounter) {
+    QueryResult& queryResult, SuspensionCounter* suspensionCounter) {
+  TRI_ASSERT((suspensionCounter == nullptr) ==
+             (_queryApiSynchronicity == QueryApiSynchronicity::Synchronous));
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -816,30 +818,64 @@ futures::Future<futures::Unit> Query::execute(
         // function; instead, we suspend the coroutine.
         // In case of HASMORE we loop
         while (true) {
-          auto const& [state, block] = co_await waitingFunToCoro(
-              suspensionCounter,
-              [&]() -> std::optional<
-                        std::tuple<ExecutorState, SharedAqlItemBlockPtr>> {
-                auto&& [state, skipped, block] =
-                    engine->execute(::defaultStack);
-                // The default call asks for No skips.
-                TRI_ASSERT(skipped.nothingSkipped());
-                switch (state) {
-                  case ExecutionState::WAITING:
-                    return std::nullopt;
-                  case ExecutionState::HASMORE:
-                    return std::optional<
-                        std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
-                        std::in_place, ExecutorState::HASMORE,
-                        std::move(block)};
-                  case ExecutionState::DONE:
-                    return std::optional<
-                        std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
-                        std::in_place, ExecutorState::DONE, std::move(block)};
-                  default:
-                    ADB_PROD_CRASH() << "Invalid execution state " << state;
-                }
-              });
+          auto state = ExecutorState{};
+          auto block = SharedAqlItemBlockPtr{};
+          // TODO maybe move the WAITING/coro glue code into the engine instead
+          switch (_queryApiSynchronicity) {
+            case QueryApiSynchronicity::Asynchronous: {
+              std::tie(state, block) = co_await waitingFunToCoro(
+                  *suspensionCounter,
+                  [&engine]()
+                      -> std::optional<
+                          std::tuple<ExecutorState, SharedAqlItemBlockPtr>> {
+                    auto&& [state, skipped, block] =
+                        engine->execute(::defaultStack);
+                    // The default call asks for No skips.
+                    TRI_ASSERT(skipped.nothingSkipped());
+                    switch (state) {
+                      case ExecutionState::WAITING:
+                        return std::nullopt;
+                      case ExecutionState::HASMORE:
+                        return std::optional<
+                            std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
+                            std::in_place, ExecutorState::HASMORE,
+                            std::move(block)};
+                      case ExecutionState::DONE:
+                        return std::optional<
+                            std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
+                            std::in_place, ExecutorState::DONE,
+                            std::move(block)};
+                      default:
+                        ADB_PROD_CRASH() << "Invalid execution state " << state;
+                    }
+                  });
+            }
+            case QueryApiSynchronicity::Synchronous: {
+              std::tie(state, block) = std::invoke(
+                  [this, &engine]()
+                      -> std::tuple<ExecutorState, SharedAqlItemBlockPtr> {
+                    while (true) {
+                      auto&& [state, skipped, block] =
+                          engine->execute(::defaultStack);
+                      // The default call asks for No skips.
+                      TRI_ASSERT(skipped.nothingSkipped());
+                      switch (state) {
+                        case ExecutionState::WAITING: {
+                          sharedState()->waitForAsyncWakeup();
+                          break;
+                        }
+                        case ExecutionState::HASMORE:
+                          return {ExecutorState::HASMORE, std::move(block)};
+                        case ExecutionState::DONE:
+                          return {ExecutorState::DONE, std::move(block)};
+                        default:
+                          ADB_PROD_CRASH()
+                              << "Invalid execution state " << state;
+                      }
+                    }
+                  });
+            }
+          }
 
           // block == nullptr => state == DONE
           if (block == nullptr) {
@@ -914,28 +950,47 @@ futures::Future<futures::Unit> Query::execute(
 
         [[fallthrough]];
       case ExecutionPhase::FINALIZE: {
-        co_await waitingFunToCoro(
-            suspensionCounter, [&]() -> std::optional<std::monostate> {
-              if (!queryResult.extra) {
-                queryResult.extra = std::make_shared<VPackBuilder>();
-              }
-              // will set warnings, stats, profile and cleanup plan and engine
-              auto state = finalize(*queryResult.extra);
-              bool isCachingAllowed = !_transactionContext->isStreaming() ||
-                                      _trx->state()->isReadOnlyTransaction();
-              if (state == ExecutionState::DONE && _cacheEntry != nullptr &&
-                  isCachingAllowed) {
-                _cacheEntry->_stats = queryResult.extra;
-                QueryCache::instance()->store(&_vocbase,
-                                              std::move(_cacheEntry));
-              }
+        if (!queryResult.extra) {
+          queryResult.extra = std::make_shared<VPackBuilder>();
+        }
 
+        // TODO change behavior for synchronous calls
+        switch (_queryApiSynchronicity) {
+          case QueryApiSynchronicity::Asynchronous: {
+            co_await waitingFunToCoro(
+                *suspensionCounter, [&]() -> std::optional<std::monostate> {
+                  // will set warnings, stats, profile and cleanup plan and
+                  // engine
+                  auto state = finalize(*queryResult.extra);
+                  switch (state) {
+                    case ExecutionState::DONE:
+                      return std::monostate{};
+                    case ExecutionState::WAITING:
+                      return std::nullopt;
+                    default:
+                      ADB_PROD_CRASH()
+                          << "invalid state returned by finalize: " << state;
+                  }
+                });
+          }
+          case QueryApiSynchronicity::Synchronous: {
+            while (true) {
+              auto state = finalize(*queryResult.extra);
               if (state == ExecutionState::WAITING) {
-                return std::nullopt;
+                sharedState()->waitForAsyncWakeup();
               } else {
-                return std::monostate{};
+                break;
               }
-            });
+            }
+          }
+        }
+
+        bool isCachingAllowed = !_transactionContext->isStreaming() ||
+                                _trx->state()->isReadOnlyTransaction();
+        if (_cacheEntry != nullptr && isCachingAllowed) {
+          _cacheEntry->_stats = queryResult.extra;
+          QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
+        }
         co_return;
       }
     }
@@ -976,24 +1031,16 @@ futures::Future<futures::Unit> Query::execute(
  */
 QueryResult Query::executeSync() {
   _queryApiSynchronicity = QueryApiSynchronicity::Synchronous;
-
   auto ss = sharedState();
   TRI_ASSERT(ss != nullptr);
 
-  ss->resetWakeupHandler();
-
   QueryResult queryResult;
-  auto suspensionCounter = SuspensionCounter{};
-  auto future = execute(queryResult, suspensionCounter);
-  while (!future.isReady()) {
-    ss->waitForAsyncWakeup();
-    auto resumed = suspensionCounter.notify();
-    // this is the single thread that both starts the coroutine in the first
-    // place (by calling execute), and possibly resumes it after suspension
-    // (by calling notify). This means we can only call notify (again) when
-    // the coroutine is already suspended.
-    TRI_ASSERT(resumed);
-  }
+  auto future = execute(queryResult, nullptr);
+  // Setting _queryApiSynchronizity to Synchronous must cause a result that's
+  // already ready.
+  TRI_ASSERT(future.isReady());
+  future.waitAndGet();
+
   return queryResult;
 }
 

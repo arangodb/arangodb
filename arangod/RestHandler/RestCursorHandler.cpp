@@ -253,7 +253,7 @@ async<void> RestCursorHandler::processQuery() {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
-    co_await query->execute(_queryResult, _suspensionCounter);
+    co_await query->execute(_queryResult, &_suspensionCounter);
   }
 
   // We cannot get into HASMORE here, or we would lose results.
