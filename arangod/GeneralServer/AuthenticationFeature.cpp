@@ -24,10 +24,9 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Auth/Common.h"
 #include "Auth/Handler.h"
 #include "Auth/TokenCache.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerImpl.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -246,7 +245,7 @@ void AuthenticationFeature::prepare() {
   TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
     if (_userManager == nullptr) {
-      _userManager = std::make_unique<auth::UserManager>(server());
+      _userManager = std::make_unique<auth::UserManagerImpl>(server());
     }
 
     TRI_ASSERT(_userManager != nullptr);
@@ -351,6 +350,13 @@ Result AuthenticationFeature::loadJwtSecretsFromFile() {
   }
   return Result(TRI_ERROR_BAD_PARAMETER, "no JWT secret file was specified");
 }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+void AuthenticationFeature::setUserManager(
+    std::unique_ptr<auth::UserManager> um) {
+  _userManager.swap(um);
+}
+#endif  // ARANGODB_USE_GOOGLE_TESTS
 
 /// load JWT secret from file specified at startup
 Result AuthenticationFeature::loadJwtSecretKeyfile() {

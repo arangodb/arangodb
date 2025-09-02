@@ -22,6 +22,7 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "gmock/gmock-matchers.h"
 #include "gtest/gtest.h"
 
 #include "fakeit.hpp"
@@ -30,7 +31,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Auth/Handler.h"
 #include "Auth/User.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerImpl.h"
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 
@@ -38,22 +39,20 @@ using namespace fakeit;
 using namespace arangodb;
 using namespace arangodb::aql;
 
-namespace arangodb {
-namespace tests {
-namespace auth_info_test {
+namespace arangodb::tests::auth_info_test {
 
 class TestQueryRegistry : public QueryRegistry {
  public:
   TestQueryRegistry() : QueryRegistry(1.0){};
-  virtual ~TestQueryRegistry() = default;
+  ~TestQueryRegistry() override = default;
 };
 
 class UserManagerTest : public ::testing::Test {
  protected:
-  arangodb::ArangodServer server;
+  ArangodServer server;
   TestQueryRegistry queryRegistry;
   ServerState* state;
-  auth::UserManager um;
+  auth::UserManagerImpl um;
 
   UserManagerTest()
       : server(nullptr, nullptr), state(ServerState::instance()), um(server) {
@@ -62,7 +61,7 @@ class UserManagerTest : public ::testing::Test {
     server.addFeature<DatabaseFeature>();
   }
 
-  ~UserManagerTest() {
+  ~UserManagerTest() override {
     state->setServerMode(ServerState::Mode::DEFAULT);
     state->setReadOnly(ServerState::API_FALSE);
   }
@@ -71,7 +70,7 @@ class UserManagerTest : public ::testing::Test {
 TEST_F(UserManagerTest, unknown_user_will_have_no_access) {
   auth::UserMap userEntryMap;
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::NONE);
 }
 
@@ -83,7 +82,7 @@ TEST_F(UserManagerTest,
   userEntryMap.emplace("test", testUser);
 
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
@@ -98,7 +97,7 @@ TEST_F(
   state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.databaseAuthLevel("test", "test");
+  auth::Level authLevel = um.databaseAuthLevel("test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::RO);
 }
 
@@ -129,7 +128,7 @@ TEST_F(
   state->setReadOnly(ServerState::API_TRUE);
 
   um.setAuthInfo(userEntryMap);
-  auth::Level authLevel = um.collectionAuthLevel("test", "test", "test");
+  auth::Level authLevel = um.collectionAuthLevel("test", "test", "test", false);
   ASSERT_EQ(authLevel, auth::Level::RO);
 }
 
@@ -150,6 +149,46 @@ TEST_F(
   ASSERT_EQ(authLevel, auth::Level::RW);
 }
 
-}  // namespace auth_info_test
-}  // namespace tests
-}  // namespace arangodb
+TEST_F(UserManagerTest, usermanager_should_throw_if_called_too_early) {
+  // we never start the internal thread
+  // so the internal version stays 0 and every call to the following functions
+  // should lead to a `TRI_ERROR_STARTING_UP` exception
+
+  using namespace ::testing;
+
+  EXPECT_THAT([&] { um.storeUser(true, "username", "password", true, {}); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.enumerateUsers([](auto&) { return true; }, true); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT(
+      [&] { um.updateUser("username", [](auto&) { return Result(); }); },
+      Throws<basics::Exception>(
+          Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT(
+      [&] { um.accessUser("username", [](auto&) { return Result(); }); },
+      Throws<basics::Exception>(
+          Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.userExists("username"); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.serializeUser("username"); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.removeUser("username"); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.removeAllUsers(); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT([&] { um.databaseAuthLevel("username", "dbname", true); },
+              Throws<basics::Exception>(
+                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT(
+      [&] { um.collectionAuthLevel("username", "dbname", "collection", true); },
+      Throws<basics::Exception>(
+          Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+}
+
+}  // namespace arangodb::tests::auth_info_test

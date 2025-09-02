@@ -39,13 +39,10 @@ const AM = IM.agencyMgr;
 const defaultReplicationFactor = db._properties().replicationFactor;
 const replication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
 
-let {
-  getMaxReplicationFactor,
-  getMinReplicationFactor,
-} = require("@arangodb/test-helper");
+const CI = require('@arangodb/cluster-info');
 
-const maxReplicationFactor = getMaxReplicationFactor();
-const minReplicationFactor = getMinReplicationFactor(); 
+const maxReplicationFactor = CI.getMaxReplicationFactor();
+const minReplicationFactor = CI.getMinReplicationFactor(); 
         
 function assertNoDatabasesInPlan () {
   if (!isCluster) {

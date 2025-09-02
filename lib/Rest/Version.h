@@ -143,6 +143,12 @@ class Version {
   // get endianness
   static std::string getEndianness();
 
+  // get Faiss version
+  static std::string getFaissVersion();
+
+  // get OpenMP version
+  static std::string getOpenMPVersion();
+
   // get plaform
   static std::string getPlatform();
 

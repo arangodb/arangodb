@@ -142,7 +142,7 @@ function SynchronousReplicationSuite () {
       assertTrue(suite.waitForSynchronousReplication("_system"));
 
       // Heal follower
-      assertTrue(continueExternal(getDBServers()[failedPos].pid));
+      IM.continueServerWaitOk();
     },
   };
 }

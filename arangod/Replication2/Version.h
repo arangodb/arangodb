@@ -41,14 +41,6 @@ namespace arangodb::replication {
 
 enum class Version { ONE = 1, TWO = 2 };
 
-// We disable Replication2 in Production environments for now
-// This we only allow to use Version one.
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-constexpr inline auto allowedVersions = {Version::ONE, Version::TWO};
-#else
-constexpr inline auto allowedVersions = {Version::ONE};
-#endif
-
 auto parseVersion(std::string_view version) -> ResultT<replication::Version>;
 auto parseVersion(velocypack::Slice version) -> ResultT<replication::Version>;
 

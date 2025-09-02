@@ -80,6 +80,7 @@ add_library(arango_basic_utils STATIC
         Basics/ReadWriteSpinLock.cpp
         Basics/ResourceUsage.cpp
         Basics/StringBufferAdvanced.cpp
+        Basics/SupervisedBuffer.h
         Basics/Utf8Helper.cpp
         Basics/VelocyPackHelper.cpp
         Basics/csv.cpp
@@ -273,6 +274,7 @@ target_link_libraries(arango_basic_http_client
          fuerte
          rocksdb
          rocksdb_interface
+         faiss_interface
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)

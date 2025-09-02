@@ -35,7 +35,6 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 
-#include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
 #include "IResearch/common.h"
@@ -43,15 +42,13 @@
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerMock.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/V8SecurityFeature.h"
@@ -128,7 +125,42 @@ class V8AnalyzerTest
 
   V8AnalyzerTest() {
     arangodb::tests::v8Init();  // one-time initialize V8
+    expectUserManagerCalls();
   }
+
+  void expectUserManagerCalls() {
+    using namespace arangodb;
+    auto* authFeature = AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    auto* um =
+        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
+    EXPECT_NE(um, nullptr);
+
+    using namespace ::testing;
+    EXPECT_CALL(*um, databaseAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly(WithArgs<0, 1>(
+            [this](std::string const& username, std::string const& dbname) {
+              auto const it = _userMap.find(username);
+              EXPECT_NE(it, _userMap.end());
+              return it->second.databaseAuthLevel(dbname);
+            }));
+    EXPECT_CALL(*um, collectionAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+                                                 std::string const& dbname,
+                                                 std::string_view const cname) {
+          auto const it = _userMap.find(username);
+          EXPECT_NE(it, _userMap.end());
+          EXPECT_EQ(username, it->second.username());
+          return it->second.collectionAuthLevel(dbname, cname);
+        }));
+    EXPECT_CALL(*um, setAuthInfo)
+        .Times(AtLeast(1))
+        .WillRepeatedly(
+            [this](auth::UserMap const& userMap) { _userMap = userMap; });
+  }
+  arangodb::auth::UserMap _userMap;
 };
 
 v8::Local<v8::Object> getAnalyzerManagerInstance(TRI_v8_global_t* v8g,

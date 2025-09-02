@@ -27,6 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/TraverserEngineShardLists.h"
+#include "Async/async.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -303,7 +304,7 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(
 //   this methods a shutdown request is send to all DBServers.
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
-Result EngineInfoContainerDBServerServerBased::buildEngines(
+async<Result> EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
@@ -315,39 +316,69 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
   if (dbServers.empty()) {
     // No snippets to be placed on dbservers
-    return {};
+    co_return Result{};
   }
   // We at least have one Snippet, or one graph node.
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
-  ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
+  auto cleanup =
+      [this, &serverToQueryId](
+          ErrorCode cleanupReason) noexcept -> futures::Future<futures::Unit> {
+    try {
+      transaction::Methods& trx = _query.trxForOptimization();
+      auto responsesFuture = cleanupEngines(
+          cleanupReason, _query.vocbase().name(), serverToQueryId);
+      if (!trx.isMainTransaction()) {
+        // for AQL queries in streaming transactions, we will wait for the
+        // complete shutdown to have finished before we return to the
+        // caller. this is done so that there will be no 2 AQL queries in
+        // the same streaming transaction at the same time
+        std::ignore = co_await std::move(responsesFuture);
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("2a9fe", WARN, Logger::AQL)
+          << "unable to clean up query snippets: " << ex.what();
+    }
+  };
 
-  auto cleanupGuard =
-      scopeGuard([this, &serverToQueryId, &cleanupReason]() noexcept {
-        try {
-          transaction::Methods& trx = _query.trxForOptimization();
-          auto requests = cleanupEngines(cleanupReason, _query.vocbase().name(),
-                                         serverToQueryId);
-          if (!trx.isMainTransaction()) {
-            // for AQL queries in streaming transactions, we will wait for the
-            // complete shutdown to have finished before we return to the
-            // caller. this is done so that there will be no 2 AQL queries in
-            // the same streaming transaction at the same time
-            futures::collectAll(requests).wait();
-          }
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("2a9fe", WARN, Logger::AQL)
-              << "unable to clean up query snippets: " << ex.what();
-        }
-      });
+  auto cleanupReason = std::optional<ErrorCode>();
+  auto exception = std::exception_ptr{};
+  auto result = Result{TRI_ERROR_INTERNAL};
+  try {
+    auto res = co_await buildEnginesInternal(
+        nodesById, snippetIds, serverToQueryId, nodeAliases, dbServers);
+    cleanupReason = res.cleanupReason;
+    result = std::move(res.result);
+  } catch (basics::Exception const& ex) {
+    cleanupReason = ex.code();
+    exception = std::current_exception();
+  } catch (...) {
+    cleanupReason = TRI_ERROR_INTERNAL;
+    exception = std::current_exception();
+  }
+  if (cleanupReason.has_value()) {
+    co_await cleanup(*cleanupReason);
+  }
+  if (exception != nullptr) {
+    std::rethrow_exception(std::move(exception));
+  }
 
+  co_return std::move(result);
+}
+
+auto EngineInfoContainerDBServerServerBased::buildEnginesInternal(
+    std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    MapRemoteToSnippet& snippetIds, ServerQueryIdList& serverToQueryId,
+    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+    std::vector<ServerID>& dbServers) -> async<BuildEnginesInternalResult> {
   NetworkFeature const& nf =
       _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr only happens on controlled shutdown
-    return {TRI_ERROR_SHUTTING_DOWN};
+    // we can't clean up without network
+    co_return {TRI_ERROR_SHUTTING_DOWN, std::nullopt};
   }
 
   double oldTtl = _query.queryOptions().ttl;
@@ -370,12 +401,19 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   containers::HashSet<std::string> serversAdded;
 
   transaction::Methods& trx = _query.trxForOptimization();
-  std::vector<arangodb::futures::Future<Result>> networkCalls{};
+  std::vector<futures::Future<Result>> networkCalls{};
 
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(kSetupTimeout);
-  options.skipScheduler = true;  // hack to speed up future.get()
+  switch (_query.queryApiSynchronicity()) {
+    case QueryContext::QueryApiSynchronicity::Asynchronous: {
+      options.continuationLane = RequestLane::CLUSTER_AQL;
+    } break;
+    case QueryContext::QueryApiSynchronicity::Synchronous: {
+      options.skipScheduler = true;
+    } break;
+  }
   network::addUserParameter(options, trx.username());
 
   TRI_IF_FAILURE("Query::setupTimeout") {
@@ -442,40 +480,52 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     _query.incHttpRequests(unsigned(1));
   }
 
-  futures::Future<Result> fastPathResult =
-      futures::collectAll(networkCalls)
-          .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses)
-                         -> Result {
-            // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
-            // error as we need to abort after.
-            // Otherwise we need to report.
-            // Note that if a request times out, we will get
-            // TRI_ERROR_CLUSTER_TIMEOUT and not TRI_ERROR_LOCK_TIMEOUT!
-            Result res;
-            for (auto const& tryRes : responses) {
-              auto response = tryRes.get();
-              if (response.fail()) {
-                if (response.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
-                  // Found something we cannot recover from.
-                  // Return and give up
-                  return response;
-                }
-                // track that we have lock_timeout_present
-                res = response;
-              }
-            }
-            // Return what we have, this will be ok() if and only
-            // if none of the requests failed.
-            // It will be LOCK_TIMEOUT if and only if the only error
-            // we see was LOCK_TIMEOUT.
-            return res;
-          });
-  if (fastPathResult.waitAndGet().fail()) {
-    if (fastPathResult.waitAndGet().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+  auto networkFut = futures::collectAll(std::move(networkCalls));
+  if (_query.queryApiSynchronicity() ==
+      QueryContext::QueryApiSynchronicity::Synchronous) {
+    // The caller is waiting synchronously. Because of that, skipScheduler is
+    // set for the network requests sent here. Which means the network thread
+    // will resolve the promise(s) without going through the scheduler. We
+    // must avoid executing arbitrary code on the network thread, and
+    // therefore have to wait here before calling `.thenValue` or `co_await`ing
+    // the response-future. The caller will be waiting synchronously anyway.
+    networkFut.wait();
+  }
+
+  auto&& responses = co_await std::move(networkFut);
+
+  auto fastPathResult = std::invoke([&] {
+    // We can directly report a non TRI_ERROR_LOCK_TIMEOUT
+    // error as we need to abort after.
+    // Otherwise we need to report.
+    // Note that if a request times out, we will get
+    // TRI_ERROR_CLUSTER_TIMEOUT and not TRI_ERROR_LOCK_TIMEOUT!
+    Result res;
+    for (auto const& tryRes : responses) {
+      auto response = tryRes.get();
+      if (response.fail()) {
+        if (response.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+          // Found something we cannot recover from.
+          // Return and give up
+          return response;
+        }
+        // track that we have lock_timeout_present
+        res = response;
+      }
+    }
+    // Return what we have, this will be ok() if and only
+    // if none of the requests failed.
+    // It will be LOCK_TIMEOUT if and only if the only error
+    // we see was LOCK_TIMEOUT.
+    return res;
+  });
+
+  if (fastPathResult.fail()) {
+    if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
       // we got an error. this will trigger the cleanupGuard!
       // set the proper error reason.
-      cleanupReason = fastPathResult.waitAndGet().errorNumber();
-      return fastPathResult.waitAndGet();
+      auto cleanupReason = fastPathResult.errorNumber();
+      co_return {std::move(fastPathResult), cleanupReason};
     }
 
     // if we ever get here, the initial fast lock request has failed
@@ -486,14 +536,15 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     // we got a lock timeout response for the fast path locking...
     {
-      // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.waitAndGet().errorNumber(),
-                                     _query.vocbase().name(), serverToQueryId);
+      // in case of fast path failure, we need to clean up engines
+      auto cleanupResponses =
+          co_await cleanupEngines(fastPathResult.errorNumber(),
+                                  _query.vocbase().name(), serverToQueryId);
       // Wait for all cleanup requests to complete.
       // So we know that all Transactions are aborted.
       Result res;
-      for (auto& tryRes : requests) {
-        network::Response const& response = tryRes.waitAndGet();
+      for (auto&& tryRes : cleanupResponses) {
+        auto response = std::move(tryRes).get();
         if (response.fail()) {
           // note first error, but continue iterating over all results
           LOG_TOPIC("2d319", DEBUG, Logger::AQL)
@@ -506,9 +557,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       if (res.fail()) {
         // unable to do a proper cleanup.
         // it is not safe to go on here.
-        cleanupGuard.cancel();
-        cleanupReason = res.errorNumber();
-        return res;
+        co_return {std::move(res), std::nullopt};
       }
     }
 
@@ -572,25 +621,38 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       overwrittenOptions.add("clusterQueryId", VPackValue(clusterQueryId));
       addOptionsPart(overwrittenOptions, server);
       overwrittenOptions.close();
-      auto newRequest = arangodb::velocypack::Collection::merge(
+      auto newRequest = velocypack::Collection::merge(
           infoSlice, overwrittenOptions.slice(), false);
 
       auto request = buildSetupRequest(
           trx, std::move(server), newRequest.slice(),
           std::move(didCreateEngine), snippetIds, serverToQueryId,
           serverToQueryIdLock, pool, options, false /* fastPath */);
+
       _query.incHttpRequests(unsigned(1));
-      if (request.waitAndGet().fail()) {
+
+      if (_query.queryApiSynchronicity() ==
+          QueryContext::QueryApiSynchronicity::Synchronous) {
+        // The caller is waiting synchronously. Because of that, skipScheduler
+        // is set for the network requests sent here. Which means the network
+        // thread will resolve the promise(s) without going through the
+        // scheduler. We must avoid executing arbitrary code on the network
+        // thread, and therefore have to wait here before calling `.thenValue`
+        // or `co_await`ing the response-future. The caller will be waiting
+        // synchronously anyway.
+        request.wait();
+      }
+      auto requestResult = co_await std::move(request);
+      if (requestResult.fail()) {
         // this will trigger the cleanupGuard.
         // set the proper error reason
-        cleanupReason = request.waitAndGet().errorNumber();
-        return request.waitAndGet();
+        auto cleanupReason = requestResult.errorNumber();
+        co_return {std::move(requestResult), cleanupReason};
       }
     }
   }
 
-  cleanupGuard.cancel();
-  return {};
+  co_return {Result{}, std::nullopt};
 }
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(
@@ -716,19 +778,25 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
  * @param queryIds A map of QueryIds of the format: (remoteNodeId:shardId)
  * -> queryid.
  */
-std::vector<arangodb::network::FutureRes>
+futures::Future<std::vector<futures::Try<network::Response>>>
 EngineInfoContainerDBServerServerBased::cleanupEngines(
     ErrorCode errorCode, std::string const& dbname,
-    aql::ServerQueryIdList& serverQueryIds) const {
-  std::vector<arangodb::network::FutureRes> requests;
+    ServerQueryIdList& serverQueryIds) const {
   NetworkFeature const& nf =
       _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
 
   network::RequestOptions options;
   options.database = dbname;
+  switch (_query.queryApiSynchronicity()) {
+    case QueryContext::QueryApiSynchronicity::Asynchronous: {
+      options.continuationLane = RequestLane::CLUSTER_AQL;
+    } break;
+    case QueryContext::QueryApiSynchronicity::Synchronous: {
+      options.skipScheduler = true;
+    } break;
+  }
   options.timeout = network::Timeout(10.0);  // Picked arbitrarily
-  options.skipScheduler = true;              // hack to speed up future.get()
 
   // Shutdown query snippets
   VPackBuffer<uint8_t> body;
@@ -736,10 +804,11 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
   builder.openObject();
   builder.add(StaticStrings::Code, VPackValue(errorCode));
   builder.close();
-  requests.reserve(serverQueryIds.size());
+  std::vector<network::FutureRes> futureResponses;
+  futureResponses.reserve(serverQueryIds.size());
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
     TRI_ASSERT(!server.starts_with("server:"));
-    requests.emplace_back(network::sendRequestRetry(
+    futureResponses.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, fuerte::RestVerb::Delete,
         absl::StrCat(::finishUrl, queryId),
         /*copy*/ body, options));
@@ -753,7 +822,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
     auto allEngines = gn->engines();
     for (auto const& engine : *allEngines) {
       TRI_ASSERT(!engine.first.starts_with("server:"));
-      requests.emplace_back(network::sendRequestRetry(
+      futureResponses.emplace_back(network::sendRequestRetry(
           pool, "server:" + engine.first, fuerte::RestVerb::Delete,
           absl::StrCat(::traverserUrl, engine.second), noBody, options));
     }
@@ -762,7 +831,21 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
   }
 
   serverQueryIds.clear();
-  return requests;
+
+  auto responsesFuture = futures::collectAll(std::move(futureResponses));
+
+  if (_query.queryApiSynchronicity() ==
+      QueryContext::QueryApiSynchronicity::Synchronous) {
+    // The caller is waiting synchronously. Because of that, skipScheduler is
+    // set for the network requests sent here. Which means the network thread
+    // will resolve the promise(s) without going through the scheduler. We
+    // must avoid executing arbitrary code on the network thread, and
+    // therefore have to wait here before calling `.thenValue` or `co_await`ing
+    // the response-future. The caller will be waiting synchronously anyway.
+    responsesFuture.wait();
+  }
+
+  return responsesFuture;
 }
 
 // Insert a GraphNode that needs to generate TraverserEngines on
