@@ -721,6 +721,85 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   return plan;
 }
 
+namespace {
+// TODO With a few more changes i.a. to the streaming cursor, we should be able
+//      to move the WAITING/coro glue code into the engine instead.
+//      At some point we should be able to get rid of any connection between
+//      the RestHandler and the SharedQueryState, and move the SuspensionCounter
+//      from the RestHandler into the query.
+auto engineExecuteToCoro = [](SuspensionCounter& suspensionCounter,
+                              auto&& engineExecute) {
+  // Note that the function frame does not (generally) live as long as the
+  // coroutine returned by it, so it's not safe to refer to any local variables
+  // or parameters by reference, unless they are references (to something with
+  // an appropriate lifetime).
+  using ReturnType =
+      std::optional<std::tuple<ExecutorState, SharedAqlItemBlockPtr>>;
+
+  return waitingFunToCoro(suspensionCounter, [&]() -> ReturnType {
+    auto&& [state, skipped, block] = engineExecute();
+    // The default call asks for No skips.
+    TRI_ASSERT(skipped.nothingSkipped());
+    switch (state) {
+      case ExecutionState::WAITING:
+        return std::nullopt;
+      case ExecutionState::HASMORE:
+        return ReturnType{std::in_place, ExecutorState::HASMORE,
+                          std::move(block)};
+      case ExecutionState::DONE:
+        return ReturnType{std::in_place, ExecutorState::DONE, std::move(block)};
+      default:
+        ADB_PROD_CRASH() << "Invalid execution state " << state;
+    }
+  });
+};
+auto engineExecuteSync = [](std::shared_ptr<SharedQueryState> sharedState,
+                            auto&& engineExecute)
+    -> std::tuple<ExecutorState, SharedAqlItemBlockPtr> {
+  while (true) {
+    auto&& [state, skipped, block] = engineExecute();
+    // The default call asks for No skips.
+    TRI_ASSERT(skipped.nothingSkipped());
+    switch (state) {
+      case ExecutionState::WAITING: {
+        sharedState->waitForAsyncWakeup();
+        break;
+      }
+      case ExecutionState::HASMORE:
+        return {ExecutorState::HASMORE, std::move(block)};
+      case ExecutionState::DONE:
+        return {ExecutorState::DONE, std::move(block)};
+      default:
+        ADB_PROD_CRASH() << "Invalid execution state " << state;
+    }
+  }
+};
+
+auto finalizeToCoro = [](SuspensionCounter& suspensionCounter,
+                         auto&& finalize) {
+  return waitingFunToCoro(
+      suspensionCounter, [&]() -> std::optional<std::monostate> {
+        auto state = finalize();
+        switch (state) {
+          case ExecutionState::DONE:
+            return std::monostate{};
+          case ExecutionState::WAITING:
+            return std::nullopt;
+          default:
+            ADB_PROD_CRASH() << "invalid state returned by finalize: " << state;
+        }
+      });
+};
+
+auto finalizeSync = [](std::shared_ptr<SharedQueryState> sharedState,
+                       auto&& finalize) {
+  while (finalize() == ExecutionState::WAITING) {
+    sharedState->waitForAsyncWakeup();
+  }
+};
+
+};  // namespace
+
 /// @brief execute an AQL query
 futures::Future<futures::Unit> Query::execute(
     QueryResult& queryResult, SuspensionCounter* suspensionCounter) {
@@ -790,8 +869,9 @@ futures::Future<futures::Unit> Query::execute(
         trackExecutionStart();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-        while (TRI_ShouldFailDebugging("Query::delayingExecutionPhase"))
-          ;
+        while (TRI_ShouldFailDebugging("Query::delayingExecutionPhase")) {
+          std::this_thread::yield();
+        }
 #endif
       }
         [[fallthrough]];
@@ -820,61 +900,17 @@ futures::Future<futures::Unit> Query::execute(
         while (true) {
           auto state = ExecutorState{};
           auto block = SharedAqlItemBlockPtr{};
-          // TODO maybe move the WAITING/coro glue code into the engine instead
           switch (_queryApiSynchronicity) {
             case QueryApiSynchronicity::Asynchronous: {
-              std::tie(state, block) = co_await waitingFunToCoro(
+              std::tie(state, block) = co_await engineExecuteToCoro(
                   *suspensionCounter,
-                  [&engine]()
-                      -> std::optional<
-                          std::tuple<ExecutorState, SharedAqlItemBlockPtr>> {
-                    auto&& [state, skipped, block] =
-                        engine->execute(::defaultStack);
-                    // The default call asks for No skips.
-                    TRI_ASSERT(skipped.nothingSkipped());
-                    switch (state) {
-                      case ExecutionState::WAITING:
-                        return std::nullopt;
-                      case ExecutionState::HASMORE:
-                        return std::optional<
-                            std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
-                            std::in_place, ExecutorState::HASMORE,
-                            std::move(block)};
-                      case ExecutionState::DONE:
-                        return std::optional<
-                            std::tuple<ExecutorState, SharedAqlItemBlockPtr>>{
-                            std::in_place, ExecutorState::DONE,
-                            std::move(block)};
-                      default:
-                        ADB_PROD_CRASH() << "Invalid execution state " << state;
-                    }
-                  });
+                  [&engine] { return engine->execute(::defaultStack); });
               break;
             }
             case QueryApiSynchronicity::Synchronous: {
-              std::tie(state, block) = std::invoke(
-                  [this, &engine]()
-                      -> std::tuple<ExecutorState, SharedAqlItemBlockPtr> {
-                    while (true) {
-                      auto&& [state, skipped, block] =
-                          engine->execute(::defaultStack);
-                      // The default call asks for No skips.
-                      TRI_ASSERT(skipped.nothingSkipped());
-                      switch (state) {
-                        case ExecutionState::WAITING: {
-                          sharedState()->waitForAsyncWakeup();
-                          break;
-                        }
-                        case ExecutionState::HASMORE:
-                          return {ExecutorState::HASMORE, std::move(block)};
-                        case ExecutionState::DONE:
-                          return {ExecutorState::DONE, std::move(block)};
-                        default:
-                          ADB_PROD_CRASH()
-                              << "Invalid execution state " << state;
-                      }
-                    }
-                  });
+              std::tie(state, block) = engineExecuteSync(
+                  sharedState(),
+                  [&engine] { return engine->execute(::defaultStack); });
               break;
             }
           }
@@ -956,34 +992,22 @@ futures::Future<futures::Unit> Query::execute(
           queryResult.extra = std::make_shared<VPackBuilder>();
         }
 
-        // TODO change behavior for synchronous calls
+        // TODO Refactor finalize into a coroutine (that's aware of
+        //      _queryApiSynchronicity) to get rid of this glue code.
         switch (_queryApiSynchronicity) {
           case QueryApiSynchronicity::Asynchronous: {
-            co_await waitingFunToCoro(
-                *suspensionCounter, [&]() -> std::optional<std::monostate> {
-                  // will set warnings, stats, profile and cleanup plan and
-                  // engine
-                  auto state = finalize(*queryResult.extra);
-                  switch (state) {
-                    case ExecutionState::DONE:
-                      return std::monostate{};
-                    case ExecutionState::WAITING:
-                      return std::nullopt;
-                    default:
-                      ADB_PROD_CRASH()
-                          << "invalid state returned by finalize: " << state;
-                  }
-                });
+            co_await finalizeToCoro(*suspensionCounter, [this, &queryResult] {
+              // will set warnings, stats, profile and cleanup plan and
+              // engine
+              return finalize(*queryResult.extra);
+            });
           }
           case QueryApiSynchronicity::Synchronous: {
-            while (true) {
-              auto state = finalize(*queryResult.extra);
-              if (state == ExecutionState::WAITING) {
-                sharedState()->waitForAsyncWakeup();
-              } else {
-                break;
-              }
-            }
+            finalizeSync(sharedState(), [this, &queryResult] {
+              // will set warnings, stats, profile and cleanup plan and
+              // engine
+              return finalize(*queryResult.extra);
+            });
           }
         }
 
@@ -1038,7 +1062,7 @@ QueryResult Query::executeSync() {
 
   QueryResult queryResult;
   auto future = execute(queryResult, nullptr);
-  // Setting _queryApiSynchronizity to Synchronous must cause a result that's
+  // Setting _queryApiSynchronizity to Synchronous promises a result that's
   // already ready.
   TRI_ASSERT(future.isReady());
   future.waitAndGet();
