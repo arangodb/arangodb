@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-2217: If an error happens during startup, a disabled feature can
+  lead to a crash. Additionally signal that the server is stopping during
+  the unexpected shutdown so that in particular the RocksDBSyncThread does
+  not crash with an assertion failure.
+
 * Fix BTS-2212: Fix a hang on singleserver upgrades. Some of the Upgrade tasks needed 
   the UserManager to function properly.  
 
