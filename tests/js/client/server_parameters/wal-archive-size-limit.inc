@@ -84,7 +84,7 @@ exports.sendLargeServerOperation = function(maxWaitTime) {
                                       let now = time();
                                       if (now > tEnd) { return true; }
                                       checkCount += 1;
-                                      if (checkCount % 20 == 0) {
+                                      if (checkCount % 20 === 0) {
                                         return (getLogLines().length > 2);
                                       }
                                       return false;
