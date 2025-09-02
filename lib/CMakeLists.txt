@@ -271,6 +271,7 @@ target_link_libraries(arango_basic_http_client
          arango_basic_errors
          arango_build_id
          boost_boost
+         rocksdb
          fuerte
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
