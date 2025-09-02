@@ -286,8 +286,13 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
   return cursor;
 }
 
-void BaseTraverserEngine::getEdges(EdgeCursor* cursor, std::string_view vertex,
-                                   size_t depth, VPackBuilder& builder) {
+void BaseTraverserEngine::getEdges(EdgeCursor* cursor, VPackBuilder& builder) {
+  TRI_ASSERT(cursor != nullptr);
+  auto vertex = cursor->currentVertex();
+  TRI_ASSERT(vertex.has_value());
+  auto depth = cursor->currentDepth();
+  TRI_ASSERT(depth.has_value());
+
   cursor->readAll(
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
@@ -296,7 +301,7 @@ void BaseTraverserEngine::getEdges(EdgeCursor* cursor, std::string_view vertex,
         if (edge.isNull()) {
           return;
         }
-        if (_opts->evaluateEdgeExpression(edge, vertex, depth, cursorId)) {
+        if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
           if (!options().getEdgeProjections().empty()) {
             VPackObjectBuilder guard(&builder);
             options().getEdgeProjections().toVelocyPackFromDocument(
