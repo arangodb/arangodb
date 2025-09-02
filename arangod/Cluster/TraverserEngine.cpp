@@ -261,6 +261,12 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
+void BaseTraverserEngine::createCursor(std::string_view nextVertex,
+                                       uint64_t currentDepth) {
+  TRI_ASSERT(_cursor == nullptr);
+  _cursor = getCursor(nextVertex, currentDepth);
+}
+
 graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
                                                   uint64_t currentDepth) {
   graph::EdgeCursor* cursor = nullptr;
@@ -286,14 +292,14 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
   return cursor;
 }
 
-void BaseTraverserEngine::getEdges(EdgeCursor* cursor, VPackBuilder& builder) {
-  TRI_ASSERT(cursor != nullptr);
-  auto vertex = cursor->currentVertex();
+void BaseTraverserEngine::getEdges(VPackBuilder& builder) {
+  TRI_ASSERT(_cursor != nullptr);
+  auto vertex = _cursor->currentVertex();
   TRI_ASSERT(vertex.has_value());
-  auto depth = cursor->currentDepth();
+  auto depth = _cursor->currentDepth();
   TRI_ASSERT(depth.has_value());
 
-  cursor->readAll(
+  _cursor->readAll(
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid);
@@ -311,6 +317,8 @@ void BaseTraverserEngine::getEdges(EdgeCursor* cursor, VPackBuilder& builder) {
           }
         }
       });
+
+  _cursor = nullptr;
 }
 
 void BaseTraverserEngine::addStatistics(VPackBuilder& builder) {

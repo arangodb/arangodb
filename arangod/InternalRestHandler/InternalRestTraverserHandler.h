@@ -53,6 +53,5 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
   void destroyEngine();
 
   aql::QueryRegistry* _registry;
-  graph::EdgeCursor* cursor;
 };
 }  // namespace arangodb

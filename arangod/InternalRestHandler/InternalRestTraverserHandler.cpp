@@ -111,7 +111,6 @@ void InternalRestTraverserHandler::queryEngine() {
 
   bool parseSuccess = true;
   VPackSlice body = this->parseVPackBody(parseSuccess);
-  LOG_DEVEL << "body: " << inspection::json(body);
 
   if (!parseSuccess) {
     generateError(
@@ -197,28 +196,34 @@ void InternalRestTraverserHandler::queryEngine() {
         VPackSlice variables = body.get("variables");
         eng->injectVariables(variables);
 
-        std::vector<std::string_view> vertices;
-        if (keysSlice.isArray()) {
-          for (VPackSlice v : VPackArrayIterator(keysSlice)) {
-            TRI_ASSERT(v.isString());
-            vertices.emplace_back(v.stringView());
-          }
-        } else if (keysSlice.isString()) {
-          vertices.emplace_back(keysSlice.stringView());
-        } else {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-        }
         auto depth = depthSlice.getNumericValue<size_t>();
 
         result.openObject();
         result.add(VPackValue(StaticStrings::GraphQueryEdges));
         result.openArray(true);
-        for (auto const& vertex : vertices) {
-          cursor = eng->getCursor(vertex, depth);
-          eng->getEdges(cursor, vertex, depth, result);
+        // uint64_t count;
+        // while (count != 1000) {
+        //   if (not cursor->hasMore()) {
+        //     auto vertex = vertices.next();
+        //     if (vertex == std::nullopt) {
+        //       break;
+        //     }
+        //     cursor = eng->getCursor(vertex, depth);
+        //   }
+        //   count += eng->getEdges(cursor, result);
+        // }
+        if (keysSlice.isArray()) {
+          for (VPackSlice vertex : VPackArrayIterator(keysSlice)) {
+            eng->createCursor(vertex.stringView(), depth);
+            eng->getEdges(result);
+          }
+        } else if (keysSlice.isString()) {
+          eng->createCursor(keysSlice.stringView(), depth);
+          eng->getEdges(result);
+        } else {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
         result.close();
-        // statistics
         eng->addStatistics(result);
         result.close();
 

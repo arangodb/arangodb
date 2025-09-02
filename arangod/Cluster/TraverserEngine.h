@@ -110,11 +110,9 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(graph::EdgeCursor* cursor, arangodb::velocypack::Builder&);
+  void getEdges(arangodb::velocypack::Builder&);
   void addStatistics(VPackBuilder& builder);
-
-  graph::EdgeCursor* getCursor(std::string_view nextVertex,
-                               uint64_t currentDepth);
+  void createCursor(std::string_view nextVertex, uint64_t currentDepth);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
@@ -134,11 +132,15 @@ class BaseTraverserEngine : public BaseEngine {
   graph::BaseOptions const& options() const override;
 
  protected:
+  graph::EdgeCursor* getCursor(std::string_view nextVertex,
+                               uint64_t currentDepth);
+
   std::unique_ptr<traverser::TraverserOptions> _opts;
   std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
       _depthSpecificCursors;
   std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
+  graph::EdgeCursor* _cursor = nullptr;
 };
 
 class ShortestPathEngine : public BaseEngine {
