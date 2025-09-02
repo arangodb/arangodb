@@ -198,34 +198,32 @@ void InternalRestTraverserHandler::queryEngine() {
 
         auto depth = depthSlice.getNumericValue<size_t>();
 
-        result.openObject();
-        result.add(VPackValue(StaticStrings::GraphQueryEdges));
-        result.openArray(true);
-        // uint64_t count;
-        // while (count != 1000) {
-        //   if (not cursor->hasMore()) {
-        //     auto vertex = vertices.next();
-        //     if (vertex == std::nullopt) {
-        //       break;
-        //     }
-        //     cursor = eng->getCursor(vertex, depth);
-        //   }
-        //   count += eng->getEdges(cursor, result);
-        // }
+        TRI_ASSERT(eng->_vertices.empty());
         if (keysSlice.isArray()) {
           for (VPackSlice vertex : VPackArrayIterator(keysSlice)) {
-            eng->createCursor(vertex.stringView(), depth);
-            eng->getEdges(result);
+            TRI_ASSERT(vertex.isString());
+            eng->_vertices.emplace_back(vertex.copyString());
           }
         } else if (keysSlice.isString()) {
-          eng->createCursor(keysSlice.stringView(), depth);
-          eng->getEdges(result);
+          eng->_vertices.emplace_back(keysSlice.copyString());
         } else {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
         }
+
+        result.openObject();
+        result.add(VPackValue(StaticStrings::GraphQueryEdges));
+        result.openArray(true);
+
+        for (const auto& vertex : eng->_vertices) {
+          eng->createCursor(vertex, depth);
+          eng->getEdges(result);
+        }
+
         result.close();
         eng->addStatistics(result);
         result.close();
+
+        eng->_vertices = {};
 
         generateResult(ResponseCode::OK, result.slice(), engine->context());
         return;

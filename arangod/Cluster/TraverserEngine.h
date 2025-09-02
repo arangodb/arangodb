@@ -130,6 +130,8 @@ class BaseTraverserEngine : public BaseEngine {
   aql::VariableGenerator const* variables() const;
 
   graph::BaseOptions const& options() const override;
+  std::vector<std::string> _vertices;
+  uint64_t _depth;
 
  protected:
   graph::EdgeCursor* getCursor(std::string_view nextVertex,
@@ -140,6 +142,7 @@ class BaseTraverserEngine : public BaseEngine {
       _depthSpecificCursors;
   std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
+
   graph::EdgeCursor* _cursor = nullptr;
 };
 
