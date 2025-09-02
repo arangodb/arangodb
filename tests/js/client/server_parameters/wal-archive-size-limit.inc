@@ -63,7 +63,7 @@ function WalArchiveSizeLimitSuite() {
 }
 let getLogLines = function() {
   let content = fs.readFileSync(IM.arangods[0].logFile, 'ascii');
-  let lines = content.split('\\n');
+  let lines = content.split('\n');
 
   return lines.filter((line) => {
     // logId "d9793" from RocksDBEngine.cpp
@@ -73,24 +73,22 @@ let getLogLines = function() {
 
 exports.WalArchiveSizeLimitSuite = WalArchiveSizeLimitSuite;
 exports.sendLargeServerOperation = function(maxWaitTime) {
-  logServer('info', 'aaaa', 'js', "testmann: start");
-  let docs = [];
-  for (let i = 0; i < 2000; ++i) {
-    docs.push({ value1: "test" + i, payload: Array(512).join("x") });
-  }
-  let db = require("internal").db;
+  logServer('info', 'aaaaa', 'js', "testmann: start");
   let time = require("internal").time;
-  let i = 0;
-  let start = time();
-  do {
-    db.UnitTestsCollection.insert(docs);
-    if (i++ % 10 === 0) {
-      let lines = getLogLines();
-      if (lines.length >= 2) {
-        break;
-      }
-    }
-  } while (time() - start < maxWaitTime);
+  let tEnd = time() + maxWaitTime;
+  let checkCount = 0;
+  insertManyDocumentsIntoCollection('_system', 'UnitTestsCollection',
+                                    (i) => {
+                                      return {i, payload: Array(512).join("x")};},
+                                    1000000, 2000, () => {
+                                      let now = time();
+                                      if (now > tEnd) { return true; }
+                                      checkCount += 1;
+                                      if (checkCount % 20 == 0) {
+                                        return (getLogLines().length > 2);
+                                      }
+                                      return false;
+                                    });
   
   logServer('info', 'bbbbb', 'js', "testmann: done"); 
   return getLogLines();
