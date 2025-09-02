@@ -620,11 +620,9 @@ auto RestAdminLogHandler::handleLogWrite() -> async<void> {
       }
       auto logLevel = logLine.get("level").stringView();
       auto logMessage = logLine.get("message").stringView();
-      LogTopic const* topicPtr = logTopic.empty() ? nullptr : LogTopic::lookup(logTopic);
+      LogTopic const* topicPtr =
+          logTopic.empty() ? nullptr : LogTopic::lookup(logTopic);
       LogTopic const& topic = (topicPtr != nullptr) ? *topicPtr : Logger::FIXME;
-
-
-
       auto logMessageS = [&](auto const& message, auto const& logId) {
         if (logLevel.compare("fatal") == 0) {
           LOG_TOPIC(logId, FATAL, topic) << prefix << message;
