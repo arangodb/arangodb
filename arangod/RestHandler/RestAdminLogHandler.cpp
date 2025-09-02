@@ -35,6 +35,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/LogTopic.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -143,6 +145,8 @@ auto RestAdminLogHandler::executeAsync() -> futures::Future<futures::Unit> {
                       "where suffix can be either 'level' or 'structured'");
       }
     }
+  } else if (type == rest::RequestType::POST && suffixes.size() == 0) {
+    co_await handleLogWrite();
   } else {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
@@ -588,6 +592,69 @@ auto RestAdminLogHandler::handleLogLevel() -> async<void> {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
   }
+}
+
+auto RestAdminLogHandler::handleLogWrite() -> async<void> {
+  bool parseSuccess = false;
+  VPackSlice slice = this->parseVPackBody(parseSuccess);
+  if (!parseSuccess) {
+    co_return;
+  }
+  parseSuccess = false;
+  if (slice.isArray()) {
+    for (VPackSlice logLine : VPackArrayIterator(slice)) {
+      auto logId = logLine.get("ID").stringView();
+      auto logTopic = logLine.get("topic").stringView();
+      std::string prefix;
+      if (logTopic.compare("fatal") == 0) {
+        prefix = "FATAL! ";
+      } else if (logTopic.compare("error") != 0 &&
+                 logTopic.compare("warning") != 0 &&
+                 logTopic.compare("warn") != 0 &&
+                 logTopic.compare("info") != 0 &&
+                 logTopic.compare("debug") != 0 &&
+                 logTopic.compare("trace") != 0) {
+        // invalid log level
+        prefix = logTopic;
+        prefix += "!";
+      }
+      auto logLevel = logLine.get("level").stringView();
+      auto logMessage = logLine.get("message").stringView();
+      LogTopic const* topicPtr = logTopic.empty() ? nullptr : LogTopic::lookup(logTopic);
+      LogTopic const& topic = (topicPtr != nullptr) ? *topicPtr : Logger::FIXME;
+
+
+
+      auto logMessageS = [&](auto const& message, auto const &logId) {
+        if (logLevel.compare("fatal") == 0) {
+          LOG_TOPIC(logId, FATAL, topic) << prefix << message;
+        } else if (logLevel.compare("error") == 0) {
+          LOG_TOPIC(logId, ERR, topic) << prefix << message;
+        } else if (logLevel.compare("warning") == 0 || logLevel.compare("warn") == 0) {
+          LOG_TOPIC(logId, WARN, topic) << prefix << message;
+        } else if (logLevel.compare("info") == 0) {
+          LOG_TOPIC(logId, INFO, topic) << prefix << message;
+        } else if (logLevel.compare("debug") == 0) {
+          LOG_TOPIC(logId, DEBUG, topic) << prefix << message;
+        } else if (logLevel.compare("trace") == 0) {
+          LOG_TOPIC(logId, TRACE, topic) << prefix << message;
+        } else {
+          LOG_TOPIC(logId, WARN, topic) << prefix << message;
+        }
+      };
+      logMessageS(logMessage, logId);
+
+    }
+    parseSuccess = true;
+  }
+  if (!parseSuccess) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+  } else {
+    velocypack::Builder body;
+
+    generateResult(rest::ResponseCode::ACCEPTED, body.slice());
+  }
+  co_return;
 }
 
 void RestAdminLogHandler::handleLogStructuredParams() {

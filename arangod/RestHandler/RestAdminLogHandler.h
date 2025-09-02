@@ -46,6 +46,7 @@ class RestAdminLogHandler : public RestBaseHandler {
   void clearLogs();
   auto reportLogs(bool newFormat) -> async<void>;
   auto handleLogLevel() -> async<void>;
+  auto handleLogWrite() -> async<void>;
   void handleLogStructuredParams();
 };
 }  // namespace arangodb

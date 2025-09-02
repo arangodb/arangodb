@@ -879,6 +879,15 @@ exports.insertManyDocumentsIntoCollection
   }
 };
 
+exports.logServer = function (level, ID, topic, message) {
+  return arango.POST_RAW('/_admin/log/', [{
+    level,
+    ID,
+    topic,
+    message
+  }]);
+};
+
 exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFileName, options = global.instanceManager.options) {
   let sanHnd = new sanHandler(executable, options);
   let tmpMgr = new tmpDirMngr(fs.join(tmpFileName), options);
