@@ -132,6 +132,7 @@ class BaseTraverserEngine : public BaseEngine {
   graph::BaseOptions const& options() const override;
   std::vector<std::string> _vertices;
   uint64_t _depth;
+  std::optional<uint64_t> _batchSize;
 
  protected:
   graph::EdgeCursor* getCursor(std::string_view nextVertex,

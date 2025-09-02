@@ -35,6 +35,7 @@
 
 #include <Logger/LogMacros.h>
 #include <chrono>
+#include <cstdint>
 #include <thread>
 
 using namespace arangodb;
@@ -208,6 +209,22 @@ void InternalRestTraverserHandler::queryEngine() {
           eng->_vertices.emplace_back(keysSlice.copyString());
         } else {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+        }
+
+        eng->_batchSize = std::nullopt;
+        auto maybeBatchSize = body.get("batchSize");
+        if (not maybeBatchSize.isNone()) {
+          if (not maybeBatchSize.isInteger()) {
+            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "expecting 'batchSize' to be an integer value");
+            return;
+          }
+          eng->_batchSize = maybeBatchSize.getNumericValue<uint64_t>();
+          if (eng->_batchSize <= 0) {
+            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "expecting 'batchSize' to be positive");
+            return;
+          }
         }
 
         result.openObject();

@@ -299,24 +299,46 @@ void BaseTraverserEngine::getEdges(VPackBuilder& builder) {
   auto depth = _cursor->currentDepth();
   TRI_ASSERT(depth.has_value());
 
-  _cursor->readAll(
-      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-        if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid);
-        }
-        if (edge.isNull()) {
-          return;
-        }
-        if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
-          if (!options().getEdgeProjections().empty()) {
-            VPackObjectBuilder guard(&builder);
-            options().getEdgeProjections().toVelocyPackFromDocument(
-                builder, edge, _trx.get());
-          } else {
-            builder.add(edge);
+  if (_batchSize.has_value()) {
+    _cursor->nextBatch(
+        [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+          if (edge.isString()) {
+            edge = _opts->cache()->lookupToken(eid);
           }
-        }
-      });
+          if (edge.isNull()) {
+            return;
+          }
+          if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
+            if (!options().getEdgeProjections().empty()) {
+              VPackObjectBuilder guard(&builder);
+              options().getEdgeProjections().toVelocyPackFromDocument(
+                  builder, edge, _trx.get());
+            } else {
+              builder.add(edge);
+            }
+          }
+        },
+        _batchSize.value());
+  } else {
+    _cursor->readAll(
+        [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+          if (edge.isString()) {
+            edge = _opts->cache()->lookupToken(eid);
+          }
+          if (edge.isNull()) {
+            return;
+          }
+          if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
+            if (!options().getEdgeProjections().empty()) {
+              VPackObjectBuilder guard(&builder);
+              options().getEdgeProjections().toVelocyPackFromDocument(
+                  builder, edge, _trx.get());
+            } else {
+              builder.add(edge);
+            }
+          }
+        });
+  }
 
   _cursor = nullptr;
 }
