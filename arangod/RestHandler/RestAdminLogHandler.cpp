@@ -625,12 +625,13 @@ auto RestAdminLogHandler::handleLogWrite() -> async<void> {
 
 
 
-      auto logMessageS = [&](auto const& message, auto const &logId) {
+      auto logMessageS = [&](auto const& message, auto const& logId) {
         if (logLevel.compare("fatal") == 0) {
           LOG_TOPIC(logId, FATAL, topic) << prefix << message;
         } else if (logLevel.compare("error") == 0) {
           LOG_TOPIC(logId, ERR, topic) << prefix << message;
-        } else if (logLevel.compare("warning") == 0 || logLevel.compare("warn") == 0) {
+        } else if (logLevel.compare("warning") == 0 ||
+                   logLevel.compare("warn") == 0) {
           LOG_TOPIC(logId, WARN, topic) << prefix << message;
         } else if (logLevel.compare("info") == 0) {
           LOG_TOPIC(logId, INFO, topic) << prefix << message;
@@ -643,7 +644,6 @@ auto RestAdminLogHandler::handleLogWrite() -> async<void> {
         }
       };
       logMessageS(logMessage, logId);
-
     }
     parseSuccess = true;
   }
