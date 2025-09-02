@@ -1,6 +1,11 @@
 3.12.5.3 (2025-09-04)
 ---------------------
 
+* Fix BTS-2217: If an error happens during startup, a disabled feature can
+  lead to a crash. Additionally signal that the server is stopping during
+  the unexpected shutdown so that in particular the RocksDBSyncThread does
+  not crash with an assertion failure.
+
 * Fix unique _key generation in two cases: AQL INSERT operations in a loop
   without user specified _key in collections with exactly one shard or with
   multiple shard, non-standard sharding and `forceOneShardAttributeValue`.
