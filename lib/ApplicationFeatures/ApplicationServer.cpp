@@ -727,6 +727,9 @@ void ApplicationServer::start() {
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
         ApplicationFeature& feature = *it;
+        if (!feature.isEnabled()) {
+          continue;
+        }
         ADB_PROD_ASSERT(feature.state() == ApplicationFeature::State::STOPPED ||
                         feature.state() == ApplicationFeature::State::PREPARED)
             << "feature " << feature.name() << " is in state "
