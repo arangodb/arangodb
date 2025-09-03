@@ -862,7 +862,7 @@ exports.insertManyDocumentsIntoCollection
       l = [];
     }
     let i = 0;
-    if (jobs.length > 10) {
+    if (jobs.length > 10 || done) {
       while (i < jobs.length) {
         let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
         if (r.code === 204) {
