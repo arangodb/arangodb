@@ -257,6 +257,24 @@ bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
   return false;
 }
 
+// Vector Index Optimization Rule
+//
+// This rule optimizes queries that use vector similarity search with APPROX_NEAR_* functions.
+// Similar to the use-index rule, it identifies opportunities to use vector indexes for 
+// efficient nearest neighbor searches by matching the vector attribute, APPROX_NEAR_* function,
+// and the index's distance metric.
+//
+// Query Pattern:
+// The rule detects queries with the pattern: SORT APPROX_NEAR_*(doc.vector, target) LIMIT topK
+// It requires the presence of APPROX_NEAR_* functions used within a SORT operation
+// followed by a LIMIT. The SORT node is removed (as the vector index handles ordering),
+// while the LIMIT node is preserved to control result size.
+//
+// Filter Pushdown:
+// When a filter expression is detected, the rule pushes it down to the EnumerateNearVectorNode
+// for early evaluation during index traversal. This optimization removes both the
+// FILTER node and its associated CALCULATION node. This transformation is safe because
+// previous optimization rules have already eliminated trivial filters.
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {

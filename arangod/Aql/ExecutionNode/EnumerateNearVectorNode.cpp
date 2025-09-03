@@ -112,7 +112,6 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-  // We have filter expression
   if (_filterExpression) {
     VarSet inVars;
     _filterExpression->variables(inVars);

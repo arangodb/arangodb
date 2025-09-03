@@ -129,7 +129,7 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
     while (_it->Valid()) {
       auto const docId = RocksDBKey::indexDocumentId(_it->key());
 
-      bool expressionEvaluation;
+      bool filterExpressionResult;
       _collection->getPhysical()->lookup(
           _searchParametersContext.trx, docId,
           [&](LocalDocumentId token, aql::DocumentData&& /*data */,
@@ -147,13 +147,13 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
                 _searchParametersContext.filterExpression->execute(&ctx,
                                                                    mustDestroy);
             aql::AqlValueGuard guard(a, mustDestroy);
-            expressionEvaluation = a.toBoolean();
+            filterExpressionResult = a.toBoolean();
 
             return true;
           },
           {.countBytes = true});
 
-      if (expressionEvaluation) {
+      if (filterExpressionResult) {
         break;
       }
 
