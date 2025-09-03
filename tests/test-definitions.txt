@@ -9,19 +9,19 @@ arangobench,permissions,paths_server,version single name=single_server_only_part
 
 
 # Single Server Replication Tests
-replication_fuzz priority=500 parallelity=4 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing_frompresent parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing_global priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
-replication_ongoing_global_spec parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_fuzz sniff priority=500 parallelity=4 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing sniff priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_frompresent sniff parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global sniff priority=500 parallelity=3 size=small single -- --extraArgs:log.level replication=trace
+replication_ongoing_global_spec sniff parallelity=3 size=small single -- --extraArgs:log.level replication=trace
 # one run for each test...
-replication_static priority=500 parallelity=3 size=small single buckets=2 -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true
+replication_static priority=500 sniff parallelity=3 size=small single buckets=2 -- --extraArgs:log.level replication=trace --extraArgs:experimental-vector-index true
 # TODO - we could actually use 4 buckets instead of 2, but ATM this causes issues with other tests on Jenkins
 # For CircleCI we have a special case in the generate_config script to override this. Once we can change the buckets
 # here, make sure to remove this special case!
-replication_sync priority=8000 buckets=9 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
-shell_replication parallelity=3 size=small single 
-http_replication priority=500 parallelity=3 size=small single
+replication_sync sniff priority=8000 buckets=9 parallelity=3 size=medium single -- --extraArgs:log.level replication=trace
+shell_replication sniff parallelity=3 size=small single 
+http_replication sniff priority=500 parallelity=3 size=small single
 
 # Misc single server tests
 agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgencyOnError true
