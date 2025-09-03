@@ -604,21 +604,21 @@ auto RestAdminLogHandler::handleLogWrite() -> async<void> {
   if (slice.isArray()) {
     for (VPackSlice logLine : VPackArrayIterator(slice)) {
       auto logId = logLine.get("ID").stringView();
-      auto logTopic = logLine.get("topic").stringView();
+      auto logLevel = logLine.get("level").stringView();
       std::string prefix;
-      if (logTopic.compare("fatal") == 0) {
+      if (logLevel.compare("fatal") == 0) {
         prefix = "FATAL! ";
-      } else if (logTopic.compare("error") != 0 &&
-                 logTopic.compare("warning") != 0 &&
-                 logTopic.compare("warn") != 0 &&
-                 logTopic.compare("info") != 0 &&
-                 logTopic.compare("debug") != 0 &&
-                 logTopic.compare("trace") != 0) {
+      } else if (logLevel.compare("error") != 0 &&
+                 logLevel.compare("warning") != 0 &&
+                 logLevel.compare("warn") != 0 &&
+                 logLevel.compare("info") != 0 &&
+                 logLevel.compare("debug") != 0 &&
+                 logLevel.compare("trace") != 0) {
         // invalid log level
-        prefix = logTopic;
+        prefix = logLevel;
         prefix += "!";
       }
-      auto logLevel = logLine.get("level").stringView();
+      auto logTopic = logLine.get("topic").stringView();
       auto logMessage = logLine.get("message").stringView();
       LogTopic const* topicPtr =
           logTopic.empty() ? nullptr : LogTopic::lookup(logTopic);
