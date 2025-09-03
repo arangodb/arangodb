@@ -32,6 +32,7 @@ if (getOptions === true) {
   };
 }
 
+const { logServer } = require('@arangodb/test-helper');
 const jsunity = require('jsunity');
 
 function testSuite() {
@@ -59,7 +60,8 @@ function testSuite() {
   };
       
   let log = function(level) {
-    arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
+    for (let i = 0; i < 50; ++i)
+      logServer('testi', level);
   };
 
   return {

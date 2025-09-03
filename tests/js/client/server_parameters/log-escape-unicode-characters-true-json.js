@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,8 +24,6 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.hostname': 'delorean',
@@ -33,7 +31,6 @@ if (getOptions === true) {
     'log.ids': 'false',
     'log.role': 'true',
     'log.thread': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
     'log.escape-unicode-chars': 'true',
@@ -41,7 +38,10 @@ if (getOptions === true) {
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function EscapeUnicodeTrueSuite() {
   'use strict';
@@ -67,7 +67,7 @@ function EscapeUnicodeTrueSuite() {
         let tries = 0;
         let filtered = [];
         while (++tries < 60) {
-          let content = fs.readFileSync(arangod.logfile, 'utf-8');
+          let content = fs.readFileSync(arangod.logFile, 'utf-8');
           let lines = content.split('\n');
 
           filtered = lines.filter((line) => {

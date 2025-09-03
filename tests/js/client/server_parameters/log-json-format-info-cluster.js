@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -82,7 +82,6 @@ function LoggerSuite() {
 
       let res1 = arango.GET("/_api/cluster/cluster-info?returnBodyAsJSON=true");
 
-      print(res1)
       logServer("testmann: start"); 
       logServer("testmann: testi" + `${JSON.stringify(res1)}`);
       logServer("testmann: done", "error");
@@ -105,7 +104,6 @@ function LoggerSuite() {
         require("internal").sleep(0.5);
       }
       assertEqual(3, filtered.length);
-      print(filtered)
       assertMatch(/testmann: start/, filtered[0]);
       const parsedRes = JSON.parse(filtered[1]);
       const parsedMsg = JSON.parse(parsedRes.message.substring(parsedRes.message.indexOf("{")));

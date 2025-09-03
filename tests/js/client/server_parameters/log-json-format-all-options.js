@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global GLOBAL, getOptions, assertTrue, arango, assertMatch, assertEqual */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertMatch, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -107,7 +107,7 @@ function LoggerSuite() {
         }
         assertMatch(/testmann: done/, filtered[51]);
 
-        res = arango.GET("/_admin/log?returnBodyAsJSON=true");
+        let res = arango.GET("/_admin/log?returnBodyAsJSON=true");
         assertTrue(res.hasOwnProperty("totalAmount"));
         assertTrue(res.hasOwnProperty("lid"));
         assertTrue(res.hasOwnProperty("topic"));
