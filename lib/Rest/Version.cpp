@@ -30,9 +30,7 @@
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/version.h>
-#ifdef ARANGODB_USE_FAISS
 #include <faiss/Index.h>
-#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
@@ -310,9 +308,7 @@ void Version::initialize() {
 #else
   Values["libunwind"] = "false";
 #endif
-#ifdef ARANGODB_USE_FAISS
   Values["faiss"] = getFaissVersion();
-#endif
   Values["openmp"] = getOpenMPVersion();
 
   if constexpr (arangodb::build_id::supportsBuildIdReader()) {
@@ -386,12 +382,8 @@ std::string Version::getBoostVersion() {
 }
 
 std::string Version::getFaissVersion() {
-#ifdef ARANGODB_USE_FAISS
   return std::format("{}.{}.{}", FAISS_VERSION_MAJOR, FAISS_VERSION_MINOR,
                      FAISS_VERSION_PATCH);
-#else
-  return "not available";
-#endif
 }
 
 std::string Version::getOpenMPVersion() {

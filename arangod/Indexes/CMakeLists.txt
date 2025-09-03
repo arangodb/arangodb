@@ -10,7 +10,6 @@ add_library(arango_indexes STATIC
 
 target_link_libraries(arango_indexes
   arango_geo
-  arango_basic_utils
   boost_boost
   arango::validation
   arango_replication2
