@@ -885,7 +885,7 @@ exports.insertManyDocumentsIntoCollection
   }
 };
 
-exports.logServer = function (level, ID, topic, message) {
+exports.logServer = function (message, level='info', ID="aaaaa", topic='general') {
   return arango.POST_RAW('/_admin/log/', [{
     level,
     ID,
