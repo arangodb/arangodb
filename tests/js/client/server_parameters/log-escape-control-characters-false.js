@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
+/* global GLOBAL, getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,7 +25,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
-
+const IM = GLOBAL.instanceManager;
+const { logServer } = require('@arangodb/test-helper');
 if (getOptions === true) {
   return {
     'log.hostname': 'delorean',
@@ -48,25 +49,17 @@ function EscapeControlFalseSuite() {
   return {
     testEscapeControlFalse: function() {
       const escapeCharsLength = 31;
-      const res = arango.POST("/_admin/execute", `
-        require('console').log("testmann: start");
-        for (let i = 1; i <= 31; ++i) {
-          require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
-        }
-        require('console').log("testmann: done");
-        return require('internal').options()["log.output"];
-     `);
-
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
-
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
+      logServer("testmann: start");
+      for (let i = 1; i <= 31; ++i) {
+        logServer("testmann: testi" + String.fromCharCode(i) + " abc123");
+      }
+      logServer("testmann: done", "error"); // error flushes
 
       // log is buffered, so give it a few tries until the log messages appear
       let tries = 0;
       let filtered = [];
       while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
+        let content = fs.readFileSync(IM.arangods[0].logFile, 'ascii');
         let lines = content.split('\n');
 
         filtered = lines.filter((line) => {

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
+/* global GLOBAL, getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,6 +25,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const fs = require('fs');
+const IM = GLOBAL.instanceManager;
+const { logServer } = require('@arangodb/test-helper');
 
 if (getOptions === true) {
   return {
@@ -50,27 +52,18 @@ function EscapeControlFalseSuite() {
   return {
     testEscapeControlFalse: function() {
       const controlCharsLength = 31;
-      const request = `require('console').log("testmann: start");
-        for (let i = 1; i <= 31; ++i) {
-          let controlChar = '"\\\\u' + i.toString(16).padStart(4, '0') + '"';
-          controlChar = JSON.parse(controlChar);
-          require('console').log("testmann: testi \\u0008\\u0009\\u000A\\u000B\\u000C" + controlChar + " \\u00B0\\ud83e\\uddd9\\uf0f9\\u9095\\uf0f9\\u90b6abc123");
-        }
-        require('console').log("testmann: done");
-        return require('internal').options()["log.output"];`;
-
-      const res = arango.POST("/_admin/execute", request);
-
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
-
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
+      logServer("testmann: start");
+      for (let i = 1; i <= 31; ++i) {
+        let controlChar = '"\\u' + i.toString(16).padStart(4, '0') + '"';
+        controlChar = JSON.parse(controlChar);
+        logServer("testmann: testi \u0008\u0009\u000A\u000B\u000C" + controlChar + "\u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
+      }
+      logServer("testmann: done", "error"); // error flushes
       // log is buffered, so give it a few tries until the log messages appear
       let tries = 0;
       let filtered = [];
       while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'utf-8');
+        let content = fs.readFileSync(IM.arangods[0].logFile, 'utf-8');
         let lines = content.split('\n');
 
         filtered = lines.filter((line) => {
@@ -89,7 +82,7 @@ function EscapeControlFalseSuite() {
       for (let i = 1; i < controlCharsLength + 1; ++i) {
         const parsedRes = JSON.parse(filtered[i]);
         assertTrue(parsedRes.hasOwnProperty("message"));
-        assertEqual(parsedRes.message, "testmann: testi        \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
+        assertEqual(parsedRes.message, "testmann: testi       \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
       }
       assertMatch(/testmann: done/, filtered[controlCharsLength + 1]);
     },
