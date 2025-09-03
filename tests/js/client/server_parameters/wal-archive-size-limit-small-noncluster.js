@@ -45,7 +45,7 @@ function WalArchiveSizeLimitSuiteSmall() {
       
   let suite = {
     testDoesNotForceDeleteWalFiles: function() {
-      let res = sendLargeServerOperation(9600000);
+      let res = sendLargeServerOperation(300);
 
       // this will fail if warning d9793 was *not* logged
       let found = false;

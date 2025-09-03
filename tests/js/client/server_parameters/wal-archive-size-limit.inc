@@ -77,18 +77,20 @@ exports.sendLargeServerOperation = function(maxWaitTime) {
   let time = require("internal").time;
   let tEnd = time() + maxWaitTime;
   let checkCount = 0;
-  insertManyDocumentsIntoCollection('_system', 'UnitTestsCollection',
-                                    (i) => {
-                                      return {i, payload: Array(512).join("x")};},
-                                    1000000, 2000, () => {
-                                      let now = time();
-                                      if (now > tEnd) { return true; }
-                                      checkCount += 1;
-                                      if (checkCount % 20 === 0) {
-                                        return (getLogLines().length > 2);
-                                      }
-                                      return false;
-                                    });
+  insertManyDocumentsIntoCollection(
+    '_system', 'UnitTestsCollection',
+    (i) => {
+      return {i, payload: Array(512).join("x")};},
+    1000000, 2000,
+    () => {
+      let now = time();
+      if (now > tEnd) { return true; }
+      checkCount += 1;
+      if (checkCount % 20 === 0) {
+        return (getLogLines().length > 2);
+      }
+      return false;
+    });
   
   logServer('info', 'bbbbb', 'js', "testmann: done"); 
   return getLogLines();
