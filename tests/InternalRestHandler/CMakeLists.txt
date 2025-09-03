@@ -5,6 +5,7 @@ target_link_libraries(arango_tests_internal_rest_handler
         arango_lightweight
         arango_tests_basics
         velocypack
+        velocypack_utils
         gtest
         fmt)
 

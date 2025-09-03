@@ -28,7 +28,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "./MockGraph.h"
+#include "Mocks/MockGraph.h"
 #include "Aql/TraversalStats.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"

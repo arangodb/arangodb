@@ -148,22 +148,14 @@ class MockGraph {
 
   auto createEngine(mocks::MockDBServer& server,
                     arangodb::graph::BaseOptions const& opts,
-                    aql::QueryRegistry& queryRegistry) const -> uint64_t;
+                    arangodb::aql::QueryRegistry& queryRegistry) const
+      -> uint64_t;
 
   void storeData(TRI_vocbase_t& vocbase,
                  std::string const& vertexCollectionName,
                  std::string const& edgeCollectionName,
                  std::string const& edgeCollectionSecondName = "",
                  std::vector<EdgeDef> const& secondEdges = {}) const;
-
- protected:
-  void storeVertexData(
-      TRI_vocbase_t& vocbase, std::string const& vertexShardName,
-      std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const;
-
-  void storeEdgeData(TRI_vocbase_t& vocbase, std::string const& edgeShardName,
-                     std::vector<EdgeDef> const& edgeData) const;
-
   std::vector<std::pair<std::string, std::string>> const&
   getVertexShardNameServerPairs() const {
     return _vertexShards;
@@ -172,6 +164,14 @@ class MockGraph {
   getEdgeShardNameServerPairs() const {
     return _edgeShards;
   }
+
+ protected:
+  void storeVertexData(
+      TRI_vocbase_t& vocbase, std::string const& vertexShardName,
+      std::unordered_set<VertexDef, hashVertexDef> const& vertexData) const;
+
+  void storeEdgeData(TRI_vocbase_t& vocbase, std::string const& edgeShardName,
+                     std::vector<EdgeDef> const& edgeData) const;
 
  protected:
   std::vector<EdgeDef> _edges;
