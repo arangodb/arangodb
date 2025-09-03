@@ -219,12 +219,13 @@ void InternalRestTraverserHandler::queryEngine() {
                           "expecting 'batchSize' to be an integer value");
             return;
           }
-          eng->_batchSize = maybeBatchSize.getNumericValue<uint64_t>();
-          if (eng->_batchSize <= 0) {
+          auto batchSize = maybeBatchSize.getInt();
+          if (batchSize <= 0) {
             generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                           "expecting 'batchSize' to be positive");
             return;
           }
+          eng->_batchSize = static_cast<uint64_t>(batchSize);
         }
 
         result.openObject();

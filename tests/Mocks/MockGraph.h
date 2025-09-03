@@ -33,6 +33,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 
+#include <cstdint>
 #include <numeric>
 #include <unordered_set>
 #include <vector>
@@ -41,7 +42,15 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+namespace aql {
+class QueryRegistry;
+}
+
 namespace tests {
+
+namespace mocks {
+class MockDBServer;
+}
 
 class PreparedRequestResponse;
 
@@ -136,6 +145,10 @@ class MockGraph {
       std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
           expectedVerticesEdgesBundleToFetch,
       arangodb::graph::BaseOptions& opts) const;
+
+  auto createEngine(mocks::MockDBServer& server,
+                    arangodb::graph::BaseOptions const& opts,
+                    aql::QueryRegistry& queryRegistry) const -> uint64_t;
 
   void storeData(TRI_vocbase_t& vocbase,
                  std::string const& vertexCollectionName,
