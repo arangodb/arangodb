@@ -347,11 +347,12 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  std::vector<Future<network::Response>> futures;
+  using EngineResponse = std::pair<aql::EngineId, Future<network::Response>>;
+  std::vector<EngineResponse> futures;
   futures.reserve(engines->size());
 
   ScopeGuard sg([&]() noexcept {
-    for (Future<network::Response>& f : futures) {
+    for (auto& [id, f] : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to
         // replace the wait with proper *finally* method.
@@ -361,15 +362,23 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     }
   });
 
-  for (auto const& engine : *engines) {
-    futures.emplace_back(network::sendRequestRetry(
-        pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+  std::unordered_map<aql::EngineId, ServerID> engineMap;
+  for (auto const& [server, engineId] : *engines) {
+    futures.emplace_back(EngineResponse{
+        engineId, network::sendRequestRetry(
+                      pool, "server:" + server, fuerte::RestVerb::Put,
+                      ::edgeUrl + StringUtils::itoa(engineId),
+                      leased->bufferRef(), reqOpts)});
+    engineMap.emplace(engineId, server);
   }
 
+  transaction::BuilderLeaser leasedContinue(trx());
+  leased->openObject(true);
+  leased->add("continue", VPackValue(true));
+  leased->close();
+
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
-  for (Future<network::Response>& f : futures) {
+  for (auto& [engineId, f] : futures) {
     // NOTE: If you remove this waitAndGet() in favour of an asynchronous
     // operation, remember to remove the `skipScheduler = true` option of the
     // corresponding requests.
@@ -433,6 +442,19 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
     if (!allCached) {
       _opts.getCache()->datalake().add(std::move(payload));
+    }
+
+    auto maybeDone = resSlice.get("done");
+    if (not maybeDone.isNone() && maybeDone.isBool()) {
+      auto done = maybeDone.getBool();
+      if (not done) {
+        futures.emplace_back(EngineResponse{
+            engineId,
+            network::sendRequestRetry(pool, "server:" + engineMap[engineId],
+                                      fuerte::RestVerb::Put,
+                                      ::edgeUrl + StringUtils::itoa(engineId),
+                                      leasedContinue->bufferRef(), reqOpts)});
+      }
     }
   }
   // Note: This disables the ScopeGuard
