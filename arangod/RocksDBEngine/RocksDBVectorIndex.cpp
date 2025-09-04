@@ -28,9 +28,7 @@
 #include <cstdint>
 #include <cstring>
 #include <omp.h>
-#include <sys/types.h>
 
-#include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
@@ -40,6 +38,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
@@ -71,202 +70,6 @@ static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
 // This assertion is that faiss::idx_t is the same type as std::int64_t
 static_assert(std::is_same_v<faiss::idx_t, std::int64_t>,
               "Faiss idx_t base type is no longer int64_t");
-
-faiss::MetricType metricToFaissMetric(SimilarityMetric const metric) {
-  switch (metric) {
-    case SimilarityMetric::kL2:
-      return faiss::MetricType::METRIC_L2;
-    case SimilarityMetric::kCosine:
-      return faiss::MetricType::METRIC_INNER_PRODUCT;
-    case SimilarityMetric::kInnerProduct:
-      return faiss::METRIC_INNER_PRODUCT;
-  }
-}
-
-struct SearchParametersContext {
-  transaction::Methods* trx;
-  aql::Expression* filterExpression;
-  std::optional<aql::InputAqlItemRow> inputRow;
-  aql::QueryContext* queryContext;
-  std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
-      filterVarsToRegs;
-  aql::Variable const* documentVariable;
-};
-
-struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
-  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
-                               LogicalCollection* collection,
-                               SearchParametersContext& searchParametersContext,
-                               std::size_t listNumber, std::size_t codeSize)
-      : InvertedListsIterator(),
-        _index(index),
-        _collection(collection),
-        _searchParametersContext(searchParametersContext),
-        _listNumber(listNumber),
-        _codeSize(codeSize) {
-    RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
-        searchParametersContext.trx, collection->id());
-
-    _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
-      TRI_ASSERT(opts.prefix_same_as_start);
-    });
-
-    _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
-    _it->Seek(_rocksdbKey.string());
-    if (_searchParametersContext.filterExpression) {
-      setToValidIterator();
-    }
-  }
-
-  [[nodiscard]] bool is_available() const override {
-    return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
-  }
-
-  // This should be only called when we have filterExpression
-  void setToValidIterator() {
-    TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
-
-    while (_it->Valid()) {
-      auto const docId = RocksDBKey::indexDocumentId(_it->key());
-
-      bool filterExpressionResult;
-      _collection->getPhysical()->lookup(
-          _searchParametersContext.trx, docId,
-          [&](LocalDocumentId token, aql::DocumentData&& /*data */,
-              VPackSlice doc) {
-            aql::GenericDocumentExpressionContext ctx(
-                *_searchParametersContext.trx,
-                *_searchParametersContext.queryContext,
-                _aqlFunctionsInternalCache,
-                *_searchParametersContext.filterVarsToRegs,
-                *_searchParametersContext.inputRow,
-                _searchParametersContext.documentVariable);
-            ctx.setCurrentDocument(doc);
-            bool mustDestroy;  // will get filled by execution
-            aql::AqlValue a =
-                _searchParametersContext.filterExpression->execute(&ctx,
-                                                                   mustDestroy);
-            aql::AqlValueGuard guard(a, mustDestroy);
-            filterExpressionResult = a.toBoolean();
-
-            return true;
-          },
-          {.countBytes = true});
-
-      if (filterExpressionResult) {
-        break;
-      }
-
-      _it->Next();
-    }
-  }
-
-  void next() override {
-    _it->Next();
-    if (_searchParametersContext.filterExpression) {
-      setToValidIterator();
-    }
-  }
-
-  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override {
-    auto const docId = RocksDBKey::indexDocumentId(_it->key());
-    TRI_ASSERT(_codeSize == _it->value().size());
-    auto const* value = reinterpret_cast<uint8_t const*>(_it->value().data());
-    return {static_cast<faiss::idx_t>(docId.id()), value};
-  }
-
- private:
-  RocksDBKey _rocksdbKey;
-  arangodb::RocksDBVectorIndex* _index{nullptr};
-  LogicalCollection* _collection{nullptr};
-  SearchParametersContext& _searchParametersContext;
-  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-
-  std::unique_ptr<rocksdb::Iterator> _it;
-  std::size_t _listNumber;
-  std::size_t _codeSize;
-};
-
-struct RocksDBInvertedLists : faiss::InvertedLists {
-  RocksDBInvertedLists(RocksDBVectorIndex* index, LogicalCollection* collection,
-                       std::size_t nlist, size_t codeSize)
-      : InvertedLists(nlist, codeSize), _index(index), _collection(collection) {
-    use_iterator = true;
-    assert(status.ok());
-  }
-
-  std::size_t list_size(std::size_t /*listNumber*/) const override {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "faiss list_size not supported");
-  }
-
-  std::uint8_t const* get_codes(std::size_t /*listNumber*/) const override {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "faiss get_codes not supported");
-  }
-
-  faiss::idx_t const* get_ids(std::size_t /*listNumber*/) const override {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
-                                   "faiss get_ids not supported");
-  }
-
-  size_t add_entries(std::size_t listNumber, std::size_t nEntry,
-                     faiss::idx_t const* ids,
-                     std::uint8_t const* code) override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  void update_entries(std::size_t /*listNumber*/, std::size_t /*offset*/,
-                      std::size_t /*n_entry*/, const faiss::idx_t* /*ids*/,
-                      const std::uint8_t* /*code*/) override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  void resize(std::size_t /*listNumber*/, std::size_t /*new_size*/) override {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  void remove_id(size_t list_no, faiss::idx_t id) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  }
-
-  faiss::InvertedListsIterator* get_iterator(std::size_t listNumber,
-                                             void* context) const override {
-    auto* searchParametersContext =
-        static_cast<SearchParametersContext*>(context);
-    return new RocksDBInvertedListsIterator(_index, _collection,
-                                            *searchParametersContext,
-                                            listNumber, this->code_size);
-  }
-
- private:
-  RocksDBVectorIndex* _index;
-  LogicalCollection* _collection;
-};
-
-struct RocksDBIndexIVFFlat : faiss::IndexIVFFlat {
-  RocksDBIndexIVFFlat(Index* quantizer,
-                      UserVectorIndexDefinition const& definition)
-      : IndexIVFFlat(quantizer, definition.dimension, definition.nLists,
-                     metricToFaissMetric(definition.metric)) {
-    cp.check_input_data_for_NaNs = false;
-    cp.niter = definition.trainingIterations;
-  }
-
-  void replace_invlists(RocksDBInvertedLists* invertedList) {
-    IndexIVFFlat::replace_invlists(invertedList, false);
-    rocksdbInvertedLists = invertedList;
-  }
-
-  void remove_id(std::vector<float>& vector, faiss::idx_t const docId) {
-    faiss::idx_t listId{0};
-    quantizer->assign(1, vector.data(), &listId);
-    rocksdbInvertedLists->remove_id(listId, docId);
-    ntotal -= 1;
-  }
-
-  RocksDBInvertedLists* rocksdbInvertedLists = nullptr;
-};
 
 #define LOG_VECTOR_INDEX(lid, level, topic) \
   LOG_TOPIC((lid), level, topic)            \
