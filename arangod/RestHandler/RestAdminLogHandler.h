@@ -44,13 +44,14 @@ class RestAdminLogHandler : public RestBaseHandler {
  protected:
   // we just use the database from the URL to log it.
   [[nodiscard]] auto makeSharedLogContextValue() const
-    -> std::shared_ptr<LogContext::Values> override {
+      -> std::shared_ptr<LogContext::Values> override {
     return LogContext::makeValue()
-      .with<structuredParams::UrlName>(_request->fullUrl())
-      .with<structuredParams::UserName>(_request->user())
-      .with<structuredParams::DatabaseName>(_request->databaseName())
-      .share();
+        .with<structuredParams::UrlName>(_request->fullUrl())
+        .with<structuredParams::UserName>(_request->user())
+        .with<structuredParams::DatabaseName>(_request->databaseName())
+        .share();
   }
+
  private:
   arangodb::Result verifyPermitted();
   void clearLogs();
