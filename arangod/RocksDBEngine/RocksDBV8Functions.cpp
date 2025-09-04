@@ -202,22 +202,6 @@ static void JS_EstimateCollectionSize(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_WaitForEstimatorSync(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-
-  v8g->server()
-      .getFeature<EngineSelectorFeature>()
-      .engine()
-      .waitForEstimatorSync();
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 static void JS_WalRecoveryStartSequence(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
@@ -453,9 +437,6 @@ void RocksDBV8Functions::registerResources(RocksDBEngine& engine) {
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "WAIT_FOR_ESTIMATOR_SYNC"),
-      JS_WaitForEstimatorSync, true);
 
   // only used for testing - not publicly documented!
 #ifdef ARANGODB_USE_GOOGLE_TESTS
