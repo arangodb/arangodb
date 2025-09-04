@@ -40,12 +40,14 @@ function LoggerSuite() {
   'use strict';
 
   let generateFilteredLog = function(fieldName) {
+    IM.rememberConnection();
+    let arangod = IM.arangods.filter(arangod => { return arangod.isFrontend(); })[0];
+    arangod.connect();
     logServer(`${fieldName}: start`);
     for (let i = 0; i < 10; ++i) {
-      logServer(`${fieldName}: test ${i}`);
+      logServer(`${fieldName}: test${i}`);
     }
     logServer(`${fieldName}: done`, "error");
-    let arangod = IM.arangods.filter(arangod => { return arangod.isFrontend(); })[0];
 
     // log is buffered, so give it a few tries until the log messages appear
     let tries = 0;
@@ -65,6 +67,7 @@ function LoggerSuite() {
 
       require("internal").sleep(0.5);
     }
+    IM.reconnectMe();
     return filtered;
   };
 
@@ -152,8 +155,7 @@ function LoggerSuite() {
           assertFalse(filteredObj.hasOwnProperty("database"));
           assertTrue(filteredObj.hasOwnProperty("username"));
           assertTrue(filteredObj.hasOwnProperty("url"));
-
-          assertTrue(filtered[i].match(/testParams: test\d+/));
+          assertTrue(filtered[i].match(/testParams: test\d+/), JSON.stringify(filtered[i]));
           assertFalse(filtered[i].match(/\[dog: /));
           assertFalse(filtered[i].match(/\[database: _system\]/));
           assertTrue(filtered[i].match("[username: root]"));
