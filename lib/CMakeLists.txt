@@ -271,9 +271,8 @@ target_link_libraries(arango_basic_http_client
          arango_basic_errors
          arango_build_id
          boost_boost
-         fuerte
          rocksdb
-         rocksdb_interface
+         fuerte
          faiss_interface
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -410,7 +409,6 @@ target_include_directories(arango PUBLIC ${BUILD_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
-target_link_libraries(arango PUBLIC rocksdb_interface)
 target_link_libraries(arango PUBLIC zlib_interface)
 if (USE_V8)
   target_link_libraries(arango PUBLIC v8_interface)
