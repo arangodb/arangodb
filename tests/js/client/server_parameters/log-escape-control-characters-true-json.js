@@ -24,10 +24,6 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-const IM = GLOBAL.instanceManager;
-const { logServer } = require('@arangodb/test-helper');
-
 if (getOptions === true) {
   return {
     'log.hostname': 'delorean',
@@ -35,7 +31,6 @@ if (getOptions === true) {
     'log.ids': 'false',
     'log.role': 'true',
     'log.thread': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
     'log.escape-unicode-chars': 'false',
@@ -44,6 +39,9 @@ if (getOptions === true) {
   };
 }
 
+const fs = require('fs');
+const IM = GLOBAL.instanceManager;
+const { logServer } = require('@arangodb/test-helper');
 const jsunity = require('jsunity');
 
 function EscapeControlTrueSuite() {
@@ -51,42 +49,48 @@ function EscapeControlTrueSuite() {
 
   return {
     testEscapeControlTrue: function() {
-      const controlCharsLength = 31;
-      logServer("testmann: start");
-      for (let i = 1; i <= 31; ++i) {
-        let controlChar = '"\\u' + i.toString(16).padStart(4, '0') + '"';
-        controlChar = JSON.parse(controlChar);
-        logServer("/\"\\testmann: testi " + controlChar + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
+        const controlCharsLength = 31;
+        logServer("testmann: start");
+        for (let i = 1; i <= 31; ++i) {
+          let controlChar = '"\\u' + i.toString(16).padStart(4, '0') + '"';
+          controlChar = JSON.parse(controlChar);
+          logServer("/\"\\testmann: testi " + controlChar + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
         }
-      logServer("testmann: done", "error"); // write an error message to flush
+        logServer("testmann: done", "error"); // write an error message to flush
 
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(IM.arangods[0].logFile, 'utf-8');
-        let lines = content.split('\n');
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'utf-8');
+          let lines = content.split('\n');
 
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
 
-        if (filtered.length === controlCharsLength + 2) {
-          break;
+          if (filtered.length === controlCharsLength + 2) {
+            break;
+          }
+
+          require("internal").sleep(0.5);
         }
 
-        require("internal").sleep(0.5);
-      }
-
-      assertEqual(controlCharsLength + 2, filtered.length);
-      assertMatch(/testmann: start/, filtered[0]);
-      for (let i = 1; i < controlCharsLength + 1; ++i) {
-        const parsedRes = JSON.parse(filtered[i]);
-        assertTrue(parsedRes.hasOwnProperty("message"));
-        const controlChar = String.fromCharCode(i);
-        assertEqual(parsedRes.message, "/\"\\testmann: testi " + controlChar + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
-      }
-      assertMatch(/testmann: done/, filtered[controlCharsLength + 1]);
+        assertEqual(controlCharsLength + 2, filtered.length, JSON.stringify(filtered));
+        assertMatch(/testmann: start/, filtered[0]);
+        for (let i = 1; i < controlCharsLength + 1; ++i) {
+          const parsedRes = JSON.parse(filtered[i]);
+          assertTrue(parsedRes.hasOwnProperty("message"), JSON.stringify(parsedRes));
+          const controlChar = String.fromCharCode(i);
+          assertEqual(parsedRes.message, "/\"\\testmann: testi " + controlChar + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123", JSON.stringify(parsedRes));
+        }
+        assertMatch(/testmann: done/, filtered[controlCharsLength + 1]);
+      });
+      IM.reconnectMe();
     },
 
   };
