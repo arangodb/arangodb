@@ -174,79 +174,101 @@ void InternalRestTraverserHandler::queryEngine() {
 
   VPackBuilder result;
   if (option == "edge") {
-    VPackSlice keysSlice = body.get("keys");
-
-    if (!keysSlice.isString() && !keysSlice.isArray()) {
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expecting 'keys' to be a string or an array value.");
-      return;
-    }
-
     switch (engine->getType()) {
       case BaseEngine::EngineType::TRAVERSER: {
-        VPackSlice depthSlice = body.get("depth");
-        if (!depthSlice.isInteger()) {
-          generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                        "expecting 'depth' to be an integer value");
-          return;
-        }
         // Safe cast BaseTraverserEngines are all of type TRAVERSER
         auto eng = static_cast<BaseTraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
 
-        VPackSlice variables = body.get("variables");
-        eng->injectVariables(variables);
-
-        auto depth = depthSlice.getNumericValue<size_t>();
-
-        TRI_ASSERT(eng->_vertices.empty());
-        if (keysSlice.isArray()) {
-          for (VPackSlice vertex : VPackArrayIterator(keysSlice)) {
-            TRI_ASSERT(vertex.isString());
-            eng->_vertices.emplace_back(vertex.copyString());
-          }
-        } else if (keysSlice.isString()) {
-          eng->_vertices.emplace_back(keysSlice.copyString());
-        } else {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-        }
-
-        eng->_batchSize = std::nullopt;
-        auto maybeBatchSize = body.get("batchSize");
-        if (not maybeBatchSize.isNone()) {
-          if (not maybeBatchSize.isInteger()) {
+        auto toContinue = body.get("continue");
+        if (toContinue.isNone()) {
+          // keys
+          VPackSlice keysSlice = body.get("keys");
+          if (!keysSlice.isString() && !keysSlice.isArray()) {
             generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "expecting 'batchSize' to be an integer value");
+                          "expecting 'keys' to be a string or an array value.");
             return;
           }
-          auto batchSize = maybeBatchSize.getInt();
-          if (batchSize <= 0) {
+          eng->_vertices = {};
+          if (keysSlice.isArray()) {
+            for (VPackSlice vertex : VPackArrayIterator(keysSlice)) {
+              TRI_ASSERT(vertex.isString());
+              std::string v = vertex.copyString();
+              eng->_vertices.emplace_back(std::move(v));
+            }
+          } else if (keysSlice.isString()) {
+            eng->_vertices.emplace_back(keysSlice.copyString());
+          } else {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+          }
+          eng->_nextVertex = eng->_vertices.begin();
+
+          // depth
+          VPackSlice depthSlice = body.get("depth");
+          if (!depthSlice.isInteger()) {
             generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "expecting 'batchSize' to be positive");
+                          "expecting 'depth' to be an integer value");
             return;
           }
-          eng->_batchSize = static_cast<uint64_t>(batchSize);
+          auto depth = depthSlice.getNumericValue<size_t>();
+          eng->_depth = depth;
+
+          // batch size
+          eng->_batchSize = std::nullopt;
+          auto maybeBatchSize = body.get("batchSize");
+          if (not maybeBatchSize.isNone()) {
+            if (not maybeBatchSize.isInteger()) {
+              generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                            "expecting 'batchSize' to be an integer value");
+              return;
+            }
+            auto batchSize = maybeBatchSize.getInt();
+            if (batchSize <= 0) {
+              generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                            "expecting 'batchSize' to be positive");
+              return;
+            }
+            eng->_batchSize = static_cast<uint64_t>(batchSize);
+          }
+
+          // Safe cast BaseTraverserEngines are all of type TRAVERSER
+          auto eng = static_cast<BaseTraverserEngine*>(engine);
+          TRI_ASSERT(eng != nullptr);
+
+          VPackSlice variables = body.get("variables");
+          eng->injectVariables(variables);
         }
+
+        TRI_ASSERT(not eng->_vertices.empty());  // TODO error handling
+        TRI_ASSERT(eng->_depth != std::nullopt);
 
         result.openObject();
         result.add(VPackValue(StaticStrings::GraphQueryEdges));
         result.openArray(true);
 
-        for (const auto& vertex : eng->_vertices) {
-          eng->createCursor(vertex, depth);
-          eng->getEdges(result);
+        if (eng->_batchSize == std::nullopt) {
+          for (const auto& vertex : eng->_vertices) {
+            eng->createCursor(vertex, eng->_depth.value());
+            eng->getEdges(result);
+          }
+        } else {
+          eng->getBatchedEdges(result);
         }
 
         result.close();
         eng->addStatistics(result);
         result.close();
 
-        eng->_vertices = {};
-
         generateResult(ResponseCode::OK, result.slice(), engine->context());
         return;
       }
       case BaseEngine::EngineType::SHORTESTPATH: {
+        VPackSlice keysSlice = body.get("keys");
+        if (!keysSlice.isString() && !keysSlice.isArray()) {
+          generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "expecting 'keys' to be a string or an array value.");
+          return;
+        }
         VPackSlice bwSlice = body.get("backward");
         if (!bwSlice.isBool()) {
           generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,

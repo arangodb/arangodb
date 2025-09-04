@@ -110,7 +110,8 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Builder&);
+  void getEdges(VPackBuilder& builder);
+  void getBatchedEdges(VPackBuilder& builder);
   void addStatistics(VPackBuilder& builder);
   void createCursor(std::string_view nextVertex, uint64_t currentDepth);
 
@@ -130,13 +131,16 @@ class BaseTraverserEngine : public BaseEngine {
   aql::VariableGenerator const* variables() const;
 
   graph::BaseOptions const& options() const override;
-  std::vector<std::string> _vertices;
-  uint64_t _depth;
+
+  std::vector<std::string> _vertices = {};
+  std::vector<std::string>::iterator _nextVertex;
+  std::optional<uint64_t> _depth;
   std::optional<uint64_t> _batchSize;
 
  protected:
   graph::EdgeCursor* getCursor(std::string_view nextVertex,
                                uint64_t currentDepth);
+  bool setCursor();
 
   std::unique_ptr<traverser::TraverserOptions> _opts;
   std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>

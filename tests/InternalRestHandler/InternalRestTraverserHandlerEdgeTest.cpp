@@ -187,15 +187,13 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
       toVertices.emplace(edge.get("_to").copyString());
     }
     EXPECT_EQ(toVertices.size(), 2);
-    LOG_DEVEL << inspection::json(response->_payload);
   }
 
-  // TODO: requesting next batch
   {
-    auto second_response = requestHandler(
-        arangodb::rest::RequestType::PUT,
-        {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 2})"_vpack));
+    auto second_response =
+        requestHandler(arangodb::rest::RequestType::PUT,
+                       {"edge", basics::StringUtils::itoa(engineId)},
+                       VPackBuilder(R"({"continue": true})"_vpack));
 
     EXPECT_EQ(second_response->responseCode(), ResponseCode::OK);
     auto edges = second_response->_payload.slice().get("edges");
@@ -205,7 +203,6 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
       toVertices.emplace(edge.get("_to").copyString());
     }
     EXPECT_EQ(toVertices.size(), 3);
-    LOG_DEVEL << inspection::json(second_response->_payload);
   }
   EXPECT_EQ(toVertices,
             (std::unordered_multiset<std::string>{"v/0", "v/1", "v/2"}));

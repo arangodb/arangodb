@@ -267,6 +267,19 @@ void BaseTraverserEngine::createCursor(std::string_view nextVertex,
   _cursor = getCursor(nextVertex, currentDepth);
 }
 
+bool BaseTraverserEngine::setCursor() {
+  TRI_ASSERT(_depth != std::nullopt);
+  if (_cursor == nullptr || not _cursor->hasMore()) {
+    if (_nextVertex == _vertices.end()) {
+      return false;
+    }
+    _cursor = getCursor(*_nextVertex, _depth.value());
+    _nextVertex++;
+    return true;
+  }
+  return true;
+}
+
 graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
                                                   uint64_t currentDepth) {
   graph::EdgeCursor* cursor = nullptr;
@@ -292,14 +305,19 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
   return cursor;
 }
 
-void BaseTraverserEngine::getEdges(VPackBuilder& builder) {
-  TRI_ASSERT(_cursor != nullptr);
-  auto vertex = _cursor->currentVertex();
-  TRI_ASSERT(vertex.has_value());
-  auto depth = _cursor->currentDepth();
-  TRI_ASSERT(depth.has_value());
+void BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
+  uint64_t count = 0;
+  while (count != _batchSize) {
+    if (not setCursor()) {
+      break;
+    }
 
-  if (_batchSize.has_value()) {
+    TRI_ASSERT(_cursor != nullptr);
+    auto vertex = _cursor->currentVertex();
+    TRI_ASSERT(vertex.has_value());
+    auto depth = _cursor->currentDepth();
+    TRI_ASSERT(depth.has_value());
+
     _cursor->nextBatch(
         [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
           if (edge.isString()) {
@@ -317,28 +335,37 @@ void BaseTraverserEngine::getEdges(VPackBuilder& builder) {
               builder.add(edge);
             }
           }
+          count++;
         },
         _batchSize.value());
-  } else {
-    _cursor->readAll(
-        [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-          if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid);
-          }
-          if (edge.isNull()) {
-            return;
-          }
-          if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
-            if (!options().getEdgeProjections().empty()) {
-              VPackObjectBuilder guard(&builder);
-              options().getEdgeProjections().toVelocyPackFromDocument(
-                  builder, edge, _trx.get());
-            } else {
-              builder.add(edge);
-            }
-          }
-        });
   }
+}
+
+void BaseTraverserEngine::getEdges(VPackBuilder& builder) {
+  TRI_ASSERT(_cursor != nullptr);
+  auto vertex = _cursor->currentVertex();
+  TRI_ASSERT(vertex.has_value());
+  auto depth = _cursor->currentDepth();
+  TRI_ASSERT(depth.has_value());
+
+  _cursor->readAll(
+      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+        if (edge.isString()) {
+          edge = _opts->cache()->lookupToken(eid);
+        }
+        if (edge.isNull()) {
+          return;
+        }
+        if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
+          if (!options().getEdgeProjections().empty()) {
+            VPackObjectBuilder guard(&builder);
+            options().getEdgeProjections().toVelocyPackFromDocument(
+                builder, edge, _trx.get());
+          } else {
+            builder.add(edge);
+          }
+        }
+      });
 
   _cursor = nullptr;
 }
