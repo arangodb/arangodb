@@ -1,4 +1,4 @@
-3.12.5.3 (XXXX-XX-XX)
+3.12.5.3 (2025-09-04)
 ---------------------
 
 * Fix unique _key generation in two cases: AQL INSERT operations in a loop
