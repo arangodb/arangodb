@@ -72,7 +72,7 @@ TEST(SingleServerNeighbourCacheTest,
   // add_batch for another vertex
   std::string anotherVertexName = "def";
   auto another_vertex =
-      velocypack::HashedStringRef{anotherVertexName.c_str(), 87};
+      velocypack::HashedStringRef{anotherVertexName.c_str(), 3};
   ASSERT_EQ(cache.rearm(another_vertex), std::nullopt);
   vec = std::vector<ExpansionInfo>{};
   vec.emplace_back(ExpansionInfo{
