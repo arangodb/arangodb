@@ -24,9 +24,6 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-const IM = GLOBAL.instanceManager;
-const { logServer } = require('@arangodb/test-helper');
 if (getOptions === true) {
   return {
     'log.hostname': 'delorean',
@@ -34,53 +31,60 @@ if (getOptions === true) {
     'log.ids': 'false',
     'log.role': 'true',
     'log.thread': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
     'log.escape-control-chars': 'false',
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function EscapeControlFalseSuite() {
   'use strict';
 
   return {
     testEscapeControlFalse: function() {
-      const escapeCharsLength = 31;
-      logServer("testmann: start");
-      for (let i = 1; i <= 31; ++i) {
-        logServer("testmann: testi" + String.fromCharCode(i) + " abc123");
-      }
-      logServer("testmann: done", "error"); // error flushes
-
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(IM.arangods[0].logFile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === escapeCharsLength + 2) {
-          break;
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
+        const escapeCharsLength = 31;
+        logServer("testmann: start");
+        for (let i = 1; i <= 31; ++i) {
+          logServer("testmann: testi" + String.fromCharCode(i) + " abc123");
         }
+        logServer("testmann: done", "error"); // error flushes
 
-        require("internal").sleep(0.5);
-      }
-      assertEqual(escapeCharsLength + 2, filtered.length);
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'ascii');
+          let lines = content.split('\n');
 
-      assertMatch(/testmann: start/, filtered[0]);
-      for (let i = 1; i < escapeCharsLength + 1; ++i) {
-        const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi  abc123"));
-      }
-      assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
 
+          if (filtered.length === escapeCharsLength + 2) {
+            break;
+          }
+
+          require("internal").sleep(0.5);
+        }
+        assertEqual(escapeCharsLength + 2, filtered.length);
+
+        assertMatch(/testmann: start/, filtered[0]);
+        for (let i = 1; i < escapeCharsLength + 1; ++i) {
+          const msg = filtered[i];
+          assertTrue(msg.endsWith("testmann: testi  abc123"));
+        }
+        assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
+      });
+      IM.reconnectMe();
     },
 
   };
