@@ -60,7 +60,7 @@ function LoggerSuite() {
         arangod.connect();
         logServer("testmann: start");
         logServer("testmann: " + Array(32768).join("x"));
-        logServer("testmann: done");
+        logServer("testmann: done", "error");
         // log is buffered, so give it a few tries until the log messages appear
         let tries = 0;
         let filtered = [];

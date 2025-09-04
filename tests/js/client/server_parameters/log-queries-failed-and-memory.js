@@ -64,7 +64,7 @@ function LoggerSuite() {
       throw "failed!";
     } catch (err) {}
 
-    logServer("testmann: done"); 
+    logServer("testmann: done", "error"); 
     let arangod = IM.arangods.filter(arangod => {return arangod.isFrontend();})[0];
     // log is buffered, so give it a few tries until the log messages appear
     let tries = 0;

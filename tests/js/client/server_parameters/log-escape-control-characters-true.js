@@ -58,7 +58,7 @@ function EscapeControlTrueSuite() {
         for (let i = 1; i <= 31; ++i) {
           logServer("testmann: testi" + String.fromCharCode(i) + " abc123");
         }
-        logServer("testmann: done");
+        logServer("testmann: done", "error");
 
         // log is buffered, so give it a few tries until the log messages appear
         let tries = 0;

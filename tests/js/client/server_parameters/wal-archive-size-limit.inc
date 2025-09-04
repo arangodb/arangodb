@@ -92,6 +92,6 @@ exports.sendLargeServerOperation = function(maxWaitTime) {
       return false;
     });
   
-  logServer("testmann: done"); 
+  logServer("testmann: done", "error"); 
   return getLogLines();
 };
