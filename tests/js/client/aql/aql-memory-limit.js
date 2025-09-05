@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, fail */
+/*global assertEqual, assertTrue, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -397,7 +397,6 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
   const TEST_EMPTY_COLLECTION = "testEmpty";
 
   let testCollection;
-  let emptyCollection;
 
   function tearDown() {
     db._drop(TEST_COLLECTION);
@@ -667,10 +666,10 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
   };
 }
 
-// jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
 jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
 
 return jsunity.done();
