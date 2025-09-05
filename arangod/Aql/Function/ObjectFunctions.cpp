@@ -25,6 +25,7 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
@@ -37,6 +38,7 @@
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include <functional>
 
 #include "Logger/LogMacros.h"
 
@@ -151,15 +153,15 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   AqlValueMaterializer materializer(&vopts);
   VPackSlice initialSlice = materializer.slice(initial);
 
-  std::shared_ptr<velocypack::Buffer<uint8_t>> supervisedBuffer;
-  std::unique_ptr<velocypack::Builder> builder;
-  if (resourceMonitor != nullptr) {
-    supervisedBuffer =
-        std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
-    builder = std::make_unique<velocypack::Builder>(supervisedBuffer);
-  } else {
-    builder = std::make_unique<velocypack::Builder>();
-  }
+  std::unique_ptr<velocypack::Builder> builder =
+      std::invoke([resourceMonitor]() {
+        if (resourceMonitor) {
+          auto sb =
+              std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
+          return std::make_unique<velocypack::Builder>(sb);
+        }
+        return std::make_unique<velocypack::Builder>();
+      });
 
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
@@ -194,15 +196,15 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
       builder->openObject();
       builder->close();
 
-      std::shared_ptr<velocypack::Buffer<uint8_t>> outBuf;
-      std::unique_ptr<velocypack::Builder> outBuilder;
-      if (resourceMonitor != nullptr) {
-        outBuf =
-            std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
-        outBuilder = std::make_unique<velocypack::Builder>(outBuf);
-      } else {
-        outBuilder = std::make_unique<velocypack::Builder>();
-      }
+      std::unique_ptr<velocypack::Builder> outBuilder =
+          std::invoke([resourceMonitor]() {
+            if (resourceMonitor) {
+              auto obuf = std::make_shared<velocypack::SupervisedBuffer>(
+                  *resourceMonitor);
+              return std::make_unique<velocypack::Builder>(obuf);
+            }
+            return std::make_unique<velocypack::Builder>();
+          });
 
       for (VPackSlice it : VPackArrayIterator(initialSlice)) {
         if (!it.isObject()) {
@@ -228,14 +230,15 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  std::shared_ptr<velocypack::Buffer<uint8_t>> outBuf;
-  std::unique_ptr<velocypack::Builder> outBuilder;
-  if (resourceMonitor != nullptr) {
-    outBuf = std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
-    outBuilder = std::make_unique<velocypack::Builder>(outBuf);
-  } else {
-    outBuilder = std::make_unique<velocypack::Builder>();
-  }
+  std::unique_ptr<velocypack::Builder> outBuilder =
+      std::invoke([resourceMonitor]() {
+        if (resourceMonitor) {
+          auto obuf =
+              std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
+          return std::make_unique<velocypack::Builder>(obuf);
+        }
+        return std::make_unique<velocypack::Builder>();
+      });
   // merge in all other arguments
   for (size_t i = 1; i < n; ++i) {
     AqlValue const& param =
