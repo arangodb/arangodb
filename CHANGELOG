@@ -2,7 +2,7 @@ devel
 -----
 
 * Add filtering support for vector index queries. Filter conditions can now be
-  pushed down into vector similarity searches, improving query performance by
+  pushed down into vector similarity searches, enabling filtering with vector index by
   evaluating filters during the index scan rather than as a post-processing step.
 
 * Fix BTS-2217: If an error happens during startup, a disabled feature can
