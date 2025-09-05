@@ -130,14 +130,14 @@ var IM = global.instanceManager;
       testRevisionTreeMemoryUsageShouldIncreaseAfterBatchedInserts: function () {
         // wait until all pending estimates & revision tree buffers have been applied
         let res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
         
         // block sync thread from doing anything from now on
         IM.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
         
         db._create(collectionName, collectionCreationOptions);
         let metric0 = getCompleteMetricsValues(bufferedMemoryMetric);
@@ -151,7 +151,7 @@ var IM = global.instanceManager;
         IM.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
         
         waitForMetricToBeZero(bufferedMemoryMetric);
       },
@@ -159,14 +159,14 @@ var IM = global.instanceManager;
       testRevisionTreeMemoryUsageShouldIncreaseAfterSingleInserts: function () {
         // wait until all pending estimates & revision tree buffers have been applied
         let res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
 
         // block sync thread from doing anything from now on
         IM.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
 
         let c = db._create(collectionName, collectionCreationOptions);
         let metric0 = getCompleteMetricsValues(bufferedMemoryMetric);
@@ -186,7 +186,7 @@ var IM = global.instanceManager;
         IM.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
 
         waitForMetricToBeZero(bufferedMemoryMetric);
       },
@@ -194,7 +194,7 @@ var IM = global.instanceManager;
       testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {               
         // wait until all pending estimates & revision tree buffers have been applied
         let res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
 
         // Check that metric value is 0 before inserting documents
         waitForMetricToBeZero(bufferedMemoryMetric);
@@ -272,7 +272,7 @@ var IM = global.instanceManager;
 
         // wait until all pending estimates & revision tree buffers have been applied
         let res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
 
         const metric0 = getCompleteMetricsValues(estimatesMetric);
 
@@ -303,7 +303,7 @@ var IM = global.instanceManager;
 
         // wait until all pending estimates & revision tree buffers have been applied
         let res = waitForEstimatorSync();
-        assertNull(res);
+        assertEqual(res, {});
 
         const metric0 = getCompleteMetricsValues(estimatesMetric);
 
