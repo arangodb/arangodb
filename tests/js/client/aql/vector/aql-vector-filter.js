@@ -136,7 +136,7 @@ function VectorIndexL2FilterTestSuite() {
             const query = aql`
               FOR docOuter IN ${collection}
               FOR docInner IN ${collection}
-              FILTER docOuter.val > 3
+              FILTER docInner.val > 3
               SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
               LIMIT 5 RETURN docInner
               `;
