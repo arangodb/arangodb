@@ -57,7 +57,6 @@ struct Aggregator {
   explicit Aggregator(velocypack::Options const* opts,
                       ResourceMonitor& resourceMonitor)
       : _vpackOptions(opts),
-        _resourceMonitor(resourceMonitor),
         _usageScope(ResourceUsageScope(resourceMonitor, 0)) {}
 
   virtual ~Aggregator() = default;
@@ -74,11 +73,6 @@ struct Aggregator {
   static std::unique_ptr<Aggregator> fromTypeString(
       velocypack::Options const*, std::string_view type,
       ResourceMonitor& resourceMonitor);
-
-  /// @brief creates an aggregator from a velocypack slice
-  static std::unique_ptr<Aggregator> fromVPack(
-      velocypack::Options const*, arangodb::velocypack::Slice,
-      std::string_view nameAttribute, ResourceMonitor& resourceMonitor);
 
   /// @brief return a pointer to an aggregator factory for an aggregator type
   /// throws if the aggregator cannot be found
@@ -113,13 +107,13 @@ struct Aggregator {
   /// can be optimized away (note current: COUNT/LENGTH don't, all others do)
   static bool requiresInput(std::string_view type);
 
-  ResourceMonitor& resourceMonitor() const { return _resourceMonitor; }
+  /// @brief called when we need to increase/decrease memory usage for
+  /// computations of AGGREGATE; for AqlValue and VPackSlice values.
   ResourceUsageScope& resourceUsageScope() { return _usageScope; }
 
  protected:
   velocypack::Options const* _vpackOptions;
-  ResourceMonitor& _resourceMonitor;
-  ResourceUsageScope _usageScope;
+  ResourceUsageScope _usageScope; // Holds reference of (global) ResourceMonitor
 };
 
 }  // namespace aql

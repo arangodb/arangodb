@@ -501,7 +501,7 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
   void reset() override {
     AggregatorVarianceBase::reset();
     values.clear();
-    resourceUsageScope().revert();
+    resourceUsageScope().revert(); // revert after it actually clears the values
   }
 
   void reduce(AqlValue const& cmpValue) override {
@@ -646,7 +646,7 @@ struct AggregatorUnique : public Aggregator {
   // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
-    resourceUsageScope().revert();
+    resourceUsageScope().revert(); // revert after it actually clears the values
     builder.clear();
     allocator.clear();
   }
@@ -661,7 +661,7 @@ struct AggregatorUnique : public Aggregator {
       return;
     }
 
-    resourceUsageScope().increase(s.byteSize());
+    resourceUsageScope().increase(s.byteSize()); // s is the value in the heap
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
@@ -711,7 +711,8 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
         continue;
       }
 
-      resourceUsageScope().increase(it.byteSize());
+      resourceUsageScope().increase(
+          it.byteSize());  // 'it' is the value in the heap
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
       seen.emplace(reinterpret_cast<uint8_t const*>(pos));
 
@@ -738,7 +739,7 @@ struct AggregatorSortedUnique : public Aggregator {
   // cppcheck-suppress virtualCallInConstructor
   void reset() override final {
     seen.clear();
-    resourceUsageScope().revert();
+    resourceUsageScope().revert(); // revert aftet it actually clears the values
     allocator.clear();
     builder.clear();
   }
@@ -753,7 +754,7 @@ struct AggregatorSortedUnique : public Aggregator {
       return;
     }
 
-    resourceUsageScope().increase(s.byteSize());
+    resourceUsageScope().increase(s.byteSize());  // s is the value in the heap
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
   }
@@ -795,7 +796,8 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
         continue;
       }
 
-      resourceUsageScope().increase(it.byteSize());
+      resourceUsageScope().increase(
+          it.byteSize());  // 'it' is the value in the heap
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
       seen.emplace(reinterpret_cast<uint8_t const*>(pos));
     }
@@ -1191,17 +1193,6 @@ std::unique_ptr<Aggregator> Aggregator::fromTypeString(
   auto& factory = Aggregator::factoryFromTypeString(type);
 
   return factory(opts, resourceMonitor);
-}
-
-std::unique_ptr<Aggregator> Aggregator::fromVPack(
-    velocypack::Options const* opts, arangodb::velocypack::Slice slice,
-    std::string_view nameAttribute, ResourceMonitor& resourceMonitor) {
-  VPackSlice variable = slice.get(nameAttribute);
-
-  if (variable.isString()) {
-    return fromTypeString(opts, variable.stringView(), resourceMonitor);
-  }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid aggregator type");
 }
 
 Aggregator::Factory const& Aggregator::factoryFromTypeString(
