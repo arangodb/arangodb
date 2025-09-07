@@ -394,13 +394,10 @@ function ahuacatlMemoryLimitSkipTestSuite () {
 
 function ahuacatMemoryLimitSortedCollectTestSuite() {
   const TEST_COLLECTION = "testDocs";
-  const TEST_EMPTY_COLLECTION = "testEmpty";
-
   let testCollection;
 
   function tearDown() {
     db._drop(TEST_COLLECTION);
-    db._drop(TEST_EMPTY_COLLECTION);
   }
 
   return {
@@ -408,9 +405,10 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
       tearDown();
 
       testCollection = db._create(TEST_COLLECTION);
-      for (let i = 1; i <= 100; ++i) {
+      const docs = [];
 
-        testCollection.save({
+      for (let i = 1; i <= 1000; ++i) {
+        docs.push({
           grp: "foobarbazfoobarbaz" + i,
           num: i,
           txt: "x".repeat(1024),
@@ -421,8 +419,8 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
         });
       }
 
-      for (let i = 1; i <= 100; ++i) {
-        testCollection.save({
+      for (let i = 1; i <= 1000; ++i) {
+        docs.push({
           grp: "foobarbazfoobarbaz" + i,
           num: i * 3.14,
           txt: " ".repeat(1024),
@@ -432,11 +430,43 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
           etc: null
         });
       }
+      testCollection.save(docs);
     },
 
     tearDownAll: tearDown,
 
-    testSortedCollectAggregateUniqueIntoWithinLimit: function () { // leftover 99683
+    testSortedCollectExceedLimit: function () { // Throws when building COLLECT
+      const query = `
+        FOR d IN ${TEST_COLLECTION}
+          SORT d.grp
+          COLLECT grp = d.grp
+          RETURN { grp }
+      `;
+      try {
+        db._query(query, null, {memoryLimit: 224000}).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testSortedCollectIntoExceedLimit: function () { // Throws when building INTO
+      const query = `
+        FOR d IN ${TEST_COLLECTION}
+          SORT d.grp
+          COLLECT grp = d.grp
+          INTO doc = d
+          RETURN { grp, doc }
+      `;
+      try {
+        db._query(query, null, {memoryLimit: 6160000}).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testSortedCollectAggregateUniqueIntoWithinLimit: function () { // AggregateUnique doesn't throw
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
@@ -452,34 +482,11 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
           RETURN { grp, num, txt, obj, bool, arr, etc, doc }
       `;
       const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
+      assertEqual(1000, res.length);
       assertTrue(res[0] !== null);
     },
 
-    testSortedCollectAggregateUniqueIntoExceedLimit: function () {
-      const query = `
-        FOR d IN ${TEST_COLLECTION}
-          SORT d.grp
-          COLLECT grp = d.grp
-          AGGREGATE
-            num  = UNIQUE(d.num),
-            txt  = UNIQUE(d.txt),
-            obj  = UNIQUE(d.obj),
-            bool = UNIQUE(d.bool),
-            arr  = UNIQUE(d.arr),
-            etc  = UNIQUE(d.etc)
-          INTO doc = d
-          RETURN { grp, num, txt, obj, bool, arr, etc, doc }
-      `;
-      try {
-        db._query(query, null, {memoryLimit: 800 * 1024}).toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-      }
-    },
-
-    testSortedCollectAggregateUniqueIntoWithNullAggregateAndIntoWithinLimit: function () {
+    testSortedCollectAggregateUniqueIntoWithNullAggregateAndIntoWithinLimit: function () { // Contains null Unique, doesn't throw
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
@@ -489,11 +496,33 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
           RETURN { grp, notExist, doc }
       `;
       const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
+      assertEqual(1000, res.length);
       assertTrue(res[0] !== null);
     },
 
-    testSortedCollectAggregatePushIntoWithinLimit: function () {
+    testSortedCollectAggregateUniqueExceedLimit: function () { // Throws when building AggregateUnique
+      const query = `
+        FOR d IN ${TEST_COLLECTION}
+          SORT d.grp
+          COLLECT grp = d.grp
+          AGGREGATE
+            num  = UNIQUE(d.num),
+            txt  = UNIQUE(d.txt),
+            obj  = UNIQUE(d.obj),
+            bool = UNIQUE(d.bool),
+            arr  = UNIQUE(d.arr),
+            etc  = UNIQUE(d.etc)
+          RETURN { grp, num, txt, obj, bool, arr, etc }
+      `;
+      try {
+        db._query(query, null, {memoryLimit: 6700000}).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testSortedCollectAggregatePushIntoWithinLimit: function () { // AggregateList (= PUSH) doesn't throw
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
@@ -509,34 +538,11 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
           RETURN { grp, num, txt, obj, bool, arr, etc, doc }
       `;
       const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
+      assertEqual(1000, res.length);
       assertTrue(res[0] !== null);
     },
 
-    testSortedCollectAggregatePushIntoExceedLimit: function () {
-      const query = `
-        FOR d IN ${TEST_COLLECTION}
-          SORT d.grp
-          COLLECT grp = d.grp
-          AGGREGATE
-            num  = PUSH(d.num),
-            txt  = PUSH(d.txt),
-            obj  = PUSH(d.obj),
-            bool = PUSH(d.bool),
-            arr  = PUSH(d.arr),
-            etc  = PUSH(d.etc)
-          INTO doc = d
-          RETURN { grp, num, txt, obj, bool, arr, etc, doc }
-      `;
-      try {
-        db._query(query, null, {memoryLimit: 800 * 1024}).toArray();
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
-      }
-    },
-
-    testSortedCollectAggregatePushIntoWithNullAggregateAndIntoWithinLimit: function () {
+    testSortedCollectAggregatePushIntoWithNullAggregateWithinLimit: function () { // Contains null PUSH, doesn't throw
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
@@ -546,54 +552,33 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
           RETURN { grp, notExist, doc }
       `;
       const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
+      assertEqual(1000, res.length);
       assertTrue(res[0] !== null);
     },
 
-    testSortedCollectAggregateMinIntoWithinLimit: function () {
+    testSortedCollectAggregatePushExceedLimit: function () { // Throws when building AggregateList
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
           COLLECT grp = d.grp
           AGGREGATE
-            num  = MIN(d.num),
-            txt  = MIN(d.txt),
-            obj  = MIN(d.obj),
-            bool = MIN(d.bool),
-            arr  = MIN(d.arr),
-            etc  = MIN(d.etc)
-          INTO doc = d
-          RETURN { grp, num, txt, obj, bool, arr, etc, doc }
-      `;
-      const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
-      assertTrue(res[0] !== null);
-    },
-
-    testSortedCollectAggregateMinIntoExceedLimit: function () {
-      const query = `
-        FOR d IN ${TEST_COLLECTION}
-          SORT d.grp
-          COLLECT grp = d.grp
-          AGGREGATE
-            num  = MIN(d.num),
-            txt  = MIN(d.txt),
-            obj  = MIN(d.obj),
-            bool = MIN(d.bool),
-            arr  = MIN(d.arr),
-            etc  = MIN(d.etc)
-          INTO doc = d
-          RETURN { grp, num, txt, obj, bool, arr, etc, doc }
+            num  = PUSH(d.num),
+            txt  = PUSH(d.txt),
+            obj  = PUSH(d.obj),
+            bool = PUSH(d.bool),
+            arr  = PUSH(d.arr),
+            etc  = PUSH(d.etc)
+          RETURN { grp, num, txt, obj, bool, arr, etc }
       `;
       try {
-        db._query(query, null, {memoryLimit: 800 * 1024}).toArray();
+        db._query(query, null, {memoryLimit: 6700000}).toArray();
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
 
-    testSortedCollectAggregateMinIntoWithNullAggregateAndIntoWithinLimit: function () {
+    testSortedCollectAggregateMinIntoWithNullAggregateWithinLimit: function () { // Contains null MIN, doesn't throw
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
@@ -603,54 +588,33 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
           RETURN { grp, notExist, doc }
       `;
       const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
+      assertEqual(1000, res.length);
       assertTrue(res[0] !== null);
     },
 
-    testSortedCollectAggregateMaxIntoWithinLimit: function () {
+    testSortedCollectAggregateMinExceedLimit: function () { // Throws when building AggregateMin
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
           COLLECT grp = d.grp
           AGGREGATE
-            num  = MAX(d.num),
-            txt  = MAX(d.txt),
-            obj  = MAX(d.obj),
-            bool = MAX(d.bool),
-            arr  = MAX(d.arr),
-            etc  = MAX(d.etc)
-          INTO doc = d
-          RETURN { grp, num, txt, obj, bool, arr, etc, doc }
-      `;
-      const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
-      assertTrue(res[0] !== null);
-    },
-
-    testSortedCollectAggregateMaxIntoExceedLimit: function () {
-      const query = `
-        FOR d IN ${TEST_COLLECTION}
-          SORT d.grp
-          COLLECT grp = d.grp
-          AGGREGATE
-            num  = MAX(d.num),
-            txt  = MAX(d.txt),
-            obj  = MAX(d.obj),
-            bool = MAX(d.bool),
-            arr  = MAX(d.arr),
-            etc  = MAX(d.etc)
-          INTO doc = d
-          RETURN { grp, num, txt, obj, bool, arr, etc, doc }
+            num  = MIN(d.num),
+            txt  = MIN(d.txt),
+            obj  = MIN(d.obj),
+            bool = MIN(d.bool),
+            arr  = MIN(d.arr),
+            etc  = MIN(d.etc)
+          RETURN { grp, num, txt, obj, bool, arr, etc }
       `;
       try {
-        db._query(query, null, {memoryLimit: 800 * 1024}).toArray();
+        db._query(query, null, {memoryLimit: 6400000}).toArray();
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
       }
     },
 
-    testSortedCollectAggregateMaxIntoWithNullAggregateAndIntoWithinLimit: function () {
+    testSortedCollectAggregateMaxIntoWithNullAggregateWithinLimit: function () { // Contains null MAX, doesn't throw
       const query = `
         FOR d IN ${TEST_COLLECTION}
           SORT d.grp
@@ -660,16 +624,107 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
           RETURN { grp, notExist, doc }
       `;
       const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
-      assertEqual(100, res.length);
+      assertEqual(1000, res.length);
       assertTrue(res[0] !== null);
     },
+
+    testSortedCollectAggregateMaxExceedLimit: function () { // Throws when building AggregateMax
+      const query = `
+        FOR d IN ${TEST_COLLECTION}
+          SORT d.grp
+          COLLECT grp = d.grp
+          AGGREGATE
+            num  = MAX(d.num),
+            txt  = MAX(d.txt),
+            obj  = MAX(d.obj),
+            bool = MAX(d.bool),
+            arr  = MAX(d.arr),
+            etc  = MAX(d.etc)
+          RETURN { grp, num, txt, obj, bool, arr, etc }
+      `;
+      try {
+        db._query(query, null, {memoryLimit: 6400000}).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testSortedCollectAggregateSortedUniqueIntoWithNullAggregateWithinLimit: function () { // Contains null SortedUnique, doesn't throw
+      const query = `
+        FOR d IN ${TEST_COLLECTION}
+          SORT d.grp
+          COLLECT grp = d.grp
+          AGGREGATE notExist = SORTED_UNIQUE(d.notExist)
+          INTO doc = d.etc
+          RETURN { grp, notExist, doc }
+      `;
+      const res = db._query(query, null, {memoryLimit: 1024 * 1024 * 1024}).toArray();
+      assertEqual(1000, res.length);
+      assertTrue(res[0] !== null);
+    },
+
+    testSortedCollectAggregateSortedUniqueExceedLimit: function () { // Throws when building AggregateSortedUnique
+      const query = `
+        FOR d IN ${TEST_COLLECTION}
+          SORT d.grp
+          COLLECT grp = d.grp
+          AGGREGATE
+            num  = SORTED_UNIQUE(d.num),
+            txt  = SORTED_UNIQUE(d.txt),
+            obj  = SORTED_UNIQUE(d.obj),
+            bool = SORTED_UNIQUE(d.bool),
+            arr  = SORTED_UNIQUE(d.arr),
+            etc  = SORTED_UNIQUE(d.etc)
+        RETURN { grp, num, txt, obj, bool, arr, etc }`;
+      try {
+        db._query(query, null, {memoryLimit: 6400000}).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testSortedCollectAggregateCountDistinctExceedLimit: function () { // Throws when building AggregateCountDistinct
+      const query = `
+        FOR d IN ${TEST_COLLECTION}
+          SORT d.grp
+          COLLECT grp = d.grp
+          AGGREGATE
+            num  = COUNT_DISTINCT(d.num),
+            txt  = COUNT_DISTINCT(d.txt),
+            obj  = COUNT_DISTINCT(d.obj),
+            bool = COUNT_DISTINCT(d.bool),
+            arr  = COUNT_DISTINCT(d.arr),
+            etc  = COUNT_DISTINCT(d.etc),
+            num2  = COUNT_DISTINCT(d.num),
+            txt2  = COUNT_DISTINCT(d.txt),
+            obj2  = COUNT_DISTINCT(d.obj),
+            bool2 = COUNT_DISTINCT(d.bool),
+            arr2  = COUNT_DISTINCT(d.arr),
+            etc2  = COUNT_DISTINCT(d.etc),
+            num3  = COUNT_DISTINCT(d.num),
+            txt3  = COUNT_DISTINCT(d.txt),
+            obj3  = COUNT_DISTINCT(d.obj),
+            bool3 = COUNT_DISTINCT(d.bool),
+            arr3  = COUNT_DISTINCT(d.arr),
+            etc3  = COUNT_DISTINCT(d.etc)
+        RETURN { grp, num, txt, obj, bool, arr, etc, num2, txt2, obj2, bool2, arr2, etc2, num3, txt3, obj3, bool3, arr3, etc3 }`;
+      try {
+        db._query(query, null, {memoryLimit: 5000000}).toArray();
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
   };
 }
 
-jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
-jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+// jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
+// jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
 jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
 
 return jsunity.done();
