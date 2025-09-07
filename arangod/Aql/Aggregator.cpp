@@ -32,8 +32,6 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
-#include "Logger/LogMacros.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -189,9 +187,7 @@ struct AggregatorMin final : public Aggregator {
       // increase memory usage before it’s actually freed, possibly exceeding
       // the limit.
       resourceUsageScope().decrease(memoryUsage);
-      LOG_DEVEL << "AggregatorMin: before add: " << resourceUsageScope().current();
       resourceUsageScope().increase(cmpValue.memoryUsage());
-      LOG_DEVEL << "AggregatorMin: after add: " << resourceUsageScope().current();
       value = cmpValue.clone();
     }
   }
@@ -224,9 +220,7 @@ struct AggregatorMax final : public Aggregator {
       // increase memory usage before it’s actually freed, possibly exceeding
       // the limit.
       resourceUsageScope().decrease(memoryUsage);
-      LOG_DEVEL << "AggregatorMax: before add: " << resourceUsageScope().current();
       resourceUsageScope().increase(cmpValue.memoryUsage());
-      LOG_DEVEL << "AggregatorMax: after add: " << resourceUsageScope().current();
       value = cmpValue.clone();
     }
   }
@@ -674,9 +668,7 @@ struct AggregatorUnique : public Aggregator {
     if (builder.isClosed()) {
       builder.openArray();
     }
-    LOG_DEVEL << "AggregatorUnique: before builder.add: " << resourceUsageScope().current();
     builder.add(VPackSlice(reinterpret_cast<uint8_t const*>(pos)));
-    LOG_DEVEL << "AggregatorUnique: after builder.add: " << resourceUsageScope().current();
   }
 
   AqlValue get() const override final {
@@ -761,11 +753,9 @@ struct AggregatorSortedUnique : public Aggregator {
       // already saw the same value
       return;
     }
-    LOG_DEVEL << "AggregatorSortedUnique: before add: " << resourceUsageScope().current();
     resourceUsageScope().increase(s.byteSize());  // s is the value in the heap
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
-    LOG_DEVEL << "AggregatorSortedUnique: after add: " << resourceUsageScope().current();
   }
 
   AqlValue get() const override final {
@@ -839,11 +829,9 @@ struct AggregatorCountDistinct : public Aggregator {
       // already saw the same value
       return;
     }
-    LOG_DEVEL << "AggregatorCountDistinct: before add: " << resourceUsageScope().current();
     resourceUsageScope().increase(s.byteSize());
     char* pos = allocator.store(s.startAs<char>(), s.byteSize());
     seen.emplace(reinterpret_cast<uint8_t const*>(pos));
-    LOG_DEVEL << "AggregatorCountDistinct: after add: " << resourceUsageScope().current();
   }
 
   AqlValue get() const override final {
@@ -1028,9 +1016,7 @@ struct AggregatorMergeLists : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
-    LOG_DEVEL << "AggregatorMergeLists: before add: " << resourceUsageScope().current();
     builder.add(VPackArrayIterator(s));
-    LOG_DEVEL << "AggregatorMergeLists: after add: " << resourceUsageScope().current();
   }
 
   AqlValue get() const override final {
@@ -1062,9 +1048,7 @@ struct AggregatorList : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
-    LOG_DEVEL << "AggregatorList: before builder.add: " << resourceUsageScope().current();
     builder.add(s);
-    LOG_DEVEL << "AggregatorList: after builder.add: " << resourceUsageScope().current();
   }
 
   AqlValue get() const override final {

@@ -166,7 +166,7 @@ function ahuacatlMemoryLimitReadOnlyQueriesTestSuite () {
       assertEqual(100000, actual.length);
       
       try {
-        db._query(query, null, { memoryLimit: 5 * 1000 * 1000 });
+        db._query(query, null, { memoryLimit: 1000 * 1000 });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -721,10 +721,10 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
   };
 }
 
-// jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
 jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
 
 return jsunity.done();

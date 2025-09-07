@@ -34,7 +34,6 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Exceptions.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Buffer.h>
 
@@ -115,10 +114,8 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
     _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
       AqlValue val = input.getValue(it.second).clone();
-      LOG_DEVEL << "COLLECT AqlValue: before add: " << infos.resourceUsageScope().current();
       infos.resourceUsageScope().increase(val.memoryUsage());
       this->groupValues[i] = val;
-      LOG_DEVEL << "COLLECT AqlValue: after add: " << infos.resourceUsageScope().current();
       ++i;
     }
 
@@ -181,11 +178,9 @@ void SortedCollectExecutor::CollectGroup::addLine(
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     if (infos.getExpressionVariable() != nullptr) {
       // compute the expression
-      LOG_DEVEL << "Into builder: before add: " << infos.resourceUsageScope().current();
       input.getValue(infos.getExpressionRegister())
           .toVelocyPack(infos.getVPackOptions(), _builder,
                         /*allowUnindexed*/ false);
-      LOG_DEVEL << "Into builder: after add: " << infos.resourceUsageScope().current();
     } else {
       // copy variables / keep variables into result register
 

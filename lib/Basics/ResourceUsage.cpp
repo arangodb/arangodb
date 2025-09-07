@@ -27,8 +27,6 @@
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 
 ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
@@ -135,7 +133,6 @@ void ResourceMonitor::increaseMemoryUsage(std::uint64_t value) {
     // some memory expensive checks now...
 
     if (_limit > 0 && ADB_UNLIKELY(current > _limit)) {
-      LOG_DEVEL << "Exceeded the limit: current: " << current << " limit: " << _limit;
       // we would use more memory than dictated by the instance's own limit.
       // because we will throw an exception directly afterwards, we now need to
       // revert the change that we already made to the instance's own counter.
