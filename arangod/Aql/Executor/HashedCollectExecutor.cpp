@@ -131,17 +131,11 @@ HashedCollectExecutor::~HashedCollectExecutor() {
 }
 
 void HashedCollectExecutor::destroyAllGroupsAqlValues() {
-  //size_t memoryUsage = 0;
   for (auto& it : _allGroups) {
-    //memoryUsage += memoryUsageForGroup(it.first, true);
     for (auto& it2 : it.first.values) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
-  //memoryUsage += _memoryUsageForInto;
-
-  //_infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
-  //_memoryUsageForInto = 0;
 }
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
@@ -172,7 +166,6 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 void HashedCollectExecutor::writeCurrentGroupToOutput(
     OutputAqlItemRow& output) {
   // build the result
-  //size_t memoryUsage = memoryUsageForGroup(_currentGroup->first, false);
   auto& keys = _currentGroup->first.values;
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
@@ -184,8 +177,6 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
                          _lastInitializedInputRow, &guard);
     key.erase();  // to prevent double-freeing later
   }
-
-  //_infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
 
   if (!_infos.getAggregatedRegisters().empty()) {
     TRI_ASSERT(_currentGroup->second.first != nullptr);
@@ -349,7 +340,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
 
   _nextGroup.values.clear();
 
-  // new group
+  //  If new group
   if (_infos.getGroupRegisters().size() == 1) {
     auto const& reg = _infos.getGroupRegisters().back();
     // On a single register there can be no duplicate value
@@ -381,16 +372,15 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = makeAggregateValues();
 
-  // ResourceUsageScope guard(_infos.getResourceMonitor(),
-  //                          memoryUsageForGroup(_nextGroup, true));
-
   std::unique_ptr<velocypack::Builder> builder;
 
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     // fill INTO register
     auto sb = std::make_shared<velocypack::SupervisedBuffer>(
         _infos.getResourceMonitor());
-    builder = std::make_unique<velocypack::Builder>(sb); // Supervised builder
+    builder = std::make_unique<velocypack::Builder>(
+        sb);  // Supervised builder; This is the only place to instantiate
+              // builder objects in this Executor
     builder->openArray();
     addToIntoRegister(input, *builder);
   }
@@ -401,8 +391,6 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
       std::make_pair(std::move(aggregateValues), std::move(builder)));
   // emplace must not fail
   TRI_ASSERT(emplaced);
-
-  //guard.steal();
 
   // Moving _nextGroup left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
@@ -441,7 +429,6 @@ HashedCollectExecutor::Infos const& HashedCollectExecutor::infos()
 
 void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
                                               velocypack::Builder& builder) {
-  //size_t previousSize = builder.buffer()->size();
 
   if (_infos.getExpressionVariable() != nullptr) {
     // get result of INTO expression variable
@@ -459,36 +446,7 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
     }
     builder.close();
   }
-
-  // track memory usage of what we just added
-  //size_t memoryUsage = builder.buffer()->size() - previousSize;
-  //_infos.getResourceMonitor().increaseMemoryUsage(memoryUsage);
-
-  //_memoryUsageForInto += memoryUsage;
 }
-
-// size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
-//                                                   bool withBase) const {
-//   // track memory usage of unordered_map entry (somewhat)
-//   size_t memoryUsage = 0;
-//   if (withBase) {
-//     memoryUsage += 4 * sizeof(void*) + /* generic overhead */
-//                    group.values.size() * sizeof(AqlValue) +
-//                    _aggregatorFactories.size() * sizeof(void*);
-//
-//     if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
-//       // add overhead per per-group Builder object (allocated on the heap)
-//       memoryUsage += sizeof(void*) + sizeof(velocypack::Builder);
-//     }
-//   }
-//
-//   for (auto const& it : group.values) {
-//     if (it.requiresDestruction()) {
-//       memoryUsage += it.memoryUsage();
-//     }
-//   }
-//   return memoryUsage;
-// }
 
 std::unique_ptr<HashedCollectExecutor::ValueAggregators>
 HashedCollectExecutor::makeAggregateValues() const {
