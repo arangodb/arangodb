@@ -34,6 +34,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utilities/NameValidator.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -369,9 +370,8 @@ class TraditionalKeyGeneratorCoordinator final
     : public TraditionalKeyGenerator {
  public:
   explicit TraditionalKeyGeneratorCoordinator(
-      /* ClusterInfo& ci, */ LogicalCollection const& collection,
-      bool allowUserKeys)
-      : TraditionalKeyGenerator(collection, allowUserKeys) /* , _ci(ci) */ {
+      ClusterInfo& ci, LogicalCollection const& collection, bool allowUserKeys)
+      : TraditionalKeyGenerator(collection, allowUserKeys), _ci(ci) {
     TRI_ASSERT(ServerState::instance()->isCoordinator() ||
                ServerState::instance()->isDBServer());
   }
@@ -385,18 +385,14 @@ class TraditionalKeyGeneratorCoordinator final
       // for testing purposes only
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    return _collection.vocbase()
-        .server()
-        .getFeature<ClusterFeature>()
-        .clusterInfo()
-        .uniqid();
+    return _ci.uniqid();
   }
 
   /// @brief track a key value (internal)
   void trackValue(uint64_t /* value */) noexcept override {}
 
  private:
-  /* ClusterInfo& _ci; */
+  ClusterInfo& _ci;
 };
 
 /// @brief base class for padded key generators
@@ -740,8 +736,17 @@ std::unordered_map<GeneratorMapType,
           // unique identifier, so we use the "Coordinator" key generator
           // also on DBServers.
 
-          return std::make_unique<TraditionalKeyGeneratorCoordinator>(
-              /* ci, */ collection, allowUserKeys);
+          auto const& server = collection.vocbase().server();
+
+          auto const upgrading = server.getFeature<DatabaseFeature>().upgrade();
+          if (upgrading) {
+            return nullptr;
+          } else {
+            auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
+            return std::make_unique<TraditionalKeyGeneratorCoordinator>(
+                ci, collection, allowUserKeys);
+          }
         }
         return std::make_unique<TraditionalKeyGeneratorSingle>(
             collection, allowUserKeys, ::readLastValue(options));
