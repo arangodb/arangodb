@@ -31,7 +31,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
-namespace arangodb {
+namespace arangodb::vector {
 
 RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,

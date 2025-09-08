@@ -101,15 +101,15 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
     ADB_PROD_ASSERT(_faissIndex != nullptr);
 
     _faissIndex->replace_invlists(
-        new RocksDBInvertedLists(this, &coll, _definition.nLists,
-                                 _faissIndex->code_size),
+        new vector::RocksDBInvertedLists(this, &coll, _definition.nLists,
+                                         _faissIndex->code_size),
         true /* faiss owns the inverted list */);
   } else {
     if (_definition.factory) {
       std::shared_ptr<faiss::Index> index;
       index.reset(faiss::index_factory(
           _definition.dimension, _definition.factory->c_str(),
-          metricToFaissMetric(_definition.metric)));
+          vector::metricToFaissMetric(_definition.metric)));
 
       _faissIndex = std::dynamic_pointer_cast<faiss::IndexIVF>(index);
       if (_faissIndex == nullptr) {
@@ -141,7 +141,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
 
       _faissIndex = std::make_unique<faiss::IndexIVFFlat>(
           quantizer.get(), _definition.dimension, _definition.nLists,
-          metricToFaissMetric(_definition.metric));
+          vector::metricToFaissMetric(_definition.metric));
       _faissIndex->own_fields = nullptr != quantizer.release();
     }
   }
@@ -203,7 +203,7 @@ RocksDBVectorIndex::readBatch(
   }
 
   faiss::SearchParametersIVF searchParametersIvf;
-  SearchParametersContext searchCtx{};
+  vector::SearchParametersContext searchCtx{};
   searchCtx.trx = trx;
   searchCtx.filterExpression = filterExpression;
   if (inputRow != nullptr) {
@@ -387,8 +387,8 @@ void RocksDBVectorIndex::prepareIndex(std::unique_ptr<rocksdb::Iterator> it,
   _trainedData.emplace().codeData = std::move(writer.data);
 
   _faissIndex->replace_invlists(
-      new RocksDBInvertedLists(this, &collection(), _definition.nLists,
-                               _faissIndex->code_size),
+      new vector::RocksDBInvertedLists(this, &collection(), _definition.nLists,
+                                       _faissIndex->code_size),
       true /* faiss owns the inverted list */);
 }
 
@@ -495,8 +495,7 @@ Result RocksDBVectorIndex::ingestVectors(
 
       if constexpr (returnsResult) {
         setResult(fn());
-      }
-      else {
+      } else {
         fn();
       }
     } catch (basics::Exception const& e) {

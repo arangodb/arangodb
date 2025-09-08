@@ -39,6 +39,8 @@ namespace arangodb {
 class RocksDBVectorIndex;
 class LogicalCollection;
 
+namespace vector {
+
 inline faiss::MetricType metricToFaissMetric(
     SimilarityMetric const metric) noexcept {
   switch (metric) {
@@ -133,5 +135,5 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   RocksDBVectorIndex* _index;
   LogicalCollection* _collection;
 };
-
+};  // namespace vector
 };  // namespace arangodb
