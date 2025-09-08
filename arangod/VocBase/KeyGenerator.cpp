@@ -694,7 +694,8 @@ class UpgradeKeyGenerator final : public KeyGenerator {
 
   /// @brief generate a key; crashes in all cases
   std::string generate(velocypack::Slice /*input*/) override {
-    ADB_PROD_CRASH() << "TODO: ...insert helpful message";
+    ADB_PROD_CRASH()
+        << "tried generating a cluster-wide unique-key during database upgrade";
     return "upgradekey";
   }
 
