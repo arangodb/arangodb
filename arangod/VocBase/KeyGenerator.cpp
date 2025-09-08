@@ -873,12 +873,17 @@ std::unordered_map<GeneratorMapType,
           // In these cases we have to generate a key using a cluster-wide
           // unique identifier, so we use the "Coordinator" key generator
           // also on DBServers.
-          auto& ci = collection.vocbase()
-                         .server()
-                         .getFeature<ClusterFeature>()
-                         .clusterInfo();
-          return std::make_unique<PaddedKeyGeneratorCoordinator>(
-              ci, collection, allowUserKeys, ::readLastValue(options));
+          auto const& server = collection.vocbase().server();
+
+          auto const upgrading = server.getFeature<DatabaseFeature>().upgrade();
+          if (upgrading) {
+            return std::make_unique<UpgradeKeyGenerator>(collection);
+          } else {
+            auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+
+            return std::make_unique<PaddedKeyGeneratorCoordinator>(
+                ci, collection, allowUserKeys, ::readLastValue(options));
+          }
         }
         return std::make_unique<PaddedKeyGeneratorSingle>(
             collection, allowUserKeys, ::readLastValue(options));
