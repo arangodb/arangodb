@@ -182,13 +182,13 @@ function VectorIndexL2FilterTestSuite() {
             }
         },
 
-        testApproxL2WithDoubleLoopNotEounghDocuments: function() {
+        testApproxL2WithDoubleLoopNotEnoughDocuments: function() {
             const query = aql`
               FOR docOuter IN ${collection}
               FOR docInner IN ${collection}
               FILTER docInner.val < 3
               SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
-              LIMIT 5 RETURN {key: docInner._key, val: docInner.val}`;
+              LIMIT 6 RETURN {key: docInner._key, val: docInner.val}`;
 
             const plan = db
                 ._createStatement(query)
@@ -201,10 +201,10 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(0, filterNodes.length);
 
             const results = db._query(query).toArray();
-            assertEqual(3, results.length, "Inccorect number of results " + JSON.stringify(results));
+            assertEqual(6, results.length, "Inccorect number of results " + JSON.stringify(results));
 
             for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val > 3, "Filter not applied correctly: " + JSON.stringify(results));
+                assertTrue(results[i].val < 3, "Filter not applied correctly: " + JSON.stringify(results));
             }
         },
 
