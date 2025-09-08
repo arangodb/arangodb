@@ -48,6 +48,8 @@
 #include <string>
 #include <string_view>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
@@ -367,8 +369,9 @@ class TraditionalKeyGeneratorCoordinator final
     : public TraditionalKeyGenerator {
  public:
   explicit TraditionalKeyGeneratorCoordinator(
-      ClusterInfo& ci, LogicalCollection const& collection, bool allowUserKeys)
-      : TraditionalKeyGenerator(collection, allowUserKeys), _ci(ci) {
+      /* ClusterInfo& ci, */ LogicalCollection const& collection,
+      bool allowUserKeys)
+      : TraditionalKeyGenerator(collection, allowUserKeys) /* , _ci(ci) */ {
     TRI_ASSERT(ServerState::instance()->isCoordinator() ||
                ServerState::instance()->isDBServer());
   }
@@ -382,14 +385,18 @@ class TraditionalKeyGeneratorCoordinator final
       // for testing purposes only
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    return _ci.uniqid();
+    return _collection.vocbase()
+        .server()
+        .getFeature<ClusterFeature>()
+        .clusterInfo()
+        .uniqid();
   }
 
   /// @brief track a key value (internal)
   void trackValue(uint64_t /* value */) noexcept override {}
 
  private:
-  ClusterInfo& _ci;
+  /* ClusterInfo& _ci; */
 };
 
 /// @brief base class for padded key generators
@@ -732,12 +739,9 @@ std::unordered_map<GeneratorMapType,
           // In these cases we have to generate a key using a cluster-wide
           // unique identifier, so we use the "Coordinator" key generator
           // also on DBServers.
-          auto& ci = collection.vocbase()
-                         .server()
-                         .getFeature<ClusterFeature>()
-                         .clusterInfo();
+
           return std::make_unique<TraditionalKeyGeneratorCoordinator>(
-              ci, collection, allowUserKeys);
+              /* ci, */ collection, allowUserKeys);
         }
         return std::make_unique<TraditionalKeyGeneratorSingle>(
             collection, allowUserKeys, ::readLastValue(options));
@@ -1004,7 +1008,6 @@ std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createKeyGenerator(
   // if necessary
   return createEnterpriseKeyGenerator(std::move(generator));
 }
-
 #ifndef USE_ENTERPRISE
 
 std::unique_ptr<KeyGenerator> KeyGeneratorHelper::createEnterpriseKeyGenerator(
