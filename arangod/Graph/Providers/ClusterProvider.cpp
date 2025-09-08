@@ -338,6 +338,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   /* Needed for TRAVERSALS only - End */
 
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
+  leased->add("batchSize", 1000);
   leased->close();
 
   auto* pool =
@@ -373,12 +374,16 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   }
 
   transaction::BuilderLeaser leasedContinue(trx());
-  leased->openObject(true);
-  leased->add("continue", VPackValue(true));
-  leased->close();
+  leasedContinue->openObject(true);
+  leasedContinue->add("continue", VPackValue(true));
+  leasedContinue->close();
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
-  for (auto& [engineId, f] : futures) {
+  while (not futures.empty()) {
+    auto& [engineId, f_ref] = futures.back();
+    auto f = std::move(f_ref);
+    futures.pop_back();
+
     // NOTE: If you remove this waitAndGet() in favour of an asynchronous
     // operation, remember to remove the `skipScheduler = true` option of the
     // corresponding requests.

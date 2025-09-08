@@ -339,6 +339,8 @@ void BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
         },
         _batchSize.value());
   }
+
+  builder.add("done", not _cursor->hasMore());
 }
 
 void BaseTraverserEngine::getEdges(VPackBuilder& builder) {
