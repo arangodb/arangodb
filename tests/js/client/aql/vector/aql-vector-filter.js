@@ -80,7 +80,7 @@ function VectorIndexL2FilterTestSuite() {
                     vector,
                     nonVector: i,
                     unIndexedVector: vector,
-                    val: i % 10
+                    val: i
                 });
             }
             collection.insert(docs);
@@ -132,14 +132,37 @@ function VectorIndexL2FilterTestSuite() {
             }
         },
 
+        testApproxL2WithFilterNotEnoughDocuments: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " FILTER d.val < 5 " +
+                " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
+                " SORT dist LIMIT 10 RETURN {key: d._key, val: d.val, dist}";
+
+            const bindVars = { qp: randomPoint };
+            const plan = db
+                ._createStatement({ query, bindVars })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length, JSON.stringify(results));
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val < 5, "Filter not applied correctly: " + JSON.stringify(results));
+            }
+        },
+
         testApproxL2WithDoubleLoop: function() {
             const query = aql`
               FOR docOuter IN ${collection}
               FOR docInner IN ${collection}
               FILTER docInner.val > 3
               SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
-              LIMIT 5 RETURN docInner
-              `;
+              LIMIT 5 RETURN docInner`;
 
             const plan = db
                 ._createStatement(query)
@@ -153,6 +176,32 @@ function VectorIndexL2FilterTestSuite() {
 
             const results = db._query(query).toArray();
             assertEqual(5, results.length);
+
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val > 3, "Filter not applied correctly: " + JSON.stringify(results));
+            }
+        },
+
+        testApproxL2WithDoubleLoopNotEounghDocuments: function() {
+            const query = aql`
+              FOR docOuter IN ${collection}
+              FOR docInner IN ${collection}
+              FILTER docInner.val < 3
+              SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
+              LIMIT 5 RETURN {key: docInner._key, val: docInner.val}`;
+
+            const plan = db
+                ._createStatement(query)
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) {
+                return n.type === "EnumerateNearVectorNode";
+            });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+
+            const results = db._query(query).toArray();
+            assertEqual(3, results.length, "Inccorect number of results " + JSON.stringify(results));
 
             for (let i = 0; i < results.length; ++i) {
                 assertTrue(results[i].val > 3, "Filter not applied correctly: " + JSON.stringify(results));
@@ -176,7 +225,7 @@ function VectorIndexL2FilterTestSuite() {
             const query =
                 "FOR d IN " +
                 collection.name() +
-                " FILTER d.val >= 1 AND d.val < 3 " +
+                " FILTER d.val >= 1 AND d.val < 30 " +
                 " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
                 " SORT dist LIMIT 10 RETURN {key: d._key, val: d.val, dist}";
 
@@ -193,7 +242,7 @@ function VectorIndexL2FilterTestSuite() {
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
             for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val >= 1 && results[i].val < 3, "Filter not applied correctly: " + JSON.stringify(results));
+                assertTrue(results[i].val >= 1 && results[i].val < 30, "Filter not applied correctly: " + JSON.stringify(results));
             }
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
@@ -478,7 +527,7 @@ function VectorIndexCosineFilterTestSuite() {
                     vector,
                     nonVector: i,
                     unIndexedVector: vector,
-                    val: i % 10
+                    val: i
                 });
             }
             collection.insert(docs);
@@ -735,7 +784,7 @@ function VectorIndexInnerProductFilterTestSuite() {
                     vector,
                     nonVector: i,
                     unIndexedVector: vector,
-                    val: i % 10
+                    val: i
                 });
             }
             collection.insert(docs);
