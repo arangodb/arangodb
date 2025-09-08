@@ -4,6 +4,10 @@ devel
 * Fix BTS-2213: Adds a retry logic to the UserManager::updateUser to retry in certain situations 
   (e.g. DB/Col create) until it succeeds instead of giving up after some _rev conflicts.
 
+* Fix BTS-2219: Fix possible crashes with the log id [80e0e] and corresponding
+  message
+  "thread '<thread name>' is not stopped but created. shutting down hard".
+
 * Fix BTS-2217: If an error happens during startup, a disabled feature can
   lead to a crash. Additionally signal that the server is stopping during
   the unexpected shutdown so that in particular the RocksDBSyncThread does
