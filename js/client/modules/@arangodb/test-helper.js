@@ -509,7 +509,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 };
 
 exports.waitForEstimatorSync = function() {
-  return arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+  return arango.GET_RAW("/_admin/wal/wait_for_estimator_sync").parsedBody; // make sure estimates are consistent
 };
 
 exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
