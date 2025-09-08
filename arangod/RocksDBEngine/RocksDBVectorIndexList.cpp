@@ -131,4 +131,4 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
                                           this->code_size);
 }
 
-};  // namespace arangodb
+};  // namespace arangodb::vector
