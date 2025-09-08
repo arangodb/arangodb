@@ -196,7 +196,8 @@ enum class GeneratorType : int {
   kTraditional = 1,
   kAutoincrement = 2,
   kUuid = 3,
-  kPadded = 4
+  kPadded = 4,
+  kUpgrade = 5
 };
 
 /// @brief for older compilers
@@ -675,12 +676,44 @@ class UuidKeyGenerator final : public KeyGenerator {
   boost::uuids::random_generator _uuid;
 };
 
+/// @brief upgrade key generator;
+//
+//  This generator is created if a DBServer is upgrading
+//  the database;
+//  If any code tries generating a key this crashes the process, as
+//  database upgrades are strictly a dbserver-local process and hence
+//  must not rely on any cluster-global state!
+//
+class UpgradeKeyGenerator final : public KeyGenerator {
+ public:
+  /// @brief create the generator
+  explicit UpgradeKeyGenerator(LogicalCollection const& collection)
+      : KeyGenerator(collection, false) {}
+
+  bool hasDynamicState() const noexcept override { return false; }
+
+  /// @brief generate a key; crashes in all cases
+  std::string generate(velocypack::Slice /*input*/) override {
+    ADB_PROD_CRASH() << "TODO: ...insert helpful message";
+    return "upgradekey";
+  }
+
+  /// @brief track usage of a key
+  void track(std::string_view /*key*/) noexcept override {}
+
+  void toVelocyPack(velocypack::Builder& builder) const override {
+    KeyGenerator::toVelocyPack(builder);
+    builder.add("type", VPackValue("upgrade"));
+  }
+};
+
 /// @brief all generators, by name
 std::unordered_map<std::string, GeneratorType> const generatorNames = {
     {"traditional", GeneratorType::kTraditional},
     {"autoincrement", GeneratorType::kAutoincrement},
     {"uuid", GeneratorType::kUuid},
-    {"padded", GeneratorType::kPadded}};
+    {"padded", GeneratorType::kPadded},
+    {"upgrade", GeneratorType::kUpgrade}};
 
 /// @brief get the generator type from VelocyPack
 GeneratorType generatorType(VPackSlice parameters) {
@@ -740,7 +773,7 @@ std::unordered_map<GeneratorMapType,
 
           auto const upgrading = server.getFeature<DatabaseFeature>().upgrade();
           if (upgrading) {
-            return nullptr;
+            return std::make_unique<UpgradeKeyGenerator>(collection);
           } else {
             auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
 
@@ -848,6 +881,11 @@ std::unordered_map<GeneratorMapType,
         }
         return std::make_unique<PaddedKeyGeneratorSingle>(
             collection, allowUserKeys, ::readLastValue(options));
+      }},
+     {static_cast<GeneratorMapType>(GeneratorType::kUpgrade),
+      [](LogicalCollection const& collection,
+         VPackSlice options) -> std::unique_ptr<UpgradeKeyGenerator> {
+        return std::make_unique<UpgradeKeyGenerator>(collection);
       }}};
 
 }  // namespace
