@@ -1149,21 +1149,18 @@ std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
 
 ClusterInfo& ClusterFeature::clusterInfo() {
   if (!_clusterInfo) {
-    LOG_TOPIC("3bc4a", FATAL, Logger::CLUSTER)
-        << "exiting prematurely, because clusterInfo was accessed but is "
-           "unavailable";
-
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    if (server().isStopping()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    } else {
+      ADB_PROD_ASSERT(_clusterInfo != nullptr)
+          << "_clusterInfo is null, but server is not shutting down";
+    }
   }
   return *_clusterInfo;
 }
 
 AgencyCache& ClusterFeature::agencyCache() {
   if (_agencyCache == nullptr) {
-    LOG_TOPIC("76e07", FATAL, Logger::CLUSTER)
-        << "exiting prematurely because agencyCache was accessed but is "
-           "unavailable";
-
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   return *_agencyCache;
