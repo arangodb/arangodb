@@ -42,6 +42,112 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
+namespace {
+
+struct StartEdgeQuery {
+  std::vector<std::string> vertexKeys;
+  size_t depth;
+  VPackSlice variables;
+  std::optional<uint64_t> batchSize = std::nullopt;
+};
+struct EdgeQuery {
+  std::optional<StartEdgeQuery> query;
+};
+ResultT<EdgeQuery> parseQuery(VPackSlice body) {
+  auto toContinue = body.get("continue");
+  if (not toContinue.isNone()) {
+    return EdgeQuery{std::nullopt};
+  }
+
+  // keys
+  VPackSlice keysSlice = body.get("keys");
+  if (!keysSlice.isString() && !keysSlice.isArray()) {
+    return ResultT<EdgeQuery>::error(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'keys' to be a string or an array value.");
+  }
+  std::vector<std::string> vertices;
+  if (keysSlice.isArray()) {
+    for (VPackSlice vertex : VPackArrayIterator(keysSlice)) {
+      TRI_ASSERT(vertex.isString());
+      vertices.emplace_back(vertex.copyString());
+    }
+  } else if (keysSlice.isString()) {
+    vertices.emplace_back(keysSlice.copyString());
+  } else {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+  // TODO error handling if vertices are empty
+
+  // depth
+  VPackSlice depthSlice = body.get("depth");
+  if (!depthSlice.isInteger()) {
+    return ResultT<EdgeQuery>::error(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'depth' to be an integer value");
+  }
+  auto depth = depthSlice.getNumericValue<size_t>();
+
+  // variables
+  VPackSlice variables = body.get("variables");
+
+  // return if batchSize not included
+  auto maybeBatchSize = body.get("batchSize");
+  if (maybeBatchSize.isNone()) {
+    return EdgeQuery{StartEdgeQuery{vertices, depth, variables}};
+  }
+
+  // batch size
+  if (not maybeBatchSize.isInteger()) {
+    return ResultT<EdgeQuery>::error(
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        "expecting 'batchSize' to be an integer value");
+  }
+  auto batchSizeInt = maybeBatchSize.getInt();
+  if (batchSizeInt <= 0) {
+    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                     "expecting 'batchSize' to be positive");
+  }
+  auto batchSize = static_cast<uint64_t>(batchSizeInt);
+
+  return EdgeQuery{StartEdgeQuery{vertices, depth, variables, batchSize}};
+}
+
+}  // namespace
+
+auto InternalRestTraverserHandler::get_engine(uint64_t engineId)
+    -> ResultT<traverser::BaseEngine*> {
+  std::chrono::time_point<std::chrono::steady_clock> start =
+      std::chrono::steady_clock::now();
+  while (true) {
+    try {
+      auto engine = _registry->openGraphEngine(engineId);
+      if (engine != nullptr) {
+        return {engine};
+      }
+      return ResultT<traverser::BaseEngine*>::error(
+          TRI_ERROR_HTTP_BAD_PARAMETER,
+          "invalid TraverserEngine id - potentially the AQL query "
+          "was already aborted or timed out");
+    } catch (basics::Exception const& ex) {
+      // it is possible that the engine is already in use
+      if (ex.code() != TRI_ERROR_LOCKED) {
+        throw;
+      }
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    if (server().isStopping()) {
+      return {TRI_ERROR_SHUTTING_DOWN};
+    }
+
+    if (start + std::chrono::seconds(60) < std::chrono::steady_clock::now()) {
+      // timeout
+      return {TRI_ERROR_LOCK_TIMEOUT};
+    }
+  }
+}
+
 InternalRestTraverserHandler::InternalRestTraverserHandler(
     ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
     aql::QueryRegistry* engineRegistry)
@@ -120,39 +226,17 @@ void InternalRestTraverserHandler::queryEngine() {
     return;
   }
 
-  std::chrono::time_point<std::chrono::steady_clock> start =
-      std::chrono::steady_clock::now();
-
-  traverser::BaseEngine* engine = nullptr;
-  while (true) {
-    try {
-      engine = _registry->openGraphEngine(engineId);
-      if (engine != nullptr) {
-        break;
-      }
-      generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid TraverserEngine id - potentially the AQL query "
-                    "was already aborted or timed out");
-      return;
-    } catch (basics::Exception const& ex) {
-      // it is possible that the engine is already in use
-      if (ex.code() != TRI_ERROR_LOCKED) {
-        throw;
-      }
-    }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(5));
-    if (server().isStopping()) {
-      generateError(ResponseCode::BAD, TRI_ERROR_SHUTTING_DOWN);
-      return;
-    }
-
-    if (start + std::chrono::seconds(60) < std::chrono::steady_clock::now()) {
-      // timeout
+  auto maybeEngine = get_engine(engineId);
+  if (not maybeEngine.ok()) {
+    if (maybeEngine.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       generateError(ResponseCode::SERVER_ERROR, TRI_ERROR_LOCK_TIMEOUT);
       return;
     }
+    generateError(ResponseCode::BAD, maybeEngine.errorNumber(),
+                  maybeEngine.errorMessage());
+    return;
   }
+  auto engine = maybeEngine.get();
 
   TRI_ASSERT(engine != nullptr);
 
@@ -180,67 +264,20 @@ void InternalRestTraverserHandler::queryEngine() {
         auto eng = static_cast<BaseTraverserEngine*>(engine);
         TRI_ASSERT(eng != nullptr);
 
-        auto toContinue = body.get("continue");
-        if (toContinue.isNone()) {
-          // keys
-          VPackSlice keysSlice = body.get("keys");
-          if (!keysSlice.isString() && !keysSlice.isArray()) {
-            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "expecting 'keys' to be a string or an array value.");
-            return;
-          }
-          eng->_vertices = {};
-          if (keysSlice.isArray()) {
-            for (VPackSlice vertex : VPackArrayIterator(keysSlice)) {
-              TRI_ASSERT(vertex.isString());
-              std::string v = vertex.copyString();
-              eng->_vertices.emplace_back(std::move(v));
-            }
-          } else if (keysSlice.isString()) {
-            eng->_vertices.emplace_back(keysSlice.copyString());
-          } else {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-          }
-          eng->_nextVertex = eng->_vertices.begin();
-
-          // depth
-          VPackSlice depthSlice = body.get("depth");
-          if (!depthSlice.isInteger()) {
-            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "expecting 'depth' to be an integer value");
-            return;
-          }
-          auto depth = depthSlice.getNumericValue<size_t>();
-          eng->_depth = depth;
-
-          // batch size
-          eng->_batchSize = std::nullopt;
-          auto maybeBatchSize = body.get("batchSize");
-          if (not maybeBatchSize.isNone()) {
-            if (not maybeBatchSize.isInteger()) {
-              generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                            "expecting 'batchSize' to be an integer value");
-              return;
-            }
-            auto batchSize = maybeBatchSize.getInt();
-            if (batchSize <= 0) {
-              generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                            "expecting 'batchSize' to be positive");
-              return;
-            }
-            eng->_batchSize = static_cast<uint64_t>(batchSize);
-          }
-
-          // Safe cast BaseTraverserEngines are all of type TRAVERSER
-          auto eng = static_cast<BaseTraverserEngine*>(engine);
-          TRI_ASSERT(eng != nullptr);
-
-          VPackSlice variables = body.get("variables");
-          eng->injectVariables(variables);
+        auto query = parseQuery(body);
+        if (not query.ok()) {
+          generateError(ResponseCode::BAD, query.errorNumber(),
+                        query.errorMessage());
+          return;
         }
-
-        TRI_ASSERT(not eng->_vertices.empty());  // TODO error handling
-        TRI_ASSERT(eng->_depth != std::nullopt);
+        if (auto startQuery = query.get().query; startQuery != std::nullopt) {
+          auto q = startQuery.value();
+          eng->_vertices = q.vertexKeys;
+          eng->_nextVertex = q.vertexKeys.begin();
+          eng->_depth = q.depth;
+          eng->_batchSize = q.batchSize;
+          eng->injectVariables(q.variables);
+        }
 
         result.openObject();
         result.add(VPackValue(StaticStrings::GraphQueryEdges));

@@ -32,6 +32,9 @@ class QueryRegistry;
 namespace graph {
 class EdgeCursor;
 }
+namespace traverser {
+class BaseEngine;
+}
 
 class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
  public:
@@ -52,6 +55,9 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
   // @brief Destroy an existing Traverser Engine.
   void destroyEngine();
 
+  ResultT<traverser::BaseEngine*> get_engine(uint64_t engineId);
+
   aql::QueryRegistry* _registry;
 };
+
 }  // namespace arangodb
