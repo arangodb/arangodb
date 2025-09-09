@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix fuzzer tests. Actually look at `Connection: Close` HTTP header and
+  do not expect the connection to stay open if we see this. This fixes
+  BTS-2185.
+
 * Fix BTS-2219: Fix possible crashes with the log id [80e0e] and corresponding
   message
   "thread '<thread name>' is not stopped but created. shutting down hard".
