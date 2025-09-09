@@ -1,10 +1,15 @@
-3.12.5.3 (2025-09-04)
+3.12.5.3 (XXXX-XX-XX)
 ---------------------
 
 * Fix BTS-2217: If an error happens during startup, a disabled feature can
   lead to a crash. Additionally signal that the server is stopping during
   the unexpected shutdown so that in particular the RocksDBSyncThread does
   not crash with an assertion failure.
+
+* Fix BTS-2220: Fix failing autoupgrade of databases in cluster mode.
+  This was caused by key generation now using the cluster key
+  generator on dbservers, which fails during upgrade with a message that
+  the database was shutting down.
 
 * Fix unique _key generation in two cases: AQL INSERT operations in a loop
   without user specified _key in collections with exactly one shard or with
