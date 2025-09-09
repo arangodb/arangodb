@@ -114,6 +114,7 @@ V8ClientConnection::V8ClientConnection(ArangoshServer& server,
       _mode("unknown mode"),
       _role("UNKNOWN"),
       _loop(1, "V8ClientConnection"),
+      _foundConnectionClose(false),
       _vpackOptions(VPackOptions::Defaults),
       _forceJson(false),
       _setCustomError(false) {
@@ -323,7 +324,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
   _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
-  if (!_connection || (_connection->state() == fu::Connection::State::Closed)) {
+  if (!_connection || (_connection->state() == fu::Connection::State::Closed) ||
+      _foundConnectionClose) {
+    _foundConnectionClose = false;
     return createConnection(bypassCache);
   }
   return _connection;
@@ -2884,9 +2887,12 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
     LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
         << "connection closed after " << fuerte::v1::to_string(req_copy)
         << " from: " << localEndpoint;
-    if (response) {
-      LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
-          << "Server responce: " << response;
+  }
+  if (response) {
+    LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
+        << "Server responce: " << response;
+    if (response->messageHeader().metaByKey("connection") == "Close") {
+      _foundConnectionClose = true;
     }
   }
 
