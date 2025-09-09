@@ -1,4 +1,4 @@
-3.12.5.3 (2025-09-04)
+3.12.5.3 (XXXX-XX-XX)
 ---------------------
 
 * Fix BTS-2220: Fix failing autoupgrade of databases in cluster mode.
