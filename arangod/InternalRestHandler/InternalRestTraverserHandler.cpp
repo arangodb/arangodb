@@ -281,18 +281,21 @@ void InternalRestTraverserHandler::queryEngine() {
 
         result.openObject();
         result.add(VPackValue(StaticStrings::GraphQueryEdges));
-        result.openArray(true);
 
         if (eng->_batchSize == std::nullopt) {
+          result.openArray(true);
           for (const auto& vertex : eng->_vertices) {
             eng->createCursor(vertex, eng->_depth.value());
             eng->getEdges(result);
           }
+          result.close();
         } else {
-          eng->getBatchedEdges(result);
+          result.openArray(true);
+          auto hasMore = eng->getBatchedEdges(result);
+          result.close();
+          result.add("done", VPackValue(not hasMore));
         }
 
-        result.close();
         eng->addStatistics(result);
         result.close();
 

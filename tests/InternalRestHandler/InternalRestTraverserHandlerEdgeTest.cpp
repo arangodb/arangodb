@@ -114,6 +114,13 @@ class InternalRestTraverserHandlerEdgeTest : public ::testing::Test {
         dynamic_cast<GeneralResponseMock*>(handler.stealResponse().release());
     return std::unique_ptr<GeneralResponseMock>{response};
   }
+
+  auto destroyEngine(uint64_t engineId) -> void {
+    auto response =
+        requestHandler(arangodb::rest::RequestType::DELETE_REQ,
+                       {basics::StringUtils::itoa(engineId)}, VPackBuilder{});
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+  }
 };
 
 TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_negative_batch_size) {
@@ -161,6 +168,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     toVertices.emplace(edge.get("_to").copyString());
   }
   EXPECT_EQ(toVertices, (std::unordered_set<std::string>{"v/0", "v/1", "v/2"}));
+
+  destroyEngine(engineId);
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
@@ -206,6 +215,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   }
   EXPECT_EQ(toVertices,
             (std::unordered_multiset<std::string>{"v/0", "v/1", "v/2"}));
+
+  destroyEngine(engineId);
 }
 
 }  // namespace arangodb::tests

@@ -305,11 +305,11 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
   return cursor;
 }
 
-void BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
+bool BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
   uint64_t count = 0;
   while (count != _batchSize) {
     if (not setCursor()) {
-      break;
+      return false;
     }
 
     TRI_ASSERT(_cursor != nullptr);
@@ -340,7 +340,7 @@ void BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
         _batchSize.value());
   }
 
-  builder.add("done", not _cursor->hasMore());
+  return _cursor->hasMore();
 }
 
 void BaseTraverserEngine::getEdges(VPackBuilder& builder) {

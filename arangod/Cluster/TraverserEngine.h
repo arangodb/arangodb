@@ -111,7 +111,7 @@ class BaseTraverserEngine : public BaseEngine {
   ~BaseTraverserEngine();
 
   void getEdges(VPackBuilder& builder);
-  void getBatchedEdges(VPackBuilder& builder);
+  bool getBatchedEdges(VPackBuilder& builder);
   void addStatistics(VPackBuilder& builder);
   void createCursor(std::string_view nextVertex, uint64_t currentDepth);
 
