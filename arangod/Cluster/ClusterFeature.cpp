@@ -1149,7 +1149,12 @@ std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
 
 ClusterInfo& ClusterFeature::clusterInfo() {
   if (!_clusterInfo) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    if (server().isStopping()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    } else {
+      ADB_PROD_ASSERT(_clusterInfo != nullptr)
+          << "_clusterInfo is null, but server is not shutting down";
+    }
   }
   return *_clusterInfo;
 }
