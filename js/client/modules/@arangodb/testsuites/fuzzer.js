@@ -55,7 +55,7 @@ function shellFuzzer(options) {
   }
   let opts = _.clone(options);
   // override the defaults - we need more time.
-  opts['oneTestTimeout']: (opts.isInstrumented? 60 : 20) * 60;
+  opts['oneTestTimeout'] = (opts.isInstrumented? 60 : 20) * 60;
   let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, opts);
 
   testCases = tu.splitBuckets(options, testCases);
