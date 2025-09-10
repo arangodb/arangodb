@@ -1475,7 +1475,7 @@ static void ClientConnection_httpFuzzRequests(
     // log the random seed value for later reproducibility.
     // log level must be warning here because log levels < WARN are suppressed
     // during testing.
-    LOG_TOPIC("39e50", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("39e50", WARN, arangodb::Logger::HTTPCLIENT)
         << "fuzzer producing " << numReqs << " requests(s) with " << numIts
         << " iteration(s) each, using seed " << fuzzer.getSeed()
         << " from: " << v8connection->getLocalEndpoint();
@@ -2878,19 +2878,21 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
   } catch (fu::Error const& ec) {
     rc = ec;
     if (rc != fu::Error::NoError) {
-      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("39e53", INFO, arangodb::Logger::HTTPCLIENT)
           << "rc: " << static_cast<uint32_t>(rc)
           << " from: " << getLocalEndpoint();
     }
   }
   if (!connection || connection->state() == fu::Connection::State::Closed) {
-    LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("39e51", INFO, arangodb::Logger::HTTPCLIENT)
         << "connection closed after " << fuerte::v1::to_string(req_copy)
+        << " state: " << to_string(connection->state())
         << " from: " << localEndpoint;
   }
   if (response) {
-    LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
-        << "Server responce: " << response;
+    LOG_TOPIC("39e52", INFO, arangodb::Logger::HTTPCLIENT)
+        << " state: " << to_string(connection->state())
+        << "Server response: " << fuerte::v1::to_string(*response);
     if (response->messageHeader().metaByKey("connection") == "Close") {
       _foundConnectionClose = true;
     }
