@@ -53,7 +53,7 @@ function shellFuzzer(options) {
       status: false
     };
   }
-  opts = _.clone(options);
+  let opts = _.clone(options);
   // override the defaults - we need more time.
   opts['oneTestTimeout']: (opts.isInstrumented? 60 : 20) * 60;
   let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, opts);
