@@ -48,7 +48,7 @@ struct StartEdgeQuery {
   std::vector<std::string> vertexKeys;
   size_t depth;
   VPackSlice variables;
-  std::optional<uint64_t> batchSize = std::nullopt;
+  uint64_t batchSize;
 };
 struct EdgeQuery {
   std::optional<StartEdgeQuery> query;
@@ -91,13 +91,12 @@ ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   // variables
   VPackSlice variables = body.get("variables");
 
-  // return if batchSize not included
+  // batch size
   auto maybeBatchSize = body.get("batchSize");
   if (maybeBatchSize.isNone()) {
-    return EdgeQuery{StartEdgeQuery{vertices, depth, variables}};
+    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                     "expecting 'batchSize'");
   }
-
-  // batch size
   if (not maybeBatchSize.isInteger()) {
     return ResultT<EdgeQuery>::error(
         TRI_ERROR_HTTP_BAD_PARAMETER,
@@ -281,21 +280,10 @@ void InternalRestTraverserHandler::queryEngine() {
 
         result.openObject();
         result.add(VPackValue(StaticStrings::GraphQueryEdges));
-
-        if (eng->_batchSize == std::nullopt) {
-          result.openArray(true);
-          for (const auto& vertex : eng->_vertices) {
-            eng->createCursor(vertex, eng->_depth.value());
-            eng->getEdges(result);
-          }
-          result.close();
-        } else {
-          result.openArray(true);
-          auto hasMore = eng->getBatchedEdges(result);
-          result.close();
-          result.add("done", VPackValue(not hasMore));
-        }
-
+        result.openArray(true);
+        auto hasMore = eng->getBatchedEdges(result);
+        result.close();
+        result.add("done", VPackValue(not hasMore));
         eng->addStatistics(result);
         result.close();
 
