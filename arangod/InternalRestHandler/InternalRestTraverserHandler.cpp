@@ -273,7 +273,7 @@ void InternalRestTraverserHandler::queryEngine() {
         if (auto startQuery = query.get().query; startQuery != std::nullopt) {
           auto q = startQuery.value();
           eng->_vertices = q.vertexKeys;
-          eng->_nextVertex = q.vertexKeys.begin();
+          eng->_nextVertex = eng->_vertices.begin();
           eng->_depth = q.depth;
           eng->_batchSize = q.batchSize;
           eng->injectVariables(q.variables);
