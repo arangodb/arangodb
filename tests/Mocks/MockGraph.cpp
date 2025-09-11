@@ -299,11 +299,9 @@ auto MockGraph::createEngine(MockDBServer& server,
 template<>
 // Future: Also engineID's need to be returned here.
 std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t>
-MockGraph::simulateApi(
-    MockDBServer& server,
-    std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
-        expectedVerticesEdgesBundleToFetch,
-    arangodb::graph::BaseOptions& opts) const {
+MockGraph::simulateApi(MockDBServer& server,
+                       std::vector<size_t> const& expectedVerticesToFetch,
+                       arangodb::graph::BaseOptions& opts) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
   std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses{};
@@ -311,10 +309,7 @@ MockGraph::simulateApi(
   aql::QueryRegistry queryRegistry{120};
   uint64_t engineId = createEngine(server, opts, queryRegistry);
 
-  for (auto const& vertexBundle : expectedVerticesEdgesBundleToFetch) {
-    auto vertex = vertexBundle.first;
-    auto edges = vertexBundle.second;
-
+  for (auto const& vertex : expectedVerticesToFetch) {
     {
       // 1.) fetch the vertex itself
       arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};

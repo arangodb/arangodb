@@ -140,11 +140,9 @@ class MockGraph {
 
   template<class ServerType>
   std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t>
-  simulateApi(
-      ServerType& server,
-      std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
-          expectedVerticesEdgesBundleToFetch,
-      arangodb::graph::BaseOptions& opts) const;
+  simulateApi(ServerType& server,
+              std::vector<size_t> const& expectedVerticesToFetch,
+              arangodb::graph::BaseOptions& opts) const;
 
   auto createEngine(mocks::MockDBServer& server,
                     arangodb::graph::BaseOptions const& opts,
