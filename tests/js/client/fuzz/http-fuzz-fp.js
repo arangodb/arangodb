@@ -180,7 +180,8 @@ function httpRequestsFuzzerTestSuite() {
           arangod._disconnect();
           IM.gatherNetstat();
           IM.printNetstat();
-          for (let i = 0; i < 15; ++i) {
+          const iterations = (IM.options.isInstrumented) ? 10 : 15;
+          for (let i = 0; i < iterations; ++i) {
             let response = arango.fuzzRequests(25000, i, wordListForRoute, wordListForKeys);
             assertTrue(response.hasOwnProperty("seed"));
             assertTrue(response.hasOwnProperty("totalRequests"));
