@@ -559,6 +559,9 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     return {};  // server does not support users
   }
 
+  // The UserManager has to work for the following task
+  um->loadUserCacheAndStartUpdateThread();
+
   for (VPackSlice slice : VPackArrayIterator(users)) {
     std::string user = VelocyPackHelper::getStringValue(slice, "username",
                                                         StaticStrings::Empty);
@@ -638,6 +641,13 @@ Result UpgradeTasks::dropPregelQueriesCollection(
   auto res =
       arangodb::methods::Collections::lookup(vocbase, "_pregel_queries", col);
   if (col) {
+    // Drop collection will revoke the rights of all the users that had rights
+    // on it, so we need a working UserManager here.
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    if (um != nullptr) {
+      um->loadUserCacheAndStartUpdateThread();
+    }
+
     CollectionDropOptions dropOptions{.allowDropSystem = true,
                                       .allowDropGraphCollection = true};
     res = arangodb::methods::Collections::drop(*col, dropOptions);
