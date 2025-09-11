@@ -51,6 +51,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/Version.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/HotBackupCommon.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -104,8 +105,10 @@ using namespace arangodb::rest;
 using Helper = arangodb::basics::VelocyPackHelper;
 
 namespace {
-std::string const edgeUrl = "/_internal/traverser/edge/";
-std::string const vertexUrl = "/_internal/traverser/vertex/";
+std::string const edgeUrl =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/edge/";
+std::string const vertexUrl =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/vertex/";
 
 }  // namespace
 

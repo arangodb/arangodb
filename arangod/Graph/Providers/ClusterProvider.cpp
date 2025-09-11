@@ -38,6 +38,7 @@
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/vocbase.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <utility>
 #include <vector>
@@ -53,8 +54,10 @@ namespace {
 constexpr size_t costPerVertexOrEdgeType =
     sizeof(arangodb::velocypack::HashedStringRef);
 
-std::string const edgeUrl = "/_internal/traverser/edge/";
-std::string const vertexUrl = "/_internal/traverser/vertex/";
+std::string const edgeUrl =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/edge/";
+std::string const vertexUrl =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/vertex/";
 
 VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
                               VertexType const& origin) {
@@ -297,7 +300,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
     // corresponding requests.
     auto res = network::sendRequestRetry(
                    pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-                   "/_internal/traverser/" +
+                   RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH +
                        arangodb::basics::StringUtils::itoa(engine.second),
                    VPackBuffer<uint8_t>(), options)
                    .waitAndGet();
