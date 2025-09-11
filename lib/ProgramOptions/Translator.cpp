@@ -90,6 +90,8 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
           if (vv.length() == 0) {
             if (k == "PID") {
               vv = std::to_string(Thread::currentProcessId());
+            } else if (k == "BASE_DIR") {
+              vv = TRI_GetTempPath();
             }
           }
 

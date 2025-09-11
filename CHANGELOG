@@ -1,6 +1,19 @@
 devel
 -----
 
+* Fix fuzzer tests. Actually look at `Connection: Close` HTTP header and
+  do not expect the connection to stay open if we see this. This fixes
+  BTS-2185.
+
+* Fix BTS-2220: Fix failing autoupgrade of databases in cluster mode.
+  This was caused by key generation now using the cluster key
+  generator on dbservers, which fails during upgrade with a message that
+  the database was shutting down.
+
+* Fix BTS-2219: Fix possible crashes with the log id [80e0e] and corresponding
+  message
+  "thread '<thread name>' is not stopped but created. shutting down hard".
+
 * Fix BTS-2217: If an error happens during startup, a disabled feature can
   lead to a crash. Additionally signal that the server is stopping during
   the unexpected shutdown so that in particular the RocksDBSyncThread does

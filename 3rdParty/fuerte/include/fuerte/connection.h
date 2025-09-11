@@ -242,5 +242,9 @@ class ConnectionBuilder {
  private:
   detail::ConnectionConfiguration _conf;
 };
+
+// convert the boolean flag to a loggeable string
+std::string to_string(Connection::State state);
+
 }}}  // namespace arangodb::fuerte::v1
 #endif
