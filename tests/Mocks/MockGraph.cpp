@@ -359,6 +359,7 @@ MockGraph::simulateApi(MockDBServer& server,
       leased.add("keys", VPackValue(vertexToId(vertex)));
       leased.add("backward", VPackValue(false));
       leased.add("depth", VPackValue(0));
+      leased.add("batchSize", 1000);
       leased.close();  // base object
 
       prep.setRequestType(arangodb::rest::RequestType::PUT);
