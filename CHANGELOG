@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
+  instructions in query runtime.
+
 * Fix fuzzer tests. Actually look at `Connection: Close` HTTP header and
   do not expect the connection to stay open if we see this. This fixes
   BTS-2185.
