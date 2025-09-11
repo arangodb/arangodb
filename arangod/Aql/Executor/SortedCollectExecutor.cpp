@@ -34,7 +34,6 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/Exceptions.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Buffer.h>
 
@@ -53,15 +52,18 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
       _buffer(velocypack::SupervisedBuffer(infos.resourceMonitor())),
       _builder(_buffer) {
   for (auto const& aggName : infos.getAggregateTypes()) {
-    aggregators.emplace_back(
-        Aggregator::fromTypeString(infos.getVPackOptions(), aggName, infos.resourceMonitor()));
+    aggregators.emplace_back(Aggregator::fromTypeString(
+        infos.getVPackOptions(), aggName, infos.resourceMonitor()));
   }
   TRI_ASSERT(infos.getAggregatedRegisters().size() == aggregators.size());
 }
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
+    auto memUsage = it.memoryUsage();
     it.destroy();
+    infos.resourceUsageScope().decrease(
+        memUsage);  // decreases after it actually frees the value
   }
 }
 
@@ -89,7 +91,10 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
+      auto memUsage = it.memoryUsage();
       it.destroy();
+      infos.resourceUsageScope().decrease(
+          memUsage);  // decreases after it actually frees the value
     }
     groupValues[0].erase();  // only need to erase [0], because we have
     // only copies of references anyway

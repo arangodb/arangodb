@@ -393,15 +393,6 @@ void WindowNode::calcAggregateRegisters(
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 }
 
-void WindowNode::calcAggregateTypes(
-    std::vector<std::unique_ptr<Aggregator>>& aggregateTypes,
-    ResourceMonitor& resourceMonitor) const {
-  for (auto const& p : _aggregateVariables) {
-    aggregateTypes.emplace_back(Aggregator::fromTypeString(
-        &_plan->getAst()->query().vpackOptions(), p.type, resourceMonitor));
-  }
-}
-
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
     ExecutionEngine& engine) const {

@@ -129,7 +129,8 @@ class WindowExecutorTest
 
     return WindowExecutorInfos(
         input.bounds, input.rangeReg, std::move(aggregateTypes),
-        std::move(aggregateRegisters), warnings, &VPackOptions::Defaults);
+        std::move(aggregateRegisters), warnings, &VPackOptions::Defaults,
+        fakedQuery->resourceMonitor());
   };
 
   arangodb::aql::QueryWarnings warnings;
@@ -445,7 +446,8 @@ class WindowExecutorInSubqueryTest : public AqlExecutorTestCase<false> {
 
     return WindowExecutorInfos(_preOnePostOne, 0, std::move(aggregateTypes),
                                std::move(aggregateRegisters),
-                               fakedQuery->warnings(), &VPackOptions::Defaults);
+                               fakedQuery->warnings(), &VPackOptions::Defaults,
+                               fakedQuery->resourceMonitor());
   };
 
   auto splitBlock(SharedAqlItemBlockPtr block, std::vector<size_t> splitAt)

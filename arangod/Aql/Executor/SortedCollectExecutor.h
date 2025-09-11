@@ -126,7 +126,10 @@ class SortedCollectExecutorInfos {
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
 
+  /// @brief the reference of "global" ResourceMonitor
   ResourceMonitor& _resourceMonitor;
+
+  /// @brief necessary for monitoring AqlValue (COLLECT value)
   std::unique_ptr<ResourceUsageScope> _usageScope;
 };
 
@@ -147,7 +150,7 @@ class SortedCollectExecutor {
     Infos& infos;
     InputAqlItemRow _lastInputRow;
     arangodb::velocypack::SupervisedBuffer _buffer;
-    arangodb::velocypack::Builder _builder;
+    arangodb::velocypack::Builder _builder;  // Supervised builder
 
     CollectGroup() = delete;
     CollectGroup(CollectGroup&&) = default;

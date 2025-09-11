@@ -48,7 +48,8 @@ WindowExecutorInfos::WindowExecutorInfos(
     WindowBounds const& bounds, RegisterId rangeRegister,
     std::vector<std::string> aggregateTypes,
     std::vector<std::pair<RegisterId, RegisterId>>&& aggregateRegisters,
-    QueryWarnings& w, velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
+    QueryWarnings& w, velocypack::Options const* opts,
+    ResourceMonitor& resourceMonitor)
     : _bounds(bounds),
       _rangeRegister(rangeRegister),
       _aggregateTypes(std::move(aggregateTypes)),
