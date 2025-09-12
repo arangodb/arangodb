@@ -678,10 +678,12 @@ struct AggregatorUnique : public Aggregator {
     if (builder.isClosed()) {
       builder.openArray();
     }
-
-    // always close the Builder
     builder.close();
-    return AqlValue(builder.slice());
+    // return an AqlValue owning its own buffer that preserves the memory
+    // accounting case builder is made from a supervised buffer
+    velocypack::Builder builderCopy;
+    builderCopy.add(builder.slice());
+    return AqlValue(std::move(*builderCopy.steal()));
   }
 
   MemoryBlockAllocator allocator;
@@ -766,10 +768,12 @@ struct AggregatorSortedUnique : public Aggregator {
     for (auto const& it : seen) {
       builder.add(it);
     }
-
-    // always close the Builder
     builder.close();
-    return AqlValue(builder.slice());
+    // return an AqlValue owning its own buffer that preserves the memory
+    // accounting case builder is made from a supervised buffer
+    velocypack::Builder builderCopy;
+    builderCopy.add(builder.slice());
+    return AqlValue(std::move(*builderCopy.steal()));
   }
 
   MemoryBlockAllocator allocator;
