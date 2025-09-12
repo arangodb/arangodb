@@ -804,7 +804,7 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
 };
 
 exports.insertManyDocumentsIntoCollection 
-  = function(db, coll, maker, limit, batchSize) {
+  = function(db, coll, maker, limit, batchSize, abortFunc = () => false) {
   // This function uses the asynchronous API of `arangod` to quickly
   // insert a lot of documents into a collection. You can control which
   // documents to insert with the `maker` function. The arguments are:
@@ -862,13 +862,19 @@ exports.insertManyDocumentsIntoCollection
       l = [];
     }
     let i = 0;
-    while (i < jobs.length) {
-      let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
-      if (r.code === 204) {
-        i += 1;
-      } else if (r.code === 202) {
-        jobs = jobs.slice(0, i).concat(jobs.slice(i+1));
+    if (jobs.length > 10 || done) {
+      while (i < jobs.length) {
+        let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
+        if (r.code === 204) {
+          i += 1;
+        } else if (r.code === 202) {
+          jobs = jobs.slice(0, i).concat(jobs.slice(i+1));
+        }
       }
+    }
+    if (abortFunc()) {
+      print('aborting insert loop by hook');
+      return;
     }
     if (done) {
       if (jobs.length === 0) {
@@ -877,6 +883,15 @@ exports.insertManyDocumentsIntoCollection
       require("internal").wait(0.5);
     }
   }
+};
+
+exports.logServer = function (message, level='info', ID="aaaaa", topic='general') {
+  return arango.POST_RAW('/_admin/log/', [{
+    level,
+    ID,
+    topic,
+    message
+  }]);
 };
 
 exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFileName, options = global.instanceManager.options) {

@@ -36,14 +36,20 @@ VectorIndexFeature::VectorIndexFeature(Server& server)
 void VectorIndexFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption("--experimental-vector-index",
-                  "Turn on experimental vector index feature.",
-                  new options::BooleanParameter(&_useVectorIndex),
-                  options::makeFlags())
+      ->addOption(
+          "--experimental-vector-index",
+          "Enable the experimental vector index feature."
+          "Once in use, this option cannot be turned off again.",
+          new options::BooleanParameter(&_useVectorIndex),
+          options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                             arangodb::options::Flags::OnCoordinator,
+                             arangodb::options::Flags::OnDBServer,
+                             arangodb::options::Flags::OnSingle,
+                             arangodb::options::Flags::Experimental))
       .setIntroducedIn(31204)
-      .setLongDescription(
-          R"(Turn on experimental vector index features. If this is enabled
-downgrading from this version will no longer be possible.)");
+      .setLongDescription(R"(This startup option should not be enabled for
+Agents in a cluster as it has no effect on them other than that you need to
+leave the option enabled.)");
 }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {
