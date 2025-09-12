@@ -177,7 +177,8 @@ class V8UsersTest
     EXPECT_CALL(*um, updateUser)
         .Times(AtLeast(1))
         .WillRepeatedly([this](std::string const& username,
-                               auth::UserManager::UserCallback&& cb) {
+                               auth::UserManager::UserCallback&& cb,
+                               auth::UserManager::RetryOnConflict const) {
           const auto it = _userMap.find(username);
           EXPECT_NE(it, _userMap.end());
           auto const r = cb(it->second);

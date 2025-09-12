@@ -44,9 +44,10 @@ struct UserManagerMock : UserManager {
               (bool, std::string const&, std::string const&, bool,
                velocypack::Slice),
               (override));
-  MOCK_METHOD(Result, enumerateUsers, (std::function<bool(User&)>&&, bool),
-              (override));
-  MOCK_METHOD(Result, updateUser, (std::string const&, UserCallback&&),
+  MOCK_METHOD(Result, enumerateUsers,
+              (std::function<bool(User&)>&&, RetryOnConflict), (override));
+  MOCK_METHOD(Result, updateUser,
+              (std::string const&, UserCallback&&, RetryOnConflict),
               (override));
   MOCK_METHOD(Result, accessUser, (std::string const&, ConstUserCallback&&),
               (override));
