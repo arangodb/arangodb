@@ -90,14 +90,11 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
   _builder.clear();
 
   if (!groupValues.empty()) {
-    for (auto& it : groupValues) {
-      auto memUsage = it.memoryUsage();
-      it.destroy();
-      infos.resourceUsageScope().decrease(
-          memUsage);  // decreases after it actually frees the value
+    groupValues[0].destroy();  // free the owning value
+    for (std::size_t i = 1; i < groupValues.size(); ++i) {
+      groupValues[i]
+          .erase();  // drop shallow copies not free because they're not owned
     }
-    groupValues[0].erase();  // only need to erase [0], because we have
-    // only copies of references anyway
   }
 
   groupLength = 0;
