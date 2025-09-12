@@ -41,11 +41,23 @@ class RestAdminLogHandler : public RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   auto executeAsync() -> futures::Future<futures::Unit> override;
 
+ protected:
+  // we just use the database from the URL to log it.
+  [[nodiscard]] auto makeSharedLogContextValue() const
+      -> std::shared_ptr<LogContext::Values> override {
+    return LogContext::makeValue()
+        .with<structuredParams::UrlName>(_request->fullUrl())
+        .with<structuredParams::UserName>(_request->user())
+        .with<structuredParams::DatabaseName>(_request->databaseName())
+        .share();
+  }
+
  private:
   arangodb::Result verifyPermitted();
   void clearLogs();
   auto reportLogs(bool newFormat) -> async<void>;
   auto handleLogLevel() -> async<void>;
+  auto handleLogWrite() -> async<void>;
   void handleLogStructuredParams();
 };
 }  // namespace arangodb

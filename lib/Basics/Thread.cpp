@@ -220,7 +220,7 @@ Thread::~Thread() {
   LOG_TOPIC("944b1", TRACE, Logger::THREADS)
       << "delete(" << _name << "), state: " << stringify(state);
 
-  if (state != ThreadState::STOPPED) {
+  if (state != ThreadState::STOPPED && state != ThreadState::CREATED) {
     LOG_TOPIC("80e0e", FATAL, arangodb::Logger::FIXME)
         << "thread '" << _name << "' is not stopped but " << stringify(state)
         << ". shutting down hard";

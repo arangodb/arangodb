@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertMatch, assertEqual */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertMatch, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,18 +25,18 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
     'log.max-entry-length': '16384',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function LoggerSuite() {
   'use strict';
@@ -53,52 +53,49 @@ function LoggerSuite() {
       // restore previous log level for "general" topic;
       arango.PUT("/_admin/log/level", { general: oldLogLevel });
     },
-    
+
     testLogEntries: function() {
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("testmann: start"); 
-require('console').log("testmann: " + Array(32768).join("x")); 
-require('console').log("testmann: done"); 
-return require('internal').options()["log.output"];
-`);
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
+        logServer("testmann: start");
+        logServer("testmann: " + Array(32768).join("x"));
+        logServer("testmann: done", "error");
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'ascii');
+          let lines = content.split('\n');
 
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
 
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
+          if (filtered.length === 3) {
+            break;
+          }
 
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === 3) {
-          break;
+          require("internal").sleep(0.5);
         }
+        assertEqual(3, filtered.length);
 
-        require("internal").sleep(0.5);
-      }
-      assertEqual(3, filtered.length);
-          
-      assertTrue(filtered[0].match(/testmann: start/));
-      assertTrue(filtered[1].match(/testmann: xxxxxxxx/));
-      assertTrue(filtered[2].match(/testmann: done/));
+        assertTrue(filtered[0].match(/testmann: start/));
+        assertTrue(filtered[1].match(/testmann: xxxxxxxx/));
+        assertTrue(filtered[2].match(/testmann: done/));
 
-      let valid = 0;
-      filtered.forEach((line) => {
-        JSON.parse(line);
-        valid++;
+        let valid = 0;
+        filtered.forEach((line) => {
+          JSON.parse(line);
+          valid++;
+        });
+        assertEqual(3, valid);
+
+        // + 10 here, because JSON truncation is approximate
+        assertTrue(filtered[1].length <= 16384 + 10, filtered[1].length);
       });
-      assertEqual(3, valid);
-
-      // + 10 here, because JSON truncation is approximate
-      assertTrue(filtered[1].length <= 16384 + 10, filtered[1].length);
+      IM.reconnectMe();
     },
 
   };
