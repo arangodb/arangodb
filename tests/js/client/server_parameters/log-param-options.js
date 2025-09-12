@@ -90,7 +90,7 @@ function LoggerSuite() {
         }
         assertMatch(/testmann: done/, filtered[51]);
 
-        let res = arango.GET("/_admin/log?returnBodyAsJSON=true");
+        let res = arango.GET("/_admin/log");
         assertTrue(res.hasOwnProperty("totalAmount"));
         assertTrue(res.hasOwnProperty("lid"));
         assertTrue(res.hasOwnProperty("topic"));

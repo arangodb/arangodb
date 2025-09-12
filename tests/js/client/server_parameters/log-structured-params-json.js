@@ -123,7 +123,7 @@ function LoggerSuite() {
           assertTrue(filtered[i].match(/testmann: test\d+/));
           assertTrue(filtered[i].match("[database: _system]"));
           assertFalse(filtered[i].match(/\[username: root\]/));
-          assertFalse(filtered[i].match(/\[url: \/_admin\/execute\?returnBodyAsJSON=true\]/));
+          assertFalse(filtered[i].match(/\[url: \/_admin\/log\/structured\]/));
         }
         assertTrue(filtered[11].match(/testmann: done/));
       } finally {
@@ -159,7 +159,7 @@ function LoggerSuite() {
           assertFalse(filtered[i].match(/\[dog: /));
           assertFalse(filtered[i].match(/\[database: _system\]/));
           assertTrue(filtered[i].match("[username: root]"));
-          assertTrue(filtered[i].match(`[url: /_admin/execute?returnBodyAsJSON=true]`));
+          assertFalse(filtered[i].match(/\[url: \/_admin\/log\/structured\]/));
         }
         assertTrue(filtered[11].match(/testParams: done/));
       } finally {

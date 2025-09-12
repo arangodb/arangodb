@@ -80,7 +80,7 @@ function LoggerSuite() {
       coordinator.connect();
       db._useDatabase(dbName);
 
-      let res1 = arango.GET("/_api/cluster/cluster-info?returnBodyAsJSON=true");
+      let res1 = arango.GET("/_api/cluster/cluster-info");
 
       logServer("testmann: start"); 
       logServer("testmann: testi" + `${JSON.stringify(res1)}`);
