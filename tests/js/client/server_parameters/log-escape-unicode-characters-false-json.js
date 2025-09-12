@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,8 +24,6 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.hostname': 'delorean',
@@ -33,7 +31,6 @@ if (getOptions === true) {
     'log.ids': 'false',
     'log.role': 'true',
     'log.thread': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
     'log.escape-unicode-chars': 'false',
@@ -42,58 +39,55 @@ if (getOptions === true) {
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function EscapeUnicodeFalseSuite() {
   'use strict';
 
   return {
     testEscapeUnicodeFalse: function() {
-      const testValues = ["°", "mötör", "maçã", "犬"];
-
-      const request = `require('console').log("testmann: start");
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
         const testValues = ["°", "mötör", "maçã", "犬"];
+
+        logServer("testmann: start");
         testValues.forEach(testValue => {
-          require('console').log("testmann: testi \\u0008\\u0009\\u000A\\u000B\\u000C"  + testValue + " \\u00B0\\ud83e\\uddd9\\uf0f9\\u9095\\uf0f9\\u90b6abc123");
+          logServer("testmann: testi \u0008\u0009\u000A\u000B\u000C"  + testValue + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
         });
-        require('console').log("testmann: done");
-        return require('internal').options()["log.output"];`;
+        logServer("testmann: done", "error"); // flush
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'utf-8');
+          let lines = content.split('\n');
 
-      const res = arango.POST("/_admin/execute", request);
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
 
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
+          if (filtered.length === testValues.length + 2) {
+            break;
+          }
 
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'utf-8');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === testValues.length + 2) {
-          break;
+          require("internal").sleep(0.5);
         }
-
-        require("internal").sleep(0.5);
-      }
-
-      assertEqual(testValues.length + 2, filtered.length);
-      assertMatch(/testmann: start/, filtered[0]);
-      for (let i = 1; i < testValues.length + 1; ++i) {
-        const parsedRes = JSON.parse(filtered[i]);
-        assertTrue(parsedRes.hasOwnProperty("message"));
-        assertEqual(parsedRes.message, "testmann: testi      " + testValues[i - 1] + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
-      }
-      assertMatch(/testmann: done/, filtered[testValues.length + 1]);
+        assertEqual(testValues.length + 2, filtered.length);
+        assertMatch(/testmann: start/, filtered[0]);
+        for (let i = 1; i < testValues.length + 1; ++i) {
+          const parsedRes = JSON.parse(filtered[i]);
+          assertTrue(parsedRes.hasOwnProperty("message"));
+          assertEqual(parsedRes.message, "testmann: testi      " + testValues[i - 1] + " \u00B0\ud83e\uddd9\uf0f9\u9095\uf0f9\u90b6abc123");
+        }
+        assertMatch(/testmann: done/, filtered[testValues.length + 1]);
+      });
+      IM.reconnectMe();
     },
-
   };
 }
 
