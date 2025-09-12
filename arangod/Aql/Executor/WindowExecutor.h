@@ -92,7 +92,7 @@ class WindowExecutorInfos {
   /// @brief the transaction for this query
   velocypack::Options const* _vpackOptions;
 
- ResourceMonitor& _resourceMonitor;
+  ResourceMonitor& _resourceMonitor;
 };
 
 class BaseWindowExecutor {
