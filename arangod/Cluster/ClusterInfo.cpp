@@ -5450,7 +5450,6 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       SetOldEntry("Plan/Views", {"arango", "Plan", "Views"}, plan),
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
-      {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/FoxxQueueVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}};
 

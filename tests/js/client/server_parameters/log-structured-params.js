@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global GLOBAL, getOptions, assertTrue, assertFalse, arango, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,39 +25,32 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.structured-param': ['database=true', 'url', 'username'],
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function LoggerSuite() {
   'use strict';
 
   let generateFilteredLog = function (fieldName) {
-    const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("${fieldName}: start"); 
-for (let i = 0; i < 10; ++i) {
-  require('console').log("${fieldName}: test" + i);
-}
-require('console').log("${fieldName}: done"); 
-return require('internal').options()["log.output"];
-`);
-
-    assertTrue(Array.isArray(res));
-    assertTrue(res.length > 0);
-
-    let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
+    logServer(`${fieldName}: start`);
+    for (let i = 0; i < 10; ++i) {
+      logServer(`${fieldName}: test${i}`);
+    }
+    logServer(`${fieldName}: done`, "error");
     // log is buffered, so give it a few tries until the log messages appear
+    let arangod = IM.arangods.filter(arangod => {return arangod.isFrontend();})[0];
     let tries = 0;
     let filtered = [];
     while (++tries < 60) {
-      let content = fs.readFileSync(logfile, 'ascii');
+      let content = fs.readFileSync(arangod.logFile, 'ascii');
 
       let lines = content.split('\n');
 
@@ -119,7 +112,7 @@ return require('internal').options()["log.output"];
           assertTrue(filtered[i].match(/testmann: test\d+/));
           assertTrue(filtered[i].match("[database: _system]"));
           assertFalse(filtered[i].match(/\[username: root\]/));
-          assertFalse(filtered[i].match(/\[url: \/_admin\/execute\?returnBodyAsJSON=true\]/));
+          assertFalse(filtered[i].match(/\[url: \/_admin\/log\/structured\]/));
         }
         assertTrue(filtered[11].match(/testmann: done/));
       } finally {
@@ -150,7 +143,7 @@ return require('internal').options()["log.output"];
           assertFalse(filtered[i].match(/\[dog: /));
           assertFalse(filtered[i].match(/\[database: _system\]/));
           assertTrue(filtered[i].match("[username: root]"));
-          assertTrue(filtered[i].match(`[url: /_admin/execute?returnBodyAsJSON=true]`));
+          assertFalse(filtered[i].match(/\[url: \/_admin\/log\/structured\]/));
         }
         assertTrue(filtered[11].match(/testParams: done/));
       } finally {
