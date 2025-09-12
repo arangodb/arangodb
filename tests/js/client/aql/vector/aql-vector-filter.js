@@ -52,7 +52,7 @@ const indexName = "vectorIndex";
 function VectorIndexL2FilterTestSuite() {
     let collection;
     let randomPoint;
-    const dimension = 500;
+    const dimension = 20;
     const numberOfDocs = 500;
     const seed = randomInteger();
     const nProbeAndNlists = 10;
