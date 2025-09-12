@@ -25,6 +25,7 @@
 #include "ClusterMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManagerImpl.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -40,6 +41,7 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Utilities.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/ClusterGraphDatalake.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Metrics/Counter.h"
@@ -3637,6 +3639,17 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
 
   // and Wait for Shards to decide on a leader
   ci.syncWaitForAllShardsToEstablishALeader();
+
+  // After we restored the _users collection we want to trigger a global reload
+  // to trigger a cache reload in the whole Cluster.
+  auto* authFeature = AuthenticationFeature::instance();
+  if (authFeature != nullptr && authFeature->userManager() != nullptr) {
+    authFeature->userManager()->triggerCacheRevalidation();
+  } else {
+    // We apparently do not have Authentication on this server, but we still
+    // should increase the UserVersion to be consistent.
+    auth::UserManagerImpl::triggerGlobalReload(authFeature->server());
+  }
 
   {
     VPackObjectBuilder o(&report);

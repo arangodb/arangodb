@@ -52,8 +52,7 @@ struct Databases {
 
  private:
   /// @brief will retry for at most <timeout> seconds
-  static Result grantCurrentUser(CreateDatabaseInfo const& info,
-                                 int64_t timeout);
+  static Result grantCurrentUser(CreateDatabaseInfo const& info);
 
   static Result createCoordinator(CreateDatabaseInfo const& info);
   static Result createOther(CreateDatabaseInfo const& info);
