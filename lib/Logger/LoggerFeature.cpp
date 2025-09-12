@@ -221,7 +221,8 @@ command-line such as Bash. You can typically wrap the entire value in single
 quote marks to prevent variable substitution.
 
 Any occurrence of `@TEMP_BASE_DIR@` in the log output value is replaced at
-runtime with the current temporary directory, e.g. `/tmp/arangodb_i37Xxh`.
+runtime with the current temporary directory, e.g. `/tmp/arangodb_i37Xxh`
+(automatically created on startup with a randomly generated suffix).
 
 Keep in mind that `@NAME@` is also the syntax for using the value of an
 environment variable `NAME`. If there is a environment variable called `PID` or
