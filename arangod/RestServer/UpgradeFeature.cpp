@@ -233,7 +233,7 @@ void UpgradeFeature::start() {
                 user.updatePassword(init.defaultPassword());
                 return TRI_ERROR_NO_ERROR;
               },
-              true);
+              auth::UserManager::RetryOnConflict::Yes);
           if (res.is(TRI_ERROR_USER_NOT_FOUND)) {
             VPackSlice extras = VPackSlice::noneSlice();
             res = um->storeUser(false, "root", init.defaultPassword(), true,

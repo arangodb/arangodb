@@ -192,7 +192,7 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
         }
         return TRI_ERROR_NO_ERROR;
       },
-      false);
+      auth::UserManager::RetryOnConflict::No);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -299,7 +299,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
         entry.grantDatabase(db, lvl);
         return TRI_ERROR_NO_ERROR;
       },
-      false);
+      auth::UserManager::RetryOnConflict::No);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -332,7 +332,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
         entry.removeDatabase(db);
         return TRI_ERROR_NO_ERROR;
       },
-      true);
+      auth::UserManager::RetryOnConflict::Yes);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -387,7 +387,7 @@ static void JS_GrantCollection(
         entry.grantCollection(db, coll, lvl);
         return TRI_ERROR_NO_ERROR;
       },
-      false);
+      auth::UserManager::RetryOnConflict::No);
 
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -436,7 +436,7 @@ static void JS_RevokeCollection(
         entry.removeCollection(db, coll);
         return TRI_ERROR_NO_ERROR;
       },
-      true);
+      auth::UserManager::RetryOnConflict::Yes);
 
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -483,7 +483,7 @@ static void JS_UpdateConfigData(
         u.setConfigData(std::move(updated));
         return TRI_ERROR_NO_ERROR;
       },
-      false);
+      auth::UserManager::RetryOnConflict::No);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }

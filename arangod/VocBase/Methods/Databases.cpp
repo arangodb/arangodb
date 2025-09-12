@@ -161,7 +161,7 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
             entry.grantCollection(info.getName(), "*", auth::Level::RW);
             return TRI_ERROR_NO_ERROR;
           },
-          true);
+          auth::UserManager::RetryOnConflict::Yes);
       return res;
     }
 
@@ -351,7 +351,6 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
                          std::string const& dbName, velocypack::Slice users,
                          velocypack::Slice options) {
   Result res = basics::catchToResult([&]() {
-    // TODO
     Result res;
 
     // Only admin users are permitted to create databases
@@ -579,7 +578,8 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     auto cb = [&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     };
-    if (auto cleanupUsersRes = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+    if (auto cleanupUsersRes =
+            um->enumerateUsers(cb, auth::UserManager::RetryOnConflict::Yes);
         cleanupUsersRes.fail()) {
       LOG_TOPIC("9f8b7", WARN, Logger::AUTHORIZATION)
           << "Failed to cleanup "

@@ -296,7 +296,7 @@ static Result StoreUser(auth::UserManager* um, int mode,
           }
           return TRI_ERROR_NO_ERROR;
         },
-        false);
+        auth::UserManager::RetryOnConflict::No);
   }
 
   return r;
@@ -425,7 +425,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
             return TRI_ERROR_NO_ERROR;
           },
-          false);
+          auth::UserManager::RetryOnConflict::No);
 
       if (r.ok()) {
         generateUserResult(ResponseCode::OK, b);
@@ -471,7 +471,7 @@ RestStatus RestUsersHandler::putRequest(auth::UserManager* um) {
 
               return TRI_ERROR_NO_ERROR;
             },
-            false);
+            auth::UserManager::RetryOnConflict::No);
       }
       if (res.ok()) {
         resetResponse(ResponseCode::OK);
@@ -543,7 +543,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
             u.setConfigData(VPackBuilder());
             return TRI_ERROR_NO_ERROR;
           },
-          false);
+          auth::UserManager::RetryOnConflict::No);
       if (r.ok()) {
         resetResponse(ResponseCode::OK);
       } else {
@@ -588,7 +588,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
 
             return TRI_ERROR_NO_ERROR;
           },
-          true);
+          auth::UserManager::RetryOnConflict::Yes);
 
       if (r.ok()) {
         VPackBuilder b;
@@ -615,7 +615,7 @@ RestStatus RestUsersHandler::deleteRequest(auth::UserManager* um) {
               }
               return TRI_ERROR_NO_ERROR;
             },
-            false);
+            auth::UserManager::RetryOnConflict::No);
 
         if (r.ok()) {
           resetResponse(ResponseCode::OK);

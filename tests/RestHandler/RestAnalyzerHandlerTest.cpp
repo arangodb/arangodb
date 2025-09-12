@@ -254,7 +254,7 @@ class RestAnalyzerHandlerTest
         .Times(AtLeast(1))
         .WillRepeatedly([this](std::string const& username,
                                auth::UserManager::UserCallback&& cb,
-                               bool const) {
+                               auth::UserManager::RetryOnConflict const) {
           EXPECT_EQ(username, _user.username());
           auto const r = cb(_user);
           EXPECT_TRUE(r.ok());

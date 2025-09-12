@@ -584,7 +584,7 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
             user.setUserData(VPackBuilder(extra));
             return TRI_ERROR_NO_ERROR;
           },
-          true);
+          auth::UserManager::RetryOnConflict::Yes);
     }
 
     res = um->updateUser(
@@ -594,7 +594,7 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
           entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
           return TRI_ERROR_NO_ERROR;
         },
-        true);
+        auth::UserManager::RetryOnConflict::Yes);
     if (res.fail()) {
       LOG_TOPIC("60019", WARN, Logger::STARTUP)
           << "could not set permissions for new user " << user << ": "

@@ -536,7 +536,7 @@ Result UserManagerImpl::storeUser(bool const replace,
 }
 
 Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
-                                       bool const retryOnConflict) {
+                                       RetryOnConflict const retryOnConflict) {
   checkIfUserDataIsAvailable();
 
   auto const currentInternalVersion =
@@ -560,7 +560,8 @@ Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
     auto it = toUpdate.begin();
     while (it != toUpdate.end()) {
       res = storeUserInternal(*it, /*replace*/ true);
-      if (res.is(TRI_ERROR_ARANGO_CONFLICT) && retryOnConflict) {
+      if (res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+          retryOnConflict == RetryOnConflict::Yes) {
         res.reset();
         // We ran into a conflict, and we have to retry
         // so we wait for the update thread to re-run/finish
@@ -588,7 +589,7 @@ Result UserManagerImpl::enumerateUsers(std::function<bool(User&)>&& func,
 }
 
 Result UserManagerImpl::updateUser(std::string const& name, UserCallback&& func,
-                                   bool const retryOnConflict) {
+                                   RetryOnConflict const retryOnConflict) {
   if (name.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
@@ -620,13 +621,15 @@ Result UserManagerImpl::updateUser(std::string const& name, UserCallback&& func,
     // cannot hold _userCacheLock while invalidating/reloading user cache
     readGuard.unlock();
 
-    if (retryOnConflict && r.is(TRI_ERROR_ARANGO_CONFLICT)) {
+    if (retryOnConflict == RetryOnConflict::Yes &&
+        r.is(TRI_ERROR_ARANGO_CONFLICT)) {
       // We ran into a conflict, so we know that there is a new globalVersion
       // on the way. So we wait here on the lower-bound version that we tried
       // to update on and retry again with after we receive the latest _users.
       _internalVersion.wait(currentInternalVersion);
     }
-  } while (retryOnConflict && r.is(TRI_ERROR_ARANGO_CONFLICT));
+  } while (retryOnConflict == RetryOnConflict::Yes &&
+           r.is(TRI_ERROR_ARANGO_CONFLICT));
 
   if (r.ok() || r.is(TRI_ERROR_ARANGO_CONFLICT)) {
     // must also clear the basic cache here because the secret may be
@@ -786,7 +789,8 @@ Result UserManagerImpl::accessTokens(std::string const& user,
 Result UserManagerImpl::deleteAccessToken(std::string const& user,
                                           uint64_t id) {
   Result result = updateUser(
-      user, [&](User& u) { return u.deleteAccessToken(id); }, true);
+      user, [&](User& u) { return u.deleteAccessToken(id); },
+      RetryOnConflict::Yes);
 
   return result;
 }
@@ -798,7 +802,7 @@ Result UserManagerImpl::createAccessToken(std::string const& user,
   Result result = updateUser(
       user,
       [&](User& u) { return u.createAccessToken(name, validUntil, builder); },
-      false);
+      RetryOnConflict::No);
 
   return result;
 }

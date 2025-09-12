@@ -709,7 +709,7 @@ Collections::create(         // create collection
             }
             return TRI_ERROR_NO_ERROR;
           },
-          true);
+          auth::UserManager::RetryOnConflict::Yes);
       const bool expectedResult = r.ok() || r.is(TRI_ERROR_USER_NOT_FOUND) ||
                                   r.is(TRI_ERROR_USER_EXTERNAL);
       if (!expectedResult) {
@@ -1309,7 +1309,7 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
           [&](auth::User& entry) -> bool {
             return entry.removeCollection(dbname, collName);
           },
-          /*retryOnConflict*/ true);
+          auth::UserManager::RetryOnConflict::Yes);
     }
   }
   events::DropCollection(coll.vocbase().name(), coll.name(), res.errorNumber());
