@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2214: In a rare hash collision situation it can happen that a
+  valid edge in an enterprise graph fails to validate and is rejected.
+
 * Fix BTS-2213: Adds a retry logic to the UserManager::updateUser to retry in certain situations 
   (e.g. DB/Col create) until it succeeds instead of giving up after some _rev conflicts.
 
