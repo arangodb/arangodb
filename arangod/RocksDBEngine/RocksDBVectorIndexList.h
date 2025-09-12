@@ -70,6 +70,8 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
                                std::size_t listNumber, std::size_t codeSize);
   [[nodiscard]] bool is_available() const override;
 
+  [[nodiscard]] bool searchFilteredIds();
+
   // This should be only called when we have filterExpression
   void setToValidIterator();
 
@@ -84,7 +86,11 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   SearchParametersContext& _searchParametersContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
+  std::unique_ptr<rocksdb::Iterator> _batchIt;
   std::unique_ptr<rocksdb::Iterator> _it;
+  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
+  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
+      _filteredIdsIt{_filteredIds.end()};
   std::size_t _listNumber;
   std::size_t _codeSize;
 };

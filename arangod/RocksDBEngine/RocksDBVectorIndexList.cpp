@@ -33,9 +33,14 @@
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
 
+
 namespace arangodb {
 
 namespace vector {
+
+#define LOG_ADDITIONAL_ENABLED false
+#define LOG_ADDITIONAL_IF(cond) LOG_DEVEL_IF((LOG_ADDITIONAL_ENABLED) && (cond))
+#define LOG_ADDITIONAL LOG_ADDITIONAL_IF(true)
 
 RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
@@ -47,6 +52,7 @@ RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
       _searchParametersContext(searchParametersContext),
       _listNumber(listNumber),
       _codeSize(codeSize) {
+  LOG_ADDITIONAL << ADB_HERE << " CONSTRUCTOR";
   RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
       searchParametersContext.trx, collection->id());
 
@@ -66,17 +72,39 @@ RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
 }
 
 [[nodiscard]] bool RocksDBInvertedListsIterator::is_available() const {
+  if (_searchParametersContext.filterExpression) {
+    LOG_ADDITIONAL << ADB_HERE << " Is iterator ended: "
+              << (_filteredIdsIt == _filteredIds.end())
+              << " is batchIt valid: " << (_batchIt->Valid());
+    LOG_ADDITIONAL << ADB_HERE << ": "
+              << (_filteredIdsIt != _filteredIds.end() || _batchIt->Valid());
+    return _filteredIdsIt != _filteredIds.end() ||
+           (_batchIt->Valid() &&
+            _batchIt->key().starts_with(_rocksdbKey.string()));
+  }
   return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
 }
 
 bool RocksDBInvertedListsIterator::searchFilteredIds() {
-  // Get documents ids from the vector index
+  LOG_ADDITIONAL << ADB_HERE;
+  //  Get documents ids from the vector index
   std::vector<LocalDocumentId> ids;
+  std::unordered_map<LocalDocumentId, std::vector<uint8_t>> idsToValue;
   constexpr auto batchSize = 1000;
+  idsToValue.reserve(batchSize);
   ids.reserve(batchSize);
-  for (size_t i{0}; i < batchSize && _batchIt->Valid(); ++i, _batchIt->Next()) {
-    ids.push_back(
-        LocalDocumentId(RocksDBKey::indexDocumentId(_batchIt->key())));
+
+  for (size_t i{0}; i < batchSize && _batchIt->Valid() &&
+                    _batchIt->key().starts_with(_rocksdbKey.string());
+       ++i, _batchIt->Next()) {
+    auto const id =
+        LocalDocumentId(RocksDBKey::indexDocumentId(_batchIt->key()));
+    ids.emplace_back(id);
+    std::vector<uint8_t> value(
+        _batchIt->value().data(),
+        _batchIt->value().data() + _batchIt->value().size());
+    LOG_ADDITIONAL << ADB_HERE << " id: " << id << " value size: " << value.size();
+    idsToValue.emplace(id, std::move(value));
   }
   if (ids.empty()) {
     return false;
@@ -110,14 +138,16 @@ bool RocksDBInvertedListsIterator::searchFilteredIds() {
         aql::AqlValue a = _searchParametersContext.filterExpression->execute(
             &ctx, mustDestroy);
         aql::AqlValueGuard guard(a, mustDestroy);
-        bool filterExpressionResult = a.toBoolean();
+        auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
-          _filteredIds.emplace_back(id);
+          LOG_ADDITIONAL << "Adding " << id << " doc: " << doc.toJson();
+          _filteredIds.emplace_back(id, std::move(idsToValue[id]));
         }
 
         return true;
       },
       {.countBytes = true});
+  LOG_ADDITIONAL << "FILTEREDIDS: " << _filteredIds << " Restarting iterator";
   _filteredIdsIt = _filteredIds.begin();
 
   return true;
@@ -125,39 +155,59 @@ bool RocksDBInvertedListsIterator::searchFilteredIds() {
 
 // This should be only called when we have filterExpression
 void RocksDBInvertedListsIterator::setToValidIterator() {
+  LOG_ADDITIONAL << ADB_HERE;
   TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
 
   while (_filteredIdsIt == _filteredIds.end()) {
     if (!searchFilteredIds()) {
       // If we enter here we could not produce any documents ids so we just
       // invalidate the current _it
-      _it.swap(_batchIt);
-      TRI_ASSERT(!_it->Valid());
+      LOG_ADDITIONAL << ADB_HERE << " _it: "
+                << LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()))
+                << " and _batchId: "
+                << LocalDocumentId(
+                       RocksDBKey::indexDocumentId(_batchIt->key()));
       return;
     }
   }
 
-  TRI_ASSERT(_filteredIdsIt != _filteredIds.end());
-  RocksDBKey rocksdbKey;
-  rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber,
-                                       *_filteredIdsIt);
-  _it->Seek(rocksdbKey.string());
-  ++_filteredIdsIt;
+  // TRI_ASSERT(_filteredIdsIt != _filteredIds.end());
+  //++_filteredIdsIt;
 }
 
 void RocksDBInvertedListsIterator::next() {
   if (_searchParametersContext.filterExpression) {
+    if (_filteredIdsIt != _filteredIds.end()) {
+      LOG_ADDITIONAL << ADB_HERE << " Current iterator is " << *_filteredIdsIt;
+    } else {
+      LOG_ADDITIONAL << ADB_HERE << " Current iterator has ended";
+    }
     setToValidIterator();
+    ++_filteredIdsIt;
+    if (_filteredIdsIt != _filteredIds.end()) {
+      LOG_ADDITIONAL << ADB_HERE << " Next iterator is " << *_filteredIdsIt;
+    } else {
+      LOG_ADDITIONAL << ADB_HERE << " Next iterator has ended";
+    }
   } else {
+    LOG_ADDITIONAL << ADB_HERE << " Cannot enter here";
     _it->Next();
   }
 }
 
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator::get_id_and_codes() {
+  LOG_ADDITIONAL << ADB_HERE << " _filteredIds: " << _filteredIds;
+  if (_searchParametersContext.filterExpression != nullptr) {
+    LOG_ADDITIONAL << ADB_HERE << " id: " << _filteredIdsIt->first.id()
+              << " value size: " << _filteredIdsIt->second.size();
+    return {static_cast<faiss::idx_t>(_filteredIdsIt->first.id()),
+            _filteredIdsIt->second.data()};
+  }
   auto const docId = RocksDBKey::indexDocumentId(_it->key());
   TRI_ASSERT(_codeSize == _it->value().size());
   auto const* value = reinterpret_cast<uint8_t const*>(_it->value().data());
+  LOG_ADDITIONAL << ADB_HERE << " id: " << docId.id();
   return {static_cast<faiss::idx_t>(docId.id()), value};
 }
 
