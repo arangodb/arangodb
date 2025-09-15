@@ -344,6 +344,7 @@ function testSuite() {
       // I haven't looked up all the details, but I suspect that there's a race
       // here, where `AQLcursors` is still non-zero for a short time after the
       // low prio requests already reached zero.
+      // This is tracked in https://arangodb.atlassian.net/browse/BTS-2227.
       assertTrue(status.allClear, "status: " + JSON.stringify(status));
     },
 
