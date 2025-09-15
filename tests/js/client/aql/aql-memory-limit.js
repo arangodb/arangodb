@@ -415,6 +415,13 @@ function ahuacatMemoryLimitMergeTestSuite() {
       assertEqual(Object.keys(res[0]).length, 1);
     },
 
+    testMergeEmptyObjects() {
+      const res = db._query("RETURN NOOPT(MERGE({}))",
+          null, { memoryLimit: 64 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual({}, res[0]);
+    },
+
     testMergeSingleObjectWithinLimit: function() {
       const query = "RETURN MERGE({a: REPEAT('x', 1024 * 1024)})";
       let res = db._query(query, null, { memoryLimit: 16 * 1024 * 1024 }).toArray();
@@ -438,6 +445,46 @@ function ahuacatMemoryLimitMergeTestSuite() {
       let res = db._query(query, null, { memoryLimit: 512 }).toArray();
       assertEqual(1, res.length);
       assertEqual(res[0].a.b.c.d.e.f.g, 1);
+    },
+
+    testMergeRecursiveNestedObjectsWithinLimit: function() {
+      let q = "RETURN MERGE_RECURSIVE((FOR i IN 1..1000 RETURN { [CONCAT('a', i)]: i, nestedValues: { a: i } }))";
+      let res = db._query(q, null, { memoryLimit: 4 * 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertTrue(res[0].nestedValues.hasOwnProperty('a'));
+    },
+
+    testMergeRecursiveLargeNestedObjectsExceedLimit() {
+      const query = `RETURN MERGE_RECURSIVE(
+        (FOR i IN 1..2048
+         RETURN { [CONCAT('a', i)]: REPEAT('b', 4096),
+                  nested: { [CONCAT('nestedValue', i)]: REPEAT('b', 4096) } }))`;
+      try {
+        db._query(query, null, { memoryLimit: 2 * 1024 * 1024 });
+        fail();
+      } catch (err) {
+        assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testMergeArrayEmptyInputWithinLimit: function() {
+      let res = db._query("RETURN NOOPT(MERGE([]))", null, { memoryLimit: 64 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual({}, res[0]);
+    },
+
+    testMergeArrayPreservesValuesWithinLimit: function() {
+      let res = db._query("RETURN MERGE((FOR i IN 1..100 RETURN { arrayValues: [i, i*2, i*3] }))",
+          null, { memoryLimit: 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual([100, 200, 300], res[0].arrayValues);
+    },
+
+    testMergeManySmallObjectsWithinLimit: function() {
+      let res = db._query("RETURN MERGE((FOR i IN 1..1024 RETURN { [TO_STRING(i)]: i }))",
+          null, { memoryLimit: 1024 * 1024 }).toArray();
+      assertEqual(1, res.length);
+      assertEqual(1024, Object.keys(res[0]).length);
     },
 
     testMergeMultipleEmptyObjectsWithinLimit: function() {
@@ -542,10 +589,10 @@ function ahuacatMemoryLimitMergeTestSuite() {
 
 
 
-// jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
-// jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
+jsunity.run(ahuacatlMemoryLimitStaticQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitReadOnlyQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
+jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
 jsunity.run(ahuacatMemoryLimitMergeTestSuite);
 
 return jsunity.done();

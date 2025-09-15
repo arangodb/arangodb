@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
+  instructions in query runtime.
+
 * Fix BTS-2217: If an error happens during startup, a disabled feature can
   lead to a crash. Additionally signal that the server is stopping during
   the unexpected shutdown so that in particular the RocksDBSyncThread does
