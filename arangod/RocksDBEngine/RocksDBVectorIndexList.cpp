@@ -76,8 +76,11 @@ RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
     LOG_ADDITIONAL << ADB_HERE << " Is iterator ended: "
               << (_filteredIdsIt == _filteredIds.end())
               << " is batchIt valid: " << (_batchIt->Valid());
-    LOG_ADDITIONAL << ADB_HERE << ": "
-              << (_filteredIdsIt != _filteredIds.end() || _batchIt->Valid());
+
+    auto res = _filteredIdsIt != _filteredIds.end() ||
+           (_batchIt->Valid() &&
+            _batchIt->key().starts_with(_rocksdbKey.string()));
+    LOG_ADDITIONAL << ADB_HERE << " returning: " << std::boolalpha << res;
     return _filteredIdsIt != _filteredIds.end() ||
            (_batchIt->Valid() &&
             _batchIt->key().starts_with(_rocksdbKey.string()));
@@ -159,6 +162,7 @@ void RocksDBInvertedListsIterator::setToValidIterator() {
   TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
 
   while (_filteredIdsIt == _filteredIds.end()) {
+    LOG_ADDITIONAL << ADB_HERE << "The iteration ended looking for more docs";
     if (!searchFilteredIds()) {
       // If we enter here we could not produce any documents ids so we just
       // invalidate the current _it
@@ -187,6 +191,8 @@ void RocksDBInvertedListsIterator::next() {
     if (_filteredIdsIt != _filteredIds.end()) {
       LOG_ADDITIONAL << ADB_HERE << " Next iterator is " << *_filteredIdsIt;
     } else {
+
+      setToValidIterator();
       LOG_ADDITIONAL << ADB_HERE << " Next iterator has ended";
     }
   } else {
@@ -197,7 +203,7 @@ void RocksDBInvertedListsIterator::next() {
 
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator::get_id_and_codes() {
-  LOG_ADDITIONAL << ADB_HERE << " _filteredIds: " << _filteredIds;
+  LOG_ADDITIONAL << ADB_HERE << " ids size: " << _filteredIds.size() << " _filteredIds: " << _filteredIds;
   if (_searchParametersContext.filterExpression != nullptr) {
     LOG_ADDITIONAL << ADB_HERE << " id: " << _filteredIdsIt->first.id()
               << " value size: " << _filteredIdsIt->second.size();

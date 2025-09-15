@@ -33,7 +33,7 @@
 #include <cmath>
 
 // Activate logging
-#define LOG_ENABLED false
+#define LOG_ENABLED true
 #define LOG_INTERNAL \
   LOG_DEVEL_IF((LOG_ENABLED)) << __FUNCTION__ << ":" << __LINE__ << " "
 
