@@ -559,6 +559,9 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
     return {};  // server does not support users
   }
 
+  // The UserManager has to work for the following task
+  um->loadUserCacheAndStartUpdateThread();
+
   for (VPackSlice slice : VPackArrayIterator(users)) {
     std::string user = VelocyPackHelper::getStringValue(slice, "username",
                                                         StaticStrings::Empty);
@@ -575,17 +578,23 @@ Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
           << "could not add database user " << user << ": "
           << res.errorMessage();
     } else if (extra.isObject() && !extra.isEmptyObject()) {
-      um->updateUser(user, [&](auth::User& user) {
-        user.setUserData(VPackBuilder(extra));
-        return TRI_ERROR_NO_ERROR;
-      });
+      um->updateUser(
+          user,
+          [&](auth::User& user) {
+            user.setUserData(VPackBuilder(extra));
+            return TRI_ERROR_NO_ERROR;
+          },
+          auth::UserManager::RetryOnConflict::Yes);
     }
 
-    res = um->updateUser(user, [&](auth::User& entry) {
-      entry.grantDatabase(vocbase.name(), auth::Level::RW);
-      entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
-      return TRI_ERROR_NO_ERROR;
-    });
+    res = um->updateUser(
+        user,
+        [&](auth::User& entry) {
+          entry.grantDatabase(vocbase.name(), auth::Level::RW);
+          entry.grantCollection(vocbase.name(), "*", auth::Level::RW);
+          return TRI_ERROR_NO_ERROR;
+        },
+        auth::UserManager::RetryOnConflict::Yes);
     if (res.fail()) {
       LOG_TOPIC("60019", WARN, Logger::STARTUP)
           << "could not set permissions for new user " << user << ": "
@@ -638,6 +647,13 @@ Result UpgradeTasks::dropPregelQueriesCollection(
   auto res =
       arangodb::methods::Collections::lookup(vocbase, "_pregel_queries", col);
   if (col) {
+    // Drop collection will revoke the rights of all the users that had rights
+    // on it, so we need a working UserManager here.
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    if (um != nullptr) {
+      um->loadUserCacheAndStartUpdateThread();
+    }
+
     CollectionDropOptions dropOptions{.allowDropSystem = true,
                                       .allowDropGraphCollection = true};
     res = arangodb::methods::Collections::drop(*col, dropOptions);

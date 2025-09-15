@@ -620,7 +620,7 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
   }
 
   let ret = pu.executeAndWait(config.getExe(), config.toArgv(), options, pu.ARANGORESTORE_BIN, rootDir, coreCheck);
-  ret.message += `\nContents of log file ${config['log.file']}:\n` + config.getLogFile();
+  ret.message += `\nContents of log file ${config.config['log.file']}:\n` + config.getLogFile();
   return ret;
 }
 

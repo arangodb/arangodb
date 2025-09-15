@@ -2,7 +2,7 @@ add_library(arango_task_registry STATIC
   task.cpp)
 target_include_directories(arango_task_registry PUBLIC
   include)
-target_link_libraries(arango_task_registry PUBLIC fmt arango)
+target_link_libraries(arango_task_registry PUBLIC fmt arango_thread_owning_list arango_shared arango_inspection)
 
 add_library(arango_task_registry_global STATIC
   task_registry_variable.cpp)

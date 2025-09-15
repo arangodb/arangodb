@@ -42,6 +42,7 @@ const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
+const CI = require('@arangodb/cluster-info');
 const arangosh = require('@arangodb/arangosh');
 const pu = require('@arangodb/testutils/process-utils');
 const jsunity = require('jsunity');
@@ -508,7 +509,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 };
 
 exports.waitForEstimatorSync = function() {
-  return arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+  return arango.GET_RAW("/_admin/wal/wait_for_estimator_sync").parsedBody; // make sure estimates are consistent
 };
 
 exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
@@ -585,11 +586,9 @@ exports.getServersByType = function (type) {
 };
 
 exports.getEndpointById = function (id) {
-  const toEndpoint = (d) => (d.endpoint);
-
   const instanceInfo = exports.getInstanceInfo();
-  const instance = instanceInfo.arangods.find(d => d.id === id);
-  return endpointToURL(toEndpoint(instance));
+  const instance = instanceInfo.arangods.find(d => d.id === id || id === d.shortName);
+  return instance.url;
 };
 
 exports.getUrlById = function (id) {
@@ -650,28 +649,8 @@ exports.deactivateFailure = function (name) {
   });
 };
 
-exports.getMaxNumberOfShards = function () {
-  return arango.POST("/_admin/execute", "return require('internal').maxNumberOfShards;");
-};
-
-exports.getMaxReplicationFactor = function () {
-  return arango.POST("/_admin/execute", "return require('internal').maxReplicationFactor;");
-};
-
-exports.getMinReplicationFactor = function () {
-  return arango.POST("/_admin/execute", "return require('internal').minReplicationFactor;");
-};
-
 exports.getDbPath = function () {
   return arango.POST("/_admin/execute", `return require("internal").db._path();`);
-};
-
-exports.getResponsibleShardFromClusterInfo = function (vertexCollectionId, v) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleShard(${JSON.stringify(vertexCollectionId)}, ${JSON.stringify(v)})`);
-};
-
-exports.getResponsibleServersFromClusterInfo = function (arg) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleServers(${JSON.stringify(arg)});`);
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
@@ -748,35 +727,6 @@ exports.getAgentEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.agent);
 };
 
-exports.uniqid = function  () {
-  return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
-};
-
-exports.arangoClusterInfoFlush = function () {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
-};
-
-exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
-  return arango.POST("/_admin/execute", 
-    `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
-};
-
-exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, shard) {
-  return arango.POST("/_admin/execute", 
-    `return global.ArangoClusterInfo.getCollectionInfoCurrent(
-      ${JSON.stringify(dbName)}, 
-      ${JSON.stringify(collName)}, 
-      ${JSON.stringify(shard)})`);
-};
-
-exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
-};
-
-exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
-  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
-};
-
 const shardIdToLogId = function (shardId) {
   return shardId.slice(1);
 };
@@ -806,7 +756,7 @@ const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
 
 
 exports.findCollectionServers = function (database, collection, replVersion="1") {
-  var cinfo = exports.arangoClusterInfoGetCollectionInfo(database, collection);
+  var cinfo = CI.getCollectionInfo(database, collection);
   var shard = Object.keys(cinfo.shards)[0];
 
   if (replVersion === "2") {
@@ -854,7 +804,7 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
 };
 
 exports.insertManyDocumentsIntoCollection 
-  = function(db, coll, maker, limit, batchSize) {
+  = function(db, coll, maker, limit, batchSize, abortFunc = () => false) {
   // This function uses the asynchronous API of `arangod` to quickly
   // insert a lot of documents into a collection. You can control which
   // documents to insert with the `maker` function. The arguments are:
@@ -912,13 +862,19 @@ exports.insertManyDocumentsIntoCollection
       l = [];
     }
     let i = 0;
-    while (i < jobs.length) {
-      let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
-      if (r.code === 204) {
-        i += 1;
-      } else if (r.code === 202) {
-        jobs = jobs.slice(0, i).concat(jobs.slice(i+1));
+    if (jobs.length > 10 || done) {
+      while (i < jobs.length) {
+        let r = arango.PUT_RAW(`/_api/job/${jobs[i]}`, {});
+        if (r.code === 204) {
+          i += 1;
+        } else if (r.code === 202) {
+          jobs = jobs.slice(0, i).concat(jobs.slice(i+1));
+        }
       }
+    }
+    if (abortFunc()) {
+      print('aborting insert loop by hook');
+      return;
     }
     if (done) {
       if (jobs.length === 0) {
@@ -927,6 +883,15 @@ exports.insertManyDocumentsIntoCollection
       require("internal").wait(0.5);
     }
   }
+};
+
+exports.logServer = function (message, level='info', ID="aaaaa", topic='general') {
+  return arango.POST_RAW('/_admin/log/', [{
+    level,
+    ID,
+    topic,
+    message
+  }]);
 };
 
 exports.executeExternalAndWaitWithSanitizer = function (executable, args, tmpFileName, options = global.instanceManager.options) {

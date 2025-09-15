@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global getOptions, print, assertTrue, assertFalse, arango, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -28,7 +28,6 @@
 if (getOptions === true) {
   return {
     'log.max-queued-entries': '0',
-    'javascript.allow-admin-execute': 'true',
     'log.force-direct': 'false',
     'log.foreground-tty': 'false',
   };
@@ -52,8 +51,16 @@ function LoggerSuite() {
         arango.PUT("/_admin/log/level", { general: "info" });
 
         // messages with level "info" will be dropped
-        let res = arango.POST_RAW("/_admin/execute", "for (let i = 0; i < 100; ++i) { require('console').log('abc'); }");
-        assertEqual(200, res.code, res);
+        let messages = [];
+        for (let i = 0; i < 100; ++i) {
+          messages.push({
+            level: "info",
+            ID: "aaaaa",
+            topic: "general",
+            message: `abc ${i}`
+          });
+        }
+        arango.POST_RAW('/_admin/log/', messages);
 
         const newValue = getMetric("arangodb_logger_messages_dropped_total");
         assertTrue(newValue >= oldValue + 100, {oldValue, newValue});
@@ -72,8 +79,16 @@ function LoggerSuite() {
         arango.PUT("/_admin/log/level", { general: "warn" });
 
         // messages with level "warn" will not be dropped
-        let res = arango.POST_RAW("/_admin/execute", "for (let i = 0; i < 100; ++i) { require('console').warn('abc'); }");
-        assertEqual(200, res.code, res);
+        let messages = [];
+        for (let i = 0; i < 100; ++i) {
+          messages.push({
+            level: "warn",
+            ID: "bbbbb",
+            topic: "general",
+            message: `abc ${i}`
+          });
+        }
+        arango.POST_RAW('/_admin/log/', messages);
 
         const newValue = getMetric("arangodb_logger_messages_dropped_total");
         // allow for up to 20 unrelated log messages (from other server
@@ -89,8 +104,16 @@ function LoggerSuite() {
       const oldValue = getMetric("arangodb_logger_messages_dropped_total");
 
       // messages with level "error" will not be dropped
-      let res = arango.POST_RAW("/_admin/execute", "for (let i = 0; i < 100; ++i) { require('console').error('abc'); }");
-      assertEqual(200, res.code, res);
+        let messages = [];
+        for (let i = 0; i < 100; ++i) {
+          messages.push({
+            level: "error",
+            ID: "ccccc",
+            topic: "general",
+            message: `abc ${i}`
+          });
+        }
+        arango.POST_RAW('/_admin/log/', messages);
 
       const newValue = getMetric("arangodb_logger_messages_dropped_total");
       // allow for up to 20 unrelated log messages (from other server

@@ -53,6 +53,8 @@ class UserManagerImpl final : public UserManager {
   void loadUserCacheAndStartUpdateThread() noexcept override;
   void setGlobalVersion(uint64_t version) noexcept override;
   [[nodiscard]] uint64_t globalVersion() const noexcept override;
+
+  static void triggerGlobalReload(ArangodServer&);
   void triggerGlobalReload() const override;
   void triggerCacheRevalidation() override;
   void createRootUser() override;
@@ -64,9 +66,10 @@ class UserManagerImpl final : public UserManager {
                    velocypack::Slice extras) override;
 
   Result enumerateUsers(std::function<bool(User&)>&&,
-                        bool retryOnConflict) override;
+                        RetryOnConflict retryOnConflict) override;
 
-  Result updateUser(std::string const& user, UserCallback&&) override;
+  Result updateUser(std::string const& user, UserCallback&&,
+                    RetryOnConflict retryOnConflict) override;
 
   Result accessUser(std::string const& user, ConstUserCallback&&) override;
 

@@ -331,7 +331,8 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
 
         err = llhttp_execute(&_parser, data, datasize);
         if (err != HPE_OK) {
-          if (err == HPE_INVALID_HEADER_TOKEN) {
+          if (err == HPE_INVALID_HEADER_TOKEN || err == HPE_INVALID_URL ||
+              err == HPE_UNEXPECTED_CONTENT_LENGTH) {
             _headerCorrupt = true;
           }
           ptrdiff_t diff = llhttp_get_error_pos(&_parser) - data;
@@ -399,6 +400,28 @@ bool HttpCommTask<T>::readCallback(asio_ns::error_code ec) {
       LOG_TOPIC("595fe", TRACE, Logger::REQUESTS)
           << "HTTP parse failure: '" << llhttp_get_error_reason(&_parser)
           << "'";
+
+      // Try to send an error response before closing the connection
+      try {
+        if (_request != nullptr) {
+          // We have a request object, send a proper error response
+          auto msgId = _request->messageId();
+          auto respContentType = _request->contentTypeResponse();
+          this->sendErrorResponse(rest::ResponseCode::BAD, respContentType,
+                                  msgId, TRI_ERROR_HTTP_BAD_PARAMETER,
+                                  "HTTP parsing error");
+        } else {
+          // No request object yet, send a minimal error response
+          // Use default values similar to other early error cases
+          this->sendSimpleResponse(rest::ResponseCode::BAD,
+                                   rest::ContentType::UNSET, 1,
+                                   VPackBuffer<uint8_t>());
+        }
+      } catch (...) {
+        // If sending the error response fails, just continue to close
+        LOG_TOPIC("595ff", TRACE, Logger::REQUESTS)
+            << "Failed to send error response for HTTP parsing failure";
+      }
     }
     this->close(ec);
   }
