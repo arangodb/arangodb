@@ -90,10 +90,10 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
   _builder.clear();
 
   if (!groupValues.empty()) {
-    groupValues[0].destroy();  // free the owning value
-    for (std::size_t i = 1; i < groupValues.size(); ++i) {
-      groupValues[i]
-          .erase();  // drop shallow copies not free because they're not owned
+    for (auto& it : groupValues) {
+      auto memUsage = it.memoryUsage();
+      it.destroy();
+      infos.resourceUsageScope().decrease(memUsage);
     }
   }
 
@@ -277,11 +277,16 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     TRI_ASSERT(_builder.isOpenArray());
     _builder.close();
 
-    AqlValue val(std::move(_buffer));  // _buffer still usable after
-    AqlValueGuard guard{val, true};
-    TRI_ASSERT(_buffer.size() == 0);
-    _builder.clear();  // necessary
+    auto supervisedBuf =
+        std::make_shared<velocypack::SupervisedBuffer>(infos.resourceMonitor());
+    velocypack::Builder builderCopy(supervisedBuf);
+    builderCopy.add(_builder.slice());
 
+    _builder.clear();
+    TRI_ASSERT(_buffer.size() == 0);
+
+    AqlValue val(std::move(*builderCopy.steal()));
+    AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
   }
 

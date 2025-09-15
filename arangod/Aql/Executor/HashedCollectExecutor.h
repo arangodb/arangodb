@@ -264,8 +264,6 @@ class HashedCollectExecutor {
   GroupKeyType _nextGroup;
 
   size_t _returnedGroups = 0;
-
-  // size_t _memoryUsageForInto;
 };
 
 }  // namespace aql
