@@ -31,7 +31,6 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
-#include "Cluster/ClusterEdgeCursor.h"
 #include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Graph/Cursors/DBServerIndexCursor.h"
 #include "Indexes/Index.h"
