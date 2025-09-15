@@ -13,7 +13,6 @@ add_library(arango_graph STATIC
   TraverserDocumentCache.cpp
   TraverserOptions.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/CallbackGuard.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/Cluster/ClusterEdgeCursor.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/ServerDefaults.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/TraverserEngine.cpp
   ${PROJECT_SOURCE_DIR}/arangod/InternalRestHandler/InternalRestTraverserHandler.cpp
