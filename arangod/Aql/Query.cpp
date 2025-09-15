@@ -848,7 +848,7 @@ futures::Future<futures::Unit> Query::execute(
           if (_queryApiSynchronicity == QueryApiSynchronicity::Synchronous) {
             // make sure we don't suspend with a synchronous api; the caller
             // will rely upon suspends happening only due to WAITING.
-            TRI_ASSERT(prepareFut.valid());
+            TRI_ASSERT(prepareFut.is_ready());
           }
           co_await std::move(prepareFut);
         }
