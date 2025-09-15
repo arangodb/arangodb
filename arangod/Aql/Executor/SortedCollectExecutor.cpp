@@ -91,9 +91,9 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
-      auto memUsage = it.memoryUsage();
+   //   auto memUsage = it.memoryUsage();
       it.destroy();
-      infos.resourceUsageScope().decrease(memUsage);
+    //  infos.resourceUsageScope().decrease(memUsage);
     }
   }
 
