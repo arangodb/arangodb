@@ -1001,6 +1001,7 @@ futures::Future<futures::Unit> Query::execute(
               // engine
               return finalize(*queryResult.extra);
             });
+            break;
           }
           case QueryApiSynchronicity::Synchronous: {
             finalizeSync(sharedState(), [this, &queryResult] {
@@ -1008,6 +1009,7 @@ futures::Future<futures::Unit> Query::execute(
               // engine
               return finalize(*queryResult.extra);
             });
+            break;
           }
         }
 
