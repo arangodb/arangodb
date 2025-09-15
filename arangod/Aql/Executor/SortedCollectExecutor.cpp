@@ -88,12 +88,11 @@ void SortedCollectExecutor::CollectGroup::initialize(size_t capacity) {
 
 void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
   _builder.clear();
-
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
-      //   auto memUsage = it.memoryUsage();
+      auto memUsage = it.memoryUsage();
       it.destroy();
-      //  infos.resourceUsageScope().decrease(memUsage);
+      infos.resourceUsageScope().decrease(memUsage);
     }
   }
 
@@ -286,8 +285,11 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
     TRI_ASSERT(_buffer.size() == 0);
 
     AqlValue val(std::move(*builderCopy.steal()));
+    size_t memUsage = val.memoryUsage();
+    infos.resourceUsageScope().increase(memUsage);
     AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
+    infos.resourceUsageScope().decrease(memUsage);
   }
 
   output.advanceRow();
