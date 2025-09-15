@@ -377,20 +377,20 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * consumed.
    *
    * An additional note on stopping the query early: In this case
-   * we now have at least two concurrent operations, the cleannup
+   * we now have at least two concurrent operations, the cleanup
    * which will eventually destruct all objects in the query, and
    * an async prefetch task.
    * This stop process now needs to ensure that the prefetchTask is
    * either completed or will not be started.
-   * Therefore if the task is not consumed the prefetch task is tried to
+   * Therefore, if the task is not consumed, the prefetch task is tried to
    * get claimed with above mechanism. If we can not claim it, we need
    * to wait for it to finish, as someone is actively working on it.
    * If we claimed it, we need to discard it, as it is not needed anymore.
    *
-   * Also please note: When we are cleaning up the query in the stopAsyncTasks
+   * Also, please note: When we are cleaning up the query in stopAsyncTasks(),
    * the execution order guarantees that for any ExecutionBlock we can only have
    * one thread that is either in the "execute" or in the "stopAsyncTasks"
-   * codepath The Executionblock may have the prefetch task running, but that
+   * codepath. The ExecutionBlock may have the prefetch task running, but that
    * only is within the executeFetcher, so already on the way to the next
    * Executor. And as we are stopping executors from "RETURN" to "Singleton" we
    * guarantee that we can only have prefetch tasks active for Executors in

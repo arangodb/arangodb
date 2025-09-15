@@ -25,7 +25,6 @@
 
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterEdgeCursor.h"
 #include "Cluster/ClusterMethods.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Graph/SingleServerEdgeCursor.h"
@@ -199,9 +198,7 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
 std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
   ensureCache();
 
-  if (_isCoordinator) {
-    return std::make_unique<ClusterShortestPathEdgeCursor>(this, backward);
-  }
+  TRI_ASSERT(not _isCoordinator);
 
   return std::make_unique<SingleServerEdgeCursor>(
       this, _tmpVar, nullptr,

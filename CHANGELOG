@@ -5,6 +5,11 @@ devel
   killed at the end of being prepared. Only non-streaming cursors in a cluster
   are affected.
 
+* Fix BTS-2211: AQL queries using the async-prefetch rule, which result in a
+  failure due to a runtime exception or possibly a kill, had a possible race
+  during query destruction that could result in undefined behavior (e.g.
+  memory leaks or crashes).
+
 * Fix BTS-2213: Adds a retry logic to the UserManager::updateUser to retry in certain situations 
   (e.g. DB/Col create) until it succeeds instead of giving up after some _rev conflicts.
 
