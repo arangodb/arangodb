@@ -740,7 +740,7 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
     } catch (...) {
     }
 
-    if (version > 0 && af.isActive() && af.userManager() != nullptr) {
+    if (version > 0 && af.userManager() != nullptr) {
       af.userManager()->setGlobalVersion(version);
     }
   }

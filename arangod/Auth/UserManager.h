@@ -27,7 +27,6 @@
 #include "Auth/User.h"
 
 #include "Basics/Result.h"
-#include "Rest/CommonDefines.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -78,12 +77,15 @@ class UserManager {
                            std::string const& pass, bool active,
                            velocypack::Slice extras) = 0;
 
+  enum class RetryOnConflict : bool { No = false, Yes = true };
+
   // Enumerate list of all users
   virtual Result enumerateUsers(std::function<bool(User&)>&&,
-                                bool retryOnConflict) = 0;
+                                RetryOnConflict) = 0;
 
   // Update specific user
-  virtual Result updateUser(std::string const& user, UserCallback&&) = 0;
+  virtual Result updateUser(std::string const& user, UserCallback&&,
+                            RetryOnConflict) = 0;
 
   // Access user without modifying it
   virtual Result accessUser(std::string const& user, ConstUserCallback&&) = 0;
