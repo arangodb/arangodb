@@ -756,9 +756,7 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
     uint64_t depth) {
   ensureCache();
 
-  if (_isCoordinator) {
-    return std::make_unique<ClusterTraverserEdgeCursor>(this);
-  }
+  TRI_ASSERT(not _isCoordinator);
 
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
