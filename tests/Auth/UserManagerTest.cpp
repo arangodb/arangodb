@@ -159,11 +159,19 @@ TEST_F(UserManagerTest, usermanager_should_throw_if_called_too_early) {
   EXPECT_THAT([&] { um.storeUser(true, "username", "password", true, {}); },
               Throws<basics::Exception>(
                   Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
-  EXPECT_THAT([&] { um.enumerateUsers([](auto&) { return true; }, true); },
-              Throws<basics::Exception>(
-                  Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
   EXPECT_THAT(
-      [&] { um.updateUser("username", [](auto&) { return Result(); }); },
+      [&] {
+        um.enumerateUsers([](auto&) { return true; },
+                          auth::UserManager::RetryOnConflict::Yes);
+      },
+      Throws<basics::Exception>(
+          Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
+  EXPECT_THAT(
+      [&] {
+        um.updateUser(
+            "username", [](auto&) { return Result(); },
+            auth::UserManager::RetryOnConflict::No);
+      },
       Throws<basics::Exception>(
           Property(&basics::Exception::code, TRI_ERROR_STARTING_UP)));
   EXPECT_THAT(

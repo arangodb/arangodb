@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global GLOBAL, getOptions, assertTrue, assertFalse, arango, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,8 +25,6 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'query.log-failed': 'true',
@@ -35,49 +33,44 @@ if (getOptions === true) {
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function LoggerSuite() {
   'use strict';
 
   let getLogLines = function () {
-    const res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("testmann: start"); 
-let db = require('internal').db;
-db._query("/*LOG TEST ok query*/ RETURN CONCAT('a', 'b', 'c')");
-try {
-  db._query("/*LOG TEST failed query*/ RETURN PIFF()");
-  throw "failed!";
-} catch (err) {}
+    logServer("testmann: start"); 
+    let db = require('internal').db;
+    db._query("/*LOG TEST ok query*/ RETURN CONCAT('a', 'b', 'c')");
+    try {
+      db._query("/*LOG TEST failed query*/ RETURN PIFF()");
+      throw "failed!";
+    } catch (err) {}
 
-db._query("/*LOG TEST low memory usage*/ FOR i IN 1..1024 RETURN i");
-db._query("/*LOG TEST high memory usage*/ FOR i IN 1..1048576 RETURN i");
+    db._query("/*LOG TEST low memory usage*/ FOR i IN 1..1024 RETURN i");
+    db._query("/*LOG TEST high memory usage*/ FOR i IN 1..1048576 RETURN i");
 
-let values = [];
-for (let i = 0; i < 1024; ++i) {
-  values.push(i);
-}
-db._query("/*LOG TEST large bind1*/ FOR i IN 1..1024 FILTER i IN @values RETURN i", { values });
+    let values = [];
+    for (let i = 0; i < 1024; ++i) {
+      values.push(i);
+    }
+    db._query("/*LOG TEST large bind1*/ FOR i IN 1..1024 FILTER i IN @values RETURN i", { values });
 
-try {
-  db._query("/*LOG TEST large bind2*/ FOR i IN 1..1024 FILTER i IN @values RETURN PIFF()", { values });
-  throw "failed!";
-} catch (err) {}
+    try {
+      db._query("/*LOG TEST large bind2*/ FOR i IN 1..1024 FILTER i IN @values RETURN PIFF()", { values });
+      throw "failed!";
+    } catch (err) {}
 
-require('console').log("testmann: done"); 
-return require('internal').options()["log.output"];
-`);
-
-    assertTrue(Array.isArray(res));
-    assertTrue(res.length > 0);
-
-    let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
+    logServer("testmann: done", "error"); 
+    let arangod = IM.arangods.filter(arangod => {return arangod.isFrontend();})[0];
     // log is buffered, so give it a few tries until the log messages appear
     let tries = 0;
     let lines;
     while (++tries < 60) {
-      let content = fs.readFileSync(logfile, 'ascii');
+      let content = fs.readFileSync(arangod.logFile, 'ascii');
 
       lines = content.split('\n');
 
