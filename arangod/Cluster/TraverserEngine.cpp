@@ -273,17 +273,18 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
-bool BaseTraverserEngine::rearm(size_t creationHash, size_t depth,
-                                uint64_t batchSize,
-                                std::vector<std::string> vertices,
-                                VPackSlice variables, bool force) {
-  if (cursor.has_value() && cursor->sameHashAs(creationHash) && not force) {
-    return false;
+Result BaseTraverserEngine::rearm(size_t creationHash, size_t depth,
+                                  uint64_t batchSize,
+                                  std::vector<std::string> vertices,
+                                  VPackSlice variables, bool force) {
+  if (_cursor.has_value() && _cursor->sameHashAs(creationHash) && not force) {
+    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "Already created cursor for exact same input parameters"};
   }
   injectVariables(variables);
-  cursor = EdgeCursorForMultipleVertices{creationHash, depth, batchSize,
-                                         std::move(vertices), getCursor(depth)};
-  return true;
+  _cursor = EdgeCursorForMultipleVertices{
+      creationHash, depth, batchSize, std::move(vertices), getCursor(depth)};
+  return {};
 }
 
 graph::EdgeCursor* BaseTraverserEngine::getCursor(uint64_t currentDepth) {
@@ -307,22 +308,21 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(uint64_t currentDepth) {
   return cursor;
 }
 
-Result BaseTraverserEngine::getBatchedEdges(size_t batchId,
-                                            VPackBuilder& builder) {
-  TRI_ASSERT(cursor.has_value());
-  if (cursor->_nextBatch != batchId) {
+Result BaseTraverserEngine::nextBatch(size_t batchId, VPackBuilder& builder) {
+  TRI_ASSERT(_cursor.has_value());
+  if (_cursor->_nextBatch != batchId) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER, ""};
   }
   uint64_t count = 0;
-  auto batchSize = cursor->_batchSize;
+  auto batchSize = _cursor->_batchSize;
 
   builder.add(VPackValue(StaticStrings::GraphQueryEdges));
   builder.openArray(true);
-  while (count != batchSize && cursor->hasMore()) {
-    auto vertex = cursor->_cursor->currentVertex();
-    auto depth = cursor->_cursor->currentDepth();
+  while (count != batchSize && _cursor->hasMore()) {
+    auto vertex = _cursor->_cursor->currentVertex();
+    auto depth = _cursor->_cursor->currentDepth();
 
-    cursor->_cursor->nextBatch(
+    _cursor->_cursor->nextBatch(
         [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
           if (edge.isString()) {
             edge = _opts->cache()->lookupToken(eid);
@@ -344,11 +344,11 @@ Result BaseTraverserEngine::getBatchedEdges(size_t batchId,
         batchSize);
   }
   builder.close();
-  builder.add("done", VPackValue(not cursor->hasMore()));
-  builder.add("batchId", VPackValue(cursor->_nextBatch));
+  builder.add("done", VPackValue(not _cursor->hasMore()));
+  builder.add("batchId", VPackValue(_cursor->_nextBatch));
 
   if (count > 0) {
-    cursor->_nextBatch++;
+    _cursor->_nextBatch++;
   }
   return {};
 }

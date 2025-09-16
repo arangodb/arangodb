@@ -137,7 +137,10 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  Result getBatchedEdges(size_t batchId, VPackBuilder& builder);
+  Result rearm(size_t creationHash, size_t depth, uint64_t batchSize,
+               std::vector<std::string> vertices, VPackSlice variables,
+               bool force);
+  Result nextBatch(size_t batchId, VPackBuilder& builder);
   void addStatistics(VPackBuilder& builder);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
@@ -153,14 +156,10 @@ class BaseTraverserEngine : public BaseEngine {
   // Inject all variables from VPack information
   void injectVariables(arangodb::velocypack::Slice variables);
 
-  bool rearm(size_t creationHash, size_t depth, uint64_t batchSize,
-             std::vector<std::string> vertices, VPackSlice variables,
-             bool force);
-
   aql::VariableGenerator const* variables() const;
 
   graph::BaseOptions const& options() const override;
-  std::optional<EdgeCursorForMultipleVertices> cursor;
+  std::optional<EdgeCursorForMultipleVertices> _cursor;
 
  protected:
   graph::EdgeCursor* getCursor(uint64_t currentDepth);

@@ -312,19 +312,18 @@ void InternalRestTraverserHandler::queryEngine() {
             std::holds_alternative<StartEdgeQuery>(startQuery)) {
           auto q = std::get<StartEdgeQuery>(startQuery);
           auto hash = absl::Hash<StartEdgeQuery>{}(q);
-          auto hasRearmed =
+          auto res =
               eng->rearm(hash, q.depth, q.batchSize, std::move(q.vertexKeys),
                          q.variables, q.forceRearming);
-          if (not hasRearmed) {
-            generateError(
-                ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                "Already created cursor for exact same input parameters");
+          if (res.fail()) {
+            generateError(ResponseCode::BAD, res.errorNumber(),
+                          res.errorMessage());
             return;
           }
         }
 
         result.openObject();
-        auto res = eng->getBatchedEdges(query.get().batchId, result);
+        auto res = eng->nextBatch(query.get().batchId, result);
         if (res.fail()) {
           generateError(ResponseCode::BAD, res.errorNumber(),
                         res.errorMessage());
