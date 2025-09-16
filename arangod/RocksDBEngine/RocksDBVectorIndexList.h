@@ -53,6 +53,29 @@ inline faiss::MetricType metricToFaissMetric(
   }
 }
 
+struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
+  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
+                               LogicalCollection* collection,
+                               transaction::Methods* trx,
+                               std::size_t listNumber, std::size_t codeSize);
+  [[nodiscard]] bool is_available() const override;
+
+  [[nodiscard]] bool searchFilteredIds();
+
+  void next() override;
+
+  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
+
+ private:
+  RocksDBKey _rocksdbKey;
+  arangodb::RocksDBVectorIndex* _index{nullptr};
+  LogicalCollection* _collection{nullptr};
+
+  std::unique_ptr<rocksdb::Iterator> _it;
+  std::size_t _listNumber;
+  std::size_t _codeSize;
+};
+
 struct SearchParametersContext {
   transaction::Methods* trx;
   aql::Expression* filterExpression;
@@ -63,11 +86,16 @@ struct SearchParametersContext {
   aql::Variable const* documentVariable;
 };
 
-struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
-  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
-                               LogicalCollection* collection,
-                               SearchParametersContext& searchParametersContext,
-                               std::size_t listNumber, std::size_t codeSize);
+using RocksDBFaissSearchContext =
+    std::variant<SearchParametersContext, transaction::Methods>;
+
+// This is iterator specialized for filtering the records in vector index
+// by materializing documents from documents column
+struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
+  RocksDBInvertedListsFilteringIterator(
+      RocksDBVectorIndex* index, LogicalCollection* collection,
+      SearchParametersContext& searchParametersContext, std::size_t listNumber,
+      std::size_t codeSize);
   [[nodiscard]] bool is_available() const override;
 
   [[nodiscard]] bool searchFilteredIds();
