@@ -62,18 +62,18 @@ namespace traverser {
 struct TraverserOptions;
 
 struct EdgeCursorForMultipleVertices {
-  size_t _creationHash;
+  uint64_t _creationId;
   size_t _depth;
   uint64_t _batchSize;
   std::vector<std::string> _vertices;
   std::vector<std::string>::iterator _nextVertex;
   graph::EdgeCursor* _cursor;
   size_t _nextBatch = 0;
-  EdgeCursorForMultipleVertices(size_t creationHash, size_t depth,
+  EdgeCursorForMultipleVertices(uint64_t creationId, size_t depth,
                                 uint64_t batchSize,
                                 std::vector<std::string> vertices,
                                 graph::EdgeCursor* cursor)
-      : _creationHash{creationHash},
+      : _creationId{creationId},
         _depth{depth},
         _batchSize{batchSize},
         _vertices{std::move(vertices)},
@@ -82,7 +82,6 @@ struct EdgeCursorForMultipleVertices {
     TRI_ASSERT(_cursor != nullptr);
     rearm();
   }
-  auto sameHashAs(size_t other) -> bool { return _creationHash == other; }
   auto rearm() -> bool;
   auto hasMore() -> bool;
 };
@@ -137,9 +136,8 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  Result rearm(size_t creationHash, size_t depth, uint64_t batchSize,
-               std::vector<std::string> vertices, VPackSlice variables,
-               bool force);
+  Result rearm(uint64_t creationId, size_t depth, uint64_t batchSize,
+               std::vector<std::string> vertices, VPackSlice variables);
   Result nextBatch(size_t batchId, VPackBuilder& builder);
   void addStatistics(VPackBuilder& builder);
 

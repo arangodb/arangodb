@@ -45,21 +45,12 @@ using namespace arangodb::rest;
 
 namespace {
 
-struct EdgeCursorForMultipleVertices {};
-
 struct StartEdgeQuery {
   std::vector<std::string> vertexKeys;
   size_t depth;
   VPackSlice variables;
   uint64_t batchSize;
-  bool forceRearming = false;
-
-  template<typename H>
-  friend H AbslHashValue(H h, StartEdgeQuery const& x) {
-    h = H::combine(std::move(h), x.depth, x.batchSize, x.variables.hash());
-    return H::combine_unordered(std::move(h), x.vertexKeys.begin(),
-                                x.vertexKeys.end());
-  }
+  uint64_t creationId;
 };
 
 struct Continue {};
@@ -133,21 +124,23 @@ ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   }
   auto batchSize = static_cast<uint64_t>(batchSizeInt);
 
-  // force
-  auto maybeForceCreation = body.get("force");
-  if (not maybeForceCreation.isNone() && maybeForceCreation.isBool() &&
-      maybeForceCreation.getBool()) {
-    return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
-                                    .depth = depth,
-                                    .variables = variables,
-                                    .batchSize = batchSize,
-                                    .forceRearming = true}};
+  // creationId
+  auto maybeRequestId = body.get("creationId");
+  if (maybeRequestId.isNone()) {
+    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                     "expecting some random creation id");
+  }
+  if (not maybeRequestId.isInteger()) {
+    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                     "expecting some random creation id");
   }
 
-  return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
-                                  .depth = depth,
-                                  .variables = variables,
-                                  .batchSize = batchSize}};
+  return EdgeQuery{
+      StartEdgeQuery{.vertexKeys = vertices,
+                     .depth = depth,
+                     .variables = variables,
+                     .batchSize = batchSize,
+                     .creationId = maybeRequestId.getNumericValue<uint64_t>()}};
 }
 
 }  // namespace
@@ -311,10 +304,8 @@ void InternalRestTraverserHandler::queryEngine() {
         if (auto startQuery = query.get().query;
             std::holds_alternative<StartEdgeQuery>(startQuery)) {
           auto q = std::get<StartEdgeQuery>(startQuery);
-          auto hash = absl::Hash<StartEdgeQuery>{}(q);
-          auto res =
-              eng->rearm(hash, q.depth, q.batchSize, std::move(q.vertexKeys),
-                         q.variables, q.forceRearming);
+          auto res = eng->rearm(q.creationId, q.depth, q.batchSize,
+                                std::move(q.vertexKeys), q.variables);
           if (res.fail()) {
             generateError(ResponseCode::BAD, res.errorNumber(),
                           res.errorMessage());

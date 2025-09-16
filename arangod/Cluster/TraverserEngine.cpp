@@ -273,17 +273,18 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
-Result BaseTraverserEngine::rearm(size_t creationHash, size_t depth,
+Result BaseTraverserEngine::rearm(uint64_t creationId, size_t depth,
                                   uint64_t batchSize,
                                   std::vector<std::string> vertices,
-                                  VPackSlice variables, bool force) {
-  if (_cursor.has_value() && _cursor->sameHashAs(creationHash) && not force) {
-    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "Already created cursor for exact same input parameters"};
+                                  VPackSlice variables) {
+  if (_cursor.has_value() && _cursor->_creationId == creationId) {
+    return Result{
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        fmt::format("Already created cursor for creation id {}", creationId)};
   }
   injectVariables(variables);
   _cursor = EdgeCursorForMultipleVertices{
-      creationHash, depth, batchSize, std::move(vertices), getCursor(depth)};
+      creationId, depth, batchSize, std::move(vertices), getCursor(depth)};
   return {};
 }
 

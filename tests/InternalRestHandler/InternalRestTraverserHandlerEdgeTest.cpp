@@ -156,6 +156,17 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_zero_batch_size) {
   EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
 }
 
+TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_missing_creation_id) {
+  MockGraph g;
+  auto engineId = createEngine(g);
+
+  auto response = requestHandler(
+      RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
+      VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 1})"_vpack));
+
+  EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
+}
+
 TEST_F(InternalRestTraverserHandlerEdgeTest,
        gives_no_edges_for_non_existing_vertices) {
   MockGraph g;
@@ -168,7 +179,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   auto response = requestHandler(
       arangodb::rest::RequestType::PUT,
       {"edge", basics::StringUtils::itoa(engineId)},
-      VPackBuilder(R"({"keys": ["v/5"], "depth": 1, "batchSize": 2})"_vpack));
+      VPackBuilder(
+          R"({"keys": ["v/5"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
 
   EXPECT_EQ(response->responseCode(), ResponseCode::OK);
   EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
@@ -191,7 +203,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   auto response = requestHandler(
       arangodb::rest::RequestType::PUT,
       {"edge", basics::StringUtils::itoa(engineId)},
-      VPackBuilder(R"({"keys": [], "depth": 1, "batchSize": 2})"_vpack));
+      VPackBuilder(
+          R"({"keys": [], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
 
   EXPECT_EQ(response->responseCode(), ResponseCode::OK);
   EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
@@ -216,7 +229,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 2})"_vpack));
+        VPackBuilder(
+            R"({"keys": ["v/0"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
@@ -325,7 +339,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 2})"_vpack));
+        VPackBuilder(
+            R"({"keys": ["v/0"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
@@ -343,7 +358,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(R"({"keys": ["v/1"], "depth": 1, "batchSize": 1})"_vpack));
+        VPackBuilder(
+            R"({"keys": ["v/1"], "depth": 1, "batchSize": 1, "creationId": 1})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
@@ -380,7 +396,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
-       giving_exact_same_values_to_engine_can_only_be_enforced) {
+       creating_cursors_with_same_creation_id_is_forbidden) {
   MockGraph g;
   g.addEdge(0, 1);
   auto engineId = createEngine(g);
@@ -388,7 +404,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   {
     auto response = requestHandler(
         RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 1})"_vpack));
+        VPackBuilder(
+            R"({"keys": ["v/0"], "depth": 1, "batchSize": 1, "creationId": 0})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     auto edges = response->_payload.slice().get("edges");
@@ -401,20 +418,20 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     EXPECT_EQ(toVertices, (std::vector<std::string>{"v/1"}));
   }
 
-  {  // try to create the exact same cursor again results in an error
+  {  // try to create a cursor with the same creation id
     auto response = requestHandler(
         RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 1})"_vpack));
+        VPackBuilder(
+            R"({"keys": ["v/1"], "depth": 1, "batchSize": 1, "creationId": 0})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
   }
 
-  {  // forcing the exact same cursor again is fine
-    // iteration starts from beginning
+  {  // creation of exactly the same cursor with another creation id is fine
     auto response = requestHandler(
         RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
         VPackBuilder(
-            R"({"keys": ["v/0"], "depth": 1, "batchSize": 1, "force": true})"_vpack));
+            R"({"keys": ["v/0"], "depth": 1, "batchSize": 1, "creationId": 1})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     auto edges = response->_payload.slice().get("edges");
@@ -443,7 +460,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
         VPackBuilder(
-            R"({"keys": ["v/0", "v/1"], "depth": 1, "batchSize": 2})"_vpack));
+            R"({"keys": ["v/0", "v/1"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());

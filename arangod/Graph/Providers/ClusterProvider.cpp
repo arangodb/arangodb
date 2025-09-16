@@ -341,7 +341,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   /* Needed for TRAVERSALS only - End */
 
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
-  leased->add("batchSize", 1000);
+  leased->add("batchSize", VPackValue(1000));
+  leased->add("creationId", VPackValue(0));
   leased->close();
 
   auto* pool =
@@ -375,11 +376,6 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
                       leased->bufferRef(), reqOpts)});
     engineMap.emplace(engineId, server);
   }
-
-  transaction::BuilderLeaser leasedContinue(trx());
-  leasedContinue->openObject(true);
-  leasedContinue->add("continue", VPackValue(true));
-  leasedContinue->close();
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   while (not futures.empty()) {
@@ -456,12 +452,22 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     if (not maybeDone.isNone() && maybeDone.isBool()) {
       auto done = maybeDone.getBool();
       if (not done) {
-        futures.emplace_back(EngineResponse{
-            engineId,
-            network::sendRequestRetry(pool, "server:" + engineMap[engineId],
-                                      fuerte::RestVerb::Put,
-                                      ::edgeUrl + StringUtils::itoa(engineId),
-                                      leasedContinue->bufferRef(), reqOpts)});
+        auto maybeBatchId = resSlice.get("batchId");
+        if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
+          transaction::BuilderLeaser leasedContinue(trx());
+          leasedContinue->openObject(true);
+          leasedContinue->add(
+              "continue",
+              VPackValue(maybeBatchId.getNumericValue<size_t>() + 1));
+          leasedContinue->close();
+
+          futures.emplace_back(EngineResponse{
+              engineId,
+              network::sendRequestRetry(pool, "server:" + engineMap[engineId],
+                                        fuerte::RestVerb::Put,
+                                        ::edgeUrl + StringUtils::itoa(engineId),
+                                        leasedContinue->bufferRef(), reqOpts)});
+        }
       }
     }
   }
