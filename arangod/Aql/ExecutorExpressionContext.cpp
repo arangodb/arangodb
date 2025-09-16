@@ -70,3 +70,4 @@ AqlValue ExecutorExpressionContext::getVariableValue(Variable const* variable,
                          "' in ExecutorExpressionContext"));
       });
 }
+
