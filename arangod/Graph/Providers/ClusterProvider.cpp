@@ -342,7 +342,6 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
   leased->add("batchSize", VPackValue(1000));
-  leased->add("creationId", VPackValue(0));
   leased->close();
 
   auto* pool =
@@ -452,21 +451,25 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     if (not maybeDone.isNone() && maybeDone.isBool()) {
       auto done = maybeDone.getBool();
       if (not done) {
-        auto maybeBatchId = resSlice.get("batchId");
-        if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
-          transaction::BuilderLeaser leasedContinue(trx());
-          leasedContinue->openObject(true);
-          leasedContinue->add(
-              "continue",
-              VPackValue(maybeBatchId.getNumericValue<size_t>() + 1));
-          leasedContinue->close();
+        auto maybeCursorId = resSlice.get("cursorId");
+        if (not maybeCursorId.isNone() && maybeCursorId.isInteger()) {
+          auto maybeBatchId = resSlice.get("batchId");
+          if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
+            transaction::BuilderLeaser leasedContinue(trx());
+            leasedContinue->openObject(true);
+            leasedContinue->add("cursorId", maybeCursorId);
+            leasedContinue->add(
+                "batchId",
+                VPackValue(maybeBatchId.getNumericValue<size_t>() + 1));
+            leasedContinue->close();
 
-          futures.emplace_back(EngineResponse{
-              engineId,
-              network::sendRequestRetry(pool, "server:" + engineMap[engineId],
-                                        fuerte::RestVerb::Put,
-                                        ::edgeUrl + StringUtils::itoa(engineId),
-                                        leasedContinue->bufferRef(), reqOpts)});
+            futures.emplace_back(EngineResponse{
+                engineId, network::sendRequestRetry(
+                              pool, "server:" + engineMap[engineId],
+                              fuerte::RestVerb::Put,
+                              ::edgeUrl + StringUtils::itoa(engineId),
+                              leasedContinue->bufferRef(), reqOpts)});
+          }
         }
       }
     }

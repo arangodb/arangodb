@@ -156,17 +156,6 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_zero_batch_size) {
   EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
 }
 
-TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_missing_creation_id) {
-  MockGraph g;
-  auto engineId = createEngine(g);
-
-  auto response = requestHandler(
-      RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
-      VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 1})"_vpack));
-
-  EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
-}
-
 TEST_F(InternalRestTraverserHandlerEdgeTest,
        gives_no_edges_for_non_existing_vertices) {
   MockGraph g;
@@ -179,8 +168,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   auto response = requestHandler(
       arangodb::rest::RequestType::PUT,
       {"edge", basics::StringUtils::itoa(engineId)},
-      VPackBuilder(
-          R"({"keys": ["v/5"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
+      VPackBuilder(R"({"keys": ["v/5"], "depth": 1, "batchSize": 2})"_vpack));
 
   EXPECT_EQ(response->responseCode(), ResponseCode::OK);
   EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
@@ -203,8 +191,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   auto response = requestHandler(
       arangodb::rest::RequestType::PUT,
       {"edge", basics::StringUtils::itoa(engineId)},
-      VPackBuilder(
-          R"({"keys": [], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
+      VPackBuilder(R"({"keys": [], "depth": 1, "batchSize": 2})"_vpack));
 
   EXPECT_EQ(response->responseCode(), ResponseCode::OK);
   EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
@@ -224,13 +211,13 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
   auto engineId = createEngine(g);
 
   size_t batchId;
+  size_t cursorId;
   std::unordered_multiset<std::string> verticesFirstBatch;
   {  // request neighbours of v/0
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(
-            R"({"keys": ["v/0"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
+        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 2})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
@@ -240,6 +227,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
       verticesFirstBatch.emplace(edge.get("_to").copyString());
     }
     EXPECT_EQ(verticesFirstBatch.size(), 2);
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
+    cursorId = 0;
     EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 0);
     batchId = 0;
   }
@@ -247,7 +236,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
   {  // request the same batch again gives error
     VPackBuilder request;
     request.openObject();
-    request.add("continue", VPackValue(batchId));
+    request.add("cursorId", VPackValue(cursorId));
+    request.add("batchId", VPackValue(batchId));
     request.close();
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
@@ -259,7 +249,22 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
   {  // request previous (non-existent) batch
     VPackBuilder request;
     request.openObject();
-    request.add("continue", VPackValue((int)batchId - 1));
+    request.add("cursorId", VPackValue(cursorId));
+    request.add("batchId", VPackValue((int)batchId - 1));
+    request.close();
+    auto response = requestHandler(
+        arangodb::rest::RequestType::PUT,
+        {"edge", basics::StringUtils::itoa(engineId)}, std::move(request));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
+  }
+
+  {  // request a batch from a different - currently non existent cursor - gives
+     // error
+    VPackBuilder request;
+    request.openObject();
+    request.add("cursorId", VPackValue(1));
+    request.add("batchId", VPackValue(batchId + 1));
     request.close();
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
@@ -272,7 +277,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
     std::unordered_multiset<std::string> verticesSecondBatch;
     VPackBuilder request;
     request.openObject();
-    request.add("continue", VPackValue(batchId + 1));
+    request.add("cursorId", VPackValue(cursorId));
+    request.add("batchId", VPackValue(batchId + 1));
     request.close();
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
@@ -292,6 +298,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
                                verticesSecondBatch.end());
     EXPECT_EQ(verticesBothBatches,
               (std::unordered_multiset<std::string>{"v/0", "v/1", "v/2"}));
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
     EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 1);
     batchId = 1;
   }
@@ -300,7 +307,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
     std::unordered_multiset<std::string> verticesSecondBatch;
     VPackBuilder request;
     request.openObject();
-    request.add("continue", VPackValue(batchId - 1));
+    request.add("cursorId", VPackValue(cursorId));
+    request.add("batchId", VPackValue(batchId - 1));
     request.close();
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
@@ -312,7 +320,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
   {  // request the same batch again gives error
     VPackBuilder request;
     request.openObject();
-    request.add("continue", VPackValue(batchId));
+    request.add("cursorId", VPackValue(cursorId));
+    request.add("batchId", VPackValue(batchId));
     request.close();
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
@@ -325,7 +334,8 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
-       resets_cursor_to_new_given_vertex_for_request_with_new_input_variables) {
+       resets_cursor_to_new_given_vertex_for_request_with_new_input_variables)
+       {
   MockGraph g;
   g.addEdge(0, 1);
   g.addEdge(0, 2);
@@ -340,10 +350,13 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
         VPackBuilder(
-            R"({"keys": ["v/0"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
+            R"({"keys": ["v/0"], "depth": 1, "batchSize": 2, "creationId":
+            0})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
+    EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 0);
     auto edges = response->_payload.slice().get("edges");
     EXPECT_FALSE(edges.isNone());
     for (VPackSlice edge : VPackArrayIterator(edges)) {
@@ -359,10 +372,12 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
         VPackBuilder(
-            R"({"keys": ["v/1"], "depth": 1, "batchSize": 1, "creationId": 1})"_vpack));
+            R"({"keys": ["v/1"], "depth": 1, "batchSize": 1, "creationId":
+            1})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 1);
     EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 0);
     auto edges = response->_payload.slice().get("edges");
     EXPECT_FALSE(edges.isNone());
@@ -377,10 +392,11 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     auto response =
         requestHandler(arangodb::rest::RequestType::PUT,
                        {"edge", basics::StringUtils::itoa(engineId)},
-                       VPackBuilder(R"({"continue": 1})"_vpack));
+                       VPackBuilder(R"({"cursorId": 1, "batchId": 1})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 1);
     EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 1);
     auto edges = response->_payload.slice().get("edges");
     EXPECT_FALSE(edges.isNone());
@@ -390,59 +406,10 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     }
     EXPECT_EQ(toVertices.size(), 2);
   }
-  EXPECT_EQ(toVertices, (std::unordered_multiset<std::string>{"v/2", "v/3"}));
+  EXPECT_EQ(toVertices, (std::unordered_multiset<std::string>{"v/2",
+  "v/3"}));
 
   destroyEngine(engineId);
-}
-
-TEST_F(InternalRestTraverserHandlerEdgeTest,
-       creating_cursors_with_same_creation_id_is_forbidden) {
-  MockGraph g;
-  g.addEdge(0, 1);
-  auto engineId = createEngine(g);
-
-  {
-    auto response = requestHandler(
-        RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(
-            R"({"keys": ["v/0"], "depth": 1, "batchSize": 1, "creationId": 0})"_vpack));
-
-    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
-    auto edges = response->_payload.slice().get("edges");
-    EXPECT_FALSE(edges.isNone());
-    std::vector<std::string> toVertices;
-    for (VPackSlice edge : VPackArrayIterator(edges)) {
-      EXPECT_EQ(edge.get("_from").copyString(), "v/0");
-      toVertices.emplace_back(edge.get("_to").copyString());
-    }
-    EXPECT_EQ(toVertices, (std::vector<std::string>{"v/1"}));
-  }
-
-  {  // try to create a cursor with the same creation id
-    auto response = requestHandler(
-        RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(
-            R"({"keys": ["v/1"], "depth": 1, "batchSize": 1, "creationId": 0})"_vpack));
-
-    EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
-  }
-
-  {  // creation of exactly the same cursor with another creation id is fine
-    auto response = requestHandler(
-        RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
-        VPackBuilder(
-            R"({"keys": ["v/0"], "depth": 1, "batchSize": 1, "creationId": 1})"_vpack));
-
-    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
-    auto edges = response->_payload.slice().get("edges");
-    EXPECT_FALSE(edges.isNone());
-    std::vector<std::string> toVertices;
-    for (VPackSlice edge : VPackArrayIterator(edges)) {
-      EXPECT_EQ(edge.get("_from").copyString(), "v/0");
-      toVertices.emplace_back(edge.get("_to").copyString());
-    }
-    EXPECT_EQ(toVertices, (std::vector<std::string>{"v/1"}));
-  }
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
@@ -460,10 +427,11 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
         VPackBuilder(
-            R"({"keys": ["v/0", "v/1"], "depth": 1, "batchSize": 2, "creationId": 0})"_vpack));
+            R"({"keys": ["v/0", "v/1"], "depth": 1, "batchSize": 2})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
     EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 0);
     auto edges = response->_payload.slice().get("edges");
     EXPECT_FALSE(edges.isNone());
@@ -478,10 +446,11 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     auto response =
         requestHandler(arangodb::rest::RequestType::PUT,
                        {"edge", basics::StringUtils::itoa(engineId)},
-                       VPackBuilder(R"({"continue": 1})"_vpack));
+                       VPackBuilder(R"({"cursorId": 0, "batchId": 1})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
     EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    EXPECT_EQ(response->_payload.slice().get("cursorId").getInt(), 0);
     EXPECT_EQ(response->_payload.slice().get("batchId").getInt(), 1);
     auto edges = response->_payload.slice().get("edges");
     EXPECT_FALSE(edges.isNone());

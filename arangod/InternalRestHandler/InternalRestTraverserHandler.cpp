@@ -50,29 +50,42 @@ struct StartEdgeQuery {
   size_t depth;
   VPackSlice variables;
   uint64_t batchSize;
-  uint64_t creationId;
 };
 
-struct Continue {};
+struct Continue {
+  size_t cursorId;
+};
 
 struct EdgeQuery {
   std::variant<Continue, StartEdgeQuery> query;
   size_t batchId = 0;
 };
 ResultT<EdgeQuery> parseQuery(VPackSlice body) {
-  auto toContinue = body.get("continue");
-  if (not toContinue.isNone()) {
-    if (not toContinue.isInteger()) {
+  auto maybeCursorId = body.get("cursorId");
+  if (not maybeCursorId.isNone()) {
+    if (not maybeCursorId.isInteger()) {
       return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
-                                       "expecting batch id as integer");
+                                       "expecting cursor id as integer");
     }
-    auto value = toContinue.getInt();
-    if (value <= 0) {
+    auto cursorId = maybeCursorId.getInt();
+    if (cursorId < 0) {
       return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
-                                       "expecting batch id > 0");
+                                       "expecting cursor id >= 0");
     }
-    return EdgeQuery{.query = Continue{},
-                     .batchId = static_cast<size_t>(value)};
+    auto maybeBatchId = body.get("batchId");
+    if (maybeBatchId.isNone() || not maybeBatchId.isInteger()) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting integer batch id");
+    }
+    auto batchId = maybeBatchId.getInt();
+    if (batchId < 0) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting batch id >= 0");
+    }
+
+    return EdgeQuery{
+        .query = Continue{.cursorId = static_cast<size_t>(cursorId)},
+        .batchId = static_cast<size_t>(batchId)};
   }
 
   // keys
@@ -124,23 +137,10 @@ ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   }
   auto batchSize = static_cast<uint64_t>(batchSizeInt);
 
-  // creationId
-  auto maybeRequestId = body.get("creationId");
-  if (maybeRequestId.isNone()) {
-    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
-                                     "expecting some random creation id");
-  }
-  if (not maybeRequestId.isInteger()) {
-    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
-                                     "expecting some random creation id");
-  }
-
-  return EdgeQuery{
-      StartEdgeQuery{.vertexKeys = vertices,
-                     .depth = depth,
-                     .variables = variables,
-                     .batchSize = batchSize,
-                     .creationId = maybeRequestId.getNumericValue<uint64_t>()}};
+  return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
+                                  .depth = depth,
+                                  .variables = variables,
+                                  .batchSize = batchSize}};
 }
 
 }  // namespace
@@ -301,14 +301,20 @@ void InternalRestTraverserHandler::queryEngine() {
           return;
         }
 
-        if (auto startQuery = query.get().query;
-            std::holds_alternative<StartEdgeQuery>(startQuery)) {
+        auto startQuery = query.get().query;
+        if (std::holds_alternative<StartEdgeQuery>(startQuery)) {
           auto q = std::get<StartEdgeQuery>(startQuery);
-          auto res = eng->rearm(q.creationId, q.depth, q.batchSize,
-                                std::move(q.vertexKeys), q.variables);
-          if (res.fail()) {
-            generateError(ResponseCode::BAD, res.errorNumber(),
-                          res.errorMessage());
+          eng->rearm(q.depth, q.batchSize, std::move(q.vertexKeys),
+                                q.variables);
+        } else if (std::holds_alternative<Continue>(startQuery)) {
+          auto q = std::get<Continue>(startQuery);
+          if (not eng->_cursor.has_value() ||
+              q.cursorId != eng->_cursor->_cursorId) {
+            generateError(
+                ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                fmt::format(
+                    "cursor id {} does not exist in traverser engine {}",
+                    q.cursorId, engineId));
             return;
           }
         }

@@ -273,19 +273,13 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
-Result BaseTraverserEngine::rearm(uint64_t creationId, size_t depth,
-                                  uint64_t batchSize,
-                                  std::vector<std::string> vertices,
-                                  VPackSlice variables) {
-  if (_cursor.has_value() && _cursor->_creationId == creationId) {
-    return Result{
-        TRI_ERROR_HTTP_BAD_PARAMETER,
-        fmt::format("Already created cursor for creation id {}", creationId)};
-  }
+void BaseTraverserEngine::rearm(size_t depth, uint64_t batchSize,
+                                std::vector<std::string> vertices,
+                                VPackSlice variables) {
   injectVariables(variables);
   _cursor = EdgeCursorForMultipleVertices{
-      creationId, depth, batchSize, std::move(vertices), getCursor(depth)};
-  return {};
+      _nextCursorId, depth, batchSize, std::move(vertices), getCursor(depth)};
+  _nextCursorId++;
 }
 
 graph::EdgeCursor* BaseTraverserEngine::getCursor(uint64_t currentDepth) {
@@ -346,6 +340,7 @@ Result BaseTraverserEngine::nextBatch(size_t batchId, VPackBuilder& builder) {
   }
   builder.close();
   builder.add("done", VPackValue(not _cursor->hasMore()));
+  builder.add("cursorId", VPackValue(_cursor->_cursorId));
   builder.add("batchId", VPackValue(_cursor->_nextBatch));
 
   if (count > 0) {

@@ -62,18 +62,18 @@ namespace traverser {
 struct TraverserOptions;
 
 struct EdgeCursorForMultipleVertices {
-  uint64_t _creationId;
+  size_t _cursorId;
   size_t _depth;
   uint64_t _batchSize;
   std::vector<std::string> _vertices;
   std::vector<std::string>::iterator _nextVertex;
   graph::EdgeCursor* _cursor;
   size_t _nextBatch = 0;
-  EdgeCursorForMultipleVertices(uint64_t creationId, size_t depth,
+  EdgeCursorForMultipleVertices(size_t cursorId, size_t depth,
                                 uint64_t batchSize,
                                 std::vector<std::string> vertices,
                                 graph::EdgeCursor* cursor)
-      : _creationId{creationId},
+      : _cursorId{cursorId},
         _depth{depth},
         _batchSize{batchSize},
         _vertices{std::move(vertices)},
@@ -136,8 +136,8 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  Result rearm(uint64_t creationId, size_t depth, uint64_t batchSize,
-               std::vector<std::string> vertices, VPackSlice variables);
+  void rearm(size_t depth, uint64_t batchSize,
+             std::vector<std::string> vertices, VPackSlice variables);
   Result nextBatch(size_t batchId, VPackBuilder& builder);
   void addStatistics(VPackBuilder& builder);
 
@@ -158,6 +158,7 @@ class BaseTraverserEngine : public BaseEngine {
 
   graph::BaseOptions const& options() const override;
   std::optional<EdgeCursorForMultipleVertices> _cursor;
+  size_t _nextCursorId = 0;
 
  protected:
   graph::EdgeCursor* getCursor(uint64_t currentDepth);
