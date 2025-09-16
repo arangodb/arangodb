@@ -238,7 +238,6 @@ async<void> RestCursorHandler::registerQueryOrCursor(
   co_return;
 }
 
-
 /// @brief register the query either as streaming cursor or in _query
 /// the query is not executed here.
 /// this method is also used by derived classes
@@ -269,6 +268,11 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
     }
   }
 
+  TRI_ASSERT(_options == nullptr);
+  buildOptions(slice);
+  TRI_ASSERT(_options != nullptr);
+  opts = _options->slice();
+
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
   if (ServerState::instance()->isDBServer()) {
     stream = false;
@@ -279,13 +283,9 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
       opts, "ttl", _queryRegistry->defaultTTL());
   bool count = VelocyPackHelper::getBooleanValue(opts, "count", false);
   bool retriable = VelocyPackHelper::getBooleanValue(opts, "allowRetry", false);
-  TRI_ASSERT(_options == nullptr);
-  buildOptions(opts);
-  TRI_ASSERT(_options != nullptr);
 
   // simon: access mode can always be write on the coordinator
   AccessMode::Type mode = AccessMode::Type::WRITE;
-
 
   auto query = aql::Query::create(
       co_await createTransactionContext(mode, operationOrigin),
@@ -295,7 +295,7 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
 
-  //TRI_ASSERT(!ServerState::instance()->isDBServer());
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
   auto const snippets = queryBuilder.slice().get("nodes");
   auto const querySlice = velocypack::Slice::emptyObjectSlice();
   auto const viewsSlice = velocypack::Slice::noneSlice();
@@ -750,14 +750,6 @@ async<void> RestCursorHandler::createQueryCursor() {
 }
 
 async<void> RestCursorHandler::createQueryCursorJson() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  if (suffixes.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expecting POST /_api/cursor/json");
-    co_return;
-  }
-
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
 
@@ -773,7 +765,8 @@ async<void> RestCursorHandler::createQueryCursorJson() {
 
   TRI_ASSERT(_query == nullptr);
   co_await registerQueryOrCursorJson(
-      body, transaction::OperationOriginAQL{"running query from JSON posted Plan"});
+      body,
+      transaction::OperationOriginAQL{"running query from JSON posted Plan"});
   co_return;
 }
 
