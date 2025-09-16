@@ -213,14 +213,8 @@ function createVectorGenerator(options) {
             }
 
             if (attempts === maxAttemptsPerDoc) {
-                console.warn(`Warning: Could not generate a sufficiently unique vector for index ${i} after ${maxAttemptsPerDoc} attempts. Consider adjusting parameters.`);
-                // Still add the vector even if it's not sufficiently unique
-                vectors.push(vector);
-                docs.push({
-                    vector: vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
+                console.warn(`Warning: Could not generate a sufficiently unique vector for index ${i} after ${maxAttemptsPerDoc} attempts. Skipping this vector.`);
+                // Don't add the vector to the result arrays since it doesn't meet distance requirements
                 // Add the distance of the failed vector to prevent future vectors from being too close
                 const currentDistance = distanceFunction(vector, randomPoint);
                 insertSorted(currentDistance);
@@ -229,7 +223,7 @@ function createVectorGenerator(options) {
         }
 
         if (successfulGenerations < numberOfDocs) {
-            throw new Error(`Could not generate ${numberOfDocs} vectors with sufficient distance separation after ${maxAttemptsPerDoc} attempts. Generated ${successfulGenerations} vectors.`);
+            console.warn(`Warning: Only generated ${successfulGenerations} vectors with sufficient distance separation out of ${numberOfDocs} requested. Consider adjusting parameters.`);
         }
 
         return {
@@ -238,7 +232,8 @@ function createVectorGenerator(options) {
             randomPoint: randomPoint,
             seed: seed,
             dimension: dimension,
-            numberOfDocs: successfulGenerations,
+            numberOfDocs: vectors.length, // Return actual count of vectors in the arrays
+            successfulGenerations: successfulGenerations, // Add this field for reference
             floatEpsilon: floatEpsilon
         };
     }
