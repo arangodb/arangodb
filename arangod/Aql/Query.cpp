@@ -848,7 +848,11 @@ futures::Future<futures::Unit> Query::execute(
           if (_queryApiSynchronicity == QueryApiSynchronicity::Synchronous) {
             // make sure we don't suspend with a synchronous api; the caller
             // will rely upon suspends happening only due to WAITING.
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+            // the ifdef is necessary, because we have is_ready only in
+            // maintainer mode.
             TRI_ASSERT(prepareFut.is_ready());
+#endif
           }
           co_await std::move(prepareFut);
         }
