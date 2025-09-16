@@ -44,12 +44,23 @@ using namespace arangodb::rest;
 
 namespace {
 
+struct EdgeCursorForMultipleVertices {};
+
 struct StartEdgeQuery {
   std::vector<std::string> vertexKeys;
   size_t depth;
   VPackSlice variables;
   uint64_t batchSize;
+  bool forceRearming = false;
+
+  template<typename H>
+  friend H AbslHashValue(H h, StartEdgeQuery const& x) {
+    h = H::combine(std::move(h), x.depth, x.batchSize, x.variables.hash());
+    return H::combine_unordered(std::move(h), x.vertexKeys.begin(),
+                                x.vertexKeys.end());
+  }
 };
+
 struct EdgeQuery {
   std::optional<StartEdgeQuery> query;
 };
@@ -109,7 +120,21 @@ ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   }
   auto batchSize = static_cast<uint64_t>(batchSizeInt);
 
-  return EdgeQuery{StartEdgeQuery{vertices, depth, variables, batchSize}};
+  // force
+  auto maybeForceCreation = body.get("force");
+  if (not maybeForceCreation.isNone() && maybeForceCreation.isBool() &&
+      maybeForceCreation.getBool()) {
+    return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
+                                    .depth = depth,
+                                    .variables = variables,
+                                    .batchSize = batchSize,
+                                    .forceRearming = true}};
+  }
+
+  return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
+                                  .depth = depth,
+                                  .variables = variables,
+                                  .batchSize = batchSize}};
 }
 
 }  // namespace
@@ -271,11 +296,16 @@ void InternalRestTraverserHandler::queryEngine() {
         }
         if (auto startQuery = query.get().query; startQuery != std::nullopt) {
           auto q = startQuery.value();
-          eng->_vertices = q.vertexKeys;
-          eng->_nextVertex = eng->_vertices.begin();
-          eng->_depth = q.depth;
-          eng->_batchSize = q.batchSize;
-          eng->injectVariables(q.variables);
+          auto hash = absl::Hash<StartEdgeQuery>{}(q);
+          auto hasRearmed =
+              eng->rearm(hash, q.depth, q.batchSize, std::move(q.vertexKeys),
+                         q.variables, q.forceRearming);
+          if (not hasRearmed) {
+            generateError(
+                ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                "Already created cursor for exact same input parameters");
+            return;
+          }
         }
 
         result.openObject();

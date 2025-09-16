@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -59,6 +60,31 @@ class Slice;
 
 namespace traverser {
 struct TraverserOptions;
+
+struct EdgeCursorForMultipleVertices {
+  size_t _creationHash;
+  size_t _depth;
+  uint64_t _batchSize;
+  std::vector<std::string> _vertices;
+  std::vector<std::string>::iterator _nextVertex;
+  graph::EdgeCursor* _cursor;
+  EdgeCursorForMultipleVertices(size_t creationHash, size_t depth,
+                                uint64_t batchSize,
+                                std::vector<std::string> vertices,
+                                graph::EdgeCursor* cursor)
+      : _creationHash{creationHash},
+        _depth{depth},
+        _batchSize{batchSize},
+        _vertices{std::move(vertices)},
+        _nextVertex{_vertices.begin()},
+        _cursor{cursor} {
+    TRI_ASSERT(_cursor != nullptr);
+    rearm();
+  }
+  auto sameHashAs(size_t other) -> bool { return _creationHash == other; }
+  auto rearm() -> bool;
+  auto hasMore() -> bool;
+};
 
 class BaseEngine {
  public:
@@ -110,10 +136,8 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(VPackBuilder& builder);
   bool getBatchedEdges(VPackBuilder& builder);
   void addStatistics(VPackBuilder& builder);
-  void createCursor(std::string_view nextVertex, uint64_t currentDepth);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
@@ -128,27 +152,23 @@ class BaseTraverserEngine : public BaseEngine {
   // Inject all variables from VPack information
   void injectVariables(arangodb::velocypack::Slice variables);
 
+  bool rearm(size_t creationHash, size_t depth, uint64_t batchSize,
+             std::vector<std::string> vertices, VPackSlice variables,
+             bool force);
+
   aql::VariableGenerator const* variables() const;
 
   graph::BaseOptions const& options() const override;
-
-  std::vector<std::string> _vertices = {};
-  std::vector<std::string>::iterator _nextVertex;
-  std::optional<uint64_t> _depth;
-  std::optional<uint64_t> _batchSize;
+  std::optional<EdgeCursorForMultipleVertices> cursor;
 
  protected:
-  graph::EdgeCursor* getCursor(std::string_view nextVertex,
-                               uint64_t currentDepth);
-  bool setCursor();
+  graph::EdgeCursor* getCursor(uint64_t currentDepth);
 
   std::unique_ptr<traverser::TraverserOptions> _opts;
   std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
       _depthSpecificCursors;
   std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
-
-  graph::EdgeCursor* _cursor = nullptr;
 };
 
 class ShortestPathEngine : public BaseEngine {

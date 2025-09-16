@@ -123,6 +123,17 @@ class InternalRestTraverserHandlerEdgeTest : public ::testing::Test {
   }
 };
 
+TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_missing_batch_size) {
+  MockGraph g;
+  auto engineId = createEngine(g);
+
+  auto response = requestHandler(
+      RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
+      VPackBuilder(R"({"keys": ["v/0"], "depth": 1})"_vpack));
+
+  EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
+}
+
 TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_negative_batch_size) {
   MockGraph g;
   auto engineId = createEngine(g);
@@ -146,7 +157,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_zero_batch_size) {
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
-       gives_all_neighbours_without_batchSize_input) {
+       gives_no_edges_for_non_existing_vertices) {
   MockGraph g;
   g.addEdge(0, 1);
   g.addEdge(0, 2);
@@ -154,20 +165,16 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   g.addEdge(1, 2);
   auto engineId = createEngine(g);
 
-  auto response =
-      requestHandler(arangodb::rest::RequestType::PUT,
-                     {"edge", basics::StringUtils::itoa(engineId)},
-                     VPackBuilder(R"({"keys": ["v/0"], "depth": 1})"_vpack));
+  auto response = requestHandler(
+      arangodb::rest::RequestType::PUT,
+      {"edge", basics::StringUtils::itoa(engineId)},
+      VPackBuilder(R"({"keys": ["v/5"], "depth": 1, "batchSize": 2})"_vpack));
 
   EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+  EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
   auto edges = response->_payload.slice().get("edges");
   EXPECT_FALSE(edges.isNone());
-  std::unordered_set<std::string> toVertices;
-  for (VPackSlice edge : VPackArrayIterator(edges)) {
-    EXPECT_EQ(edge.get("_from").copyString(), "v/0");
-    toVertices.emplace(edge.get("_to").copyString());
-  }
-  EXPECT_EQ(toVertices, (std::unordered_set<std::string>{"v/0", "v/1", "v/2"}));
+  EXPECT_TRUE(edges.isEmptyArray());
 
   destroyEngine(engineId);
 }
@@ -182,13 +189,15 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
   auto engineId = createEngine(g);
 
   std::unordered_multiset<std::string> toVertices;
-  {
+
+  {  // get first two neighbours of v/0
     auto response = requestHandler(
         arangodb::rest::RequestType::PUT,
         {"edge", basics::StringUtils::itoa(engineId)},
         VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 2})"_vpack));
 
     EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
     auto edges = response->_payload.slice().get("edges");
     EXPECT_FALSE(edges.isNone());
     for (VPackSlice edge : VPackArrayIterator(edges)) {
@@ -198,14 +207,15 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     EXPECT_EQ(toVertices.size(), 2);
   }
 
-  {
-    auto second_response =
+  {  // get third neighbour of v/0
+    auto response =
         requestHandler(arangodb::rest::RequestType::PUT,
                        {"edge", basics::StringUtils::itoa(engineId)},
                        VPackBuilder(R"({"continue": true})"_vpack));
 
-    EXPECT_EQ(second_response->responseCode(), ResponseCode::OK);
-    auto edges = second_response->_payload.slice().get("edges");
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    auto edges = response->_payload.slice().get("edges");
     EXPECT_FALSE(edges.isNone());
     for (VPackSlice edge : VPackArrayIterator(edges)) {
       EXPECT_EQ(edge.get("_from").copyString(), "v/0");
@@ -213,8 +223,189 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     }
     EXPECT_EQ(toVertices.size(), 3);
   }
+
+  {  // cursor already exhausted, does not give any more edges
+    auto response =
+        requestHandler(arangodb::rest::RequestType::PUT,
+                       {"edge", basics::StringUtils::itoa(engineId)},
+                       VPackBuilder(R"({"continue": true})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    EXPECT_TRUE(edges.isEmptyArray());
+  }
   EXPECT_EQ(toVertices,
             (std::unordered_multiset<std::string>{"v/0", "v/1", "v/2"}));
+
+  destroyEngine(engineId);
+}
+
+TEST_F(InternalRestTraverserHandlerEdgeTest,
+       resets_cursor_to_new_given_vertex_for_request_with_new_input_variables) {
+  MockGraph g;
+  g.addEdge(0, 1);
+  g.addEdge(0, 2);
+  g.addEdge(0, 0);
+  g.addEdge(1, 2);
+  g.addEdge(1, 3);
+  auto engineId = createEngine(g);
+
+  {  // request two neighbours of v/0
+    std::unordered_multiset<std::string> toVertices;
+    auto response = requestHandler(
+        arangodb::rest::RequestType::PUT,
+        {"edge", basics::StringUtils::itoa(engineId)},
+        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 2})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      EXPECT_EQ(edge.get("_from").copyString(), "v/0");
+      toVertices.emplace(edge.get("_to").copyString());
+    }
+    EXPECT_EQ(toVertices.size(), 2);
+  }
+
+  std::unordered_multiset<std::string> toVertices;
+  {  // request one neighbour of v/1 (resetting cursor)
+    auto response = requestHandler(
+        arangodb::rest::RequestType::PUT,
+        {"edge", basics::StringUtils::itoa(engineId)},
+        VPackBuilder(R"({"keys": ["v/1"], "depth": 1, "batchSize": 1})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      EXPECT_EQ(edge.get("_from").copyString(), "v/1");
+      toVertices.emplace(edge.get("_to").copyString());
+    }
+    EXPECT_EQ(toVertices.size(), 1);
+  }
+
+  {  // continue with v/1
+    auto response =
+        requestHandler(arangodb::rest::RequestType::PUT,
+                       {"edge", basics::StringUtils::itoa(engineId)},
+                       VPackBuilder(R"({"continue": true})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      EXPECT_EQ(edge.get("_from").copyString(), "v/1");
+      toVertices.emplace(edge.get("_to").copyString());
+    }
+    EXPECT_EQ(toVertices.size(), 2);
+  }
+  EXPECT_EQ(toVertices, (std::unordered_multiset<std::string>{"v/2", "v/3"}));
+
+  destroyEngine(engineId);
+}
+
+TEST_F(InternalRestTraverserHandlerEdgeTest,
+       giving_exact_same_values_to_engine_can_only_be_enforced) {
+  MockGraph g;
+  g.addEdge(0, 1);
+  auto engineId = createEngine(g);
+
+  {
+    auto response = requestHandler(
+        RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
+        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 1})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    std::vector<std::string> toVertices;
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      EXPECT_EQ(edge.get("_from").copyString(), "v/0");
+      toVertices.emplace_back(edge.get("_to").copyString());
+    }
+    EXPECT_EQ(toVertices, (std::vector<std::string>{"v/1"}));
+  }
+
+  {  // try to create the exact same cursor again results in an error
+    auto response = requestHandler(
+        RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
+        VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 1})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
+  }
+
+  {  // forcing the exact same cursor again is fine
+    // iteration starts from beginning
+    auto response = requestHandler(
+        RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
+        VPackBuilder(
+            R"({"keys": ["v/0"], "depth": 1, "batchSize": 1, "force": true})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    std::vector<std::string> toVertices;
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      EXPECT_EQ(edge.get("_from").copyString(), "v/0");
+      toVertices.emplace_back(edge.get("_to").copyString());
+    }
+    EXPECT_EQ(toVertices, (std::vector<std::string>{"v/1"}));
+  }
+}
+
+TEST_F(InternalRestTraverserHandlerEdgeTest,
+       gives_edges_of_all_given_input_vertices) {
+  MockGraph g;
+  g.addEdge(0, 1);
+  g.addEdge(0, 2);
+  g.addEdge(0, 0);
+  g.addEdge(1, 2);
+  auto engineId = createEngine(g);
+
+  std::unordered_multimap<std::string, std::string> fromAndToVertices;
+  {  // request 2 neighbours of v/0 and v/1
+    auto response = requestHandler(
+        arangodb::rest::RequestType::PUT,
+        {"edge", basics::StringUtils::itoa(engineId)},
+        VPackBuilder(
+            R"({"keys": ["v/0", "v/1"], "depth": 1, "batchSize": 2})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_FALSE(response->_payload.slice().get("done").isTrue());
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      fromAndToVertices.emplace(edge.get("_from").copyString(),
+                                edge.get("_to").copyString());
+    }
+    EXPECT_EQ(fromAndToVertices.size(), 2);
+  }
+
+  {  // continue with neighbours of v/0 and v/1
+    auto response =
+        requestHandler(arangodb::rest::RequestType::PUT,
+                       {"edge", basics::StringUtils::itoa(engineId)},
+                       VPackBuilder(R"({"continue": true})"_vpack));
+
+    EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+    EXPECT_TRUE(response->_payload.slice().get("done").isTrue());
+    auto edges = response->_payload.slice().get("edges");
+    EXPECT_FALSE(edges.isNone());
+    for (VPackSlice edge : VPackArrayIterator(edges)) {
+      fromAndToVertices.emplace(edge.get("_from").copyString(),
+                                edge.get("_to").copyString());
+    }
+    EXPECT_EQ(fromAndToVertices.size(), 4);
+  }
+  EXPECT_EQ(
+      fromAndToVertices,
+      (std::unordered_multimap<std::string, std::string>{
+          {"v/0", "v/0"}, {"v/0", "v/1"}, {"v/0", "v/2"}, {"v/1", "v/2"}}));
 
   destroyEngine(engineId);
 }

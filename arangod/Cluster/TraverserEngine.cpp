@@ -76,6 +76,18 @@ static const std::string TYPE = "type";
 }
 #endif
 
+auto EdgeCursorForMultipleVertices::rearm() -> bool {
+  if (_nextVertex == _vertices.end()) {
+    return false;
+  }
+  _cursor->rearm(*_nextVertex, _depth);
+  _nextVertex++;
+  return true;
+}
+auto EdgeCursorForMultipleVertices::hasMore() -> bool {
+  return _cursor->hasMore() || rearm();
+}
+
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
                        VPackSlice info)
     : _engineId(TRI_NewTickServer()),
@@ -261,27 +273,20 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
-void BaseTraverserEngine::createCursor(std::string_view nextVertex,
-                                       uint64_t currentDepth) {
-  TRI_ASSERT(_cursor == nullptr);
-  _cursor = getCursor(nextVertex, currentDepth);
-}
-
-bool BaseTraverserEngine::setCursor() {
-  TRI_ASSERT(_depth != std::nullopt);
-  if (_cursor == nullptr || not _cursor->hasMore()) {
-    if (_nextVertex == _vertices.end()) {
-      return false;
-    }
-    _cursor = getCursor(*_nextVertex, _depth.value());
-    _nextVertex++;
-    return true;
+bool BaseTraverserEngine::rearm(size_t creationHash, size_t depth,
+                                uint64_t batchSize,
+                                std::vector<std::string> vertices,
+                                VPackSlice variables, bool force) {
+  if (cursor.has_value() && cursor->sameHashAs(creationHash) && not force) {
+    return false;
   }
+  injectVariables(variables);
+  cursor = EdgeCursorForMultipleVertices{creationHash, depth, batchSize,
+                                         std::move(vertices), getCursor(depth)};
   return true;
 }
 
-graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
-                                                  uint64_t currentDepth) {
+graph::EdgeCursor* BaseTraverserEngine::getCursor(uint64_t currentDepth) {
   graph::EdgeCursor* cursor = nullptr;
   if (_opts->hasSpecificCursorForDepth(currentDepth)) {
     auto it = _depthSpecificCursors.find(currentDepth);
@@ -299,26 +304,23 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(std::string_view nextVertex,
     TRI_ASSERT(_generalCursor != nullptr);
     cursor = _generalCursor.get();
   }
-  TRI_ASSERT(cursor != nullptr);
-
-  cursor->rearm(nextVertex, currentDepth);
   return cursor;
 }
 
 bool BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
   uint64_t count = 0;
-  while (count != _batchSize) {
-    if (not setCursor()) {
+  TRI_ASSERT(cursor.has_value());
+  auto batchSize = cursor->_batchSize;
+
+  while (count != batchSize) {
+    if (not cursor->hasMore()) {
       return false;
     }
 
-    TRI_ASSERT(_cursor != nullptr);
-    auto vertex = _cursor->currentVertex();
-    TRI_ASSERT(vertex.has_value());
-    auto depth = _cursor->currentDepth();
-    TRI_ASSERT(depth.has_value());
+    auto vertex = cursor->_cursor->currentVertex();
+    auto depth = cursor->_cursor->currentDepth();
 
-    _cursor->nextBatch(
+    cursor->_cursor->nextBatch(
         [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
           if (edge.isString()) {
             edge = _opts->cache()->lookupToken(eid);
@@ -337,39 +339,10 @@ bool BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
           }
           count++;
         },
-        _batchSize.value());
+        batchSize);
   }
 
-  return _cursor->hasMore();
-}
-
-void BaseTraverserEngine::getEdges(VPackBuilder& builder) {
-  TRI_ASSERT(_cursor != nullptr);
-  auto vertex = _cursor->currentVertex();
-  TRI_ASSERT(vertex.has_value());
-  auto depth = _cursor->currentDepth();
-  TRI_ASSERT(depth.has_value());
-
-  _cursor->readAll(
-      [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
-        if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid);
-        }
-        if (edge.isNull()) {
-          return;
-        }
-        if (_opts->evaluateEdgeExpression(edge, *vertex, *depth, cursorId)) {
-          if (!options().getEdgeProjections().empty()) {
-            VPackObjectBuilder guard(&builder);
-            options().getEdgeProjections().toVelocyPackFromDocument(
-                builder, edge, _trx.get());
-          } else {
-            builder.add(edge);
-          }
-        }
-      });
-
-  _cursor = nullptr;
+  return cursor->hasMore();
 }
 
 void BaseTraverserEngine::addStatistics(VPackBuilder& builder) {
