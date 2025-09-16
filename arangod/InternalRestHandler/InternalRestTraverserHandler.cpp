@@ -49,7 +49,7 @@ struct StartEdgeQuery {
   std::vector<std::string> vertexKeys;
   size_t depth;
   VPackSlice variables;
-  uint64_t batchSize;
+  std::optional<uint64_t> batchSize = std::nullopt;
 };
 
 struct Continue {
@@ -122,8 +122,9 @@ ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   // batch size
   auto maybeBatchSize = body.get("batchSize");
   if (maybeBatchSize.isNone()) {
-    return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
-                                     "expecting 'batchSize'");
+  return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
+                                  .depth = depth,
+                                  .variables = variables}};
   }
   if (not maybeBatchSize.isInteger()) {
     return ResultT<EdgeQuery>::error(
@@ -304,8 +305,17 @@ void InternalRestTraverserHandler::queryEngine() {
         auto startQuery = query.get().query;
         if (std::holds_alternative<StartEdgeQuery>(startQuery)) {
           auto q = std::get<StartEdgeQuery>(startQuery);
-          eng->rearm(q.depth, q.batchSize, std::move(q.vertexKeys),
+          if (q.batchSize.has_value()) {
+            eng->rearm(q.depth, q.batchSize.value(), std::move(q.vertexKeys),
                                 q.variables);
+          } else {
+            // old behaviour
+            eng->injectVariables(q.variables);
+            eng->allEdges(q.vertexKeys, q.depth, result);
+            generateResult(ResponseCode::OK, result.slice(), engine->context());
+            return;
+          }
+
         } else if (std::holds_alternative<Continue>(startQuery)) {
           auto q = std::get<Continue>(startQuery);
           if (not eng->_cursor.has_value() ||
@@ -320,7 +330,7 @@ void InternalRestTraverserHandler::queryEngine() {
         }
 
         result.openObject();
-        auto res = eng->nextBatch(query.get().batchId, result);
+        auto res = eng->nextEdgeBatch(query.get().batchId, result);
         if (res.fail()) {
           generateError(ResponseCode::BAD, res.errorNumber(),
                         res.errorMessage());

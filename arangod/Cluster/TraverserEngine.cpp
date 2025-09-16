@@ -303,7 +303,57 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(uint64_t currentDepth) {
   return cursor;
 }
 
-Result BaseTraverserEngine::nextBatch(size_t batchId, VPackBuilder& builder) {
+void BaseTraverserEngine::allEdges(std::vector<std::string> const& vertices,
+                                   size_t depth, VPackBuilder& builder) {
+  auto outputVertex = [this](VPackBuilder& builder, std::string_view vertex,
+                             size_t depth) {
+    graph::EdgeCursor* cursor = getCursor(depth);
+    cursor->rearm(vertex, depth);
+    _nextCursorId++;
+
+    cursor->readAll(
+        [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
+          if (edge.isString()) {
+            edge = _opts->cache()->lookupToken(eid);
+          }
+          if (edge.isNull()) {
+            return;
+          }
+          if (_opts->evaluateEdgeExpression(edge, vertex, depth, cursorId)) {
+            if (!options().getEdgeProjections().empty()) {
+              VPackObjectBuilder guard(&builder);
+              options().getEdgeProjections().toVelocyPackFromDocument(
+                  builder, edge, _trx.get());
+            } else {
+              builder.add(edge);
+            }
+          }
+        });
+  };
+
+  builder.openObject();
+  builder.add(VPackValue(StaticStrings::GraphQueryEdges));
+  builder.openArray(true);
+  for (auto const& v : vertices) {
+    outputVertex(builder, v, depth);
+  }
+  builder.close();
+  // statistics
+  builder.add("readIndex",
+              VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
+  builder.add("filtered", VPackValue(_opts->cache()->getAndResetFiltered()));
+  builder.add("cacheHits", VPackValue(_opts->cache()->getAndResetCacheHits()));
+  builder.add("cacheMisses",
+              VPackValue(_opts->cache()->getAndResetCacheMisses()));
+  builder.add("cursorsCreated",
+              VPackValue(_opts->cache()->getAndResetCursorsCreated()));
+  builder.add("cursorsRearmed",
+              VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
+  builder.close();
+}
+
+Result BaseTraverserEngine::nextEdgeBatch(size_t batchId,
+                                          VPackBuilder& builder) {
   TRI_ASSERT(_cursor.has_value());
   if (_cursor->_nextBatch != batchId) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER, ""};

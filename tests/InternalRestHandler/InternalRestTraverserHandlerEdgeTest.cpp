@@ -123,17 +123,6 @@ class InternalRestTraverserHandlerEdgeTest : public ::testing::Test {
   }
 };
 
-TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_missing_batch_size) {
-  MockGraph g;
-  auto engineId = createEngine(g);
-
-  auto response = requestHandler(
-      RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
-      VPackBuilder(R"({"keys": ["v/0"], "depth": 1})"_vpack));
-
-  EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
-}
-
 TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_negative_batch_size) {
   MockGraph g;
   auto engineId = createEngine(g);
@@ -154,6 +143,45 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, errors_for_zero_batch_size) {
       VPackBuilder(R"({"keys": ["v/0"], "depth": 1, "batchSize": 0})"_vpack));
 
   EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
+}
+
+TEST_F(InternalRestTraverserHandlerEdgeTest,
+       errors_for_continue_request_without_an_existing_cursor) {
+  MockGraph g;
+  auto engineId = createEngine(g);
+
+  auto response = requestHandler(
+      RequestType::PUT, {"edge", basics::StringUtils::itoa(engineId)},
+      VPackBuilder(R"({"cursorId": 0, "batchId": 0})"_vpack));
+
+  EXPECT_EQ(response->responseCode(), ResponseCode::BAD);
+}
+
+TEST_F(InternalRestTraverserHandlerEdgeTest,
+       gives_all_edges_without_batching_for_backwards_compatibility) {
+  MockGraph g;
+  g.addEdge(0, 1);
+  g.addEdge(0, 2);
+  g.addEdge(0, 0);
+  g.addEdge(1, 2);
+  auto engineId = createEngine(g);
+
+  std::unordered_multiset<std::string> vertices;
+  auto response =
+      requestHandler(arangodb::rest::RequestType::PUT,
+                     {"edge", basics::StringUtils::itoa(engineId)},
+                     VPackBuilder(R"({"keys": ["v/0"], "depth": 1})"_vpack));
+
+  EXPECT_EQ(response->responseCode(), ResponseCode::OK);
+  auto edges = response->_payload.slice().get("edges");
+  EXPECT_FALSE(edges.isNone());
+  for (VPackSlice edge : VPackArrayIterator(edges)) {
+    vertices.emplace(edge.get("_to").copyString());
+  }
+  EXPECT_EQ(vertices,
+            (std::unordered_multiset<std::string>{"v/0", "v/1", "v/2"}));
+
+  destroyEngine(engineId);
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
@@ -334,8 +362,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest, continues_with_next_batch) {
 }
 
 TEST_F(InternalRestTraverserHandlerEdgeTest,
-       resets_cursor_to_new_given_vertex_for_request_with_new_input_variables)
-       {
+       resets_cursor_to_new_given_vertex_for_request_with_new_input_variables) {
   MockGraph g;
   g.addEdge(0, 1);
   g.addEdge(0, 2);
@@ -406,8 +433,7 @@ TEST_F(InternalRestTraverserHandlerEdgeTest,
     }
     EXPECT_EQ(toVertices.size(), 2);
   }
-  EXPECT_EQ(toVertices, (std::unordered_multiset<std::string>{"v/2",
-  "v/3"}));
+  EXPECT_EQ(toVertices, (std::unordered_multiset<std::string>{"v/2", "v/3"}));
 
   destroyEngine(engineId);
 }
