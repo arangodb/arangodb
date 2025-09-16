@@ -247,6 +247,9 @@ void EnumerateNearVectorNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
   _documentOutVariable = Variable::replace(_documentOutVariable, replacements);
   _distanceOutVariable = Variable::replace(_distanceOutVariable, replacements);
+  if (_filterExpression != nullptr) {
+    _filterExpression->replaceVariables(replacements);
+  }
 }
 
 bool EnumerateNearVectorNode::isAscending() const noexcept {
