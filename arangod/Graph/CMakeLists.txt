@@ -7,7 +7,6 @@ add_library(arango_graph STATIC
   GraphOperations.cpp
   ShortestPathOptions.cpp
   PathType.cpp
-  SingleServerEdgeCursor.cpp
   TraverserCache.cpp # maybe remove
   TraverserCacheFactory.cpp
   TraverserDocumentCache.cpp

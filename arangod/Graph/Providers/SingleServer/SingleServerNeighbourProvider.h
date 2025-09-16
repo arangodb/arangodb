@@ -25,7 +25,7 @@
 #include <s2/base/integral_types.h>
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
-#include "Graph/Cursors/RefactoredSingleServerEdgeCursor.h"
+#include "Graph/Cursors/SingleServerEdgeCursor.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "Graph/Providers/SingleServer/NeighbourCache.h"
 
@@ -85,7 +85,7 @@ struct SingleServerNeighbourProvider {
   auto hasMore(uint64_t depth) -> bool;
 
  private:
-  std::unique_ptr<RefactoredSingleServerEdgeCursor<Step>> _cursor;
+  std::unique_ptr<SingleServerEdgeCursor<Step>> _cursor;
 
   std::optional<Step> _currentStep;
   // if we can use the cache for the current step, this iterator is set and we

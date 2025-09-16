@@ -57,7 +57,7 @@ template<class StepType>
 class SingleServerProvider;
 
 template<class StepType>
-class RefactoredSingleServerEdgeCursor {
+class SingleServerEdgeCursor {
  public:
   struct LookupInfo {
     explicit LookupInfo(IndexAccessor* accessor);
@@ -92,7 +92,7 @@ class RefactoredSingleServerEdgeCursor {
 
   enum Direction { FORWARD, BACKWARD };
 
-  RefactoredSingleServerEdgeCursor(
+  SingleServerEdgeCursor(
       ResourceMonitor& monitor, transaction::Methods* trx,
       arangodb::aql::Variable const* tmpVar,
       std::vector<IndexAccessor>& globalIndexConditions,
@@ -101,7 +101,7 @@ class RefactoredSingleServerEdgeCursor {
       arangodb::aql::FixedVarExpressionContext& expressionContext,
       bool requiresFullDocument, bool useCache);
 
-  ~RefactoredSingleServerEdgeCursor();
+  ~SingleServerEdgeCursor();
 
   using Callback = std::function<void(EdgeDocumentToken&&,
                                       arangodb::velocypack::Slice, size_t)>;
