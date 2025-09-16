@@ -390,16 +390,17 @@ void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 std::string const& attributeName,
                                 aql::AstNode* condition, bool onlyEdgeIndexes,
                                 TRI_edge_direction_e direction) {
-  injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition, onlyEdgeIndexes, direction,
-                         /*depth*/ std::nullopt);
+  _baseLookupInfos.emplace_back(createLookupInfo(plan, collectionName,
+                                                 attributeName, condition,
+                                                 onlyEdgeIndexes, direction,
+                                                 /*depth*/ std::nullopt));
 }
 
-void BaseOptions::injectLookupInfoInList(
-    std::vector<LookupInfo>& list, aql::ExecutionPlan* plan,
-    std::string const& collectionName, std::string const& attributeName,
-    aql::AstNode* condition, bool onlyEdgeIndexes,
-    TRI_edge_direction_e direction, std::optional<uint64_t> depth) {
+BaseOptions::LookupInfo BaseOptions::createLookupInfo(
+    aql::ExecutionPlan* plan, std::string const& collectionName,
+    std::string const& attributeName, aql::AstNode* condition,
+    bool onlyEdgeIndexes, TRI_edge_direction_e direction,
+    std::optional<uint64_t> depth) {
   TRI_ASSERT(
       (direction == TRI_EDGE_IN && attributeName == StaticStrings::ToString) ||
       (direction == TRI_EDGE_OUT &&
@@ -482,7 +483,7 @@ void BaseOptions::injectLookupInfoInList(
     info.expression =
         std::make_unique<aql::Expression>(plan->getAst(), condition);
   }
-  list.emplace_back(std::move(info));
+  return info;
 }
 
 void BaseOptions::clearVariableValues() noexcept {
@@ -586,9 +587,7 @@ double BaseOptions::costForLookupInfoList(
   return cost;
 }
 
-arangodb::graph::TraverserCache* BaseOptions::cache() const {
-  return _cache.get();
-}
+TraverserCache* BaseOptions::cache() const { return _cache.get(); }
 
 TraverserCache* BaseOptions::cache() {
   ensureCache();

@@ -519,18 +519,16 @@ auto ClusterProvider<StepImpl>::expand(
   TRI_ASSERT(relations != _vertexConnectedEdges.end());
 
   if (ADB_LIKELY(relations != _vertexConnectedEdges.end())) {
-    for (auto const& relation : relations->second) {
-      bool vertexCached = _opts.getCache()->isVertexCached(relation.second);
-      bool edgesCached = _vertexConnectedEdges.contains(relation.second);
+    for (auto const& [edge, to] : relations->second) {
+      bool vertexCached = _opts.getCache()->isVertexCached(to);
+      bool edgesCached = _vertexConnectedEdges.contains(to);
       typename Step::FetchedType fetchedType =
           ::getFetchedType(vertexCached, edgesCached);
       // [GraphRefactor] TODO: KShortestPaths does not require Depth/Weight. We
       // need a mechanism here as well to distinguish between (non)required
       // parameters.
-      callback(
-          Step{relation.second, relation.first, previous, fetchedType,
-               step.getDepth() + 1,
-               _opts.weightEdge(step.getWeight(), readEdge(relation.first))});
+      callback(Step{to, edge, previous, fetchedType, step.getDepth() + 1,
+                    _opts.weightEdge(step.getWeight(), readEdge(edge))});
     }
   } else {
     throw std::out_of_range{"ClusterProvider::_vertexConnectedEdges"};
