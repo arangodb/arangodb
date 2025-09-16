@@ -181,6 +181,14 @@ struct [[nodiscard]] async {
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  [[nodiscard]] bool is_ready() const noexcept {
+    TRI_ASSERT(valid());
+    return _handle.promise()._continuation.load(std::memory_order_acquire) !=
+           nullptr;
+  }
+#endif
+
   auto update_requester(std::optional<async_registry::PromiseId> waiter) {
     if (_handle) {
       _handle.promise().update_requester(waiter);
