@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix defaults for inverted indexes and views. Consolidations 5 times
+  less frequently, with minimum of 50(1 before) segments and 24M bytes
+  (2M before), maximum 200 (10 before) segments and 8G bytes (800M
+  before).
+
 * Fix BTS-2216: Fix a possible use-after-free. It can occur when a query is
   killed at the end of being prepared. Only non-streaming cursors in a cluster
   are affected.
