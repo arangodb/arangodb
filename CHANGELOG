@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2216: Fix a possible use-after-free. It can occur when a query is
+  killed at the end of being prepared. Only non-streaming cursors in a cluster
+  are affected.
+
 * Fix BTS-2211: AQL queries using the async-prefetch rule, which result in a
   failure due to a runtime exception or possibly a kill, had a possible race
   during query destruction that could result in undefined behavior (e.g.

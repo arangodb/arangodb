@@ -253,15 +253,7 @@ async<void> RestCursorHandler::processQuery() {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
-    co_await waitingFunToCoro([&] {
-      auto state = query->execute(_queryResult);
-
-      if (state == aql::ExecutionState::WAITING) {
-        return RestStatus::WAITING;
-      }
-      TRI_ASSERT(state == aql::ExecutionState::DONE);
-      return RestStatus::DONE;
-    });
+    co_await query->execute(_queryResult, &_suspensionCounter);
   }
 
   // We cannot get into HASMORE here, or we would lose results.
