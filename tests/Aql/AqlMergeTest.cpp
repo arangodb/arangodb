@@ -45,10 +45,8 @@ namespace {
 static QueryResult runQuery(TRI_vocbase_t& vocbase,
                             std::string const& queryString,
                             uint64_t memoryLimit) {
-  std::string optsJson =
-      "{\"memoryLimit\": " + std::to_string(memoryLimit) + "}";
-  auto optsBuilder = velocypack::Parser::fromJson(optsJson);
-  QueryOptions options(optsBuilder->slice());
+  QueryOptions options;
+  options.memoryLimit = memoryLimit;
 
   auto ctx = std::make_shared<transaction::StandaloneContext>(
       vocbase, transaction::OperationOriginTestCase{});
@@ -56,14 +54,8 @@ static QueryResult runQuery(TRI_vocbase_t& vocbase,
   auto query = Query::create(ctx, QueryString(queryString), nullptr, options);
 
   QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
+  auto futureRes = query->execute(result, nullptr);
+  futureRes.wait();
   return result;
 }
 }  // namespace
@@ -74,46 +66,46 @@ struct AqlMergeTest : ::testing::Test {
   AqlMergeTest() : server(), vocbase(server.getSystemDatabase()) {}
 };
 
-TEST_F(AqlMergeTest, Merge_Basic_Supervised) {
+TEST_F(AqlMergeTest, MergeBasicSupervised) {
   auto r = runQuery(vocbase, "RETURN MERGE({a:1,b:2},{a:5,c:3},{b:42})",
-                    64ULL * 1024ULL * 1024ULL);
+                    64 * 1024 * 1024);
   ASSERT_TRUE(r.result.ok()) << r.result.errorMessage();
   Slice outSlice = r.data->slice();
   ASSERT_TRUE(outSlice.isArray());
-  ASSERT_EQ(outSlice.length(), 1UL);
+  ASSERT_EQ(outSlice.length(), 1);
   Slice objSlice = outSlice.at(0);
   EXPECT_EQ(objSlice.get("a").getNumber<int>(), 5);
   EXPECT_EQ(objSlice.get("b").getNumber<int>(), 42);
   EXPECT_EQ(objSlice.get("c").getNumber<int>(), 3);
 }
 
-TEST_F(AqlMergeTest, Merge_HitsMemoryLimit_Supervised) {
+TEST_F(AqlMergeTest, MergeExceedsMemoryLimitSupervised) {
   // 4096 objects each with a 4096 byte value
   std::string q =
       "RETURN MERGE((FOR i IN 1..4096 "
       "              RETURN { [CONCAT('a', i)]: REPEAT('b', 4096) }))";
-  auto queryRes = runQuery(vocbase, q, 8ULL * 1024ULL * 1024ULL);
+  auto queryRes = runQuery(vocbase, q, 8 * 1024 * 1024);
   ASSERT_FALSE(queryRes.result.ok());
   EXPECT_EQ(TRI_ERROR_RESOURCE_LIMIT, queryRes.result.errorNumber());
 }
 
-TEST_F(AqlMergeTest, Merge_RespectsMemoryLimit_Supervised) {
+TEST_F(AqlMergeTest, MergeRespectsMemoryLimitSupervised) {
   // result should contain 4096 keys
   std::string q =
       "RETURN MERGE((FOR i IN 1..4096 "
       "              RETURN { [CONCAT('a', i)]: REPEAT('b', 4096) }))";
-  auto queryRes = runQuery(vocbase, q, 64ULL * 1024ULL * 1024ULL);
+  auto queryRes = runQuery(vocbase, q, 64 * 1024 * 1024);
   ASSERT_TRUE(queryRes.result.ok()) << queryRes.result.errorMessage();
   Slice outSlice = queryRes.data->slice();
   ASSERT_TRUE(outSlice.isArray());
-  ASSERT_EQ(outSlice.length(), 1UL);
+  ASSERT_EQ(outSlice.length(), 1);
   Slice objSlice = outSlice.at(0);
   ASSERT_TRUE(objSlice.isObject());
-  EXPECT_EQ(objSlice.length(), 4096UL);
+  EXPECT_EQ(objSlice.length(), 4096);
 }
 
-TEST_F(AqlMergeTest, Merge_Basic_Unsupervised) {
-  // Merge two objects directly with VPack to check for unsupervised
+TEST_F(AqlMergeTest, MergeBasicUnsupervised) {
+  // Merge two objects with VPack to check for memory consumption with regular buffer
   Builder arrBuilder;
   arrBuilder.openArray();
   {

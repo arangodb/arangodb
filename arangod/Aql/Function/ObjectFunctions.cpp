@@ -216,9 +216,9 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         velocypack::Collection::merge(*outBuilder, builder->slice(), it,
                                       /*mergeObjects*/ recursive,
                                       /*nullMeansRemove*/ false);
-        builder->clear();
-        builder->add(outBuilder->slice());
-        outBuilder->clear();
+        //  builder->clear();
+        builder.swap(outBuilder);
+        //   outBuilder->clear();
       }
     }
 
@@ -257,9 +257,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     velocypack::Collection::merge(*outBuilder, initialSlice, slice,
                                   /*mergeObjects*/ recursive,
                                   /*nullMeansRemove*/ false);
-    builder->clear();
-    builder->add(outBuilder->slice());
-    outBuilder->clear();
+    builder.swap(outBuilder);
     initialSlice = builder->slice();
   }
   if (n == 1) {
