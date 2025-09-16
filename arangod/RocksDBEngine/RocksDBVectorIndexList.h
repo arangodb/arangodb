@@ -86,6 +86,8 @@ struct SearchParametersContext {
   aql::Variable const* documentVariable;
 };
 
+// This is used to pass a different search context via RocksDBInvertedList it
+// the iterators
 using RocksDBFaissSearchContext =
     std::variant<SearchParametersContext, transaction::Methods>;
 
@@ -100,14 +102,13 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
 
   [[nodiscard]] bool searchFilteredIds();
 
-  // This should be only called when we have filterExpression
-  void setToValidIterator();
-
   void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
  private:
+  void setToValidIterator();
+
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
   LogicalCollection* _collection{nullptr};
