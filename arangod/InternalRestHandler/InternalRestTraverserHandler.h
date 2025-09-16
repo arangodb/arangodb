@@ -43,9 +43,6 @@ class InternalRestTraverserHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLUSTER_AQL; }
 
  private:
-  // @brief create a new Traverser Engine.
-  void createEngine();
-
   // @brief Query an existing Traverser Engine.
   void queryEngine();
 
