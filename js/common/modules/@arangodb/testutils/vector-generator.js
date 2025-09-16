@@ -173,6 +173,7 @@ function createVectorGenerator(options) {
             let attempts = 0;
             let vector = null;
             let isTooClose = false;
+            let vectorGenerated = false;
 
             while (attempts < maxAttemptsPerDoc) {
                 vector = generateVector();
@@ -188,6 +189,7 @@ function createVectorGenerator(options) {
                         unIndexedVector: vector
                     });
                     successfulGenerations++;
+                    vectorGenerated = true;
                     break;
                 }
 
@@ -204,6 +206,7 @@ function createVectorGenerator(options) {
                         unIndexedVector: vector
                     });
                     successfulGenerations++;
+                    vectorGenerated = true;
                     break; // Found a suitable vector, exit inner loop
                 }
                 attempts++;
@@ -218,7 +221,10 @@ function createVectorGenerator(options) {
                     nonVector: i,
                     unIndexedVector: vector
                 });
-                successfulGenerations++;
+                // Add the distance of the failed vector to prevent future vectors from being too close
+                const currentDistance = distanceFunction(vector, randomPoint);
+                insertSorted(currentDistance);
+                // Don't increment successfulGenerations since this vector doesn't meet distance requirements
             }
         }
 
