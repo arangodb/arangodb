@@ -40,8 +40,6 @@
 #include "Transaction/Methods.h"
 #include <functional>
 
-#include "Logger/LogMacros.h"
-
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -133,8 +131,6 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 AqlValue mergeParameters(ExpressionContext* expressionContext,
                          aql::functions::VPackFunctionParametersView parameters,
                          char const* funcName, bool recursive) {
-  // scope guard here to free builder capacity in the usage scope, steal in the
-  // end
   auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
   ResourceMonitor* resourceMonitor =
       execCtx ? &execCtx->resourceMonitor() : nullptr;
@@ -216,9 +212,7 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
         velocypack::Collection::merge(*outBuilder, builder->slice(), it,
                                       /*mergeObjects*/ recursive,
                                       /*nullMeansRemove*/ false);
-        //  builder->clear();
         builder.swap(outBuilder);
-        //   outBuilder->clear();
       }
     }
 

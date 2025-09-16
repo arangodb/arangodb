@@ -67,10 +67,10 @@ struct AqlMergeTest : ::testing::Test {
 };
 
 TEST_F(AqlMergeTest, MergeBasicSupervised) {
-  auto r = runQuery(vocbase, "RETURN MERGE({a:1,b:2},{a:5,c:3},{b:42})",
-                    64 * 1024 * 1024);
-  ASSERT_TRUE(r.result.ok()) << r.result.errorMessage();
-  Slice outSlice = r.data->slice();
+  auto queryRes = runQuery(vocbase, "RETURN MERGE({a:1,b:2},{a:5,c:3},{b:42})",
+                           64 * 1024 * 1024);
+  ASSERT_TRUE(queryRes.result.ok()) << queryRes.result.errorMessage();
+  Slice outSlice = queryRes.data->slice();
   ASSERT_TRUE(outSlice.isArray());
   ASSERT_EQ(outSlice.length(), 1);
   Slice objSlice = outSlice.at(0);
@@ -91,10 +91,10 @@ TEST_F(AqlMergeTest, MergeExceedsMemoryLimitSupervised) {
 
 TEST_F(AqlMergeTest, MergeRespectsMemoryLimitSupervised) {
   // result should contain 4096 keys
-  std::string q =
+  std::string query =
       "RETURN MERGE((FOR i IN 1..4096 "
       "              RETURN { [CONCAT('a', i)]: REPEAT('b', 4096) }))";
-  auto queryRes = runQuery(vocbase, q, 64 * 1024 * 1024);
+  auto queryRes = runQuery(vocbase, query, 64 * 1024 * 1024);
   ASSERT_TRUE(queryRes.result.ok()) << queryRes.result.errorMessage();
   Slice outSlice = queryRes.data->slice();
   ASSERT_TRUE(outSlice.isArray());
