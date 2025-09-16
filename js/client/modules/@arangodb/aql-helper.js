@@ -79,8 +79,17 @@ function executeQuery(query, bindVars = null, options = {}) {
 };
 
 function executeJson (plan, options = {}) {
-  let command = `return AQL_EXECUTEJSON(${JSON.stringify(plan)}, ${JSON.stringify(options)});`;
-  return arango.POST("/_admin/execute", command);
+  let reply = arango.POST("/_api/cursor/json", {
+    'executionPlan': plan,
+    'options': options
+  });
+  // bring the format to the ye olde relpy format of executeJson:
+  return {
+    "json": reply.result,
+    "stats": reply.extra.stats,
+    "warnings": reply.extra.warnings,
+    "cached": reply.cached
+  };
 };
 
 // //////////////////////////////////////////////////////////////////////////////
