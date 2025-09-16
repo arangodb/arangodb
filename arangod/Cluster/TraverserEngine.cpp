@@ -307,16 +307,18 @@ graph::EdgeCursor* BaseTraverserEngine::getCursor(uint64_t currentDepth) {
   return cursor;
 }
 
-bool BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
-  uint64_t count = 0;
+Result BaseTraverserEngine::getBatchedEdges(size_t batchId,
+                                            VPackBuilder& builder) {
   TRI_ASSERT(cursor.has_value());
+  if (cursor->_nextBatch != batchId) {
+    return Result{TRI_ERROR_HTTP_BAD_PARAMETER, ""};
+  }
+  uint64_t count = 0;
   auto batchSize = cursor->_batchSize;
 
-  while (count != batchSize) {
-    if (not cursor->hasMore()) {
-      return false;
-    }
-
+  builder.add(VPackValue(StaticStrings::GraphQueryEdges));
+  builder.openArray(true);
+  while (count != batchSize && cursor->hasMore()) {
     auto vertex = cursor->_cursor->currentVertex();
     auto depth = cursor->_cursor->currentDepth();
 
@@ -341,8 +343,14 @@ bool BaseTraverserEngine::getBatchedEdges(VPackBuilder& builder) {
         },
         batchSize);
   }
+  builder.close();
+  builder.add("done", VPackValue(not cursor->hasMore()));
+  builder.add("batchId", VPackValue(cursor->_nextBatch));
 
-  return cursor->hasMore();
+  if (count > 0) {
+    cursor->_nextBatch++;
+  }
+  return {};
 }
 
 void BaseTraverserEngine::addStatistics(VPackBuilder& builder) {

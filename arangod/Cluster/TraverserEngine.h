@@ -68,6 +68,7 @@ struct EdgeCursorForMultipleVertices {
   std::vector<std::string> _vertices;
   std::vector<std::string>::iterator _nextVertex;
   graph::EdgeCursor* _cursor;
+  size_t _nextBatch = 0;
   EdgeCursorForMultipleVertices(size_t creationHash, size_t depth,
                                 uint64_t batchSize,
                                 std::vector<std::string> vertices,
@@ -136,7 +137,7 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  bool getBatchedEdges(VPackBuilder& builder);
+  Result getBatchedEdges(size_t batchId, VPackBuilder& builder);
   void addStatistics(VPackBuilder& builder);
 
   virtual void smartSearch(arangodb::velocypack::Slice,

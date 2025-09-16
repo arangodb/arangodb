@@ -37,6 +37,7 @@
 #include <chrono>
 #include <cstdint>
 #include <thread>
+#include <variant>
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -61,13 +62,26 @@ struct StartEdgeQuery {
   }
 };
 
+struct Continue {};
+
 struct EdgeQuery {
-  std::optional<StartEdgeQuery> query;
+  std::variant<Continue, StartEdgeQuery> query;
+  size_t batchId = 0;
 };
 ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   auto toContinue = body.get("continue");
   if (not toContinue.isNone()) {
-    return EdgeQuery{std::nullopt};
+    if (not toContinue.isInteger()) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting batch id as integer");
+    }
+    auto value = toContinue.getInt();
+    if (value <= 0) {
+      return ResultT<EdgeQuery>::error(TRI_ERROR_HTTP_BAD_PARAMETER,
+                                       "expecting batch id > 0");
+    }
+    return EdgeQuery{.query = Continue{},
+                     .batchId = static_cast<size_t>(value)};
   }
 
   // keys
@@ -88,7 +102,6 @@ ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   } else {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
-  // TODO error handling if vertices are empty
 
   // depth
   VPackSlice depthSlice = body.get("depth");
@@ -294,8 +307,10 @@ void InternalRestTraverserHandler::queryEngine() {
                         query.errorMessage());
           return;
         }
-        if (auto startQuery = query.get().query; startQuery != std::nullopt) {
-          auto q = startQuery.value();
+
+        if (auto startQuery = query.get().query;
+            std::holds_alternative<StartEdgeQuery>(startQuery)) {
+          auto q = std::get<StartEdgeQuery>(startQuery);
           auto hash = absl::Hash<StartEdgeQuery>{}(q);
           auto hasRearmed =
               eng->rearm(hash, q.depth, q.batchSize, std::move(q.vertexKeys),
@@ -309,11 +324,12 @@ void InternalRestTraverserHandler::queryEngine() {
         }
 
         result.openObject();
-        result.add(VPackValue(StaticStrings::GraphQueryEdges));
-        result.openArray(true);
-        auto hasMore = eng->getBatchedEdges(result);
-        result.close();
-        result.add("done", VPackValue(not hasMore));
+        auto res = eng->getBatchedEdges(query.get().batchId, result);
+        if (res.fail()) {
+          generateError(ResponseCode::BAD, res.errorNumber(),
+                        res.errorMessage());
+          return;
+        }
         eng->addStatistics(result);
         result.close();
 
