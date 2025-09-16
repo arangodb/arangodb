@@ -68,11 +68,12 @@ void RocksDBInvertedListsIterator::setToValidIterator() {
   while (_it->Valid()) {
     auto const docId = RocksDBKey::indexDocumentId(_it->key());
 
-    bool filterExpressionResult;
+    bool filterExpressionResult{false};
     _collection->getPhysical()->lookup(
         _searchParametersContext.trx, docId,
         [&](LocalDocumentId token, aql::DocumentData&& /*data */,
             VPackSlice doc) {
+          TRI_ASSERT(_searchParametersContext.inputRow.has_value());
           aql::GenericDocumentExpressionContext ctx(
               *_searchParametersContext.trx,
               *_searchParametersContext.queryContext,
