@@ -173,7 +173,15 @@ struct AggregatorMin final : public Aggregator {
 
   ~AggregatorMin() { value.destroy(); }
 
-  void reset() override { value.erase(); }
+  void reset() override {
+    if (value.requiresDestruction()) {
+      auto mem = value.memoryUsage();
+      value.destroy();
+      resourceUsageScope().decrease(mem);
+    } else {
+      value.erase();
+    }
+  }
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isNull(true) &&
@@ -209,7 +217,15 @@ struct AggregatorMax final : public Aggregator {
 
   ~AggregatorMax() { value.destroy(); }
 
-  void reset() override { value.erase(); }
+  void reset() override {
+    if (value.requiresDestruction()) {
+      auto mem = value.memoryUsage();
+      value.destroy();
+      resourceUsageScope().decrease(mem);
+    } else {
+      value.erase();
+    }
+  }
 
   void reduce(AqlValue const& cmpValue) override {
     if (value.isEmpty() ||

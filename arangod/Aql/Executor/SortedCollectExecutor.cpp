@@ -61,10 +61,13 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
-    //  auto memUsage = it.memoryUsage();
-    it.destroy();
-    //  infos.resourceUsageScope().decrease(memUsage);  // decreases after it
-    //  actually frees the value
+    if (it.requiresDestruction()) {
+      auto mem = it.memoryUsage();
+      it.destroy();
+      infos.resourceUsageScope().decrease(mem);
+    } else {
+      it.erase();
+    }
   }
 }
 
@@ -92,13 +95,14 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
-      //   auto memUsage = it.memoryUsage();
-      it.destroy();
-      //  infos.resourceUsageScope().decrease(memUsage);  // decreases after it
-      //  actually frees the value
+      if (it.requiresDestruction()) {
+        auto mem = it.memoryUsage();
+        it.destroy();
+        infos.resourceUsageScope().decrease(mem);
+      } else {
+        it.erase();
+      }
     }
-    groupValues[0].erase();  // only need to erase [0], because we have
-    // only copies of references anyway
   }
 
   groupLength = 0;
