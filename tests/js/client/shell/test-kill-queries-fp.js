@@ -27,7 +27,54 @@
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
-const db = arangodb.db;
+const {errors, db} = arangodb;
+const queries = require('@arangodb/aql/queries');
+
+// e.g. pass body={query} or {query, bindVars};
+// returns the async job id (not the query id), throws if something went wrong.
+const runQueryAsAsyncJob = function(body) {
+  let result = arango.POST_RAW('/_api/cursor', body,
+    {'x-arango-async': 'store'});
+
+  if (result.code !== 202) {
+    throw "invalid query return code: " + result.code;
+  }
+  let jobId = result.headers["x-arango-async-id"];
+  if (!jobId > 0) {
+    throw "invalid job id: " + JSON.stringify(jobId);
+  }
+  return jobId;
+};
+
+// Matches running queries against the given query string. If one is found,
+// returns its id; loops for a while otherwise.
+// Throws on error (e.g. api errors, multiple queries found, or timeout).
+const waitForQueryAndGet = function (queryString) {
+  const maxWait = 10 * 1000; // 10s in ms
+  const sleepTime = 0.001; // 1ms in s (-_-)
+  for (let start = Date.now(); Date.now() < start + maxWait; internal.sleep(sleepTime)) {
+    const matches = queries.current().filter(q => q.query === queryString);
+    if (matches.length === 1) {
+      return matches[0];
+    } else if (matches.length > 1) {
+      throw `Multiple matching queries for query string '${queryString}': ${JSON.stringify(matches)}`;
+    }
+  }
+  throw `timeout while waiting for query ${queryString}`;
+};
+
+const waitForJobAndGet = function (jobId) {
+  const maxWait = 10 * 1000; // 10s in ms
+  const sleepTime = 0.001; // 1ms in s (-_-)
+
+  for (let start = Date.now(); Date.now() < start + maxWait; internal.sleep(sleepTime)) {
+    const result = arango.PUT_RAW("/_api/job/" + encodeURIComponent(jobId), {});
+    if (result.code !== 204) {
+      return result;
+    }
+  }
+  throw `timeout while waiting for job ${jobId} to finish`;
+};
 
 function GenericQueryKillSuite() { // can be either default or stream
   'use strict';
@@ -317,6 +364,43 @@ function GenericQueryKillSuite() { // can be either default or stream
       } catch (e) {
         console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable. Expect sever issues after this test as effectively the Low priority lane is potentially starting blocked threads.`);
       }
+    }
+  };
+
+  // Regression test for https://arangodb.atlassian.net/browse/BTS-2216
+  // Send a kill while a (suspended and then resumed) prepareQuery is ongoing,
+  // to trigger a race after which the query was possibly destroyed while the
+  // prepare was still using it.
+  testSuite["test_killDuringSuspendedPrepare"] = function () {
+    const failurePointName = "Query::killDuringSuspendedPrepare";
+    try {
+      global.instanceManager.debugSetFailAt(failurePointName);
+
+      // use the failure point name to make the string distinct to match later.
+      // Note that it's necessary that the query has DBServer parts, otherwise
+      // the cleanup following the kill will not trigger a wakeup.
+      const queryString = `
+        FOR d IN ${collectionName}
+          LIMIT 1
+          RETURN ${JSON.stringify(failurePointName)}
+      `;
+
+      const jobId = runQueryAsAsyncJob({query: queryString});
+
+      const queryStatus = waitForQueryAndGet(queryString);
+
+      const result = queries.kill(queryStatus);
+      console.warn({killResult: result});
+
+      const jobResult = waitForJobAndGet(jobId);
+      assertEqual(jobResult.code, 410);
+      assertEqual(jobResult.errorNum, errors.ERROR_HTTP_GONE.code);
+      const queryResult = jobResult.parsedBody;
+      assertEqual(queryResult.code, 410);
+      assertEqual(queryResult.errorNum, errors.ERROR_QUERY_KILLED.code);
+
+    } finally {
+      global.instanceManager.debugRemoveFailAt(failurePointName);
     }
   };
 

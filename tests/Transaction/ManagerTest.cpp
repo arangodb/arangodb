@@ -52,17 +52,7 @@ static arangodb::aql::QueryResult executeQuery(
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), nullptr);
 
-  arangodb::aql::QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == arangodb::aql::ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
-
-  return result;
+  return query->executeSync();
 }
 
 // -----------------------------------------------------------------------------

@@ -255,8 +255,7 @@ struct BaseOptions {
   bool evaluateExpression(aql::Expression*,
                           arangodb::velocypack::Slice varValue);
 
-  void injectLookupInfoInList(std::vector<LookupInfo>&,
-                              aql::ExecutionPlan* plan,
+  LookupInfo createLookupInfo(aql::ExecutionPlan* plan,
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition, bool onlyEdgeIndexes,

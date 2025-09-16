@@ -28,7 +28,7 @@
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Graph/EdgeCursor.h"
+#include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
