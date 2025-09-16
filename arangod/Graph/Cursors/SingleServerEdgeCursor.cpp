@@ -22,7 +22,7 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RefactoredSingleServerEdgeCursor.h"
+#include "SingleServerEdgeCursor.h"
 
 #include "Aql/AstNode.h"
 #include "Aql/Ast.h"
@@ -31,7 +31,7 @@
 #include "Aql/NonConstExpression.h"
 #include "Aql/Projections.h"
 #include "Basics/StaticStrings.h"
-#include "Graph/EdgeCursor.h"
+#include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 // TODO: Needed for the IndexAccessor, should be modified
 #include "Graph/Providers/SingleServerProvider.h"
@@ -65,38 +65,36 @@ static bool CheckInaccessible(transaction::Methods* trx, VPackSlice edge) {
 }  // namespace
 
 template<class Step>
-RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
-    IndexAccessor* accessor)
+SingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(IndexAccessor* accessor)
     : _accessor(accessor),
       _cursor(nullptr),
       _coveringIndexPosition(aql::Projections::kNoCoveringIndexPosition) {}
 
 template<class Step>
-RefactoredSingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(
-    LookupInfo&& other) = default;
+SingleServerEdgeCursor<Step>::LookupInfo::LookupInfo(LookupInfo&& other) =
+    default;
 
 template<class Step>
-RefactoredSingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;
+SingleServerEdgeCursor<Step>::LookupInfo::~LookupInfo() = default;
 
 template<class Step>
-aql::Expression*
-RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getExpression() {
+aql::Expression* SingleServerEdgeCursor<Step>::LookupInfo::getExpression() {
   return _accessor->getExpression();
 }
 
 template<class Step>
-size_t RefactoredSingleServerEdgeCursor<Step>::LookupInfo::getCursorID() const {
+size_t SingleServerEdgeCursor<Step>::LookupInfo::getCursorID() const {
   return _accessor->cursorId();
 }
 
 template<class Step>
-uint16_t RefactoredSingleServerEdgeCursor<
-    Step>::LookupInfo::coveringIndexPosition() const noexcept {
+uint16_t SingleServerEdgeCursor<Step>::LookupInfo::coveringIndexPosition()
+    const noexcept {
   return _coveringIndexPosition;
 }
 
 template<class Step>
-void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
+void SingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
     VertexType vertex, ResourceMonitor& monitor, transaction::Methods* trx,
     arangodb::aql::Variable const* tmpVar, aql::TraversalStats& stats,
     bool useCache) {
@@ -199,14 +197,14 @@ void RefactoredSingleServerEdgeCursor<Step>::LookupInfo::rearmVertex(
 }
 
 template<class Step>
-IndexIterator& RefactoredSingleServerEdgeCursor<Step>::LookupInfo::cursor() {
+IndexIterator& SingleServerEdgeCursor<Step>::LookupInfo::cursor() {
   // If this kicks in, you forgot to call rearm with a specific vertex
   TRI_ASSERT(_cursor != nullptr);
   return *_cursor;
 }
 
 template<class Step>
-RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
+SingleServerEdgeCursor<Step>::SingleServerEdgeCursor(
     ResourceMonitor& monitor, transaction::Methods* trx,
     arangodb::aql::Variable const* tmpVar,
     std::vector<IndexAccessor>& globalIndexConditions,
@@ -248,9 +246,8 @@ RefactoredSingleServerEdgeCursor<Step>::RefactoredSingleServerEdgeCursor(
 }
 
 template<class Step>
-void RefactoredSingleServerEdgeCursor<
-    Step>::LookupInfo::calculateIndexExpressions(Ast* ast,
-                                                 ExpressionContext& ctx) {
+void SingleServerEdgeCursor<Step>::LookupInfo::calculateIndexExpressions(
+    Ast* ast, ExpressionContext& ctx) {
   if (!_accessor->hasNonConstParts()) {
     return;
   }
@@ -288,20 +285,18 @@ void RefactoredSingleServerEdgeCursor<
 }
 
 template<class Step>
-RefactoredSingleServerEdgeCursor<Step>::~RefactoredSingleServerEdgeCursor() =
-    default;
+SingleServerEdgeCursor<Step>::~SingleServerEdgeCursor() = default;
 
 template<class Step>
-void RefactoredSingleServerEdgeCursor<Step>::rearm(VertexType vertex,
-                                                   uint64_t depth,
-                                                   aql::TraversalStats& stats) {
+void SingleServerEdgeCursor<Step>::rearm(VertexType vertex, uint64_t depth,
+                                         aql::TraversalStats& stats) {
   for (auto& info : getLookupInfos(depth)) {
     info.rearmVertex(vertex, _monitor, _trx, _tmpVar, stats, _useCache);
   }
 }
 
 template<class Step>
-void RefactoredSingleServerEdgeCursor<Step>::readNext(
+void SingleServerEdgeCursor<Step>::readNext(
     uint64_t batchSize, SingleServerProvider<Step>& provider,
     aql::TraversalStats& stats, size_t depth, Callback const& callback) {
   TRI_ASSERT(!getLookupInfos(depth).empty());
@@ -412,7 +407,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readNext(
 }
 
 template<class Step>
-bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(
+bool SingleServerEdgeCursor<Step>::evaluateEdgeExpression(
     arangodb::aql::Expression* expression, VPackSlice value) {
   if (expression == nullptr) {
     return true;
@@ -435,7 +430,7 @@ bool RefactoredSingleServerEdgeCursor<Step>::evaluateEdgeExpression(
 }
 
 template<class Step>
-auto RefactoredSingleServerEdgeCursor<Step>::getLookupInfos(uint64_t depth)
+auto SingleServerEdgeCursor<Step>::getLookupInfos(uint64_t depth)
     -> std::vector<LookupInfo>& {
   auto const& depthInfo = _depthLookupInfo.find(depth);
   if (depthInfo == _depthLookupInfo.end()) {
@@ -445,8 +440,7 @@ auto RefactoredSingleServerEdgeCursor<Step>::getLookupInfos(uint64_t depth)
 }
 
 template<class Step>
-void RefactoredSingleServerEdgeCursor<Step>::prepareIndexExpressions(
-    aql::Ast* ast) {
+void SingleServerEdgeCursor<Step>::prepareIndexExpressions(aql::Ast* ast) {
   for (auto& it : _lookupInfo) {
     it.calculateIndexExpressions(ast, _expressionCtx);
   }
@@ -459,7 +453,7 @@ void RefactoredSingleServerEdgeCursor<Step>::prepareIndexExpressions(
 }
 
 template<typename Step>
-auto RefactoredSingleServerEdgeCursor<Step>::hasMore(uint64_t depth) -> bool {
+auto SingleServerEdgeCursor<Step>::hasMore(uint64_t depth) -> bool {
   for (auto& lookupInfo : getLookupInfos(depth)) {
     if (lookupInfo.cursor().hasMore()) {
       return true;
@@ -469,15 +463,15 @@ auto RefactoredSingleServerEdgeCursor<Step>::hasMore(uint64_t depth) -> bool {
 }
 
 template<class StepType>
-bool RefactoredSingleServerEdgeCursor<StepType>::hasDepthSpecificLookup(
+bool SingleServerEdgeCursor<StepType>::hasDepthSpecificLookup(
     uint64_t depth) const noexcept {
   return _depthLookupInfo.find(depth) != _depthLookupInfo.end();
 }
 
-template class arangodb::graph::RefactoredSingleServerEdgeCursor<
+template class arangodb::graph::SingleServerEdgeCursor<
     SingleServerProviderStep>;
 
 #ifdef USE_ENTERPRISE
-template class arangodb::graph::RefactoredSingleServerEdgeCursor<
+template class arangodb::graph::SingleServerEdgeCursor<
     enterprise::SmartGraphStep>;
 #endif
