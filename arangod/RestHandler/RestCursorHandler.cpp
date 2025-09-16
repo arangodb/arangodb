@@ -301,10 +301,7 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
   auto const viewsSlice = velocypack::Slice::noneSlice();
   query->prepareFromVelocyPackWithoutInstantiate(
       querySlice, collections, viewsSlice, variables, snippets);
-  [&]() -> futures::Future<futures::Unit> {
-    co_return co_await query->instantiatePlan(snippets);
-  }()
-               .waitAndGet();
+  co_await query->instantiatePlan(snippets);
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
