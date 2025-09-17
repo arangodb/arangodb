@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual */
+/*global print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -113,33 +113,9 @@ function createVectorGenerator(options) {
     const gen = randomGenerator(seed);
 
     function findProximity(targetDistance) {
-        let low = 0;
-        let high = distancesFromRandomPoint.length - 1;
-
-        // Binary search to find a starting point for linear scan
-        let startIndex = 0; // Default to start of array
-        while (low <= high) {
-            const mid = Math.floor((low + high) / 2);
-            if (distancesFromRandomPoint[mid] < targetDistance) {
-                low = mid + 1;
-            } else {
-                startIndex = mid;
-                high = mid - 1;
-            }
-        }
-
-        for (let k = startIndex; k < distancesFromRandomPoint.length; k++) {
-            const existingDistance = distancesFromRandomPoint[k];
-            // If the current existingDistance is already too far, we can stop early
-            if (existingDistance > targetDistance + floatEpsilon) {
-                break;
-            }
-            // Check if it's within the epsilon range
-            if (Math.abs(existingDistance - targetDistance) < floatEpsilon) {
-                return true; // Found a close distance
-            }
-        }
-        return false; // No close distance found
+        return distancesFromRandomPoint.some(existingDistance => 
+            Math.abs(existingDistance - targetDistance) <= floatEpsilon
+        );
     }
 
     function insertSorted(value) {
@@ -182,6 +158,9 @@ function createVectorGenerator(options) {
                 // Set the randomPoint (reference point for distance calculations)
                 if (i === 0) {
                     randomPoint = vector;
+                    // Add the distance from the random point to itself as a baseline
+                    const selfDistance = distanceFunction(vector, randomPoint);
+                    insertSorted(selfDistance);
                     vectors.push(vector);
                     docs.push({
                         vector: vector,
@@ -213,7 +192,7 @@ function createVectorGenerator(options) {
             }
 
             if (attempts === maxAttemptsPerDoc) {
-                console.warn(`Warning: Could not generate a sufficiently unique vector for index ${i} after ${maxAttemptsPerDoc} attempts. Skipping this vector.`);
+                print(`Warning: Could not generate a sufficiently unique vector in iteration ${i} after ${maxAttemptsPerDoc} attempts. Skipping this vector.`);
                 // Don't add the vector to the result arrays since it doesn't meet distance requirements
                 // Add the distance of the failed vector to prevent future vectors from being too close
                 const currentDistance = distanceFunction(vector, randomPoint);
@@ -222,8 +201,8 @@ function createVectorGenerator(options) {
             }
         }
 
-        if (successfulGenerations < numberOfDocs) {
-            console.warn(`Warning: Only generated ${successfulGenerations} vectors with sufficient distance separation out of ${numberOfDocs} requested. Consider adjusting parameters.`);
+        if (successfulGenerations !== numberOfDocs) {
+            print(`Warning: Only generated ${successfulGenerations} vectors with sufficient distance separation out of ${numberOfDocs} requested. Consider adjusting parameters.`);
         }
 
         return {
@@ -232,8 +211,7 @@ function createVectorGenerator(options) {
             randomPoint: randomPoint,
             seed: seed,
             dimension: dimension,
-            numberOfDocs: vectors.length, // Return actual count of vectors in the arrays
-            successfulGenerations: successfulGenerations, // Add this field for reference
+            numberOfDocs: vectors.length,
             floatEpsilon: floatEpsilon
         };
     }

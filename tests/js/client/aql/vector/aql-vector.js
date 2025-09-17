@@ -60,7 +60,8 @@ function VectorIndexL2TestSuite() {
     const dimension = 500;
     const numberOfDocs = 500;
     const seed = randomInteger();
-    const floatEpsilon = 0.001; // Larger epsilon for L2 distance
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
 
     // Create vector generator with L2 distance function
     const vectorGenerator = createVectorGenerator({
@@ -706,7 +707,9 @@ function VectorIndexInnerProductTestSuite() {
     const dimension = 500;
     const numberOfDocs = 1000;
     const seed = randomInteger();
-    const floatEpsilon = 0.1; // Large epsilon for dot product
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
 
     // Create vector generator with dot product function
     const vectorGenerator = createVectorGenerator({
