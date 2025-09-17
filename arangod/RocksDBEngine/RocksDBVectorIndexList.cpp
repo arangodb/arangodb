@@ -191,60 +191,28 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
 
 // This should be only called when we have filterExpression
 void RocksDBInvertedListsFilteringIterator::setToValidIterator() {
-  LOG_ADDITIONAL << ADB_HERE;
   TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
 
   while (_filteredIdsIt == _filteredIds.end()) {
-    LOG_ADDITIONAL << ADB_HERE << "The iteration ended looking for more docs";
     if (!searchFilteredIds()) {
-      // If we enter here we could not produce any documents ids so we just
-      // invalidate the current _it
-      LOG_ADDITIONAL << ADB_HERE << " _it: "
-                     << LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()))
-                     << " and _batchId: "
-                     << LocalDocumentId(
-                            RocksDBKey::indexDocumentId(_batchIt->key()));
+      // If we enter here we could not produce any documents
       return;
     }
   }
 }
 
 void RocksDBInvertedListsFilteringIterator::next() {
-  if (_searchParametersContext.filterExpression) {
-    if (_filteredIdsIt != _filteredIds.end()) {
-      LOG_ADDITIONAL << ADB_HERE << " Current iterator is " << *_filteredIdsIt;
-    } else {
-      LOG_ADDITIONAL << ADB_HERE << " Current iterator has ended";
-    }
+  setToValidIterator();
+  ++_filteredIdsIt;
+  if (_filteredIdsIt == _filteredIds.end()) {
     setToValidIterator();
-    ++_filteredIdsIt;
-    if (_filteredIdsIt != _filteredIds.end()) {
-      LOG_ADDITIONAL << ADB_HERE << " Next iterator is " << *_filteredIdsIt;
-    } else {
-      setToValidIterator();
-      LOG_ADDITIONAL << ADB_HERE << " Next iterator has ended";
-    }
-  } else {
-    LOG_ADDITIONAL << ADB_HERE << " Cannot enter here";
-    _it->Next();
   }
 }
 
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsFilteringIterator::get_id_and_codes() {
-  LOG_ADDITIONAL << ADB_HERE << " ids size: " << _filteredIds.size()
-                 << " _filteredIds: " << _filteredIds;
-  if (_searchParametersContext.filterExpression != nullptr) {
-    LOG_ADDITIONAL << ADB_HERE << " id: " << _filteredIdsIt->first.id()
-                   << " value size: " << _filteredIdsIt->second.size();
-    return {static_cast<faiss::idx_t>(_filteredIdsIt->first.id()),
-            _filteredIdsIt->second.data()};
-  }
-  auto const docId = RocksDBKey::indexDocumentId(_it->key());
-  TRI_ASSERT(_codeSize == _it->value().size());
-  auto const* value = reinterpret_cast<uint8_t const*>(_it->value().data());
-  LOG_ADDITIONAL << ADB_HERE << " id: " << docId.id();
-  return {static_cast<faiss::idx_t>(docId.id()), value};
+  return {static_cast<faiss::idx_t>(_filteredIdsIt->first.id()),
+          _filteredIdsIt->second.data()};
 }
 
 RocksDBInvertedLists::RocksDBInvertedLists(RocksDBVectorIndex* index,
