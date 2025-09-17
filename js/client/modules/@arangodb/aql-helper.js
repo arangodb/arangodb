@@ -84,7 +84,7 @@ function executeJson (plan, options = {}) {
     'options': options
   });
   arangosh.checkRequestResult(reply);
-  // bring the format to the ye olde relpy format of executeJson:
+  // bring the format to the ye olde reply format of executeJson (AQL_EXECUTEJSON):
   let ret = {
     "json": reply.result,
     "stats": reply.extra.stats,
