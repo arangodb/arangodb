@@ -104,25 +104,13 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIterator::is_available() const {
-  if (_searchParametersContext.filterExpression) {
-    LOG_ADDITIONAL << ADB_HERE << " Is iterator ended: "
-                   << (_filteredIdsIt == _filteredIds.end())
-                   << " is batchIt valid: " << (_batchIt->Valid());
-
-    auto res = _filteredIdsIt != _filteredIds.end() ||
-               (_batchIt->Valid() &&
-                _batchIt->key().starts_with(_rocksdbKey.string()));
-    LOG_ADDITIONAL << ADB_HERE << " returning: " << std::boolalpha << res;
-    return _filteredIdsIt != _filteredIds.end() ||
-           (_batchIt->Valid() &&
-            _batchIt->key().starts_with(_rocksdbKey.string()));
-  }
-  return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
+  return _filteredIdsIt != _filteredIds.end() ||
+         (_batchIt->Valid() &&
+          _batchIt->key().starts_with(_rocksdbKey.string()));
 }
 
 bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
-  LOG_ADDITIONAL << ADB_HERE;
-  //  Get documents ids from the vector index
+  // Get documents ids from the vector index
   std::vector<LocalDocumentId> ids;
   std::unordered_map<LocalDocumentId, std::vector<uint8_t>> idsToValue;
   constexpr auto batchSize = 1000;
@@ -138,8 +126,6 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
     std::vector<uint8_t> value(
         _batchIt->value().data(),
         _batchIt->value().data() + _batchIt->value().size());
-    LOG_ADDITIONAL << ADB_HERE << " id: " << id
-                   << " value size: " << value.size();
     idsToValue.emplace(id, std::move(value));
   }
   if (ids.empty()) {
@@ -176,14 +162,12 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
         aql::AqlValueGuard guard(a, mustDestroy);
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
-          LOG_ADDITIONAL << "Adding " << id << " doc: " << doc.toJson();
           _filteredIds.emplace_back(id, std::move(idsToValue[id]));
         }
 
         return true;
       },
       {.countBytes = true});
-  LOG_ADDITIONAL << "FILTEREDIDS: " << _filteredIds << " Restarting iterator";
   _filteredIdsIt = _filteredIds.begin();
 
   return true;
