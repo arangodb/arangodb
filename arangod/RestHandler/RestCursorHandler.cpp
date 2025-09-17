@@ -501,8 +501,7 @@ ResultT<std::pair<std::string, bool>> RestCursorHandler::forwardingTarget() {
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (suffixes.empty() ||
-      ((suffixes.size() == 1) && (suffixes[0] == "json"))) {
+  if (suffixes.empty() || ((suffixes.size() == 1) && (suffixes[0] == "json"))) {
     return {std::make_pair(StaticStrings::Empty, false)};
   }
 
