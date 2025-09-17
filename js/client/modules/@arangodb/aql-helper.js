@@ -313,7 +313,6 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
 
   const paramNone = { optimizer: { rules: [ '-all' ]},
                       verbosePlans: true,
-                      batchSize: 0,
                       batchSize: "none"
                     };
   const paramAllPlans = { allPlans: true, verbosePlans: true };
