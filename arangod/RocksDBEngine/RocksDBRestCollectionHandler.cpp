@@ -60,6 +60,32 @@ futures::Future<Result> RocksDBRestCollectionHandler::handleExtraCommandPut(
     }
     co_return res;
   }
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  else if (suffix == "CollectionRevisionTreeCorrupt") {
+    if (!ExecContext::current().canUseCollection(coll->name(),
+                                                 auth::Level::RW)) {
+      co_return Result(TRI_ERROR_FORBIDDEN);
+    }
+    bool parseSuccess = false;
+    VPackSlice postBody = this->parseVPackBody(parseSuccess);
+    if (!parseSuccess || !postBody.isObject() ||
+        !postBody.hasKey("count") ||
+        !postBody.hasKey("hash")
+      ) {
+      // error message generated in parseVPackBody
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "count/hash params missing.");
+      co_return  Result(TRI_ERROR_BAD_PARAMETER);
+    }
 
+    auto count = postBody.get("count").getInt();
+    auto hash =  postBody.get("hash").getInt();
+
+    auto* physical = toRocksDBCollection(*coll);
+    physical->corruptRevisionTree(count, hash);
+    generateResult(rest::ResponseCode::OK, VPackSlice());
+    co_return TRI_ERROR_NO_ERROR;
+  }
+#endif
   co_return TRI_ERROR_NOT_IMPLEMENTED;
 }
