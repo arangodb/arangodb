@@ -136,10 +136,6 @@ class ResourceUsageScope {
 
   std::uint64_t current() const noexcept { return _resourceMonitor.current(); }
 
-  arangodb::ResourceMonitor& resourceMonitor() const noexcept {
-    return _resourceMonitor;
-  }
-
  private:
   ResourceMonitor& _resourceMonitor;
   std::uint64_t _value;
