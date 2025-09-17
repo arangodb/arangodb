@@ -248,6 +248,12 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
     velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
+  if (ServerState::instance()->isDBServer()||
+      ServerState::instance()->isAgent()){
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
+                  "not supported on db-servers or agents");
+    co_return;
+  }
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
     co_return;
@@ -274,9 +280,6 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
   opts = _options->slice();
 
   bool stream = VelocyPackHelper::getBooleanValue(opts, "stream", false);
-  if (ServerState::instance()->isDBServer()) {
-    stream = false;
-  }
   size_t batchSize =
       VelocyPackHelper::getNumericValue<size_t>(opts, "batchSize", 1000);
   double ttl = VelocyPackHelper::getNumericValue<double>(
@@ -295,7 +298,6 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
 
-  TRI_ASSERT(!ServerState::instance()->isDBServer());
   auto const snippets = queryBuilder.slice().get("nodes");
   auto const querySlice = velocypack::Slice::emptyObjectSlice();
   auto const viewsSlice = velocypack::Slice::noneSlice();
@@ -304,7 +306,6 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
   co_await query->instantiatePlan(snippets);
 
   if (stream) {
-    TRI_ASSERT(!ServerState::instance()->isDBServer());
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
@@ -325,17 +326,15 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
 
   // non-stream case. Execute query, then build a cursor
   // with the entire result set.
-  if (!ServerState::instance()->isDBServer()) {
-    auto ss = query->sharedState();
-    TRI_ASSERT(ss != nullptr);
-    if (ss == nullptr) {
-      generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
-      co_return;
-    }
-
-    ss->setWakeupHandler(withLogContext(
-        [self = shared_from_this()] { return self->wakeupHandler(); }));
+  auto ss = query->sharedState();
+  TRI_ASSERT(ss != nullptr);
+  if (ss == nullptr) {
+    generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
+    co_return;
   }
+
+  ss->setWakeupHandler(withLogContext(
+      [self = shared_from_this()] { return self->wakeupHandler(); }));
 
   registerQuery(std::move(query));
 
