@@ -328,7 +328,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     require('internal').print(require('js-yaml').safeDump(plan));
   };
 
-  const paramNone = { optimizer: { rules: [ '-all' ]}, verbosePlans: true};
+  const paramNone = { optimizer: { rules: [ '-all' ]},  verbosePlans: true};
   const paramAllPlans = { allPlans: true, verbosePlans: true };
   
   let resetTest = false;
