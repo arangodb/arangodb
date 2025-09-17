@@ -1,6 +1,5 @@
 /* jshint strict: false */
-/* global assertTrue, assertFalse, assertEqual, fail, arango
-  AQL_EXECUTEJSON */
+/* global assertTrue, assertFalse, assertEqual, fail, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -77,7 +76,7 @@ function normalizeRow (row, recursive) {
 function executeQuery(query, bindVars = null, options = {}) {
   let stmt = db._createStatement({query, bindVars, count: true});
   return stmt.execute();
-};
+}
 
 function executeJson (plan, options = {}) {
   let reply = arango.POST("/_api/cursor/json", {
@@ -86,12 +85,30 @@ function executeJson (plan, options = {}) {
   });
   arangosh.checkRequestResult(reply);
   // bring the format to the ye olde relpy format of executeJson:
-  return {
+  let ret = {
     "json": reply.result,
     "stats": reply.extra.stats,
     "warnings": reply.extra.warnings,
     "cached": reply.cached
   };
+  const cursorId = reply.id;
+  while (reply.hasMore) {
+    reply = arango.POST(`/_api/cursor/${cursorId}"`, {});
+    arangosh.checkRequestResult(reply);
+    ret.json.push(...reply.result);
+    for (const [key, value] of Object.entries(reply.extra.stats)) {
+      if (ret.stats.hasOwnProperty(key)) {
+        ret.stats[key] += value;
+      } else {
+        ret.stats[key] = value;
+      }
+    }
+    if (reply.extra.warnings.length !== 0) {
+      ret.warnings.push(...reply.extra.warnings);
+    }
+    ret.cached &= reply.cached;
+  }
+  return ret;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
