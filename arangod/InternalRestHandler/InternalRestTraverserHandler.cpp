@@ -122,9 +122,8 @@ ResultT<EdgeQuery> parseQuery(VPackSlice body) {
   // batch size
   auto maybeBatchSize = body.get("batchSize");
   if (maybeBatchSize.isNone()) {
-  return EdgeQuery{StartEdgeQuery{.vertexKeys = vertices,
-                                  .depth = depth,
-                                  .variables = variables}};
+    return EdgeQuery{StartEdgeQuery{
+        .vertexKeys = vertices, .depth = depth, .variables = variables}};
   }
   if (not maybeBatchSize.isInteger()) {
     return ResultT<EdgeQuery>::error(
@@ -307,7 +306,7 @@ void InternalRestTraverserHandler::queryEngine() {
           auto q = std::get<StartEdgeQuery>(startQuery);
           if (q.batchSize.has_value()) {
             eng->rearm(q.depth, q.batchSize.value(), std::move(q.vertexKeys),
-                                q.variables);
+                       q.variables);
           } else {
             // old behaviour
             eng->injectVariables(q.variables);
