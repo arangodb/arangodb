@@ -88,19 +88,12 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
   RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
       searchParametersContext.trx, collection->id());
 
-  _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
+  _batchIt = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
     TRI_ASSERT(opts.prefix_same_as_start);
   });
-  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
-  _it->Seek(_rocksdbKey.string());
-
-  if (_searchParametersContext.filterExpression) {
-    _batchIt = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
-      TRI_ASSERT(opts.prefix_same_as_start);
-    });
-    _batchIt->Seek(_rocksdbKey.string());
-    setToValidIterator();
-  }
+  _batchIt->Seek(_rocksdbKey.string());
+  setToValidIterator();
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIterator::is_available() const {
@@ -113,11 +106,10 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
   // Get documents ids from the vector index
   std::vector<LocalDocumentId> ids;
   std::unordered_map<LocalDocumentId, std::vector<uint8_t>> idsToValue;
-  constexpr auto batchSize = 1000;
-  idsToValue.reserve(batchSize);
-  ids.reserve(batchSize);
+  idsToValue.reserve(kBatchSize);
+  ids.reserve(kBatchSize);
 
-  for (size_t i{0}; i < batchSize && _batchIt->Valid() &&
+  for (size_t i{0}; i < kBatchSize && _batchIt->Valid() &&
                     _batchIt->key().starts_with(_rocksdbKey.string());
        ++i, _batchIt->Next()) {
     auto const id =
@@ -156,7 +148,7 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
             *_searchParametersContext.inputRow,
             _searchParametersContext.documentVariable);
         ctx.setCurrentDocument(doc);
-        bool mustDestroy;  // will get filled by execution
+        bool mustDestroy{false};  // will get filled by execution
         aql::AqlValue a = _searchParametersContext.filterExpression->execute(
             &ctx, mustDestroy);
         aql::AqlValueGuard guard(a, mustDestroy);
@@ -173,7 +165,6 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
   return true;
 }
 
-// This should be only called when we have filterExpression
 void RocksDBInvertedListsFilteringIterator::setToValidIterator() {
   TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
 

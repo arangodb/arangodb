@@ -109,6 +109,8 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
  private:
   void setToValidIterator();
 
+  constexpr static auto kBatchSize{1000};
+
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
   LogicalCollection* _collection{nullptr};
@@ -116,7 +118,6 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   std::unique_ptr<rocksdb::Iterator> _batchIt;
-  std::unique_ptr<rocksdb::Iterator> _it;
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
       _filteredIdsIt{_filteredIds.end()};
