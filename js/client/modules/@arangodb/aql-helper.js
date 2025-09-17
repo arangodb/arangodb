@@ -378,6 +378,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
         require('internal').print('\n' + i + ' FLUSH DONE\n');
       }
     }
+
     results[i] = executeJson(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
     results[i].stats = sanitizeStats(results[i].stats);
