@@ -26,6 +26,7 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
+const arangosh = require('@arangodb/arangosh');
 const isEqual = require("@arangodb/test-helper-common").isEqual;
 const db = require("@arangodb").db;
 
@@ -83,6 +84,7 @@ function executeJson (plan, options = {}) {
     'executionPlan': plan,
     'options': options
   });
+  arangosh.checkRequestResult(reply);
   // bring the format to the ye olde relpy format of executeJson:
   return {
     "json": reply.result,
@@ -309,7 +311,11 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     require('internal').print(require('js-yaml').safeDump(plan));
   };
 
-  const paramNone = { optimizer: { rules: [ '-all' ]},  verbosePlans: true};
+  const paramNone = { optimizer: { rules: [ '-all' ]},
+                      verbosePlans: true,
+                      batchSize: 0,
+                      batchSize: "none"
+                    };
   const paramAllPlans = { allPlans: true, verbosePlans: true };
   
   let resetTest = false;
@@ -359,7 +365,6 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
         require('internal').print('\n' + i + ' FLUSH DONE\n');
       }
     }
-
     results[i] = executeJson(plans[i].plan, paramNone);
     // ignore these statistics for comparisons
     results[i].stats = sanitizeStats(results[i].stats);
