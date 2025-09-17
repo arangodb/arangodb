@@ -1,5 +1,4 @@
-/*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual */
+/* jshint strict:true */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,13 +24,11 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-const internal = require('internal');
-const db = internal.db;
+const {assertEqual, assertNotEqual} = jsunity.jsUnity.assertions;
 const helper = require("@arangodb/aql-helper");
-const errors = internal.errors;
 const assertQueryError = helper.assertQueryError;
 let IM = global.instanceManager;
-const {aql} = require('@arangodb');
+const {aql, db, errors} = require('@arangodb');
 
 function AsyncPrefetchFailure () {
   const ruleName = "async-prefetch";
@@ -53,9 +50,15 @@ function AsyncPrefetchFailure () {
       db._drop(cn);
     },
 
-    // This failure was observed when the exectution block were not destroyed in topological order
-    // and the async task had outlived its execution block
-    testAsyncPrefetchFailure : function () {
+    tearDown : function () {
+      IM.debugClearFailAt();
+    },
+
+    // This failure was observed when the execution blocks were not destroyed in
+    // topological order, and the async task had outlived its execution block.
+    // Regression test for https://arangodb.atlassian.net/browse/BTS-2119
+    // (https://github.com/arangodb/arangodb/pull/21709).
+    testAsyncPrefetchRegressionBts2119 : function () {
       IM.debugSetFailAt("AsyncPrefetch::blocksDestroyedOutOfOrder");
       // This query is forced to have async prefetch optimization
       const query = aql`FOR d IN ${col} FILTER d.val > 0 LET x = FAIL('failed') RETURN d`;
@@ -64,23 +67,69 @@ function AsyncPrefetchFailure () {
 
       const result = db._createStatement(query).explain();
 
-      const actualNodes = result.plan.nodes.map((n) => [n.type, n.isAsyncPrefetchEnabled === true ? true : false]);
+      const actualNodes = result.plan.nodes.map((n) => [n.type, n.isAsyncPrefetchEnabled === true]);
       assertEqual(expectedNodes, actualNodes, query);
-      
-      let expectPrefetchRule = expectedNodes.filter((n) => n[1]).length > 0;
-      if (expectPrefetchRule) {
-        assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
-      } else {
-        assertEqual(-1, result.plan.rules.indexOf(ruleName));
-      }
+
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
+
       assertQueryError(
           errors.ERROR_QUERY_FAIL_CALLED.code,
           query,
           query.bindParams,
           query.options
       );
+    },
 
-      IM.debugRemoveFailAt("AsyncPrefetch::blocksDestroyedOutOfOrder");
+    // Regression test for https://arangodb.atlassian.net/browse/BTS-2211.
+    // There was a race after the prefetch task has written its result, but
+    // before the shared_ptr to the task is destructed. If the Query is
+    // destructed during that time window, and with it the AqlItemBlockManager,
+    // the prefetch task could hold a SharedAqlItemBlockPtr in its result, that
+    // would then be released to the already-destroyed AqlItemBlockManager.
+    // In maintainer mode, the AqlItemBlockManager's destructor asserts that
+    // no AqlItemBlocks are still leased: This test would run into that
+    // assertion.
+    testAsyncPrefetchRegressionBts2211 : function () {
+      // After a prefetch task has written its result, wait a little before
+      // destructing the shared_ptr to the task. It's now likely to be
+      // destructed after the Query. The AqlItemBlockManager's destructor
+      // asserts that no AqlItemBlocks are still in use, particularly for a
+      // result in the prefetch task.
+      IM.debugSetFailAt("AsyncPrefetch::delayDestructor");
+      const query = aql`
+        FOR d IN ${col}
+          FILTER NOOPT(d.val >= 0)
+          LET x = FAIL('failed')
+          RETURN d.val
+      `;
+      query.options = {};
+      const expectedNodes = [
+        ["SingletonNode", false],
+        ["EnumerateCollectionNode", true],
+        ["CalculationNode", false],
+        ["FilterNode", true],
+        ["CalculationNode", false],
+        ["ReturnNode", false],
+      ];
+
+      const result = db._createStatement(query).explain();
+
+      const actualNodes = result.plan.nodes.map((n) =>
+        [ n.type,
+          n.isAsyncPrefetchEnabled === true,
+        ]);
+      assertEqual(expectedNodes, actualNodes, query);
+
+      assertNotEqual(-1, result.plan.rules.indexOf(ruleName));
+
+      for (let i = 0; i < 10000; ++i) {
+        assertQueryError(
+          errors.ERROR_QUERY_FAIL_CALLED.code,
+          query,
+          query.bindParams,
+          query.options
+        );
+      }
     },
   };
 }

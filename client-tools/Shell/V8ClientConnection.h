@@ -215,6 +215,7 @@ class V8ClientConnection {
   fuerte::ConnectionBuilder _connectedBuilder;
   std::string _currentConnectionId;
   std::shared_ptr<fuerte::Connection> _connection;
+  bool _foundConnectionClose;
   velocypack::Options _vpackOptions;
   bool _forceJson;
   std::atomic<bool> _setCustomError;

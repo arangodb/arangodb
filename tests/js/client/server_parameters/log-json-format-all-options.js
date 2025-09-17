@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertMatch, assertEqual */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertMatch, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,12 +24,9 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.prefix': 'PREFIX',
     'log.thread': 'true',
@@ -44,7 +41,10 @@ if (getOptions === true) {
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function LoggerSuite() {
   'use strict';
@@ -52,82 +52,78 @@ function LoggerSuite() {
   return {
 
     testLogEntries: function() {
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-        require('console').log("testmann: start"); 
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
+        logServer("testmann: start"); 
         for (let i = 0; i < 50; ++i) {
-          require('console').log("testmann: testi" + i);
+          logServer("testmann: testi" + i);
         }
-        require('console').log("testmann: done"); 
-        return require('internal').options()["log.output"];
-    `);
+        logServer("testmann: done", "error");
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'ascii');
+          let lines = content.split('\n');
 
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
 
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
+          if (filtered.length === 52) {
+            break;
+          }
 
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === 52) {
-          break;
+          require("internal").sleep(0.5);
         }
+        assertEqual(52, filtered.length);
 
-        require("internal").sleep(0.5);
-      }
-      assertEqual(52, filtered.length);
+        assertMatch(/testmann: start/, filtered[0]);
+        for (let i = 1; i < 51; ++i) {
+          assertMatch(/testmann: testi\d+/, filtered[i]);
+          let parsedRes = JSON.parse(filtered[i]);
+          assertTrue(parsedRes.hasOwnProperty("prefix"), parsedRes);
+          assertEqual(parsedRes.prefix, "PREFIX");
+          assertTrue(parsedRes.hasOwnProperty("time"), parsedRes);
+          assertTrue(parsedRes.hasOwnProperty("pid"), parsedRes);
+          assertMatch(/\d+/, parsedRes.pid);
 
-      assertMatch(/testmann: start/, filtered[0]);
-      for (let i = 1; i < 51; ++i) {
-        assertMatch(/testmann: testi\d+/, filtered[i]);
-        let parsedRes = JSON.parse(filtered[i]);
-        assertTrue(parsedRes.hasOwnProperty("prefix"), parsedRes);
-        assertEqual(parsedRes.prefix, "PREFIX");
-        assertTrue(parsedRes.hasOwnProperty("time"), parsedRes);
-        assertTrue(parsedRes.hasOwnProperty("pid"), parsedRes);
-        assertMatch(/\d+/, parsedRes.pid);
+          assertTrue(parsedRes.hasOwnProperty("level"), parsedRes);
+          assertTrue(parsedRes.hasOwnProperty("topic"), parsedRes);
+          assertTrue(parsedRes.hasOwnProperty("id"), parsedRes);
+          assertTrue(parsedRes.hasOwnProperty("hostname"), parsedRes);
+          assertEqual(parsedRes.hostname, "HOSTNAME");
+          assertTrue(parsedRes.hasOwnProperty("role"), parsedRes);
+          assertTrue(parsedRes.hasOwnProperty("tid"), parsedRes);
+          assertMatch(/\d+/, parsedRes.tid);
+          assertTrue(parsedRes.hasOwnProperty("thread"));
+          assertTrue(parsedRes.hasOwnProperty("line"));
+          assertMatch(/\d+/, parsedRes.line);
+          assertMatch(/^[a-f0-9]{5}$/, parsedRes.id, parsedRes);
+          assertTrue(parsedRes.hasOwnProperty("message"), parsedRes);
+          assertEqual("testmann: testi" + (i - 1), parsedRes.message, parsedRes);
+        }
+        assertMatch(/testmann: done/, filtered[51]);
 
-        assertTrue(parsedRes.hasOwnProperty("level"), parsedRes);
-        assertTrue(parsedRes.hasOwnProperty("topic"), parsedRes);
-        assertTrue(parsedRes.hasOwnProperty("id"), parsedRes);
-        assertTrue(parsedRes.hasOwnProperty("hostname"), parsedRes);
-        assertEqual(parsedRes.hostname, "HOSTNAME");
-        assertTrue(parsedRes.hasOwnProperty("role"), parsedRes);
-        assertTrue(parsedRes.hasOwnProperty("tid"), parsedRes);
-        assertMatch(/\d+/, parsedRes.tid);
-        assertTrue(parsedRes.hasOwnProperty("thread"));
-        assertTrue(parsedRes.hasOwnProperty("line"));
-        assertMatch(/\d+/, parsedRes.line);
-        assertMatch(/^[a-f0-9]{5}$/, parsedRes.id, parsedRes);
-        assertTrue(parsedRes.hasOwnProperty("message"), parsedRes);
-        assertEqual("testmann: testi" + (i - 1), parsedRes.message, parsedRes);
-      }
-      assertMatch(/testmann: done/, filtered[51]);
+        let res = arango.GET("/_admin/log");
+        assertTrue(res.hasOwnProperty("totalAmount"));
+        assertTrue(res.hasOwnProperty("lid"));
+        assertTrue(res.hasOwnProperty("topic"));
+        assertTrue(res.hasOwnProperty("level"));
+        assertTrue(res.hasOwnProperty("timestamp"));
+        assertTrue(res.hasOwnProperty("text"));
 
-      res = arango.GET("/_admin/log?returnBodyAsJSON=true");
-      assertTrue(res.hasOwnProperty("totalAmount"));
-      assertTrue(res.hasOwnProperty("lid"));
-      assertTrue(res.hasOwnProperty("topic"));
-      assertTrue(res.hasOwnProperty("level"));
-      assertTrue(res.hasOwnProperty("timestamp"));
-      assertTrue(res.hasOwnProperty("text"));
-
-      for (let i = 0; i < res.totalAmount; ++i) {
-        assertMatch(/^\d+$/, res.lid[i]);
-        assertMatch(/^[A-Za-z]{1,}$/, res.topic[i]);
-        assertMatch(/^\d+$/, res.level[i]);
-        assertMatch(/^\d+$/, res.timestamp[i]);
-      }
+        for (let i = 0; i < res.totalAmount; ++i) {
+          assertMatch(/^\d+$/, res.lid[i]);
+          assertMatch(/^[A-Za-z]{1,}$/, res.topic[i]);
+          assertMatch(/^\d+$/, res.level[i]);
+          assertMatch(/^\d+$/, res.timestamp[i]);
+        }
+      });
+      IM.reconnectMe();
     },
-
   };
 }
 

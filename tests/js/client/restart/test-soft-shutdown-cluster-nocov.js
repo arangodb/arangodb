@@ -333,7 +333,19 @@ function testSuite() {
       assertTrue(status.softShutdownOngoing);
       assertEqual(0, status.pendingJobs, `expect status.pendingJobs = ${status.pendingJobs} == 0`);
       assertEqual(0, status.doneJobs, `expect status.doneJobs = ${status.doneJobs} == 0`);
-      assertTrue(status.allClear);
+      // [tobias] I saw a spurious failure here (status.allClear) once,
+      // which I couldn't reproduce.  I added the status output for more
+      // information if it happens again.
+      // I suspect that waiting on the low prio requests alone is not enough,
+      // because "allClear" also depends on the number of cursors/aql queries
+      // and transaction being zero.  However, a low prio task is removed right
+      // before the HTTP server sends a response, and that happens before the
+      // RestHandler is destroyed.
+      // I haven't looked up all the details, but I suspect that there's a race
+      // here, where `AQLcursors` is still non-zero for a short time after the
+      // low prio requests already reached zero.
+      // This is tracked in https://arangodb.atlassian.net/browse/BTS-2227.
+      assertTrue(status.allClear, "status: " + JSON.stringify(status));
     },
 
   };

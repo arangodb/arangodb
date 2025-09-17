@@ -68,6 +68,8 @@ class V8Executor;
 template<typename>
 struct async;
 
+struct SuspensionCounter;
+
 namespace transaction {
 class Context;
 class Methods;
@@ -197,7 +199,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   async<void> prepareQuery();
 
   /// @brief execute an AQL query
-  ExecutionState execute(QueryResult& res);
+  futures::Future<futures::Unit> execute(QueryResult& res,
+                                         SuspensionCounter* suspensionCounter);
 
   /// @brief execute an AQL query and block this thread in case we
   ///        need to wait.
@@ -404,7 +407,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::function<void(velocypack::Builder&)> buildSerializeQueryDataCallback(
       CollectionSerializationFlags flags) const;
 
-  enum class ExecutionPhase { INITIALIZE, PREPARE, EXECUTE, FINALIZE };
+  enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
   friend auto toString(ExecutionPhase) -> std::string_view;
 
  protected:
@@ -544,10 +547,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   bool _isCached{false};
 
   std::atomic<bool> _isExecuting{false};
-
-  // This holds a possible exception of prepareQuery, so it can be re-thrown at
-  // the right moment.
-  futures::Try<futures::Unit> _prepareResult;
 };
 
 }  // namespace aql
