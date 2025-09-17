@@ -11,7 +11,9 @@ class SupervisedBuffer : public Buffer<uint8_t> {
   SupervisedBuffer() = delete;
 
   explicit SupervisedBuffer(arangodb::ResourceMonitor& monitor)
-      : _usageScope(std::make_unique<ResourceUsageScope>(monitor, 0)) {}
+      : _usageScope(std::make_unique<ResourceUsageScope>(monitor, 0)) {
+    _usageScope->increase(this->capacity());
+  }
 
   uint8_t* steal() noexcept override {
     uint8_t* ptr = Buffer<uint8_t>::steal();
