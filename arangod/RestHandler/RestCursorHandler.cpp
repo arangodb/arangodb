@@ -248,8 +248,8 @@ async<void> RestCursorHandler::registerQueryOrCursorJson(
     velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
-  if (ServerState::instance()->isDBServer()||
-      ServerState::instance()->isAgent()){
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isAgent()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "not supported on db-servers or agents");
     co_return;
