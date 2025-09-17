@@ -507,14 +507,10 @@ set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base librar
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  11.2 # GCC
   16.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG) 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "16.0")
-    message(WARNING "ArangoDB requires clang 16.0 or newer, building with older compiler versions is unsupported")
-  endif()
   list(APPEND BASE_LIBS atomic)
 endif()
 
