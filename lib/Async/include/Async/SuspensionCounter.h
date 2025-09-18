@@ -105,13 +105,15 @@ requires requires(F f) {
 }
 [[nodiscard]] auto waitingFunToCoro(SuspensionCounter& suspensionCounter,
                                     F&& fun) -> async<T> {
-  auto res = fun();
+  // Move the function into the coroutine frame to ensure proper lifetime
+  auto movedFun = std::move(fun);
+  auto res = movedFun();
   while (!res.has_value()) {
-    // Get the number of wakeups. We call fun() up to that many
+    // Get the number of wakeups. We call movedFun() up to that many
     // times before suspending again.
     auto n = co_await suspensionCounter.await();
     for (decltype(n) i = 0; i < n && !res.has_value(); ++i) {
-      res = fun();
+      res = movedFun();
     }
   }
   co_return std::move(res).value();

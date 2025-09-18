@@ -38,6 +38,7 @@
 #include "Network/Utils.h"
 #include "Transaction/Helpers.h"
 #include "VocBase/vocbase.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <utility>
 #include <vector>
@@ -53,8 +54,10 @@ namespace {
 constexpr size_t costPerVertexOrEdgeType =
     sizeof(arangodb::velocypack::HashedStringRef);
 
-std::string const edgeUrl = "/_internal/traverser/edge/";
-std::string const vertexUrl = "/_internal/traverser/vertex/";
+std::string const edgeUrl =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/edge/";
+std::string const vertexUrl =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/vertex/";
 
 VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
                               VertexType const& origin) {
@@ -297,7 +300,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
     // corresponding requests.
     auto res = network::sendRequestRetry(
                    pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-                   "/_internal/traverser/" +
+                   RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH +
                        arangodb::basics::StringUtils::itoa(engine.second),
                    VPackBuffer<uint8_t>(), options)
                    .waitAndGet();
@@ -338,6 +341,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   /* Needed for TRAVERSALS only - End */
 
   leased->add("keys", VPackValue(step->getVertex().getID().toString()));
+  leased->add("batchSize", VPackValue(1000));
   leased->close();
 
   auto* pool =
@@ -347,11 +351,12 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
   reqOpts.database = trx()->vocbase().name();
   reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
 
-  std::vector<Future<network::Response>> futures;
+  using EngineResponse = std::pair<aql::EngineId, Future<network::Response>>;
+  std::vector<EngineResponse> futures;
   futures.reserve(engines->size());
 
   ScopeGuard sg([&]() noexcept {
-    for (Future<network::Response>& f : futures) {
+    for (auto& [id, f] : futures) {
       try {
         // TODO: As soon as we switch to the new future library, we need to
         // replace the wait with proper *finally* method.
@@ -361,15 +366,22 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     }
   });
 
-  for (auto const& engine : *engines) {
-    futures.emplace_back(network::sendRequestRetry(
-        pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+  std::unordered_map<aql::EngineId, ServerID> engineMap;
+  for (auto const& [server, engineId] : *engines) {
+    futures.emplace_back(EngineResponse{
+        engineId, network::sendRequestRetry(
+                      pool, "server:" + server, fuerte::RestVerb::Put,
+                      ::edgeUrl + StringUtils::itoa(engineId),
+                      leased->bufferRef(), reqOpts)});
+    engineMap.emplace(engineId, server);
   }
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
-  for (Future<network::Response>& f : futures) {
+  while (not futures.empty()) {
+    auto& [engineId, f_ref] = futures.back();
+    auto f = std::move(f_ref);
+    futures.pop_back();
+
     // NOTE: If you remove this waitAndGet() in favour of an asynchronous
     // operation, remember to remove the `skipScheduler = true` option of the
     // corresponding requests.
@@ -433,6 +445,33 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
     if (!allCached) {
       _opts.getCache()->datalake().add(std::move(payload));
+    }
+
+    auto maybeDone = resSlice.get("done");
+    if (not maybeDone.isNone() && maybeDone.isBool()) {
+      auto done = maybeDone.getBool();
+      if (not done) {
+        auto maybeCursorId = resSlice.get("cursorId");
+        if (not maybeCursorId.isNone() && maybeCursorId.isInteger()) {
+          auto maybeBatchId = resSlice.get("batchId");
+          if (not maybeBatchId.isNone() && maybeBatchId.isInteger()) {
+            transaction::BuilderLeaser leasedContinue(trx());
+            leasedContinue->openObject(true);
+            leasedContinue->add("cursorId", maybeCursorId);
+            leasedContinue->add(
+                "batchId",
+                VPackValue(maybeBatchId.getNumericValue<size_t>() + 1));
+            leasedContinue->close();
+
+            futures.emplace_back(EngineResponse{
+                engineId, network::sendRequestRetry(
+                              pool, "server:" + engineMap[engineId],
+                              fuerte::RestVerb::Put,
+                              ::edgeUrl + StringUtils::itoa(engineId),
+                              leasedContinue->bufferRef(), reqOpts)});
+          }
+        }
+      }
     }
   }
   // Note: This disables the ScopeGuard

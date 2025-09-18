@@ -4,6 +4,13 @@ devel
 * Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
   instructions in query runtime.
 
+* Reverted RocksDB defaults for maximum wal size, number of sub
+  compactions and compaction read ahead to stay close to established
+  behaviour.
+
+* Fix BTS-2214: In a rare hash collision situation it can happen that a
+  valid edge in an enterprise graph fails to validate and is rejected.
+
 * Fix BTS-2216: Fix a possible use-after-free. It can occur when a query is
   killed at the end of being prepared. Only non-streaming cursors in a cluster
   are affected.

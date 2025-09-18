@@ -337,6 +337,7 @@ target_link_libraries(arangodbtests
   arango_tests_zkd
   arango_tests_actor
   arango_tests_inspection
+  arango_tests_internal_rest_handler
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -425,3 +426,4 @@ add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
 add_subdirectory(TaskMonitoring)
 add_subdirectory(SystemMonitor)
+add_subdirectory(InternalRestHandler)
