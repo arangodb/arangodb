@@ -118,9 +118,9 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
     size_t i = 0;
     _builder.openArray();
     for (auto& it : infos.getGroupRegisters()) {
-      AqlValue val = input.getValue(it.second).clone();
-      infos.resourceUsageScope().increase(val.memoryUsage());
-      this->groupValues[i] = val;
+      auto& ref =  input.getValue(it.second);
+      infos.resourceUsageScope().increase(ref.memoryUsage());
+      this->groupValues[i] = ref.clone();
       ++i;
     }
 
