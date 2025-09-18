@@ -25,7 +25,6 @@
 
 #include "Aql/DocumentExpressionContext.h"
 #include "Basics/overload.h"
-#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -37,10 +36,6 @@
 namespace arangodb {
 
 namespace vector {
-
-#define LOG_ADDITIONAL_ENABLED false
-#define LOG_ADDITIONAL_IF(cond) LOG_DEVEL_IF((LOG_ADDITIONAL_ENABLED) && (cond))
-#define LOG_ADDITIONAL LOG_ADDITIONAL_IF(true)
 
 RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
@@ -68,8 +63,8 @@ void RocksDBInvertedListsIterator::next() { _it->Next(); }
 
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator::get_id_and_codes() {
-  auto const docId = RocksDBKey::indexDocumentId(_it->key());
   TRI_ASSERT(_codeSize == _it->value().size());
+  auto const docId = RocksDBKey::indexDocumentId(_it->key());
   auto const* value = reinterpret_cast<uint8_t const*>(_it->value().data());
   return {static_cast<faiss::idx_t>(docId.id()), value};
 }
@@ -84,7 +79,7 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
       _searchParametersContext(searchParametersContext),
       _listNumber(listNumber),
       _codeSize(codeSize) {
-  LOG_ADDITIONAL << ADB_HERE << " CONSTRUCTOR";
+  TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
   RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
       searchParametersContext.trx, collection->id());
 
@@ -166,8 +161,6 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
 }
 
 void RocksDBInvertedListsFilteringIterator::setToValidIterator() {
-  TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
-
   while (_filteredIdsIt == _filteredIds.end()) {
     if (!searchFilteredIds()) {
       // If we enter here we could not produce any documents
@@ -211,9 +204,9 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
                 _index, _collection, searchParametersContext, listNumber,
                 this->code_size);
           },
-          [&](transaction::Methods& trx) -> faiss::InvertedListsIterator* {
+          [&](transaction::Methods* trx) -> faiss::InvertedListsIterator* {
             return new RocksDBInvertedListsIterator(
-                _index, _collection, &trx, listNumber, this->code_size);
+                _index, _collection, trx, listNumber, this->code_size);
           },
       },
       *iteratorContext);

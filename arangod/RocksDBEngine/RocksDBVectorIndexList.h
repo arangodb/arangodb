@@ -89,7 +89,7 @@ struct SearchParametersContext {
 // This is used to pass a different search context via RocksDBInvertedList it
 // the iterators
 using RocksDBFaissSearchContext =
-    std::variant<SearchParametersContext, transaction::Methods>;
+    std::variant<SearchParametersContext, transaction::Methods*>;
 
 // This is iterator specialized for filtering the records in vector index
 // by materializing documents from documents column
