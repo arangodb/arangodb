@@ -226,7 +226,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                 maximum: {
                   $data: "1/segmentsMax"
                 },
-                default: 200
+                default:50 
               },
               segmentsMax: {
                 type: "integer",
@@ -234,7 +234,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                 minimum: {
                   $data: "1/segmentsMin"
                 },
-                default: 50
+                default: 200
               },
               segmentsBytesMax: {
                 type: "integer",
