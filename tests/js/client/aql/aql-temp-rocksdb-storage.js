@@ -203,12 +203,9 @@ function StorageForQueryWithoutCollectionSortSuite() {
 
 function StorageForQueryCleanUpWhenFailureSuite() {
   const query = `FOR i IN 1..500000 SORT i ASC RETURN i`;
-  let command = `
-    const internal = require('internal');
-    return internal.options()["temp.intermediate-results-path"];
-  `;
-  let tmp_path = arango.POST("/_admin/execute", command);
-
+  let tmp_path = IM.arangods.filter(arangod => {
+    return arangod.isFrontend();
+  })[0].tmpRocksdbDir;
   const tempDir = fs.join(tmp_path, "temp");
 
   let assertRangeCleanUp = (remainderSstFileName, fileNameData) => {
