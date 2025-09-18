@@ -504,7 +504,8 @@ Result RocksDBVectorIndex::ingestVectors(
 
       if constexpr (returnsResult) {
         setResult(fn());
-      } else {
+      }
+      else {
         fn();
       }
     } catch (basics::Exception const& e) {
