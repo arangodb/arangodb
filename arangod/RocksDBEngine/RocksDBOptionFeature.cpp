@@ -231,7 +231,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _maxWriteBufferNumber(RocksDBColumnFamilyManager::numberOfColumnFamilies +
                             2),  // number of column families plus 2
       _maxWriteBufferSizeToMaintain(0),
-      _maxTotalWalSize(256 << 20),
+      _maxTotalWalSize(80 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(defaultMinWriteBufferNumberToMerge(
           _totalWriteBufferSize, _writeBufferSize, _maxWriteBufferNumber)),
@@ -243,7 +243,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // set max number of background jobs to the number of available cores
       _maxBackgroundJobs(static_cast<int32_t>(
           std::max(static_cast<size_t>(2), NumberOfCores::getValue()))),
-      _maxSubcompactions(4),
+      _maxSubcompactions(2),
       _numThreadsHigh(0),
       _numThreadsLow(0),
       _targetFileSizeBase(rocksDBDefaults.target_file_size_base),
@@ -263,7 +263,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
           rocksDBTableOptionsDefaults.block_size,
           static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 *
                                                                         1024))),
-      _compactionReadaheadSize(8 * 1024 * 1024),
+      _compactionReadaheadSize(2 * 1024 * 1024),
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(16),
       _level0StopTrigger(256),

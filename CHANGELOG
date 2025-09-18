@@ -1,6 +1,10 @@
 devel
 -----
 
+* Reverted RocksDB defaults for maximum wal size, number of sub
+  compactions and compaction read ahead to stay close to established
+  behaviour.
+
 * Fix BTS-2214: In a rare hash collision situation it can happen that a
   valid edge in an enterprise graph fails to validate and is rejected.
 
