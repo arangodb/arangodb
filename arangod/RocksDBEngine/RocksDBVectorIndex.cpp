@@ -118,6 +118,47 @@ ResultT<transaction::BuilderLeaser> extractAttributeValues(
   return leased;
 }
 
+// TODO(jbajic) Same exists in RocksdbMultiDimIndex.cpp
+ResultT<velocypack::Builder> extractAttributeValuesWithoutTrx(
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed) {
+  velocypack::Builder leased;
+  leased.openArray(true);
+  for (auto const& it : storedValues) {
+    VPackSlice s;
+    if (it.size() == 1 && it[0].name == StaticStrings::IdString) {
+      // instead of storing the value of _id, we instead store the
+      // value of _key. we will retranslate the value to an _id later
+      // again upon retrieval
+      s = transaction::helpers::extractKeyFromDocument(doc);
+    } else {
+      s = doc;
+      for (auto const& part : it) {
+        if (!s.isObject()) {
+          s = VPackSlice ::noneSlice();
+          break;
+        }
+        s = s.get(part.name);
+        if (s.isNone()) {
+          break;
+        }
+      }
+    }
+    if (s.isNone()) {
+      s = VPackSlice::nullSlice();
+    }
+
+    if (s.isNull() && !nullAllowed) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+    }
+
+    leased.add(s);
+  }
+  leased.close();
+
+  return leased;
+}
+
 // This assertion must hold for faiss::idx_t to be used
 static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
               "Faiss id and LocalDocumentId must be of same size");
@@ -387,7 +428,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   RocksDBVectorIndexEntryValue rocksdbEntryValue;
   rocksdbEntryValue.encodedValue = std::string(
       reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
-  if (_storedValues.size() != 0) {
+  if (hasStoredValues()) {
     auto const extractedAttribtueValues =
         extractAttributeValues(trx, _storedValues, doc, true)->get();
     rocksdbEntryValue.storedValues = extractedAttribtueValues->slice();
@@ -505,6 +546,10 @@ RocksDBVectorIndex::getVectorIndexDefinition() {
   return getDefinition();
 }
 
+bool RocksDBVectorIndex::hasStoredValues() const noexcept {
+  return _storedValues.size() != 0;
+}
+
 #define LOG_INGESTION LOG_DEVEL_IF(false)
 
 Result RocksDBVectorIndex::ingestVectors(
@@ -525,12 +570,16 @@ Result RocksDBVectorIndex::ingestVectors(
     std::vector<LocalDocumentId> docIds;
     // dim * docIds.size() vectors
     std::vector<float> vectors;
+    // Only used if the storedValues are defined on index
+    std::vector<VPackSlice> storedValues;
   };
 
   struct EncodedVectors {
     std::vector<LocalDocumentId> docIds;
     std::unique_ptr<faiss::idx_t[]> lists;
     std::unique_ptr<uint8_t[]> codes;
+    // Only used if the storedValues are defined on index
+    std::vector<VPackSlice> storedValues;
   };
 
   struct BlockCounters {
@@ -571,8 +620,7 @@ Result RocksDBVectorIndex::ingestVectors(
 
       if constexpr (returnsResult) {
         setResult(fn());
-      }
-      else {
+      } else {
         fn();
       }
     } catch (basics::Exception const& e) {
@@ -639,6 +687,9 @@ Result RocksDBVectorIndex::ingestVectors(
       auto prepareBatch = [&] {
         auto batch = std::make_unique<DocumentVectors>();
         batch->docIds.reserve(documentPerBatch);
+        if (hasStoredValues()) {
+          batch->storedValues.reserve(documentPerBatch);
+        }
         batch->vectors.reserve(documentPerBatch * _definition.dimension);
         return batch;
       };
@@ -658,8 +709,13 @@ Result RocksDBVectorIndex::ingestVectors(
           THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
         }
         batch->docIds.push_back(docId);
-        documentIterator->Next();
+        if (hasStoredValues()) {
+          auto const extractedAttributeValues =
+              extractAttributeValuesWithoutTrx(_storedValues, doc, true);
+          batch->storedValues.push_back(extractedAttributeValues->slice());
+        }
 
+        documentIterator->Next();
         if (batch->docIds.size() == documentPerBatch) {
           LOG_INGESTION << "READ done with batch " << documentPerBatch;
           auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
@@ -704,11 +760,19 @@ Result RocksDBVectorIndex::ingestVectors(
         for (size_t k = 0; k < item->docIds.size(); k++) {
           key.constructVectorIndexValue(objectId(), item->lists[k],
                                         item->docIds[k]);
-          auto const value = RocksDBValue::VectorIndexValue(
-              reinterpret_cast<const char*>(item->codes.get() +
-                                            k * _faissIndex->code_size),
-              _faissIndex->code_size);
-          status = batch.Put(_cf, key.string(), value.string());
+
+          RocksDBVectorIndexEntryValue rocksdbEntryValue;
+          rocksdbEntryValue.encodedValue =
+              std::string(reinterpret_cast<const char*>(
+                              item->codes.get() + k * _faissIndex->code_size),
+                          _faissIndex->code_size);
+          if (hasStoredValues()) {
+            rocksdbEntryValue.storedValues = item->storedValues[k];
+          }
+
+          status =
+              batch.Put(_cf, key.string(),
+                        velocypack::serialize(rocksdbEntryValue).stringView());
           if (not status.ok()) {
             THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
           }

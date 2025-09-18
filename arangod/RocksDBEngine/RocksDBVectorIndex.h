@@ -97,6 +97,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
 
+ private:
+  bool hasStoredValues() const noexcept;
+
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
