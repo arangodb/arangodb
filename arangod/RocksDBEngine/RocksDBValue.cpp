@@ -100,9 +100,8 @@ RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId,
   return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, docId, data);
 }
 
-RocksDBValue RocksDBValue::VectorIndexValue(const char* codeData,
-                                            std::size_t codeSize) {
-  return RocksDBValue(codeData, codeSize);
+RocksDBValue RocksDBValue::VectorIndexValue(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue, data);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {
