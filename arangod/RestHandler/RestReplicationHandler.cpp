@@ -3172,7 +3172,12 @@ RestReplicationHandler::handleCommandRebuildRevisionTree() {
   TRI_ASSERT(ctx.collection != nullptr);
 
   // increase metric
-  ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isAgent()
+    ) {
+    ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
+  }
 
   Result res = co_await ctx.collection->getPhysical()->rebuildRevisionTree();
   if (res.fail()) {
