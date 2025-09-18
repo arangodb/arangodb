@@ -31,6 +31,7 @@
 #include <omp.h>
 
 #include "Aql/AstNode.h"
+#include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
@@ -64,6 +65,59 @@
 
 namespace arangodb {
 
+struct RocksDBVectorIndexEntryValue {
+  std::string encodedValue;
+  std::optional<VPackSlice> storedValues;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
+    return f.object(x).fields(f.field("encodedValue", x.encodedValue),
+                              f.field("storedValues", x.storedValues));
+  }
+};
+
+// TODO(jbajic) Same exists in RocksdbMultiDimIndex.cpp
+ResultT<transaction::BuilderLeaser> extractAttributeValues(
+    transaction::Methods& trx,
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed) {
+  transaction::BuilderLeaser leased(&trx);
+  leased->openArray(true);
+  for (auto const& it : storedValues) {
+    VPackSlice s;
+    if (it.size() == 1 && it[0].name == StaticStrings::IdString) {
+      // instead of storing the value of _id, we instead store the
+      // value of _key. we will retranslate the value to an _id later
+      // again upon retrieval
+      s = transaction::helpers::extractKeyFromDocument(doc);
+    } else {
+      s = doc;
+      for (auto const& part : it) {
+        if (!s.isObject()) {
+          s = VPackSlice ::noneSlice();
+          break;
+        }
+        s = s.get(part.name);
+        if (s.isNone()) {
+          break;
+        }
+      }
+    }
+    if (s.isNone()) {
+      s = VPackSlice::nullSlice();
+    }
+
+    if (s.isNull() && !nullAllowed) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+    }
+
+    leased->add(s);
+  }
+  leased->close();
+
+  return leased;
+}
+
 // This assertion must hold for faiss::idx_t to be used
 static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
               "Faiss id and LocalDocumentId must be of same size");
@@ -84,7 +138,11 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   coll.vocbase().engine<RocksDBEngine>()) {
+                   coll.vocbase().engine<RocksDBEngine>()),
+      _storedValues(
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true,
+                             /*allowExpansion*/ false)) {
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
   if (auto data = info.get("trainedData"); !data.isNone()) {
@@ -296,7 +354,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
 }
 
 /// @brief inserts a document into the index
-Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
+Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
@@ -326,8 +384,17 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
-  auto const value = RocksDBValue::VectorIndexValue(
+  RocksDBVectorIndexEntryValue rocksdbEntryValue;
+  rocksdbEntryValue.encodedValue = std::string(
       reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
+  if (_storedValues.size() != 0) {
+    auto const extractedAttribtueValues =
+        extractAttributeValues(trx, _storedValues, doc, true)->get();
+    rocksdbEntryValue.storedValues = extractedAttribtueValues->slice();
+  }
+  auto value = RocksDBValue::VectorIndexValue(
+      velocypack::serialize(rocksdbEntryValue).slice());
+
   auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
 
   return rocksutils::convertStatus(status);

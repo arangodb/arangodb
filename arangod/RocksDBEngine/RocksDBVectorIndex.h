@@ -110,6 +110,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
+  std::vector<std::vector<basics::AttributeName>> const _storedValues;
 };
 
 }  // namespace arangodb
