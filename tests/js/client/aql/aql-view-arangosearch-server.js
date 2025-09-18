@@ -695,7 +695,7 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
         if (!isCluster) {
           let tmp_path = IM.arangods.filter(arangod => {
             return arangod.isFrontend();
-          })[0].tmpRocksdbDir;
+          })[0].dataDir;
           let dbPath = fs.safeJoin(tmp_path, 'databases');
           let databases = fs.list(dbPath);
           assertTrue(databases.length >= 1, databases);
