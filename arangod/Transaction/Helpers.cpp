@@ -881,6 +881,39 @@ bool isValidEdgeAttribute(velocypack::Slice slice, bool allowExtendedNames) {
                                         allowExtendedNames, split);
 }
 
+}  // namespace helpers
+
+StringLeaser::StringLeaser(Context* transactionContext)
+    : _transactionContext(transactionContext),
+      _string(_transactionContext->leaseString()) {}
+
+StringLeaser::StringLeaser(Methods* trx)
+    : StringLeaser{trx->transactionContextPtr()} {}
+
+StringLeaser::~StringLeaser() {
+  if (_string != nullptr) {
+    _transactionContext->returnString(_string);
+  }
+}
+
+BuilderLeaser::BuilderLeaser(Context* transactionContext)
+    : _transactionContext{transactionContext},
+      _builder{_transactionContext->leaseBuilder()} {
+  TRI_ASSERT(_builder != nullptr);
+}
+
+BuilderLeaser::BuilderLeaser(Methods* trx)
+    : BuilderLeaser{trx->transactionContextPtr()} {}
+
+BuilderLeaser::~BuilderLeaser() { clear(); }
+
+void BuilderLeaser::clear() {
+  if (_builder != nullptr) {
+    _transactionContext->returnBuilder(_builder);
+    _builder = nullptr;
+  }
+}
+
 ResultT<transaction::BuilderLeaser> extractAttributeValues(
     transaction::Methods& trx,
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
@@ -920,39 +953,6 @@ ResultT<transaction::BuilderLeaser> extractAttributeValues(
   leased->close();
 
   return leased;
-}
-
-}  // namespace helpers
-
-StringLeaser::StringLeaser(Context* transactionContext)
-    : _transactionContext(transactionContext),
-      _string(_transactionContext->leaseString()) {}
-
-StringLeaser::StringLeaser(Methods* trx)
-    : StringLeaser{trx->transactionContextPtr()} {}
-
-StringLeaser::~StringLeaser() {
-  if (_string != nullptr) {
-    _transactionContext->returnString(_string);
-  }
-}
-
-BuilderLeaser::BuilderLeaser(Context* transactionContext)
-    : _transactionContext{transactionContext},
-      _builder{_transactionContext->leaseBuilder()} {
-  TRI_ASSERT(_builder != nullptr);
-}
-
-BuilderLeaser::BuilderLeaser(Methods* trx)
-    : BuilderLeaser{trx->transactionContextPtr()} {}
-
-BuilderLeaser::~BuilderLeaser() { clear(); }
-
-void BuilderLeaser::clear() {
-  if (_builder != nullptr) {
-    _transactionContext->returnBuilder(_builder);
-    _builder = nullptr;
-  }
 }
 
 }  // namespace arangodb::transaction

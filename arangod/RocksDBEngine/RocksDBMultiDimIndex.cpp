@@ -756,7 +756,8 @@ Result RocksDBMdiIndex::insert(transaction::Methods& trx,
   if (!isPrefixed()) {
     rocksdbKey.constructMdiIndexValue(objectId(), keyValue, documentId);
   } else {
-    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    auto result =
+        transaction::extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
       TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
@@ -768,8 +769,8 @@ Result RocksDBMdiIndex::insert(transaction::Methods& trx,
     hash = _estimates ? prefixValues->slice().normalizedHash() : 0;
   }
 
-  auto storedValues =
-      std::move(extractAttributeValues(trx, _storedValues, doc, true).get());
+  auto storedValues = std::move(
+      transaction::extractAttributeValues(trx, _storedValues, doc, true).get());
   auto value = RocksDBValue::MdiIndexValue(storedValues->slice());
   auto s = methods->PutUntracked(_cf, rocksdbKey, value.string());
   if (!s.ok()) {
@@ -829,7 +830,8 @@ Result RocksDBMdiIndex::remove(transaction::Methods& trx,
   if (!isPrefixed()) {
     rocksdbKey.constructMdiIndexValue(objectId(), keyValue, documentId);
   } else {
-    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    auto result =
+        transaction::extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
       TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
@@ -1137,7 +1139,8 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
   if (!isPrefixed()) {
     rocksdbKey.constructMdiIndexValue(objectId(), keyValue);
   } else {
-    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    auto result =
+        transaction::extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
       TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
@@ -1159,8 +1162,8 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
     }
   }
 
-  auto storedValues =
-      std::move(extractAttributeValues(trx, _storedValues, doc, true).get());
+  auto storedValues = std::move(
+      transaction::extractAttributeValues(trx, _storedValues, doc, true).get());
   auto value =
       RocksDBValue::UniqueMdiIndexValue(documentId, storedValues->slice());
 
@@ -1195,7 +1198,8 @@ Result RocksDBUniqueMdiIndex::remove(transaction::Methods& trx,
   if (!isPrefixed()) {
     rocksdbKey.constructMdiIndexValue(objectId(), keyValue);
   } else {
-    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    auto result =
+        transaction::extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
       TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
