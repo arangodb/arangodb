@@ -1417,9 +1417,14 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._CollectionRevisionTreeCorrupt = function (count, hash) {
-  let requestResult = this._database._connection.PUT(`${this._baseurl('CollectionRevisionTreeCorrupt')}`, {count, hash});
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.result;
+  //  let requestResult = this._database._connection.PUT(`${this._baseurl('CollectionRevisionTreeCorrupt')}`, {count, hash});
+  
+  let requestResult = this._database._connection.PUT(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {count, hash});
+  print('sanoteuh')
+  print(requestResult)
+  //arangosh.checkRequestResult(requestResult);
+  return requestResult;
 };
 
 //////////////////////////////////////////////////////////////////////////////

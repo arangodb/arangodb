@@ -85,6 +85,8 @@ function corruptRepairSuite () {
       global.instanceManager.debugClearFailAt();
 
       // And repair it again:
+     //db._connection.POST("/_admin/execute?returnAsJSON=true",
+       // `require("internal").db._collection("${colName1}")._revisionTreeRebuild(); return true;`);
       c1._revisionTreeRebuild();
       trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
