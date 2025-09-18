@@ -73,6 +73,12 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   async<void> registerQueryOrCursor(
       velocypack::Slice body, transaction::OperationOrigin operationOrigin);
 
+  /// @brief register the query either as streaming cursor or in _query
+  /// the query is not executed here.
+  /// this method is also used by derived classes
+  async<void> registerQueryOrCursorJson(
+      velocypack::Slice body, transaction::OperationOrigin operationOrigin);
+
   /// @brief Process the query registered in _query.
   async<void> processQuery();
 
@@ -106,6 +112,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   /// @brief create a cursor and return the first results
   async<void> createQueryCursor();
+
+  /// @brief create a cursor from a json plan and return
+  ///        the first results
+  async<void> createQueryCursorJson();
 
   /// @brief return the next results from an existing cursor
   async<void> modifyQueryCursor();
