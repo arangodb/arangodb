@@ -1242,7 +1242,7 @@ function IResearchFeatureDDLTestSuite1() {
       assertTrue(Object === properties.constructor);
       assertEqual(2, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
-      assertEqual(1000, properties.consolidationIntervalMsec);
+      assertEqual(5000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
@@ -1316,7 +1316,7 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual("none", properties.primarySortCompression);
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
-      assertEqual(1000, properties.consolidationIntervalMsec);
+      assertEqual(5000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
       assertEqual(1, properties.consolidationPolicy.segmentsMin);
