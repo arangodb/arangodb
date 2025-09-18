@@ -915,6 +915,7 @@ Result IndexFactory::enhanceJsonIndexVector(
     arangodb::velocypack::Slice definition,
     arangodb::velocypack::Builder& builder, bool create) {
   auto const paramsSlice = definition.get("params");
+
   UserVectorIndexDefinition vectorIndexDefinition;
   if (auto const res =
           velocypack::deserializeWithStatus(paramsSlice, vectorIndexDefinition);
@@ -927,6 +928,14 @@ Result IndexFactory::enhanceJsonIndexVector(
     return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
   }
 
+  if (auto const res =
+          processIndexStoredValues(definition, builder, 1, 32, create,
+                                   /*allowSubAttributes*/ true,
+                                   /* allowOverlappingFields */ true);
+      res.fail()) {
+    return res;
+  }
+
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, vectorIndexDefinition);
   Result const res =
@@ -936,9 +945,7 @@ Result IndexFactory::enhanceJsonIndexVector(
   if (res.ok()) {
     // Vector index can be sparse
     processIndexSparseFlag(definition, builder, create);
-
     processIndexInBackground(definition, builder);
-
     processIndexParallelism(definition, builder);
   }
 
