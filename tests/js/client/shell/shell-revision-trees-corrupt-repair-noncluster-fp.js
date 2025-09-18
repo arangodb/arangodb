@@ -76,7 +76,6 @@ function corruptRepairSuite () {
       const c1 = db._collection(colName1);
       let trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
-      print(c1.recalculateCount())
       // Now let's corrupt the tree:
       c1._CollectionRevisionTreeCorrupt(17,17);
       global.instanceManager.debugSetFailAt("MerkleTree::skipConsistencyCheck", '', primaryEndpoint);
