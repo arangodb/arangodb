@@ -3174,8 +3174,7 @@ RestReplicationHandler::handleCommandRebuildRevisionTree() {
   // increase metric
   if (ServerState::instance()->isCoordinator() ||
       ServerState::instance()->isDBServer() ||
-      ServerState::instance()->isAgent()
-    ) {
+      ServerState::instance()->isAgent()) {
     ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
   }
 
