@@ -60,5 +60,6 @@ futures::Future<Result> RocksDBRestCollectionHandler::handleExtraCommandPut(
     }
     co_return res;
   }
+
   co_return TRI_ERROR_NOT_IMPLEMENTED;
 }
