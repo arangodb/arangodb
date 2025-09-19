@@ -323,7 +323,9 @@ uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
 Result upgradeArangoSearchLinkCollectionName(
     TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
   using application_features::ApplicationServer;
-  if (!ServerState::instance()->isDBServer()) {
+  if (!ServerState::instance()->isDBServer() ||
+      !vocbase.server().hasFeature<ClusterFeature>() ||
+      !vocbase.server().getFeature<ClusterFeature>().isEnabled()) {
     return {};  // not applicable for other ServerState roles
   }
   auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();

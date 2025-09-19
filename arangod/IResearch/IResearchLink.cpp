@@ -184,7 +184,14 @@ Result IResearchLink::initSingleServer(bool& pathExists,
 
 Result IResearchLink::initCoordinator(InitCallback const& init) {
   auto& vocbase = index().collection().vocbase();
-  auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+  auto& cf = vocbase.server().getFeature<ClusterFeature>();
+  if (!cf.isEnabled()) {
+    LOG_TOPIC("9be20", DEBUG, TOPIC)
+        << "Skipped link '" << index().id().id()
+        << "' maybe due to disabled cluster features.";
+    return {};
+  }
+  auto& ci = cf.clusterInfo();
   std::shared_ptr<IResearchViewCoordinator> view;
   if (auto r = toView(ci.getView(vocbase.name(), _viewGuid), view); !view) {
     return r;
