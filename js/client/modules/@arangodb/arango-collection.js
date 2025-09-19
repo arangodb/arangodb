@@ -1423,12 +1423,12 @@ ArangoCollection.prototype._CollectionRevisionTreeCorrupt = function (count, has
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief test function to corrupt a revision tree
+// / @brief test function to enlist the pending tree updates
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype._revisionTreePendingUpdates = function () {
-  let requestResult = this._database._connection.PATCH(this._prefixurl(
-    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {});
+  let requestResult = this._database._connection.GET(this._prefixurl(
+    `/_api/replication/revisions/treepending?collection=${encodeURIComponent(this._name)}`), {});
   arangosh.checkRequestResult(requestResult);
   return requestResult;
 };

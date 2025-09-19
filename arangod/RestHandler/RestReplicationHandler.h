@@ -65,6 +65,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
  public:
   static std::string const Revisions;
   static std::string const Tree;
+  static std::string const TreePending;
   static std::string const Ranges;
   static std::string const Documents;
 
@@ -283,9 +284,16 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   /// @brief intentionally corrupt the revision of a collection
   void handleCommandCorruptRevisionTree();
-  /// @brief wait for the revision tree to be updated
-  void handleCommandRevisionTreePendingUpdates();
 #endif
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a list of the pending revision tree updates
+  /// @response VPackObject, containing
+  //            * inserts integer counter of the pending inserts
+  //            * removes integer counter of the pending removes
+  //            * truncates integer counter of the pending truncations
+  //////////////////////////////////////////////////////////////////////////////
+  void handleCommandRevisionTreePendingUpdates();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the requested revision ranges for a given collection, if
