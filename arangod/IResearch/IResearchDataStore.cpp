@@ -659,7 +659,8 @@ IResearchDataStore::IResearchDataStore(
       // Illegal shard name, could be collection name
       _useSearchCache = false;
     } else {
-      if (server.hasFeature<ClusterFeature>() && server.getFeature<ClusterFeature>().isEnabled()) {
+      if (server.hasFeature<ClusterFeature>() &&
+          server.getFeature<ClusterFeature>().isEnabled()) {
         TRI_ASSERT(maybeShardID.ok());
 
         auto& ci = server.getFeature<ClusterFeature>().clusterInfo();

@@ -777,7 +777,8 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
     ArangodServer& server, std::string_view vocbase) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
-    TRI_ASSERT(server.hasFeature<ClusterFeature>() && server.getFeature<ClusterFeature>().isEnabled());
+    TRI_ASSERT(server.hasFeature<ClusterFeature>() &&
+               server.getFeature<ClusterFeature>().isEnabled());
     auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
     return std::make_unique<AnalyzerModificationTransaction>(vocbase, &engine,
                                                              false);
