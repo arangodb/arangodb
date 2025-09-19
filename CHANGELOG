@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
+  We should therefore check before accessing clusterInfo() whether we're
+  in an upgrade scenario. Added those checks in iresearch.
+
 * Reverted RocksDB defaults for maximum wal size, number of sub
   compactions and compaction read ahead to stay close to established
   behaviour.
