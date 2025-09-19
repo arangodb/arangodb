@@ -585,7 +585,8 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
         } else if (type == rest::RequestType::PUT && subCommand == Tree) {
           handleCommandCorruptRevisionTree();
 #endif
-        } else if (type == rest::RequestType::GET && subCommand == TreePending) {
+        } else if (type == rest::RequestType::GET &&
+                   subCommand == TreePending) {
           handleCommandRevisionTreePendingUpdates();
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
