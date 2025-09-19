@@ -584,10 +584,10 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
         } else if (type == rest::RequestType::PUT && subCommand == Tree) {
           handleCommandCorruptRevisionTree();
-#endif
         } else if (type == rest::RequestType::GET &&
                    subCommand == TreePending) {
           handleCommandRevisionTreePendingUpdates();
+#endif
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
         } else if (type == rest::RequestType::PUT && subCommand == Documents) {
@@ -3210,8 +3210,6 @@ void RestReplicationHandler::handleCommandCorruptRevisionTree() {
   generateResult(rest::ResponseCode::OK, VPackSlice::nullSlice());
 }
 
-#endif
-
 void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
   RevisionOperationContext ctx;
   // get collection name
@@ -3228,6 +3226,7 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
+#endif
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return the requested revision ranges for a given collection, if

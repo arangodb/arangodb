@@ -284,7 +284,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   /// @brief intentionally corrupt the revision of a collection
   void handleCommandCorruptRevisionTree();
-#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a list of the pending revision tree updates
@@ -294,6 +293,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //            * truncates integer counter of the pending truncations
   //////////////////////////////////////////////////////////////////////////////
   void handleCommandRevisionTreePendingUpdates();
+#endif
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the requested revision ranges for a given collection, if
