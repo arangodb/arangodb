@@ -35,8 +35,7 @@ const helper = require("@arangodb/test-helper");
 function waitForTreeReady(c) {
   while (true) {
     let name = c.name();
-    let pending = db._connection.POST("/_admin/execute?returnAsJSON=true",
-      `return require("internal").db._collection("${name}")._revisionTreePendingUpdates();`);
+    let pending = c._revisionTreePendingUpdates();
     // For whatever reason, sometimes we get an empty object back, let's
     // skip that.
     if (pending.hasOwnProperty("inserts")) {
@@ -61,10 +60,13 @@ function corruptRepairSuite () {
       db._drop(colName1);
       let c = db._create(colName1);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.save({ _key: "test_" + i });
+        docs.push({ _key: "test_" + i });
       }
+      c.save(docs);
 
+      c._revisionTreeVerification();
       waitForTreeReady(c);
     },
 

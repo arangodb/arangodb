@@ -583,6 +583,8 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
         } else if (type == rest::RequestType::PUT && subCommand == Tree) {
           handleCommandCorruptRevisionTree();
+        } else if (type == rest::RequestType::PATCH && subCommand == Tree) {
+          handleCommandRevisionTreePendingUpdates();
 #endif
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
@@ -3204,6 +3206,24 @@ void RestReplicationHandler::handleCommandCorruptRevisionTree() {
       ->corruptRevisionTree(count, hash);
 
   generateResult(rest::ResponseCode::OK, VPackSlice::nullSlice());
+}
+
+
+void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
+  RevisionOperationContext ctx;
+  // get collection name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
+    // error was already generator by called function
+    return;
+  }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
+
+  VPackBuilder builder;
+  static_cast<RocksDBCollection*>(ctx.collection->getPhysical())
+    ->revisionTreePendingUpdates(builder);
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 #endif
 

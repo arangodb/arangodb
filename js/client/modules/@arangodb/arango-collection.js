@@ -1422,6 +1422,17 @@ ArangoCollection.prototype._CollectionRevisionTreeCorrupt = function (count, has
   return requestResult;
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test function to corrupt a revision tree
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreePendingUpdates = function () {
+  let requestResult = this._database._connection.PATCH(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&batchId=42`), {});
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief MerkleTreeVerification
 //////////////////////////////////////////////////////////////////////////////
