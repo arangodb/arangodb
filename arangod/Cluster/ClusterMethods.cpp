@@ -104,14 +104,6 @@ using namespace arangodb::rest;
 
 using Helper = arangodb::basics::VelocyPackHelper;
 
-namespace {
-std::string const edgeUrl =
-    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/edge/";
-std::string const vertexUrl =
-    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/vertex/";
-
-}  // namespace
-
 // Timeout for write operations, note that these are used for communication
 // with a shard leader and we always have to assume that some follower has
 // stopped writes for some time to get in sync:

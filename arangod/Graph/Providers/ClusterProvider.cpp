@@ -54,11 +54,6 @@ namespace {
 constexpr size_t costPerVertexOrEdgeType =
     sizeof(arangodb::velocypack::HashedStringRef);
 
-std::string const edgeUrl =
-    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/edge/";
-std::string const vertexUrl =
-    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/vertex/";
-
 VertexType getEdgeDestination(arangodb::velocypack::Slice edge,
                               VertexType const& origin) {
   if (edge.isString()) {
@@ -204,8 +199,9 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::vertexUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+        RestVocbaseBaseHandler::TRAVERSER_PATH_VERTEX +
+            StringUtils::itoa(engine.second),
+        leased->bufferRef(), reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -371,7 +367,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
     futures.emplace_back(EngineResponse{
         engineId, network::sendRequestRetry(
                       pool, "server:" + server, fuerte::RestVerb::Put,
-                      ::edgeUrl + StringUtils::itoa(engineId),
+                      RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
+                          StringUtils::itoa(engineId),
                       leased->bufferRef(), reqOpts)});
     engineMap.emplace(engineId, server);
   }
@@ -467,7 +464,8 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
                 engineId, network::sendRequestRetry(
                               pool, "server:" + engineMap[engineId],
                               fuerte::RestVerb::Put,
-                              ::edgeUrl + StringUtils::itoa(engineId),
+                              RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
+                                  StringUtils::itoa(engineId),
                               leasedContinue->bufferRef(), reqOpts)});
           }
         }
