@@ -1,3 +1,11 @@
+
+3.12.5.4 (2025-09-19)
+---------------------
+
+* Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
+  We should therefore check before accessing clusterInfo() whether we're
+  in an upgrade scenario. Added those checks in iresearch.
+
 3.12.5.3 (2025-09-09)
 ---------------------
 
