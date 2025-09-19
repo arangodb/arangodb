@@ -3208,7 +3208,6 @@ void RestReplicationHandler::handleCommandCorruptRevisionTree() {
   generateResult(rest::ResponseCode::OK, VPackSlice::nullSlice());
 }
 
-
 void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
   RevisionOperationContext ctx;
   // get collection name
@@ -3221,7 +3220,7 @@ void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
 
   VPackBuilder builder;
   static_cast<RocksDBCollection*>(ctx.collection->getPhysical())
-    ->revisionTreePendingUpdates(builder);
+      ->revisionTreePendingUpdates(builder);
 
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
