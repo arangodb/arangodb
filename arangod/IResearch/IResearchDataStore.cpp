@@ -914,7 +914,8 @@ Result IResearchDataStore::commitUnsafeImpl(
       }
       auto& collection = index().collection();
 
-      if (!collection.vocbase()
+      if (!collection.vocbase().server().hasFeature<ClusterFeature>() ||
+          !collection.vocbase()
                .server()
                .getFeature<ClusterFeature>()
                .isEnabled()) {
