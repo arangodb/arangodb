@@ -32,9 +32,6 @@ var fs = require("fs");
 var isCluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
-const {
-  getDbPath
-} = require('@arangodb/test-helper');
 let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -696,13 +693,9 @@ function iResearchFeatureAqlServerSideTestSuite (isSearchAlias) {
       let getLinksCount = function() {
         let linksCount = 0;
         if (!isCluster) {
-          
-          let command = `
-            const internal = require('internal');
-            return internal.db._path();
-          `;
-          let tmp_path = getDbPath();
-
+          let tmp_path = IM.arangods.filter(arangod => {
+            return arangod.isFrontend();
+          })[0].dataDir;
           let dbPath = fs.safeJoin(tmp_path, 'databases');
           let databases = fs.list(dbPath);
           assertTrue(databases.length >= 1, databases);

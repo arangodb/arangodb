@@ -151,6 +151,7 @@ class instance {
     this.dataDir = fs.join(this.rootDir, 'data');
     this.appDir = fs.join(this.rootDir, 'apps');
     this.tmpDir = fs.join(this.rootDir, 'tmp');
+    this.tmpRocksdbDir = fs.join(this.rootDir, 'temp-rocksdb-dir');
 
     fs.makeDirectoryRecursive(this.dataDir);
     fs.makeDirectoryRecursive(this.appDir);
@@ -334,7 +335,7 @@ class instance {
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
       'database.directory': this.dataDir,
-      'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
+      'temp.intermediate-results-path': this.tmpRocksdbDir,
       'log.file': this.logFile
     });
     if (this.options.extremeVerbosity) {

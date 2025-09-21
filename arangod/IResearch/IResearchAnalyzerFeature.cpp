@@ -494,7 +494,8 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
     auto& server = vocbase.server();
 
     std::vector<std::string> coords;
-    if (server.hasFeature<ClusterFeature>()) {
+    if (server.hasFeature<ClusterFeature>() &&
+        server.getFeature<ClusterFeature>().isEnabled()) {
       coords = server.getFeature<ClusterFeature>()
                    .clusterInfo()
                    .getCurrentCoordinators();
@@ -508,6 +509,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       TRI_IF_FAILURE("CheckDBWhenSingleShardAndForceOneShardChange") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
+
       auto& clusterInfo = server.getFeature<ClusterFeature>().clusterInfo();
       auto collection = clusterInfo.getCollectionNT(
           vocbase.name(), arangodb::StaticStrings::AnalyzersCollection);
@@ -775,7 +777,8 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
 AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
     ArangodServer& server, std::string_view vocbase) {
   if (ServerState::instance()->isCoordinator() && !vocbase.empty()) {
-    TRI_ASSERT(server.hasFeature<ClusterFeature>());
+    TRI_ASSERT(server.hasFeature<ClusterFeature>() &&
+               server.getFeature<ClusterFeature>().isEnabled());
     auto& engine = server.getFeature<ClusterFeature>().clusterInfo();
     return std::make_unique<AnalyzerModificationTransaction>(vocbase, &engine,
                                                              false);
@@ -1111,13 +1114,16 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
       return;
     }
 
-    auto cleanupTrans = this->server()
-                            .getFeature<ClusterFeature>()
-                            .clusterInfo()
-                            .createAnalyzersCleanupTrans();
-    if (cleanupTrans) {
-      if (cleanupTrans->start().ok()) {
-        cleanupTrans->commit();
+    if (this->server().hasFeature<ClusterFeature>() &&
+        this->server().getFeature<ClusterFeature>().isEnabled()) {
+      auto cleanupTrans = this->server()
+                              .getFeature<ClusterFeature>()
+                              .clusterInfo()
+                              .createAnalyzersCleanupTrans();
+      if (cleanupTrans) {
+        if (cleanupTrans->start().ok()) {
+          cleanupTrans->commit();
+        }
       }
     }
 
@@ -2463,7 +2469,9 @@ AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
     const TRI_vocbase_t& vocbase, bool forceLoadPlan /* = false */) const {
   if (ServerState::instance()->isRunningInCluster()) {
     auto const& server = vocbase.server();
-    if (server.hasFeature<ClusterFeature>()) {
+
+    if (server.hasFeature<ClusterFeature>() &&
+        server.getFeature<ClusterFeature>().isEnabled()) {
       auto ptr = server.getFeature<ClusterFeature>()
                      .clusterInfo()
                      .getAnalyzersRevision(vocbase.name(), forceLoadPlan);

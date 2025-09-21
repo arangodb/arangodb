@@ -39,7 +39,9 @@ function adminLogSuite() {
   'use strict';
 
   let log = function (level) {
-    arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
+    for (let i = 0; i < 50; ++i) {
+      helper.logServer('testi', level);
+    }
   };
 
   let oldLogLevels;
