@@ -762,14 +762,16 @@ std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
     return std::make_unique<
         graph::DBServerEdgeCursor<graph::DBServerIndexCursor>>(
         graph::createDBServerIndexCursors(specific->second, _tmpVar, trx(),
-                                          cache(), query().resourceMonitor()));
+                                          cache(), query().resourceMonitor()),
+        depth);
   }
 
   // otherwise, retain / reuse the general (global) cursor
   return std::make_unique<
       graph::DBServerEdgeCursor<graph::DBServerIndexCursor>>(
       graph::createDBServerIndexCursors(_baseLookupInfos, _tmpVar, trx(),
-                                        cache(), query().resourceMonitor()));
+                                        cache(), query().resourceMonitor()),
+      depth);
 }
 
 double TraverserOptions::estimateCost(size_t& nrItems) const {

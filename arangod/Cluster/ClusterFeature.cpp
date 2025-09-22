@@ -1149,12 +1149,16 @@ std::shared_ptr<HeartbeatThread> ClusterFeature::heartbeatThread() {
 
 ClusterInfo& ClusterFeature::clusterInfo() {
   if (!_clusterInfo) {
-    if (server().isStopping()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-    } else {
-      ADB_PROD_ASSERT(_clusterInfo != nullptr)
+    if (!server().isStopping()) {
+      TRI_ASSERT(_clusterInfo != nullptr)
           << "_clusterInfo is null, but server is not shutting down";
+
+      LOG_TOPIC("325b6", ERR, arangodb::Logger::CLUSTER)
+          << "_clusterInfo is null, but server is not shutting down";
+      //  log crash dump feature
+      CrashHandler::logBacktrace();
     }
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
   return *_clusterInfo;
 }
