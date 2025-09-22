@@ -245,6 +245,8 @@ class HashedCollectExecutor {
 
   std::unique_ptr<ValueAggregators> makeAggregateValues() const;
 
+  size_t memoryUsageForGroup(GroupKeyType const& group, bool withBase) const;
+
   Infos const& _infos;
 
   /// @brief We need to save any input row (it really doesn't matter, except for
@@ -264,6 +266,8 @@ class HashedCollectExecutor {
   GroupKeyType _nextGroup;
 
   size_t _returnedGroups = 0;
+
+  size_t _memoryUsageForInto;
 };
 
 }  // namespace aql

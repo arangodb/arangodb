@@ -202,6 +202,10 @@ ResourceUsageScope::ResourceUsageScope(
     ResourceMonitor& resourceMonitor) noexcept
     : _resourceMonitor(resourceMonitor), _value(0) {}
 
+ResourceUsageScope::ResourceUsageScope(ResourceUsageScope&& oldScope)
+    : _resourceMonitor(oldScope._resourceMonitor),
+      _value(oldScope.trackedAndSteal()) {}
+
 std::uint64_t ResourceMonitor::current() const noexcept {
   return _current.load(std::memory_order_relaxed);
 }

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, fail */
+/*global assertEqual, assertTrue, fail, AQL_EXPLAIN, AQL_EXECUTE */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -30,6 +30,7 @@ const errors = internal.errors;
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const isCluster = require("internal").isCluster();
+const th = require("@arangodb/test-helper");
 
 function ahuacatlMemoryLimitStaticQueriesTestSuite () {
   return {
@@ -715,6 +716,35 @@ function ahuacatMemoryLimitSortedCollectTestSuite() {
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+      }
+    },
+
+    testCollectIndexPathRespectAndExceedLimit: function () {
+      const collName = "MemLimitTest";
+      db._drop(collName);
+      const coll = db._create(collName);
+      try {
+        const N = 20000;
+        coll.ensureIndex({ type: "persistent", fields: ["a"] });
+        coll.insert(Array.from({ length: N }, (_, i) => ({ a: i })));
+
+        const query = "FOR d IN @@coll COLLECT a = d.a RETURN a";
+
+        const plan = AQL_EXPLAIN(query, { "@@coll": collName }, { optimize: true });
+        const usesIndexAggregate = plan.plan.nodes.some(n => n.type === "IndexAggregateNode" || n.type === "IndexAggregateScanNode");
+        assertTrue(usesIndexAggregate);
+
+        const ok = AQL_EXECUTE(query, { "@@coll": collName }, { memoryLimit: 2 * 1024 * 1024 });
+        assertEqual(N, ok.json.length);
+
+        try {
+          AQL_EXECUTE(query, { "@@coll": collName }, { memoryLimit: 64 * 1024 });
+          fail();
+        } catch (err) {
+          assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+        }
+      } finally {
+        db._drop(collName);
       }
     },
 

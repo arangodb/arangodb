@@ -173,15 +173,7 @@ struct AggregatorMin final : public Aggregator {
 
   ~AggregatorMin() { value.destroy(); }
 
-  void reset() override {
-    if (value.requiresDestruction()) {
-      auto mem = value.memoryUsage();
-      value.destroy();
-      resourceUsageScope().decrease(mem);
-    } else {
-      value.erase();
-    }
-  }
+  void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isNull(true) &&
@@ -217,15 +209,7 @@ struct AggregatorMax final : public Aggregator {
 
   ~AggregatorMax() { value.destroy(); }
 
-  void reset() override {
-    if (value.requiresDestruction()) {
-      auto mem = value.memoryUsage();
-      value.destroy();
-      resourceUsageScope().decrease(mem);
-    } else {
-      value.erase();
-    }
-  }
+  void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
     if (value.isEmpty() ||
@@ -539,19 +523,16 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     }
 
     bool failed = false;
-    resourceUsageScope().increase(sizeof(double));
     double v1 = sumValue.toDouble(failed);
     if (failed) {
       invalid = true;
       return;
     }
-    resourceUsageScope().increase(sizeof(double));
     double v2 = meanValue.toDouble(failed);
     if (failed) {
       invalid = true;
       return;
     }
-    resourceUsageScope().increase(sizeof(uint64_t));
     int64_t c = countValue.toInt64();
     if (c == 0) {
       invalid = true;
@@ -560,6 +541,7 @@ struct AggregatorVarianceBaseStep2 : public AggregatorVarianceBase {
     count += c;
     sum += v2 * c;
     mean += v2 * c;
+    resourceUsageScope().increase(2 * sizeof(double) + sizeof(int64_t));
     values.emplace_back(std::make_tuple(v1 / c, v2, c));
   }
 
@@ -695,11 +677,7 @@ struct AggregatorUnique : public Aggregator {
       builder.openArray();
     }
     builder.close();
-    // return an AqlValue owning its own buffer that preserves the memory
-    // accounting case builder is made from a supervised buffer
-    velocypack::Builder builderCopy;
-    builderCopy.add(builder.slice());
-    return AqlValue(std::move(*builderCopy.steal()));
+    return AqlValue(builder.slice());
   }
 
   MemoryBlockAllocator allocator;
@@ -785,11 +763,7 @@ struct AggregatorSortedUnique : public Aggregator {
       builder.add(it);
     }
     builder.close();
-    // return an AqlValue owning its own buffer that preserves the memory
-    // accounting case builder is made from a supervised buffer
-    velocypack::Builder builderCopy;
-    builderCopy.add(builder.slice());
-    return AqlValue(std::move(*builderCopy.steal()));
+    return AqlValue(builder.slice());
   }
 
   MemoryBlockAllocator allocator;
@@ -1078,13 +1052,7 @@ struct AggregatorList : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
-
-    // be aware of the Window Executor: it calls reduce and get multiple times
-    // if preceding is `unbounded`. But closing the array here breaks the
-    // velocypack slice.
-    auto builderCopy = builder;
-    builderCopy.close();
-    return AqlValue(std::move(*builderCopy.steal()));
+    return AqlValue(builder.slice());
   }
 
   mutable arangodb::velocypack::Builder builder;

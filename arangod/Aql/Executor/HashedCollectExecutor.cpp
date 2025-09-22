@@ -118,7 +118,8 @@ HashedCollectExecutor::HashedCollectExecutor(Fetcher& fetcher, Infos& infos)
       _lastInitializedInputRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _allGroups(1024, AqlValueGroupHash(_infos.getGroupRegisters().size()),
                  AqlValueGroupEqual(_infos.getVPackOptions())),
-      _isInitialized(false) {
+      _isInitialized(false),
+      _memoryUsageForInto(0) {
   _aggregatorFactories = createAggregatorFactories(_infos);
   _nextGroup.values.reserve(_infos.getGroupRegisters().size());
 };
@@ -445,6 +446,29 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
     }
     builder.close();
   }
+}
+
+size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
+                                                  bool withBase) const {
+  // track memory usage of unordered_map entry (somewhat)
+  size_t memoryUsage = 0;
+  if (withBase) {
+    memoryUsage += 4 * sizeof(void*) + /* generic overhead */
+                   group.values.size() * sizeof(AqlValue) +
+                   _aggregatorFactories.size() * sizeof(void*);
+
+    if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
+      // add overhead per per-group Builder object (allocated on the heap)
+      memoryUsage += sizeof(void*) + sizeof(velocypack::Builder);
+    }
+  }
+
+  for (auto const& it : group.values) {
+    if (it.requiresDestruction()) {
+      memoryUsage += it.memoryUsage();
+    }
+  }
+  return memoryUsage;
 }
 
 std::unique_ptr<HashedCollectExecutor::ValueAggregators>
