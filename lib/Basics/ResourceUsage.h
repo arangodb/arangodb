@@ -102,6 +102,8 @@ class ResourceUsageScope {
  public:
   ResourceUsageScope(ResourceUsageScope const&) = delete;
   ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
+  ResourceUsageScope(ResourceUsageScope&&);
+  ResourceUsageScope& operator=(ResourceUsageScope&&) = delete;
 
   explicit ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept;
 
@@ -127,14 +129,6 @@ class ResourceUsageScope {
   std::uint64_t tracked() const noexcept { return _value; }
 
   std::uint64_t trackedAndSteal() noexcept;
-
-  std::uint64_t memoryLimit() const noexcept {
-    return _resourceMonitor.memoryLimit();
-  }
-
-  std::uint64_t peak() const noexcept { return _resourceMonitor.peak(); }
-
-  std::uint64_t current() const noexcept { return _resourceMonitor.current(); }
 
  private:
   ResourceMonitor& _resourceMonitor;
