@@ -899,7 +899,7 @@ class instanceManager {
           print(`${Date()} upgrading ${arangod.name}`);
           arangod.runUpgrade(JSON.stringify(this.getStructure()));
           print(`${Date()} relaunching ${arangod.name}`);
-          arangod.restartOneInstance(null, {}, JSON.stringify(this.getStructure()));
+          arangod.restartOneInstance(null, JSON.stringify(this.getStructure()));
           if (haveMaintainance) {
             haveMaintainance = false;
             this._setMaintenance(false);

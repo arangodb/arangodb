@@ -612,7 +612,7 @@ class instance {
     this._disconnect();
     
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
-    this.launchInstance(moreArgs);
+    this.launchInstance(moreArgs, instanceJson);
     this.pingUntilReady(this.authHeaders, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
