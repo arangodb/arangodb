@@ -53,9 +53,7 @@ static QueryResult runQuery(TRI_vocbase_t& vocbase,
 
   auto query = Query::create(ctx, QueryString(queryString), nullptr, options);
 
-  QueryResult result;
-  auto futureRes = query->execute(result, nullptr);
-  futureRes.wait();
+  QueryResult result = query->executeSync();
   return result;
 }
 }  // namespace
