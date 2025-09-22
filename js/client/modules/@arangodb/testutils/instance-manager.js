@@ -474,13 +474,11 @@ class instanceManager {
       print("external server configured - not testing readyness! " + this.options.server);
       return;
     }
-    let subenv = [`INSTANCEINFO=${JSON.stringify(this.getStructure())}`];
-
     const startTime = time();
     try {
       let count = 0;
       this.arangods.forEach(arangod => {
-        arangod.startArango(_.cloneDeep(subenv));
+        arangod.startArango(JSON.stringify(this.getStructure()));
         count += 1;
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
@@ -872,7 +870,7 @@ class instanceManager {
     let success = true;
     this.instanceRoles.forEach(instanceRole  => {
       this.arangods.forEach(arangod => {
-        arangod.restartIfType(instanceRole, moreArgs);
+        arangod.restartIfType(instanceRole, moreArgs, JSON.stringify(this.getStructure()));
         this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
     });
@@ -899,9 +897,9 @@ class instanceManager {
             sleep(1);
           }
           print(`${Date()} upgrading ${arangod.name}`);
-          arangod.runUpgrade();
+          arangod.runUpgrade(JSON.stringify(this.getStructure()));
           print(`${Date()} relaunching ${arangod.name}`);
-          arangod.restartOneInstance();
+          arangod.restartOneInstance(null, JSON.stringify(this.getStructure()));
           if (haveMaintainance) {
             haveMaintainance = false;
             this._setMaintenance(false);

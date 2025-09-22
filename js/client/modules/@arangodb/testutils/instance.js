@@ -507,7 +507,7 @@ class instance {
   // / @brief executes a command, possible with valgrind
   // //////////////////////////////////////////////////////////////////////////////
 
-  _executeArangod (moreArgs) {
+  _executeArangod (moreArgs, instanceJson) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
     }
@@ -561,6 +561,7 @@ class instance {
       subEnv.push(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory}`);
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
+    subEnv.push(`INSTANCEINFO=${instanceJson}`);
     let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
@@ -569,10 +570,10 @@ class instance {
   // /
   // //////////////////////////////////////////////////////////////////////////////
 
-  startArango () {
+  startArango (instanceJson) {
     this._disconnect();
     try {
-      this.pid = this._executeArangod().pid;
+      this.pid = this._executeArangod({}, instanceJson).pid;
       if (this.options.enableAliveMonitor) {
         internal.addPidToMonitor(this.pid);
       }
@@ -582,7 +583,7 @@ class instance {
     }
   }
 
-  launchInstance(moreArgs) {
+  launchInstance(moreArgs, instanceJson) {
     if (this.pid !== null) {
       print(`${RED}can not re-launch when PID still there. {this.name} - ${this.pid}${RESET}`);
       throw new Error("kill the instance before relaunching it!");
@@ -591,7 +592,7 @@ class instance {
     this._disconnect();
     try {
       let args = {...this.args, ...moreArgs};
-      this.pid = this._executeArangod(args).pid;
+      this.pid = this._executeArangod(args, instanceJson).pid;
     } catch (x) {
       print(`${RED}${Date()} failed to run arangod - ${x.message} - ${JSON.stringify(this.getStructure())}`);
       throw x;
@@ -599,7 +600,7 @@ class instance {
     this.endpoint = this.args['server.endpoint'];
     this.url = pu.endpointToURL(this.endpoint);
   };
-  restartOneInstance(moreArgs) {
+  restartOneInstance(moreArgs, instanceJson) {
     this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
@@ -611,16 +612,16 @@ class instance {
     this._disconnect();
     
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
-    this.launchInstance(moreArgs);
+    this.launchInstance(moreArgs, instanceJson);
     this.pingUntilReady(this.authHeaders, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
-  restartIfType(instanceRoleFilter, moreArgs) {
+  restartIfType(instanceRoleFilter, moreArgs, instanceJson) {
     if (this.pid || this.instanceRole !==  instanceRoleFilter) {
       return true;
     }
-    this.restartOneInstance(moreArgs);
+    this.restartOneInstance(moreArgs, instanceJson);
   }
 
   status(waitForExit) {
@@ -641,7 +642,7 @@ class instance {
     return false;
   }
 
-  runUpgrade() {
+  runUpgrade(instanceJson) {
     let moreArgs = {
       '--database.auto-upgrade': 'true',
       '--log.foreground-tty': 'true'
@@ -650,7 +651,7 @@ class instance {
       moreArgs['--server.rest-server'] = 'false';
     }
     this.exitStatus = null;
-    this.pid = this._executeArangod(moreArgs).pid;
+    this.pid = this._executeArangod(moreArgs, instanceJson).pid;
     sleep(1);
     while (this.isRunning()) {
       print(".");
