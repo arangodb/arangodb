@@ -196,8 +196,9 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     auto& builder = *_currentGroup->second.second;
     builder.close();
 
-    // steals the Builder's Buffer
-    AqlValue val(std::move(*builder.steal()));
+    VPackSlice slice = builder.slice();
+    AqlValue val(slice);
+
     AqlValueGuard guard{val, true};
     // destroys the Builder
     _currentGroup->second.second.reset();
