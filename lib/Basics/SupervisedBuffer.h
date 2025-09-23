@@ -45,18 +45,20 @@ class SupervisedBuffer : public Buffer<uint8_t> {
     // value it accounted for to the owning scope, so the amount of memory that
     // the buffer allocated which was accounted by its scope is now gonna be
     // accounted by the owning scope.
-    // We do not have an atomic operation here, so we will first decrease on current scope
-    // and hand it over to the new scope. We did not do it the other way round, as this would double
-    // the reported memory for a short time, which could cause an perfectly fine operation to OOM.
-    // The memory is never used twice.
+    // We do not have an atomic operation here, so we will first decrease on
+    // current scope and hand it over to the new scope. We did not do it the
+    // other way round, as this would double the reported memory for a short
+    // time, which could cause an perfectly fine operation to OOM. The memory is
+    // never used twice.
     try {
       tracked = _usageScope.tracked();
       _usageScope.decrease(tracked);
       owningScope.increase(tracked);
     } catch (...) {
-      // We need to fix the accounting back to the old scope, as we did not perform the move.
-      // This is a highly unlikely situation, where in the non-atomic switch of memory ownership someone
-      // allocates memory, which causes the increase to break.
+      // We need to fix the accounting back to the old scope, as we did not
+      // perform the move. This is a highly unlikely situation, where in the
+      // non-atomic switch of memory ownership someone allocates memory, which
+      // causes the increase to break.
       _usageScope.increase(tracked);
       throw;
     }
