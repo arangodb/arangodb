@@ -61,13 +61,9 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
-    if (it.requiresDestruction()) {
-      auto mem = it.memoryUsage();
-      it.destroy();
-      infos.resourceUsageScope().decrease(mem);
-    } else {
-      it.erase();
-    }
+    auto mem = it.memoryUsage();
+    it.destroy();
+    infos.resourceUsageScope().decrease(mem);
   }
 }
 
@@ -95,13 +91,9 @@ void SortedCollectExecutor::CollectGroup::reset(InputAqlItemRow const& input) {
 
   if (!groupValues.empty()) {
     for (auto& it : groupValues) {
-      if (it.requiresDestruction()) {
-        auto mem = it.memoryUsage();
-        it.destroy();
-        infos.resourceUsageScope().decrease(mem);
-      } else {
-        it.erase();
-      }
+      auto mem = it.memoryUsage();
+      it.destroy();
+      infos.resourceUsageScope().decrease(mem);
     }
   }
 
