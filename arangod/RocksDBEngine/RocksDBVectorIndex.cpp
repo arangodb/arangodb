@@ -65,17 +65,6 @@
 
 namespace arangodb {
 
-struct RocksDBVectorIndexEntryValue {
-  std::string encodedValue;
-  std::optional<VPackSlice> storedValues;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
-    return f.object(x).fields(f.field("encodedValue", x.encodedValue),
-                              f.field("storedValues", x.storedValues));
-  }
-};
-
 // TODO(jbajic) Same exists in RocksdbMultiDimIndex.cpp
 ResultT<velocypack::Builder> extractAttributeValuesWithoutTrx(
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
@@ -246,7 +235,7 @@ RocksDBVectorIndex::readBatch(
     aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
     std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
         filterVarsToRegs,
-    aql::Variable const* documentVariable) {
+    aql::Variable const* documentVariable, bool isCovered) {
   TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
       << "Number of components does not match vectors dimensions, topK: "
       << topK << ", count: " << count
@@ -260,6 +249,7 @@ RocksDBVectorIndex::readBatch(
     faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
   }
 
+  // Used by the faiss iterator
   auto faissSearchContext =
       std::invoke([&]() -> vector::RocksDBFaissSearchContext {
         if (filterExpression == nullptr) {
@@ -275,6 +265,7 @@ RocksDBVectorIndex::readBatch(
         searchCtx.queryContext = &queryContext;
         searchCtx.filterVarsToRegs = &filterVarsToRegs;
         searchCtx.documentVariable = documentVariable;
+        searchCtx.isCovered = isCovered;
         return searchCtx;
       });
 
@@ -383,7 +374,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
-  RocksDBVectorIndexEntryValue rocksdbEntryValue;
+  vector::RocksDBVectorIndexEntryValue rocksdbEntryValue;
   rocksdbEntryValue.encodedValue = std::string(
       reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
   if (hasStoredValues()) {
@@ -506,7 +497,12 @@ RocksDBVectorIndex::getVectorIndexDefinition() {
 }
 
 bool RocksDBVectorIndex::hasStoredValues() const noexcept {
-  return _storedValues.size() != 0;
+  return !_storedValues.empty();
+}
+
+std::vector<std::vector<basics::AttributeName>> const&
+RocksDBVectorIndex::storedValues() const noexcept {
+  return _storedValues;
 }
 
 #define LOG_INGESTION LOG_DEVEL_IF(false)
@@ -579,7 +575,8 @@ Result RocksDBVectorIndex::ingestVectors(
 
       if constexpr (returnsResult) {
         setResult(fn());
-      } else {
+      }
+      else {
         fn();
       }
     } catch (basics::Exception const& e) {
@@ -720,7 +717,7 @@ Result RocksDBVectorIndex::ingestVectors(
           key.constructVectorIndexValue(objectId(), item->lists[k],
                                         item->docIds[k]);
 
-          RocksDBVectorIndexEntryValue rocksdbEntryValue;
+          vector::RocksDBVectorIndexEntryValue rocksdbEntryValue;
           rocksdbEntryValue.encodedValue =
               std::string(reinterpret_cast<const char*>(
                               item->codes.get() + k * _faissIndex->code_size),

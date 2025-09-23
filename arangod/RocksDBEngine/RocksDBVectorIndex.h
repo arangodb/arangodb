@@ -88,7 +88,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
       std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
           filterVarsToRegs,
-      aql::Variable const* documentVariable);
+      aql::Variable const* documentVariable, bool isCovered);
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
@@ -97,8 +97,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
 
- private:
   bool hasStoredValues() const noexcept;
+
+  std::vector<std::vector<basics::AttributeName>> const& storedValues()
+      const noexcept;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
