@@ -110,6 +110,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
   SearchParameters _searchParameters;
 
   /// @brief selected index for vector search
+  /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
 
   /// @brief filter expression if filter was pushed down into this node

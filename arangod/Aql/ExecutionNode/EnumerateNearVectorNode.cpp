@@ -33,6 +33,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Executor/EnumerateNearVectorExecutor.h"
 #include "Aql/Query.h"
+#include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
 #include "Aql/Ast.h"
@@ -70,7 +71,10 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
-      _filterExpression(std::move(filterExpression)) {}
+      _filterExpression(std::move(filterExpression)) {
+  TRI_ASSERT(indexHandle->type() ==
+             Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
+}
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
   return ENUMERATE_NEAR_VECTORS;
@@ -128,11 +132,63 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     }
   }
 
+  // get stored fields from vec idx
+  auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(_index.get());
+  bool storedFieldsCoverFilteringExpression{false};
+  if (vecIdx->hasStoredValues() && !filterVarsToRegs.empty()) {
+    // check if all attribtues in filterExpression are covered
+    // by storedValues
+
+    // Get stored values from the vector index
+    auto const& storedValues = vecIdx->storedValues();
+
+    // Extract all attribute names from filter expression
+    containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
+    // auto* ast = engine.getQuery().ast();
+    auto* ast = _plan->getAst();
+
+    for (auto const& varPair : filterVarsToRegs) {
+      auto const* variable = ast->variables()->getVariable(varPair.first);
+      if (variable != nullptr) {
+        // Extract attribute names for this variable from the filter expression
+        if (!Ast::getReferencedAttributesRecursive(
+                _filterExpression->node(), variable,
+                /*expectedAttribute*/ "", filterAttributes,
+                engine.getQuery().resourceMonitor())) {
+          // If we can't extract attributes, we can't use stored values
+          break;
+        }
+      }
+    }
+
+    // Check if all filter attributes are covered by stored values
+    storedFieldsCoverFilteringExpression = true;
+    for (auto const& filterAttr : filterAttributes) {
+      bool found = false;
+      for (auto const& storedValue : storedValues) {
+        // Convert stored value to AttributeNamePath for comparison
+        aql::AttributeNamePath storedPath(engine.getQuery().resourceMonitor());
+        for (auto const& attrName : storedValue) {
+          storedPath.add(attrName.name);
+        }
+
+        if (filterAttr == storedPath) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        storedFieldsCoverFilteringExpression = false;
+        break;
+      }
+    }
+  }
+
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
       engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
       _searchParameters, _filterExpression.get(), std::move(filterVarsToRegs),
-      _oldDocumentVariable);
+      storedFieldsCoverFilteringExpression, _oldDocumentVariable);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
