@@ -41,6 +41,17 @@ class LogicalCollection;
 
 namespace vector {
 
+struct RocksDBVectorIndexEntryValue {
+  std::string encodedValue;
+  std::optional<VPackSlice> storedValues;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
+    return f.object(x).fields(f.field("encodedValue", x.encodedValue),
+                              f.field("storedValues", x.storedValues));
+  }
+};
+
 inline faiss::MetricType metricToFaissMetric(
     SimilarityMetric const metric) noexcept {
   switch (metric) {
@@ -83,6 +94,7 @@ struct SearchParametersContext {
   aql::QueryContext* queryContext;
   std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
       filterVarsToRegs;
+  bool isCovered;
   aql::Variable const* documentVariable;
 };
 
@@ -123,6 +135,40 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
       _filteredIdsIt{_filteredIds.end()};
   std::size_t _listNumber;
   std::size_t _codeSize;
+};
+
+struct RocksDBInvertedListsFilteringStoredValuesIterator
+    : faiss::InvertedListsIterator {
+  RocksDBInvertedListsFilteringStoredValuesIterator(
+      RocksDBVectorIndex* index, LogicalCollection* collection,
+      SearchParametersContext& searchParametersContext, std::size_t listNumber,
+      std::size_t codeSize);
+  [[nodiscard]] bool is_available() const override;
+
+  [[nodiscard]] bool searchFilteredIds();
+
+  void next() override;
+
+  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
+
+ private:
+  void setToValidIterator();
+
+  constexpr static auto kBatchSize{1000};
+
+  RocksDBKey _rocksdbKey;
+  arangodb::RocksDBVectorIndex* _index{nullptr};
+  LogicalCollection* _collection{nullptr};
+  SearchParametersContext& _searchParametersContext;
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
+
+  std::unique_ptr<rocksdb::Iterator> _it;
+  std::size_t _listNumber;
+  std::size_t _codeSize;
+
+  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
+  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
+      _filteredIdsIt;
 };
 
 struct RocksDBInvertedLists : faiss::InvertedLists {

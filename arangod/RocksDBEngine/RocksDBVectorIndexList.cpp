@@ -24,7 +24,8 @@
 #include "RocksDBVectorIndexList.h"
 
 #include "Aql/DocumentExpressionContext.h"
-#include "Basics/overload.h"
+#include "Aql/LateMaterializedExpressionContext.h"
+#include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -179,6 +180,140 @@ void RocksDBInvertedListsFilteringIterator::next() {
 
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsFilteringIterator::get_id_and_codes() {
+  return {static_cast<faiss::idx_t>(_filteredIdsIt->first.id()),
+          _filteredIdsIt->second.data()};
+}
+
+RocksDBInvertedListsFilteringStoredValuesIterator::
+    RocksDBInvertedListsFilteringStoredValuesIterator(
+        RocksDBVectorIndex* index, LogicalCollection* collection,
+        SearchParametersContext& searchParametersContext,
+        std::size_t listNumber, std::size_t codeSize)
+    : InvertedListsIterator(),
+      _index(index),
+      _collection(collection),
+      _searchParametersContext(searchParametersContext),
+      _listNumber(listNumber),
+      _codeSize(codeSize) {
+  TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
+  TRI_ASSERT(_index->hasStoredValues());
+
+  RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
+      searchParametersContext.trx, collection->id());
+
+  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
+  _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+    TRI_ASSERT(opts.prefix_same_as_start);
+  });
+  _it->Seek(_rocksdbKey.string());
+  setToValidIterator();
+}
+
+[[nodiscard]] bool
+RocksDBInvertedListsFilteringStoredValuesIterator::is_available() const {
+  return _filteredIdsIt != _filteredIds.end() ||
+         (_it->Valid() && _it->key().starts_with(_rocksdbKey.string()));
+}
+
+bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
+  // Get documents ids from the vector index
+  std::vector<LocalDocumentId> ids;
+  std::unordered_map<LocalDocumentId, std::vector<uint8_t>> idsToValue;
+  idsToValue.reserve(kBatchSize);
+  ids.reserve(kBatchSize);
+
+  for (size_t i{0}; i < kBatchSize && _it->Valid() &&
+                    _it->key().starts_with(_rocksdbKey.string());
+       ++i, _it->Next()) {
+    auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
+    ids.emplace_back(id);
+    std::vector<uint8_t> value(_it->value().data(),
+                               _it->value().data() + _it->value().size());
+    idsToValue.emplace(id, std::move(value));
+  }
+  if (ids.empty()) {
+    return false;
+  }
+
+  // Filter using stored values instead of fetching full documents
+  _filteredIds.clear();
+  for (auto const& id : ids) {
+    auto const& value = idsToValue[id];
+
+    // Deserialize the RocksDBVectorIndexEntryValue
+    RocksDBVectorIndexEntryValue entryValue;
+    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(value.data()));
+
+    // Simple deserialization - assuming the slice contains the entry value
+    // structure
+    if (!slice.isObject()) {
+      continue;  // Skip invalid entries
+    }
+
+    // Extract encodedValue
+    auto encodedValueSlice = slice.get("encodedValue");
+    if (encodedValueSlice.isString()) {
+      entryValue.encodedValue = encodedValueSlice.copyString();
+    }
+
+    // Extract storedValues
+    auto storedValuesSlice = slice.get("storedValues");
+    if (storedValuesSlice.isArray()) {
+      entryValue.storedValues = storedValuesSlice;
+    }
+
+    // Check if we have stored values
+    if (!entryValue.storedValues.has_value()) {
+      continue;  // Skip if no stored values
+    }
+
+    // Create expression context for filtering using stored values
+    aql::GenericDocumentExpressionContext ctx(
+        *_searchParametersContext.trx, *_searchParametersContext.queryContext,
+        _aqlFunctionsInternalCache, *_searchParametersContext.filterVarsToRegs,
+        *_searchParametersContext.inputRow,
+        _searchParametersContext.documentVariable);
+
+    // Create a mock document from stored values for filtering
+    // The stored values are in array format, we need to create a document-like
+    // structure
+    VPackBuilder docBuilder;
+    velocypack::deserialize(entryValue.storedValues.value(), docBuilder);
+    ctx.setCurrentDocument(docBuilder.slice());
+
+    bool mustDestroy{false};
+    aql::AqlValue a =
+        _searchParametersContext.filterExpression->execute(&ctx, mustDestroy);
+    aql::AqlValueGuard guard(a, mustDestroy);
+    auto const filterExpressionResult = a.toBoolean();
+    if (filterExpressionResult) {
+      _filteredIds.emplace_back(id, std::move(value));
+    }
+  }
+  _filteredIdsIt = _filteredIds.begin();
+
+  return true;
+}
+
+void RocksDBInvertedListsFilteringStoredValuesIterator::setToValidIterator() {
+  while (_filteredIdsIt == _filteredIds.end()) {
+    if (!searchFilteredIds()) {
+      // If we enter here we could not produce any documents
+      return;
+    }
+  }
+}
+
+void RocksDBInvertedListsFilteringStoredValuesIterator::next() {
+  setToValidIterator();
+  ++_filteredIdsIt;
+  if (_filteredIdsIt == _filteredIds.end()) {
+    setToValidIterator();
+  }
+}
+
+std::pair<faiss::idx_t, uint8_t const*>
+RocksDBInvertedListsFilteringStoredValuesIterator::get_id_and_codes() {
   return {static_cast<faiss::idx_t>(_filteredIdsIt->first.id()),
           _filteredIdsIt->second.data()};
 }
