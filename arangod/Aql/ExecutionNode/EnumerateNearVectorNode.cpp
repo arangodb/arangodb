@@ -48,6 +48,7 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 constexpr std::string_view kOffset = "offset";
+constexpr std::string_view kIsCoveredByStoredValues = "isCoveredByStoredValues";
 constexpr std::string_view kSearchParameters = "searchParameters";
 constexpr std::string_view kFilterExpression = "filterExpression";
 }  // namespace
@@ -59,7 +60,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     std::size_t limit, bool ascending, std::size_t offset,
     SearchParameters searchParameters, aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
-    std::unique_ptr<Expression> filterExpression)
+    std::unique_ptr<Expression> filterExpression, bool isCoveredByStoredValues)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
       _inVariable(inVariable),
@@ -71,9 +72,11 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
-      _filterExpression(std::move(filterExpression)) {
+      _filterExpression(std::move(filterExpression)),
+      _isCoveredByStoredValues(isCoveredByStoredValues) {
   TRI_ASSERT(indexHandle->type() ==
              Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
+  TRI_ASSERT(_filterExpression != nullptr || !_isCoveredByStoredValues);
 }
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
@@ -132,63 +135,11 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     }
   }
 
-  // get stored fields from vec idx
-  auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(_index.get());
-  bool storedFieldsCoverFilteringExpression{false};
-  if (vecIdx->hasStoredValues() && !filterVarsToRegs.empty()) {
-    // check if all attribtues in filterExpression are covered
-    // by storedValues
-
-    // Get stored values from the vector index
-    auto const& storedValues = vecIdx->storedValues();
-
-    // Extract all attribute names from filter expression
-    containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
-    // auto* ast = engine.getQuery().ast();
-    auto* ast = _plan->getAst();
-
-    for (auto const& varPair : filterVarsToRegs) {
-      auto const* variable = ast->variables()->getVariable(varPair.first);
-      if (variable != nullptr) {
-        // Extract attribute names for this variable from the filter expression
-        if (!Ast::getReferencedAttributesRecursive(
-                _filterExpression->node(), variable,
-                /*expectedAttribute*/ "", filterAttributes,
-                engine.getQuery().resourceMonitor())) {
-          // If we can't extract attributes, we can't use stored values
-          break;
-        }
-      }
-    }
-
-    // Check if all filter attributes are covered by stored values
-    storedFieldsCoverFilteringExpression = true;
-    for (auto const& filterAttr : filterAttributes) {
-      bool found = false;
-      for (auto const& storedValue : storedValues) {
-        // Convert stored value to AttributeNamePath for comparison
-        aql::AttributeNamePath storedPath(engine.getQuery().resourceMonitor());
-        for (auto const& attrName : storedValue) {
-          storedPath.add(attrName.name);
-        }
-
-        if (filterAttr == storedPath) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        storedFieldsCoverFilteringExpression = false;
-        break;
-      }
-    }
-  }
-
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
       engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
       _searchParameters, _filterExpression.get(), std::move(filterVarsToRegs),
-      storedFieldsCoverFilteringExpression, _oldDocumentVariable);
+      _isCoveredByStoredValues, _oldDocumentVariable);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
@@ -201,7 +152,7 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, nullptr);
+      collection(), _index, nullptr, _isCoveredByStoredValues);
   if (_filterExpression) {
     c->_filterExpression = _filterExpression->clone(plan->getAst(), true);
   }
@@ -251,6 +202,7 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
+  builder.add(kIsCoveredByStoredValues, VPackValue(_isCoveredByStoredValues));
 
   builder.add(VPackValue(kSearchParameters));
   builder.add(velocypack::serialize(_searchParameters));
@@ -278,7 +230,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _distanceOutVariable(
           Variable::varFromVPack(plan->getAst(), base, kDistanceOutVariable)),
       _limit(base.get(kLimit).getNumericValue<std::size_t>()),
-      _offset(base.get(kOffset).getNumericValue<std::size_t>()) {
+      _offset(base.get(kOffset).getNumericValue<std::size_t>()),
+      _isCoveredByStoredValues(base.get(kIsCoveredByStoredValues).getBool()) {
   std::string iid = base.get("index").get("id").copyString();
 
   if (auto const res = velocypack::deserializeWithStatus(

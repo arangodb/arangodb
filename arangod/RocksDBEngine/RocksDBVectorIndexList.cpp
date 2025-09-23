@@ -335,7 +335,7 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
       overload{
           [&](SearchParametersContext& searchParametersContext)
               -> faiss::InvertedListsIterator* {
-            if (searchParametersContext.isCovered) {
+            if (searchParametersContext.isCoveredByStoredValues) {
               return new RocksDBInvertedListsFilteringStoredValuesIterator(
                   _index, _collection, searchParametersContext, listNumber,
                   this->code_size);

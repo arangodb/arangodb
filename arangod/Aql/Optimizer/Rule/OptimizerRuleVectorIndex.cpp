@@ -42,6 +42,7 @@
 #include "Indexes/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "RocksDBEngine/RocksDBVectorIndex.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -246,7 +247,7 @@ bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
   // We always expect a calculationNode in this scenario
   if (maybeCalculationNode == nullptr ||
       maybeCalculationNode->getType() != EN::CALCULATION) {
-    return true;
+    return false;
   }
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
@@ -256,7 +257,7 @@ bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
   plan->unlinkNode(maybeFilterNode);
   plan->unlinkNode(maybeCalculationNode);
 
-  return false;
+  return true;
 }
 
 // Vector Index Optimization Rule
@@ -375,22 +376,95 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       // and handle it in EnumerateNearVectorNode
       // TODO Check if IndexNode always does this
       std::unique_ptr<Expression> filterExpression{nullptr};
+      bool isCoveredByStoredValues{false};
       if (maybeFilterNode) {
-        if (bool shouldContinue = removeFilterAndCalculationNode(
+        if (bool isRemoved = removeFilterAndCalculationNode(
                 maybeFilterNode, plan, filterExpression);
-            shouldContinue) {
+            !isRemoved) {
           continue;
         }
 
-        // Lets compare the filterExpression attribute fields agains stored
-        // fields in the current index
+        // check which variables are used by the node's post-filter
+        std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+        VarSet inVars;
+        filterExpression->variables(inVars);
+        filterVarsToRegs.reserve(inVars.size());
+
+        // Here we take all variables in the expression
+        for (auto const& var : inVars) {
+          TRI_ASSERT(var != nullptr);
+          if (var->id == oldDocumentVariable->id) {
+            continue;
+          }
+          // auto regId =
+          // plan->getRegisterPlanForNode(maybeFilterNode)->variableToRegisterId(var);
+          // TODO(jbajic) Why I cannot get this froim the executio plan and not
+          // from the node?
+          auto regId =
+              maybeFilterNode->getRegisterPlan()->variableToRegisterId(var);
+
+          filterVarsToRegs.emplace_back(var->id, regId);
+        }
+
+        // get stored fields from vec idx
+        auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(index.get());
+        if (vecIdx->hasStoredValues() && !filterVarsToRegs.empty()) {
+          // check if all attribtues in filterExpression are covered
+          // by storedValues
+
+          // Get stored values from the vector index
+          auto const& storedValues = vecIdx->storedValues();
+
+          // Extract all attribute names from filter expression
+          containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
+          // auto* ast = engine.getQuery().ast();
+          auto* ast = plan->getAst();
+
+          for (auto const& varPair : filterVarsToRegs) {
+            auto const* variable = ast->variables()->getVariable(varPair.first);
+            if (variable != nullptr) {
+              // Extract attribute names for this variable from the filter
+              // expression
+              if (!Ast::getReferencedAttributesRecursive(
+                      filterExpression->node(), variable,
+                      /*expectedAttribute*/ "", filterAttributes,
+                      plan->getAst()->query().resourceMonitor())) {
+                // If we can't extract attributes, we can't use stored values
+                break;
+              }
+            }
+          }
+
+          // Check if all filter attributes are covered by stored values
+          isCoveredByStoredValues = true;
+          for (auto const& filterAttr : filterAttributes) {
+            bool found = false;
+            for (auto const& storedValue : storedValues) {
+              // Convert stored value to AttributeNamePath for comparison
+              aql::AttributeNamePath storedPath(
+                  plan->getAst()->query().resourceMonitor());
+              for (auto const& attrName : storedValue) {
+                storedPath.add(attrName.name);
+              }
+
+              if (filterAttr == storedPath) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              isCoveredByStoredValues = false;
+              break;
+            }
+          }
+        }
       }
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
           limitNode->offset(), std::move(searchParameters),
           enumerateCollectionNode->collection(), index,
-          std::move(filterExpression));
+          std::move(filterExpression), isCoveredByStoredValues);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(

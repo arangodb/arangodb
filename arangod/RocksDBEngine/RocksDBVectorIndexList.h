@@ -94,7 +94,7 @@ struct SearchParametersContext {
   aql::QueryContext* queryContext;
   std::vector<std::pair<aql::VariableId, aql::RegisterId>> const*
       filterVarsToRegs;
-  bool isCovered;
+  bool isCoveredByStoredValues;
   aql::Variable const* documentVariable;
 };
 

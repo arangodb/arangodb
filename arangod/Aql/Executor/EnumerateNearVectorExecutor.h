@@ -50,8 +50,7 @@ struct EnumerateNearVectorsExecutorInfos {
       aql::Collection const* collection, std::size_t topK, std::size_t offset,
       SearchParameters searchParameters, Expression* filterExpression,
       std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs,
-      bool storedFieldsCoverFilteringExpression,
-      Variable const* documentVariable)
+      bool isCoveredByStoredValues, Variable const* documentVariable)
       : inputReg(inNmDocId),
         outDocumentIdReg(outDocRegId),
         outDistancesReg(outDistanceRegId),
@@ -63,8 +62,7 @@ struct EnumerateNearVectorsExecutorInfos {
         searchParameters(searchParameters),
         filterExpression(filterExpression),
         filterVarsToRegs(filterVarsToRegs),
-        storedFieldsCoverFilteringExpression(
-            storedFieldsCoverFilteringExpression),
+        isCoveredByStoredValues(isCoveredByStoredValues),
         documentVariable(documentVariable) {}
 
   EnumerateNearVectorsExecutorInfos() = delete;
@@ -97,7 +95,7 @@ struct EnumerateNearVectorsExecutorInfos {
   SearchParameters searchParameters;
   Expression* filterExpression;
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-  bool storedFieldsCoverFilteringExpression;
+  bool isCoveredByStoredValues;
   Variable const* documentVariable{nullptr};
 };
 

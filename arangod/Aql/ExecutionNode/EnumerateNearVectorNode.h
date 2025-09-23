@@ -53,7 +53,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           SearchParameters searchParameters,
                           aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle,
-                          std::unique_ptr<Expression> filterExpression);
+                          std::unique_ptr<Expression> filterExpression,
+                          bool isCoveredByStoredValues);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -115,5 +116,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief filter expression if filter was pushed down into this node
   std::unique_ptr<Expression> _filterExpression;
+
+  /// @brief indicates if the filter expression is covered by stored values
+  bool _isCoveredByStoredValues;
 };
 }  // namespace arangodb::aql

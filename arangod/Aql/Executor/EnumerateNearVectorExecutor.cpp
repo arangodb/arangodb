@@ -105,7 +105,7 @@ void EnumerateNearVectorsExecutor::searchResults() {
       _collection->getCollection(), 1, _infos.getNumberOfResults(),
       _infos.filterExpression, &_inputRow, _infos.queryContext,
       _infos.getVarsToRegister(), _infos.documentVariable,
-      _infos.storedFieldsCoverFilteringExpression);
+      _infos.isCoveredByStoredValues);
   _currentProcessedResultCount = 0;
   TRI_ASSERT(hasResults());
   LOG_INTERNAL << "Results: " << _labels << " and distances: " << _distances;

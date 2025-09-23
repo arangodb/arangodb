@@ -235,7 +235,7 @@ RocksDBVectorIndex::readBatch(
     aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
     std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
         filterVarsToRegs,
-    aql::Variable const* documentVariable, bool isCovered) {
+    aql::Variable const* documentVariable, bool isCoveredByStoredValues) {
   TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
       << "Number of components does not match vectors dimensions, topK: "
       << topK << ", count: " << count
@@ -265,7 +265,7 @@ RocksDBVectorIndex::readBatch(
         searchCtx.queryContext = &queryContext;
         searchCtx.filterVarsToRegs = &filterVarsToRegs;
         searchCtx.documentVariable = documentVariable;
-        searchCtx.isCovered = isCovered;
+        searchCtx.isCoveredByStoredValues = isCoveredByStoredValues;
         return searchCtx;
       });
 
