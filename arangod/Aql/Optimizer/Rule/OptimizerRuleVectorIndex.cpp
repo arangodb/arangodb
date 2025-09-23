@@ -69,6 +69,7 @@ bool checkFunctionNameMatchesIndexMetric(
   }
 }
 
+// Vector index can only have a single covered attribute
 bool checkIfIndexedFieldIsSameAsSearched(
     auto const& vectorIndex,
     std::vector<basics::AttributeName>& attributeName) {
@@ -89,7 +90,7 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
                                                          false)) {
     return false;
   }
-  // check if APPROX function parameter is on indexed field
+  // check if APPROX_NEAR function parameter is on indexed field
   if (!checkIfIndexedFieldIsSameAsSearched(vectorIndex,
                                            attributeAccessResult.second)) {
     return false;
@@ -199,8 +200,9 @@ AstNode* getApproxNearAttributeExpression(
   // one of the params must be a documentField and the other a query point
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
-  TRI_ASSERT(approxFunctionParameters->numMembers() > 1)
-      << "There can be only two arguments to APPROX_NEAR"
+  TRI_ASSERT(approxFunctionParameters->numMembers() > 1 &&
+             approxFunctionParameters->numMembers() < 4)
+      << "There can be only two or three arguments to APPROX_NEAR"
       << ", currently there are "
       << calculationNodeExpressionNode->numMembers();
 
@@ -328,7 +330,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       continue;
     }
 
-    // check LIMIT NODE
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
     // Offset cannot be handled, and there must be a limit which means topK
@@ -380,6 +381,9 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
             shouldContinue) {
           continue;
         }
+
+        // Lets compare the filterExpression attribute fields agains stored
+        // fields in the current index
       }
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
