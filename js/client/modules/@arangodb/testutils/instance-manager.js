@@ -546,7 +546,7 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   waitOnServerForGC (instanceInfo, options, waitTime) {
-    if (options.skipServerJS) {
+    if (this.options.skipServerJS) {
       return {
         status: true,
         message: "skipped for servers without javascript"
