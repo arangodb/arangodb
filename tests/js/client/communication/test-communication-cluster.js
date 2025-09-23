@@ -407,12 +407,30 @@ function GenericAqlSetupPathSuite(type) {
   `;
 
   const documentWrite = `
+    let internal = require('internal');
+    let crypto = require("@arangodb/crypto");
+    const col = db["${twoShardColName}"];
+    const shards = col.shards();
+    let numDocsShard1 = ${docsPerWrite} / 2;
+    let numDocsShard2 = ${docsPerWrite} - numDocsShard1;
+    const getRandomString = () => crypto.md5(internal.genRandomAlphaNumbers(32));
     const docs = [];
-    for (let i = 0; i < ${docsPerWrite}; ++i) {
-      docs.push({b: [{c: [{d: i.toString()}]}]});
+    let i = 0;
+    // We need to create documents that are distributed between the two shards
+    while (docs.length < ${docsPerWrite}) {
+      let key = getRandomString();
+      if (col.getResponsibleShard(key) === shards[0] && numDocsShard1 > 0) {
+        docs.push({ _key: key, b: [{c: [{d: i.toString()}]}]});
+        numDocsShard1--;
+        i++;
+      } else if (col.getResponsibleShard(key) === shards[1] && numDocsShard2 > 0) {
+        docs.push({ _key: key, b: [{c: [{d: i.toString()}]}]});
+        numDocsShard2--;
+        i++;
+      }
     }
     console.log("saving documents");
-    db["${twoShardColName}"].save(docs);
+    col.save(docs);
     console.log("done");
   `;
 
