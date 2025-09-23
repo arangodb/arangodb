@@ -275,14 +275,33 @@ void SortedCollectExecutor::CollectGroup::writeToOutput(
   // set the group values
   if (infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     TRI_ASSERT(_builder.isOpenArray());
+    // finalize the current array in the builder
     _builder.close();
 
-    AqlValue val(std::move(_buffer));  // _buffer still usable after
-    AqlValueGuard guard{val, true};
-    TRI_ASSERT(_buffer.size() == 0);
-    _builder.clear();  // necessary
+    // copy the contents of the supervised buffer into an unmanaged AqlValue
+    velocypack::Slice slice = _builder.slice();
+    auto& usage = infos.resourceUsageScope();
 
+    // charge estimated bytes for the unmanaged copy
+    std::size_t est = slice.byteSize();
+    usage.increase(est);
+
+    AqlValue val(slice);  // allocates a new buffer and copies data
+    std::size_t actual = val.memoryUsage();
+    if (actual > est) {
+      usage.increase(actual - est);
+    } else if (est > actual) {
+      usage.decrease(est - actual);
+    }
+
+    AqlValueGuard guard{val, true};
     output.moveValueInto(infos.getCollectRegister(), _lastInputRow, &guard);
+
+    // release the temporary charge; the output block now owns the bytes
+    usage.decrease(actual);
+
+    // clear the builder and its supervised buffer
+    _builder.clear();
   }
 
   output.advanceRow();
