@@ -546,6 +546,12 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   waitOnServerForGC (instanceInfo, options, waitTime) {
+    if (options.skipServerJS) {
+      return {
+        status: true,
+        message: "skipped for servers without javascript"
+      };
+    }
     let baseUrl = this.url;
     if (instanceInfo !== undefined) {
       baseUrl = instanceInfo.url;
