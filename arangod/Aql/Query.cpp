@@ -524,7 +524,8 @@ async<void> Query::prepareQuery() {
 
         // switch threads, let the original one suspend
         co_await scheduler->yield();
-        // now wait for the query to be killed, and the cleanup to finally trigger a wakeup
+        // now wait for the query to be killed, and the cleanup to finally
+        // trigger a wakeup
         _queryKilled.wait(false);                        // false -> true
         _shutdownState.wait(ShutdownState::None);        // None -> InProgress
         _shutdownState.wait(ShutdownState::InProgress);  // InProgress -> Done
