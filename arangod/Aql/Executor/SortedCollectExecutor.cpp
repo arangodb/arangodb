@@ -61,9 +61,7 @@ SortedCollectExecutor::CollectGroup::CollectGroup(Infos& infos)
 
 SortedCollectExecutor::CollectGroup::~CollectGroup() {
   for (auto& it : groupValues) {
-    auto mem = it.memoryUsage();
     it.destroy();
-    infos.resourceUsageScope().decrease(mem);
   }
 }
 
