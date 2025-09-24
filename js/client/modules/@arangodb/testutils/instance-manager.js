@@ -1538,7 +1538,7 @@ class instanceManager {
 
 exports.instanceManager = instanceManager;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
-  let memory = undefined;
+  let memory;
   if (fs.exists("/proc/meminfo")) {
     let f = fs.read("/proc/meminfo");
     const search = 'MemTotal:';
