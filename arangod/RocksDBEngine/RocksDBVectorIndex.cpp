@@ -397,9 +397,9 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
             ->get();
     rocksdbEntryValue.storedValues = extractedAttribtueValues->slice();
   }
-  velocypack::Builder b;
-  velocypack::serialize(b, rocksdbEntryValue);
-  auto const status = methods->Put(_cf, rocksdbKey, b.toString(), false);
+  velocypack::Builder builder;
+  velocypack::serialize(builder, rocksdbEntryValue);
+  auto const status = methods->Put(_cf, rocksdbKey, builder.toString(), false);
 
   return rocksutils::convertStatus(status);
 }
@@ -588,7 +588,8 @@ Result RocksDBVectorIndex::ingestVectors(
 
       if constexpr (returnsResult) {
         setResult(fn());
-      } else {
+      }
+      else {
         fn();
       }
     } catch (basics::Exception const& e) {
