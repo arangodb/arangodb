@@ -1050,6 +1050,7 @@ struct AggregatorList : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
+    builder.close();
     return AqlValue(builder.slice());
   }
 
