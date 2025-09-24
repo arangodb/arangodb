@@ -209,6 +209,9 @@ struct OptimizerRule {
     // try to use vector index if possible
     useVectorIndexForSort,
 
+    // push filtering node into vector index
+    pushFilterIntoEnumerateNear,
+
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule,
 
