@@ -171,14 +171,7 @@ struct AggregatorMin final : public Aggregator {
 
   ~AggregatorMin() { value.destroy(); }
 
-  void reset() override {
-    // Destroy the currently stored value and decrease the accounted memory.
-    auto memoryUsage = value.memoryUsage();
-    value.destroy();
-    if (memoryUsage != 0) {
-      resourceUsageScope().decrease(memoryUsage);
-    }
-  }
+  void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isNull(true) &&
@@ -214,14 +207,7 @@ struct AggregatorMax final : public Aggregator {
 
   ~AggregatorMax() { value.destroy(); }
 
-  void reset() override {
-    // Destroy the currently stored value and decrease the accounted memory.
-    auto memoryUsage = value.memoryUsage();
-    value.destroy();
-    if (memoryUsage != 0) {
-      resourceUsageScope().decrease(memoryUsage);
-    }
-  }
+  void reset() override { value.erase(); }
 
   void reduce(AqlValue const& cmpValue) override {
     if (value.isEmpty() ||
@@ -688,6 +674,7 @@ struct AggregatorUnique : public Aggregator {
     if (builder.isClosed()) {
       builder.openArray();
     }
+    // close the array and return a slice
     builder.close();
     return AqlValue(builder.slice());
   }
