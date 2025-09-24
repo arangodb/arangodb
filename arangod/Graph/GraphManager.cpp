@@ -1293,3 +1293,36 @@ void GraphManager::invalidateQueryOptimizerCaches() const {
   // do would be to retry, but this is already done by `sendRequestRetry`.
   // So we just return here and let the request objects go out of scope.
 }
+
+auto GraphManager::findVertexCollectionsFromEdgeCollection(
+    std::string edgeCollectionName) const
+    -> std::optional<std::vector<std::string>> {
+  // TODO: I hate every single step in this code.
+  auto found = false;
+  auto result = std::vector<std::string>{};
+
+  auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
+    if (!found) {
+      auto maybeDef = graph->getEdgeDefinition(edgeCollectionName);
+      if (maybeDef.has_value()) {
+        auto& def = maybeDef->get();
+        auto const& from = def.getFrom();
+        result.insert(std::end(result), std::cbegin(from), std::cend(from));
+
+        auto const& to = def.getTo();
+        result.insert(std::end(result), std::cbegin(to), std::cend(to));
+
+        found = true;
+      }
+    }
+    return Result{};
+  };
+
+  Result res = applyOnAllGraphs(callback);
+
+  if (res.fail()) {
+    return std::nullopt;
+  } else {
+    return {result};
+  }
+}

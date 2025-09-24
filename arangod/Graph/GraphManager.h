@@ -158,15 +158,29 @@ class GraphManager {
   Result applyOnAllGraphs(
       std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
+  /**
+   * @brief Find whether there is a named graph which contains the
+   * given edge collection.
+   *
+   * If so, return the fromCollections and toCollections, otherwise return
+   * std::nullopt
+   *
+   * @param edgeCollectionName The name of the edge collection to look for
+   *
+   * @return Either fromCollections and toCOllections or std::nullopt.
+   */
+  auto findVertexCollectionsFromEdgeCollection(std::string edgeCollectionName)
+      const -> std::optional<std::vector<std::string>>;
+
  private:
   /**
    * @brief Invalidate all query optimizer caches in the database of this
    * GraphManager. This is necessary in the cluster when the GraphManager
    * runs on a coordinator and all coordinators need to be informed that
-   * their query optimizer caches are now invalid, since some graph definition
-   * has been changed. This method is called in the other GraphManager
-   * methods, whenever some graph is changed on a coordinator. This is a
-   * fire-and-forget method.
+   * their query optimizer caches are now invalid, since some graph
+   * definition has been changed. This method is called in the other
+   * GraphManager methods, whenever some graph is changed on a coordinator.
+   * This is a fire-and-forget method.
    */
   void invalidateQueryOptimizerCaches() const;
 
