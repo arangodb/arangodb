@@ -46,6 +46,7 @@
 #include "Transaction/Helpers.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include "Indexes/Index.h"
@@ -375,10 +376,10 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
   vector::RocksDBVectorIndexEntryValue rocksdbEntryValue;
-  rocksdbEntryValue.encodedValue = std::string(
-      reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
+  rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
+      flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
   if (hasStoredValues()) {
-    auto const extractedAttribtueValues =
+    auto extractedAttribtueValues =
         transaction::extractAttributeValues(trx, _storedValues, doc, true)
             ->get();
     rocksdbEntryValue.storedValues = extractedAttribtueValues->slice();
@@ -505,7 +506,7 @@ RocksDBVectorIndex::storedValues() const noexcept {
   return _storedValues;
 }
 
-#define LOG_INGESTION LOG_DEVEL_IF(false)
+#define LOG_INGESTION LOG_DEVEL_IF(true)
 
 Result RocksDBVectorIndex::ingestVectors(
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> documentIterator) {
@@ -526,7 +527,7 @@ Result RocksDBVectorIndex::ingestVectors(
     // dim * docIds.size() vectors
     std::vector<float> vectors;
     // Only used if the storedValues are defined on index
-    std::vector<VPackSlice> storedValues;
+    std::vector<velocypack::Slice> storedValues;
   };
 
   struct EncodedVectors {
@@ -534,7 +535,7 @@ Result RocksDBVectorIndex::ingestVectors(
     std::unique_ptr<faiss::idx_t[]> lists;
     std::unique_ptr<uint8_t[]> codes;
     // Only used if the storedValues are defined on index
-    std::vector<VPackSlice> storedValues;
+    std::vector<velocypack::Slice> storedValues;
   };
 
   struct BlockCounters {
@@ -580,53 +581,11 @@ Result RocksDBVectorIndex::ingestVectors(
         fn();
       }
     } catch (basics::Exception const& e) {
+      LOG_DEVEL << ADB_HERE << ": Error on: " << e.message();
       setResult({e.code(), e.message()});
     } catch (std::exception const& e) {
+      LOG_DEVEL << ADB_HERE << ": Error on: " << e.what();
       setResult({TRI_ERROR_INTERNAL, e.what()});
-    }
-  };
-
-  auto encodeVectors = [&]() {
-    BoundedChannelProducerGuard guard(encodedChannel);
-    // This trivially parallelizes
-    while (true) {
-      auto [item, blocked] = documentChannel.pop();
-      if (item == nullptr) {
-        return;
-      }
-
-      bool shouldStop = false;
-      errorExceptionHandler([&] {
-        counters.encodeConsumeBlocked += blocked;
-        auto n = item->docIds.size();
-        countBatches += 1;
-        countDocuments += n;
-
-        float* x = item->vectors.data();
-        std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
-        _faissIndex->quantizer->assign(n, x, coarse_idx.get());
-        auto code_size = _faissIndex->code_size;
-        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
-
-        // TODO: since we only use IVTFlat this is just copying the data.
-        //  Probably we want to use some PQ encoding later on.
-        _faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
-
-        auto encoded = std::make_unique<EncodedVectors>();
-        encoded->docIds = std::move(item->docIds);
-        encoded->lists = std::move(coarse_idx);
-        encoded->codes = std::move(flat_codes);
-
-        LOG_INGESTION << "ENCODE encoded " << encoded->docIds.size()
-                      << " vectors";
-        bool pushBlocked = false;
-        std::tie(shouldStop, pushBlocked) =
-            encodedChannel.push(std::move(encoded));
-        counters.encodeProduceBlocked += pushBlocked;
-      });
-      if (shouldStop) {
-        break;
-      }
     }
   };
 
@@ -638,20 +597,22 @@ Result RocksDBVectorIndex::ingestVectors(
                   "this code is not prepared for multiple reads");
 
     errorExceptionHandler([&] {
+      LOG_INGESTION << ADB_HERE;
       BoundedChannelProducerGuard guard(documentChannel);
 
-      auto prepareBatch = [&] {
+      auto const prepareBatch = [&] {
         auto batch = std::make_unique<DocumentVectors>();
         batch->docIds.reserve(documentPerBatch);
+        batch->vectors.reserve(documentPerBatch * _definition.dimension);
         if (hasStoredValues()) {
           batch->storedValues.reserve(documentPerBatch);
         }
-        batch->vectors.reserve(documentPerBatch * _definition.dimension);
         return batch;
       };
 
       std::unique_ptr<DocumentVectors> batch = prepareBatch();
       while (documentIterator->Valid() && not hasError.load()) {
+        LOG_INGESTION << ADB_HERE;
         LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
         VPackSlice doc = RocksDBValue::data(documentIterator->value());
         if (auto const res = readDocumentVectorData(doc, batch->vectors);
@@ -666,8 +627,10 @@ Result RocksDBVectorIndex::ingestVectors(
         }
         batch->docIds.push_back(docId);
         if (hasStoredValues()) {
-          auto const extractedAttributeValues =
+          auto extractedAttributeValues =
               extractAttributeValuesWithoutTrx(_storedValues, doc, true);
+          LOG_INGESTION << "EXTRACTED DATA: "
+                        << extractedAttributeValues->toString();
           batch->storedValues.push_back(extractedAttributeValues->slice());
         }
 
@@ -697,6 +660,52 @@ Result RocksDBVectorIndex::ingestVectors(
     });
   };
 
+  auto encodeVectors = [&]() {
+    BoundedChannelProducerGuard guard(encodedChannel);
+    // This trivially parallelizes
+    while (true) {
+      auto [item, blocked] = documentChannel.pop();
+      if (item == nullptr) {
+        return;
+      }
+
+      bool shouldStop = false;
+      errorExceptionHandler([&] {
+        LOG_INGESTION << ADB_HERE;
+        counters.encodeConsumeBlocked += blocked;
+        auto n = item->docIds.size();
+        countBatches += 1;
+        countDocuments += n;
+
+        float* x = item->vectors.data();
+        std::unique_ptr<faiss::idx_t[]> coarse_idx(new faiss::idx_t[n]);
+        _faissIndex->quantizer->assign(n, x, coarse_idx.get());
+        auto code_size = _faissIndex->code_size;
+        std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[n * code_size]);
+
+        // TODO: since we only use IVTFlat this is just copying the data.
+        //  Probably we want to use some PQ encoding later on.
+        _faissIndex->encode_vectors(n, x, coarse_idx.get(), flat_codes.get());
+
+        auto encoded = std::make_unique<EncodedVectors>();
+        encoded->docIds = std::move(item->docIds);
+        encoded->lists = std::move(coarse_idx);
+        encoded->codes = std::move(flat_codes);
+        encoded->storedValues = std::move(item->storedValues);
+
+        LOG_INGESTION << "ENCODE encoded " << encoded->docIds.size()
+                      << " vectors";
+        bool pushBlocked = false;
+        std::tie(shouldStop, pushBlocked) =
+            encodedChannel.push(std::move(encoded));
+        counters.encodeProduceBlocked += pushBlocked;
+      });
+      if (shouldStop) {
+        break;
+      }
+    }
+  };
+
   auto writeDocuments = [&] {
     // This parallelized trivially already
     rocksdb::WriteBatch batch;
@@ -707,6 +716,7 @@ Result RocksDBVectorIndex::ingestVectors(
       }
 
       errorExceptionHandler([&] {
+        LOG_INGESTION << ADB_HERE;
         counters.writeConsumeBlocked += blocked;
         batch.Clear();
 
@@ -718,17 +728,20 @@ Result RocksDBVectorIndex::ingestVectors(
                                         item->docIds[k]);
 
           vector::RocksDBVectorIndexEntryValue rocksdbEntryValue;
-          rocksdbEntryValue.encodedValue =
-              std::string(reinterpret_cast<const char*>(
-                              item->codes.get() + k * _faissIndex->code_size),
-                          _faissIndex->code_size);
+          rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
+              item->codes.get() + k * _faissIndex->code_size,
+              item->codes.get() + (k + 1) * _faissIndex->code_size);
           if (hasStoredValues()) {
-            rocksdbEntryValue.storedValues = item->storedValues[k];
+            rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
           }
 
-          status =
-              batch.Put(_cf, key.string(),
-                        velocypack::serialize(rocksdbEntryValue).stringView());
+          LOG_DEVEL << "LADIDA";
+
+          VPackBuilder builder;
+          velocypack::serialize(builder, rocksdbEntryValue);
+          LOG_DEVEL << "XAXA: " << builder.toJson();
+          LOG_DEVEL << "XAXA: " << builder.toString();
+          status = batch.Put(_cf, key.string(), builder.toString());
           if (not status.ok()) {
             THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
           }

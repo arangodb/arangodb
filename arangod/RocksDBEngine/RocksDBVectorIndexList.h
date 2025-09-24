@@ -33,6 +33,8 @@
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
+#include <velocypack/SharedSlice.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
 
@@ -42,8 +44,8 @@ class LogicalCollection;
 namespace vector {
 
 struct RocksDBVectorIndexEntryValue {
-  std::string encodedValue;
-  std::optional<VPackSlice> storedValues;
+  std::vector<uint8_t> encodedValue;
+  std::optional<velocypack::Slice> storedValues;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {

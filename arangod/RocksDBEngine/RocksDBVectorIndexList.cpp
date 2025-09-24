@@ -250,23 +250,6 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
       continue;  // Skip invalid entries
     }
 
-    // Extract encodedValue
-    auto encodedValueSlice = slice.get("encodedValue");
-    if (encodedValueSlice.isString()) {
-      entryValue.encodedValue = encodedValueSlice.copyString();
-    }
-
-    // Extract storedValues
-    auto storedValuesSlice = slice.get("storedValues");
-    if (storedValuesSlice.isArray()) {
-      entryValue.storedValues = storedValuesSlice;
-    }
-
-    // Check if we have stored values
-    if (!entryValue.storedValues.has_value()) {
-      continue;  // Skip if no stored values
-    }
-
     // Create expression context for filtering using stored values
     aql::GenericDocumentExpressionContext ctx(
         *_searchParametersContext.trx, *_searchParametersContext.queryContext,
@@ -277,9 +260,7 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
     // Create a mock document from stored values for filtering
     // The stored values are in array format, we need to create a document-like
     // structure
-    VPackBuilder docBuilder;
-    velocypack::deserialize(entryValue.storedValues.value(), docBuilder);
-    ctx.setCurrentDocument(docBuilder.slice());
+    ctx.setCurrentDocument(slice);
 
     bool mustDestroy{false};
     aql::AqlValue a =
