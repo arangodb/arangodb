@@ -17,7 +17,7 @@ endif ()
 
 target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools)
 
-if (USE_V8)
+# if (USE_V8)
   add_executable(${BIN_ARANGOSH}
     ${ProductVersionFiles_arangosh}
 
@@ -174,5 +174,5 @@ if (USE_V8)
     )
   endif ()
 
-endif ()
+# endif ()
 

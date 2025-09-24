@@ -37,9 +37,9 @@ add_custom_target(client-tools
             arangobench
             arangovpack)
 
-if (USE_V8)
-  add_dependencies(client-tools arangosh)
-endif ()
+#if (USE_V8)
+add_dependencies(client-tools arangosh)
+#endif ()
 
 if (USE_ENTERPRISE)
   add_dependencies(client-tools arangobackup)
