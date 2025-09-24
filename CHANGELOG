@@ -2,6 +2,8 @@ devel
 -----
 
 * Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
+
+* Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
   instructions in query runtime.
 
 * Fix BTS-2130: Fix the endless wait in Coordinators during
