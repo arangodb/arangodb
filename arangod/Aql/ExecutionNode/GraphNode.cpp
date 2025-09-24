@@ -45,6 +45,7 @@
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
 #include "Graph/TraverserOptions.h"
+#include "Graph/GraphManager.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -265,7 +266,17 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         }
       }
 
-      auto& collections = plan->getAst()->query().collections();
+      // TODO: DONT LEAVE THIS JUNK HERE
+      //      auto& collections = plan->getAst()->query().collections();
+      auto& q = plan->getAst()->query();
+      auto gm = graph::GraphManager(q.vocbase(), q.operationOrigin());
+
+      auto r = gm.findVertexCollectionsFromEdgeCollection(eColName);
+      if (r.has_value()) {
+        for (auto&& v : *r) {
+          addVertexCollection(collections, v);
+        }
+      }
 
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
@@ -288,6 +299,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       }
     }
     _graphInfo.close();
+
   } else if (graph->isStringValue()) {
     std::string graphName = graph->getString();
     _graphInfo.add(VPackValue(graphName));
