@@ -227,8 +227,6 @@ AstNode* getApproxNearAttributeExpression(
   return nullptr;
 }
 
-}  // namespace
-
 std::vector<std::shared_ptr<Index>> getVectorIndexes(
     auto& enumerateCollectionNode) {
   std::vector<std::shared_ptr<Index>> vectorIndexes;
@@ -240,25 +238,7 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 
   return vectorIndexes;
 }
-
-bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
-                                    auto& filterExpression) {
-  auto* maybeCalculationNode = maybeFilterNode->getFirstDependency();
-  // We always expect a calculationNode in this scenario
-  if (maybeCalculationNode == nullptr ||
-      maybeCalculationNode->getType() != EN::CALCULATION) {
-    return false;
-  }
-  auto const* calculationNode =
-      ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
-  TRI_ASSERT(calculationNode->expression() != nullptr);
-  filterExpression = calculationNode->expression()->clone(plan->getAst());
-
-  plan->unlinkNode(maybeFilterNode);
-  plan->unlinkNode(maybeCalculationNode);
-
-  return true;
-}
+}  // namespace
 
 // Vector Index Optimization Rule
 //
@@ -285,6 +265,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
   bool modified{false};
+  bool triggerFilterOptimization{false};
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
@@ -298,7 +279,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       continue;
     }
 
-    // check that enumerateColNode has both sort and limit
     auto* currentNode = enumerateCollectionNode->getFirstParent();
     const auto skipOverCalculationNodes = [&currentNode] {
       while (currentNode != nullptr &&
@@ -308,11 +288,10 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     };
     skipOverCalculationNodes();
 
-    // We tolerate post filtering
-    ExecutionNode* maybeFilterNode{nullptr};
+    // We tolerate filter node and handle it in another rule
     if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
-      maybeFilterNode = currentNode;
       currentNode = currentNode->getFirstParent();
+      triggerFilterOptimization = true;
     }
     skipOverCalculationNodes();
 
@@ -372,99 +351,11 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        approximatedAttributeExpression),
           inVariable);
 
-      // If there is a FilterNode it comes with CalculationNode, we remove it
-      // and handle it in EnumerateNearVectorNode
-      // TODO Check if IndexNode always does this
-      std::unique_ptr<Expression> filterExpression{nullptr};
-      bool isCoveredByStoredValues{false};
-      if (maybeFilterNode) {
-        if (bool isRemoved = removeFilterAndCalculationNode(
-                maybeFilterNode, plan, filterExpression);
-            !isRemoved) {
-          continue;
-        }
-
-        // check which variables are used by the node's post-filter
-        std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-        VarSet inVars;
-        filterExpression->variables(inVars);
-        filterVarsToRegs.reserve(inVars.size());
-
-        // Here we take all variables in the expression
-        for (auto const& var : inVars) {
-          TRI_ASSERT(var != nullptr);
-          if (var->id == oldDocumentVariable->id) {
-            continue;
-          }
-          // auto regId =
-          // plan->getRegisterPlanForNode(maybeFilterNode)->variableToRegisterId(var);
-          // TODO(jbajic) Why I cannot get this froim the executio plan and not
-          // from the node?
-          auto regId =
-              maybeFilterNode->getRegisterPlan()->variableToRegisterId(var);
-
-          filterVarsToRegs.emplace_back(var->id, regId);
-        }
-
-        // get stored fields from vec idx
-        auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(index.get());
-        if (vecIdx->hasStoredValues() && !filterVarsToRegs.empty()) {
-          // check if all attribtues in filterExpression are covered
-          // by storedValues
-
-          // Get stored values from the vector index
-          auto const& storedValues = vecIdx->storedValues();
-
-          // Extract all attribute names from filter expression
-          containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
-          // auto* ast = engine.getQuery().ast();
-          auto* ast = plan->getAst();
-
-          for (auto const& varPair : filterVarsToRegs) {
-            auto const* variable = ast->variables()->getVariable(varPair.first);
-            if (variable != nullptr) {
-              // Extract attribute names for this variable from the filter
-              // expression
-              if (!Ast::getReferencedAttributesRecursive(
-                      filterExpression->node(), variable,
-                      /*expectedAttribute*/ "", filterAttributes,
-                      plan->getAst()->query().resourceMonitor())) {
-                // If we can't extract attributes, we can't use stored values
-                break;
-              }
-            }
-          }
-
-          // Check if all filter attributes are covered by stored values
-          isCoveredByStoredValues = true;
-          for (auto const& filterAttr : filterAttributes) {
-            bool found = false;
-            for (auto const& storedValue : storedValues) {
-              // Convert stored value to AttributeNamePath for comparison
-              aql::AttributeNamePath storedPath(
-                  plan->getAst()->query().resourceMonitor());
-              for (auto const& attrName : storedValue) {
-                storedPath.add(attrName.name);
-              }
-
-              if (filterAttr == storedPath) {
-                found = true;
-                break;
-              }
-            }
-            if (!found) {
-              isCoveredByStoredValues = false;
-              break;
-            }
-          }
-        }
-      }
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
           limitNode->offset(), std::move(searchParameters),
-          enumerateCollectionNode->collection(), index,
-          std::move(filterExpression), isCoveredByStoredValues);
+          enumerateCollectionNode->collection(), index, nullptr, false);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(
@@ -488,4 +379,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
   }
 
   opt->addPlan(std::move(plan), rule, modified);
+  // If the plan was modified and if the filterExpression was encounter
+  if (modified && triggerFilterOptimization) {
+  }
 }
