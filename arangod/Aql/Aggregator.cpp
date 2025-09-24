@@ -1069,7 +1069,6 @@ struct AggregatorList : public Aggregator {
     // be aware of the Window Executor: it calls reduce and get multiple times
     // if preceding is `unbounded`. But closing the array here breaks the
     // velocypack slice.
-    builder.close();
     auto builderCopy = builder;
     builderCopy.close();
     return AqlValue(std::move(*builderCopy.steal()));
