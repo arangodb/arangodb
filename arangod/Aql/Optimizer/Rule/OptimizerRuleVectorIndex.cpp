@@ -378,8 +378,10 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
   }
 
-  opt->addPlan(std::move(plan), rule, modified);
   // If the plan was modified and if the filterExpression was encounter
   if (modified && triggerFilterOptimization) {
+    plan->enableRule(OptimizerRule::pushFilterIntoEnumerateNear);
   }
+
+  opt->addPlan(std::move(plan), rule, modified);
 }

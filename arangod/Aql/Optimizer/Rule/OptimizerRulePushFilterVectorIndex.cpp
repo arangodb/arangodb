@@ -72,10 +72,10 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::ENUMERATE_NEAR_VECTORS, true);
   for (ExecutionNode* node : nodes) {
-    auto* enumerateCollectionNode =
-        ExecutionNode::castTo<EnumerateCollectionNode*>(node);
+    auto* enumerateNearVectorNode =
+        ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
 
-    auto* currentNode = enumerateCollectionNode->getFirstParent();
+    auto* currentNode = enumerateNearVectorNode->getFirstParent();
     const auto skipOverCalculationNodes = [&currentNode] {
       while (currentNode != nullptr &&
              currentNode->getType() == EN::CALCULATION) {
@@ -108,14 +108,15 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     filterExpression->variables(inVars);
     filterVarsToRegs.reserve(inVars.size());
 
-    auto const* oldDocumentVariable = enumerateCollectionNode->outVariable();
+    auto const* oldDocumentVariable =
+        enumerateNearVectorNode->documentOutVariable();
     // Here we take all variables in the expression
     for (auto const& var : inVars) {
       TRI_ASSERT(var != nullptr);
       if (var->id == oldDocumentVariable->id) {
         continue;
       }
-      // TODO(jbajic) Why I cannot get this froim the executio plan and not
+      // TODO(jbajic) Why I cannot get this from the execution plan and not
       // from the node?
       auto const regId =
           filterNode->getRegisterPlan()->variableToRegisterId(var);
@@ -123,8 +124,6 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
       filterVarsToRegs.emplace_back(var->id, regId);
     }
 
-    auto* enumerateNearVectorNode =
-        ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
     auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(
         enumerateNearVectorNode->index().get());
     if (vecIdx->hasStoredValues() && !filterVarsToRegs.empty()) {
@@ -179,6 +178,8 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
       enumerateNearVectorNode->setFilterExpression(filterExpression.get());
       enumerateNearVectorNode->setIsCoveredByStoredValues(
           isCoveredByStoredValues);
+
+      modified = true;
     }
   }
 
