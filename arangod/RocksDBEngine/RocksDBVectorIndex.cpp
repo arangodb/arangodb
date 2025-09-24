@@ -220,6 +220,19 @@ void RocksDBVectorIndex::toVelocyPack(
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
 
+  if (!_storedValues.empty()) {
+    builder.add(velocypack::Value(StaticStrings::IndexStoredValues));
+    builder.openArray();
+
+    for (auto const& field : _storedValues) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
+  }
+
   if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
     builder.add(VPackValue("trainedData"));
