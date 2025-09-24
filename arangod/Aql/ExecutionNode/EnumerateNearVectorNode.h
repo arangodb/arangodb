@@ -80,6 +80,10 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   bool isAscending() const noexcept;
 
+  void setFilterExpression(Expression* filterExpression);
+
+  void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
+
  protected:
   CostEstimate estimateCost() const override;
 

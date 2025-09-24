@@ -265,4 +265,14 @@ bool EnumerateNearVectorNode::isAscending() const noexcept {
   return _ascending;
 }
 
+void EnumerateNearVectorNode::setFilterExpression(
+    Expression* filterExpression) {
+  _filterExpression = filterExpression->clone(_plan->getAst());
+}
+
+void EnumerateNearVectorNode::setIsCoveredByStoredValues(
+    bool isCoveredByStoredValues) noexcept {
+  _isCoveredByStoredValues = isCoveredByStoredValues;
+}
+
 }  // namespace arangodb::aql
