@@ -46,6 +46,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"

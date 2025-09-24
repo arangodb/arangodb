@@ -266,17 +266,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
         }
       }
 
-      // TODO: DONT LEAVE THIS JUNK HERE
-      //      auto& collections = plan->getAst()->query().collections();
-      auto& q = plan->getAst()->query();
-      auto gm = graph::GraphManager(q.vocbase(), q.operationOrigin());
-
-      auto r = gm.findVertexCollectionsFromEdgeCollection(eColName);
-      if (r.has_value()) {
-        for (auto&& v : *r) {
-          addVertexCollection(collections, v);
-        }
-      }
+      auto& collections = plan->getAst()->query().collections();
 
       _graphInfo.add(VPackValue(eColName));
       if (ServerState::instance()->isRunningInCluster()) {
