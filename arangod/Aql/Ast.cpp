@@ -418,8 +418,8 @@ LogicalDataSource::Category addDataSource(
   return category;
 }
 
-std::string edgeCollectionNodeGetName(CollectionNameResolver const& resolver,
-                                      AstNode const* edgeCollection) {
+std::optional<std::string> edgeCollectionNodeGetName(
+    CollectionNameResolver const& resolver, AstNode const* edgeCollection) {
   if (edgeCollection->isStringValue()) {
     return edgeCollection->getString();
   } else if (edgeCollection->type == NODE_TYPE_DIRECTION) {
@@ -429,10 +429,10 @@ std::string edgeCollectionNodeGetName(CollectionNameResolver const& resolver,
     if (eCSub->isStringValue()) {
       return eCSub->getString();
     }
-  }  // else bindParameter use default for collection bindVar
+  }
 
-  // TODO: what? probably assert?
-  return "";
+  // TODO: find whether this can ever happen
+  return std::nullopt;
 }
 
 }  // namespace
