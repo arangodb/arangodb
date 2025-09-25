@@ -1019,9 +1019,8 @@ struct AggregatorMergeLists : public Aggregator {
     if (!builder.isOpenArray()) {
       builder.openArray();
     }
-    auto builderCopy = builder;
-    builderCopy.close();
-    return AqlValue(std::move(*builderCopy.steal()));
+    builder.close();
+    return AqlValue(builder.slice());
   }
 
   mutable arangodb::velocypack::Builder builder;
