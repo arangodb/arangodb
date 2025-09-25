@@ -127,19 +127,17 @@ class SupervisedBuffer : public Buffer<uint8_t> {
     }
   }
 
-}
-
   void clear() noexcept override {
-  auto before = this->capacity();
-  Buffer<uint8_t>::clear();
-  auto after = this->capacity();
-  // if before > after, means that it has released usage from the heap
-  if (before > after) {
-    _usageScope.decrease(before - after);
+    auto before = this->capacity();
+    Buffer<uint8_t>::clear();
+    auto after = this->capacity();
+    // if before > after, means that it has released usage from the heap
+    if (before > after) {
+      _usageScope.decrease(before - after);
+    }
   }
-}
 
-ResourceUsageScope _usageScope;
+  ResourceUsageScope _usageScope;
 };
 
 }  // namespace arangodb::velocypack
