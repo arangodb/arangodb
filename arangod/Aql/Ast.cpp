@@ -4521,8 +4521,8 @@ void Ast::addCollection(CollectionNameResolver const& resolver,
       }  // else { TODO Should we really not react? }
     }
   } else {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-        absl::StrCat(nameRef, " is required to be a collection"));
+    //    THROW_ARANGO_EXCEPTION_MESSAGE(
+    //    TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+    //    absl::StrCat(nameRef, " is required to be a collection"));
   }
 }
