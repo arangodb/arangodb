@@ -4643,19 +4643,29 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
           auto const* member = match->getMemberUnchecked(i);
           switch (member->type) {
             case NODE_TYPE_VALUE: {
+              TRI_ASSERT(member->isStringValue());
               edgeCollections.emplace(member->getString());
             } break;
             case NODE_TYPE_COLLECTION: {
               edgeCollections.emplace(member->getString());
             } break;
+            case NODE_TYPE_DIRECTION: {
+              TRI_ASSERT(member->numMembers() == 2);
+              auto subMember = member->getMember(1);
+
+              TRI_ASSERT(subMember->isStringValue() ||
+                         subMember->type == NODE_TYPE_COLLECTION)
+                  << subMember->getTypeString();
+              edgeCollections.emplace(subMember->getString());
+            } break;
             default: {
               // TODO: throw maybe.
-              ADB_PROD_CRASH() << "unknown.";
+              ADB_PROD_CRASH() << "unhandled: " << member->getTypeString();
             }
           }
         }
       } else {
-        // Graph syntax is not interesting for this function
+        // Graph syntax case (I hope); is not interesting for this function
       }
     }
   };
