@@ -593,10 +593,8 @@ Result RocksDBVectorIndex::ingestVectors(
         fn();
       }
     } catch (basics::Exception const& e) {
-      LOG_DEVEL << ADB_HERE << ": Error on: " << e.message();
       setResult({e.code(), e.message()});
     } catch (std::exception const& e) {
-      LOG_DEVEL << ADB_HERE << ": Error on: " << e.what();
       setResult({TRI_ERROR_INTERNAL, e.what()});
     }
   };
@@ -747,12 +745,9 @@ Result RocksDBVectorIndex::ingestVectors(
             rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
           }
 
-          LOG_DEVEL << "LADIDA";
 
           VPackBuilder builder;
           velocypack::serialize(builder, rocksdbEntryValue);
-          LOG_DEVEL << "XAXA: " << builder.toJson();
-          LOG_DEVEL << "XAXA: " << builder.toString();
           status = batch.Put(_cf, key.string(), builder.toString());
           if (not status.ok()) {
             THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
