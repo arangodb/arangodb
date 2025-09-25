@@ -630,7 +630,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   _ast->injectBindParametersSecondStage(_bindParameters);
 
-  _ast->addEdgeTraversalVertexCollections(this->resolver());
+  _ast->addGraphNodeImplicitVertexCollections(this->resolver());
 
   if (_ast->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
@@ -1443,7 +1443,7 @@ QueryResult Query::explain() {
     _ast->injectBindParametersSecondStage(_bindParameters);
     _bindParameters.validateAllUsed();
 
-    _ast->addEdgeTraversalVertexCollections(this->resolver());
+    _ast->addGraphNodeImplicitVertexCollections(this->resolver());
 
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
