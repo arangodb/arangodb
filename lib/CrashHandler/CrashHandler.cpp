@@ -696,10 +696,7 @@ void CrashHandler::logBacktrace() {
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(std::string_view context) {
   // Store crash data for the dedicated crash handler thread
-  auto threadNameFetcher = arangodb::ThreadNameFetcher{};
-  ::storeCrashData(context.data(), SIGABRT,
-
-                   arangodb::Thread::currentThreadId(),
+  ::storeCrashData(context.data(), SIGABRT, arangodb::Thread::currentThreadId(),
                    arangodb::Thread::currentThreadNumber(), /*no info*/ nullptr,
                    /*no context*/ nullptr);
 
