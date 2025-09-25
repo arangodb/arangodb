@@ -361,8 +361,8 @@ LogicalDataSource::Category addDataSource(
   return category;
 }
 
-std::string edgeCollectionNodeGetName(CollectionNameResolver const& resolver,
-                                      AstNode const* edgeCollection) {
+std::optional<std::string> edgeCollectionNodeGetName(
+    CollectionNameResolver const& resolver, AstNode const* edgeCollection) {
   if (edgeCollection->isStringValue()) {
     return edgeCollection->getString();
   } else if (edgeCollection->type == NODE_TYPE_DIRECTION) {
@@ -372,10 +372,10 @@ std::string edgeCollectionNodeGetName(CollectionNameResolver const& resolver,
     if (eCSub->isStringValue()) {
       return eCSub->getString();
     }
-  }  // else bindParameter use default for collection bindVar
+  }
 
-  // TODO: what? probably assert?
-  return "";
+  // TODO: find whether this can ever happen
+  return std::nullopt;
 }
 
 }  // namespace
@@ -1649,13 +1649,18 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
     // TODO Direction Parsing!
     auto edgeCollection = edgeCollections->getMember(i);
 
-    auto edgeCollectionName = edgeCollectionNodeGetName(resolver, node);
-    auto category = addDataSource(*this, resolver, edgeCollectionName);
+    auto edgeCollectionName =
+        edgeCollectionNodeGetName(resolver, edgeCollection);
 
-    if (category != LogicalDataSource::Category::kCollection) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-          absl::StrCat(edgeCollectionName, " is required to be a collection"));
+    if (edgeCollectionName.has_value()) {
+      auto category = addDataSource(*this, resolver, *edgeCollectionName);
+
+      if (category != LogicalDataSource::Category::kCollection) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+            absl::StrCat(*edgeCollectionName,
+                         " is required to be a collection"));
+      }
     }
 
     // We do not need to propagate these members
