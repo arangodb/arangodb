@@ -319,6 +319,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
 
     for (auto const& index : vectorIndexes) {
+      TRI_ASSERT(index != nullptr);
+
       auto const [approxNearExpression, ascending] =
           getApproxNearExpression(sortNode, plan, index);
       if (approxNearExpression == nullptr) {

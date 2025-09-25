@@ -74,8 +74,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _index(std::move(indexHandle)),
       _filterExpression(std::move(filterExpression)),
       _isCoveredByStoredValues(isCoveredByStoredValues) {
-  TRI_ASSERT(indexHandle->type() ==
-             Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
+  TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
   TRI_ASSERT(_filterExpression != nullptr || !_isCoveredByStoredValues);
 }
 
