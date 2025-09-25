@@ -4682,9 +4682,7 @@ void Ast::addGraphNodeImplicitVertexCollections(
 
   auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
 
-  auto& ci =
-      _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-  auto ss = ServerState::instance();
+  auto isCoordinator = ServerState::instance()->isCoordinator();
 
   for (auto&& edgeCollectionName : edgeCollections) {
     auto r = gm.findVertexCollectionsFromEdgeCollection(edgeCollectionName);
@@ -4696,7 +4694,12 @@ void Ast::addGraphNodeImplicitVertexCollections(
                                     false, vertexCollectionNameRef);
 
         if (category == LogicalDataSource::Category::kCollection) {
-          if (ss->isCoordinator()) {
+          if (isCoordinator) {
+            auto& ci = _query.vocbase()
+                           .server()
+                           .getFeature<ClusterFeature>()
+                           .clusterInfo();
+
             auto c = ci.getCollectionNT(_query.vocbase().name(),
                                         vertexCollectionName);
             if (c != nullptr) {
