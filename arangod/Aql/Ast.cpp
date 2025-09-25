@@ -4610,3 +4610,106 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
   }
   return nullptr;
 }
+
+containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
+    const {
+  auto edgeCollections = containers::FlatHashSet<std::string>(4);
+
+  auto edgeTraversalVisitor = [&edgeCollections](AstNode const* node) -> void {
+    auto maybeMatch = [&node]() -> std::optional<AstNode const*> {
+      switch (node->type) {
+        case NODE_TYPE_TRAVERSAL: {
+          return node->getMember(2);
+        } break;
+        case NODE_TYPE_SHORTEST_PATH: {
+          return node->getMember(3);
+        } break;
+        case NODE_TYPE_ENUMERATE_PATHS: {
+          return node->getMember(4);
+        } break;
+        default: {
+          return std::nullopt;
+        } break;
+      };
+    }();
+
+    if (maybeMatch.has_value()) {
+      auto const* match = *maybeMatch;
+
+      // Found a traversal, shortest path, path search that uses
+      // edge collection syntax
+      if (match->type == arangodb::aql::NODE_TYPE_COLLECTION_LIST) {
+        for (size_t i = 0; i < match->numMembers(); ++i) {
+          auto const* member = match->getMemberUnchecked(i);
+          switch (member->type) {
+            case NODE_TYPE_VALUE: {
+              edgeCollections.emplace(member->getString());
+            } break;
+            case NODE_TYPE_COLLECTION: {
+              edgeCollections.emplace(member->getString());
+            } break;
+            default: {
+              // TODO: throw maybe.
+              ADB_PROD_CRASH() << "unknown.";
+            }
+          }
+        }
+      } else {
+        // Graph syntax is not interesting for this function
+      }
+    }
+  };
+
+  traverseReadOnly(_root, edgeTraversalVisitor);
+
+  return edgeCollections;
+}
+
+void Ast::addGraphNodeImplicitVertexCollections(
+    CollectionNameResolver const& resolver) {
+  // Edge Collections used in traversals/
+  auto edgeCollections = collectGraphNodeEdgeCollections();
+
+  auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
+
+  auto& ci =
+      _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+  auto ss = ServerState::instance();
+
+  for (auto&& edgeCollectionName : edgeCollections) {
+    auto r = gm.findVertexCollectionsFromEdgeCollection(edgeCollectionName);
+    if (r.has_value()) {
+      for (auto&& vertexCollectionName : *r) {
+        auto vertexCollectionNameRef = std::string_view{vertexCollectionName};
+        auto category =
+            injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
+                                    false, vertexCollectionNameRef);
+
+        if (category == LogicalDataSource::Category::kCollection) {
+          if (ss->isCoordinator()) {
+            auto c = ci.getCollectionNT(_query.vocbase().name(),
+                                        vertexCollectionName);
+            if (c != nullptr) {
+              auto const& names = c->realNames();
+
+              for (auto const& n : names) {
+                std::string_view shardsNameRef(n);
+                LogicalDataSource::Category shardsCategory =
+                    injectDataSourceInQuery(*this, resolver,
+                                            AccessMode::Type::READ, false,
+                                            shardsNameRef);
+                TRI_ASSERT(shardsCategory ==
+                           LogicalDataSource::Category::kCollection);
+              }
+            }  // else { TODO Should we really not react? }
+          }
+        } else {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+              absl::StrCat(vertexCollectionNameRef,
+                           " is required to be a collection"));
+        }
+      }
+    }
+  }
+}
