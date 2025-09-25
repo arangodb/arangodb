@@ -4558,3 +4558,34 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
   }
   return nullptr;
 }
+
+void Ast::addCollection(CollectionNameResolver const& resolver,
+                        std::string name) {
+  std::string_view nameRef(name);
+  auto const isCoordinator = ServerState::instance()->isCoordinator();
+
+  LogicalDataSource::Category category = injectDataSourceInQuery(
+      *this, resolver, AccessMode::Type::READ, false, nameRef);
+  if (category == LogicalDataSource::Category::kCollection) {
+    if (isCoordinator) {
+      auto& ci =
+          _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+      auto c = ci.getCollectionNT(_query.vocbase().name(), name);
+      if (c != nullptr) {
+        auto const& names = c->realNames();
+
+        for (auto const& n : names) {
+          std::string_view shardsNameRef(n);
+          LogicalDataSource::Category shardsCategory = injectDataSourceInQuery(
+              *this, resolver, AccessMode::Type::READ, false, shardsNameRef);
+          TRI_ASSERT(shardsCategory ==
+                     LogicalDataSource::Category::kCollection);
+        }
+      }  // else { TODO Should we really not react? }
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+        absl::StrCat(nameRef, " is required to be a collection"));
+  }
+}
