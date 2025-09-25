@@ -195,32 +195,11 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     auto& builder = *_currentGroup->second.second;
     builder.close();
-
-    // copy the builder's result into an unmanaged AqlValue and account its
-    // memory
-    VPackSlice slice = builder.slice();
-    auto& monitor = _infos.getResourceMonitor();
-
-    std::size_t est = slice.byteSize();
-    monitor.increaseMemoryUsage(est);
-
-    AqlValue val(slice);
-    std::size_t actual = val.memoryUsage();
-    if (actual > est) {
-      monitor.increaseMemoryUsage(actual - est);
-    } else if (est > actual) {
-      monitor.decreaseMemoryUsage(est - actual);
-    }
-
+    AqlValue val(std::move(*builder.steal()));
     AqlValueGuard guard{val, true};
+    _currentGroup->second.second.reset();
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
                          &guard);
-
-    // release the temporary charge; the output block now owns the bytes
-    monitor.decreaseMemoryUsage(actual);
-
-    // destroy the builder (and its supervised buffer)
-    _currentGroup->second.second.reset();
   }
 }
 
