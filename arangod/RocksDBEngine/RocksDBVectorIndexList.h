@@ -45,7 +45,7 @@ namespace vector {
 
 struct RocksDBVectorIndexEntryValue {
   std::vector<uint8_t> encodedValue;
-  std::optional<velocypack::Slice> storedValues;
+  std::optional<std::string> storedValues;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {

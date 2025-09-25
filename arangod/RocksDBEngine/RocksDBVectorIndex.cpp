@@ -395,7 +395,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     auto extractedAttribtueValues =
         transaction::extractAttributeValues(trx, _storedValues, doc, true)
             ->get();
-    rocksdbEntryValue.storedValues = extractedAttribtueValues->slice();
+    rocksdbEntryValue.storedValues = extractedAttribtueValues->toString();
   }
   velocypack::Builder builder;
   velocypack::serialize(builder, rocksdbEntryValue);
@@ -539,7 +539,7 @@ Result RocksDBVectorIndex::ingestVectors(
     // dim * docIds.size() vectors
     std::vector<float> vectors;
     // Only used if the storedValues are defined on index
-    std::vector<velocypack::Slice> storedValues;
+    std::vector<std::string> storedValues;
   };
 
   struct EncodedVectors {
@@ -547,7 +547,7 @@ Result RocksDBVectorIndex::ingestVectors(
     std::unique_ptr<faiss::idx_t[]> lists;
     std::unique_ptr<uint8_t[]> codes;
     // Only used if the storedValues are defined on index
-    std::vector<velocypack::Slice> storedValues;
+    std::vector<std::string> storedValues;
   };
 
   struct BlockCounters {
@@ -607,7 +607,6 @@ Result RocksDBVectorIndex::ingestVectors(
                   "this code is not prepared for multiple reads");
 
     errorExceptionHandler([&] {
-      LOG_INGESTION << ADB_HERE;
       BoundedChannelProducerGuard guard(documentChannel);
 
       auto const prepareBatch = [&] {
@@ -622,7 +621,6 @@ Result RocksDBVectorIndex::ingestVectors(
 
       std::unique_ptr<DocumentVectors> batch = prepareBatch();
       while (documentIterator->Valid() && not hasError.load()) {
-        LOG_INGESTION << ADB_HERE;
         LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
         VPackSlice doc = RocksDBValue::data(documentIterator->value());
         if (auto const res = readDocumentVectorData(doc, batch->vectors);
@@ -639,9 +637,7 @@ Result RocksDBVectorIndex::ingestVectors(
         if (hasStoredValues()) {
           auto extractedAttributeValues =
               extractAttributeValuesWithoutTrx(_storedValues, doc, true);
-          LOG_INGESTION << "EXTRACTED DATA: "
-                        << extractedAttributeValues->toString();
-          batch->storedValues.push_back(extractedAttributeValues->slice());
+          batch->storedValues.push_back(extractedAttributeValues->toString());
         }
 
         documentIterator->Next();
@@ -681,7 +677,6 @@ Result RocksDBVectorIndex::ingestVectors(
 
       bool shouldStop = false;
       errorExceptionHandler([&] {
-        LOG_INGESTION << ADB_HERE;
         counters.encodeConsumeBlocked += blocked;
         auto n = item->docIds.size();
         countBatches += 1;
@@ -726,7 +721,6 @@ Result RocksDBVectorIndex::ingestVectors(
       }
 
       errorExceptionHandler([&] {
-        LOG_INGESTION << ADB_HERE;
         counters.writeConsumeBlocked += blocked;
         batch.Clear();
 
