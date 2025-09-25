@@ -1,5 +1,4 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, assertTrue, assertUndefined, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,6 +25,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
+const {assertEqual, assertTrue, assertUndefined, fail} = jsunity.jsUnity.assertions;
+const errors = require('@arangodb').errors;
 const db = require("internal").db;
 const aqlfunctions = require("@arangodb/aql/functions");
 
@@ -175,7 +176,19 @@ function StreamCursorSuite() {
         assertEqual(cursor._hasMore, true);
       }
       require("internal").sleep(5);
-    }
+    },
+
+    // Regression test for BTS-2228, where an error during prepareQuery would
+    // lead to a subsequent crash.
+    testInvalidQueryUndefinedName: function () {
+      try {
+        db._query(`RETURN x`, {}, {stream: true});
+        fail();
+      } catch (e) {
+        assertTrue(e.error);
+        assertEqual(e.errorNum, errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
+      }
+    },
   };
 }
 

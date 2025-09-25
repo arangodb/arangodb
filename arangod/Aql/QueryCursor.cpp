@@ -581,9 +581,13 @@ ExecutionState QueryStreamCursor::finalization() {
 
 void QueryStreamCursor::cleanupStateCallback() {
   TRI_ASSERT(_query);
-  transaction::Methods trx(_ctx);
-  if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
-    trx.removeStatusChangeCallback(&_stateChangeCb);
-    _stateChangeCb = nullptr;
+  if (_ctx != nullptr) {
+    transaction::Methods trx(_ctx);
+    if (_stateChangeCb && trx.status() == transaction::Status::RUNNING) {
+      trx.removeStatusChangeCallback(&_stateChangeCb);
+      _stateChangeCb = nullptr;
+    }
+  } else {
+    TRI_ASSERT(_stateChangeCb == nullptr);
   }
 }

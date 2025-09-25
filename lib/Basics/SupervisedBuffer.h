@@ -84,11 +84,46 @@ class SupervisedBuffer : public Buffer<uint8_t> {
 
  private:
   void grow(ValueLength length) override {
-    auto currentCapacity = this->capacity();
-    Buffer<uint8_t>::grow(length);
-    auto newCapacity = this->capacity();
-    if (newCapacity > currentCapacity) {
-      _usageScope.increase(newCapacity - currentCapacity);
+    auto beforeCap = this->capacity();
+    auto beforeSize = this->size();
+
+    // got the precharge values from looking into Buffer::grow()
+    constexpr double growthFactor = 1.5;
+    ValueLength newLen = beforeSize + length;
+    if (newLen < static_cast<ValueLength>(growthFactor * beforeSize)) {
+      newLen = static_cast<ValueLength>(growthFactor * beforeSize);
+    }
+
+    // how much we expect grow() will allocate
+    ValueLength prechargeAmount =
+        (newLen > beforeCap) ? (newLen - beforeCap) : 0;
+
+    if (prechargeAmount > 0) {
+      _usageScope.increase(
+          prechargeAmount);  // may throw here if exceeds memory limit
+    }
+
+    try {
+      Buffer<uint8_t>::grow(length);
+
+      auto afterCap = this->capacity();
+      // the expected amount might not be the actual amount allocated so we
+      // adjust
+      if (afterCap > beforeCap) {
+        auto actualAmount = afterCap - beforeCap;
+        if (actualAmount > prechargeAmount) {
+          _usageScope.increase(actualAmount - prechargeAmount);
+        } else if (actualAmount < prechargeAmount) {
+          _usageScope.decrease(prechargeAmount - actualAmount);
+        }
+      } else if (prechargeAmount > 0) {
+        _usageScope.decrease(prechargeAmount);
+      }
+    } catch (...) {
+      if (prechargeAmount > 0) {
+        _usageScope.decrease(prechargeAmount);  // undo precharge if it throws
+      }
+      throw;
     }
   }
 

@@ -1538,8 +1538,15 @@ class instanceManager {
 
 exports.instanceManager = instanceManager;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
+  let memory;
+  if (fs.exists("/proc/meminfo")) {
+    let f = fs.read("/proc/meminfo");
+    const search = 'MemTotal:';
+    let pos = f.search(search);
+    memory = parseInt(f.slice(pos + search.length));
+  }
   tu.CopyIntoObject(optionsDefaults, {
-    'memory': undefined,
+    'memory': memory,
     'singles': 1, // internal only
     'coordinators': 1,
     'dbServers': 2,
