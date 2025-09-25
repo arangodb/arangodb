@@ -4682,46 +4682,11 @@ void Ast::addGraphNodeImplicitVertexCollections(
 
   auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
 
-  auto isCoordinator = ServerState::instance()->isCoordinator();
-
   for (auto&& edgeCollectionName : edgeCollections) {
     auto r = gm.findVertexCollectionsFromEdgeCollection(edgeCollectionName);
     if (r.has_value()) {
       for (auto&& vertexCollectionName : *r) {
-        auto vertexCollectionNameRef = std::string_view{vertexCollectionName};
-        auto category =
-            injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
-                                    false, vertexCollectionNameRef);
-
-        if (category == LogicalDataSource::Category::kCollection) {
-          if (isCoordinator) {
-            auto& ci = _query.vocbase()
-                           .server()
-                           .getFeature<ClusterFeature>()
-                           .clusterInfo();
-
-            auto c = ci.getCollectionNT(_query.vocbase().name(),
-                                        vertexCollectionName);
-            if (c != nullptr) {
-              auto const& names = c->realNames();
-
-              for (auto const& n : names) {
-                std::string_view shardsNameRef(n);
-                LogicalDataSource::Category shardsCategory =
-                    injectDataSourceInQuery(*this, resolver,
-                                            AccessMode::Type::READ, false,
-                                            shardsNameRef);
-                TRI_ASSERT(shardsCategory ==
-                           LogicalDataSource::Category::kCollection);
-              }
-            }  // else { TODO Should we really not react? }
-          }
-        } else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-              absl::StrCat(vertexCollectionNameRef,
-                           " is required to be a collection"));
-        }
+        addDataSource(*this, resolver, vertexCollectionName);
       }
     }
   }
