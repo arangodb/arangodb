@@ -327,6 +327,57 @@ LogicalDataSource::Category injectDataSourceInQuery(
   return dataSource->category();
 }
 
+LogicalDataSource::Category addDataSource(
+    Ast& ast, CollectionNameResolver const& resolver, std::string name) {
+  std::string_view nameRef(name);
+
+  auto category = injectDataSourceInQuery(ast, resolver, AccessMode::Type::READ,
+                                          false, nameRef);
+
+  if (category == LogicalDataSource::Category::kCollection) {
+    if (ServerState::instance()->isCoordinator()) {
+      auto& ci = ast.query()
+                     .vocbase()
+                     .server()
+                     .getFeature<ClusterFeature>()
+                     .clusterInfo();
+      auto c = ci.getCollectionNT(ast.query().vocbase().name(), name);
+      if (c != nullptr) {
+        auto const& names = c->realNames();
+
+        for (auto const& n : names) {
+          std::string_view shardsNameRef(n);
+
+          LogicalDataSource::Category shardsCategory = injectDataSourceInQuery(
+              ast, resolver, AccessMode::Type::READ, false, shardsNameRef);
+
+          TRI_ASSERT(shardsCategory ==
+                     LogicalDataSource::Category::kCollection);
+        }
+      }  // else { TODO Should we really not react? }
+    }
+  }
+
+  return category;
+}
+
+std::string edgeCollectionNodeGetName(CollectionNameResolver const& resolver,
+                                      AstNode const* edgeCollection) {
+  if (edgeCollection->isStringValue()) {
+    return edgeCollection->getString();
+  } else if (edgeCollection->type == NODE_TYPE_DIRECTION) {
+    TRI_ASSERT(edgeCollection->numMembers() == 2);
+    auto eCSub = edgeCollection->getMember(1);
+
+    if (eCSub->isStringValue()) {
+      return eCSub->getString();
+    }
+  }  // else bindParameter use default for collection bindVar
+
+  // TODO: what? probably assert?
+  return "";
+}
+
 }  // namespace
 
 Ast::SpecialNodes::SpecialNodes()
@@ -1573,7 +1624,7 @@ AstNode* Ast::createNodeWithCollections(
 
     if (c->isStringValue()) {
       std::string const name = c->getString();
-      addCollection(resolver, name);
+      addDataSource(*this, resolver, name);
     }  // else bindParameter use default for collection bindVar
 
     // We do not need to propagate these members
@@ -1596,21 +1647,19 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
 
   for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
     // TODO Direction Parsing!
-    auto eC = edgeCollections->getMember(i);
+    auto edgeCollection = edgeCollections->getMember(i);
 
-    if (eC->isStringValue()) {
-      addCollection(resolver, eC->getString());
-    } else if (eC->type == NODE_TYPE_DIRECTION) {
-      TRI_ASSERT(eC->numMembers() == 2);
-      auto eCSub = eC->getMember(1);
+    auto edgeCollectionName = edgeCollectionNodeGetName(resolver, node);
+    auto category = addDataSource(*this, resolver, edgeCollectionName);
 
-      if (eCSub->isStringValue()) {
-        addCollection(resolver, eCSub->getString());
-      }
-    }  // else bindParameter use default for collection bindVar
+    if (category != LogicalDataSource::Category::kCollection) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+          absl::StrCat(edgeCollectionName, " is required to be a collection"));
+    }
 
     // We do not need to propagate these members
-    node->addMember(eC);
+    node->addMember(edgeCollection);
   }
 
   return node;
@@ -4494,35 +4543,4 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
     return it->second;
   }
   return nullptr;
-}
-
-void Ast::addCollection(CollectionNameResolver const& resolver,
-                        std::string name) {
-  std::string_view nameRef(name);
-  auto const isCoordinator = ServerState::instance()->isCoordinator();
-
-  LogicalDataSource::Category category = injectDataSourceInQuery(
-      *this, resolver, AccessMode::Type::READ, false, nameRef);
-  if (category == LogicalDataSource::Category::kCollection) {
-    if (isCoordinator) {
-      auto& ci =
-          _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
-      auto c = ci.getCollectionNT(_query.vocbase().name(), name);
-      if (c != nullptr) {
-        auto const& names = c->realNames();
-
-        for (auto const& n : names) {
-          std::string_view shardsNameRef(n);
-          LogicalDataSource::Category shardsCategory = injectDataSourceInQuery(
-              *this, resolver, AccessMode::Type::READ, false, shardsNameRef);
-          TRI_ASSERT(shardsCategory ==
-                     LogicalDataSource::Category::kCollection);
-        }
-      }  // else { TODO Should we really not react? }
-    }
-  } else {
-    //    THROW_ARANGO_EXCEPTION_MESSAGE(
-    //    TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-    //    absl::StrCat(nameRef, " is required to be a collection"));
-  }
 }

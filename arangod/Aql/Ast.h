@@ -572,8 +572,6 @@ class Ast {
 
   AstNode const* getSubqueryForVariable(Variable const* variable) const;
 
-  void addCollection(CollectionNameResolver const& resolver, std::string name);
-
   /** Make sure to replace the AstNode* you pass into TraverseAndModify
    *  if it was changed. This is necessary because the function itself
    *  has only access to the node but not its parent / owner.
