@@ -173,6 +173,7 @@ void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
 void HashedCollectExecutor::writeCurrentGroupToOutput(
     OutputAqlItemRow& output) {
   // build the result
+  size_t memoryUsage = memoryUsageForGroup(_currentGroup->first, false);
   auto& keys = _currentGroup->first.values;
 
   TRI_ASSERT(keys.size() == _infos.getGroupRegisters().size());
@@ -185,6 +186,7 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
     key.erase();  // to prevent double-freeing later
   }
 
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
   if (!_infos.getAggregatedRegisters().empty()) {
     TRI_ASSERT(_currentGroup->second.first != nullptr);
     auto& aggregators = *_currentGroup->second.first;
