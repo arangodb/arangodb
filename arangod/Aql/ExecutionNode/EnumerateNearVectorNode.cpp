@@ -38,6 +38,8 @@
 #include "Aql/Ast.h"
 #include "Inspection/VPack.h"
 
+#include <functional>
+
 namespace arangodb::aql {
 
 namespace {
@@ -146,13 +148,17 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
 ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
                                               bool withDependencies) const {
+  auto filterExpression = std::invoke([&]() -> std::unique_ptr<Expression> {
+    if (_filterExpression) {
+      return _filterExpression->clone(plan->getAst(), true);
+    }
+    return nullptr;
+  });
+
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, nullptr);
-  if (_filterExpression) {
-    c->_filterExpression = _filterExpression->clone(plan->getAst(), true);
-  }
+      collection(), _index, std::move(filterExpression));
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
