@@ -649,10 +649,6 @@ exports.deactivateFailure = function (name) {
   });
 };
 
-exports.getDbPath = function () {
-  return arango.POST("/_admin/execute", `return require("internal").db._path();`);
-};
-
 exports.getAllMetricsFromEndpoints = function (roles = "") {
   const isCluster = require("internal").isCluster();
   

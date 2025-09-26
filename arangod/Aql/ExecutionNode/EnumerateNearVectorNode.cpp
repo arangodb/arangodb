@@ -38,6 +38,8 @@
 #include "Aql/Ast.h"
 #include "Inspection/VPack.h"
 
+#include <functional>
+
 namespace arangodb::aql {
 
 namespace {
@@ -80,52 +82,56 @@ size_t EnumerateNearVectorNode::getMemoryUsedBytes() const {
   return sizeof(*this);
 }
 
+RegisterId EnumerateNearVectorNode::getRegisterId(
+    VariableId const varId) const {
+  auto it = getRegisterPlan()->varInfo.find(varId);
+  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+  return it->second.registerId;
+
+  RegisterId regId;
+  regId = it->second.registerId;
+
+  return regId;
+}
+
+std::vector<std::pair<VariableId, RegisterId>>
+EnumerateNearVectorNode::extractFilterVarsToRegs() const {
+  VarSet inVars;
+  _filterExpression->variables(inVars);
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+  filterVarsToRegs.reserve(inVars.size());
+
+  // Here we take all variables in the expression
+  for (auto const& var : inVars) {
+    TRI_ASSERT(var != nullptr);
+    if (var->id == _oldDocumentVariable->id) {
+      continue;
+    }
+    auto regId = variableToRegisterId(var);
+    filterVarsToRegs.emplace_back(var->id, regId);
+  }
+
+  return filterVarsToRegs;
+}
+
 std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     ExecutionEngine& engine) const {
   auto writableOutputRegisters = RegIdSet{};
   containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
 
-  RegisterId outDocumentRegId;
-  {
-    auto itDocument = getRegisterPlan()->varInfo.find(_documentOutVariable->id);
-    TRI_ASSERT(itDocument != getRegisterPlan()->varInfo.end());
-    outDocumentRegId = itDocument->second.registerId;
-    writableOutputRegisters.emplace(outDocumentRegId);
-  }
+  RegisterId outDocumentRegId = getRegisterId(_documentOutVariable->id);
+  writableOutputRegisters.emplace(outDocumentRegId);
+  RegisterId outDistanceRegId = getRegisterId(_distanceOutVariable->id);
+  writableOutputRegisters.emplace(outDistanceRegId);
 
-  RegisterId outDistanceRegId;
-  {
-    auto itDistance = getRegisterPlan()->varInfo.find(_distanceOutVariable->id);
-    TRI_ASSERT(itDistance != getRegisterPlan()->varInfo.end());
-    outDistanceRegId = itDistance->second.registerId;
-    writableOutputRegisters.emplace(outDistanceRegId);
-  }
-
-  RegisterId inNmDocIdRegId;
-  {
-    auto it = getRegisterPlan()->varInfo.find(_inVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-    inNmDocIdRegId = it->second.registerId;
-  }
+  RegisterId inNmDocIdRegId = getRegisterId(_inVariable->id);
   RegIdSet readableInputRegisters;
   readableInputRegisters.emplace(inNmDocIdRegId);
 
   // check which variables are used by the node's post-filter
   std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
   if (_filterExpression) {
-    VarSet inVars;
-    _filterExpression->variables(inVars);
-    filterVarsToRegs.reserve(inVars.size());
-
-    // Here we take all variables in the expression
-    for (auto const& var : inVars) {
-      TRI_ASSERT(var != nullptr);
-      if (var->id == _oldDocumentVariable->id) {
-        continue;
-      }
-      auto regId = variableToRegisterId(var);
-      filterVarsToRegs.emplace_back(var->id, regId);
-    }
+    filterVarsToRegs = extractFilterVarsToRegs();
   }
 
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
@@ -142,13 +148,17 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
 
 ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
                                               bool withDependencies) const {
+  auto filterExpression = std::invoke([&]() -> std::unique_ptr<Expression> {
+    if (_filterExpression) {
+      return _filterExpression->clone(plan->getAst(), true);
+    }
+    return nullptr;
+  });
+
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, nullptr);
-  if (_filterExpression) {
-    c->_filterExpression = _filterExpression->clone(plan->getAst(), true);
-  }
+      collection(), _index, std::move(filterExpression));
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }

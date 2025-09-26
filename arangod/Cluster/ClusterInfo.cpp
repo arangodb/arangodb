@@ -2913,6 +2913,20 @@ Result ClusterInfo::waitForDatabaseInCurrent(
             getReloadServerListTimeout() / interval);
       }
 
+      //  Between the starting of database creation process and its
+      //  completion, if the agency supervision momentarily marks the
+      //  coordinator as BAD (maybe because it is unreachable due to n/w
+      //  issues), the agency supervision will delete this database name
+      //  from Plan/Databases. When the coordinator comes back, it will
+      //  continue waiting endlessly for this database that will never
+      //  be created.
+      //
+      auto [query, index] = _agencyCache.get("Plan/Databases/");
+      auto qSlice = query->slice();
+      if (!qSlice.hasKey(database.getName())) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
+      }
+
       if (_server.isStopping()) {
         return Result(TRI_ERROR_SHUTTING_DOWN);
       }

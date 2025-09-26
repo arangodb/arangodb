@@ -55,7 +55,9 @@ class TraverserCache;
 struct DBServerIndexCursor {
   void all(EdgeCursor::Callback const& callback);
   bool next(EdgeCursor::Callback const& callback);
+  uint64_t nextBatch(EdgeCursor::Callback const& callback, uint64_t batchSize);
   void rearm(std::string_view vertex);
+  bool hasMore() const;
 
   DBServerIndexCursor(std::shared_ptr<arangodb::Index> idxHandle,
                       size_t cursorId, uint16_t coveringIndexPosition,
@@ -79,12 +81,14 @@ struct DBServerIndexCursor {
  private:
   void prepareIndexCondition(std::string_view vertex);
   std::function<bool(LocalDocumentId, IndexIteratorCoveringData&)>
-  coveringCallback(bool& operationSuccessful, DataSourceId const& sourceId,
+  coveringCallback(uint64_t& operationSuccessful, DataSourceId const& sourceId,
                    size_t cursorId, uint16_t coveringPosition,
                    EdgeCursor::Callback const& callback);
   std::function<bool(LocalDocumentId, aql::DocumentData&&, VPackSlice)>
   nonCoveringCallback(DataSourceId const& sourceId, size_t cursorId,
                       EdgeCursor::Callback const& callback);
+  uint64_t executeOnCache(EdgeCursor::Callback const& callback,
+                          uint64_t itemSize);
 
   std::unique_ptr<IndexIterator> _cursor;
   std::shared_ptr<arangodb::Index> _idxHandle;  // needed for rearming

@@ -124,6 +124,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 
+  static std::string const TRAVERSER_PATH_EDGE;
+
+  static std::string const TRAVERSER_PATH_VERTEX;
+
   RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 

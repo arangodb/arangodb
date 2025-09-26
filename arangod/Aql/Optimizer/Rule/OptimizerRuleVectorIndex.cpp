@@ -37,7 +37,9 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/types.h"
 #include "Assertions/Assert.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
@@ -240,19 +242,23 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 
 bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
                                     auto& filterExpression) {
-  auto* maybeCalculationNode = maybeFilterNode->getFirstDependency();
-  // We always expect a calculationNode in this scenario
+  auto const* filterNode =
+      ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
+  auto* filterInVar = filterNode->inVariable();
+
+  // Find the calculation node that populates the filter variable
+  auto* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
   if (maybeCalculationNode == nullptr ||
       maybeCalculationNode->getType() != EN::CALCULATION) {
     return true;
   }
+
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
-  TRI_ASSERT(calculationNode->expression() != nullptr);
   filterExpression = calculationNode->expression()->clone(plan->getAst());
 
+  // CalculationNode will be removed by the subsequent rule if it can be
   plan->unlinkNode(maybeFilterNode);
-  plan->unlinkNode(maybeCalculationNode);
 
   return false;
 }
@@ -372,7 +378,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       // If there is a FilterNode it comes with CalculationNode, we remove it
       // and handle it in EnumerateNearVectorNode
-      // TODO Check if IndexNode always does this
       std::unique_ptr<Expression> filterExpression{nullptr};
       if (maybeFilterNode) {
         if (bool shouldContinue = removeFilterAndCalculationNode(

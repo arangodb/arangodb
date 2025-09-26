@@ -513,20 +513,27 @@ async<void> Query::prepareQuery() {
     // suspend during prepare, but after register in query list: the latter is
     // necessary so the query can be seen and killed by the test
     TRI_IF_FAILURE("Query::killDuringSuspendedPrepare") {
-      using namespace std::chrono_literals;
-      auto* const scheduler = SchedulerFeature::SCHEDULER;
+      // While the failure point is active, other background queries might be
+      // running that are not initiated by the test (e.g. loadFromDB in the
+      // user manager). If this happens, suspending the coroutine here (by
+      // awaiting scheduler->yield) will make that query run into an assertion:
+      // prepare query is not allowed to suspend when called synchronously.
+      if (_queryApiSynchronicity == QueryApiSynchronicity::Asynchronous) {
+        using namespace std::chrono_literals;
+        auto* const scheduler = SchedulerFeature::SCHEDULER;
 
-      // switch threads, let the original one suspend
-      co_await scheduler->yield();
-      // now wait for the query to be killed, and the cleanup to finally trigger
-      // a wakeup
-      _queryKilled.wait(false);                        // false -> true
-      _shutdownState.wait(ShutdownState::None);        // None -> InProgress
-      _shutdownState.wait(ShutdownState::InProgress);  // InProgress -> Done
-      TRI_ASSERT(_shutdownState == ShutdownState::Done);
-      // Right after the shutdown state is set to Done, the wakeup follows.
-      // Give it a while, then continue.
-      std::this_thread::sleep_for(1ms);
+        // switch threads, let the original one suspend
+        co_await scheduler->yield();
+        // now wait for the query to be killed, and the cleanup to finally
+        // trigger a wakeup
+        _queryKilled.wait(false);                        // false -> true
+        _shutdownState.wait(ShutdownState::None);        // None -> InProgress
+        _shutdownState.wait(ShutdownState::InProgress);  // InProgress -> Done
+        TRI_ASSERT(_shutdownState == ShutdownState::Done);
+        // Right after the shutdown state is set to Done, the wakeup follows.
+        // Give it a while, then continue.
+        std::this_thread::sleep_for(1ms);
+      }
     }
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
