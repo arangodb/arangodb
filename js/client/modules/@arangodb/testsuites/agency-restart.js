@@ -108,7 +108,7 @@ function runArangodRecovery (params, agencyMgr) {
 }
 
 function agencyRestart (options) {
-  if (!IM.options.skipServerJS) {
+  if (options.skipServerJS) {
     return {
       agencyRestart: {
         status: true,
