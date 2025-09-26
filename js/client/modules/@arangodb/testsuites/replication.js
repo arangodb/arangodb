@@ -153,6 +153,15 @@ class replicationRunner extends trs.runLocalInArangoshRunner {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationFuzz (options) {
+  if (options.skipServerJS) {
+    return {
+      replicationFuzz: {
+        status: false,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: false
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.replication_fuzz, options);
   return new replicationRunner(options, 'replication_fuzz', {"rocksdb.wal-file-timeout-initial": "7200"}).run(testCases);
 }
