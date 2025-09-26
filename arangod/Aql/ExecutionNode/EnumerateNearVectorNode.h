@@ -84,6 +84,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
 
+  void setFilterVarToRegs(std::vector<std::pair<VariableId, RegisterId>> filterVarToRegs) noexcept;
+
  protected:
   CostEstimate estimateCost() const override;
 
@@ -92,9 +94,6 @@ class EnumerateNearVectorNode : public ExecutionNode,
                       unsigned flags) const final;
 
   RegisterId getRegisterId(VariableId const var) const;
-
-  std::vector<std::pair<VariableId, RegisterId>> extractFilterVarsToRegs()
-      const;
 
  private:
   /// @brief input variable to read the query point from
@@ -128,5 +127,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief indicates if the filter expression is covered by stored values
   bool _isCoveredByStoredValues;
+
+  /// @brief filterVarToRegs is set in optimization rule
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarToRegs;
 };
 }  // namespace arangodb::aql
