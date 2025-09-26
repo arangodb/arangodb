@@ -33,165 +33,127 @@ var db = require("@arangodb").db,
 var gm = require("@arangodb/general-graph");
 
 const graphName = "WithTestGraph";
-const productCollectionName = "RegressionProduct";
-const customerCollectionName = "RegressionCustomer";
-const ownsEdgeCollectionName = "RegressionOwns";
-
-const expectedResult = [
-  {
-    _key: "396",
-    _id: customerCollectionName + "/396",
-    name: "John",
-    surname: "Smith",
-    age: 52,
-    alive: false,
-    _class: "com.arangodb.springframework.testdata.Customer"
-  },
-  {
-    _key: "397",
-    _id: customerCollectionName + "/397",
-    name: "Matt",
-    surname: "Smith",
-    age: 34,
-    alive: false,
-    _class: "com.arangodb.springframework.testdata.Customer"
-  }
-];
+const vertexCollectionName1 = "VertexCollection1";
+const vertexCollectionName2 = "VertexCollection2";
+const vertexCollectionName3 = "VertexCollection3";
+const edgeCollectionName = "EdgeCollection";
+const edgeCollectionName2 = "EdgeCollection2";
+const edgeCollectionName3 = "Edgecollection3";
 
 var cleanup = function() {
   try {
     gm._drop(graphName, true);
   } catch (e) {
   }
-  db._drop(productCollectionName);
-  db._drop(customerCollectionName);
-  db._drop(ownsEdgeCollectionName);
+  db._drop(vertexCollectionName1);
+  db._drop(vertexCollectionName2);
+  db._drop(vertexCollectionName3);
+  db._drop(edgeCollectionName);
+  db._drop(edgeCollectionName2);
+  db._drop(edgeCollectionName3);
 };
 
 var createBaseGraph = function() {
-  gm._create(graphName, [gm._relation(ownsEdgeCollectionName, customerCollectionName, productCollectionName)], [], {});
+  gm._create(graphName, [gm._relation(edgeCollectionName, vertexCollectionName1, vertexCollectionName2),
+                         gm._relation(edgeCollectionName2, vertexCollectionName3, vertexCollectionName2)], [], {});
 
-  db[customerCollectionName].ensureIndex({
-    fields: ["location"],
-    geoJson: false,
-    name: "idx_1661521530578796544",
-    sparse: true,
-    type: "geo",
-    unique: false
-  });
+  db._createEdgeCollection(edgeCollectionName3);
 
-  db[productCollectionName].ensureIndex({
-    fields: ["location"],
-    geoJson: false,
-    name: "idx_1661521530657439744",
-    sparse: true,
-    type: "geo",
-    unique: false
-  });
-
-  db[customerCollectionName].insert([
+  db[vertexCollectionName1].insert([
     {
-      _key: "396",
-      _id: customerCollectionName + "/396",
-      _rev: "_aM4ZTRW---",
-      name: "John",
-      surname: "Smith",
-      age: 52,
-      alive: false,
-      _class: "com.arangodb.springframework.testdata.Customer"
+      _key: "A",
+      _id: vertexCollectionName1 + "/A",
+      name: "Danny",
+      surname: "Carey"
     },
     {
-      _key: "397",
-      _id: customerCollectionName + "/397",
-      _rev: "_aM4ZTRW--_",
-      name: "Matt",
-      surname: "Smith",
-      age: 34,
-      alive: false,
-      _class: "com.arangodb.springframework.testdata.Customer"
+      _key: "B",
+      _id: vertexCollectionName1 + "/B",
+      name: "Mike",
+      surname: "Portnoy"
     },
     {
-      _key: "398",
-      _id: customerCollectionName + "/398",
-      _rev: "_aM4ZTRW--A",
-      name: "Adam",
-      surname: "Smith",
-      age: 294,
-      alive: false,
-      _class: "com.arangodb.springframework.testdata.Customer"
+      _key: "C",
+      _id: vertexCollectionName1 + "/C",
+      name: "Ringo",
+      surname: "Starr",
     }
   ]);
-  db[ownsEdgeCollectionName].insert([
+  db[edgeCollectionName].insert([
     {
-      _key: "400",
-      _id: ownsEdgeCollectionName + "/400",
-      _from: customerCollectionName + "/396",
-      _to: productCollectionName + "/390",
-      _rev: "_aM4ZTR2---",
-      _class: "com.arangodb.springframework.testdata.Owns"
+      _id: edgeCollectionName + "/400",
+      _from: vertexCollectionName1 + "/A",
+      _to: vertexCollectionName2 + "/ONE",
     },
     {
-      _key: "402",
-      _id: ownsEdgeCollectionName + "/402",
-      _from: customerCollectionName + "/396",
-      _to: productCollectionName + "/392",
-      _rev: "_aM4ZTR6---",
-      _class: "com.arangodb.springframework.testdata.Owns"
+      _id: edgeCollectionName + "/402",
+      _from: vertexCollectionName1 + "/C",
+      _to: vertexCollectionName2 + "/TWO",
     },
     {
-      _key: "404",
-      _id: ownsEdgeCollectionName + "/404",
-      _from: customerCollectionName + "/398",
-      _to: productCollectionName + "/394",
-      _rev: "_aM4ZTS----",
-      _class: "com.arangodb.springframework.testdata.Owns"
+      _id: edgeCollectionName + "/404",
+      _from: vertexCollectionName1 + "/A",
+      _to: vertexCollectionName2 + "/THREE",
     },
     {
-      _key: "406",
-      _id: ownsEdgeCollectionName + "/406",
-      _from: customerCollectionName + "/397",
-      _to: productCollectionName + "/390",
-      _rev: "_aM4ZTSC---",
-      _class: "com.arangodb.springframework.testdata.Owns"
-    },
-    {
-      _key: "408",
-      _id: ownsEdgeCollectionName + "/408",
-      _from: customerCollectionName + "/397",
-      _to: productCollectionName + "/392",
-      _rev: "_aM4ZTSG---",
-      _class: "com.arangodb.springframework.testdata.Owns"
-    },
-    {
-      _key: "410",
-      _id: ownsEdgeCollectionName + "/410",
-      _from: customerCollectionName + "/397",
-      _to: productCollectionName + "/394",
-      _rev: "_aM4ZTSG--_",
-      _class: "com.arangodb.springframework.testdata.Owns"
+      _id: edgeCollectionName + "/406",
+      _from: vertexCollectionName1 + "/C",
+      _to: vertexCollectionName2 + "/ONE",
     }
   ]);
-  db[productCollectionName].insert([
+  db[vertexCollectionName2].insert([
     {
-      _key: "390",
-      _id: productCollectionName + "/390",
-      _rev: "_aM4ZTPy---",
+      _key: "ONE",
+      _id: vertexCollectionName2 + "/ONE",
       name: "phone",
-      _class: "com.arangodb.springframework.testdata.Product"
     },
     {
-      _key: "392",
-      _id: productCollectionName + "/392",
-      _rev: "_aM4ZTQG---",
+      _key: "TWO",
+      _id: vertexCollectionName2 + "/TWO",
       name: "car",
-      _class: "com.arangodb.springframework.testdata.Product"
     },
     {
-      _key: "394",
-      _id: productCollectionName + "/394",
-      _rev: "_aM4ZTQK---",
+      _key: "THREE",
+      _id: vertexCollectionName2 + "/THREE",
       name: "chair",
-      _class: "com.arangodb.springframework.testdata.Product"
+    }
+  ]);
+  db[edgeCollectionName2].insert([
+    {
+      _from: vertexCollectionName3 + "/ALPHA",
+      _to: vertexCollectionName2 + "/ONE",
+    },
+    {
+      _from: vertexCollectionName3 + "/GAMMA",
+      _to: vertexCollectionName2 + "/TWO",
+    },
+    {
+      _from: vertexCollectionName3 + "/ALPHA",
+      _to: vertexCollectionName2 + "/THREE",
+    },
+    {
+      _from: vertexCollectionName3 + "/BETA",
+      _to: vertexCollectionName2 + "/ONE",
+    }
+  ]);
+  db[vertexCollectionName3].insert([
+    {
+      _key: "ALPHA",
+      _id: vertexCollectionName2 + "/ALPHA"
+    },
+    {
+      _key: "BETA",
+      _id: vertexCollectionName2 + "/BETA"
+    },
+    {
+      _key: "THREE",
+      _id: vertexCollectionName2 + "/GAMMA"
+    }
+  ]);
+  db[edgeCollectionName3].insert([
+    {
+      _from: vertexCollectionName1 + "/A",
+      _to: vertexCollectionName2 + "/ONE"
     }
   ]);
 };
@@ -220,50 +182,107 @@ function withClauseTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that cluster does not need a with clause if a named graph exists
+    /// @brief test with clause not needed with named graph
     ////////////////////////////////////////////////////////////////////////////////
-    testWithClauseNotNeeded: function() {
-      const query = `FOR e IN ${customerCollectionName}
-                         FILTER (FOR e1 IN 1..1 ANY e._id ${ownsEdgeCollectionName}
-                                   FILTER e1.name == @0
-                                   RETURN 1)[0] == 1 AND
-                                (FOR e1 IN 1..1 ANY e._id ${ownsEdgeCollectionName}
-                                   FILTER e1.name == @1
-                                   RETURN 1)[0] == 1
-                         RETURN UNSET(e, "_rev")`;
+    testNamedGraphWithClauseNotNeeded: function() {
+      const startNode = "VertexCollection1/A";
+      const query = `FOR v,e,p IN 1..1 ANY "${startNode}" GRAPH ${graphName}
+                       RETURN LENGTH(p)`;
 
-      const bindVars = {
-        "0": "phone",
-        "1": "phone"
-      };
-
-      var actual = db._query(query, bindVars);
-      assertEqual(actual.toArray(), expectedResult);
+      var actual = db._query(query).toArray();
+      assertEqual(actual, [ 3, 3 ]);
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that cluster does not need a with clause if a named graph exists
+    /// @brief test with clause not needed with edge collection if a named graph
+    //  exists
+    ////////////////////////////////////////////////////////////////////////////////
+    testWithClauseNotNeeded: function() {
+      const startNode = "VertexCollection1/A";
+      const query = `FOR v,e,p IN 1..1 ANY "${startNode}" ${edgeCollectionName}
+                       RETURN LENGTH(p)`;
+
+      var actual = db._query(query).toArray();
+      assertEqual(actual, [ 3, 3 ]);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with clause not needed with edge collection if a named graph
+    //  exists using bindVars
     ////////////////////////////////////////////////////////////////////////////////
     testWithClauseNotNeededBindVar: function() {
-      const query = `FOR e IN @@customer
-                         FILTER (FOR e1 IN 1..1 ANY e._id @@owns
-                                   FILTER e1.name == @0
-                                   RETURN 1)[0] == 1 AND
-                                (FOR e1 IN 1..1 ANY e._id @@owns
-                                   FILTER e1.name == @1
-                                   RETURN 1)[0] == 1
-                         RETURN UNSET(e, "_rev")`;
+      const query = `FOR start IN @@vertex1
+                       FOR v, e1, p IN 1..1 ANY start._id @@edge
+                         RETURN LENGTH(p)`;
 
       const bindVars = {
-        "0": "phone",
-        "1": "phone",
-        "@customer": customerCollectionName,
-        "@owns": ownsEdgeCollectionName
+        "@vertex1": vertexCollectionName1,
+        "@edge": edgeCollectionName
       };
 
-      var actual = db._query(query, bindVars);
-      assertEqual(actual.toArray(), expectedResult);
-    }
+      var actual = db._query(query, bindVars).toArray();
+      assertEqual(actual, [ 3, 3, 3, 3 ]);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with clause not needed with edge collection if a named graph
+    //  exists using bindVars and multiple collections
+    ////////////////////////////////////////////////////////////////////////////////
+    testWithClauseNotNeededTwoCollections: function() {
+      const query = `FOR start IN @@vertex1
+                       FOR v, e1, p IN 1..2 ANY start._id @@edge, @@edge2
+                         RETURN LENGTH(p)`;
+
+      const bindVars = {
+        "@vertex1": vertexCollectionName1,
+        "@edge": edgeCollectionName,
+        "@edge2": edgeCollectionName2
+      };
+
+      const actual = db._query(query, bindVars).toArray();
+      assertEqual(actual, [3,3,3,3,3,3,3,3,3,3,3,3], JSON.stringify(actual));
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with clause not needed with edge collection if a named graph
+    //  exists using bindVars and multiple collections and direction
+    ////////////////////////////////////////////////////////////////////////////////
+    testWithClauseNotNeededTwoCollectionsDirection: function() {
+      const query = `FOR start IN @@vertex1
+                       FOR v, e1, p IN 1..2 ANY start._id INBOUND @@edge, @@edge2
+                         RETURN LENGTH(p)`;
+
+      const bindVars = {
+        "@vertex1": vertexCollectionName1,
+        "@edge": edgeCollectionName,
+        "@edge2": edgeCollectionName2
+      };
+
+      const actual = db._query(query, bindVars).toArray();
+      assertEqual(actual, []);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with clause *is* needed with edge collection if no named graph
+    //  has definiton of vertex collections.
+    ////////////////////////////////////////////////////////////////////////////////
+    testWithClauseNeededIfNoNamedGraph: function() {
+      const startNode = vertexCollectionName1 + "/A";
+      const query = `FOR v, e1, p IN 1..2 ANY "${startNode}" @@edge
+                         RETURN LENGTH(p)`;
+
+      const bindVars = {
+        "@edge": edgeCollectionName3
+      };
+
+
+      try {
+        const actual = db._query(query, bindVars).toArray();
+        assert(false);
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code, err.errorNum, JSON.stringify(err));
+      }
+    },
   };
 }
 
