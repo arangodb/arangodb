@@ -108,7 +108,7 @@ function runArangodRecovery (params, agencyMgr) {
 }
 
 function agencyRestart (options) {
-  if (!versionHas('failure-tests')) {
+  if (!versionHas('failure-tests') || options.skipServerJS) {
     return {
       agencyRestart: {
         status: false,
