@@ -5,6 +5,20 @@ devel
   pushed down into vector similarity searches, enabling filtering with vector index by
   evaluating filters during the index scan rather than as a post-processing step.
 
+* Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
+  instructions in query runtime.
+
+* Fix BTS-2130: Fix the endless wait in Coordinators during
+  CreateDatabase and CreateCollection.
+
+* Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
+  We should therefore check before accessing clusterInfo() whether we're
+  in an upgrade scenario. Added those checks in iresearch.
+
+* Reverted RocksDB defaults for maximum wal size, number of sub
+  compactions and compaction read ahead to stay close to established
+  behaviour.
+
 * Fix BTS-2214: In a rare hash collision situation it can happen that a
   valid edge in an enterprise graph fails to validate and is rejected.
 

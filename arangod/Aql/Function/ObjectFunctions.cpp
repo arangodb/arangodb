@@ -25,17 +25,20 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/ExecutorExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include <functional>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -43,7 +46,9 @@
 #include <velocypack/Sink.h>
 #include <velocypack/Slice.h>
 
+#include <optional>
 #include <vector>
+#include <Aql/ExecutorExpressionContext.h>
 
 using namespace arangodb;
 
@@ -126,6 +131,10 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
 AqlValue mergeParameters(ExpressionContext* expressionContext,
                          aql::functions::VPackFunctionParametersView parameters,
                          char const* funcName, bool recursive) {
+  auto* execCtx = dynamic_cast<ExecutorExpressionContext*>(expressionContext);
+  ResourceMonitor* resourceMonitor =
+      execCtx ? &execCtx->resourceMonitor() : nullptr;
+
   size_t const n = parameters.size();
 
   if (n == 0) {
@@ -140,7 +149,15 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
   AqlValueMaterializer materializer(&vopts);
   VPackSlice initialSlice = materializer.slice(initial);
 
-  VPackBuilder builder;
+  std::unique_ptr<velocypack::Builder> builder =
+      std::invoke([resourceMonitor]() {
+        if (resourceMonitor) {
+          auto sb =
+              std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
+          return std::make_unique<velocypack::Builder>(sb);
+        }
+        return std::make_unique<velocypack::Builder>();
+      });
 
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
@@ -164,30 +181,42 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 
       // then we output the object
       {
-        VPackObjectBuilder ob(&builder);
+        VPackObjectBuilder ob(builder.get());
         for (auto const& [k, v] : attributes) {
-          builder.add(k, v);
+          builder->add(k, v);
         }
       }
 
     } else {
       // slow path for recursive merge
-      builder.openObject();
-      builder.close();
-      // merge in all other arguments
+      builder->openObject();
+      builder->close();
+
+      std::unique_ptr<velocypack::Builder> outBuilder =
+          std::invoke([resourceMonitor]() {
+            if (resourceMonitor) {
+              auto obuf = std::make_shared<velocypack::SupervisedBuffer>(
+                  *resourceMonitor);
+              return std::make_unique<velocypack::Builder>(obuf);
+            }
+            return std::make_unique<velocypack::Builder>();
+          });
+
       for (VPackSlice it : VPackArrayIterator(initialSlice)) {
         if (!it.isObject()) {
           aql::functions::registerInvalidArgumentWarning(expressionContext,
                                                          funcName);
           return AqlValue(AqlValueHintNull());
         }
-        builder = velocypack::Collection::merge(builder.slice(), it,
-                                                /*mergeObjects*/ recursive,
-                                                /*nullMeansRemove*/ false);
+        outBuilder->clear();
+        velocypack::Collection::merge(*outBuilder, builder->slice(), it,
+                                      /*mergeObjects*/ recursive,
+                                      /*nullMeansRemove*/ false);
+        builder.swap(outBuilder);
       }
     }
 
-    return AqlValue(builder.slice(), builder.size());
+    return AqlValue{builder->slice(), builder->size()};
   }
 
   if (!initial.isObject()) {
@@ -195,6 +224,15 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  std::unique_ptr<velocypack::Builder> outBuilder =
+      std::invoke([resourceMonitor]() {
+        if (resourceMonitor) {
+          auto obuf =
+              std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
+          return std::make_unique<velocypack::Builder>(obuf);
+        }
+        return std::make_unique<velocypack::Builder>();
+      });
   // merge in all other arguments
   for (size_t i = 1; i < n; ++i) {
     AqlValue const& param =
@@ -208,17 +246,20 @@ AqlValue mergeParameters(ExpressionContext* expressionContext,
 
     AqlValueMaterializer materializer(&vopts);
     VPackSlice slice = materializer.slice(param);
+    outBuilder->clear();
 
-    builder = velocypack::Collection::merge(initialSlice, slice,
-                                            /*mergeObjects*/ recursive,
-                                            /*nullMeansRemove*/ false);
-    initialSlice = builder.slice();
+    velocypack::Collection::merge(*outBuilder, initialSlice, slice,
+                                  /*mergeObjects*/ recursive,
+                                  /*nullMeansRemove*/ false);
+    builder.swap(outBuilder);
+    initialSlice = builder->slice();
   }
   if (n == 1) {
     // only one parameter. now add original document
-    builder.add(initialSlice);
+    builder->add(initialSlice);
   }
-  return AqlValue(builder.slice(), builder.size());
+
+  return AqlValue{builder->slice(), builder->size()};
 }
 
 }  // namespace

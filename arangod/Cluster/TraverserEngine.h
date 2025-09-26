@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <functional>
 #include <memory>
 #include <unordered_map>
 
@@ -59,6 +60,31 @@ class Slice;
 
 namespace traverser {
 struct TraverserOptions;
+
+struct EdgeCursorForMultipleVertices {
+  size_t _cursorId;
+  size_t _depth;
+  uint64_t _batchSize;
+  std::vector<std::string> _vertices;
+  std::vector<std::string>::iterator _nextVertex;
+  graph::EdgeCursor* _cursor;
+  size_t _nextBatch = 0;
+  EdgeCursorForMultipleVertices(size_t cursorId, size_t depth,
+                                uint64_t batchSize,
+                                std::vector<std::string> vertices,
+                                graph::EdgeCursor* cursor)
+      : _cursorId{cursorId},
+        _depth{depth},
+        _batchSize{batchSize},
+        _vertices{std::move(vertices)},
+        _nextVertex{_vertices.begin()},
+        _cursor{cursor} {
+    TRI_ASSERT(_cursor != nullptr);
+    rearm();
+  }
+  auto rearm() -> bool;
+  auto hasMore() -> bool;
+};
 
 class BaseEngine {
  public:
@@ -110,11 +136,15 @@ class BaseTraverserEngine : public BaseEngine {
 
   ~BaseTraverserEngine();
 
-  void getEdges(arangodb::velocypack::Slice, size_t,
-                arangodb::velocypack::Builder&);
+  // old behaviour
+  void allEdges(std::vector<std::string> const& vertices, size_t depth,
+                VPackBuilder& builder);
 
-  graph::EdgeCursor* getCursor(std::string_view nextVertex,
-                               uint64_t currentDepth);
+  // new behaviour
+  void rearm(size_t depth, uint64_t batchSize,
+             std::vector<std::string> vertices, VPackSlice variables);
+  Result nextEdgeBatch(size_t batchId, VPackBuilder& builder);
+  void addStatistics(VPackBuilder& builder);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
@@ -132,8 +162,12 @@ class BaseTraverserEngine : public BaseEngine {
   aql::VariableGenerator const* variables() const;
 
   graph::BaseOptions const& options() const override;
+  std::optional<EdgeCursorForMultipleVertices> _cursor;
+  size_t _nextCursorId = 0;
 
  protected:
+  graph::EdgeCursor* getCursor(uint64_t currentDepth);
+
   std::unique_ptr<traverser::TraverserOptions> _opts;
   std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
       _depthSpecificCursors;

@@ -728,7 +728,7 @@ void IndexExecutor::executeExpressions(InputAqlItemRow const& input) {
     _expressionContext = std::make_unique<ExecutorExpressionContext>(
         _trx, _infos.query(),
         _documentProducingFunctionContext.aqlFunctionsInternalCache(), input,
-        _infos.getVarsToRegister());
+        _infos.getVarsToRegister(), _infos.query().resourceMonitor());
   } else {
     _expressionContext->adjustInputRow(input);
   }

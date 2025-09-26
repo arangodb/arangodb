@@ -28,12 +28,13 @@ const _ = require('lodash');
 let jsunity = require('jsunity');
 let internal = require('internal');
 let arangodb = require('@arangodb');
+let request = require("@arangodb/request");
 const isEnterprise = require("internal").isEnterprise();
 let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 
-let { versionHas } = require('@arangodb/test-helper');
+let { getEndpointsByType, versionHas } = require('@arangodb/test-helper');
 
 const isInstr = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const {
@@ -68,33 +69,6 @@ const arangosh = pu.ARANGOSH_BIN;
 const debug = function (text) {
   console.warn(text);
 };
-
-function getEndpointById(id) {
-  const toEndpoint = (d) => (d.endpoint);
-  return global.instanceManager.arangods.filter((d) => (d.id === id))
-    .map(toEndpoint)
-    .map(endpointToURL)[0];
-}
-  // TODO externalize
-
-  function getEndpointsByType(type) {
-    const isType = (d) => (d.role.toLowerCase() === type);
-    const toEndpoint = (d) => (d.endpoint);
-    const endpointToURL = (endpoint) => {
-      if (endpoint.substr(0, 6) === 'ssl://') {
-        return 'https://' + endpoint.substr(6);
-      }
-      let pos = endpoint.indexOf('://');
-      if (pos === -1) {
-        return 'http://' + endpoint;
-      }
-      return 'http' + endpoint.substr(pos);
-    };
-
-    return global.instanceManager.arangods.filter(isType)
-      .map(toEndpoint)
-      .map(endpointToURL);
-  }
 
 function CommunicationSuite() {
   'use strict';
@@ -279,7 +253,7 @@ function GenericAqlSetupPathSuite(type) {
       case "SearchAliasView":
         return `FOR v IN ${searchAliasViewName} OPTIONS {waitForSync: true} FOR x IN ${twoShardColName} RETURN x`;
       case "InvertedIndex":
-        return `FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x`;  
+        return `FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x`;
       case "Satellite":
         return `FOR v IN ${vertexName} FOR x IN ${twoShardColName} RETURN x`;
       default:
@@ -407,12 +381,30 @@ function GenericAqlSetupPathSuite(type) {
   `;
 
   const documentWrite = `
+    let internal = require('internal');
+    let crypto = require("@arangodb/crypto");
+    const col = db["${twoShardColName}"];
+    const shards = col.shards();
+    let numDocsShard1 = ${docsPerWrite} / 2;
+    let numDocsShard2 = ${docsPerWrite} - numDocsShard1;
+    const getRandomString = () => crypto.md5(internal.genRandomAlphaNumbers(32));
     const docs = [];
-    for (let i = 0; i < ${docsPerWrite}; ++i) {
-      docs.push({b: [{c: [{d: i.toString()}]}]});
+    let i = 0;
+    // We need to create documents that are distributed between the two shards
+    while (docs.length < ${docsPerWrite}) {
+      let key = getRandomString();
+      if (col.getResponsibleShard(key) === shards[0] && numDocsShard1 > 0) {
+        docs.push({ _key: key, b: [{c: [{d: i.toString()}]}]});
+        numDocsShard1--;
+        i++;
+      } else if (col.getResponsibleShard(key) === shards[1] && numDocsShard2 > 0) {
+        docs.push({ _key: key, b: [{c: [{d: i.toString()}]}]});
+        numDocsShard2--;
+        i++;
+      }
     }
     console.log("saving documents");
-    db["${twoShardColName}"].save(docs);
+    col.save(docs);
     console.log("done");
   `;
 
@@ -602,6 +594,12 @@ function GenericAqlSetupPathSuite(type) {
           break;
         }
       }
+
+      // set log level for transaction topic to trace on all db servers
+      // this is for debugging purposes only to understand why these tests regularly fail in CI and eventually be removed again
+      getEndpointsByType("dbserver").forEach((ep) => {
+        request({ method: "PUT", url: ep + "/_admin/log/level", body: { trx: "trace", }, json: true });
+      });
     },
 
     tearDown: function () {
@@ -639,6 +637,12 @@ function GenericAqlSetupPathSuite(type) {
       }
       db._drop(twoShardColName);
       db._drop(cn);
+
+      // reset log level for transaction topic to warn on all db servers
+      getEndpointsByType("dbserver").forEach((ep) => {
+        request({ method: "PUT", url: ep + "/_admin/log/level", body: { trx: "warn", }, json: true });
+      });
+
     }
   };
 
