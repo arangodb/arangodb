@@ -36,6 +36,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
@@ -43,8 +44,6 @@
 #include "Logger/LogMacros.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/SupervisedBuffer.h"
-
-#include <Aql/QueryContext.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -180,6 +179,7 @@ SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
         approxFunctionParameters->getMemberUnchecked(2);
 
     SearchParameters searchParameters;
+    // Buffer won't escape from this function's scope
     velocypack::SupervisedBuffer sb(resourceMonitor);
     VPackBuilder builder(sb);
     searchParametersNode->toVelocyPackValue(builder);
