@@ -669,7 +669,7 @@ def main():
         else:
             args.extra_args = args.extra_args[1:].split(' ')
         if args.arangod_without_v8:
-            args.extraArgs += [ '--skipServerJS', 'true']
+            args.extra_args += [ '--skipServerJS', 'true']
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = []
