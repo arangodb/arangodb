@@ -108,7 +108,16 @@ function runArangodRecovery (params, agencyMgr) {
 }
 
 function agencyRestart (options) {
-  if (!versionHas('failure-tests') || options.skipServerJS) {
+  if (!IM.options.skipServerJS) {
+    return {
+      agencyRestart: {
+        status: true,
+        message: 'failure-tests not enabled. please recompile with -DUSE_V8=On'
+      },
+      status: true
+    };
+  }
+  if (!versionHas('failure-tests')) {
     return {
       agencyRestart: {
         status: false,
