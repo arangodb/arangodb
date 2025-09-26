@@ -107,15 +107,15 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     this.allDatabases = [];
     this.allDumps = [];
     this.rtaArgs = [ 'DUMPDB', '--numberOfDBs', '1'].concat(rtaArgs);
-    this.rtaSkiplist = ""
+    this.rtaSkiplist = "";
     this.rtaDisabledTests = [];
     this.rtaNegFilter = "";
     if (this.firstRunOptions.skipServerJS) {
       this.rtaDisabledTests = [
         '--testFoxx', 'false'
       ];
-      this.rtaSkiplist = ",070,071,801"
-      this.rtaNegFilter = "070,071,801"
+      this.rtaSkiplist = ",070,071,801";
+      this.rtaNegFilter = "070,071,801";
     }
     this.which = which;
     this.results = {failed: 0};

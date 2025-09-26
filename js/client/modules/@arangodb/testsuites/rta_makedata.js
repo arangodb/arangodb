@@ -102,7 +102,7 @@ function makeDataWrapper (options) {
     runOneTest(file) {
       this.options.rtaNegFilter = "";
       if (this.options.skipServerJS) {
-        this.options.rtaNegFilter = "070,071,801"
+        this.options.rtaNegFilter = "070,071,801";
       }
       if (!this.continueTesting) {
         return {

@@ -27,7 +27,7 @@
 
 const internal = require('internal');
 const jsunity = require('jsunity');
-let IM = global.instanceManager
+let IM = global.instanceManager;
 
 const request = require('@arangodb/request');
 
@@ -45,7 +45,7 @@ const options = {
 function getCoordinators() {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
   const toEndpoint = (d) => (d.endpoint);
-  return IM.arangods.filter(isCoordinator).map(arangod => {return arangod.url});
+  return IM.arangods.filter(isCoordinator).map(arangod => {return arangod.url;});
 }
 
 
