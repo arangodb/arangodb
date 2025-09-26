@@ -63,6 +63,12 @@ struct SearchParametersContext {
   aql::Variable const* documentVariable;
 };
 
+// This Iterator is used by faiss library to iterate through RocksDB,
+// we set the appropriate iterator in RocksDBInvertedLists which instantiates
+// a new iterator for every nList that it needs to iterate through.
+// It contains the logic for how to read key value pairs that we wrote
+// It can also filter out certain pairs if the filterExpression has been
+// set
 struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
