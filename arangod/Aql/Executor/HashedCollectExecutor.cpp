@@ -375,6 +375,9 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
   // this builds a new group with aggregate functions being prepared.
   auto aggregateValues = makeAggregateValues();
 
+  ResourceUsageScope guard(_infos.getResourceMonitor(),
+                           memoryUsageForGroup(_nextGroup, true));
+
   std::unique_ptr<velocypack::Builder> builder;
 
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
@@ -394,6 +397,8 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
       std::make_pair(std::move(aggregateValues), std::move(builder)));
   // emplace must not fail
   TRI_ASSERT(emplaced);
+
+  guard.steal();
 
   // Moving _nextGroup left us with an empty vector of minimum capacity.
   // So in order to have correct capacity reserve again.
