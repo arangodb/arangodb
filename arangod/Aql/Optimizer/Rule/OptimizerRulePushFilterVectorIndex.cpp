@@ -43,8 +43,13 @@ using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
 namespace {
-bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
-                                    auto& filterExpression) {
+
+#define LOG_RULE_ENABLED false
+#define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
+#define LOG_RULE LOG_RULE_IF(true)
+
+bool removedFilterNode(auto* maybeFilterNode, auto& plan,
+                       auto& filterExpression) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
   auto* filterInVar = filterNode->inVariable();
@@ -53,7 +58,7 @@ bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
   auto* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
   if (maybeCalculationNode == nullptr ||
       maybeCalculationNode->getType() != EN::CALCULATION) {
-    return true;
+    return false;
   }
 
   auto const* calculationNode =
@@ -63,11 +68,87 @@ bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
   // CalculationNode will be removed by the subsequent rule if it can be
   plan->unlinkNode(maybeFilterNode);
 
-  return false;
+  return true;
+}
+
+auto extractFilterVarToRegs(auto const& filterExpression,
+                            auto const* enumerateNearVectorNode,
+                            auto const* filterNode) {
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+  VarSet inVars;
+  filterExpression->variables(inVars);
+  filterVarsToRegs.reserve(inVars.size());
+
+  auto const* oldDocumentVariable =
+      enumerateNearVectorNode->documentOutVariable();
+  // Here we take all variables in the expression
+  for (auto const& var : inVars) {
+    TRI_ASSERT(var != nullptr);
+    if (var->id == oldDocumentVariable->id) {
+      continue;
+    }
+    auto const regId = filterNode->getRegisterPlan()->variableToRegisterId(var);
+
+    filterVarsToRegs.emplace_back(var->id, regId);
+  }
+
+  return filterVarsToRegs;
+}
+
+auto extractAllAttributeNamesFromFilterExpression(
+    auto const& plan, auto const& filterExpression,
+    auto const& filterVarsToRegs) {
+  containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
+  auto* ast = plan->getAst();
+
+  for (auto const& varPair : filterVarsToRegs) {
+    auto const* variable = ast->variables()->getVariable(varPair.first);
+    if (variable != nullptr) {
+      // Extract attribute names for this variable from the filter
+      // expression
+      if (!Ast::getReferencedAttributesRecursive(
+              filterExpression->node(), variable,
+              /*expectedAttribute*/ "", filterAttributes,
+              plan->getAst()->query().resourceMonitor())) {
+        // If we can't extract attributes, we can't use stored values
+        break;
+      }
+    }
+  }
+
+  return filterAttributes;
+}
+
+bool areAllAttributesCovered(auto const& plan, auto const& filterAttributes,
+                             auto const& storedValues) {
+  bool isCoveredByStoredValues = true;
+  for (auto const& filterAttr : filterAttributes) {
+    bool found = false;
+    for (auto const& storedValue : storedValues) {
+      // Convert stored value to AttributeNamePath for comparison
+      aql::AttributeNamePath storedPath(
+          plan->getAst()->query().resourceMonitor());
+      for (auto const& attrName : storedValue) {
+        storedPath.add(attrName.name);
+      }
+
+      if (filterAttr == storedPath) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      return false;
+    }
+  }
+  return isCoveredByStoredValues;
 }
 
 }  // namespace
 
+// This rule check if EnumerateNearVectorNode has a FilterNode and if so tries
+// to remove it and apply early pruning int EnumerateNearVectorNode.
+// Also we check if we can use storedFields optimization with the given index.
 void arangodb::aql::pushFilterIntoEnumerateNear(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
@@ -79,17 +160,18 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     auto* enumerateNearVectorNode =
         ExecutionNode::castTo<EnumerateNearVectorNode*>(node);
 
+    // The use-vector-index rule inserts MaterializeNode after the
+    // EnumerateNearVectorNode
     auto* currentNode = enumerateNearVectorNode->getFirstParent();
-    const auto skipOverCalculationNodes = [&currentNode] {
-      while (currentNode != nullptr &&
-             currentNode->getType() == EN::CALCULATION) {
-        currentNode = currentNode->getFirstParent();
-      }
-    };
-    skipOverCalculationNodes();
+    while (currentNode != nullptr &&
+           (currentNode->getType() == EN::CALCULATION ||
+            currentNode->getType() == EN::MATERIALIZE)) {
+      currentNode = currentNode->getFirstParent();
+    }
 
     // We expect filter node
     if (currentNode == nullptr || currentNode->getType() != EN::FILTER) {
+      LOG_RULE << ADB_HERE << ": No filter node";
       continue;
     }
     ExecutionNode* filterNode = currentNode;
@@ -97,94 +179,45 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
 
     // If there is a FilterNode it comes with CalculationNode, we remove it
     // and handle it in EnumerateNearVectorNode
-    // TODO Check if IndexNode always does this
     std::unique_ptr<Expression> filterExpression{nullptr};
-    bool isCoveredByStoredValues{false};
-    if (bool isRemoved =
-            removeFilterAndCalculationNode(filterNode, plan, filterExpression);
-        !isRemoved) {
+    if (!removedFilterNode(filterNode, plan, filterExpression)) {
       continue;
     }
+    // We are handling filtering in EnumerateNearVectorNode
+    enumerateNearVectorNode->setFilterExpression(filterExpression.get());
+    modified = true;
 
-    // check which variables are used by the node's post-filter
-    std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-    VarSet inVars;
-    filterExpression->variables(inVars);
-    filterVarsToRegs.reserve(inVars.size());
-
-    auto const* oldDocumentVariable =
-        enumerateNearVectorNode->documentOutVariable();
-    // Here we take all variables in the expression
-    for (auto const& var : inVars) {
-      TRI_ASSERT(var != nullptr);
-      if (var->id == oldDocumentVariable->id) {
-        continue;
-      }
-      // TODO(jbajic) Why I cannot get this from the execution plan and not
-      // from the node?
-      auto const regId =
-          filterNode->getRegisterPlan()->variableToRegisterId(var);
-
-      filterVarsToRegs.emplace_back(var->id, regId);
-    }
+    // This part is additional optimization to see if we can use storedFields of
+    // this vector
+    auto filterVarsToRegs = extractFilterVarToRegs(
+        filterExpression, enumerateNearVectorNode, filterNode);
 
     auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(
         enumerateNearVectorNode->index().get());
-    if (vecIdx->hasStoredValues() && !filterVarsToRegs.empty()) {
-      // check if all attribtues in filterExpression are covered
-      // by storedValues
-
-      // Get stored values from the vector index
-      auto const& storedValues = vecIdx->storedValues();
-
-      // Extract all attribute names from filter expression
-      containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
-      // auto* ast = engine.getQuery().ast();
-      auto* ast = plan->getAst();
-
-      for (auto const& varPair : filterVarsToRegs) {
-        auto const* variable = ast->variables()->getVariable(varPair.first);
-        if (variable != nullptr) {
-          // Extract attribute names for this variable from the filter
-          // expression
-          if (!Ast::getReferencedAttributesRecursive(
-                  filterExpression->node(), variable,
-                  /*expectedAttribute*/ "", filterAttributes,
-                  plan->getAst()->query().resourceMonitor())) {
-            // If we can't extract attributes, we can't use stored values
-            break;
-          }
-        }
-      }
-
-      // Check if all filter attributes are covered by stored values
-      isCoveredByStoredValues = true;
-      for (auto const& filterAttr : filterAttributes) {
-        bool found = false;
-        for (auto const& storedValue : storedValues) {
-          // Convert stored value to AttributeNamePath for comparison
-          aql::AttributeNamePath storedPath(
-              plan->getAst()->query().resourceMonitor());
-          for (auto const& attrName : storedValue) {
-            storedPath.add(attrName.name);
-          }
-
-          if (filterAttr == storedPath) {
-            found = true;
-            break;
-          }
-        }
-        if (!found) {
-          isCoveredByStoredValues = false;
-          break;
-        }
-      }
-      enumerateNearVectorNode->setFilterExpression(filterExpression.get());
-      enumerateNearVectorNode->setIsCoveredByStoredValues(
-          isCoveredByStoredValues);
-
-      modified = true;
+    if (!vecIdx->hasStoredValues() || filterVarsToRegs.empty()) {
+      continue;
     }
+
+    // Get stored values from the vector index
+    auto const& storedValues = vecIdx->storedValues();
+    // Extract all attribute names from filter expression
+    containers::FlatHashSet<aql::AttributeNamePath> filterAttributes =
+        extractAllAttributeNamesFromFilterExpression(plan, filterExpression,
+                                                     filterVarsToRegs);
+
+    // Check if all filter attributes are covered by stored values
+    bool isCoveredByStoredValues =
+        areAllAttributesCovered(plan, filterAttributes, storedValues);
+
+    if (!isCoveredByStoredValues) {
+      continue;
+    }
+
+    enumerateNearVectorNode->setIsCoveredByStoredValues(
+        isCoveredByStoredValues);
+    enumerateNearVectorNode->setFilterVarToRegs(std::move(filterVarsToRegs));
+
+    plan->show();
   }
 
   opt->addPlan(std::move(plan), rule, modified);
