@@ -278,7 +278,7 @@ function withClauseTestSuite() {
 
       try {
         const actual = db._query(query, bindVars).toArray();
-        assert(false);
+        assertTrue(false);
       } catch (err) {
         assertEqual(internal.errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code, err.errorNum, JSON.stringify(err));
       }
