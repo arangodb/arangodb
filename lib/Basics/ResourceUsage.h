@@ -102,6 +102,8 @@ class ResourceUsageScope {
  public:
   ResourceUsageScope(ResourceUsageScope const&) = delete;
   ResourceUsageScope& operator=(ResourceUsageScope const&) = delete;
+  ResourceUsageScope(ResourceUsageScope&&);
+  ResourceUsageScope& operator=(ResourceUsageScope&&) = delete;
 
   explicit ResourceUsageScope(ResourceMonitor& resourceMonitor) noexcept;
 

@@ -118,7 +118,7 @@ void DBServerIndexCursor::all(EdgeCursor::Callback const& callback) {
   TRI_ASSERT(_cursor != nullptr);
 
   if (aql::Projections::isCoveringIndexPosition(_coveringIndexPosition)) {
-    bool operationSuccessful = true;
+    uint64_t operationSuccessful = 0;
     auto cb = coveringCallback(operationSuccessful, _cursor->collection()->id(),
                                _cursorId, _coveringIndexPosition, callback);
 
@@ -141,44 +141,60 @@ void DBServerIndexCursor::all(EdgeCursor::Callback const& callback) {
 }
 
 bool DBServerIndexCursor::next(EdgeCursor::Callback const& callback) {
-  TRI_ASSERT(_cursor != nullptr);
+  return nextBatch(callback, 1) == 1;
+}
 
-  if (_cachePos < _cache.size()) {
-    // get the collection
+uint64_t DBServerIndexCursor::executeOnCache(
+    EdgeCursor::Callback const& callback, uint64_t itemSize) {
+  uint64_t count = 0;
+  while (_cachePos < _cache.size() && count < itemSize) {
     auto cb =
         nonCoveringCallback(_cursor->collection()->id(), _cursorId, callback);
     _cursor->collection()->getPhysical()->lookup(_trx, _cache[_cachePos++], cb,
                                                  {.countBytes = true});
-    return true;
+    count++;
   }
+  return count;
+}
 
-  // We need to refill the cache.
-  _cachePos = 0;
+uint64_t DBServerIndexCursor::nextBatch(EdgeCursor::Callback const& callback,
+                                        uint64_t batchSize) {
+  TRI_ASSERT(_cursor != nullptr);
+  uint64_t successfulItems = 0;
 
   if (aql::Projections::isCoveringIndexPosition(_coveringIndexPosition)) {
-    bool operationSuccessful = false;
     do {
       if (!_cursor->hasMore()) {
-        return false;
+        return successfulItems;
       }
-      auto cb =
-          coveringCallback(operationSuccessful, _cursor->collection()->id(),
-                           _cursorId, _coveringIndexPosition, callback);
-      _cursor->nextCovering(cb, 1);
-      if (operationSuccessful) {
-        return true;
-      }
-    } while (!operationSuccessful);
+      auto cb = coveringCallback(successfulItems, _cursor->collection()->id(),
+                                 _cursorId, _coveringIndexPosition, callback);
+      _cursor->nextCovering(cb, batchSize - successfulItems);
+    } while (successfulItems != batchSize);
+    return batchSize;
   }
 
   TRI_ASSERT(
       !aql::Projections::isCoveringIndexPosition(_coveringIndexPosition));
 
+  if (_cachePos < _cache.size()) {
+    successfulItems += executeOnCache(callback, batchSize);
+    if (successfulItems == batchSize) {
+      return batchSize;
+    }
+  }
+
+  // We need to refill the cache.
+  _cachePos = 0;
+  _cache.clear();
+
   do {
     if (!_cursor->hasMore()) {
       return false;
     }
-    _cache.clear();
+    auto sizeToCache = (batchSize - successfulItems) > 1000
+                           ? (batchSize - successfulItems)
+                           : 1000;
     bool tmp = _cursor->next(
         [&](LocalDocumentId token) {
           if (token.isSet()) {
@@ -187,16 +203,24 @@ bool DBServerIndexCursor::next(EdgeCursor::Callback const& callback) {
           }
           return false;
         },
-        1000);
+        sizeToCache);
     TRI_ASSERT(tmp == _cursor->hasMore());
   } while (_cache.empty());
+
   TRI_ASSERT(!_cache.empty());
   TRI_ASSERT(_cachePos < _cache.size());
-  auto cb =
-      nonCoveringCallback(_cursor->collection()->id(), _cursorId, callback);
-  _cursor->collection()->getPhysical()->lookup(_trx, _cache[_cachePos++], cb,
-                                               {.countBytes = true});
-  return true;
+  successfulItems += executeOnCache(callback, batchSize);
+  return successfulItems;
+}
+
+bool DBServerIndexCursor::hasMore() const {
+  if (_cursor == nullptr) {
+    return false;
+  }
+  if (not _cache.empty()) {
+    return _cachePos < _cache.size();
+  }
+  return _cursor->hasMore();
 }
 
 void DBServerIndexCursor::rearm(std::string_view vertex) {
@@ -280,7 +304,7 @@ DBServerIndexCursor::nonCoveringCallback(DataSourceId const& sourceId,
   };
 }
 std::function<bool(LocalDocumentId, IndexIteratorCoveringData&)>
-DBServerIndexCursor::coveringCallback(bool& operationSuccessful,
+DBServerIndexCursor::coveringCallback(uint64_t& operationSuccessful,
                                       DataSourceId const& sourceId,
                                       size_t cursorId,
                                       uint16_t coveringPosition,
@@ -297,7 +321,7 @@ DBServerIndexCursor::coveringCallback(bool& operationSuccessful,
         return false;
       }
 #endif
-      operationSuccessful = true;
+      operationSuccessful++;
       _traverserCache->incrDocuments();
       callback(EdgeDocumentToken(sourceId, token), edge, cursorId);
       return true;

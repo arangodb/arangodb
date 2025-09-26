@@ -61,7 +61,7 @@ struct EnumerateNearVectorsExecutorInfos {
         offset(offset),
         searchParameters(searchParameters),
         filterExpression(filterExpression),
-        filterVarsToRegs(filterVarsToRegs),
+        filterVarsToRegs(std::move(filterVarsToRegs)),
         isCoveredByStoredValues(isCoveredByStoredValues),
         documentVariable(documentVariable) {}
 

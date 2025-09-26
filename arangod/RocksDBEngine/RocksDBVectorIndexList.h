@@ -111,8 +111,12 @@ struct SearchParametersContext {
 using RocksDBFaissSearchContext =
     std::variant<SearchParametersContext, transaction::Methods*>;
 
-// This is iterator specialized for filtering the records in vector index
-// by materializing documents from documents column
+// This Iterator is used by faiss library to iterate through RocksDB,
+// we set the appropriate iterator in RocksDBInvertedLists which instantiates
+// a new iterator for every nList that it needs to iterate through.
+// It contains the logic for how to read key value pairs that we wrote
+// It can also filter out certain pairs if the filterExpression has been
+// set
 struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
   RocksDBInvertedListsFilteringIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,

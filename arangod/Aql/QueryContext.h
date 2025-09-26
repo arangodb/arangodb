@@ -224,7 +224,18 @@ class QueryContext {
   // Whether the caller executes the query synchronously or asynchronously -
   // i.e. is calling Query::executeSync, Query::executeV8 for the former, or
   // Query::execute for the latter.
-  // This is used to decide whether certain network requests set skipScheduler.
+  // When the caller is waiting synchronously, we must avoid needing additional
+  // scheduler threads to continue to avoid possible deadlocks.
+  // This means, for example, that network request should set `skipScheduler`,
+  // and that we have to wait synchronously for the response immediately instead
+  // of suspending.
+  // More precisely: No coroutine (or future) called by a synchronous caller
+  // (possible callers are exactly executeSync or executeV8) may suspend, when
+  // called from there (i.e. when this is set to
+  // QueryApiSynchronicity::Synchronous). This includes Query::execute,
+  // Query::prepareQuery, and everything called by them (and being co_awaited)
+  // like instantiatePlan, instantiateFromPlan, instantiateEngines,
+  // buildEngines, cleanupEngines, etc. pp
   QueryApiSynchronicity _queryApiSynchronicity =
       QueryApiSynchronicity::Asynchronous;
 };

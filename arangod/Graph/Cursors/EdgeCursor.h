@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string_view>
 
 namespace arangodb {
@@ -45,16 +46,28 @@ class EdgeCursor {
  public:
   virtual ~EdgeCursor() = default;
 
+  // callback on next EdgeDocumentToken and Slice that contains the
+  // other side of the edge (we are standing on a node and want to iterate
+  // connected edges)
+  // parameters: EdgeDocumentToken&& eid, Slice edge, size_t cursorId
   using Callback = std::function<void(EdgeDocumentToken&&,
                                       arangodb::velocypack::Slice, size_t)>;
 
   virtual bool next(Callback const&) = 0;
 
+  /// Calls the callback on the next batchSize items. Returns true if the
+  /// callback was executed on batchSize items. Returns false if the cursor
+  /// was exhausted before batchSize items were processed.
+  virtual bool nextBatch(Callback const&, uint64_t batchSize) = 0;
+
   virtual void readAll(Callback const&) = 0;
 
-  virtual std::uint64_t httpRequests() const = 0;
-
   virtual void rearm(std::string_view vid, uint64_t depth) = 0;
+
+  virtual bool hasMore() const = 0;
+  virtual std::uint64_t httpRequests() const = 0;
+  virtual std::optional<std::string_view> currentVertex() const = 0;
+  virtual std::optional<uint64_t> currentDepth() const = 0;
 };
 
 }  // namespace graph
