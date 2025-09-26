@@ -27,12 +27,12 @@
 #include "QueryContext.h"
 #include "Aql/AqlValue.h"
 #include "Basics/ErrorCode.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
 
 #include <string_view>
-#include <Basics/ResourceUsage.h>
 
 namespace arangodb {
 struct ValidatorBase;

@@ -25,6 +25,7 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
 #include "Basics/StringUtils.h"
@@ -41,7 +42,6 @@
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
-#include <Aql/FixedVarExpressionContext.h>
 
 using namespace arangodb;
 
