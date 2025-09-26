@@ -459,7 +459,7 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
         add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs)
     if args.ui == "only":
         return
-    if build_config.enterprise:
+    if build_config.enterprise && not args.arangod_without_v8:
         workflow["jobs"].append(
             {
                 "run-hotbackup-tests": {
