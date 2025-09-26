@@ -625,10 +625,10 @@ bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
 
 #ifndef USE_V8
-  if (!_parseJsOptions && (modernized.starts_with("javascript.") ||
-                           modernized.starts_with("--javascript.") ||
-                           modernized.starts_with("foxx.") ||
-                           modernized.starts_with("--foxx."))) {
+  if (!_parseJsOptions &&
+      (modernized.starts_with("javascript.") ||
+       modernized.starts_with("--javascript.") ||
+       modernized.starts_with("foxx.") || modernized.starts_with("--foxx."))) {
     // hack: make all options starting with --javascript not require a value
     return false;
   }
