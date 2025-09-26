@@ -45,7 +45,12 @@ namespace vector {
 
 struct RocksDBVectorIndexEntryValue {
   std::vector<uint8_t> encodedValue;
-  std::optional<std::string> storedValues;
+  std::string storedValues;
+
+  void clear() {
+    storedValues.clear();
+    encodedValue.clear();
+  }
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
@@ -85,6 +90,7 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   LogicalCollection* _collection{nullptr};
 
   std::unique_ptr<rocksdb::Iterator> _it;
+  RocksDBVectorIndexEntryValue _currentValueEntry;
   std::size_t _listNumber;
   std::size_t _codeSize;
 };

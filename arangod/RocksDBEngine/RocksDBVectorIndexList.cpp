@@ -26,6 +26,8 @@
 #include "Aql/DocumentExpressionContext.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Indexes/IndexIterator.h"
+#include "Inspection/VPack.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -64,10 +66,22 @@ void RocksDBInvertedListsIterator::next() { _it->Next(); }
 
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator::get_id_and_codes() {
-  TRI_ASSERT(_codeSize == _it->value().size());
   auto const docId = RocksDBKey::indexDocumentId(_it->key());
-  auto const* value = reinterpret_cast<uint8_t const*>(_it->value().data());
-  return {static_cast<faiss::idx_t>(docId.id()), value};
+  _currentValueEntry.clear();
+
+  auto value =
+      VPackSlice(reinterpret_cast<uint8_t const*>(_it->value().data()));
+  // LOG_DEVEL << "READ STR: " << _it->value().ToStringView();
+  // LOG_DEVEL << "READ SIZE: " << _it->value().size();
+  auto status = velocypack::deserializeWithStatus(value, _currentValueEntry);
+  // LOG_DEVEL << "READ encoded size: " <<
+  // _currentValueEntry.encodedValue.size();
+  TRI_ASSERT(_currentValueEntry.encodedValue.size() == _codeSize)
+      << "The encoded size is: " << _currentValueEntry.encodedValue.size()
+      << " shouldbe: " << _codeSize;
+
+  return {static_cast<faiss::idx_t>(docId.id()),
+          _currentValueEntry.encodedValue.data()};
 }
 
 RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
@@ -150,7 +164,12 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
         aql::AqlValueGuard guard(a, mustDestroy);
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
-          _filteredIds.emplace_back(id, std::move(idsToValue[id]));
+          // We do not keep whole value but only the encoded part used by faiss
+          RocksDBVectorIndexEntryValue entry;
+          auto slice = VPackSlice(
+              reinterpret_cast<uint8_t const*>(idsToValue[id].data()));
+          velocypack::deserialize(slice, entry);
+          _filteredIds.emplace_back(id, std::move(entry.encodedValue));
         }
 
         return true;
@@ -240,7 +259,6 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
   for (auto const& id : ids) {
     auto const& value = idsToValue[id];
 
-    // Deserialize the RocksDBVectorIndexEntryValue
     RocksDBVectorIndexEntryValue entryValue;
     auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(value.data()));
 
@@ -268,7 +286,13 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
     aql::AqlValueGuard guard(a, mustDestroy);
     auto const filterExpressionResult = a.toBoolean();
     if (filterExpressionResult) {
-      _filteredIds.emplace_back(id, std::move(value));
+      // We do not keep whole value but only the encoded part used by faiss
+      RocksDBVectorIndexEntryValue entry;
+      auto slice =
+          VPackSlice(reinterpret_cast<uint8_t const*>(idsToValue[id].data()));
+      velocypack::deserialize(slice, entry);
+
+      _filteredIds.emplace_back(id, std::move(entry.encodedValue));
     }
   }
   _filteredIdsIt = _filteredIds.begin();

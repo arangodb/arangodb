@@ -31,6 +31,7 @@
 #include <omp.h>
 
 #include "Aql/AstNode.h"
+#include "Basics/SourceLocation.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
@@ -391,15 +392,18 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   vector::RocksDBVectorIndexEntryValue rocksdbEntryValue;
   rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
       flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
+
   if (hasStoredValues()) {
-    auto extractedAttribtueValues =
+    auto const extractedAttribtueValues =
         transaction::extractAttributeValues(trx, _storedValues, doc, true)
             ->get();
     rocksdbEntryValue.storedValues = extractedAttribtueValues->toString();
   }
+
   velocypack::Builder builder;
   velocypack::serialize(builder, rocksdbEntryValue);
-  auto const status = methods->Put(_cf, rocksdbKey, builder.toString(), false);
+  auto const value = RocksDBValue::VectorIndexValue(builder.slice());
+  auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
 
   return rocksutils::convertStatus(status);
 }
@@ -518,7 +522,7 @@ RocksDBVectorIndex::storedValues() const noexcept {
   return _storedValues;
 }
 
-#define LOG_INGESTION LOG_DEVEL_IF(true)
+#define LOG_INGESTION LOG_DEVEL_IF(false)
 
 Result RocksDBVectorIndex::ingestVectors(
     rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> documentIterator) {
@@ -588,8 +592,7 @@ Result RocksDBVectorIndex::ingestVectors(
 
       if constexpr (returnsResult) {
         setResult(fn());
-      }
-      else {
+      } else {
         fn();
       }
     } catch (basics::Exception const& e) {
@@ -635,7 +638,7 @@ Result RocksDBVectorIndex::ingestVectors(
         }
         batch->docIds.push_back(docId);
         if (hasStoredValues()) {
-          auto extractedAttributeValues =
+          auto const extractedAttributeValues =
               extractAttributeValuesWithoutTrx(_storedValues, doc, true);
           batch->storedValues.push_back(extractedAttributeValues->toString());
         }
@@ -739,11 +742,18 @@ Result RocksDBVectorIndex::ingestVectors(
             rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
           }
 
-
+          /*LOG_DEVEL << ADB_HERE << " Doing encodedSize: "*/
+                    /*<< rocksdbEntryValue.encodedValue.size()*/
+                    /*<< " is there storedValues size: "*/
+                    /*<< rocksdbEntryValue.storedValues.size();*/
           VPackBuilder builder;
           velocypack::serialize(builder, rocksdbEntryValue);
-          status = batch.Put(_cf, key.string(), builder.toString());
+          auto const value = RocksDBValue::VectorIndexValue(builder.slice());
+
+          status = batch.Put(_cf, key.string(), value.string());
+          // LOG_DEVEL << ADB_HERE;
           if (not status.ok()) {
+            // LOG_DEVEL << "NOT OK";
             THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
           }
         }

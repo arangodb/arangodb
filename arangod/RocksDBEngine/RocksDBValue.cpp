@@ -265,7 +265,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     case RocksDBEntryType::MdiIndexValue:
       TRI_ASSERT(data.isArray());
       [[fallthrough]];
-
+    case RocksDBEntryType::VectorVPackIndexValue:
+      TRI_ASSERT(data.isObject());
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
     case RocksDBEntryType::ReplicatedState:
