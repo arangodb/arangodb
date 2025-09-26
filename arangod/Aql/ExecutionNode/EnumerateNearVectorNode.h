@@ -86,6 +86,11 @@ class EnumerateNearVectorNode : public ExecutionNode,
   void doToVelocyPack(arangodb::velocypack::Builder& builder,
                       unsigned flags) const final;
 
+  RegisterId getRegisterId(VariableId const var) const;
+
+  std::vector<std::pair<VariableId, RegisterId>> extractFilterVarsToRegs()
+      const;
+
  private:
   /// @brief input variable to read the query point from
   Variable const* _inVariable;
