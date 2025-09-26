@@ -94,6 +94,9 @@ def parse_arguments():
         "--extra-args", type=str, help="additional arguments to append to all testing.js"
     )
     parser.add_argument(
+        "--arangod-without-v8", type=str, help="whether we run a setup without .js"
+    )
+    parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
         action="store_true",
@@ -665,6 +668,8 @@ def main():
             args.extra_args = []
         else:
             args.extra_args = args.extra_args[1:].split(' ')
+        if args.arangod_without-v8:
+            args.extraArgs += [ '--skipServerJS', 'true']
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = []
