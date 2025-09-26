@@ -257,8 +257,8 @@ bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
   filterExpression = calculationNode->expression()->clone(plan->getAst());
 
+  // CalculationNode will be removed by the subsequent rule if it can be
   plan->unlinkNode(maybeFilterNode);
-  plan->unlinkNode(maybeCalculationNode);
 
   return false;
 }
