@@ -104,7 +104,8 @@ class ProgramOptions {
   ProgramOptions& operator=(ProgramOptions const&) = delete;
 
   ProgramOptions(char const* progname, std::string const& usage,
-                 std::string const& more, char const* binaryPath);
+                 std::string const& more, char const* binaryPath,
+                 bool parseJsOptions = false);
 
   std::string progname() const;
 
@@ -293,6 +294,8 @@ class ProgramOptions {
   std::function<std::string(std::string const&, char const*)> _translator;
   // directory of this binary
   char const* _binaryPath;
+  // arangosh will still have to parse javascript options
+  bool _parseJsOptions;
 };
 
 }  // namespace arangodb::options
