@@ -132,11 +132,17 @@ HashedCollectExecutor::~HashedCollectExecutor() {
 }
 
 void HashedCollectExecutor::destroyAllGroupsAqlValues() {
+  size_t memoryUsage = 0;
   for (auto& it : _allGroups) {
+    memoryUsage += memoryUsageForGroup(it.first, true);
     for (auto& it2 : it.first.values) {
       const_cast<AqlValue*>(&it2)->destroy();
     }
   }
+  memoryUsage += _memoryUsageForInto;
+
+  _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
+  _memoryUsageForInto = 0;
 }
 
 void HashedCollectExecutor::consumeInputRow(InputAqlItemRow& input) {
