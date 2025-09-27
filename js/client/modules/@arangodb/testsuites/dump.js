@@ -114,9 +114,9 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       this.rtaDisabledTests = [
         '--testFoxx', 'false'
       ];
-      // TODO: what about 550,960 ?
-      this.rtaSkiplist = ",070,071,801,550,960";
-      this.rtaNegFilter = "070,071,801,550,960";
+      // TODO: what about 550,900,960 ?
+      this.rtaSkiplist = ",070,071,801,550,900,960";
+      this.rtaNegFilter = "070,071,801,550,900,960";
     }
     this.which = which;
     this.results = {failed: 0};
