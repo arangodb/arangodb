@@ -347,7 +347,9 @@ function CORS_requestSuite () {
 }
 
 jsunity.run(head_requestsSuite);
-jsunity.run(get_requestSuite);
+if (!IM.options.skipServerJS) {
+  jsunity.run(get_requestSuite);
+}
 jsunity.run(options_requestSuite);
 jsunity.run(CORS_requestSuite);
 return jsunity.done();
