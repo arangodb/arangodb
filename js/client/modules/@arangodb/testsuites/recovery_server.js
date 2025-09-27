@@ -173,7 +173,16 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
 }
 
 function recovery_server (options) {
-  if (!this.options.skipServerJS && !versionHas('failure-tests')) {
+  if (!options.skipServerJS) {
+    return {
+      recovery_server: {
+        status: true,
+        message: 'v8. please recompile with -DUSE_V8=On'
+      },
+      status: true
+    };
+  }
+  if (!versionHas('failure-tests')) {
     return {
       recovery_server: {
         status: false,

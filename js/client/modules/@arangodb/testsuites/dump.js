@@ -109,6 +109,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     this.rtaArgs = [ 'DUMPDB', '--numberOfDBs', '1'].concat(rtaArgs);
     this.rtaSkiplist = "";
     this.rtaDisabledTests = [];
+    this.rtaDisabledTestsFull = [];
     this.rtaNegFilter = "";
     if (this.firstRunOptions.skipServerJS) {
       this.rtaDisabledTests = [
@@ -117,6 +118,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       // TODO: what about 550,900,960 ?
       this.rtaSkiplist = ",070,071,801,550,900,960";
       this.rtaNegFilter = "070,071,801,550,900,960";
+      this.rtaDisabledTestsFull = ['--skip', this.rtaNegFilter];
     }
     this.which = which;
     this.results = {failed: 0};
@@ -978,7 +980,7 @@ function dumpMultipleTwo (options) {
   };
 
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {}, dumpOptions, dumpOptions,
-                                    'dump_multiple_two', tstFiles, function(){}, [], true);
+                                    'dump_multiple_two', tstFiles, function(){}, this.rtaDisabledTestsFull, true);
 }
 function dumpMultipleSame (options) {
   let dumpOptions = {
@@ -1002,7 +1004,7 @@ function dumpMultipleSame (options) {
 
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
                                     dumpOptions, dumpOptions,
-                                    'dump_multiple_same', tstFiles, function(){}, [], false);
+                                    'dump_multiple_same', tstFiles, function(){},  this.rtaDisabledTestsFull, false);
 }
 
 function dumpWithCrashes (options) {
@@ -1027,7 +1029,7 @@ function dumpWithCrashes (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, this.rtaDisabledTestsFull);
 }
 
 function dumpWithCrashesNonParallel (options) {
@@ -1052,7 +1054,7 @@ function dumpWithCrashesNonParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, this.rtaDisabledTestsFull);
 }
 
 function dumpAuthentication (options) {
@@ -1089,7 +1091,7 @@ function dumpAuthentication (options) {
     dbServers: 3
   });
 
-  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, []);
+  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, this.rtaDisabledTestsFull);
   options.cleanup = opts.cleanup;
   return ret;
 }
@@ -1156,7 +1158,7 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, this.rtaDisabledTestsFull);
 }
 
 function dumpNonParallel (options) {
@@ -1177,7 +1179,7 @@ function dumpNonParallel (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, []);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, this.rtaDisabledTestsFull);
 }
 
 function dumpMaskings (options) {
@@ -1207,7 +1209,7 @@ function dumpMaskings (options) {
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, []);
+  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, this.rtaDisabledTestsFull);
 }
 
 function hotBackup (options) {
@@ -1254,7 +1256,7 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
+  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, this.rtaDisabledTestsFull, false);
   if (!helper.startFirstInstance()) {
       helper.destructor(false);
     return helper.extractResults();

@@ -221,6 +221,15 @@ function replicationStatic (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationSync (options) {
+  if (options.skipServerJS) {
+    return {
+      replicationSync: {
+        status: false,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: false
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
   testCases = tu.splitBuckets(options, testCases);
 
