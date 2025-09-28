@@ -156,10 +156,10 @@ function replicationFuzz (options) {
   if (options.skipServerJS) {
     return {
       replicationFuzz: {
-        status: false,
+        status: true,
         message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
       },
-      status: false
+      status: true
     };
   }
   let testCases = tu.scanTestPaths(testPaths.replication_fuzz, options);

@@ -173,7 +173,7 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
 }
 
 function recovery_server (options) {
-  if (!options.skipServerJS) {
+  if (options.skipServerJS) {
     return {
       recovery_server: {
         status: true,

@@ -87,7 +87,7 @@ function rtaMakeCheckDataSuite() {
     },
     testRTAMakeData: function() {
       let rtaSkiplist = "";
-      if (!IM.options.skipServerJS) {
+      if (IM.options.skipServerJS) {
            rtaSkiplist = ",801,550,900,960";
       }
       const fs = require('fs');
