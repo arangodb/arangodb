@@ -106,20 +106,22 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     this.restoreOptions = restoreOptions;
     this.allDatabases = [];
     this.allDumps = [];
+    if (this.firstRunOptions.skipServerJS) {
+      // TODO: what about 550,900,960 ?
+      if (rtaArgs.length === 2) {
+        rtaArgs[1] += ",070,071,801,550,900,960";
+      } else {
+        rtaArgs = ['--skip', "070,071,801,550,900,960"].concat(rtaArgs);
+      }
+      rtaArgs = [
+        '--testFoxx', 'false'
+      ].concat(rtaArgs);
+    }
     this.rtaArgs = [ 'DUMPDB', '--numberOfDBs', '1'].concat(rtaArgs);
     this.rtaSkiplist = "";
     this.rtaDisabledTests = [];
     this.rtaDisabledTestsFull = [];
     this.rtaNegFilter = "";
-    if (this.firstRunOptions.skipServerJS) {
-      this.rtaDisabledTests = [
-        '--testFoxx', 'false'
-      ];
-      // TODO: what about 550,900,960 ?
-      this.rtaSkiplist = ",070,071,801,550,900,960";
-      this.rtaNegFilter = "070,071,801,550,900,960";
-      this.rtaDisabledTestsFull = ['--skip', this.rtaNegFilter];
-    }
     this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
@@ -930,9 +932,9 @@ function dumpMixedClusterSingle (options) {
 
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
                                     options, options, 'dump_mixed_cluster_single',
-                                    tstFiles, function(){}, this.rtaDisabledTests + [
+                                    tstFiles, function(){}, [
                                       // BTS-1617: disable 404 for now
-                                      '--skip', '404,550,900,960' + this.rtaSkiplist ], true);
+                                      '--skip', '404,550,900,960' ], true);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -955,8 +957,8 @@ function dumpMixedSingleCluster (options) {
 
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
                                     options, options, 'dump_mixed_single_cluster',
-                                    tstFiles, function(){}, this.rtaDisabledTests + [
-                                      '--skip', '550,900,960' + this.rtaSkiplist], true);
+                                    tstFiles, function(){}, [
+                                      '--skip', '550,900,960'], true);
 }
 
 function dumpMultipleTwo (options) {
@@ -994,7 +996,7 @@ function dumpMultipleSame (options) {
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
   let tstFiles = {
-    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpSetup: 'dump-setup' + c.cluster +'.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
     dumpCleanup: 'cleanup-multiple.js',
     dumpAgain: 'dump' + c.cluster + '.js',
@@ -1004,7 +1006,7 @@ function dumpMultipleSame (options) {
 
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {},
                                     dumpOptions, dumpOptions,
-                                    'dump_multiple_same', tstFiles, function(){},  this.rtaDisabledTestsFull, false);
+                                    'dump_multiple_same', tstFiles, function(){}, [], false);
 }
 
 function dumpWithCrashes (options) {
@@ -1029,7 +1031,7 @@ function dumpWithCrashes (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, this.rtaDisabledTestsFull);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes', tstFiles, function(){}, []);
 }
 
 function dumpWithCrashesNonParallel (options) {
@@ -1054,7 +1056,7 @@ function dumpWithCrashesNonParallel (options) {
     dumpCheckGraph: 'check-graph-multiple.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, this.rtaDisabledTestsFull);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_with_crashes_parallel', tstFiles, function(){}, []);
 }
 
 function dumpAuthentication (options) {
@@ -1091,7 +1093,7 @@ function dumpAuthentication (options) {
     dbServers: 3
   });
 
-  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, this.rtaDisabledTestsFull);
+  let ret= dump_backend(opts, _.clone(tu.testServerAuthInfo), clientAuth, dumpAuthOpts, restoreAuthOpts, 'dump_authentication', tstFiles, function(){}, []);
   options.cleanup = opts.cleanup;
   return ret;
 }
@@ -1158,7 +1160,7 @@ function dumpEncrypted (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, this.rtaDisabledTestsFull);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_encrypted', tstFiles, afterServerStart, []);
 }
 
 function dumpNonParallel (options) {
@@ -1179,7 +1181,7 @@ function dumpNonParallel (options) {
     foxxTest: 'check-foxx.js'
   };
 
-  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, this.rtaDisabledTestsFull);
+  return dump_backend(dumpOptions, {}, {}, dumpOptions, dumpOptions, 'dump_parallel', tstFiles, function(){}, []);
 }
 
 function dumpMaskings (options) {
@@ -1209,7 +1211,7 @@ function dumpMaskings (options) {
 
   _.defaults(dumpMaskingsOpts, options);
 
-  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, this.rtaDisabledTestsFull);
+  return dump_backend(dumpMaskingsOpts, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){}, []);
 }
 
 function hotBackup (options) {
@@ -1256,7 +1258,7 @@ function hotBackup (options) {
     addArgs['rocksdb.encryption-keyfolder'] = keyDir;
   }
 
-  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, this.rtaDisabledTestsFull, false);
+  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
   if (!helper.startFirstInstance()) {
       helper.destructor(false);
     return helper.extractResults();
