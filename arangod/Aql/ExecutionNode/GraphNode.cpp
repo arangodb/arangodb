@@ -45,7 +45,6 @@
 #include "Graph/BaseOptions.h"
 #include "Graph/Graph.h"
 #include "Graph/TraverserOptions.h"
-#include "Graph/GraphManager.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -289,7 +288,6 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       }
     }
     _graphInfo.close();
-
   } else if (graph->isStringValue()) {
     std::string graphName = graph->getString();
     _graphInfo.add(VPackValue(graphName));
