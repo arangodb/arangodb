@@ -374,6 +374,10 @@ std::optional<std::string> edgeCollectionNodeGetName(
     return edgeCollection->getString();
   }
 
+  if (edgeCollection->type == NODE_TYPE_COLLECTION) {
+    return edgeCollection->getString();
+  }
+
   if (edgeCollection->type == NODE_TYPE_PARAMETER_DATASOURCE) {
     return std::nullopt;
   }
