@@ -364,20 +364,25 @@ LogicalDataSource::Category addDataSource(
 
 std::optional<std::string> edgeCollectionNodeGetName(
     CollectionNameResolver const& resolver, AstNode const* edgeCollection) {
+  if (edgeCollection->type == NODE_TYPE_DIRECTION) {
+    TRI_ASSERT(edgeCollection->numMembers() == 2)
+        << "expected 2 members in NODE_TYPE_DIRECTION, found "
+        << edgeCollection->numMembers();
+    edgeCollection = edgeCollection->getMember(1);
+  }
+
   if (edgeCollection->isStringValue()) {
     return edgeCollection->getString();
-  } else if (edgeCollection->type == NODE_TYPE_DIRECTION) {
-    TRI_ASSERT(edgeCollection->numMembers() == 2);
-    auto eCSub = edgeCollection->getMember(1);
+  }
 
-    if (eCSub->isStringValue()) {
-      return eCSub->getString();
-    }
+  if (edgeCollection->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+    return std::nullopt;
   }
 
   // This assert is here to find out whether this can ever happen (it should
   // not)
-  TRI_ASSERT(false);
+  TRI_ASSERT(false) << "Unhandled node type for edge collection: "
+                    << edgeCollection->getTypeString();
   return std::nullopt;
 }
 
@@ -1646,7 +1651,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
                                        CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
+  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY)
+      << edgeCollections->getTypeString();
 
   for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
     // TODO Direction Parsing!
