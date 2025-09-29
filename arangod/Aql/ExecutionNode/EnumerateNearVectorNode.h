@@ -84,7 +84,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
 
-  void setFilterVarToRegs(std::vector<std::pair<VariableId, RegisterId>> filterVarToRegs) noexcept;
+  void setFilterVarToRegs(
+      std::vector<std::pair<VariableId, RegisterId>> filterVarToRegs) noexcept;
 
  protected:
   CostEstimate estimateCost() const override;

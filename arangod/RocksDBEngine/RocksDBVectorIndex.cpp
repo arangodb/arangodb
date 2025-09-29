@@ -592,7 +592,8 @@ Result RocksDBVectorIndex::ingestVectors(
 
       if constexpr (returnsResult) {
         setResult(fn());
-      } else {
+      }
+      else {
         fn();
       }
     } catch (basics::Exception const& e) {
@@ -743,9 +744,9 @@ Result RocksDBVectorIndex::ingestVectors(
           }
 
           /*LOG_DEVEL << ADB_HERE << " Doing encodedSize: "*/
-                    /*<< rocksdbEntryValue.encodedValue.size()*/
-                    /*<< " is there storedValues size: "*/
-                    /*<< rocksdbEntryValue.storedValues.size();*/
+          /*<< rocksdbEntryValue.encodedValue.size()*/
+          /*<< " is there storedValues size: "*/
+          /*<< rocksdbEntryValue.storedValues.size();*/
           VPackBuilder builder;
           velocypack::serialize(builder, rocksdbEntryValue);
           auto const value = RocksDBValue::VectorIndexValue(builder.slice());
