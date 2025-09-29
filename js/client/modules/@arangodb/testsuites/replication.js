@@ -189,6 +189,15 @@ function replicationFuzz (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationRandom (options) {
+  if (options.skipServerJS) {
+    return {
+      replicationRandom: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.replication_random, options);
   return new replicationRunner(options, 'replication_random').run(testCases);
 }

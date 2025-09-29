@@ -1,3 +1,4 @@
+
 /* jshint strict: false, sub: true */
 /* global print */
 'use strict';
@@ -116,6 +117,15 @@ function checkBodyForJsonToParse (request) {
 }
 
 function authenticationParameters (options) {
+  if (options.skipServerJS) {
+    return {
+      authentication: {
+        status: true,
+        message: 'v8. please recompile with -DUSE_V8=On'
+      },
+      status: true
+    };
+  }
   if (options.cluster) {
     print('skipping Authentication with parameters tests on cluster!');
     return {
