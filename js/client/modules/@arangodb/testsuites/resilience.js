@@ -60,7 +60,6 @@ const testPaths = {
 
 var _resilience = function(path, enableAliveMonitor, skipServerJS) {
   this.func = function resilience (options) {
-    print(skipServerJS,options.skipServerJS)
     if (skipServerJS && options.skipServerJS) {
       return {
         [[path]]: {
