@@ -982,7 +982,7 @@ function dumpMultipleTwo (options) {
   };
 
   return dump_backend_two_instances(dumpOptions, _.clone(dumpOptions), {}, {}, dumpOptions, dumpOptions,
-                                    'dump_multiple_two', tstFiles, function(){}, this.rtaDisabledTestsFull, true);
+                                    'dump_multiple_two', tstFiles, function(){}, [], true);
 }
 function dumpMultipleSame (options) {
   let dumpOptions = {

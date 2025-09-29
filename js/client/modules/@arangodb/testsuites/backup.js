@@ -248,6 +248,16 @@ const BackupNoAuthSysTests = (options) => {
 // //////////////////////////////////////////////////////////////////////////////
 
 const BackupNoAuthNoSysTests = (options) => {
+  if (options.skipServerJS) {
+    return {
+      BackupNoAuthSysTests : {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
+
   log('Test dump without authentication, restore _system excl system collections');
   return new backupTestRunner(options,
                               'BackupNoAuthSysTests',

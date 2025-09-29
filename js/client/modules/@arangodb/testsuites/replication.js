@@ -208,6 +208,15 @@ function replicationAql (options) {
 
 var _replicationOngoing = function(path) {
   this.func = function replicationOngoing (options) {
+    if (options.skipServerJS) {
+      return {
+        shell_replication_ongoing: {
+          status: true,
+          message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+        },
+        status: true
+      };
+    }
     let testCases = tu.scanTestPaths(testPaths[path], options);
     return new replicationRunner(options, path).run(testCases);
   };
