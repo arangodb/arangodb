@@ -374,7 +374,9 @@ std::optional<std::string> edgeCollectionNodeGetName(
     }
   }
 
-  // TODO: find whether this can ever happen
+  // This assert is here to find out whether this can ever happen (it should
+  // not)
+  TRI_ASSERT(false);
   return std::nullopt;
 }
 
