@@ -161,7 +161,7 @@ std::optional<VarAttribKey> extractVariableAttributeAccess(
     AstNode const* node) {
   if (node->type == NODE_TYPE_REFERENCE) {
     auto* var = static_cast<Variable const*>(node->getData());
-    return VarAttribKey{.var = var};
+    return VarAttribKey{.var = var, .path = {}};
   } else if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     auto result = extractVariableAttributeAccess(node->getMember(0));
     result->path.emplace_back(node->getStringValue(), node->getStringLength());
