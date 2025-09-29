@@ -112,7 +112,7 @@ function agencyRestart (options) {
     return {
       agencyRestart: {
         status: true,
-        message: 'failure-tests not enabled. please recompile with -DUSE_V8=On'
+        message: 'test needs v8 on the server. please recompile with -DUSE_V8=On'
       },
       status: true
     };

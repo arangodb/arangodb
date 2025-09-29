@@ -287,7 +287,7 @@ const BackupAuthSysTests = (options) => {
 const BackupAuthNoSysTests = (options) => {
   if (options.skipServerJS) {
     return {
-      BackupNoAuthSysTests : {
+      BackupAuthSysTests : {
         status: true,
         message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
       },

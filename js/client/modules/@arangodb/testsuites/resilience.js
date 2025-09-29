@@ -62,9 +62,9 @@ var _resilience = function(path, enableAliveMonitor, skipServerJS) {
   this.func = function resilience (options) {
     if (skipServerJS && options.skipServerJS) {
       return {
-        [[path]]: {
+        [path]: {
           status: true,
-          message: 'v8. please recompile with -DUSE_V8=On'
+          message: 'test needs v8 on the server. please recompile with -DUSE_V8=On'
         },
         status: true
       };

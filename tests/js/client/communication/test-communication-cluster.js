@@ -449,14 +449,16 @@ function GenericAqlSetupPathSuite(type) {
     ["Exclusive", exclusiveQuery, true, USE_EXCLUSIVE, true],
     ["Write", writeQuery, true, NON_EXCLUSIVE, true],
     ["Read", readQuery, false, NON_EXCLUSIVE, true],
-    ["JSExclusive", jsExclusive, true, USE_EXCLUSIVE, nCov],
-    ["JSWrite", jsWrite, true, NON_EXCLUSIVE, nCov],
-    ["JSRead", jsRead, false, NON_EXCLUSIVE, nCov],
     ["APIExclusive", apiExclusive, true, USE_EXCLUSIVE, true],
     ["APIWrite", apiWrite, true, NON_EXCLUSIVE, true],
     ["APIRead", apiRead, false, NON_EXCLUSIVE, true],
     ["DocumentWrite", documentWrite, true, NO_SHARD_SYNC, true]
   ];
+  if (!IM.options.skipServerJS) {
+    testCases.push(["JSExclusive", jsExclusive, true, USE_EXCLUSIVE, nCov]);
+    testCases.push(["JSWrite", jsWrite, true, NON_EXCLUSIVE, nCov]);
+    testCases.push(["JSRead", jsRead, false, NON_EXCLUSIVE, nCov]);
+  }
   const addTestCase = (suite, first, second) => {
     const [fName, fCode, fWrites, fExclusive] = first;
     const [sName, sCode, sWrites, sExclusive] = second;
