@@ -253,3 +253,7 @@ std::uint64_t ResourceUsageScope::trackedAndSteal() noexcept {
   _value = 0;
   return value;
 }
+
+std::uint64_t ResourceUsageScope::current() const noexcept {
+  return _resourceMonitor.current();
+};

@@ -130,6 +130,8 @@ class ResourceUsageScope {
 
   std::uint64_t trackedAndSteal() noexcept;
 
+  std::uint64_t current() const noexcept;
+
  private:
   ResourceMonitor& _resourceMonitor;
   std::uint64_t _value;

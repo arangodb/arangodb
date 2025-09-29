@@ -102,7 +102,7 @@ class instanceManager {
     this.userName = "root";
     this.memlayout = {};
     // be more sluggish with memory when running instrumented binaries
-    if (this.options.isInstrumented) {
+    if (this.options.isInstrumented && this.options.memory !== undefined) {
       this.options.memory *= 1.1;
     }
     this.cleanup = options.cleanup && options.server === undefined;
@@ -1297,7 +1297,7 @@ class instanceManager {
     arangosh.checkRequestResult(res);
     return res.result;
   }
-  
+
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
   /////////////////////////////////////////////////////////////////////////////////////////
@@ -1543,7 +1543,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     let f = fs.read("/proc/meminfo");
     const search = 'MemTotal:';
     let pos = f.search(search);
-    memory = parseInt(f.slice(pos + search.length));
+    memory = parseInt(f.slice(pos + search.length)) * 1024; // meminfo value is in kB
   }
   tu.CopyIntoObject(optionsDefaults, {
     'memory': memory,
