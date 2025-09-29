@@ -361,7 +361,7 @@ LogicalDataSource::Category addDataSource(
 }
 
 std::optional<std::string> edgeCollectionNodeGetName(
-    CollectionNameResolver const& resolver, AstNode const* edgeCollection) {
+    AstNode const* edgeCollection) {
   if (edgeCollection->type == NODE_TYPE_DIRECTION) {
     TRI_ASSERT(edgeCollection->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_DIRECTION, found "
@@ -1653,11 +1653,9 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
       << edgeCollections->getTypeString();
 
   for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
-    // TODO Direction Parsing!
     auto edgeCollection = edgeCollections->getMember(i);
 
-    auto edgeCollectionName =
-        edgeCollectionNodeGetName(resolver, edgeCollection);
+    auto edgeCollectionName = edgeCollectionNodeGetName(edgeCollection);
 
     if (edgeCollectionName.has_value()) {
       auto edgeCollectionNameRef = std::string_view{*edgeCollectionName};
