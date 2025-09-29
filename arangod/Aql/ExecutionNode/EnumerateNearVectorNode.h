@@ -73,6 +73,7 @@ class EnumerateNearVectorNode : public ExecutionNode,
   std::vector<const Variable*> getVariablesSetHere() const override;
 
   Variable const* inVariable() const { return _inVariable; }
+  Variable const* oldDocumentVariable() const { return _oldDocumentVariable; }
   Variable const* documentOutVariable() const { return _documentOutVariable; }
   Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
