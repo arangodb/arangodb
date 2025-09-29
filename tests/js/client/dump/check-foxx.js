@@ -45,7 +45,7 @@ const options = {
 function getCoordinators() {
   const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
   const toEndpoint = (d) => (d.endpoint);
-  return IM.arangods.filter(isCoordinator).map(arangod => {return arangod.url;});
+  return IM.arangods.filter(isCoordinator).map(arangod => {return arangod.url;}).map(serviceUrl);
 }
 
 
