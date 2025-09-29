@@ -193,7 +193,8 @@ class HashedCollectExecutor {
  private:
   struct ValueAggregators {
     ValueAggregators(std::vector<Aggregator::Factory const*> factories,
-                     velocypack::Options const* opts);
+                     velocypack::Options const* opts,
+                     ResourceMonitor& resourceMonitor);
     ~ValueAggregators();
     std::size_t size() const;
     Aggregator& operator[](std::size_t index);
