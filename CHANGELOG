@@ -1,5 +1,9 @@
 devel
 -----
+* Add vertex collections for graph queries using edge collection syntax
+  from named graphs. This means that if a query uses edge collection syntax
+  and a named graph defines the from and to vertex collections for that edge
+  collection, the WITH statement is no longer required.
 
 * Upgraded OpenSSL to 3.5.4.
 
