@@ -30,20 +30,6 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const _ = require('lodash');
 
-let IM = global.instanceManager;
-
-const serviceUrl = (url) => {
-  return url + "/_db/" + encodeURIComponent(db._name()) + 'xxx';
-};
-const options = {
-  json: true
-};
-
-xx= IM.arangods.filter(arangod => { return arangod.isFrontend(); }).map(arangod => {return arangod.url;}).map(serviceUrl);
-print(xx)
-
-
-
 function ShellAqlRegressionSuite () {
   const colName = 'UnitTestsCollection';
   const shardKeys = [];
