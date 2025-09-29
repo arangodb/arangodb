@@ -328,8 +328,9 @@ LogicalDataSource::Category injectDataSourceInQuery(
 }
 
 LogicalDataSource::Category addDataSource(
-    Ast& ast, CollectionNameResolver const& resolver, std::string name) {
-  std::string_view nameRef(name);
+    Ast& ast, CollectionNameResolver const& resolver,
+    std::string_view& nameRef) {
+  //  std::string_view nameRef(name);
 
   auto category = injectDataSourceInQuery(ast, resolver, AccessMode::Type::READ,
                                           false, nameRef);
@@ -341,7 +342,7 @@ LogicalDataSource::Category addDataSource(
                      .server()
                      .getFeature<ClusterFeature>()
                      .clusterInfo();
-      auto c = ci.getCollectionNT(ast.query().vocbase().name(), name);
+      auto c = ci.getCollectionNT(ast.query().vocbase().name(), nameRef);
       if (c != nullptr) {
         auto const& names = c->realNames();
 
@@ -1625,8 +1626,8 @@ AstNode* Ast::createNodeWithCollections(
     auto c = collections->getMember(i);
 
     if (c->isStringValue()) {
-      std::string const name = c->getString();
-      addDataSource(*this, resolver, name);
+      auto nameRef = c->getStringView();
+      addDataSource(*this, resolver, nameRef);
     }  // else bindParameter use default for collection bindVar
 
     // We do not need to propagate these members
@@ -1655,12 +1656,13 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
         edgeCollectionNodeGetName(resolver, edgeCollection);
 
     if (edgeCollectionName.has_value()) {
-      auto category = addDataSource(*this, resolver, *edgeCollectionName);
+      auto edgeCollectionNameRef = std::string_view{*edgeCollectionName};
+      auto category = addDataSource(*this, resolver, edgeCollectionNameRef);
 
       if (category != LogicalDataSource::Category::kCollection) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-            absl::StrCat(*edgeCollectionName,
+            absl::StrCat(edgeCollectionNameRef,
                          " is required to be a collection"));
       }
     }
