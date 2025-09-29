@@ -139,15 +139,15 @@ var createBaseGraph = function() {
   db[vertexCollectionName3].insert([
     {
       _key: "ALPHA",
-      _id: vertexCollectionName2 + "/ALPHA"
+      _id: vertexCollectionName3 + "/ALPHA"
     },
     {
       _key: "BETA",
-      _id: vertexCollectionName2 + "/BETA"
+      _id: vertexCollectionName3 + "/BETA"
     },
     {
-      _key: "THREE",
-      _id: vertexCollectionName2 + "/GAMMA"
+      _key: "GAMMA",
+      _id: vertexCollectionName3 + "/GAMMA"
     }
   ]);
   db[edgeCollectionName3].insert([
