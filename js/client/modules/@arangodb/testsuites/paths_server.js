@@ -46,10 +46,10 @@ function paths_server(options) {
   if (options.skipServerJS) {
     return {
       paths_server: {
-        status: false,
+        status: true,
         message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
       },
-      status: false
+      status: true
     };
   }
   let testCases = tu.scanTestPaths(testPaths.paths_server, options);

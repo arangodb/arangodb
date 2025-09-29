@@ -66,6 +66,15 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellReplication (options) {
+  if (options.skipServerJS) {
+    return {
+      shell_replication: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.shell_replication, options);
 
   var opts = {
@@ -81,6 +90,15 @@ function shellReplication (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientReplicationApi (options) {
+  if (options.skipServerJS) {
+    return {
+      shellClientReplicationApi: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   var opts = {
@@ -205,6 +223,15 @@ const replicationOngoingFrompresent = (new _replicationOngoing('replication_ongo
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationStatic (options) {
+  if (options.skipServerJS) {
+    return {
+      replicationStatic: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.replication_static, options);
   testCases = tu.splitBuckets(options, testCases);
 
@@ -224,10 +251,10 @@ function replicationSync (options) {
   if (options.skipServerJS) {
     return {
       replicationSync: {
-        status: false,
+        status: true,
         message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
       },
-      status: false
+      status: true
     };
   }
   let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
