@@ -330,7 +330,7 @@ injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
 
 LogicalDataSource::Category addDataSource(
     Ast& ast, CollectionNameResolver const& resolver,
-    std::string_view& nameRef) {
+    std::string_view nameRef) {
   auto [category, resolved_name] = injectDataSourceInQuery(
       ast, resolver, AccessMode::Type::READ, false, nameRef);
 
@@ -382,57 +382,6 @@ std::optional<std::string> edgeCollectionNodeGetName(
   // not)
   TRI_ASSERT(false) << "Unhandled node type for edge collection: "
                     << edgeCollection->getTypeString();
-  return std::nullopt;
-}
-
-LogicalDataSource::Category addDataSource(
-    Ast& ast, CollectionNameResolver const& resolver, std::string name) {
-  std::string_view nameRef(name);
-
-  auto category = injectDataSourceInQuery(ast, resolver, AccessMode::Type::READ,
-                                          false, nameRef);
-
-  if (category == LogicalDataSource::Category::kCollection) {
-    if (ServerState::instance()->isCoordinator()) {
-      auto& ci = ast.query()
-                     .vocbase()
-                     .server()
-                     .getFeature<ClusterFeature>()
-                     .clusterInfo();
-      auto c = ci.getCollectionNT(ast.query().vocbase().name(), name);
-      if (c != nullptr) {
-        auto const& names = c->realNames();
-
-        for (auto const& n : names) {
-          std::string_view shardsNameRef(n);
-
-          LogicalDataSource::Category shardsCategory = injectDataSourceInQuery(
-              ast, resolver, AccessMode::Type::READ, false, shardsNameRef);
-
-          TRI_ASSERT(shardsCategory ==
-                     LogicalDataSource::Category::kCollection);
-        }
-      }  // else { TODO Should we really not react? }
-    }
-  }
-
-  return category;
-}
-
-std::optional<std::string> edgeCollectionNodeGetName(
-    CollectionNameResolver const& resolver, AstNode const* edgeCollection) {
-  if (edgeCollection->isStringValue()) {
-    return edgeCollection->getString();
-  } else if (edgeCollection->type == NODE_TYPE_DIRECTION) {
-    TRI_ASSERT(edgeCollection->numMembers() == 2);
-    auto eCSub = edgeCollection->getMember(1);
-
-    if (eCSub->isStringValue()) {
-      return eCSub->getString();
-    }
-  }
-
-  // TODO: find whether this can ever happen
   return std::nullopt;
 }
 
@@ -4686,7 +4635,7 @@ void Ast::addGraphNodeImplicitVertexCollections(
     auto r = gm.findVertexCollectionsFromEdgeCollection(edgeCollectionName);
     if (r.has_value()) {
       for (auto&& vertexCollectionName : *r) {
-        addDataSource(*this, resolver, vertexCollectionName);
+        addDataSource(*this, resolver, std::string_view{vertexCollectionName});
       }
     }
   }
