@@ -37,6 +37,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Transaction/Methods.h"
 
+#include <Aql/ExecutionEngine.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Value.h>
 
@@ -227,10 +228,11 @@ void CollectNode::calcAggregateRegisters(
 }
 
 void CollectNode::calcAggregateTypes(
-    std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
+    std::vector<std::unique_ptr<Aggregator>>& aggregateTypes,
+    ResourceMonitor& resourceMonitor) const {
   for (auto const& p : _aggregateVariables) {
     aggregateTypes.emplace_back(Aggregator::fromTypeString(
-        &_plan->getAst()->query().vpackOptions(), p.type));
+        &_plan->getAst()->query().vpackOptions(), p.type, resourceMonitor));
   }
 }
 
@@ -338,7 +340,7 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 
       // calculate the aggregate type // TODO refactor nicely
       std::vector<std::unique_ptr<Aggregator>> aggregateValues;
-      calcAggregateTypes(aggregateValues);
+      calcAggregateTypes(aggregateValues, engine.getQuery().resourceMonitor());
 
       // calculate the input variable names
       auto inputVariables = calcInputVariableNames();
@@ -356,7 +358,8 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
           std::move(groupRegisters), collectRegister, expressionRegister,
           _expressionVariable, std::move(aggregateTypes),
           std::move(inputVariables), std::move(aggregateRegisters),
-          &_plan->getAst()->query().vpackOptions());
+          &_plan->getAst()->query().vpackOptions(),
+          _plan->getAst()->query().resourceMonitor());
 
       return std::make_unique<ExecutionBlockImpl<SortedCollectExecutor>>(
           &engine, this, std::move(registerInfos), std::move(executorInfos));

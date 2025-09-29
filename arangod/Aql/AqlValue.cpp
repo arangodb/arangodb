@@ -25,6 +25,9 @@
 
 #include "Aql/Arithmetic.h"
 #include "Aql/Range.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/SupervisedBuffer.h"
+#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -1201,9 +1204,17 @@ AqlValue::AqlValue(velocypack::Buffer<uint8_t>&& buffer) {
       memcpy(_data.managedSliceMeta.pointer, buffer.data(), size);
       buffer.clear();  // for move semantics
     } else {
-      // steal dynamic memory from the Buffer
       setManagedSliceData(MemoryOriginType::Malloc, size);
-      _data.managedSliceMeta.pointer = buffer.steal();
+      auto sb = dynamic_cast<velocypack::SupervisedBuffer*>(&buffer);
+      if (sb != nullptr) {
+        auto& global = arangodb::GlobalResourceMonitor::instance();
+        arangodb::ResourceMonitor dummyMonitor(global);
+        arangodb::ResourceUsageScope tmpScope(dummyMonitor);
+        _data.managedSliceMeta.pointer =
+            sb->stealWithMemoryAccounting(tmpScope);
+      } else {
+        _data.managedSliceMeta.pointer = buffer.steal();
+      }
     }
   }
 }

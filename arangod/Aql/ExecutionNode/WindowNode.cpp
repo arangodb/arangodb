@@ -393,14 +393,6 @@ void WindowNode::calcAggregateRegisters(
   TRI_ASSERT(aggregateRegisters.size() == _aggregateVariables.size());
 }
 
-void WindowNode::calcAggregateTypes(
-    std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const {
-  for (auto const& p : _aggregateVariables) {
-    aggregateTypes.emplace_back(Aggregator::fromTypeString(
-        &_plan->getAst()->query().vpackOptions(), p.type));
-  }
-}
-
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
     ExecutionEngine& engine) const {
@@ -438,7 +430,8 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
   auto executorInfos = WindowExecutorInfos(
       _bounds, rangeRegister, std::move(aggregateTypes),
       std::move(aggregateRegisters), engine.getQuery().warnings(),
-      &_plan->getAst()->query().vpackOptions());
+      &_plan->getAst()->query().vpackOptions(),
+      engine.getQuery().resourceMonitor());
 
   if (_rangeVariable == nullptr && _bounds.unboundedPreceding()) {
     return std::make_unique<ExecutionBlockImpl<AccuWindowExecutor>>(
