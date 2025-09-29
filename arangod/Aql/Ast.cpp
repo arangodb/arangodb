@@ -4590,27 +4590,12 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
       if (match->type == arangodb::aql::NODE_TYPE_COLLECTION_LIST) {
         for (size_t i = 0; i < match->numMembers(); ++i) {
           auto const* member = match->getMemberUnchecked(i);
-          switch (member->type) {
-            case NODE_TYPE_VALUE: {
-              TRI_ASSERT(member->isStringValue());
-              edgeCollections.emplace(member->getString());
-            } break;
-            case NODE_TYPE_COLLECTION: {
-              edgeCollections.emplace(member->getString());
-            } break;
-            case NODE_TYPE_DIRECTION: {
-              TRI_ASSERT(member->numMembers() == 2);
-              auto subMember = member->getMember(1);
+          auto collectionName = edgeCollectionNodeGetName(member);
 
-              TRI_ASSERT(subMember->isStringValue() ||
-                         subMember->type == NODE_TYPE_COLLECTION)
-                  << subMember->getTypeString();
-              edgeCollections.emplace(subMember->getString());
-            } break;
-            default: {
-              // TODO: throw maybe.
-              ADB_PROD_CRASH() << "unhandled: " << member->getTypeString();
-            }
+          TRI_ASSERT(collectionName.has_value());
+
+          if (collectionName.has_value()) {
+            edgeCollections.emplace(*collectionName);
           }
         }
       } else {
