@@ -35,6 +35,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Assertions/Assert.h"
+#include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 
@@ -78,12 +79,14 @@ auto extractFilterVarToRegs(auto const& filterExpression,
   VarSet inVars;
   filterExpression->variables(inVars);
   filterVarsToRegs.reserve(inVars.size());
+  LOG_RULE << "Number of inVars: " << inVars.size();
 
   auto const* oldDocumentVariable =
-      enumerateNearVectorNode->documentOutVariable();
+      enumerateNearVectorNode->oldDocumentVariable();
   // Here we take all variables in the expression
   for (auto const& var : inVars) {
     TRI_ASSERT(var != nullptr);
+    LOG_RULE << "Comparing " << var->id << " and " << oldDocumentVariable->id;
     if (var->id == oldDocumentVariable->id) {
       continue;
     }
@@ -149,6 +152,10 @@ bool areAllAttributesCovered(auto const& plan, auto const& filterAttributes,
 // This rule check if EnumerateNearVectorNode has a FilterNode and if so tries
 // to remove it and apply early pruning int EnumerateNearVectorNode.
 // Also we check if we can use storedFields optimization with the given index.
+//
+// If we have found both EnumerateNearVectorNode and Filter node we must
+// be able to push filter expression into EnumerateNearVectorNode if we cannot
+// then we throw since we do not support post filtering with vector index
 void arangodb::aql::pushFilterIntoEnumerateNear(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
@@ -181,7 +188,10 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     // and handle it in EnumerateNearVectorNode
     std::unique_ptr<Expression> filterExpression{nullptr};
     if (!removedFilterNode(filterNode, plan, filterExpression)) {
-      continue;
+      LOG_RULE << "Could not remove FilterNode";
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+          "filter node could not be moved into EnumerateNearVector node!");
     }
     // We are handling filtering in EnumerateNearVectorNode
     enumerateNearVectorNode->setFilterExpression(filterExpression.get());
@@ -194,7 +204,10 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
 
     auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(
         enumerateNearVectorNode->index().get());
-    if (!vecIdx->hasStoredValues() || filterVarsToRegs.empty()) {
+    if (!vecIdx->hasStoredValues()) {
+      LOG_RULE << "Could not use storedValues, hasStoredValues: "
+               << vecIdx->hasStoredValues()
+               << " filterVarsToRegs size: " << filterVarsToRegs.size();
       continue;
     }
 
@@ -210,6 +223,7 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
         areAllAttributesCovered(plan, filterAttributes, storedValues);
 
     if (!isCoveredByStoredValues) {
+      LOG_RULE << "filterExpression not covered by storedValues";
       continue;
     }
 

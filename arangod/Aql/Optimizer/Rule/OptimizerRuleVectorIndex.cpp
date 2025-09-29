@@ -339,7 +339,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
-      const auto* documentVariable = enumerateCollectionNode->outVariable();
+      auto const* documentVariable = enumerateCollectionNode->outVariable();
 
       auto const* distanceVariable = sortNode->elements()[0].var;
       auto const* oldDocumentVariable = enumerateCollectionNode->outVariable();
