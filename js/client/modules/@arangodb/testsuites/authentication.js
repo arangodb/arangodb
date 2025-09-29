@@ -121,7 +121,7 @@ function authenticationParameters (options) {
     return {
       authentication: {
         status: true,
-        message: 'v8. please recompile with -DUSE_V8=On'
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
       },
       status: true
     };
