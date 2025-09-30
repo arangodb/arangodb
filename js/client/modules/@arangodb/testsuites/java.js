@@ -266,7 +266,7 @@ arangodb.acquireHostList=true
       if (rc.exit !== 0) {
         status = false;
       }
-      this.getAllureResults(testResultsDir, results);
+      this.getAllureResults(testResultsDir, results, status);
       return results;
     }
   }
