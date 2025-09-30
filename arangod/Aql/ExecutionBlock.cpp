@@ -33,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Futures/Future.h"
@@ -41,7 +42,6 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
-#include <velocypack/SupervisedBuffer.h>
 
 #include <string_view>
 
