@@ -29,7 +29,6 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const helper = require("@arangodb/aql-helper");
 const aql = arangodb.aql;
-const getQueryResults = helper.getQueryResults;
 const assertQueryError = helper.assertQueryError;
 const errors = internal.errors;
 const db = internal.db;
@@ -37,10 +36,6 @@ const {
     randomNumberGeneratorFloat,
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
-const {
-    versionHas
-} = require("@arangodb/test-helper");
-const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
 const indexName = "vectorIndex";
@@ -469,7 +464,91 @@ function VectorIndexL2FilterTestSuite() {
     };
 }
 
+function VectorIndexL2FilterTestMultipleCollectionsSuite() {
+    let collection1;
+    let collection2;
+    let randomPoint;
+    const dimension = 20;
+    const numberOfDocs = 500;
+    const seed = randomInteger();
+    const nProbeAndNlists = 10;
+    const col2 = "col2";
+
+    return {
+        setUpAll: function() {
+            print("Using seed: " + seed);
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection1 = db._create(collName, {
+                numberOfShards: 3
+            });
+            collection2 = db._create(col2, {
+                numberOfShards: 3
+            });
+
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                if (i === (numberOfDocs / 2)) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector,
+                    nonVector: i,
+                    unIndexedVector: vector,
+                    val: i
+                });
+            }
+            collection1.insert(docs);
+            collection2.insert(docs);
+
+            collection1.ensureIndex({
+                name: "vector_l2",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: nProbeAndNlists,
+                    trainingIterations: 10,
+                    defaultNProbe: nProbeAndNlists,
+                },
+            });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testApproxL2FilterNotApplied: function() {
+            const query =
+                "FOR d1 IN " +
+                collection2.name() +
+                " FOR d2 IN " +
+                collection1.name() +
+                " FILTER d2.val < 5 OR d1.val < 5 " +
+                " LET dist = APPROX_NEAR_L2(@qp, d2.vector) " +
+                " SORT dist LIMIT 5 RETURN {key: d2._key, val: d2.val, dist}";
+
+            const bindVars = { qp: randomPoint };
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
+        },
+    };
+}
+
 
 jsunity.run(VectorIndexL2FilterTestSuite);
+jsunity.run(VectorIndexL2FilterTestMultipleCollectionsSuite);
 
 return jsunity.done();

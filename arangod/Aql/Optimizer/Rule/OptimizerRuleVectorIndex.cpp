@@ -37,6 +37,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Query.h"
 #include "Aql/types.h"
 #include "Assertions/Assert.h"
 #include "Containers/SmallVector.h"
@@ -240,8 +241,9 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
   return vectorIndexes;
 }
 
-bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
-                                    auto& filterExpression) {
+bool removedFilterNode(auto* maybeFilterNode, auto& plan,
+                       auto& filterExpression,
+                       auto const* enumerateNearVectorOutputDocument) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
   auto* filterInVar = filterNode->inVariable();
@@ -250,17 +252,32 @@ bool removeFilterAndCalculationNode(auto* maybeFilterNode, auto& plan,
   auto* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
   if (maybeCalculationNode == nullptr ||
       maybeCalculationNode->getType() != EN::CALCULATION) {
-    return true;
+    return false;
   }
 
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
-  filterExpression = calculationNode->expression()->clone(plan->getAst());
 
-  // CalculationNode will be removed by the subsequent rule if it can be
+  // Check that all variables used in filterExpression can be handled in
+  // EnumerateNearVector node
+  VarSet calculationVars;
+  filterExpression = calculationNode->expression()->clone(plan->getAst());
+  filterExpression->variables(calculationVars);
+
+  for (auto const* calcVar : calculationVars) {
+    if (calcVar->type() != Variable::Type::Regular) {
+      continue;
+    }
+    if (calcVar != enumerateNearVectorOutputDocument) {
+      return false;
+    }
+  }
+
+  // CalculationNode will be removed by the subsequent rule if it is not
+  // referenced by any other node
   plan->unlinkNode(maybeFilterNode);
 
-  return false;
+  return true;
 }
 
 // Vector Index Optimization Rule
@@ -380,9 +397,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       // and handle it in EnumerateNearVectorNode
       std::unique_ptr<Expression> filterExpression{nullptr};
       if (maybeFilterNode) {
-        if (bool shouldContinue = removeFilterAndCalculationNode(
-                maybeFilterNode, plan, filterExpression);
-            shouldContinue) {
+        if (!removedFilterNode(maybeFilterNode, plan, filterExpression,
+                               documentVariable)) {
           continue;
         }
       }
