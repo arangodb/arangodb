@@ -1,4 +1,3 @@
-
 /* jshint strict: false, sub: true */
 /* global print */
 'use strict';
