@@ -127,6 +127,33 @@ function VectorIndexL2FilterTestSuite() {
             }
         },
 
+        testApproxL2WithFilterSimple2: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " FILTER d.val > 5 " +
+                " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
+                " SORT dist LIMIT 5 RETURN {key: d._key, val: d.val, dist}";
+
+            const bindVars = { qp: randomPoint };
+            const plan = db
+                ._createStatement({ query, bindVars })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val > 5, "Filter not applied correctly: " + JSON.stringify(results));
+            }
+            for (let j = 1; j < results.length; ++j) {
+                assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
+            }
+        },
+
         testApproxL2WithFilterNotEnoughDocuments: function() {
             const query =
                 "FOR d IN " +
@@ -547,8 +574,198 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
     };
 }
 
+function VectorIndexL2FilterStoredValuesTestSuite() {
+    let collection;
+    let randomPoint;
+    const dimension = 20;
+    const numberOfDocs = 500;
+    const seed = randomInteger();
+    const nProbeAndNlists = 10;
+
+    return {
+        setUpAll: function() {
+            print("Using seed: " + seed);
+            db._createDatabase(dbName);
+            db._useDatabase(dbName);
+
+            collection = db._create(collName, {
+                numberOfShards: 3
+            });
+
+            let docs = [];
+            let gen = randomNumberGeneratorFloat(seed);
+            for (let i = 0; i < numberOfDocs; ++i) {
+                const vector = Array.from({
+                    length: dimension
+                }, () => gen());
+                if (i === (numberOfDocs / 2)) {
+                    randomPoint = vector;
+                }
+                docs.push({
+                    vector,
+                    val: i,
+                    stringField: i % 3 === 0 ? "type_A" : (i % 3 === 1 ? "type_B" : "type_C"),
+                    boolField: i % 2 === 0,
+                    arrayField: [i % 5, i % 7],
+                    objectField: {
+                        nested: i % 4,
+                        category: i < numberOfDocs / 2 ? "first_half" : "second_half"
+                    },
+                    floatField: i + 0.5
+                });
+            }
+            collection.insert(docs);
+
+            collection.ensureIndex({
+                name: "vector_l2_stored_values",
+                type: "vector",
+                fields: ["vector"],
+                inBackground: false,
+                params: {
+                    metric: "l2",
+                    dimension: dimension,
+                    nLists: nProbeAndNlists,
+                    trainingIterations: 10,
+                    defaultNProbe: nProbeAndNlists,
+                },
+                storedValues: ["val", "stringField", "boolField", "floatField"]
+            });
+        },
+
+        tearDownAll: function() {
+            db._useDatabase("_system");
+            db._dropDatabase(dbName);
+        },
+
+        testApproxL2WithFilterStoredValuesSimple: function() {
+            const query =
+                "FOR d IN " +
+                collection.name() +
+                " FILTER d.val < 5 AND d.stringField == 'type_A' " +
+                " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
+                " SORT dist LIMIT 5 RETURN {key: d._key, val: d.val, stringField: d.stringField, dist}";
+
+            const bindVars = { qp: randomPoint };
+            const plan = db
+                ._createStatement({ query, bindVars })
+                .explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+            assertTrue(indexNodes[0].isCoveredByStoredValues);
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5, "Results should be limited to 5");
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val < 5, "Val filter not applied correctly: " + JSON.stringify(results[i]));
+                assertEqual("type_A", results[i].stringField, "String filter not applied correctly: " + JSON.stringify(results[i]));
+            }
+            for (let j = 1; j < results.length; ++j) {
+                assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
+            }
+        },
+
+        testApproxL2WithFilterStoredValuesComplex: function() {
+            const query =
+                "FOR d IN " + collection.name() +
+                " FILTER d.val >= 2 AND d.val <= 50 AND d.boolField == true AND d.floatField > 10.0 " +
+                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
+                " SORT dist LIMIT 10 RETURN {key: d._key, val: d.val, boolField: d.boolField, floatField: d.floatField, dist}";
+
+            const bindVars = { q: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+            assertTrue(indexNodes[0].isCoveredByStoredValues);
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 10, "Results should be limited to 10");
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val >= 2 && results[i].val <= 50, "Val filter not applied: " + JSON.stringify(results[i]));
+                assertTrue(results[i].boolField === true, "Bool filter not applied: " + JSON.stringify(results[i]));
+                assertTrue(results[i].floatField > 10.0, "Float filter not applied: " + JSON.stringify(results[i]));
+            }
+            for (let j = 1; j < results.length; ++j) {
+                assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
+            }
+        },
+
+        testApproxL2WithFilterStoredValuesPerformance: function() {
+            // Test that stored values provide performance benefits
+            const query =
+                "FOR d IN " + collection.name() +
+                " FILTER d.val >= 4 AND d.val <= 100 AND d.stringField IN ['type_A', 'type_B'] AND d.boolField == false " +
+                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
+                " SORT dist LIMIT 5 RETURN {key: d._key, val: d.val, stringField: d.stringField, boolField: d.boolField, dist}";
+
+            const bindVars = { q: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            
+            // Verify the execution plan uses vector search with stored values
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(1, indexNodes.length, "Should have vector search node");
+            assertEqual(0, filterNodes.length, "Should not have filter node since stored values are used");
+            assertTrue(indexNodes[0].isCoveredByStoredValues);
+
+            // Measure execution time
+            const startTime = Date.now();
+            const results = db._query(query, bindVars).toArray();
+            const endTime = Date.now();
+            const executionTime = endTime - startTime;
+            
+            // Verify results
+            assertTrue(results.length <= 5, "Results should be limited to 5");
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val >= 4 && results[i].val <= 100, "Val filter not applied: " + JSON.stringify(results[i]));
+                assertTrue(['type_A', 'type_B'].includes(results[i].stringField), "String filter not applied: " + JSON.stringify(results[i]));
+                assertTrue(results[i].boolField === false, "Bool filter not applied: " + JSON.stringify(results[i]));
+            }
+            
+            // Performance assertion (should complete within reasonable time)
+            assertTrue(executionTime < 5000, "Query took too long: " + executionTime + "ms");
+        },
+
+        testApproxL2WithFilterNonStoredValues: function() {
+            // Test filtering on non-stored values - should require additional FilterNode
+            const query =
+                "FOR d IN " + collection.name() +
+                " FILTER d.val >= 10 AND d.val <= 50 AND d.arrayField[0] > 2 AND d.objectField.nested == 1 " +
+                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
+                " SORT dist LIMIT 5 RETURN {key: d._key, val: d.val, arrayField: d.arrayField, objectField: d.objectField, dist}";
+
+            const bindVars = { q: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            print(plan);
+            
+            // Should have both vector search and filter nodes since array/object fields are not stored
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            print(indexNodes);
+            print(indexNodes.length);
+            print(filterNodes);
+            assertEqual(1, indexNodes.length, "Should have vector search node");
+            assertEqual(1, filterNodes.length, "Should have filter node for non-stored fields");
+            
+            // Only partially covered by stored values (val field is stored, but array/object fields are not)
+            assertTrue(indexNodes[0].isCoveredByStoredValues === false, "Should not be fully covered by stored values");
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5, "Results should be limited to 5");
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val >= 10 && results[i].val <= 50, "Val filter not applied: " + JSON.stringify(results[i]));
+                assertTrue(results[i].arrayField[0] > 2, "Array filter not applied: " + JSON.stringify(results[i]));
+                assertEqual(1, results[i].objectField.nested, "Object filter not applied: " + JSON.stringify(results[i]));
+            }
+        },
+    };
+}
 
 jsunity.run(VectorIndexL2FilterTestSuite);
 jsunity.run(VectorIndexL2FilterTestMultipleCollectionsSuite);
+jsunity.run(VectorIndexL2FilterStoredValuesTestSuite);
 
 return jsunity.done();
