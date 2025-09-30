@@ -325,7 +325,8 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
         }
         auto source = viewNode.getSourceColumnInfo(sort.var->id);
         TRI_ASSERT(source.first != std::numeric_limits<ptrdiff_t>::max());
-        heapSort.push_back(HeapSortElement{.source = source.first,
+        heapSort.push_back(HeapSortElement{.postfix = {},
+                                           .source = source.first,
                                            .fieldNumber = source.second,
                                            .ascending = sort.ascending});
       } break;
@@ -353,9 +354,11 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
             if (s == std::end(scorers)) {
               return false;
             }
-            heapSort.push_back(
-                HeapSortElement{.source = std::distance(scorers.begin(), s),
-                                .ascending = sort.ascending});
+            heapSort.push_back(HeapSortElement{
+                .postfix = {},
+                .source = std::distance(scorers.begin(), s),
+                .ascending = sort.ascending,
+            });
           } break;
           case AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS:
             if (checkAttributeAccess(astCalcNode, viewVariable, false)) {
@@ -373,7 +376,8 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
               } catch (::arangodb::basics::Exception const&) {
                 return false;
               }
-              heapSort.push_back(HeapSortElement{.ascending = sort.ascending});
+              heapSort.push_back(
+                  HeapSortElement{.postfix = {}, .ascending = sort.ascending});
               attrs.push_back(std::move(af));
               storedMaps.insert({attrs.size() - 1, heapSort.size() - 1});
             } else {
