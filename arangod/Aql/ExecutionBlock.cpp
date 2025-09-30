@@ -41,6 +41,7 @@
 #include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
+#include <velocypack/SupervisedBuffer.h>
 
 #include <string_view>
 
@@ -188,7 +189,9 @@ void ExecutionBlock::traceExecuteEnd(
                    return "nullptr";
                  } else {
                    auto const* opts = &_engine->getQuery().vpackOptions();
-                   VPackBuilder builder;
+                   VPackBuilder builder(
+                       std::make_shared<velocypack::SupervisedBuffer>(
+                           _engine->getQuery().resourceMonitor()));
                    block->toSimpleVPack(opts, builder);
                    return VPackDumper::toString(builder.slice(), opts);
                  }
