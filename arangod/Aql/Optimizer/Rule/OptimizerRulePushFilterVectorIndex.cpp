@@ -50,7 +50,8 @@ namespace {
 #define LOG_RULE LOG_RULE_IF(true)
 
 bool removedFilterNode(auto* maybeFilterNode, auto& plan,
-                       auto& filterExpression) {
+                       auto& filterExpression,
+                       auto const* enumerateNearVectorOutputDocument) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
   auto* filterInVar = filterNode->inVariable();
@@ -64,9 +65,24 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
 
   auto const* calculationNode =
       ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
-  filterExpression = calculationNode->expression()->clone(plan->getAst());
 
-  // CalculationNode will be removed by the subsequent rule if it can be
+  // Check that all variables used in filterExpression can be handled in
+  // EnumerateNearVector node
+  VarSet calculationVars;
+  filterExpression = calculationNode->expression()->clone(plan->getAst());
+  filterExpression->variables(calculationVars);
+
+  for (auto const* calcVar : calculationVars) {
+    if (calcVar->type() != Variable::Type::Regular) {
+      continue;
+    }
+    if (calcVar != enumerateNearVectorOutputDocument) {
+      return false;
+    }
+  }
+
+  // CalculationNode will be removed by the subsequent rule if it is not
+  // referenced by any other node
   plan->unlinkNode(maybeFilterNode);
 
   return true;
@@ -187,7 +203,8 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     // If there is a FilterNode it comes with CalculationNode, we remove it
     // and handle it in EnumerateNearVectorNode
     std::unique_ptr<Expression> filterExpression{nullptr};
-    if (!removedFilterNode(filterNode, plan, filterExpression)) {
+    if (!removedFilterNode(filterNode, plan, filterExpression,
+                           enumerateNearVectorNode->documentOutVariable())) {
       LOG_RULE << "Could not remove FilterNode";
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,

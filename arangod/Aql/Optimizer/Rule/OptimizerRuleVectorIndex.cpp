@@ -37,6 +37,7 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Query.h"
 #include "Aql/types.h"
 #include "Assertions/Assert.h"
 #include "Containers/SmallVector.h"

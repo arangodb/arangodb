@@ -93,11 +93,6 @@ RegisterId EnumerateNearVectorNode::getRegisterId(
   auto it = getRegisterPlan()->varInfo.find(varId);
   TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
   return it->second.registerId;
-
-  RegisterId regId;
-  regId = it->second.registerId;
-
-  return regId;
 }
 
 std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
