@@ -32,7 +32,7 @@
 
 namespace arangodb::aql::functions {
 
-constexpr std::string_view kVectorSearchNotAppliedErrorMessage =
+constexpr static std::string_view kVectorSearchNotAppliedErrorMessage =
     "Vector search could not be applied. Please ensure a vector index has "
     "been created and that your query uses the correct syntax for vector "
     "search. Note that filtering can be applied in trivial cases.";
