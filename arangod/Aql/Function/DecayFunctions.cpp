@@ -25,8 +25,10 @@
 #include "Aql/AqlValueMaterializer.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 
@@ -53,6 +55,10 @@ AqlValue decayFuncImpl(aql::ExpressionContext* expressionContext,
       aql::functions::extractFunctionParameterValue(parameters, 3);
   AqlValue const& decayValue =
       aql::functions::extractFunctionParameterValue(parameters, 4);
+
+  auto* execCtx = dynamic_cast<FixedVarExpressionContext*>(expressionContext);
+  ResourceMonitor* resourceMonitor =
+      execCtx ? &execCtx->resourceMonitor() : nullptr;
 
   // check type of arguments
   if ((!argValue.isRange() && !argValue.isArray() && !argValue.isNumber()) ||
@@ -106,6 +112,13 @@ AqlValue decayFuncImpl(aql::ExpressionContext* expressionContext,
     TRI_ASSERT(slice.isArray());
 
     VPackBuilder builder;
+    if (resourceMonitor) {
+      // sb needs to be a shared_ptr since it will be stolen, which returns
+      // shared_ptr<Buffer> otherwise the shared_ptr will be dangling.
+      auto sb =
+          std::make_shared<velocypack::SupervisedBuffer>(*resourceMonitor);
+      builder = VPackBuilder(sb);
+    }
     {
       VPackArrayBuilder arrayBuilder(&builder);
       for (VPackSlice currArg : VPackArrayIterator(slice)) {
