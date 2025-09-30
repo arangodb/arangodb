@@ -27,8 +27,8 @@
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
-#include "Aql/Arithmetic.h"
 #include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
@@ -39,8 +39,6 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Arithmetic.h"
 #include "Basics/Exceptions.h"
-#include "Basics/tri-strings.h"
-#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
@@ -2147,11 +2145,14 @@ void Ast::injectBindParametersFirstStage(
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
                                       node->getString().c_str());
       } else if (node->type == NODE_TYPE_TRAVERSAL) {
-        extractCollectionsFromGraph(parameters, node->getMember(2));
+        ast::TraversalNode traversalNode(node);
+        extractCollectionsFromGraph(parameters, traversalNode.getGraphInfo());
       } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
-        extractCollectionsFromGraph(parameters, node->getMember(3));
+        ast::ShortestPathNode pathNode(node);
+        extractCollectionsFromGraph(parameters, pathNode.getPathInfo());
       } else if (node->type == NODE_TYPE_ENUMERATE_PATHS) {
-        extractCollectionsFromGraph(parameters, node->getMember(4));
+        ast::EnumeratePathsNode pathsNode(node);
+        extractCollectionsFromGraph(parameters, pathsNode.getPathInfo());
       }
 
       return node;
@@ -2377,7 +2378,8 @@ AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
     // same attribute
 
     if (node->type == NODE_TYPE_REFERENCE) {
-      auto v = static_cast<Variable*>(node->getData());
+      ast::ReferenceNode refNode(node);
+      auto v = refNode.getVariable();
       if (v != nullptr && v->id == searchVariable->id) {
         // our variable... now replace the attribute access with just the
         // variable
@@ -2405,7 +2407,8 @@ AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
 
     // reference to a variable
     if (node->type == NODE_TYPE_REFERENCE) {
-      auto variable = static_cast<Variable*>(node->getData());
+      ast::ReferenceNode refNode(node);
+      auto variable = refNode.getVariable();
 
       if (variable != nullptr) {
         auto it = replacements.find(variable->id);
@@ -2747,9 +2750,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     if (node->type == NODE_TYPE_LET) {
       // remember variable assignments
       TRI_ASSERT(node->numMembers() == 2);
-      Variable const* variable =
-          static_cast<Variable const*>(node->getMember(0)->getData());
-      AstNode const* source = node->getMember(1);
+      ast::LetNode letNode(node);
+      Variable const* variable = letNode.getVariableObject();
+      AstNode const* source = letNode.getExpression();
       // recursively process assignments so we can track LET a = b LET c = b
 
       while (source->type == NODE_TYPE_REFERENCE) {
@@ -3393,7 +3396,8 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
              node->type == NODE_TYPE_OPERATOR_UNARY_MINUS);
   TRI_ASSERT(node->numMembers() == 1);
 
-  AstNode* operand = node->getMember(0);
+  ast::UnaryOperatorNode unaryOp(node);
+  AstNode* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
     return node;
@@ -3458,7 +3462,8 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
   TRI_ASSERT(node->numMembers() == 1);
 
-  AstNode* operand = node->getMember(0);
+  ast::UnaryOperatorNode unaryOp(node);
+  AstNode* operand = unaryOp.getOperand();
 
   if (operand->isComparisonOperator()) {
     // remove the NOT and reverse the operation, e.g. NOT (a == b) => (a != b)
@@ -3480,7 +3485,8 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
   TRI_ASSERT(node->numMembers() == 1);
 
-  AstNode* operand = node->getMember(0);
+  ast::UnaryOperatorNode unaryOp(node);
+  AstNode* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
     return optimizeNotExpression(node);
@@ -3500,8 +3506,9 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
              node->type == NODE_TYPE_OPERATOR_BINARY_OR);
   TRI_ASSERT(node->numMembers() == 2);
 
-  auto lhs = node->getMember(0);
-  auto rhs = node->getMember(1);
+  ast::BinaryOperatorNode binOp(node);
+  auto lhs = binOp.getLeft();
+  auto rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3561,8 +3568,9 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  AstNode* lhs = node->getMember(0);
-  AstNode* rhs = node->getMember(1);
+  ast::BinaryOperatorNode binOp(node);
+  AstNode* lhs = binOp.getLeft();
+  AstNode* rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3651,8 +3659,9 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  AstNode* lhs = node->getMember(0);
-  AstNode* rhs = node->getMember(1);
+  ast::BinaryOperatorNode binOp(node);
+  AstNode* lhs = binOp.getLeft();
+  AstNode* rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3837,7 +3846,8 @@ AstNode* Ast::optimizeAttributeAccess(
   TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
   TRI_ASSERT(node->numMembers() == 1);
 
-  AstNode const* what = node->getMember(0);
+  ast::AttributeAccessNode attrNode(node);
+  AstNode const* what = attrNode.getObject();
 
   if (what->type == NODE_TYPE_REFERENCE) {
     // check if the access value is a variable and if it is an alias
@@ -3881,6 +3891,8 @@ AstNode* Ast::optimizeFunctionCall(
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_FCALL);
   TRI_ASSERT(node->numMembers() == 1);
+
+  ast::FunctionCallNode funcNode(node);
 
   if (!options.optimizeFunctionCalls) {
     // function call optimization not allowed
@@ -3957,7 +3969,8 @@ AstNode* Ast::optimizeIndexedAccess(
   TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
   TRI_ASSERT(node->numMembers() == 2);
 
-  auto index = node->getMember(1);
+  ast::IndexedAccessNode indexedNode(node);
+  auto index = indexedNode.getIndex();
 
   if (index->isConstant() && index->type == NODE_TYPE_VALUE &&
       index->value.type == VALUE_TYPE_STRING) {
@@ -3986,7 +3999,8 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
   TRI_ASSERT(node->type == NODE_TYPE_FILTER);
   TRI_ASSERT(node->numMembers() == 1);
 
-  AstNode* expression = node->getMember(0);
+  ast::FilterNode filterNode(node);
+  AstNode* expression = filterNode.getExpression();
 
   if (expression == nullptr || !expression->isDeterministic()) {
     return node;
@@ -4013,7 +4027,8 @@ AstNode* Ast::optimizeFor(AstNode* node) {
   TRI_ASSERT(node->type == NODE_TYPE_FOR);
   TRI_ASSERT(node->numMembers() == 3);
 
-  AstNode* expression = node->getMember(1);
+  ast::ForNode forNode(node);
+  AstNode* expression = forNode.getExpression();
 
   if (expression == nullptr) {
     return node;
