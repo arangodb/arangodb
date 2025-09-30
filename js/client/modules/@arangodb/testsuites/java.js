@@ -77,85 +77,8 @@ function javaDriver (options) {
       super(opts, testname, ...optionalArgs);
       this.info = "runInJavaTest";
     }
-    checkSutCleannessBefore() {}
-    checkSutCleannessAfter() { return true; }
-    runOneTest(file) {
-      print(this.instanceManager.setPassvoid());
-      let topology;
-      let testResultsDir = fs.join(this.instanceManager.rootDir, 'javaresults');
-      let results = {
-        'message': ''
-      };
-      let matchTopology;
-      if (this.options.cluster) {
-        topology = 'CLUSTER';
-        matchTopology = /^CLUSTER/;
-      } else {
-        topology = 'SINGLE_SERVER';
-        matchTopology = /^SINGLE_SERVER/;
-      }
 
-      // strip i.e. http:// from the URL to conform with what the driver expects:
-      let rx = /.*:\/\//gi;
-      //let args = [
-      //  'test', '-U',
-      //  '-Dgroups=api',
-      //  '-Dtest.useProvidedDeployment=true',
-      //  '-Dtest.arangodb.version='+ db._version(),
-      //  `-Dtest.arangodb.isEnterprise=${isEnterprise()? 'true' : 'false'}`,
-      //  '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
-      //  '-Dtest.arangodb.authentication=root:',
-      //  '-Dtest.arangodb.topology=' + topology,
-      //  '-Dallure.results.directory=' + testResultsDir
-      //];
-      let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
-arangodb.password=${this.options.password}
-arangodb.acquireHostList=true
-`;
-      let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
-      fs.write(propertiesFileName, propertiesFileContent);
-      let args = [
-        'verify',
-        '-am',
-        '-pl',
-        'test-functional',
-        '-Dgpg.skip',
-        '-Dmaven.javadoc.skip',
-        '-Dssl=false',
-        '-Dmaven.test.skip=false',
-        '-DskipStatefulTests',
-        // TODO? '-Dnative=<<parameters.native>>'
-      ];
-//          name: Test
-//          command: |
-//            mvn verify -am -pl test-functional -Dgpg.skip -Dmaven.javadoc.skip \
-//              -Dssl=<<parameters.ssl>> \
-//              -Dnative=<<parameters.native>> \
-//              <<parameters.args>>
-//
-      /// todo: willi@bruecklinux:~/src/arangodb-java-driver/test-functional/src/test/resources$ cat arangodb.properties 
-
-
-      if (this.options.testCase) {
-        args.push('-Dit.test=' + this.options.testCase);
-        args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
-      }
-      if (this.options.javaOptions !== '') {
-        for (var key in this.options.javaOptions) {
-          args.push('-D' + key + '=' + this.options.javaOptions[key]);
-        }
-      }
-      if (this.options.extremeVerbosity) {
-        print(args);
-      }
-      let start = Date();
-      let status = true;
-      const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
-      const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
-      if (rc.exit !== 0) {
-        status = false;
-      }
-
+    getAllureResults(testResultsDir, results, status) {
       let allResultJsons = {};
       let topLevelContainers = [];
       let allContainerJsons = {};
@@ -264,6 +187,86 @@ arangodb.acquireHostList=true
       });
       results['timeout'] = false;
       results['status'] = status;
+    }
+    checkSutCleannessBefore() {}
+    checkSutCleannessAfter() { return true; }
+    runOneTest(file) {
+      print(this.instanceManager.setPassvoid());
+      let topology;
+      let testResultsDir = fs.join(this.instanceManager.rootDir, 'javaresults');
+      let results = {
+        'message': ''
+      };
+      let matchTopology;
+      if (this.options.cluster) {
+        topology = 'CLUSTER';
+        matchTopology = /^CLUSTER/;
+      } else {
+        topology = 'SINGLE_SERVER';
+        matchTopology = /^SINGLE_SERVER/;
+      }
+
+      // strip i.e. http:// from the URL to conform with what the driver expects:
+      let rx = /.*:\/\//gi;
+      //let args = [
+      //  'test', '-U',
+      //  '-Dgroups=api',
+      //  '-Dtest.useProvidedDeployment=true',
+      //  '-Dtest.arangodb.version='+ db._version(),
+      //  `-Dtest.arangodb.isEnterprise=${isEnterprise()? 'true' : 'false'}`,
+      //  '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
+      //  '-Dtest.arangodb.authentication=root:',
+      //  '-Dtest.arangodb.topology=' + topology,
+      //  '-Dallure.results.directory=' + testResultsDir
+      //];
+      let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
+arangodb.password=${this.options.password}
+arangodb.acquireHostList=true
+`;
+      let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
+      fs.write(propertiesFileName, propertiesFileContent);
+      let args = [
+        'verify',
+        '-am',
+        '-pl',
+        'test-functional',
+        '-Dgpg.skip',
+        '-Dmaven.javadoc.skip',
+        '-Dssl=false',
+        '-Dmaven.test.skip=false',
+        '-DskipStatefulTests',
+        // TODO? '-Dnative=<<parameters.native>>'
+      ];
+//          name: Test
+//          command: |
+//            mvn verify -am -pl test-functional -Dgpg.skip -Dmaven.javadoc.skip \
+//              -Dssl=<<parameters.ssl>> \
+//              -Dnative=<<parameters.native>> \
+//              <<parameters.args>>
+//
+      /// todo: willi@bruecklinux:~/src/arangodb-java-driver/test-functional/src/test/resources$ cat arangodb.properties 
+
+
+      if (this.options.testCase) {
+        args.push('-Dit.test=' + this.options.testCase);
+        args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
+      }
+      if (this.options.javaOptions !== '') {
+        for (var key in this.options.javaOptions) {
+          args.push('-D' + key + '=' + this.options.javaOptions[key]);
+        }
+      }
+      if (this.options.extremeVerbosity) {
+        print(args);
+      }
+      let start = Date();
+      let status = true;
+      const cwd = fs.normalize(fs.makeAbsolute(this.options.javasource));
+      const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+      if (rc.exit !== 0) {
+        status = false;
+      }
+      this.getAllureResults(testResultsDir, results);
       return results;
     }
   }
