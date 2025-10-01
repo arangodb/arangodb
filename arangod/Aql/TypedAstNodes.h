@@ -350,42 +350,96 @@ struct DistinctNode : TypedAstNode {
 struct TraversalNode : TypedAstNode {
   explicit TraversalNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_TRAVERSAL);
-    TRI_ASSERT(node->numMembers() == 2);
+    TRI_ASSERT(node->numMembers() >= 6);
+    TRI_ASSERT(node->numMembers() <= 8);
   }
 
-  /// @brief Get the variables
-  AstNode* getVariables() const { return _node->getMember(0); }
+  /// @brief Get the direction
+  AstNode* getDirection() const { return _node->getMember(0); }
 
-  /// @brief Get the graph info
-  AstNode* getGraphInfo() const { return _node->getMember(1); }
+  /// @brief Get the start vertex
+  AstNode* getStart() const { return _node->getMember(1); }
+
+  /// @brief Get the graph
+  AstNode* getGraph() const { return _node->getMember(2); }
+
+  /// @brief Get the prune expression
+  AstNode* getPruneExpression() const { return _node->getMember(3); }
+
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(4); }
+
+  /// @brief Get the first output variable
+  AstNode* getVariable() const { return _node->getMember(5); }
+
+  /// @brief Get all output variables (1-3 variables)
+  std::span<AstNode* const> getVariables() const {
+    auto& members = _node->getMemberList();
+    return std::span<AstNode* const>(members.data() + 5, members.size() - 5);
+  }
 };
 
 /// @brief SHORTEST PATH node wrapper
 struct ShortestPathNode : TypedAstNode {
   explicit ShortestPathNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_SHORTEST_PATH);
-    TRI_ASSERT(node->numMembers() == 2);
+    TRI_ASSERT(node->numMembers() >= 6);
+    TRI_ASSERT(node->numMembers() <= 8);
   }
 
-  /// @brief Get the variables
-  AstNode* getVariables() const { return _node->getMember(0); }
+  /// @brief Get the direction
+  AstNode* getDirection() const { return _node->getMember(0); }
 
-  /// @brief Get the path info
-  AstNode* getPathInfo() const { return _node->getMember(1); }
+  /// @brief Get the start vertex
+  AstNode* getStart() const { return _node->getMember(1); }
+
+  /// @brief Get the target vertex
+  AstNode* getTarget() const { return _node->getMember(2); }
+
+  /// @brief Get the graph
+  AstNode* getGraph() const { return _node->getMember(3); }
+
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(4); }
+
+  /// @brief Get the first output variable
+  AstNode* getVariable() const { return _node->getMember(5); }
+
+  /// @brief Get all output variables (1-2 variables)
+  std::span<AstNode* const> getVariables() const {
+    auto& members = _node->getMemberList();
+    return std::span<AstNode* const>(members.data() + 5, members.size() - 5);
+  }
 };
 
 /// @brief ENUMERATE PATHS node wrapper
 struct EnumeratePathsNode : TypedAstNode {
   explicit EnumeratePathsNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ENUMERATE_PATHS);
-    TRI_ASSERT(node->numMembers() == 2);
+    TRI_ASSERT(node->numMembers() >= 7);
+    TRI_ASSERT(node->numMembers() <= 7);
   }
 
-  /// @brief Get the variables
-  AstNode* getVariables() const { return _node->getMember(0); }
+  /// @brief Get the path type
+  int64_t getPathType() const { return _node->getMember(0)->getIntValue(); }
 
-  /// @brief Get the path info
-  AstNode* getPathInfo() const { return _node->getMember(1); }
+  /// @brief Get the direction
+  AstNode* getDirection() const { return _node->getMember(1); }
+
+  /// @brief Get the start vertex
+  AstNode* getStart() const { return _node->getMember(2); }
+
+  /// @brief Get the target vertex
+  AstNode* getTarget() const { return _node->getMember(3); }
+
+  /// @brief Get the graph
+  AstNode* getGraph() const { return _node->getMember(4); }
+
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(5); }
+
+  /// @brief Get the output variable
+  AstNode* getVariable() const { return _node->getMember(6); }
 };
 
 /// @brief WITH node wrapper

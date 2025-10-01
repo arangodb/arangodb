@@ -2146,13 +2146,13 @@ void Ast::injectBindParametersFirstStage(
                                       node->getString().c_str());
       } else if (node->type == NODE_TYPE_TRAVERSAL) {
         ast::TraversalNode traversalNode(node);
-        extractCollectionsFromGraph(parameters, traversalNode.getGraphInfo());
+        extractCollectionsFromGraph(parameters, traversalNode.getGraph());
       } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
         ast::ShortestPathNode pathNode(node);
-        extractCollectionsFromGraph(parameters, pathNode.getPathInfo());
+        extractCollectionsFromGraph(parameters, pathNode.getGraph());
       } else if (node->type == NODE_TYPE_ENUMERATE_PATHS) {
         ast::EnumeratePathsNode pathsNode(node);
-        extractCollectionsFromGraph(parameters, pathsNode.getPathInfo());
+        extractCollectionsFromGraph(parameters, pathsNode.getGraph());
       }
 
       return node;
