@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgraded OpenSSL to 3.5.3.
+
 * Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
 
 * Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
@@ -88,8 +90,6 @@ devel
 
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
   dependencies.
-
-* Upgraded OpenSSL to 3.5.2
 
 * Fix error message to use proper terminology order instead of mode.
 
