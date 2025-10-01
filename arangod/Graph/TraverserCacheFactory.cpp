@@ -43,7 +43,9 @@ TraverserCache* CacheFactory::CreateCache(
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     BaseOptions* opts) {
   if (ServerState::instance()->isCoordinator()) {
-    return new ClusterTraverserCache(query, engines, opts);
+    // ClusterTraverserCache is Superseded by RefactoredClustertraversercache
+    //    return new ClusterTraverserCache(query, engines, opts);
+    return nullptr;
   }
   if (activateDocumentCache) {
     auto cacheManager =
