@@ -1,7 +1,6 @@
 add_library(arango_graph STATIC
   BaseOptions.cpp
   ClusterGraphDatalake.cpp
-  ClusterTraverserCache.cpp
   Graph.cpp
   GraphManager.cpp
   GraphOperations.cpp

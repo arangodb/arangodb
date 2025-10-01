@@ -31,7 +31,6 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserDocumentCache.h"
 #include "VocBase/vocbase.h"
