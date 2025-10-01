@@ -87,6 +87,12 @@ function javaDriver (options) {
       let resultFiles = fs.list(testResultsDir).filter(file => {
         return file.match(resultRe) !== null;
       });
+      if (resultFiles.length === 0) {
+        msg = `did not find any files in ${testResultsDir}`;
+        print(msg);
+        results['status'] = false;
+        results['message'] = msg;
+      }
       //print(resultFiles)
       resultFiles.forEach(containerFile => {
         let resultJson = JSON.parse(fs.read(fs.join(testResultsDir, containerFile)));
@@ -235,7 +241,8 @@ arangodb.acquireHostList=true
         '-Dssl=false',
         '-Dmaven.test.skip=false',
         '-DskipStatefulTests',
-        // TODO? '-Dnative=<<parameters.native>>'
+        '-Dallure.results.directory=' + testResultsDir
+    // TODO? '-Dnative=<<parameters.native>>'
       ];
 //          name: Test
 //          command: |
