@@ -66,7 +66,7 @@ const testPaths = {
 // / @brief TEST: shell_http
 // //////////////////////////////////////////////////////////////////////////////
 
-class runInJavaTest extends testRunnerBase {
+class runWithAllureReport extends testRunnerBase {
   constructor(options, testname, ...optionalArgs) {
     let opts = _.clone(tu.testClientJwtAuthInfo);
     opts['password'] = 'testjava';
@@ -193,6 +193,9 @@ class runInJavaTest extends testRunnerBase {
     results['timeout'] = false;
     results['status'] = status;
   }
+}
+
+class runInJavaTest extends runWithAllureReport {
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
@@ -289,13 +292,112 @@ function javaDriver (options) {
 }
 
 
+class runInKafkaTest extends runWithAllureReport {
+  checkSutCleannessBefore() {}
+  checkSutCleannessAfter() { return true; }
+  runOneTest(file) {
+    print(this.instanceManager.setPassvoid());
+    let topology;
+    let testResultsDir = fs.join(this.instanceManager.rootDir, 'kafkaresults');
+    let results = {
+      'message': ''
+    };
+    let matchTopology;
+    if (this.options.cluster) {
+      topology = 'CLUSTER';
+      matchTopology = /^CLUSTER/;
+    } else {
+      topology = 'SINGLE_SERVER';
+      matchTopology = /^SINGLE_SERVER/;
+    }
+
+    // strip i.e. http:// from the URL to conform with what the driver expects:
+    let rx = /.*:\/\//gi;
+    //let args = [
+    //  'test', '-U',
+    //  '-Dgroups=api',
+    //  '-Dtest.useProvidedDeployment=true',
+    //  '-Dtest.arangodb.version='+ db._version(),
+    //  `-Dtest.arangodb.isEnterprise=${isEnterprise()? 'true' : 'false'}`,
+    //  '-Dtest.arangodb.hosts=' + this.instanceManager.url.replace(rx,''),
+    //  '-Dtest.arangodb.authentication=root:',
+    //  '-Dtest.arangodb.topology=' + topology,
+    //  '-Dallure.results.directory=' + testResultsDir
+    //];
+    let propertiesFileContent = `arangodb.hosts=${this.instanceManager.url.replace(rx,'')}
+arangodb.password=${this.options.password}
+arangodb.acquireHostList=true
+`;
+    let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
+    fs.write(propertiesFileName, propertiesFileContent);
+    let args = [
+      'verify',
+      '-am',
+      '-pl',
+      'test-functional',
+      '-Dgpg.skip',
+      '-Dmaven.javadoc.skip',
+      '-Dssl=false',
+      '-Dmaven.test.skip=false',
+      '-DskipStatefulTests',
+      '-Dallure.results.directory=' + testResultsDir
+      // TODO? '-Dnative=<<parameters.native>>'
+    ];
+    //          name: Test
+    //          command: |
+    //            mvn verify -am -pl test-functional -Dgpg.skip -Dmaven.javadoc.skip \
+    //              -Dssl=<<parameters.ssl>> \
+    //              -Dnative=<<parameters.native>> \
+    //              <<parameters.args>>
+    //
+    /// todo: willi@bruecklinux:~/src/arangodb-java-driver/test-functional/src/test/resources$ cat arangodb.properties 
+
+
+    if (this.options.testCase) {
+      args.push('-Dit.test=' + this.options.testCase);
+      args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
+    }
+    if (this.options.javaOptions !== '') {
+      for (var key in this.options.javaOptions) {
+        args.push('-D' + key + '=' + this.options.javaOptions[key]);
+      }
+    }
+    if (this.options.extremeVerbosity) {
+      print(args);
+    }
+    let start = Date();
+    let status = true;
+    const cwd = fs.normalize(fs.makeAbsolute(this.options.kafkasource));
+    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+    if (rc.exit !== 0) {
+      status = false;
+    }
+    this.getAllureResults(testResultsDir, results, status);
+    return results;
+  }
+}
+
+function kafkaDriver (options) {
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
+  if (localOptions.cluster && localOptions.dbServers < 3) {
+    localOptions.dbServers = 3;
+  }
+
+  let rc = new runInJavaTest(localOptions, 'java_test').run([ 'java_test.js']);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
+}
+
+
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['java_driver'] = javaDriver;
+  testFns['kafka_driver'] = kafkaDriver;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
   tu.CopyIntoObject(opts, {
     'javaOptions': '',
     'javasource': '../arangodb-java-driver',
+    'kafkasource': '../kafka-connect-arangodb',
   });
 };
