@@ -68,19 +68,6 @@ class TraverserCache {
   /// @brief clears all allocated memory in the underlying StringHeap
   void clear();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts the real document stored within the token
-  ///        into the given builder.
-  //////////////////////////////////////////////////////////////////////////////
-  virtual void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
-                                    velocypack::Builder& builder);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Return AQL value containing the result
-  ///        The document will be looked up in the StorageEngine
-  //////////////////////////////////////////////////////////////////////////////
-  virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
-
   [[nodiscard]] std::uint64_t getAndResetInsertedDocuments() {
     return std::exchange(_insertedDocuments, 0);
   }
@@ -104,15 +91,6 @@ class TraverserCache {
   [[nodiscard]] std::uint64_t getAndResetCacheMisses() {
     return std::exchange(_cacheMisses, 0);
   }
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Persist the given id string. The return value is guaranteed to
-  ///        stay valid as long as this cache is valid
-  //////////////////////////////////////////////////////////////////////////////
-  std::string_view persistString(std::string_view idString);
-
-  arangodb::velocypack::HashedStringRef persistString(
-      arangodb::velocypack::HashedStringRef idString);
 
   void incrDocuments(std::uint64_t value = 1) noexcept {
     _insertedDocuments += value;

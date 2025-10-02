@@ -114,12 +114,6 @@ class TokenTranslator : public TraverserCache {
     return it->second.get(StaticStrings::IdString).stringView();
   }
 
-  AqlValue fetchEdgeAqlResult(EdgeDocumentToken const& edgeTkn) override {
-    auto it = _edges.find(VPackSlice(edgeTkn.vpack()));
-    TRI_ASSERT(it != _edges.end());
-    return AqlValue{*it};
-  }
-
  private:
   std::vector<std::shared_ptr<VPackBuffer<uint8_t>>> _dataLake;
   std::unordered_map<std::string_view, VPackSlice> _vertices;
