@@ -231,10 +231,10 @@ void parseGraphCollectionRestriction(Ast* ast, std::string_view typeName,
   if (src->isStringValue()) {
     addCollection(src->getString());
   } else if (src->type == NODE_TYPE_ARRAY) {
-    size_t const n = src->numMembers();
-    collections.reserve(n);
-    for (size_t i = 0; i < n; ++i) {
-      AstNode const* c = src->getMemberUnchecked(i);
+    arangodb::aql::ast::ArrayNode arrayNode(src);
+    auto elements = arrayNode.getElements();
+    collections.reserve(elements.size());
+    for (auto const* c : elements) {
       if (!c->isStringValue()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_BAD_PARAMETER,
@@ -1039,7 +1039,8 @@ SubqueryNode* ExecutionPlan::getSubqueryFromExpression(
     return nullptr;
   }
 
-  auto referencedVariable = static_cast<Variable const*>(expression->getData());
+  arangodb::aql::ast::ReferenceNode refNode(expression);
+  auto referencedVariable = refNode.getVariable();
 
   TRI_ASSERT(referencedVariable != nullptr);
 
@@ -1530,7 +1531,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
       auto member = start->getMember(i);
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == StaticStrings::IdString) {
-        start = member->getMember(0);
+        arangodb::aql::ast::ObjectElementNode objElem(member);
+        start = objElem.getValue();
         break;
       }
     }
@@ -1574,7 +1576,8 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
+  arangodb::aql::ast::VariableNode varNode(variable);
+  auto v = varNode.getVariable();
   TRI_ASSERT(v != nullptr);
   travNode->setVertexOutput(v);
 
@@ -1582,14 +1585,16 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     // return the edge as well
     variable = node->getMember(6);
     TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-    v = static_cast<Variable*>(variable->getData());
+    arangodb::aql::ast::VariableNode edgeVarNode(variable);
+    v = edgeVarNode.getVariable();
     TRI_ASSERT(v != nullptr);
     travNode->setEdgeOutput(v);
     if (node->numMembers() > 7) {
       // return the path as well
       variable = node->getMember(7);
       TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-      v = static_cast<Variable*>(variable->getData());
+      arangodb::aql::ast::VariableNode pathVarNode(variable);
+      v = pathVarNode.getVariable();
       TRI_ASSERT(v != nullptr);
       travNode->setPathOutput(v);
     }
@@ -2426,7 +2431,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
   if (rangeExpr->type != NODE_TYPE_NOP) {
     if (rangeExpr->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
-      rangeVar = static_cast<Variable*>(rangeExpr->getData());
+      arangodb::aql::ast::ReferenceNode refNode(rangeExpr);
+      rangeVar = refNode.getVariable();
     } else {  // need to add a calculation
       auto calc = createTemporaryCalculation(rangeExpr, previous);
       previous = calc;
@@ -2451,8 +2457,9 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
     if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
       continue;
     }
-    auto const name = member->getStringView();
-    AstNode* value = member->getMember(0);
+    arangodb::aql::ast::ObjectElementNode objElem(member);
+    auto const name = objElem.getAttributeName();
+    AstNode* value = const_cast<AstNode*>(objElem.getValue());
     if (!value->isConstant()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS,
