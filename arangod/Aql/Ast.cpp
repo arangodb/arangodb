@@ -1620,11 +1620,8 @@ AstNode* Ast::createNodeWithCollections(
     AstNode const* collections, CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
-
-  for (size_t i = 0; i < collections->numMembers(); ++i) {
-    auto c = collections->getMember(i);
-
+  ast::ArrayNode collectionsNode(const_cast<AstNode*>(collections));
+  for (auto c : collectionsNode.getElements()) {
     if (c->isStringValue()) {
       auto nameRef = c->getStringView();
       addDataSource(*this, resolver, nameRef);
@@ -1635,7 +1632,6 @@ AstNode* Ast::createNodeWithCollections(
   }
 
   AstNode* with = createNode(NODE_TYPE_WITH);
-
   with->addMember(node);
 
   return with;
@@ -1646,12 +1642,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
                                        CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY)
-      << edgeCollections->getTypeString();
-
-  for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
-    auto edgeCollection = edgeCollections->getMember(i);
-
+  ast::ArrayNode edgeCollectionsNode(const_cast<AstNode*>(edgeCollections));
+  for (auto edgeCollection : edgeCollectionsNode.getElements()) {
     auto edgeCollectionName = edgeCollectionNodeGetName(edgeCollection);
 
     if (edgeCollectionName.has_value()) {
@@ -2946,11 +2938,11 @@ bool Ast::getReferencedAttributesRecursive(
     }
 
     if (node->type == NODE_TYPE_EXPANSION) {
+      ast::ExpansionNode expansionNode(const_cast<AstNode*>(node));
       // special stunt needed here for the [*] operator...
       // NOTE: Every [*] operator is represented as an EXPANSION
       // with 5 (or more) members.
       if (node->numMembers() >= 5) {
-        ast::ExpansionNode expansionNode(const_cast<AstNode*>(node));
         if (!expectedAttribute.empty()) {
           // we are looking at a traversal output variable, e.g.
           // p.vertices[*].a
