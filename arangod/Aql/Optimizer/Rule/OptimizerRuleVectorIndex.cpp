@@ -241,9 +241,9 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
   return vectorIndexes;
 }
 
-bool removedFilterNode(auto* maybeFilterNode, auto& plan,
-                       auto& filterExpression,
-                       auto const* enumerateNearVectorOutputDocument) {
+std::unique_ptr<Expression> removeFilterNode(
+    ExecutionNode* maybeFilterNode, std::unique_ptr<ExecutionPlan>& plan,
+    Variable const* enumerateNearVectorOutputDocument) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
   auto* filterInVar = filterNode->inVariable();
@@ -252,7 +252,7 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
   auto* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
   if (maybeCalculationNode == nullptr ||
       maybeCalculationNode->getType() != EN::CALCULATION) {
-    return false;
+    return nullptr;
   }
 
   auto const* calculationNode =
@@ -261,15 +261,13 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
   // Check that all variables used in filterExpression can be handled in
   // EnumerateNearVector node
   VarSet calculationVars;
-  filterExpression = calculationNode->expression()->clone(plan->getAst());
+  auto filterExpression = calculationNode->expression()->clone(plan->getAst());
   filterExpression->variables(calculationVars);
 
   for (auto const* calcVar : calculationVars) {
-    if (calcVar->type() != Variable::Type::Regular) {
-      continue;
-    }
-    if (calcVar != enumerateNearVectorOutputDocument) {
-      return false;
+    if (calcVar->type() == Variable::Type::Regular &&
+        calcVar != enumerateNearVectorOutputDocument) {
+      return nullptr;
     }
   }
 
@@ -277,7 +275,7 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
   // referenced by any other node
   plan->unlinkNode(maybeFilterNode);
 
-  return true;
+  return filterExpression;
 }
 
 // Vector Index Optimization Rule
@@ -298,9 +296,8 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
 // Filter Pushdown:
 // When a filter expression is detected, the rule pushes it down to the
 // EnumerateNearVectorNode for early evaluation during index traversal. This
-// optimization removes both the FILTER node and its associated CALCULATION
-// node. This transformation is safe because previous optimization rules have
-// already eliminated trivial filters.
+// optimization removes the FILTER node.  This transformation is safe because
+// previous optimization rules have already eliminated trivial filters.
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
@@ -397,8 +394,9 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       // and handle it in EnumerateNearVectorNode
       std::unique_ptr<Expression> filterExpression{nullptr};
       if (maybeFilterNode) {
-        if (!removedFilterNode(maybeFilterNode, plan, filterExpression,
-                               documentVariable)) {
+        if (filterExpression =
+                removeFilterNode(maybeFilterNode, plan, documentVariable);
+            filterExpression == nullptr) {
           continue;
         }
       }
