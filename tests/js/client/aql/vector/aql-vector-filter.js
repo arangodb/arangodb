@@ -38,7 +38,6 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -471,6 +470,90 @@ function VectorIndexL2FilterTestSuite() {
             // Verify results are sorted by distance
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
+            }
+        },
+
+        testApproxL2WithExplicitCalculationNodes: function() {
+            // Test with explicit calculation nodes (LET cond = ..., FILTER cond)
+            const query = `FOR d IN ${collection.name()}
+              LET cond = d.val < 10
+              FILTER cond
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = { qp: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val < 10);
+            }
+        },
+
+        testApproxL2WithCalculationReusedInReturn: function() {
+            // Test where calculation is used both in FILTER and in RETURN
+            const query = `FOR d IN ${collection.name()}
+              LET cond = d.val < 10
+              FILTER cond
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, cond1: NOOPT(cond), dist, cond2: NOOPT(cond)}`;
+
+            const bindVars = { qp: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            
+            db._explain(query, bindVars);
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+            // three calculation nodes, the bind variable calculation node, the filter calculation node, and the return calculation node
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(3, calculationNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val < 10);
+                assertEqual(true, results[i].cond1);
+                assertEqual(true, results[i].cond2);
+            }
+        },
+
+        testApproxL2WithMultipleFilterClauses: function() {
+            // Test with multiple separate FILTER clauses
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val >= 5
+              FILTER d.val < 15
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = { qp: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            
+            db._explain(query, bindVars);
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val >= 5);
+                assertTrue(results[i].val < 15);
             }
         },
     };
