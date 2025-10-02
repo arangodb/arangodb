@@ -9,6 +9,7 @@ import re
 import sys
 import traceback
 import yaml
+import copy
 
 BuildConfig = namedtuple(
     "BuildConfig", ["arch", "enterprise", "sanitizer", "isNightly"]
@@ -719,20 +720,11 @@ def main():
                         new_job = one_yaml['add-yaml']['derives-to']
                         del one_yaml['add-yaml']['derives-to']
                         del one_yaml['add-yaml']['derives']
-                        #print(config)
-                        #print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
-                        #print(config.keys())
-                        #print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
-                        #print(config['jobs'])
-                        #print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
-                        #print(config['jobs'].keys())
-                        #print('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee')
-                        #print(config['jobs']['run-linux-tests'])
+                        orig_test_job = copy.deepcopy(config['jobs']['run-linux-tests'])
                         new_job_definition = {
-                            **config['jobs']['run-linux-tests'],
+                            **orig_test_job,
                             **one_yaml['add-yaml']
                         }
-                        print(original_job)
                         config['jobs'][new_job] = new_job_definition
                 yaml.dump(config, outstream)
     except Exception as exc:
