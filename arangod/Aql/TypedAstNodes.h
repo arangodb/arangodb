@@ -171,8 +171,8 @@ struct RemoveNode : TypedAstNode {
   /// @brief Get the expression
   AstNode* getExpression() const { return _node->getMember(2); }
 
-  /// @brief Get the variable for the OLD value
-  AstNode* getReturnVariable() const { return _node->getMember(3); }
+  /// @brief Get the OLD variable
+  AstNode* getOldVariable() const { return _node->getMember(3); }
 };
 
 /// @brief INSERT node wrapper
@@ -198,6 +198,8 @@ struct InsertNode : TypedAstNode {
 
   /// @brief Get the NEW variable
   AstNode* getNewVariable() const { return _node->getMember(3); }
+
+  bool hasOldVariable() const { return _node->numMembers() == 5; }
 
   /// @brief Get the OLD variable (only present if returnOld is true)
   AstNode* getOldVariable() const {
