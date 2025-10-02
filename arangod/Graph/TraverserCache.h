@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Basics/StringHeap.h"
+#include "Graph/BaseOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -50,20 +50,26 @@ class QueryContext;
 
 namespace graph {
 
-struct EdgeDocumentToken;
-
 /// Small wrapper around the actual datastore in
 /// which edges and vertices are stored. The cluster can overwrite this
 /// with an implementation which caches entire documents,
 /// the single server / db server can just work with raw
 /// document tokens and retrieve documents as needed
-struct BaseOptions;
 
 class TraverserCache {
  public:
-  explicit TraverserCache(aql::QueryContext& query, BaseOptions* opts);
+  explicit TraverserCache(aql::QueryContext& query, BaseOptions* opts)
+      : _query(query),
+        _trx(opts->trx()),
+        _insertedDocuments(0),
+        _filtered(0),
+        _cursorsCreated(0),
+        _cursorsRearmed(0),
+        _cacheHits(0),
+        _cacheMisses(0),
+        _baseOptions(opts) {}
 
-  virtual ~TraverserCache();
+  virtual ~TraverserCache() = default;
 
   /// @brief clears all allocated memory in the underlying StringHeap
   void clear();
@@ -107,12 +113,7 @@ class TraverserCache {
     _cacheMisses += value;
   }
 
-  /// Only valid until the next call to this class
-  virtual velocypack::Slice lookupToken(EdgeDocumentToken const& token);
-
  protected:
-  velocypack::Builder _docBuilder;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Query used to register warnings to.
   //////////////////////////////////////////////////////////////////////////////
@@ -136,24 +137,7 @@ class TraverserCache {
   /// @brief number of cache lookup misses
   std::uint64_t _cacheMisses;
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Stringheap to take care of _id strings, s.t. they stay valid
-  ///        during the entire traversal.
-  //////////////////////////////////////////////////////////////////////////////
-  // (already monitored as monitor is required during construction)
-  arangodb::StringHeap _stringHeap;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Set of all strings persisted in the stringHeap. So we can save some
-  ///        memory by not storing them twice.
-  //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
-
   BaseOptions const* _baseOptions;
-
-  /// @brief whether or not to allow adding of previously unknown collections
-  /// during the traversal
-  bool const _allowImplicitCollections;
 };
 
 }  // namespace graph
