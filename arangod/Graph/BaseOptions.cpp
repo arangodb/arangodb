@@ -558,6 +558,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   bool result = res.toBoolean();
   if (!result) {
     cache()->incrFiltered();
+    stats().incrFiltered();
   }
   return result;
 }

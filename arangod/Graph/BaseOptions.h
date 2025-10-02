@@ -29,6 +29,7 @@
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
+#include "Aql/TraversalStats.h"
 #include "Aql/VarInfoMap.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
@@ -197,6 +198,9 @@ struct BaseOptions {
       bool enableDocumentCache,
       std::unordered_map<ServerID, aql::EngineId> const* engines);
 
+  aql::TraversalStats& stats() { return _stats; };
+  aql::TraversalStats const& stats() const { return _stats; };
+
   MonitoredCollectionToShardMap const& collectionToShard() const {
     return _collectionToShard;
   }
@@ -339,6 +343,8 @@ struct BaseOptions {
 
   /// @brief user hint regarding which indexes to use
   aql::IndexHint _hint;
+
+  aql::TraversalStats _stats;
 };
 
 }  // namespace graph

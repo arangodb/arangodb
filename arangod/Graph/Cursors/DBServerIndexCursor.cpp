@@ -27,6 +27,7 @@
 #include "Aql/AttributeNamePath.h"
 #include "Aql/QueryContext.h"
 #include "Aql/Projections.h"
+#include "Aql/TraversalStats.h"
 #include "Basics/StaticStrings.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
@@ -91,8 +92,8 @@ uint16_t getCoveringPosition(std::shared_ptr<Index> const& index,
 auto arangodb::graph::createDBServerIndexCursors(
     std::vector<BaseOptions::LookupInfo> const& lookupInfos,
     aql::Variable const* tmpVar, transaction::Methods* trx,
-    TraverserCache* traverserCache, ResourceMonitor& monitor)
-    -> std::vector<DBServerIndexCursor> {
+    TraverserCache* traverserCache, aql::TraversalStats& stats,
+    ResourceMonitor& monitor) -> std::vector<DBServerIndexCursor> {
   std::vector<DBServerIndexCursor> cursors;
   // there are at least lookupInfo.size() many cursors
   cursors.reserve(lookupInfos.size());
@@ -107,7 +108,7 @@ auto arangodb::graph::createDBServerIndexCursors(
           info.conditionNeedUpdate
               ? std::optional<size_t>{info.conditionMemberToUpdate}
               : std::nullopt,
-          trx, traverserCache, tmpVar, monitor});
+          trx, traverserCache, stats, tmpVar, monitor});
     }
     infoCount++;
   }
@@ -136,6 +137,8 @@ void DBServerIndexCursor::all(EdgeCursor::Callback const& callback) {
 
   // update cache hits and misses
   auto [ch, cm] = _cursor->getAndResetCacheStats();
+  _stats.incrCacheHits(ch);
+  _stats.incrCacheMisses(cm);
   _traverserCache->incrCacheHits(ch);
   _traverserCache->incrCacheMisses(cm);
 }
@@ -240,12 +243,15 @@ void DBServerIndexCursor::rearm(std::string_view vertex) {
 
   // steal cache hits and misses before the cursor is recycled
   auto [ch, cm] = _cursor->getAndResetCacheStats();
+  _stats.incrCacheHits(ch);
+  _stats.incrCacheMisses(cm);
   _traverserCache->incrCacheHits(ch);
   _traverserCache->incrCacheMisses(cm);
 
   // check if the underlying index iterator supports rearming
   if (_cursor->canRearm()) {
     // rearming supported
+    _stats.incrCursorsRearmed();
     _traverserCache->incrCursorsRearmed();
     if (!_cursor->rearm(_indexCondition, _tmpVar,
                         defaultIndexIteratorOptions)) {
@@ -255,6 +261,7 @@ void DBServerIndexCursor::rearm(std::string_view vertex) {
   } else {
     // rearming not supported - we need to throw away the index iterator
     // and create a new one
+    _stats.incrCursorsCreated();
     _traverserCache->incrCursorsCreated();
     _cursor = _trx->indexScanForCondition(
         _monitor, _idxHandle, _indexCondition, _tmpVar,
@@ -298,6 +305,7 @@ DBServerIndexCursor::nonCoveringCallback(DataSourceId const& sourceId,
       }
     }
 #endif
+    _stats.incrScannedIndex();
     _traverserCache->incrDocuments();
     callback(EdgeDocumentToken(sourceId, token), edgeDoc, cursorId);
     return true;
@@ -322,6 +330,7 @@ DBServerIndexCursor::coveringCallback(uint64_t& operationSuccessful,
       }
 #endif
       operationSuccessful++;
+      _stats.incrScannedIndex();
       _traverserCache->incrDocuments();
       callback(EdgeDocumentToken(sourceId, token), edge, cursorId);
       return true;
