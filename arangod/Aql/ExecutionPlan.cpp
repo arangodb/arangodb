@@ -498,7 +498,9 @@ void setForOptions(QueryContext& query, AstNode const* node,
         TRI_ASSERT(child->numMembers() > 0);
         std::string_view name(child->getStringView());
         if (name == arangodb::StaticStrings::MaxProjections) {
-          auto maxProjections = parseMaxProjections(child->getMember(0));
+          arangodb::aql::ast::ObjectElementNode objElem(
+              const_cast<AstNode*>(child));
+          auto maxProjections = parseMaxProjections(objElem.getValue());
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
@@ -507,7 +509,9 @@ void setForOptions(QueryContext& query, AstNode const* node,
             dn->setMaxProjections(maxProjections.get());
           }
         } else if (name == arangodb::StaticStrings::UseCache) {
-          AstNode const* value = child->getMember(0);
+          arangodb::aql::ast::ObjectElementNode objElem(
+              const_cast<AstNode*>(child));
+          AstNode const* value = objElem.getValue();
 
           if (value->isBoolValue()) {
             dn->setUseCache(value->getBoolValue());
@@ -871,8 +875,9 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   bool const isDistinct = (expression->type == NODE_TYPE_DISTINCT);
 
   if (isDistinct) {
-    TRI_ASSERT(expression->numMembers() == 1);
-    expression = expression->getMember(0);
+    arangodb::aql::ast::DistinctNode distinctNode(
+        const_cast<AstNode*>(expression));
+    expression = distinctNode.getExpression();
   }
 
   bool containsCollection = false;
@@ -885,7 +890,8 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
       auto func = static_cast<Function*>(node->getData());
 
       // check function arguments
-      auto args = node->getMember(0);
+      arangodb::aql::ast::FunctionCallNode funcCall(const_cast<AstNode*>(node));
+      auto args = funcCall.getArguments();
       size_t const n = args->numMembers();
 
       for (size_t i = 0; i < n; ++i) {
@@ -1121,7 +1127,9 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
       auto const name = member->getStringView();
 
       if (name == "exclusive") {
-        auto value = member->getMember(0);
+        arangodb::aql::ast::ObjectElementNode objElem(
+            const_cast<AstNode*>(member));
+        auto value = objElem.getValue();
         TRI_ASSERT(value->isConstant());
         return value->isTrue();
       }
@@ -1150,7 +1158,9 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
 
       if (member != nullptr && member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto const name = member->getStringView();
-        auto value = member->getMember(0);
+        arangodb::aql::ast::ObjectElementNode objElem(
+            const_cast<AstNode*>(member));
+        auto value = objElem.getValue();
 
         TRI_ASSERT(value->isConstant());
 
@@ -1232,7 +1242,9 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
         bool handled = false;
         auto const name = member->getStringView();
         if (name == "method") {
-          auto value = member->getMember(0);
+          arangodb::aql::ast::ObjectElementNode objElem(
+              const_cast<AstNode*>(member));
+          auto value = objElem.getValue();
           if (value->isStringValue()) {
             options.method =
                 CollectOptions::methodFromString(value->getStringView());
@@ -1241,13 +1253,17 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
             }
           }
         } else if (name == "aggregateIntoExpressionOnDBServers") {
-          auto value = member->getMember(0);
+          arangodb::aql::ast::ObjectElementNode objElem(
+              const_cast<AstNode*>(member));
+          auto value = objElem.getValue();
           if (value->isBoolValue()) {
             options.aggregateIntoExpressionOnDBServers = value->getBoolValue();
             handled = true;
           }
         } else if (name == StaticStrings::IndexHintDisableIndex) {
-          auto value = member->getMember(0);
+          arangodb::aql::ast::ObjectElementNode objElem(
+              const_cast<AstNode*>(member));
+          auto value = objElem.getValue();
           if (value->isBoolValue()) {
             options.disableIndex = value->getBoolValue();
             handled = true;
@@ -1475,7 +1491,7 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
 
   auto* search = node->getMember(2);
   TRI_ASSERT(search);
-  TRI_ASSERT(search->type == NODE_TYPE_FILTER);
+  arangodb::aql::ast::FilterNode filterNode(const_cast<AstNode*>(search));
   TRI_ASSERT(search->numMembers() == 1);
 
   auto* options = node->getMemberUnchecked(3);
@@ -1894,13 +1910,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
       continue;
     }
 
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
+    arangodb::aql::ast::AssignNode assignNode(const_cast<AstNode*>(assigner));
+    auto out = assignNode.getVariable();
     TRI_ASSERT(out != nullptr);
     auto v = static_cast<Variable*>(out->getData());
     TRI_ASSERT(v != nullptr);
 
-    auto expression = assigner->getMember(1);
+    auto expression = assignNode.getExpression();
 
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
@@ -2228,11 +2244,11 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST REPLACE node
 ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
                                               AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
-  TRI_ASSERT(node->numMembers() == 6);
+  TRI_ASSERT(node != nullptr);
 
-  auto options = createModificationOptions("REPLACE", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  arangodb::aql::ast::ReplaceNode replaceNode(const_cast<AstNode*>(node));
+  auto options = createModificationOptions("REPLACE", replaceNode.getOptions());
+  std::string const collectionName = replaceNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2295,11 +2311,11 @@ ExecutionNode* ExecutionPlan::fromNodeReplace(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST UPSERT node
 ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
-  TRI_ASSERT(node->numMembers() == 7);
+  TRI_ASSERT(node != nullptr);
 
-  auto options = createModificationOptions("UPSERT", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  arangodb::aql::ast::UpsertNode upsertNode(const_cast<AstNode*>(node));
+  auto options = createModificationOptions("UPSERT", upsertNode.getOptions());
+  std::string const collectionName = upsertNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -3002,18 +3018,17 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
   aggregateVariables.reserve(numVars);
   for (size_t i = 0; i < numVars; ++i) {
     auto assigner = list->getMemberUnchecked(i);
-
     if (assigner == nullptr) {
       continue;
     }
 
-    TRI_ASSERT(assigner->type == NODE_TYPE_ASSIGN);
-    auto out = assigner->getMember(0);
+    arangodb::aql::ast::AssignNode assignNode(const_cast<AstNode*>(assigner));
+    auto out = assignNode.getVariable();
     TRI_ASSERT(out != nullptr);
     auto outVar = static_cast<Variable*>(out->getData());
     TRI_ASSERT(outVar != nullptr);
 
-    auto expression = assigner->getMember(1);
+    auto expression = assignNode.getExpression();
 
     // operand is always a function call
     TRI_ASSERT(expression->type == NODE_TYPE_FCALL);
