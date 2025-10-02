@@ -42,8 +42,10 @@ TraverserCache* CacheFactory::CreateCache(
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     BaseOptions* opts) {
   if (ServerState::instance()->isCoordinator()) {
-    // ClusterTraverserCache is Superseded by RefactoredClustertraversercache
-    //    return new ClusterTraverserCache(query, engines, opts);
+    // This cache is unused, but the codepath is still required
+    // for ArangoDB to work.
+    //
+    // The CacheFactory should be removed eventually.
     return nullptr;
   }
   if (activateDocumentCache) {
