@@ -3802,6 +3802,9 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
   ast::TernaryOperatorNode ternaryOp(node);
   AstNode const* condition = ternaryOp.getCondition();
   AstNode* truePart = ternaryOp.getTrueExpr();
+  if (truePart == nullptr) {
+    truePart = const_cast<AstNode*>(condition);
+  }
   AstNode* falsePart = ternaryOp.getFalseExpr();
 
   if (condition == nullptr || truePart == nullptr || falsePart == nullptr) {

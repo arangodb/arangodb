@@ -216,7 +216,7 @@ struct InsertNode : ImmutableTypedAstNode {
 
   /// @brief Get the OLD variable (only present if returnOld is true)
   AstNode const* getOldVariable() const {
-    return (_node->numMembers() == 5) ? _node->getMember(4) : nullptr;
+    return hasOldVariable() ? _node->getMember(4) : nullptr;
   }
 };
 
@@ -615,13 +615,13 @@ struct TernaryOperatorNode : MutableTypedAstNode {
   /// @brief Get the condition
   AstNode const* getCondition() const { return _node->getMember(0); }
 
-  bool hasTrueExpr() const { return _node->numMembers() == 2; }
+  bool hasTrueExpr() const { return _node->numMembers() == 3; }
 
   /// @brief Get the true expression
   /// For 2-member ternary: returns the condition (same as getCondition())
   /// For 3-member ternary: returns the true expression
   AstNode* getTrueExpr() const {
-    return hasTrueExpr() ? _node->getMember(0) : _node->getMember(1);
+    return hasTrueExpr() ? _node->getMember(1) : nullptr;
   }
 
   /// @brief Get the false expression
