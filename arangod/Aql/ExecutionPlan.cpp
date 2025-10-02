@@ -167,8 +167,9 @@ std::pair<uint64_t, uint64_t> getMinMaxDepths(AstNode const* steps) {
     maxDepth = checkDepthValue(steps);
   } else if (steps->type == NODE_TYPE_RANGE) {
     // Range depth
-    minDepth = checkDepthValue(steps->getMember(0));
-    maxDepth = checkDepthValue(steps->getMember(1));
+    arangodb::aql::ast::RangeNode rangeNode(const_cast<AstNode*>(steps));
+    minDepth = checkDepthValue(rangeNode.getStart());
+    maxDepth = checkDepthValue(rangeNode.getEnd());
   } else {
     invalidDepth = true;
   }
@@ -271,11 +272,11 @@ ResultT<size_t> parseMaxProjections(AstNode const* value) {
 std::unique_ptr<graph::BaseOptions> createTraversalOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode) {
   TRI_ASSERT(direction != nullptr);
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
 
   // will throw on invalid depths
-  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
+  arangodb::aql::ast::DirectionNode directionNode(
+      const_cast<AstNode*>(direction));
+  auto [minDepth, maxDepth] = getMinMaxDepths(directionNode.getSteps());
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<traverser::TraverserOptions>(query);
@@ -413,11 +414,11 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
     arangodb::graph::PathType::Type type) {
   TRI_ASSERT(direction != nullptr);
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
 
   // will throw on invalid depths
-  auto [minDepth, maxDepth] = getMinMaxDepths(direction->getMember(1));
+  arangodb::aql::ast::DirectionNode directionNode(
+      const_cast<AstNode*>(direction));
+  auto [minDepth, maxDepth] = getMinMaxDepths(directionNode.getSteps());
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
@@ -1545,9 +1546,9 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
   auto options =
       createTraversalOptions(getAst(), direction, node->getMember(4));
 
-  TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
-  TRI_ASSERT(direction->numMembers() == 2);
-  direction = direction->getMember(0);
+  arangodb::aql::ast::DirectionNode directionNode(
+      const_cast<AstNode*>(direction));
+  direction = directionNode.getDirection();
   TRI_ASSERT(direction->isIntValue());
 
   // First create the node
@@ -1809,11 +1810,11 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
   for (size_t i = 0; i < n; ++i) {
     auto element = list->getMember(i);
     TRI_ASSERT(element != nullptr);
-    TRI_ASSERT(element->type == NODE_TYPE_SORT_ELEMENT);
-    TRI_ASSERT(element->numMembers() == 2);
 
-    auto expression = element->getMember(0);
-    auto ascending = element->getMember(1);
+    arangodb::aql::ast::SortElementNode sortElement(
+        const_cast<AstNode*>(element));
+    auto expression = sortElement.getExpression();
+    auto ascending = sortElement.getAscending();
 
     // get sort order
     bool isAscending;
@@ -2064,11 +2065,11 @@ ExecutionNode* ExecutionPlan::fromNodeReturn(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST REMOVE node
 ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
-  TRI_ASSERT(node->numMembers() == 4);
+  TRI_ASSERT(node != nullptr);
+  ast::RemoveNode removeNode(const_cast<AstNode*>(node));
 
-  auto options = createModificationOptions("REMOVE", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  auto options = createModificationOptions("REMOVE", removeNode.getOptions());
+  std::string const collectionName = removeNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2080,9 +2081,9 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
-  auto expression = node->getMember(2);
+  auto expression = removeNode.getExpression();
   ExecutionNode* en = nullptr;
-  auto returnVarNode = node->getMember(3);
+  auto returnVarNode = removeNode.getOldVariable();
   Variable const* outVariableOld =
       static_cast<Variable*>(returnVarNode->getData());
 
@@ -2108,12 +2109,11 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST INSERT node
 ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() > 3);
-  TRI_ASSERT(node->numMembers() < 6);
+  TRI_ASSERT(node != nullptr);
 
-  auto options = createModificationOptions("INSERT", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  arangodb::aql::ast::InsertNode insertNode(const_cast<AstNode*>(node));
+  auto options = createModificationOptions("INSERT", insertNode.getOptions());
+  std::string const collectionName = insertNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
@@ -2125,14 +2125,14 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
-  auto expression = node->getMember(2);
-  auto returnVarNode = node->getMember(3);
+  auto expression = insertNode.getExpression();
+  auto returnVarNode = insertNode.getNewVariable();
   Variable const* outVariableNew =
       static_cast<Variable*>(returnVarNode->getData());
 
   Variable const* outVariableOld = nullptr;
-  if (node->numMembers() == 5) {
-    returnVarNode = node->getMember(4);
+  if (insertNode.hasOldVariable()) {
+    returnVarNode = insertNode.getOldVariable();
     outVariableOld = static_cast<Variable*>(returnVarNode->getData());
   }
 
@@ -2161,11 +2161,11 @@ ExecutionNode* ExecutionPlan::fromNodeInsert(ExecutionNode* previous,
 /// @brief create an execution plan element from an AST UPDATE node
 ExecutionNode* ExecutionPlan::fromNodeUpdate(ExecutionNode* previous,
                                              AstNode const* node) {
-  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
-  TRI_ASSERT(node->numMembers() == 6);
+  TRI_ASSERT(node != nullptr);
 
-  auto options = createModificationOptions("UPDATE", node->getMember(0));
-  std::string const collectionName = node->getMember(1)->getString();
+  arangodb::aql::ast::UpdateNode updateNode(const_cast<AstNode*>(node));
+  auto options = createModificationOptions("UPDATE", updateNode.getOptions());
+  std::string const collectionName = updateNode.getCollection()->getString();
   auto const& collections = _ast->query().collections();
   auto* collection = collections.get(collectionName);
 
