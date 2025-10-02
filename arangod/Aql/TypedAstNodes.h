@@ -158,82 +158,107 @@ struct ReturnNode : TypedAstNode {
 struct RemoveNode : TypedAstNode {
   explicit RemoveNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_REMOVE) << node->getTypeString();
-    TRI_ASSERT(node->numMembers() == 3)
-        << "expected 3 members in NODE_TYPE_REMOVE, found "
+    TRI_ASSERT(node->numMembers() == 4)
+        << "expected 4 members in NODE_TYPE_REMOVE, found "
         << node->numMembers();
   }
-
-  /// @brief Get the document expression
-  AstNode* getDocument() const { return _node->getMember(0); }
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(0); }
 
   /// @brief Get the collection
   AstNode* getCollection() const { return _node->getMember(1); }
 
-  /// @brief Get the options
-  AstNode* getOptions() const { return _node->getMember(2); }
+  /// @brief Get the expression
+  AstNode* getExpression() const { return _node->getMember(2); }
+
+  /// @brief Get the variable for the OLD value
+  AstNode* getReturnVariable() const { return _node->getMember(3); }
 };
 
 /// @brief INSERT node wrapper
 struct InsertNode : TypedAstNode {
   explicit InsertNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_INSERT) << node->getTypeString();
-    TRI_ASSERT(node->numMembers() == 3)
-        << "expected 3 members in NODE_TYPE_INSERT, found "
+    TRI_ASSERT(node->numMembers() >= 4)
+        << "expected at least 4 members in NODE_TYPE_INSERT, found "
+        << node->numMembers();
+    TRI_ASSERT(node->numMembers() <= 5)
+        << "expected at most 5 members in NODE_TYPE_INSERT, found "
         << node->numMembers();
   }
 
-  /// @brief Get the document expression
-  AstNode* getDocument() const { return _node->getMember(0); }
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(0); }
 
   /// @brief Get the collection
   AstNode* getCollection() const { return _node->getMember(1); }
 
-  /// @brief Get the options
-  AstNode* getOptions() const { return _node->getMember(2); }
+  /// @brief Get the document expression
+  AstNode* getExpression() const { return _node->getMember(2); }
+
+  /// @brief Get the NEW variable
+  AstNode* getNewVariable() const { return _node->getMember(3); }
+
+  /// @brief Get the OLD variable (only present if returnOld is true)
+  AstNode* getOldVariable() const {
+    return (_node->numMembers() == 5) ? _node->getMember(4) : nullptr;
+  }
 };
 
 /// @brief UPDATE node wrapper
 struct UpdateNode : TypedAstNode {
   explicit UpdateNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_UPDATE) << node->getTypeString();
-    TRI_ASSERT(node->numMembers() == 4)
-        << "expected 4 members in NODE_TYPE_UPDATE, found "
+    TRI_ASSERT(node->numMembers() == 6)
+        << "expected 6 members in NODE_TYPE_UPDATE, found "
         << node->numMembers();
   }
 
-  /// @brief Get the document expression
-  AstNode* getDocument() const { return _node->getMember(0); }
-
-  /// @brief Get the update expression
-  AstNode* getUpdate() const { return _node->getMember(1); }
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(0); }
 
   /// @brief Get the collection
-  AstNode* getCollection() const { return _node->getMember(2); }
+  AstNode* getCollection() const { return _node->getMember(1); }
 
-  /// @brief Get the options
-  AstNode* getOptions() const { return _node->getMember(3); }
+  /// @brief Get the document expression
+  AstNode* getDocument() const { return _node->getMember(2); }
+
+  /// @brief Get the key expression
+  AstNode* getKeyExpression() const { return _node->getMember(3); }
+
+  /// @brief Get the OLD variable
+  AstNode* getOldVariable() const { return _node->getMember(4); }
+
+  /// @brief Get the NEW variable
+  AstNode* getNewVariable() const { return _node->getMember(5); }
 };
 
 /// @brief REPLACE node wrapper
 struct ReplaceNode : TypedAstNode {
   explicit ReplaceNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_REPLACE) << node->getTypeString();
-    TRI_ASSERT(node->numMembers() == 4)
-        << "expected 4 members in NODE_TYPE_REPLACE, found "
+    TRI_ASSERT(node->numMembers() == 6)
+        << "expected 6 members in NODE_TYPE_REPLACE, found "
         << node->numMembers();
   }
 
-  /// @brief Get the document expression
-  AstNode* getDocument() const { return _node->getMember(0); }
-
-  /// @brief Get the replace expression
-  AstNode* getReplace() const { return _node->getMember(1); }
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(0); }
 
   /// @brief Get the collection
-  AstNode* getCollection() const { return _node->getMember(2); }
+  AstNode* getCollection() const { return _node->getMember(1); }
 
-  /// @brief Get the options
-  AstNode* getOptions() const { return _node->getMember(3); }
+  /// @brief Get the document expression
+  AstNode* getDocument() const { return _node->getMember(2); }
+
+  /// @brief Get the key expression
+  AstNode* getKeyExpression() const { return _node->getMember(3); }
+
+  /// @brief Get the OLD variable
+  AstNode* getOldVariable() const { return _node->getMember(4); }
+
+  /// @brief Get the NEW variable
+  AstNode* getNewVariable() const { return _node->getMember(5); }
 };
 
 /// @brief UPSERT node wrapper
@@ -245,26 +270,26 @@ struct UpsertNode : TypedAstNode {
         << node->numMembers();
   }
 
-  /// @brief Get the document variable
-  AstNode* getDocumentVariable() const { return _node->getMember(0); }
-
-  /// @brief Get the insert expression
-  AstNode* getInsertExpression() const { return _node->getMember(1); }
-
-  /// @brief Get the update expression
-  AstNode* getUpdateExpression() const { return _node->getMember(2); }
+  /// @brief Get the options
+  AstNode* getOptions() const { return _node->getMember(0); }
 
   /// @brief Get the collection
-  AstNode* getCollection() const { return _node->getMember(3); }
+  AstNode* getCollection() const { return _node->getMember(1); }
 
-  /// @brief Get the options
-  AstNode* getOptions() const { return _node->getMember(4); }
+  /// @brief Get the document variable
+  AstNode* getDocumentVariable() const { return _node->getMember(2); }
 
-  /// @brief Get the insert options
-  AstNode* getInsertOptions() const { return _node->getMember(5); }
+  /// @brief Get the insert expression
+  AstNode* getInsertExpression() const { return _node->getMember(3); }
 
-  /// @brief Get the update options
-  AstNode* getUpdateOptions() const { return _node->getMember(6); }
+  /// @brief Get the update expression
+  AstNode* getUpdateExpression() const { return _node->getMember(4); }
+
+  /// @brief Get the OLD variable
+  AstNode* getOldVariable() const { return _node->getMember(5); }
+
+  /// @brief Get the NEW variable
+  AstNode* getNewVariable() const { return _node->getMember(6); }
 
   /// @brief Check if can read own writes
   bool canReadOwnWrites() const {
