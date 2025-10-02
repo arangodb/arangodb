@@ -890,7 +890,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
       auto func = static_cast<Function*>(node->getData());
 
       // check function arguments
-      arangodb::aql::ast::FunctionCallNode funcCall(const_cast<AstNode*>(node));
+      arangodb::aql::ast::FunctionCallNode funcCall(node);
       auto args = funcCall.getArguments();
       size_t const n = args->numMembers();
 
@@ -902,7 +902,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
             (conversion == Function::Conversion::Required ||
              conversion == Function::Conversion::Optional)) {
           // collection attribute: no need to check for member simplicity
-          args->changeMember(
+          const_cast<AstNode*>(args)->changeMember(
               i, _ast->createNodeValueString(member->getStringValue(),
                                              member->getStringLength()));
         } else if (member->type == NODE_TYPE_VIEW) {

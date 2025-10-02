@@ -361,7 +361,7 @@ LogicalDataSource::Category addDataSource(
 std::optional<std::string> edgeCollectionNodeGetName(
     AstNode const* edgeCollection) {
   if (edgeCollection->type == NODE_TYPE_DIRECTION) {
-    ast::DirectionNode directionNode(const_cast<AstNode*>(edgeCollection));
+    ast::DirectionNode directionNode(edgeCollection);
     edgeCollection = directionNode.getSteps();
   }
 
@@ -461,7 +461,7 @@ void Ast::addOperation(AstNode* node) {
 /// @brief find the bottom-most expansion subnodes (if any)
 AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
   while (true) {
-    ast::ExpansionNode expansionNode(const_cast<AstNode*>(current));
+    ast::ExpansionNode expansionNode(current);
     if (expansionNode.getExpression()->type != NODE_TYPE_EXPANSION) {
       return current;
     }
@@ -1620,7 +1620,7 @@ AstNode* Ast::createNodeWithCollections(
     AstNode const* collections, CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  ast::ArrayNode collectionsNode(const_cast<AstNode*>(collections));
+  ast::ArrayNode collectionsNode(collections);
   for (auto c : collectionsNode.getElements()) {
     if (c->isStringValue()) {
       auto nameRef = c->getStringView();
@@ -1642,7 +1642,7 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
                                        CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  ast::ArrayNode edgeCollectionsNode(const_cast<AstNode*>(edgeCollections));
+  ast::ArrayNode edgeCollectionsNode(edgeCollections);
   for (auto edgeCollection : edgeCollectionsNode.getElements()) {
     auto edgeCollectionName = edgeCollectionNodeGetName(edgeCollection);
 
@@ -2089,7 +2089,8 @@ void Ast::injectBindParametersFirstStage(
 
         if (name->type == NODE_TYPE_PARAMETER) {
           // on-the-fly replacement of bind parameter with its value equivalent
-          name = replaceValueBindParameter(name, parameters);
+          name =
+              replaceValueBindParameter(const_cast<AstNode*>(name), parameters);
         }
 
         TRI_ASSERT(name->type != NODE_TYPE_PARAMETER);
@@ -3385,7 +3386,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
              node->type == NODE_TYPE_OPERATOR_UNARY_MINUS);
 
   ast::UnaryOperatorNode unaryOp(node);
-  AstNode* operand = unaryOp.getOperand();
+  AstNode const* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
     return node;
@@ -3450,7 +3451,7 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
 
   ast::UnaryOperatorNode unaryOp(node);
-  AstNode* operand = unaryOp.getOperand();
+  AstNode const* operand = unaryOp.getOperand();
 
   if (operand->isComparisonOperator()) {
     // remove the NOT and reverse the operation, e.g. NOT (a == b) => (a != b)
@@ -3472,7 +3473,7 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
 
   ast::UnaryOperatorNode unaryOp(node);
-  AstNode* operand = unaryOp.getOperand();
+  AstNode const* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
     return optimizeNotExpression(node);
@@ -3554,7 +3555,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   ast::BinaryOperatorNode binOp(node);
   AstNode* lhs = binOp.getLeft();
-  AstNode* rhs = binOp.getRight();
+  AstNode* rhs = const_cast<AstNode*>(binOp.getRight());
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3643,8 +3644,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
   TRI_ASSERT(node != nullptr);
 
   ast::BinaryOperatorNode binOp(node);
-  AstNode* lhs = binOp.getLeft();
-  AstNode* rhs = binOp.getRight();
+  AstNode const* lhs = binOp.getLeft();
+  AstNode const* rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3799,11 +3800,9 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
   TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3);
 
   ast::TernaryOperatorNode ternaryOp(node);
-  AstNode* condition = ternaryOp.getCondition();
-  AstNode* truePart =
-      (node->numMembers() == 2) ? condition : ternaryOp.getTrueExpr();
-  AstNode* falsePart = (node->numMembers() == 2) ? ternaryOp.getTrueExpr()
-                                                 : ternaryOp.getFalseExpr();
+  AstNode const* condition = ternaryOp.getCondition();
+  AstNode* truePart = ternaryOp.getTrueExpr();
+  AstNode* falsePart = ternaryOp.getFalseExpr();
 
   if (condition == nullptr || truePart == nullptr || falsePart == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3857,8 +3856,8 @@ AstNode* Ast::optimizeAttributeAccess(
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == search) {
         // found matching member
-        ast::ObjectElementNode objElem(const_cast<AstNode*>(member));
-        return objElem.getValue();
+        ast::ObjectElementNode objElem(member);
+        return const_cast<AstNode*>(objElem.getValue());
       }
     }
   }
@@ -3977,7 +3976,7 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
   TRI_ASSERT(node != nullptr);
 
   ast::FilterNode filterNode(node);
-  AstNode* expression = filterNode.getExpression();
+  AstNode const* expression = filterNode.getExpression();
 
   if (expression == nullptr || !expression->isDeterministic()) {
     return node;
@@ -4003,7 +4002,7 @@ AstNode* Ast::optimizeFor(AstNode* node) {
   TRI_ASSERT(node != nullptr);
 
   ast::ForNode forNode(node);
-  AstNode* expression = forNode.getExpression();
+  AstNode const* expression = forNode.getExpression();
 
   if (expression == nullptr) {
     return node;
@@ -4181,7 +4180,7 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
             member->getStringView() == attributeName) {
           // found the attribute
-          ast::ObjectElementNode objElem(const_cast<AstNode*>(member));
+          ast::ObjectElementNode objElem(member);
           node = objElem.getValue();
           if (which == 0) {
             // we found what we looked for
@@ -4382,10 +4381,11 @@ AstNode* Ast::createNodeCollectionNoValidation(std::string_view name,
 }
 
 void Ast::extractCollectionsFromGraph(BindParameters& parameters,
-                                      AstNode* graphNode) {
+                                      AstNode const* graphNode) {
   TRI_ASSERT(graphNode != nullptr);
   if (graphNode->type == NODE_TYPE_PARAMETER) {
-    graphNode = replaceValueBindParameter(graphNode, parameters);
+    graphNode =
+        replaceValueBindParameter(const_cast<AstNode*>(graphNode), parameters);
   }
 
   TRI_ASSERT(graphNode->type != NODE_TYPE_PARAMETER);
