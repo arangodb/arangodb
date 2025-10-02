@@ -115,6 +115,9 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            // There can only be two calculation nodes, the bind variable calculation node and return statement 
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
@@ -141,6 +144,9 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            // There can only be two calculation nodes, the bind variable calculation node and return statement 
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length, JSON.stringify(results));
@@ -166,6 +172,8 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(0, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query).toArray();
             assertEqual(5, results.length);
@@ -192,6 +200,9 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            // There is only one calculation node, from the return statement
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(1, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query).toArray();
             assertEqual(6, results.length, "Inccorect number of results " + JSON.stringify(results));
@@ -228,7 +239,8 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
-            
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
@@ -253,6 +265,8 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 10, "Results should be limited to 10");
@@ -440,9 +454,11 @@ function VectorIndexL2FilterTestSuite() {
             
             // Verify the execution plan has both filter and vector search nodes
             const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
-            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(1, indexNodes.length, "Should have vector search node");
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length, "Should not have filter node");
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
