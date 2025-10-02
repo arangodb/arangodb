@@ -23,13 +23,14 @@
 
 #include "RocksDBVectorIndexList.h"
 
-#include <faiss/MetricType.h>
-#include <faiss/invlists/InvertedLists.h>
 #include "Aql/DocumentExpressionContext.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <faiss/MetricType.h>
+#include <faiss/invlists/InvertedLists.h>
 
 namespace arangodb::vector {
 
@@ -52,9 +53,7 @@ RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
 
   _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
   _it->Seek(_rocksdbKey.string());
-  if (_searchParametersContext.filterExpression) {
-    setToValidIterator();
-  }
+  skipOverFilteredDocuments();
 }
 
 [[nodiscard]] bool RocksDBInvertedListsIterator::is_available() const {
@@ -62,8 +61,10 @@ RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
 }
 
 // This should be only called when we have filterExpression
-void RocksDBInvertedListsIterator::setToValidIterator() {
-  TRI_ASSERT(_searchParametersContext.filterExpression != nullptr);
+void RocksDBInvertedListsIterator::skipOverFilteredDocuments() {
+  if (_searchParametersContext.filterExpression == nullptr) {
+    return;
+  }
 
   while (_it->Valid()) {
     auto const docId = RocksDBKey::indexDocumentId(_it->key());
@@ -102,9 +103,7 @@ void RocksDBInvertedListsIterator::setToValidIterator() {
 
 void RocksDBInvertedListsIterator::next() {
   _it->Next();
-  if (_searchParametersContext.filterExpression) {
-    setToValidIterator();
-  }
+  skipOverFilteredDocuments();
 }
 
 std::pair<faiss::idx_t, uint8_t const*>

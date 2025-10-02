@@ -77,7 +77,7 @@ struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
   [[nodiscard]] bool is_available() const override;
 
   // This should be only called when we have filterExpression
-  void setToValidIterator();
+  void skipOverFilteredDocuments();
 
   void next() override;
 
