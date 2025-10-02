@@ -63,7 +63,8 @@ struct DBServerIndexCursor {
                       size_t cursorId, uint16_t coveringIndexPosition,
                       aql::AstNode* indexCondition,
                       std::optional<size_t> conditionMemberToUpdate,
-                      transaction::Methods* trx, aql::TraversalStats& stats,
+                      transaction::Methods* trx,
+                      std::shared_ptr<aql::TraversalStats> stats,
                       aql::Variable const* tmpVar, ResourceMonitor& monitor)
       : _idxHandle{idxHandle},
         _cursorId{cursorId},
@@ -105,13 +106,13 @@ struct DBServerIndexCursor {
   std::vector<LocalDocumentId> _cache;
   size_t _cachePos = 0;
 
-  aql::TraversalStats _stats;
+  std::shared_ptr<aql::TraversalStats> _stats;
 };
 
 auto createDBServerIndexCursors(
     std::vector<BaseOptions::LookupInfo> const& lookupInfos,
     aql::Variable const* tmpVar, transaction::Methods* trx,
-    aql::TraversalStats& stats, ResourceMonitor& monitor)
+    std::shared_ptr<aql::TraversalStats> stats, ResourceMonitor& monitor)
     -> std::vector<DBServerIndexCursor>;
 
 }  // namespace graph

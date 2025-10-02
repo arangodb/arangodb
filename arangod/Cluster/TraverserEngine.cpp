@@ -392,8 +392,8 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t batchId,
 
 void BaseTraverserEngine::addAndClearStatistics(VPackBuilder& builder) {
   // TODO find out why cache's statistics are atomic
-  auto stats = _opts->stats();
-  _opts->stats().clear();
+  auto stats = *_opts->stats();
+  _opts->stats()->clear();
   builder.add("readIndex", VPackValue(stats.getScannedIndex()));
   builder.add("filtered", VPackValue(stats.getFiltered()));
   builder.add("cacheHits", VPackValue(stats.getCacheHits()));
@@ -493,8 +493,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
   }
   builder.close();
 
-  auto stats = _opts->stats();
-  _opts->stats().clear();
+  // intentional; copy & clear
+  auto stats = *_opts->stats();
+  _opts->stats()->clear();
 
   // statistics
   builder.add("readIndex", VPackValue(stats.getScannedIndex()));

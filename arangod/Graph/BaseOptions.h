@@ -198,8 +198,7 @@ struct BaseOptions {
       bool enableDocumentCache,
       std::unordered_map<ServerID, aql::EngineId> const* engines);
 
-  aql::TraversalStats& stats() { return _stats; };
-  aql::TraversalStats const& stats() const { return _stats; };
+  std::shared_ptr<aql::TraversalStats> stats() { return _stats; };
 
   MonitoredCollectionToShardMap const& collectionToShard() const {
     return _collectionToShard;
@@ -344,7 +343,7 @@ struct BaseOptions {
   /// @brief user hint regarding which indexes to use
   aql::IndexHint _hint;
 
-  aql::TraversalStats _stats;
+  std::shared_ptr<aql::TraversalStats> _stats;
 };
 
 }  // namespace graph
