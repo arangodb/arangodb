@@ -564,8 +564,9 @@ struct TernaryOperatorNode : TypedAstNode {
   explicit TernaryOperatorNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY)
         << node->getTypeString();
-    TRI_ASSERT(node->numMembers() == 3)
-        << "expected 3 members in NODE_TYPE_OPERATOR_TERNARY, found "
+    TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3)
+        << "expected at least 2 and at most 3 members in "
+           "NODE_TYPE_OPERATOR_TERNARY, found "
         << node->numMembers();
   }
 
@@ -573,10 +574,20 @@ struct TernaryOperatorNode : TypedAstNode {
   AstNode* getCondition() const { return _node->getMember(0); }
 
   /// @brief Get the true expression
-  AstNode* getTrueExpr() const { return _node->getMember(1); }
+  /// For 2-member ternary: returns the condition (same as getCondition())
+  /// For 3-member ternary: returns the true expression
+  AstNode* getTrueExpr() const {
+    return (_node->numMembers() == 2) ? _node->getMember(0)
+                                      : _node->getMember(1);
+  }
 
   /// @brief Get the false expression
-  AstNode* getFalseExpr() const { return _node->getMember(2); }
+  /// For 2-member ternary: returns the false expression (member 1)
+  /// For 3-member ternary: returns the false expression (member 2)
+  AstNode* getFalseExpr() const {
+    return (_node->numMembers() == 2) ? _node->getMember(1)
+                                      : _node->getMember(2);
+  }
 };
 
 /// @brief N-ary operator node wrapper
