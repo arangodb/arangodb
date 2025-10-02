@@ -391,7 +391,7 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t batchId,
 }
 
 void BaseTraverserEngine::addAndClearStatistics(VPackBuilder& builder) {
-  // TODO find out why cache's statistics are atomic
+  // Copy & clear is intentional
   auto stats = *_opts->stats();
   _opts->stats()->clear();
   builder.add("readIndex", VPackValue(stats.getScannedIndex()));
