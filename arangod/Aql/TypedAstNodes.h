@@ -45,7 +45,7 @@ struct TypedAstNode {
 /// @brief Root node wrapper
 struct RootNode : TypedAstNode {
   explicit RootNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ROOT);
+    TRI_ASSERT(node->type == NODE_TYPE_ROOT) << node->getTypeString();
   }
 
   /// @brief Get all operations in the root
@@ -60,7 +60,7 @@ struct RootNode : TypedAstNode {
 /// @brief FOR loop node wrapper
 struct ForNode : TypedAstNode {
   explicit ForNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_FOR);
+    TRI_ASSERT(node->type == NODE_TYPE_FOR) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 3)
         << "expected 3 members in NODE_TYPE_FOR, found " << node->numMembers();
   }
@@ -83,7 +83,7 @@ struct ForNode : TypedAstNode {
 /// @brief FOR VIEW node wrapper
 struct ForViewNode : TypedAstNode {
   explicit ForViewNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_FOR_VIEW);
+    TRI_ASSERT(node->type == NODE_TYPE_FOR_VIEW) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 4)
         << "expected 4 members in NODE_TYPE_FOR_VIEW, found "
         << node->numMembers();
@@ -110,7 +110,7 @@ struct ForViewNode : TypedAstNode {
 /// @brief LET assignment node wrapper
 struct LetNode : TypedAstNode {
   explicit LetNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_LET);
+    TRI_ASSERT(node->type == NODE_TYPE_LET) << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 2)
         << "expected at least 2 members in NODE_TYPE_LET, found "
         << node->numMembers();
@@ -131,7 +131,7 @@ struct LetNode : TypedAstNode {
 /// @brief FILTER node wrapper
 struct FilterNode : TypedAstNode {
   explicit FilterNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_FILTER);
+    TRI_ASSERT(node->type == NODE_TYPE_FILTER) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_FILTER, found "
         << node->numMembers();
@@ -144,7 +144,7 @@ struct FilterNode : TypedAstNode {
 /// @brief RETURN node wrapper
 struct ReturnNode : TypedAstNode {
   explicit ReturnNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_RETURN);
+    TRI_ASSERT(node->type == NODE_TYPE_RETURN) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_RETURN, found "
         << node->numMembers();
@@ -157,7 +157,7 @@ struct ReturnNode : TypedAstNode {
 /// @brief REMOVE node wrapper
 struct RemoveNode : TypedAstNode {
   explicit RemoveNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_REMOVE);
+    TRI_ASSERT(node->type == NODE_TYPE_REMOVE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 3)
         << "expected 3 members in NODE_TYPE_REMOVE, found "
         << node->numMembers();
@@ -176,7 +176,7 @@ struct RemoveNode : TypedAstNode {
 /// @brief INSERT node wrapper
 struct InsertNode : TypedAstNode {
   explicit InsertNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_INSERT);
+    TRI_ASSERT(node->type == NODE_TYPE_INSERT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 3)
         << "expected 3 members in NODE_TYPE_INSERT, found "
         << node->numMembers();
@@ -195,7 +195,7 @@ struct InsertNode : TypedAstNode {
 /// @brief UPDATE node wrapper
 struct UpdateNode : TypedAstNode {
   explicit UpdateNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_UPDATE);
+    TRI_ASSERT(node->type == NODE_TYPE_UPDATE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 4)
         << "expected 4 members in NODE_TYPE_UPDATE, found "
         << node->numMembers();
@@ -217,7 +217,7 @@ struct UpdateNode : TypedAstNode {
 /// @brief REPLACE node wrapper
 struct ReplaceNode : TypedAstNode {
   explicit ReplaceNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_REPLACE);
+    TRI_ASSERT(node->type == NODE_TYPE_REPLACE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 4)
         << "expected 4 members in NODE_TYPE_REPLACE, found "
         << node->numMembers();
@@ -239,7 +239,7 @@ struct ReplaceNode : TypedAstNode {
 /// @brief UPSERT node wrapper
 struct UpsertNode : TypedAstNode {
   explicit UpsertNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_UPSERT);
+    TRI_ASSERT(node->type == NODE_TYPE_UPSERT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 7)
         << "expected 7 members in NODE_TYPE_UPSERT, found "
         << node->numMembers();
@@ -275,7 +275,7 @@ struct UpsertNode : TypedAstNode {
 /// @brief COLLECT node wrapper
 struct CollectNode : TypedAstNode {
   explicit CollectNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_COLLECT);
+    TRI_ASSERT(node->type == NODE_TYPE_COLLECT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 6)
         << "expected 6 members in NODE_TYPE_COLLECT, found "
         << node->numMembers();
@@ -303,7 +303,7 @@ struct CollectNode : TypedAstNode {
 /// @brief SORT node wrapper
 struct SortNode : TypedAstNode {
   explicit SortNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_SORT);
+    TRI_ASSERT(node->type == NODE_TYPE_SORT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_SORT, found " << node->numMembers();
   }
@@ -315,7 +315,7 @@ struct SortNode : TypedAstNode {
 /// @brief SORT ELEMENT node wrapper
 struct SortElementNode : TypedAstNode {
   explicit SortElementNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_SORT_ELEMENT);
+    TRI_ASSERT(node->type == NODE_TYPE_SORT_ELEMENT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_SORT_ELEMENT, found "
         << node->numMembers();
@@ -331,7 +331,7 @@ struct SortElementNode : TypedAstNode {
 /// @brief LIMIT node wrapper
 struct LimitNode : TypedAstNode {
   explicit LimitNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_LIMIT);
+    TRI_ASSERT(node->type == NODE_TYPE_LIMIT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_LIMIT, found "
         << node->numMembers();
@@ -347,7 +347,7 @@ struct LimitNode : TypedAstNode {
 /// @brief WINDOW node wrapper
 struct WindowNode : TypedAstNode {
   explicit WindowNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_WINDOW);
+    TRI_ASSERT(node->type == NODE_TYPE_WINDOW) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 3)
         << "expected 3 members in NODE_TYPE_WINDOW, found "
         << node->numMembers();
@@ -366,7 +366,7 @@ struct WindowNode : TypedAstNode {
 /// @brief DISTINCT node wrapper
 struct DistinctNode : TypedAstNode {
   explicit DistinctNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_DISTINCT);
+    TRI_ASSERT(node->type == NODE_TYPE_DISTINCT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_DISTINCT, found "
         << node->numMembers();
@@ -379,7 +379,7 @@ struct DistinctNode : TypedAstNode {
 /// @brief TRAVERSAL node wrapper
 struct TraversalNode : TypedAstNode {
   explicit TraversalNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_TRAVERSAL);
+    TRI_ASSERT(node->type == NODE_TYPE_TRAVERSAL) << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 6)
         << "expected at least 6 members in NODE_TYPE_TRAVERSAL, found "
         << node->numMembers();
@@ -416,7 +416,7 @@ struct TraversalNode : TypedAstNode {
 /// @brief SHORTEST PATH node wrapper
 struct ShortestPathNode : TypedAstNode {
   explicit ShortestPathNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_SHORTEST_PATH);
+    TRI_ASSERT(node->type == NODE_TYPE_SHORTEST_PATH) << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 6)
         << "expected at least 6 members in NODE_TYPE_SHORTEST_PATH, found "
         << node->numMembers();
@@ -453,7 +453,8 @@ struct ShortestPathNode : TypedAstNode {
 /// @brief ENUMERATE PATHS node wrapper
 struct EnumeratePathsNode : TypedAstNode {
   explicit EnumeratePathsNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ENUMERATE_PATHS);
+    TRI_ASSERT(node->type == NODE_TYPE_ENUMERATE_PATHS)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 7)
         << "expected at least 7 members in NODE_TYPE_ENUMERATE_PATHS, found "
         << node->numMembers();
@@ -487,7 +488,7 @@ struct EnumeratePathsNode : TypedAstNode {
 /// @brief WITH node wrapper
 struct WithNode : TypedAstNode {
   explicit WithNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_WITH);
+    TRI_ASSERT(node->type == NODE_TYPE_WITH) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_WITH, found " << node->numMembers();
   }
@@ -499,7 +500,7 @@ struct WithNode : TypedAstNode {
 /// @brief Variable node wrapper
 struct VariableNode : TypedAstNode {
   explicit VariableNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_VARIABLE);
+    TRI_ASSERT(node->type == NODE_TYPE_VARIABLE) << node->getTypeString();
   }
 
   /// @brief Get the variable as a Variable object
@@ -511,7 +512,7 @@ struct VariableNode : TypedAstNode {
 /// @brief Assignment node wrapper
 struct AssignNode : TypedAstNode {
   explicit AssignNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ASSIGN);
+    TRI_ASSERT(node->type == NODE_TYPE_ASSIGN) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ASSIGN, found "
         << node->numMembers();
@@ -529,7 +530,8 @@ struct UnaryOperatorNode : TypedAstNode {
   explicit UnaryOperatorNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
                node->type == NODE_TYPE_OPERATOR_UNARY_MINUS ||
-               node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
+               node->type == NODE_TYPE_OPERATOR_UNARY_NOT)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in unary operator, found " << node->numMembers();
   }
@@ -560,7 +562,8 @@ struct BinaryOperatorNode : TypedAstNode {
 /// @brief Ternary operator node wrapper
 struct TernaryOperatorNode : TypedAstNode {
   explicit TernaryOperatorNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 3)
         << "expected 3 members in NODE_TYPE_OPERATOR_TERNARY, found "
         << node->numMembers();
@@ -580,7 +583,8 @@ struct TernaryOperatorNode : TypedAstNode {
 struct NaryOperatorNode : TypedAstNode {
   explicit NaryOperatorNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND ||
-               node->type == NODE_TYPE_OPERATOR_NARY_OR);
+               node->type == NODE_TYPE_OPERATOR_NARY_OR)
+        << node->getTypeString();
   }
 
   /// @brief Get all operands
@@ -592,7 +596,7 @@ struct NaryOperatorNode : TypedAstNode {
 /// @brief Subquery node wrapper
 struct SubqueryNode : TypedAstNode {
   explicit SubqueryNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_SUBQUERY);
+    TRI_ASSERT(node->type == NODE_TYPE_SUBQUERY) << node->getTypeString();
   }
 
   /// @brief Get the subquery AST
@@ -602,7 +606,8 @@ struct SubqueryNode : TypedAstNode {
 /// @brief Attribute access node wrapper
 struct AttributeAccessNode : TypedAstNode {
   explicit AttributeAccessNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+    TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_ATTRIBUTE_ACCESS, found "
         << node->numMembers();
@@ -618,7 +623,8 @@ struct AttributeAccessNode : TypedAstNode {
 /// @brief Bound attribute access node wrapper
 struct BoundAttributeAccessNode : TypedAstNode {
   explicit BoundAttributeAccessNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS);
+    TRI_ASSERT(node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_BOUND_ATTRIBUTE_ACCESS, found "
         << node->numMembers();
@@ -634,7 +640,7 @@ struct BoundAttributeAccessNode : TypedAstNode {
 /// @brief Indexed access node wrapper
 struct IndexedAccessNode : TypedAstNode {
   explicit IndexedAccessNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
+    TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_INDEXED_ACCESS, found "
         << node->numMembers();
@@ -650,7 +656,7 @@ struct IndexedAccessNode : TypedAstNode {
 /// @brief Expansion node wrapper
 struct ExpansionNode : TypedAstNode {
   explicit ExpansionNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_EXPANSION);
+    TRI_ASSERT(node->type == NODE_TYPE_EXPANSION) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 5)
         << "expected 5 members in NODE_TYPE_EXPANSION, found "
         << node->numMembers();
@@ -678,7 +684,7 @@ struct ExpansionNode : TypedAstNode {
 /// @brief Iterator node wrapper
 struct IteratorNode : TypedAstNode {
   explicit IteratorNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ITERATOR);
+    TRI_ASSERT(node->type == NODE_TYPE_ITERATOR) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ITERATOR, found "
         << node->numMembers();
@@ -694,7 +700,7 @@ struct IteratorNode : TypedAstNode {
 /// @brief Value node wrapper
 struct ValueNode : TypedAstNode {
   explicit ValueNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_VALUE);
+    TRI_ASSERT(node->type == NODE_TYPE_VALUE) << node->getTypeString();
   }
 
   /// @brief Get the value type
@@ -716,7 +722,7 @@ struct ValueNode : TypedAstNode {
 /// @brief Array node wrapper
 struct ArrayNode : TypedAstNode {
   explicit ArrayNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ARRAY);
+    TRI_ASSERT(node->type == NODE_TYPE_ARRAY) << node->getTypeString();
   }
 
   /// @brief Get all array elements
@@ -728,7 +734,7 @@ struct ArrayNode : TypedAstNode {
 /// @brief Object node wrapper
 struct ObjectNode : TypedAstNode {
   explicit ObjectNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_OBJECT);
+    TRI_ASSERT(node->type == NODE_TYPE_OBJECT) << node->getTypeString();
   }
 
   /// @brief Get all object elements
@@ -740,7 +746,7 @@ struct ObjectNode : TypedAstNode {
 /// @brief Object element node wrapper
 struct ObjectElementNode : TypedAstNode {
   explicit ObjectElementNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_OBJECT_ELEMENT);
+    TRI_ASSERT(node->type == NODE_TYPE_OBJECT_ELEMENT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_OBJECT_ELEMENT, found "
         << node->numMembers();
@@ -756,7 +762,8 @@ struct ObjectElementNode : TypedAstNode {
 /// @brief Calculated object element node wrapper
 struct CalculatedObjectElementNode : TypedAstNode {
   explicit CalculatedObjectElementNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
+    TRI_ASSERT(node->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_CALCULATED_OBJECT_ELEMENT, found "
         << node->numMembers();
@@ -772,7 +779,7 @@ struct CalculatedObjectElementNode : TypedAstNode {
 /// @brief Collection node wrapper
 struct CollectionNode : TypedAstNode {
   explicit CollectionNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_COLLECTION);
+    TRI_ASSERT(node->type == NODE_TYPE_COLLECTION) << node->getTypeString();
   }
 
   /// @brief Get the collection name
@@ -782,7 +789,7 @@ struct CollectionNode : TypedAstNode {
 /// @brief View node wrapper
 struct ViewNode : TypedAstNode {
   explicit ViewNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_VIEW);
+    TRI_ASSERT(node->type == NODE_TYPE_VIEW) << node->getTypeString();
   }
 
   /// @brief Get the view name
@@ -792,7 +799,7 @@ struct ViewNode : TypedAstNode {
 /// @brief Reference node wrapper
 struct ReferenceNode : TypedAstNode {
   explicit ReferenceNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_REFERENCE);
+    TRI_ASSERT(node->type == NODE_TYPE_REFERENCE) << node->getTypeString();
   }
 
   /// @brief Get the variable as a Variable object
@@ -804,7 +811,7 @@ struct ReferenceNode : TypedAstNode {
 /// @brief Parameter node wrapper
 struct ParameterNode : TypedAstNode {
   explicit ParameterNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_PARAMETER);
+    TRI_ASSERT(node->type == NODE_TYPE_PARAMETER) << node->getTypeString();
   }
 
   /// @brief Get the parameter name
@@ -814,7 +821,8 @@ struct ParameterNode : TypedAstNode {
 /// @brief Datasource parameter node wrapper
 struct ParameterDatasourceNode : TypedAstNode {
   explicit ParameterDatasourceNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+    TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE)
+        << node->getTypeString();
   }
 
   /// @brief Get the parameter name
@@ -825,7 +833,8 @@ struct ParameterDatasourceNode : TypedAstNode {
 struct FunctionCallNode : TypedAstNode {
   explicit FunctionCallNode(AstNode* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_FCALL ||
-               node->type == NODE_TYPE_FCALL_USER);
+               node->type == NODE_TYPE_FCALL_USER)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in function call, found " << node->numMembers();
   }
@@ -840,7 +849,7 @@ struct FunctionCallNode : TypedAstNode {
 /// @brief Range node wrapper
 struct RangeNode : TypedAstNode {
   explicit RangeNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_RANGE);
+    TRI_ASSERT(node->type == NODE_TYPE_RANGE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_RANGE, found "
         << node->numMembers();
@@ -856,7 +865,7 @@ struct RangeNode : TypedAstNode {
 /// @brief Array limit node wrapper
 struct ArrayLimitNode : TypedAstNode {
   explicit ArrayLimitNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ARRAY_LIMIT);
+    TRI_ASSERT(node->type == NODE_TYPE_ARRAY_LIMIT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ARRAY_LIMIT, found "
         << node->numMembers();
@@ -872,7 +881,7 @@ struct ArrayLimitNode : TypedAstNode {
 /// @brief Array filter node wrapper
 struct ArrayFilterNode : TypedAstNode {
   explicit ArrayFilterNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ARRAY_FILTER);
+    TRI_ASSERT(node->type == NODE_TYPE_ARRAY_FILTER) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ARRAY_FILTER, found "
         << node->numMembers();
@@ -888,7 +897,7 @@ struct ArrayFilterNode : TypedAstNode {
 /// @brief Destructuring node wrapper
 struct DestructuringNode : TypedAstNode {
   explicit DestructuringNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_DESTRUCTURING);
+    TRI_ASSERT(node->type == NODE_TYPE_DESTRUCTURING) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_DESTRUCTURING, found "
         << node->numMembers();
@@ -904,7 +913,8 @@ struct DestructuringNode : TypedAstNode {
 /// @brief Collection list node wrapper
 struct CollectionListNode : TypedAstNode {
   explicit CollectionListNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_COLLECTION_LIST);
+    TRI_ASSERT(node->type == NODE_TYPE_COLLECTION_LIST)
+        << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_COLLECTION_LIST, found "
         << node->numMembers();
@@ -917,7 +927,7 @@ struct CollectionListNode : TypedAstNode {
 /// @brief Direction node wrapper
 struct DirectionNode : TypedAstNode {
   explicit DirectionNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_DIRECTION);
+    TRI_ASSERT(node->type == NODE_TYPE_DIRECTION) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_DIRECTION, found "
         << node->numMembers();
@@ -933,7 +943,7 @@ struct DirectionNode : TypedAstNode {
 /// @brief Quantifier node wrapper
 struct QuantifierNode : TypedAstNode {
   explicit QuantifierNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_QUANTIFIER);
+    TRI_ASSERT(node->type == NODE_TYPE_QUANTIFIER) << node->getTypeString();
   }
 
   /// @brief Get the quantifier type
@@ -951,7 +961,7 @@ struct QuantifierNode : TypedAstNode {
 /// @brief Aggregations node wrapper
 struct AggregationsNode : TypedAstNode {
   explicit AggregationsNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS);
+    TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS) << node->getTypeString();
   }
 
   /// @brief Get all aggregations
@@ -963,7 +973,7 @@ struct AggregationsNode : TypedAstNode {
 /// @brief Example node wrapper
 struct ExampleNode : TypedAstNode {
   explicit ExampleNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_EXAMPLE);
+    TRI_ASSERT(node->type == NODE_TYPE_EXAMPLE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_EXAMPLE, found "
         << node->numMembers();
@@ -979,14 +989,14 @@ struct ExampleNode : TypedAstNode {
 /// @brief NOP node wrapper
 struct NopNode : TypedAstNode {
   explicit NopNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_NOP);
+    TRI_ASSERT(node->type == NODE_TYPE_NOP) << node->getTypeString();
   }
 };
 
 /// @brief Passthru node wrapper
 struct PassthruNode : TypedAstNode {
   explicit PassthruNode(AstNode* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_PASSTHRU);
+    TRI_ASSERT(node->type == NODE_TYPE_PASSTHRU) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_PASSTHRU, found "
         << node->numMembers();
