@@ -58,21 +58,15 @@ namespace graph {
 
 class TraverserCache {
  public:
-  explicit TraverserCache(aql::QueryContext& query, BaseOptions* opts)
-      : _query(query),
-        _trx(opts->trx()),
-        _insertedDocuments(0),
+  explicit TraverserCache()
+      : _insertedDocuments(0),
         _filtered(0),
         _cursorsCreated(0),
         _cursorsRearmed(0),
         _cacheHits(0),
-        _cacheMisses(0),
-        _baseOptions(opts) {}
+        _cacheMisses(0) {}
 
   virtual ~TraverserCache() = default;
-
-  /// @brief clears all allocated memory in the underlying StringHeap
-  void clear();
 
   [[nodiscard]] std::uint64_t getAndResetInsertedDocuments() {
     return std::exchange(_insertedDocuments, 0);
@@ -114,16 +108,6 @@ class TraverserCache {
   }
 
  protected:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Query used to register warnings to.
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::aql::QueryContext& _query;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transaction to access data, This class is NOT responsible for it.
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::transaction::Methods* _trx;
-
   /// @brief Documents inserted in this cache
   std::uint64_t _insertedDocuments;
   /// @brief Documents filtered
@@ -136,8 +120,6 @@ class TraverserCache {
   std::uint64_t _cacheHits;
   /// @brief number of cache lookup misses
   std::uint64_t _cacheMisses;
-
-  BaseOptions const* _baseOptions;
 };
 
 }  // namespace graph
