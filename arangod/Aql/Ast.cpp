@@ -1518,7 +1518,8 @@ AstNode* Ast::createNodeIntersectedArray(AstNode const* lhs,
       cache(nl, basics::VelocyPackHelper::VPackHash(),
             basics::VelocyPackHelper::VPackEqual());
 
-  VPackBuilder temp;
+  VPackBuilder temp(std::make_shared<velocypack::SupervisedBuffer>(
+      query().resourceMonitor()));
 
   for (size_t i = 0; i < nl; ++i) {
     auto member = lhs->getMemberUnchecked(i);
@@ -1563,7 +1564,8 @@ AstNode* Ast::createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs) {
       cache(nl + nr, basics::VelocyPackHelper::VPackHash(),
             basics::VelocyPackHelper::VPackEqual());
 
-  VPackBuilder temp;
+  VPackBuilder temp(std::make_shared<velocypack::SupervisedBuffer>(
+      query().resourceMonitor()));
 
   for (size_t i = 0; i < nl + nr; ++i) {
     AstNode* member;
@@ -3187,7 +3189,8 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     return node;
   }
 
-  VPackBuilder temp;
+  VPackBuilder temp(std::make_shared<velocypack::SupervisedBuffer>(
+      query().resourceMonitor()));
 
   if (node->isSorted()) {
     bool unique = true;

@@ -602,18 +602,16 @@ void BaseOptions::ensureCache() {
     TRI_ASSERT(!arangodb::ServerState::instance()->isCoordinator());
     // In production just gracefully initialize
     // the cache without document cache, s.t. system does not crash
-    activateCache(false, nullptr);
+    activateCache(nullptr);
   }
   TRI_ASSERT(_cache != nullptr);
 }
 
 void BaseOptions::activateCache(
-    bool enableDocumentCache,
     std::unordered_map<ServerID, aql::EngineId> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(
-      CacheFactory::CreateCache(_query, enableDocumentCache, engines, this));
+  _cache.reset(CacheFactory::CreateCache(_query, false, engines, this));
 }
 
 arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {

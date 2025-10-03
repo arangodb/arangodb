@@ -472,7 +472,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
   // We create the cache, but we do not need any engines.
-  _opts->activateCache(false, nullptr);
+  _opts->activateCache(nullptr);
 
   _forwardCursor = _opts->buildCursor(false);
   _backwardCursor = _opts->buildCursor(true);
@@ -569,7 +569,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);
   // We create the cache, but we do not need any engines.
-  _opts->activateCache(false, nullptr);
+  _opts->activateCache(nullptr);
 }
 
 TraverserEngine::~TraverserEngine() = default;

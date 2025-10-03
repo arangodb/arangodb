@@ -194,7 +194,6 @@ struct BaseOptions {
   void ensureCache();
 
   void activateCache(
-      bool enableDocumentCache,
       std::unordered_map<ServerID, aql::EngineId> const* engines);
 
   MonitoredCollectionToShardMap const& collectionToShard() const {
