@@ -35,6 +35,7 @@
 #include <faiss/invlists/InvertedLists.h>
 #include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
+#include <velocypack/SliceContainer.h>
 
 namespace arangodb {
 
@@ -45,17 +46,18 @@ namespace vector {
 
 struct RocksDBVectorIndexEntryValue {
   std::vector<uint8_t> encodedValue;
-  std::string storedValues;
+  velocypack::SharedSlice storedValues;
 
   void clear() {
-    storedValues.clear();
+    storedValues = {};
     encodedValue.clear();
   }
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
     return f.object(x).fields(f.field("encodedValue", x.encodedValue),
-                              f.field("storedValues", x.storedValues));
+                              f.field("storedValues", x.storedValues)
+                                  .fallback(velocypack::SharedSlice{}));
   }
 };
 

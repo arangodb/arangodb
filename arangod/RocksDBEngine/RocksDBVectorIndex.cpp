@@ -397,7 +397,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     auto const extractedAttribtueValues =
         transaction::extractAttributeValues(trx, _storedValues, doc, true)
             ->get();
-    rocksdbEntryValue.storedValues = extractedAttribtueValues->toString();
+    rocksdbEntryValue.storedValues = extractedAttribtueValues->sharedSlice();
   }
 
   velocypack::Builder builder;
@@ -543,7 +543,7 @@ Result RocksDBVectorIndex::ingestVectors(
     // dim * docIds.size() vectors
     std::vector<float> vectors;
     // Only used if the storedValues are defined on index
-    std::vector<std::string> storedValues;
+    std::vector<velocypack::SharedSlice> storedValues;
   };
 
   struct EncodedVectors {
@@ -551,7 +551,7 @@ Result RocksDBVectorIndex::ingestVectors(
     std::unique_ptr<faiss::idx_t[]> lists;
     std::unique_ptr<uint8_t[]> codes;
     // Only used if the storedValues are defined on index
-    std::vector<std::string> storedValues;
+    std::vector<velocypack::SharedSlice> storedValues;
   };
 
   struct BlockCounters {
@@ -641,7 +641,8 @@ Result RocksDBVectorIndex::ingestVectors(
         if (hasStoredValues()) {
           auto const extractedAttributeValues =
               extractAttributeValuesWithoutTrx(_storedValues, doc, true);
-          batch->storedValues.push_back(extractedAttributeValues->toString());
+          batch->storedValues.push_back(
+              extractedAttributeValues->sharedSlice());
         }
 
         documentIterator->Next();

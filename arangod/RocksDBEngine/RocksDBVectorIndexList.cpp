@@ -35,6 +35,7 @@
 
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -236,36 +237,72 @@ RocksDBInvertedListsFilteringStoredValuesIterator::is_available() const {
 
 bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
   // Get documents ids from the vector index
-  std::vector<LocalDocumentId> ids;
-  std::unordered_map<LocalDocumentId, std::vector<uint8_t>> idsToValue;
-  idsToValue.reserve(kBatchSize);
-  ids.reserve(kBatchSize);
+  std::vector<std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>> items;
+  items.reserve(kBatchSize);
 
   for (size_t i{0}; i < kBatchSize && _it->Valid() &&
                     _it->key().starts_with(_rocksdbKey.string());
        ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
-    ids.emplace_back(id);
-    std::vector<uint8_t> value(_it->value().data(),
-                               _it->value().data() + _it->value().size());
-    idsToValue.emplace(id, std::move(value));
+    RocksDBVectorIndexEntryValue entryValue;
+    auto slice =
+        VPackSlice(reinterpret_cast<uint8_t const*>(_it->value().data()));
+    velocypack::deserialize(slice, entryValue);
+    LOG_DEVEL << "Inserting into items: " << slice.toJson();
+    TRI_ASSERT(slice.isObject());
+
+    items.emplace_back(id, std::move(entryValue));
   }
-  if (ids.empty()) {
+  if (items.empty()) {
     return false;
   }
 
   // Filter using stored values instead of fetching full documents
   _filteredIds.clear();
-  for (auto const& id : ids) {
-    auto const& value = idsToValue[id];
+  for (auto const& [id, value] : items) {
+    // value.storedValues is already a SharedSlice containing the array
+    // (or None if index doesn't have stored values configured)
+    auto storedValuesSlice = value.storedValues.slice();
 
-    RocksDBVectorIndexEntryValue entryValue;
-    auto slice = VPackSlice(reinterpret_cast<uint8_t const*>(value.data()));
+    // If no stored values were stored during insertion, we cannot use them for
+    // filtering. This might happen if:
+    // 1) The index was created without storedValues and later modified
+    // 2) Old documents inserted before storedValues was configured
+    // In this case, skip this document as we cannot properly evaluate the
+    // filter.
+    if (storedValuesSlice.isNone()) {
+      LOG_TOPIC("c42a1", WARN, Logger::ENGINES)
+          << "Document " << id
+          << " in vector index lacks stored values but filtering iterator "
+          << "expects them. Skipping document.";
+      continue;
+    }
 
-    // Simple deserialization - assuming the slice contains the entry value
-    // structure
-    if (!slice.isObject()) {
-      continue;  // Skip invalid entries
+    LOG_DEVEL << ADB_HERE << " data: " << storedValuesSlice.toJson();
+    LOG_DEVEL << ADB_HERE << " data: " << storedValuesSlice.toString();
+    LOG_DEVEL << ADB_HERE
+              << " type: " << static_cast<int>(storedValuesSlice.type())
+              << " isArray: " << storedValuesSlice.isArray()
+              << " isObject: " << storedValuesSlice.isObject()
+              << " isNone: " << storedValuesSlice.isNone()
+              << " isEmptyArray: " << storedValuesSlice.isEmptyArray()
+              << " isEmptyObject: " << storedValuesSlice.isEmptyObject();
+    TRI_ASSERT(storedValuesSlice.isArray());
+    TRI_ASSERT(storedValuesSlice.length() == _index->storedValues().size());
+
+    // Construct partial document which contains only storedValues
+    VPackBuilder partialDocument;
+    {
+      velocypack::ObjectBuilder guard(&partialDocument);
+
+      size_t idx = 0;
+      auto const& storedValues = _index->storedValues();
+      for (size_t i{0}; i < storedValues.size(); ++i) {
+        std::string fieldString;
+        TRI_AttributeNamesToString(storedValues[i], fieldString);
+        partialDocument.add(fieldString, storedValuesSlice.at(idx));
+        ++idx;
+      }
     }
 
     // Create expression context for filtering using stored values
@@ -274,11 +311,7 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
         _aqlFunctionsInternalCache, *_searchParametersContext.filterVarsToRegs,
         *_searchParametersContext.inputRow,
         _searchParametersContext.documentVariable);
-
-    // Create a mock document from stored values for filtering
-    // The stored values are in array format, we need to create a document-like
-    // structure
-    ctx.setCurrentDocument(slice);
+    ctx.setCurrentDocument(partialDocument.slice());
 
     bool mustDestroy{false};
     aql::AqlValue a =
@@ -287,12 +320,7 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
     auto const filterExpressionResult = a.toBoolean();
     if (filterExpressionResult) {
       // We do not keep whole value but only the encoded part used by faiss
-      RocksDBVectorIndexEntryValue entry;
-      auto slice =
-          VPackSlice(reinterpret_cast<uint8_t const*>(idsToValue[id].data()));
-      velocypack::deserialize(slice, entry);
-
-      _filteredIds.emplace_back(id, std::move(entry.encodedValue));
+      _filteredIds.emplace_back(id, std::move(value.encodedValue));
     }
   }
   _filteredIdsIt = _filteredIds.begin();
@@ -341,16 +369,22 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
           [&](SearchParametersContext& searchParametersContext)
               -> faiss::InvertedListsIterator* {
             if (searchParametersContext.isCoveredByStoredValues) {
+              LOG_DEVEL << ADB_HERE
+                        << " adding "
+                           "RocksDBInvertedListsFilteringStoredValuesIterator";
               return new RocksDBInvertedListsFilteringStoredValuesIterator(
                   _index, _collection, searchParametersContext, listNumber,
                   this->code_size);
             }
 
+            LOG_DEVEL << ADB_HERE
+                      << " adding RocksDBInvertedListsFilteringIterator";
             return new RocksDBInvertedListsFilteringIterator(
                 _index, _collection, searchParametersContext, listNumber,
                 this->code_size);
           },
           [&](transaction::Methods* trx) -> faiss::InvertedListsIterator* {
+            LOG_DEVEL << ADB_HERE << " adding RocksDBInvertedListsIterator";
             return new RocksDBInvertedListsIterator(
                 _index, _collection, trx, listNumber, this->code_size);
           },
