@@ -24,6 +24,7 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
+#include "Aql/Quantifier.h"
 
 #include <span>
 
@@ -739,6 +740,18 @@ struct ValueNode : TypedAstNode {
   /// @brief Get the value type
   AstNodeValueType getValueType() const { return _node->value.type; }
 
+  bool isNullValue() const { return getValueType() == VALUE_TYPE_NULL; }
+
+  bool isBoolValue() const { return getValueType() == VALUE_TYPE_BOOL; }
+
+  bool isIntValue() const { return getValueType() == VALUE_TYPE_INT; }
+
+  bool isDoubleValue() const { return getValueType() == VALUE_TYPE_DOUBLE; }
+
+  bool isStringValue() const { return getValueType() == VALUE_TYPE_STRING; }
+
+  uint32_t getStringLength() const { return _node->getStringLength(); }
+
   /// @brief Get the bool value
   bool getBoolValue() const { return _node->getBoolValue(); }
 
@@ -985,15 +998,24 @@ struct QuantifierNode : TypedAstNode {
   }
 
   /// @brief Get the quantifier type
-  int64_t getQuantifierType() const { return _node->getIntValue(); }
-
-  /// @brief Get the value (if any)
-  AstNode const* getValue() const {
-    if (_node->numMembers() > 0) {
-      return _node->getMember(0);
-    }
-    return nullptr;
+  Quantifier::Type getType() const {
+    return static_cast<Quantifier::Type>(_node->getIntValue());
   }
+
+  bool isAll() const noexcept { return getType() == Quantifier::Type::kAll; }
+
+  bool isAny() const noexcept { return getType() == Quantifier::Type::kAny; }
+
+  bool isNone() const noexcept { return getType() == Quantifier::Type::kNone; }
+
+  bool isAtLeast() const noexcept {
+    return getType() == Quantifier::Type::kAtLeast;
+  }
+
+  bool hasValue() const noexcept { return _node->numMembers() == 1; }
+
+  /// @brief Get the value
+  AstNode const* getValue() const { return _node->getMember(0); }
 };
 
 /// @brief Aggregations node wrapper
@@ -1002,10 +1024,8 @@ struct AggregationsNode : TypedAstNode {
     TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS) << node->getTypeString();
   }
 
-  /// @brief Get all aggregations
-  std::span<AstNode* const> getAggregations() const {
-    return _node->getMemberList();
-  }
+  /// @brief Get all aggregates
+  ArrayNode getAggregates() const { return ArrayNode(_node->getMember(0)); }
 };
 
 /// @brief Example node wrapper

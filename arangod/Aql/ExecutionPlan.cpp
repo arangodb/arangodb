@@ -1547,26 +1547,20 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
 
   auto variables = traversalNode.getVariables();
   auto varIt = variables.begin();
-  auto variable = *varIt++;
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  ast::VariableNode varNode(variable);
+  ast::VariableNode varNode(*varIt++);
   auto v = varNode.getVariable();
   TRI_ASSERT(v != nullptr);
   travNode->setVertexOutput(v);
 
   if (varIt != variables.end()) {
     // return the edge as well
-    variable = *varIt++;
-    TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-    ast::VariableNode edgeVarNode(variable);
+    ast::VariableNode edgeVarNode(*varIt++);
     v = edgeVarNode.getVariable();
     TRI_ASSERT(v != nullptr);
     travNode->setEdgeOutput(v);
     if (varIt != variables.end()) {
       // return the path as well
-      variable = *varIt++;
-      TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-      ast::VariableNode pathVarNode(variable);
+      ast::VariableNode pathVarNode(*varIt++);
       v = pathVarNode.getVariable();
       TRI_ASSERT(v != nullptr);
       travNode->setPathOutput(v);
@@ -1625,17 +1619,15 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
 
   auto variables = shortestPathNode.getVariables();
   auto varIt = variables.begin();
-  auto variable = *varIt++;
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
+  ast::VariableNode varNode(*varIt++);
+  auto v = varNode.getVariable();
   TRI_ASSERT(v != nullptr);
   spNode->setVertexOutput(v);
 
   if (varIt != variables.end()) {
     // return the edge as well
-    variable = *varIt++;
-    TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-    v = static_cast<Variable*>(variable->getData());
+    ast::VariableNode edgeVarNode(*varIt++);
+    auto v = edgeVarNode.getVariable();
     TRI_ASSERT(v != nullptr);
     spNode->setEdgeOutput(v);
   }
@@ -2947,7 +2939,7 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
   std::vector<AggregateVarInfo> aggregateVariables;
 
   ast::AggregationsNode aggNode(node);
-  auto list = aggNode.getAggregations();
+  auto list = aggNode.getAggregates().getElements();
   size_t const numVars = list.size();
 
   aggregateVariables.reserve(numVars);

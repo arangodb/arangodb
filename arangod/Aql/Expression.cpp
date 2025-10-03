@@ -36,6 +36,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
+#include "Aql/TypedAstNodes.h"
 #ifdef USE_V8
 #include "Aql/V8ErrorHandler.h"
 #endif
@@ -1760,13 +1761,14 @@ AqlValue Expression::executeSimpleExpressionExpansion(ExpressionContext& ctx,
     if (quantifierNode->type == NODE_TYPE_QUANTIFIER) {
       // ALL|ANY|NONE|AT LEAST
       int64_t atLeast = 0;
-      if (Quantifier::isAtLeast(quantifierNode)) {
+      ast::QuantifierNode quantifier(quantifierNode);
+      if (quantifier.isAtLeast()) {
         // evaluate expression for AT LEAST
-        TRI_ASSERT(quantifierNode->numMembers() == 1);
+        TRI_ASSERT(quantifier.hasValue());
 
         bool mustDestroy = false;
         AqlValue atLeastValue = executeSimpleExpression(
-            ctx, quantifierNode->getMember(0), mustDestroy, false);
+            ctx, quantifier.getValue(), mustDestroy, false);
         AqlValueGuard guard(atLeastValue, mustDestroy);
         atLeast = atLeastValue.toInt64();
         if (atLeast < 0) {

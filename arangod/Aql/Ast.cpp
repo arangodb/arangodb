@@ -2095,12 +2095,12 @@ void Ast::injectBindParametersFirstStage(
         TRI_ASSERT(name->type != NODE_TYPE_PARAMETER);
 
         if (name->type == NODE_TYPE_VALUE) {
-          if (name->value.type == VALUE_TYPE_STRING &&
-              name->value.length != 0) {
+          ast::ValueNode value(name);
+          if (value.isStringValue() && value.getStringLength() != 0) {
             // convert into a regular attribute access node to simplify handling
             // later
             return createNodeAttributeAccess(boundAttrNode.getObject(),
-                                             name->getStringView());
+                                             value.getStringValue());
           }
         } else if (name->type == NODE_TYPE_ARRAY) {
           // bind parameter is an array (e.g. ["a", "b", "c"]. now build the
@@ -3840,11 +3840,8 @@ AstNode* Ast::optimizeAttributeAccess(
     // accessing an attribute from an object
     std::string_view search = node->getStringView();
 
-    size_t const n = what->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      AstNode const* member = what->getMember(i);
-
+    ast::ObjectNode object(what);
+    for (auto member : object.getElements()) {
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == search) {
         // found matching member
@@ -4009,18 +4006,14 @@ AstNode* Ast::optimizeFor(AstNode* node) {
 
 /// @brief optimizes an object literal or an object expression
 AstNode* Ast::optimizeObject(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OBJECT);
+  ast::ObjectNode object(node);
 
-  size_t const n = node->numMembers();
+  auto members = object.getElements();
 
   // only useful to check when there are 2 or more keys
-  if (n >= 2) {
+  if (members.size() >= 2) {
     containers::FlatHashSet<std::string> keys;
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
-
+    for (auto member : members) {
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         // constant key
         if (!keys.emplace(member->getString()).second) {
