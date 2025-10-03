@@ -4615,11 +4615,17 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
 
 void Ast::addGraphNodeImplicitVertexCollections(
     CollectionNameResolver const& resolver) {
-  auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
-
   // Collect all edge collection names used in graph operations using
   // edge collection syntax.
   auto edgeCollections = collectGraphNodeEdgeCollections();
+  if (edgeCollections.empty()) {
+    // The operations below are fairly expensive, so at least for queries
+    // that do not involve edge collection syntax, shortcut
+    return;
+  }
+
+  // TODO: the graphmanager should belong to the Query(Context)
+  auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
   auto maybeImplicitVertexCollections =
       gm.findImplicitVertexCollectionsFromEdgeCollections(edgeCollections);
 
