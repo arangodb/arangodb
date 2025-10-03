@@ -243,18 +243,18 @@ bool translateNodeStackToAttributePath(
  * @return The Category of this datasource (Collection or View), and a reference
  * to the translated name (cid => name if required).
  */
-LogicalDataSource::Category injectDataSourceInQuery(
-    Ast& ast, CollectionNameResolver const& resolver,
-    AccessMode::Type accessType, bool failIfDoesNotExist,
-    std::string_view& nameRef) {
-  // NOTE nameRef may be modified later if a numeric collection ID is given
-  // instead of a collection Name. Afterwards it will contain the name.
-  if (nameRef.empty()) {
+std::pair<LogicalDataSource::Category, std::string_view>
+injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
+                        AccessMode::Type accessType, bool failIfDoesNotExist,
+                        std::string_view name) {
+  // NOTE name may contain a numeric collection ID; in this case the string_view
+  // returned by this function will contain the resolved datasource name
+  if (name.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_ILLEGAL_NAME,
                                    "empty name collections are not supported");
   }
 
-  std::string const name = std::string(nameRef);
+  std::string_view resolved_name{name};
   auto const dataSource = resolver.getDataSource(name);
 
   if (dataSource == nullptr) {
@@ -270,10 +270,10 @@ LogicalDataSource::Category injectDataSourceInQuery(
     // for queries that are parsed-only (e.g. via `db._parse(query);`. In this
     // case it is ok that the datasource does not exist, but we need to track
     // the names of datasources used in the query
-    ast.query().collections().add(name, accessType,
+    ast.query().collections().add(std::string{name}, accessType,
                                   aql::Collection::Hint::None);
 
-    return LogicalDataSource::Category::kCollection;
+    return {LogicalDataSource::Category::kCollection, resolved_name};
   }
 
   // query actual name from datasource... this may be different to the
@@ -287,7 +287,7 @@ LogicalDataSource::Category injectDataSourceInQuery(
     // name on the heap and update our std::string_view to point to it
     char* p = ast.resources().registerString(dataSourceName.data(),
                                              dataSourceName.size());
-    nameRef = std::string_view(p, dataSourceName.size());
+    resolved_name = std::string_view(p, dataSourceName.size());
   }
 
   if (dataSource->category() == LogicalDataSource::Category::kCollection) {
@@ -297,16 +297,16 @@ LogicalDataSource::Category injectDataSourceInQuery(
     if (ServerState::instance()->isDBServer()) {
       hint = aql::Collection::Hint::Shard;
     }
-    ast.query().collections().add(std::string(nameRef), accessType, hint);
-    if (nameRef != name) {
-      ast.query().collections().add(name, accessType,
+    ast.query().collections().add(std::string(resolved_name), accessType, hint);
+    if (resolved_name != name) {
+      ast.query().collections().add(std::string{name}, accessType,
                                     hint);  // Add collection by ID as well
     }
   } else if (dataSource->category() == LogicalDataSource::Category::kView) {
     // it's a view!
     // add views to the collection list
     // to register them with transaction as well
-    ast.query().collections().add(std::string(nameRef), accessType,
+    ast.query().collections().add(std::string(name), accessType,
                                   aql::Collection::Hint::None);
 
     ast.query().addDataSource(*dataSource);
@@ -324,7 +324,64 @@ LogicalDataSource::Category injectDataSourceInQuery(
                                    "unexpected datasource type");
   }
 
-  return dataSource->category();
+  return {dataSource->category(), resolved_name};
+}
+
+LogicalDataSource::Category addDataSource(
+    Ast& ast, CollectionNameResolver const& resolver,
+    std::string_view& nameRef) {
+  auto [category, resolved_name] = injectDataSourceInQuery(
+      ast, resolver, AccessMode::Type::READ, false, nameRef);
+
+  if (category == LogicalDataSource::Category::kCollection) {
+    if (ServerState::instance()->isCoordinator()) {
+      auto& ci = ast.query()
+                     .vocbase()
+                     .server()
+                     .getFeature<ClusterFeature>()
+                     .clusterInfo();
+      auto c = ci.getCollectionNT(ast.query().vocbase().name(), resolved_name);
+      if (c != nullptr) {
+        auto const& names = c->realNames();
+
+        for (auto const& n : names) {
+          std::string_view shardsNameRef(n);
+
+          auto [shardsCategory, _] = injectDataSourceInQuery(
+              ast, resolver, AccessMode::Type::READ, false, shardsNameRef);
+
+          TRI_ASSERT(shardsCategory ==
+                     LogicalDataSource::Category::kCollection);
+        }
+      }  // else { TODO Should we really not react? }
+    }
+  }
+
+  return category;
+}
+
+std::optional<std::string> edgeCollectionNodeGetName(
+    AstNode const* edgeCollection) {
+  if (edgeCollection->type == NODE_TYPE_DIRECTION) {
+    TRI_ASSERT(edgeCollection->numMembers() == 2)
+        << "expected 2 members in NODE_TYPE_DIRECTION, found "
+        << edgeCollection->numMembers();
+    edgeCollection = edgeCollection->getMember(1);
+  }
+
+  if (edgeCollection->isStringValue()) {
+    return edgeCollection->getString();
+  }
+
+  if (edgeCollection->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+    return std::nullopt;
+  }
+
+  // This assert is here to find out whether this can ever happen (it should
+  // not)
+  TRI_ASSERT(false) << "Unhandled node type for edge collection: "
+                    << edgeCollection->getTypeString();
+  return std::nullopt;
 }
 
 }  // namespace
@@ -903,7 +960,7 @@ AstNode* Ast::createNodeDataSource(CollectionNameResolver const& resolver,
   // will throw if validation fails
   validateDataSourceName(name, validateName);
   // this call may update name
-  LogicalCollection::Category category = injectDataSourceInQuery(
+  auto [category, resolved_name] = injectDataSourceInQuery(
       *this, resolver, accessType, failIfDoesNotExist, name);
 
   if (category == LogicalDataSource::Category::kCollection) {
@@ -911,7 +968,7 @@ AstNode* Ast::createNodeDataSource(CollectionNameResolver const& resolver,
   }
   if (category == LogicalDataSource::Category::kView) {
     AstNode* node = createNode(NODE_TYPE_VIEW);
-    node->setStringValue(name.data(), name.size());
+    node->setStringValue(resolved_name.data(), resolved_name.size());
     return node;
   }
   // injectDataSourceInQuery is supposed to throw in this case.
@@ -928,16 +985,16 @@ AstNode* Ast::createNodeCollection(CollectionNameResolver const& resolver,
   // will throw if validation fails
   validateDataSourceName(name, true);
   // this call may update name
-  LogicalCollection::Category category =
+  auto [category, resolved_name] =
       injectDataSourceInQuery(*this, resolver, accessType, false, name);
 
   if (category == LogicalDataSource::Category::kCollection) {
     // add collection to query
-    _query.collections().add(std::string(name), accessType,
+    _query.collections().add(std::string(resolved_name), accessType,
                              Collection::Hint::Collection);
 
     // call private function after validation
-    return createNodeCollectionNoValidation(name, accessType);
+    return createNodeCollectionNoValidation(resolved_name, accessType);
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
@@ -1572,39 +1629,8 @@ AstNode* Ast::createNodeWithCollections(
     auto c = collections->getMember(i);
 
     if (c->isStringValue()) {
-      std::string const name = c->getString();
-      std::string_view nameRef(name);
-      // this call may update nameRef, but it doesn't matter
-      LogicalDataSource::Category category = injectDataSourceInQuery(
-          *this, resolver, AccessMode::Type::READ, false, nameRef);
-      if (category == LogicalDataSource::Category::kCollection) {
-        _query.collections().add(name, AccessMode::Type::READ,
-                                 Collection::Hint::Collection);
-
-        if (ServerState::instance()->isCoordinator()) {
-          auto& ci = _query.vocbase()
-                         .server()
-                         .getFeature<ClusterFeature>()
-                         .clusterInfo();
-
-          // We want to tolerate that a collection name is given here
-          // which does not exist, if only for some unit tests:
-          auto coll = ci.getCollectionNT(_query.vocbase().name(), name);
-          if (coll != nullptr) {
-            auto names = coll->realNames();
-
-            for (auto const& n : names) {
-              std::string_view shardsNameRef(n);
-              LogicalDataSource::Category shardsCategory =
-                  injectDataSourceInQuery(*this, resolver,
-                                          AccessMode::Type::READ, false,
-                                          shardsNameRef);
-              TRI_ASSERT(shardsCategory ==
-                         LogicalDataSource::Category::kCollection);
-            }
-          }
-        }
-      }
+      auto nameRef = c->getStringView();
+      addDataSource(*this, resolver, nameRef);
     }  // else bindParameter use default for collection bindVar
 
     // We do not need to propagate these members
@@ -1623,57 +1649,28 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
                                        CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY);
-
-  auto ss = ServerState::instance();
-  auto doTheAdd = [&](std::string const& name) {
-    std::string_view nameRef(name);
-    LogicalDataSource::Category category = injectDataSourceInQuery(
-        *this, resolver, AccessMode::Type::READ, false, nameRef);
-    if (category == LogicalDataSource::Category::kCollection) {
-      if (ss->isCoordinator()) {
-        auto& ci = _query.vocbase()
-                       .server()
-                       .getFeature<ClusterFeature>()
-                       .clusterInfo();
-        auto c = ci.getCollectionNT(_query.vocbase().name(), name);
-        if (c != nullptr) {
-          auto const& names = c->realNames();
-
-          for (auto const& n : names) {
-            std::string_view shardsNameRef(n);
-            LogicalDataSource::Category shardsCategory =
-                injectDataSourceInQuery(*this, resolver, AccessMode::Type::READ,
-                                        false, shardsNameRef);
-            TRI_ASSERT(shardsCategory ==
-                       LogicalDataSource::Category::kCollection);
-          }
-        }  // else { TODO Should we really not react? }
-      }
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
-          absl::StrCat(nameRef, " is required to be a collection"));
-    }
-  };
+  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY)
+      << edgeCollections->getTypeString();
 
   for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
-    // TODO Direction Parsing!
-    auto eC = edgeCollections->getMember(i);
+    auto edgeCollection = edgeCollections->getMember(i);
 
-    if (eC->isStringValue()) {
-      doTheAdd(eC->getString());
-    } else if (eC->type == NODE_TYPE_DIRECTION) {
-      TRI_ASSERT(eC->numMembers() == 2);
-      auto eCSub = eC->getMember(1);
+    auto edgeCollectionName = edgeCollectionNodeGetName(edgeCollection);
 
-      if (eCSub->isStringValue()) {
-        doTheAdd(eCSub->getString());
+    if (edgeCollectionName.has_value()) {
+      auto edgeCollectionNameRef = std::string_view{*edgeCollectionName};
+      auto category = addDataSource(*this, resolver, edgeCollectionNameRef);
+
+      if (category != LogicalDataSource::Category::kCollection) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_COLLECTION_TYPE_MISMATCH,
+            absl::StrCat(edgeCollectionNameRef,
+                         " is required to be a collection"));
       }
-    }  // else bindParameter use default for collection bindVar
+    }
 
     // We do not need to propagate these members
-    node->addMember(eC);
+    node->addMember(edgeCollection);
   }
 
   return node;

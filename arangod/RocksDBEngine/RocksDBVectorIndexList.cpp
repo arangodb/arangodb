@@ -88,7 +88,7 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
     TRI_ASSERT(opts.prefix_same_as_start);
   });
   _batchIt->Seek(_rocksdbKey.string());
-  setToValidIterator();
+  skipOverFilteredDocuments();
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIterator::is_available() const {
@@ -160,7 +160,7 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
   return true;
 }
 
-void RocksDBInvertedListsFilteringIterator::setToValidIterator() {
+void RocksDBInvertedListsFilteringIterator::skipOverFilteredDocuments() {
   while (_filteredIdsIt == _filteredIds.end()) {
     if (!searchFilteredIds()) {
       // If we enter here we could not produce any documents
@@ -170,10 +170,10 @@ void RocksDBInvertedListsFilteringIterator::setToValidIterator() {
 }
 
 void RocksDBInvertedListsFilteringIterator::next() {
-  setToValidIterator();
+  skipOverFilteredDocuments();
   ++_filteredIdsIt;
   if (_filteredIdsIt == _filteredIds.end()) {
-    setToValidIterator();
+    skipOverFilteredDocuments();
   }
 }
 

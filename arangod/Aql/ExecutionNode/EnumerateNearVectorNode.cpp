@@ -82,13 +82,6 @@ size_t EnumerateNearVectorNode::getMemoryUsedBytes() const {
   return sizeof(*this);
 }
 
-RegisterId EnumerateNearVectorNode::getRegisterId(
-    VariableId const varId) const {
-  auto it = getRegisterPlan()->varInfo.find(varId);
-  TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
-  return it->second.registerId;
-}
-
 std::vector<std::pair<VariableId, RegisterId>>
 EnumerateNearVectorNode::extractFilterVarsToRegs() const {
   VarSet inVars;
@@ -114,12 +107,12 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   auto writableOutputRegisters = RegIdSet{};
   containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
 
-  RegisterId outDocumentRegId = getRegisterId(_documentOutVariable->id);
+  RegisterId outDocumentRegId = variableToRegisterId(_documentOutVariable);
   writableOutputRegisters.emplace(outDocumentRegId);
-  RegisterId outDistanceRegId = getRegisterId(_distanceOutVariable->id);
+  RegisterId outDistanceRegId = variableToRegisterId(_distanceOutVariable);
   writableOutputRegisters.emplace(outDistanceRegId);
 
-  RegisterId inNmDocIdRegId = getRegisterId(_inVariable->id);
+  RegisterId inNmDocIdRegId = variableToRegisterId(_inVariable);
   RegIdSet readableInputRegisters;
   readableInputRegisters.emplace(inNmDocIdRegId);
 

@@ -38,7 +38,6 @@ const {
 } = require("@arangodb/testutils/seededRandom");
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -101,12 +100,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterSimple: function() {
-            const query =
-                "FOR d IN " +
-                collection.name() +
-                " FILTER d.val < 5 " +
-                " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
-                " SORT dist LIMIT 5 RETURN {key: d._key, val: d.val, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val < 5
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5 
+              RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { qp: randomPoint };
             const plan = db
@@ -116,6 +114,9 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            // There can only be two calculation nodes, the bind variable calculation node and return statement 
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
@@ -128,12 +129,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterNotEnoughDocuments: function() {
-            const query =
-                "FOR d IN " +
-                collection.name() +
-                " FILTER d.val < 5 " +
-                " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
-                " SORT dist LIMIT 10 RETURN {key: d._key, val: d.val, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val < 5
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 10 
+              RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { qp: randomPoint };
             const plan = db
@@ -143,6 +143,9 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            // There can only be two calculation nodes, the bind variable calculation node and return statement 
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length, JSON.stringify(results));
@@ -168,6 +171,8 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(0, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query).toArray();
             assertEqual(5, results.length);
@@ -194,6 +199,9 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            // There is only one calculation node, from the return statement
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(1, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query).toArray();
             assertEqual(6, results.length, "Inccorect number of results " + JSON.stringify(results));
@@ -204,12 +212,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterNoMatches: function() {
-            const query =
-                "FOR d IN " +
-                collection.name() +
-                " FILTER d.val < 0 " +
-                " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
-                " SORT dist LIMIT 5 RETURN {key: d._key}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val < 0
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5 
+              RETURN {key: d._key}`;
 
             const bindVars = { qp: randomPoint };
             const results = db._query(query, bindVars).toArray();
@@ -217,12 +224,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterRange: function() {
-            const query =
-                "FOR d IN " +
-                collection.name() +
-                " FILTER d.val >= 1 AND d.val < 30 " +
-                " LET dist = APPROX_NEAR_L2(@qp, d.vector) " +
-                " SORT dist LIMIT 10 RETURN {key: d._key, val: d.val, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val >= 1 AND d.val < 30
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 10 
+              RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { qp: randomPoint };
             const plan = db
@@ -232,7 +238,8 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
-            
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
@@ -245,11 +252,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterComplexConditions: function() {
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER d.val >= 2 AND d.val <= 7 AND d.nonVector % 2 == 0 " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 10 RETURN {key: d._key, val: d.val, nonVector: d.nonVector, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val >= 2 AND d.val <= 7 AND d.nonVector % 2 == 0
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 10 
+              RETURN {key: d._key, val: d.val, nonVector: d.nonVector, dist}`;
 
             const bindVars = { q: randomPoint };
             const plan = db._createStatement({ query, bindVars }).explain().plan;
@@ -257,6 +264,8 @@ function VectorIndexL2FilterTestSuite() {
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length);
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 10, "Results should be limited to 10");
@@ -282,11 +291,11 @@ function VectorIndexL2FilterTestSuite() {
             }
             collection.insert(docs);
 
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER d.category == 'A' AND d.priority > 0 " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 5 RETURN {key: d._key, category: d.category, priority: d.priority, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.category == 'A' AND d.priority > 0
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 5 
+              RETURN {key: d._key, category: d.category, priority: d.priority, dist}`;
 
             const bindVars = { q: randomPoint };
             const plan = db._createStatement({ query, bindVars }).explain().plan;
@@ -314,11 +323,11 @@ function VectorIndexL2FilterTestSuite() {
             }
             collection.insert(docs);
 
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER d.nullableField != null AND d.optionalField != null " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 10 RETURN {key: d._key, nullableField: d.nullableField, optionalField: d.optionalField, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.nullableField != null AND d.optionalField != null
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 10 
+              RETURN {key: d._key, nullableField: d.nullableField, optionalField: d.optionalField, dist}`;
 
             const bindVars = { q: randomPoint };
             const results = db._query(query, bindVars).toArray();
@@ -342,11 +351,11 @@ function VectorIndexL2FilterTestSuite() {
             }
             collection.insert(docs);
 
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER 'tag1' IN d.tags AND d.scores[0] > 2 " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 8 RETURN {key: d._key, tags: d.tags, firstScore: d.scores[0], dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER 'tag1' IN d.tags AND d.scores[0] > 2
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 8 
+              RETURN {key: d._key, tags: d.tags, firstScore: d.scores[0], dist}`;
 
             const bindVars = { q: randomPoint };
             const results = db._query(query, bindVars).toArray();
@@ -370,11 +379,11 @@ function VectorIndexL2FilterTestSuite() {
             }
             collection.insert(docs);
 
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER d.name =~ '.*special.*' AND d.description =~ '.*high.*' " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 6 RETURN {key: d._key, name: d.name, description: d.description, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.name =~ '.*special.*' AND d.description =~ '.*high.*'
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 6 
+              RETURN {key: d._key, name: d.name, description: d.description, dist}`;
 
             const bindVars = { q: randomPoint };
             const results = db._query(query, bindVars).toArray();
@@ -386,11 +395,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterFunctionCalls: function() {
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER LENGTH(TO_STRING(d.val)) == 1 AND d.val > 0 " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 7 RETURN {key: d._key, val: d.val, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER LENGTH(TO_STRING(d.val)) == 1 AND d.val > 0
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 7 
+              RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { q: randomPoint };
             const results = db._query(query, bindVars).toArray();
@@ -402,11 +411,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterOrConditions: function() {
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER d.val == 1 OR d.val == 5 OR d.val == 9 " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 15 RETURN {key: d._key, val: d.val, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val == 1 OR d.val == 5 OR d.val == 9
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 15 
+              RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { q: randomPoint };
             const results = db._query(query, bindVars).toArray();
@@ -417,11 +426,11 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithFilterNotConditions: function() {
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER NOT (d.val < 3 OR d.val > 7) " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 12 RETURN {key: d._key, val: d.val, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER NOT (d.val < 3 OR d.val > 7)
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 12 
+              RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { q: randomPoint };
             const results = db._query(query, bindVars).toArray();
@@ -433,20 +442,22 @@ function VectorIndexL2FilterTestSuite() {
 
         testApproxL2WithFilterAndVectorSearchOrder: function() {
             // Test that filtering is applied before vector search
-            const query =
-                "FOR d IN " + collection.name() +
-                " FILTER d.val >= 4 AND d.val <= 6 " +
-                " LET dist = APPROX_NEAR_L2(@q, d.vector) " +
-                " SORT dist LIMIT 5 RETURN {key: d._key, val: d.val, dist}";
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val >= 4 AND d.val <= 6
+              LET dist = APPROX_NEAR_L2(@q, d.vector)
+              SORT dist LIMIT 5 
+              RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { q: randomPoint };
             const plan = db._createStatement({ query, bindVars }).explain().plan;
             
             // Verify the execution plan has both filter and vector search nodes
             const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
-            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(1, indexNodes.length, "Should have vector search node");
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
             assertEqual(0, filterNodes.length, "Should not have filter node");
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
@@ -460,6 +471,97 @@ function VectorIndexL2FilterTestSuite() {
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
             }
+        },
+
+        testApproxL2WithExplicitCalculationNodes: function() {
+            // Test with explicit calculation nodes (LET cond = ..., FILTER cond)
+            const query = `FOR d IN ${collection.name()}
+              LET cond = d.val < 10
+              FILTER cond
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = { qp: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(2, calculationNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val < 10);
+            }
+        },
+
+        testApproxL2WithCalculationReusedInReturn: function() {
+            // Test where calculation is used both in FILTER and in RETURN
+            const query = `FOR d IN ${collection.name()}
+              LET cond = d.val < 10
+              FILTER cond
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, cond1: NOOPT(cond), dist, cond2: NOOPT(cond)}`;
+
+            const bindVars = { qp: randomPoint };
+            const plan = db._createStatement({ query, bindVars }).explain().plan;
+            
+            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
+            assertEqual(1, indexNodes.length);
+            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
+            assertEqual(0, filterNodes.length);
+            // three calculation nodes, the bind variable calculation node, the filter calculation node, and the return calculation node
+            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
+            assertEqual(3, calculationNodes.length);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            for (let i = 0; i < results.length; ++i) {
+                assertTrue(results[i].val < 10);
+                assertEqual(true, results[i].cond1);
+                assertEqual(true, results[i].cond2);
+            }
+        },
+
+        testApproxL2WithMultipleFilterClauses: function() {
+            // Test with multiple separate FILTER clauses
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val >= 5
+              FILTER d.val < 15
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = { qp: randomPoint };
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
+        },
+
+        testApproxL2WithMultipleFiltersAndLetStatements: function() {
+            // Test with multiple FILTER and LET statements interspersed
+            const query = `FOR d IN ${collection.name()}
+              LET minVal = 5
+              FILTER d.val >= minVal
+              LET maxVal = 15
+              FILTER d.val < maxVal
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = { qp: randomPoint };
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
         },
     };
 }
@@ -528,14 +630,12 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
         },
 
         testApproxL2FilterNotApplied: function() {
-            const query =
-                "FOR d1 IN " +
-                collection2.name() +
-                " FOR d2 IN " +
-                collection1.name() +
-                " FILTER d2.val < 5 OR d1.val < 5 " +
-                " LET dist = APPROX_NEAR_L2(@qp, d2.vector) " +
-                " SORT dist LIMIT 5 RETURN {key: d2._key, val: d2.val, dist}";
+            const query = `FOR d1 IN ${collection2.name()}
+              FOR d2 IN ${collection1.name()}
+              FILTER d2.val < 5 OR d1.val < 5
+              LET dist = APPROX_NEAR_L2(@qp, d2.vector)
+              SORT dist LIMIT 5 
+              RETURN {key: d2._key, val: d2.val, dist}`;
 
             const bindVars = { qp: randomPoint };
             assertQueryError(

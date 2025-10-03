@@ -105,13 +105,14 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
   [[nodiscard]] bool is_available() const override;
 
   [[nodiscard]] bool searchFilteredIds();
+  // This should be only called when we have filterExpression
 
   void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
  private:
-  void setToValidIterator();
+  void skipOverFilteredDocuments();
 
   constexpr static auto kBatchSize{1000};
 
