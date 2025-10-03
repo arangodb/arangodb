@@ -24,11 +24,13 @@
 
 #include "RocksDBValue.h"
 #include <velocypack/Slice.h>
+#include <velocypack/Builder.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Inspection/VPack.h"
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "Transaction/Helpers.h"
@@ -102,6 +104,13 @@ RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId,
 
 RocksDBValue RocksDBValue::VectorIndexValue(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue, data);
+}
+
+RocksDBValue RocksDBValue::VectorIndexValue(
+    RocksDBVectorIndexEntryValue const& entryValue) {
+  velocypack::Builder builder;
+  velocypack::serialize(builder, entryValue);
+  return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue, builder.slice());
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice data) {
@@ -200,6 +209,26 @@ S2Point RocksDBValue::centroid(rocksdb::Slice const& s) {
       ::intToDouble(uint64FromPersistent(s.data())),
       ::intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))),
       ::intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t) * 2)));
+}
+
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
+    RocksDBValue const& value) {
+  return vectorIndexEntryValue(std::string_view(value.string()));
+}
+
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
+    rocksdb::Slice const& slice) {
+  return vectorIndexEntryValue(std::string_view(slice.data(), slice.size()));
+}
+
+RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
+    std::string_view s) {
+  TRI_ASSERT(s.data() != nullptr);
+  TRI_ASSERT(s.size() >= sizeof(char));
+  VPackSlice slice(reinterpret_cast<uint8_t const*>(s.data()));
+  RocksDBVectorIndexEntryValue result;
+  velocypack::deserialize(slice, result);
+  return result;
 }
 
 replication2::LogTerm RocksDBValue::logTerm(rocksdb::Slice const& slice) {

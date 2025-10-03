@@ -70,16 +70,10 @@ RocksDBInvertedListsIterator::get_id_and_codes() {
   auto const docId = RocksDBKey::indexDocumentId(_it->key());
   _currentValueEntry.clear();
 
-  auto value =
-      VPackSlice(reinterpret_cast<uint8_t const*>(_it->value().data()));
-  // LOG_DEVEL << "READ STR: " << _it->value().ToStringView();
-  // LOG_DEVEL << "READ SIZE: " << _it->value().size();
-  auto status = velocypack::deserializeWithStatus(value, _currentValueEntry);
-  // LOG_DEVEL << "READ encoded size: " <<
-  // _currentValueEntry.encodedValue.size();
+  _currentValueEntry = RocksDBValue::vectorIndexEntryValue(_it->value());
   TRI_ASSERT(_currentValueEntry.encodedValue.size() == _codeSize)
       << "The encoded size is: " << _currentValueEntry.encodedValue.size()
-      << " shouldbe: " << _codeSize;
+      << " should be: " << _codeSize;
 
   return {static_cast<faiss::idx_t>(docId.id()),
           _currentValueEntry.encodedValue.data()};
@@ -166,10 +160,9 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
           // We do not keep whole value but only the encoded part used by faiss
-          RocksDBVectorIndexEntryValue entry;
-          auto slice = VPackSlice(
-              reinterpret_cast<uint8_t const*>(idsToValue[id].data()));
-          velocypack::deserialize(slice, entry);
+          auto entry = RocksDBValue::vectorIndexEntryValue(std::string_view(
+              reinterpret_cast<const char*>(idsToValue[id].data()),
+              idsToValue[id].size()));
           _filteredIds.emplace_back(id, std::move(entry.encodedValue));
         }
 
@@ -244,12 +237,7 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
                     _it->key().starts_with(_rocksdbKey.string());
        ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
-    RocksDBVectorIndexEntryValue entryValue;
-    auto slice =
-        VPackSlice(reinterpret_cast<uint8_t const*>(_it->value().data()));
-    velocypack::deserialize(slice, entryValue);
-    LOG_DEVEL << "Inserting into items: " << slice.toJson();
-    TRI_ASSERT(slice.isObject());
+    auto entryValue = RocksDBValue::vectorIndexEntryValue(_it->value());
 
     items.emplace_back(id, std::move(entryValue));
   }
@@ -278,15 +266,6 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
       continue;
     }
 
-    LOG_DEVEL << ADB_HERE << " data: " << storedValuesSlice.toJson();
-    LOG_DEVEL << ADB_HERE << " data: " << storedValuesSlice.toString();
-    LOG_DEVEL << ADB_HERE
-              << " type: " << static_cast<int>(storedValuesSlice.type())
-              << " isArray: " << storedValuesSlice.isArray()
-              << " isObject: " << storedValuesSlice.isObject()
-              << " isNone: " << storedValuesSlice.isNone()
-              << " isEmptyArray: " << storedValuesSlice.isEmptyArray()
-              << " isEmptyObject: " << storedValuesSlice.isEmptyObject();
     TRI_ASSERT(storedValuesSlice.isArray());
     TRI_ASSERT(storedValuesSlice.length() == _index->storedValues().size());
 
@@ -369,22 +348,16 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
           [&](SearchParametersContext& searchParametersContext)
               -> faiss::InvertedListsIterator* {
             if (searchParametersContext.isCoveredByStoredValues) {
-              LOG_DEVEL << ADB_HERE
-                        << " adding "
-                           "RocksDBInvertedListsFilteringStoredValuesIterator";
               return new RocksDBInvertedListsFilteringStoredValuesIterator(
                   _index, _collection, searchParametersContext, listNumber,
                   this->code_size);
             }
 
-            LOG_DEVEL << ADB_HERE
-                      << " adding RocksDBInvertedListsFilteringIterator";
             return new RocksDBInvertedListsFilteringIterator(
                 _index, _collection, searchParametersContext, listNumber,
                 this->code_size);
           },
           [&](transaction::Methods* trx) -> faiss::InvertedListsIterator* {
-            LOG_DEVEL << ADB_HERE << " adding RocksDBInvertedListsIterator";
             return new RocksDBInvertedListsIterator(
                 _index, _collection, trx, listNumber, this->code_size);
           },

@@ -65,6 +65,8 @@ class RocksDBValue {
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,
                                             VPackSlice data);
   static RocksDBValue VectorIndexValue(VPackSlice data);
+  static RocksDBValue VectorIndexValue(
+      RocksDBVectorIndexEntryValue const& entryValue);
   static RocksDBValue View(VPackSlice data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice data);
   static RocksDBValue KeyGeneratorValue(VPackSlice data);
@@ -120,6 +122,17 @@ class RocksDBValue {
   /// @brief Centroid of shape or point on the sphere surface in degrees
   //////////////////////////////////////////////////////////////////////////////
   static S2Point centroid(rocksdb::Slice const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the VectorIndexEntryValue from a value
+  ///
+  /// May be called only on VectorIndexValue values. Other types will throw.
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBVectorIndexEntryValue vectorIndexEntryValue(
+      RocksDBValue const&);
+  static RocksDBVectorIndexEntryValue vectorIndexEntryValue(
+      rocksdb::Slice const&);
+  static RocksDBVectorIndexEntryValue vectorIndexEntryValue(std::string_view);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extract the term of a log index value

@@ -41,6 +41,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -389,7 +390,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
-  vector::RocksDBVectorIndexEntryValue rocksdbEntryValue;
+  RocksDBVectorIndexEntryValue rocksdbEntryValue;
   rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
       flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
 
@@ -400,9 +401,7 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
     rocksdbEntryValue.storedValues = extractedAttribtueValues->sharedSlice();
   }
 
-  velocypack::Builder builder;
-  velocypack::serialize(builder, rocksdbEntryValue);
-  auto const value = RocksDBValue::VectorIndexValue(builder.slice());
+  auto const value = RocksDBValue::VectorIndexValue(rocksdbEntryValue);
   auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
 
   return rocksutils::convertStatus(status);
@@ -736,7 +735,7 @@ Result RocksDBVectorIndex::ingestVectors(
           key.constructVectorIndexValue(objectId(), item->lists[k],
                                         item->docIds[k]);
 
-          vector::RocksDBVectorIndexEntryValue rocksdbEntryValue;
+          RocksDBVectorIndexEntryValue rocksdbEntryValue;
           rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
               item->codes.get() + k * _faissIndex->code_size,
               item->codes.get() + (k + 1) * _faissIndex->code_size);
@@ -744,13 +743,7 @@ Result RocksDBVectorIndex::ingestVectors(
             rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
           }
 
-          /*LOG_DEVEL << ADB_HERE << " Doing encodedSize: "*/
-          /*<< rocksdbEntryValue.encodedValue.size()*/
-          /*<< " is there storedValues size: "*/
-          /*<< rocksdbEntryValue.storedValues.size();*/
-          VPackBuilder builder;
-          velocypack::serialize(builder, rocksdbEntryValue);
-          auto const value = RocksDBValue::VectorIndexValue(builder.slice());
+          auto const value = RocksDBValue::VectorIndexValue(rocksdbEntryValue);
 
           status = batch.Put(_cf, key.string(), value.string());
           // LOG_DEVEL << ADB_HERE;
