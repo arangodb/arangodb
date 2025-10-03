@@ -53,18 +53,17 @@ struct ForNode : TypedAstNode {
   }
 
   /// @brief Get the loop variable
-  AstNode const* getVariable() const { return _node->getMember(0); }
+  Variable const* getVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n && n->type == NODE_TYPE_VARIABLE);
+    return static_cast<Variable const*>(n->getData());
+  }
 
   /// @brief Get the expression to iterate over
   AstNode const* getExpression() const { return _node->getMember(1); }
 
   /// @brief Get the options
   AstNode const* getOptions() const { return _node->getMember(2); }
-
-  /// @brief Get the variable as a Variable object
-  Variable const* getVariableObject() const {
-    return static_cast<Variable const*>(getVariable()->getData());
-  }
 };
 
 /// @brief FOR VIEW node wrapper
@@ -77,7 +76,11 @@ struct ForViewNode : TypedAstNode {
   }
 
   /// @brief Get the loop variable
-  AstNode const* getVariable() const { return _node->getMember(0); }
+  Variable const* getVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n && n->type == NODE_TYPE_VARIABLE);
+    return static_cast<Variable const*>(n->getData());
+  }
 
   /// @brief Get the expression to iterate over
   AstNode const* getExpression() const { return _node->getMember(1); }
@@ -87,11 +90,6 @@ struct ForViewNode : TypedAstNode {
 
   /// @brief Get the options
   AstNode const* getOptions() const { return _node->getMember(3); }
-
-  /// @brief Get the variable as a Variable object
-  Variable const* getVariableObject() const {
-    return static_cast<Variable const*>(getVariable()->getData());
-  }
 };
 
 /// @brief LET assignment node wrapper
@@ -104,15 +102,14 @@ struct LetNode : TypedAstNode {
   }
 
   /// @brief Get the variable being assigned
-  AstNode const* getVariable() const { return _node->getMember(0); }
+  Variable* getVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n && n->type == NODE_TYPE_VARIABLE);
+    return static_cast<Variable*>(n->getData());
+  }
 
   /// @brief Get the expression being assigned
   AstNode const* getExpression() const { return _node->getMember(1); }
-
-  /// @brief Get the variable as a Variable object
-  Variable const* getVariableObject() const {
-    return static_cast<Variable const*>(getVariable()->getData());
-  }
 };
 
 /// @brief FILTER node wrapper
@@ -505,7 +502,11 @@ struct EnumeratePathsNode : TypedAstNode {
   AstNode const* getOptions() const { return _node->getMember(5); }
 
   /// @brief Get the output variable
-  AstNode const* getVariable() const { return _node->getMember(6); }
+  Variable const* getVariable() const {
+    auto n = _node->getMember(6);
+    TRI_ASSERT(n && n->type == NODE_TYPE_VARIABLE);
+    return static_cast<Variable const*>(n->getData());
+  }
 };
 
 /// @brief WITH node wrapper
@@ -542,7 +543,11 @@ struct AssignNode : TypedAstNode {
   }
 
   /// @brief Get the variable being assigned
-  AstNode const* getVariable() const { return _node->getMember(0); }
+  Variable const* getVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n && n->type == NODE_TYPE_VARIABLE);
+    return static_cast<Variable const*>(n->getData());
+  }
 
   /// @brief Get the expression being assigned
   AstNode const* getExpression() const { return _node->getMember(1); }
@@ -725,7 +730,11 @@ struct IteratorNode : TypedAstNode {
   }
 
   /// @brief Get the variable
-  AstNode const* getVariable() const { return _node->getMember(0); }
+  Variable const* getVariable() const {
+    auto n = _node->getMember(0);
+    TRI_ASSERT(n && n->type == NODE_TYPE_VARIABLE);
+    return static_cast<Variable const*>(n->getData());
+  }
 
   /// @brief Get the expression
   AstNode const* getExpression() const { return _node->getMember(1); }

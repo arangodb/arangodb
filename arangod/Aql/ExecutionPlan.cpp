@@ -1337,13 +1337,9 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
                                           AstNode const* node) {
   ast::ForNode forNode(node);
   auto variable = forNode.getVariable();
+  TRI_ASSERT(variable != nullptr);
   auto expression = forNode.getExpression();
   auto options = forNode.getOptions();
-
-  // fetch 1st operand (out variable name)
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
 
   ExecutionNode* en = nullptr;
 
@@ -1360,8 +1356,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     }
     IndexHint hint(_ast->query(), options,
                    IndexHint::FromCollectionOperation{});
-    en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
-                                             false, std::move(hint));
+    en = createNode<EnumerateCollectionNode>(this, nextId(), collection,
+                                             variable, false, std::move(hint));
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
       // this is a FOR node that belongs to an UPSERT query
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(
@@ -1399,16 +1395,17 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
     }
 
     en = registerNode(new iresearch::IResearchViewNode(
-        *this, nextId(), vocbase, view, *v, nullptr, options, {}));
+        *this, nextId(), vocbase, view, *variable, nullptr, options, {}));
   } else if (expression->type == NODE_TYPE_REFERENCE) {
     // second operand is already a variable
     auto inVariable = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(inVariable != nullptr);
-    en = createNode<EnumerateListNode>(this, nextId(), inVariable, v);
+    en = createNode<EnumerateListNode>(this, nextId(), inVariable, variable);
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc), v);
+    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc),
+                                       variable);
     previous = calc;
   }
 
@@ -1425,11 +1422,6 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   TRI_ASSERT(variable);
   auto const* expression = forViewNode.getExpression();
   TRI_ASSERT(expression);
-
-  // fetch 1st operand (out variable name)
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v);
 
   ExecutionNode* en = nullptr;
 
@@ -1481,8 +1473,8 @@ ExecutionNode* ExecutionPlan::fromNodeForView(ExecutionNode* previous,
   }
 
   en = registerNode(new iresearch::IResearchViewNode(
-      *this, nextId(), vocbase, view, *v, filterNode.getExpression(), options,
-      {}));
+      *this, nextId(), vocbase, view, *variable, filterNode.getExpression(),
+      options, {}));
 
   TRI_ASSERT(en != nullptr);
 
@@ -1663,12 +1655,7 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
       this, nextId(), &(_ast->query().vocbase()), type, direction, start,
       target, graph, std::move(options));
 
-  auto variable = enumeratePathsNode.getVariable();
-  TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
-  auto v = static_cast<Variable*>(variable->getData());
-  TRI_ASSERT(v != nullptr);
-  spNode->setPathOutput(v);
-
+  spNode->setPathOutput(enumeratePathsNode.getVariable());
   return addDependency(previous, spNode);
 }
 
@@ -1718,10 +1705,8 @@ ExecutionNode* ExecutionPlan::fromNodeFilter(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
                                           AstNode const* node) {
   ast::LetNode letNode(node);
-  AstNode const* variable = letNode.getVariable();
+  Variable* variable = letNode.getVariable();
   AstNode const* expression = letNode.getExpression();
-
-  auto v = static_cast<Variable*>(variable->getData());
 
   ExecutionNode* en = nullptr;
 
@@ -1735,7 +1720,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
-    en = createNode<SubqueryNode>(this, nextId(), subquery, v);
+    en = createNode<SubqueryNode>(this, nextId(), subquery, variable);
     _subqueries[ExecutionNode::castTo<SubqueryNode*>(en)->outVariable()->id] =
         en;
   } else {
@@ -1749,7 +1734,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
       // outvariable of
       // the LET. and don't create the LET
 
-      subquery->replaceOutVariable(v);
+      subquery->replaceOutVariable(variable);
       // We do not create a new node here, just return the last dependency.
       // Note that we *do not* want to return `subquery`, as we might leave a
       // dangling branch of ExecutionNodes from it.
@@ -1759,7 +1744,7 @@ ExecutionNode* ExecutionPlan::fromNodeLet(ExecutionNode* previous,
 
     // operand is some misc expression, potentially including references to
     // other variables
-    return createCalculation(v, expression, previous);
+    return createCalculation(variable, expression, previous);
   }
 
   return addDependency(previous, en);
@@ -1861,22 +1846,18 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     }
 
     ast::AssignNode assignNode(assigner);
-    auto out = assignNode.getVariable();
-    TRI_ASSERT(out != nullptr);
-    auto v = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(v != nullptr);
-
+    auto outVar = assignNode.getVariable();
     auto expression = assignNode.getExpression();
 
     if (expression->type == NODE_TYPE_REFERENCE) {
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
-      groupVariables.emplace_back(GroupVarInfo{v, e});
+      groupVariables.emplace_back(GroupVarInfo{outVar, e});
     } else {
       // operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
       previous = calc;
-      groupVariables.emplace_back(GroupVarInfo{v, getOutVariable(calc)});
+      groupVariables.emplace_back(GroupVarInfo{outVar, getOutVariable(calc)});
     }
   }
 
@@ -2949,11 +2930,7 @@ std::vector<AggregateVarInfo> ExecutionPlan::prepareAggregateVars(
     }
 
     ast::AssignNode assignNode(assigner);
-    auto out = assignNode.getVariable();
-    TRI_ASSERT(out != nullptr);
-    auto outVar = static_cast<Variable*>(out->getData());
-    TRI_ASSERT(outVar != nullptr);
-
+    auto outVar = assignNode.getVariable();
     auto expression = assignNode.getExpression();
 
     // operand is always a function call

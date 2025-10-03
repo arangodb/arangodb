@@ -2742,7 +2742,7 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     if (node->type == NODE_TYPE_LET) {
       // remember variable assignments
       ast::LetNode letNode(node);
-      Variable const* variable = letNode.getVariableObject();
+      Variable const* variable = letNode.getVariable();
       AstNode const* source = letNode.getExpression();
       // recursively process assignments so we can track LET a = b LET c = b
 
@@ -2976,8 +2976,8 @@ bool Ast::getReferencedAttributesRecursive(
         }
 
         if (rhs->type == NODE_TYPE_REFERENCE) {
-          AstNode const* iterLhs = lhs.getVariable();
-          TRI_ASSERT(rhs->getData() == iterLhs->getData());
+          Variable const* iterLhs = lhs.getVariable();
+          TRI_ASSERT(rhs->getData() == iterLhs);
 
           AstNode const* iterRhs = lhs.getExpression();
           // push the expansion on the stack
