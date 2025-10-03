@@ -539,22 +539,30 @@ function VectorIndexL2FilterTestSuite() {
               RETURN {key: d._key, val: d.val, dist}`;
 
             const bindVars = { qp: randomPoint };
-            const plan = db._createStatement({ query, bindVars }).explain().plan;
-            
-            db._explain(query, bindVars);
-            const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
-            assertEqual(0, filterNodes.length);
-            const calculationNodes = plan.nodes.filter(function(n) { return n.type === "CalculationNode"; });
-            assertEqual(2, calculationNodes.length);
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
+        },
 
-            const results = db._query(query, bindVars).toArray();
-            assertEqual(5, results.length);
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val >= 5);
-                assertTrue(results[i].val < 15);
-            }
+        testApproxL2WithMultipleFiltersAndLetStatements: function() {
+            // Test with multiple FILTER and LET statements interspersed
+            const query = `FOR d IN ${collection.name()}
+              LET minVal = 5
+              FILTER d.val >= minVal
+              LET maxVal = 15
+              FILTER d.val < maxVal
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = { qp: randomPoint };
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
         },
     };
 }

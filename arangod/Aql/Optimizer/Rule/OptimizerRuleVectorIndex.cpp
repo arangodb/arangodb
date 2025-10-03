@@ -326,6 +326,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     skipOverCalculationNodes();
 
     // We tolerate post filtering
+    // For now we can handle only a single FILTER statement
     ExecutionNode* maybeFilterNode{nullptr};
     if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
       maybeFilterNode = currentNode;
