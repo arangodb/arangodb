@@ -26,7 +26,6 @@
 #include "Aql/DocumentExpressionContext.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Indexes/IndexIterator.h"
-#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
@@ -68,15 +67,25 @@ void RocksDBInvertedListsIterator::next() { _it->Next(); }
 std::pair<faiss::idx_t, uint8_t const*>
 RocksDBInvertedListsIterator::get_id_and_codes() {
   auto const docId = RocksDBKey::indexDocumentId(_it->key());
-  _currentValueEntry.clear();
 
-  _currentValueEntry = RocksDBValue::vectorIndexEntryValue(_it->value());
-  TRI_ASSERT(_currentValueEntry.encodedValue.size() == _codeSize)
-      << "The encoded size is: " << _currentValueEntry.encodedValue.size()
-      << " should be: " << _codeSize;
-
-  return {static_cast<faiss::idx_t>(docId.id()),
-          _currentValueEntry.encodedValue.data()};
+  if (_index->hasStoredValues()) {
+    // Index has stored values, deserialize full entry
+    _currentValueEntry.clear();
+    _currentValueEntry = RocksDBValue::vectorIndexEntryValue(_it->value());
+    TRI_ASSERT(_currentValueEntry.encodedValue.size() == _codeSize)
+        << "The encoded size is: " << _currentValueEntry.encodedValue.size()
+        << " should be: " << _codeSize;
+    return {static_cast<faiss::idx_t>(docId.id()),
+            _currentValueEntry.encodedValue.data()};
+  } else {
+    // No stored values, value is raw encoded bytes
+    auto const& value = _it->value();
+    TRI_ASSERT(value.size() == _codeSize)
+        << "The encoded size is: " << value.size()
+        << " should be: " << _codeSize;
+    return {static_cast<faiss::idx_t>(docId.id()),
+            reinterpret_cast<uint8_t const*>(value.data())};
+  }
 }
 
 RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
@@ -160,10 +169,15 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
           // We do not keep whole value but only the encoded part used by faiss
-          auto entry = RocksDBValue::vectorIndexEntryValue(std::string_view(
-              reinterpret_cast<const char*>(idsToValue[id].data()),
-              idsToValue[id].size()));
-          _filteredIds.emplace_back(id, std::move(entry.encodedValue));
+          if (_index->hasStoredValues()) {
+            auto entry = RocksDBValue::vectorIndexEntryValue(std::string_view(
+                reinterpret_cast<const char*>(idsToValue[id].data()),
+                idsToValue[id].size()));
+            _filteredIds.emplace_back(id, std::move(entry.encodedValue));
+          } else {
+            // Value is already raw encoded bytes
+            _filteredIds.emplace_back(id, std::move(idsToValue[id]));
+          }
         }
 
         return true;

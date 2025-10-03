@@ -106,6 +106,11 @@ RocksDBValue RocksDBValue::VectorIndexValue(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::VectorVPackIndexValue, data);
 }
 
+RocksDBValue RocksDBValue::VectorIndexValue(uint8_t const* data, size_t size) {
+  // Store raw encoded vector data directly without VPack overhead
+  return RocksDBValue(reinterpret_cast<char const*>(data), size);
+}
+
 RocksDBValue RocksDBValue::VectorIndexValue(
     RocksDBVectorIndexEntryValue const& entryValue) {
   velocypack::Builder builder;

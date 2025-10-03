@@ -65,6 +65,7 @@ class RocksDBValue {
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,
                                             VPackSlice data);
   static RocksDBValue VectorIndexValue(VPackSlice data);
+  static RocksDBValue VectorIndexValue(uint8_t const* data, size_t size);
   static RocksDBValue VectorIndexValue(
       RocksDBVectorIndexEntryValue const& entryValue);
   static RocksDBValue View(VPackSlice data);

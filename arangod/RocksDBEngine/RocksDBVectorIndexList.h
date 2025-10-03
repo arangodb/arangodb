@@ -29,7 +29,6 @@
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
-#include "RocksDBEngine/RocksDBValue.h"
 
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>

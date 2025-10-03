@@ -390,18 +390,25 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
-  RocksDBVectorIndexEntryValue rocksdbEntryValue;
-  rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
-      flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
+  auto value = std::invoke([&]() {
+    if (hasStoredValues()) {
+      RocksDBVectorIndexEntryValue rocksdbEntryValue;
+      rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
+          flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
 
-  if (hasStoredValues()) {
-    auto const extractedAttribtueValues =
-        transaction::extractAttributeValues(trx, _storedValues, doc, true)
-            ->get();
-    rocksdbEntryValue.storedValues = extractedAttribtueValues->sharedSlice();
-  }
+      auto const extractedAttribtueValues =
+          transaction::extractAttributeValues(trx, _storedValues, doc, true)
+              ->get();
+      rocksdbEntryValue.storedValues = extractedAttribtueValues->sharedSlice();
 
-  auto const value = RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+      return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+    } else {
+      // Store raw encoded values directly for better performance
+      return RocksDBValue::VectorIndexValue(flat_codes.get(),
+                                            _faissIndex->code_size);
+    }
+  });
+
   auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
 
   return rocksutils::convertStatus(status);
@@ -735,15 +742,21 @@ Result RocksDBVectorIndex::ingestVectors(
           key.constructVectorIndexValue(objectId(), item->lists[k],
                                         item->docIds[k]);
 
-          RocksDBVectorIndexEntryValue rocksdbEntryValue;
-          rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
-              item->codes.get() + k * _faissIndex->code_size,
-              item->codes.get() + (k + 1) * _faissIndex->code_size);
-          if (hasStoredValues()) {
-            rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
-          }
-
-          auto const value = RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+          auto const value = std::invoke([&]() {
+            if (hasStoredValues()) {
+              RocksDBVectorIndexEntryValue rocksdbEntryValue;
+              rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
+                  item->codes.get() + k * _faissIndex->code_size,
+                  item->codes.get() + (k + 1) * _faissIndex->code_size);
+              rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
+              return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+            } else {
+              // Store raw encoded values directly for better performance
+              return RocksDBValue::VectorIndexValue(
+                  item->codes.get() + k * _faissIndex->code_size,
+                  _faissIndex->code_size);
+            }
+          });
 
           status = batch.Put(_cf, key.string(), value.string());
           // LOG_DEVEL << ADB_HERE;
