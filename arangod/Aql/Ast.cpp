@@ -4615,17 +4615,19 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
 
 void Ast::addGraphNodeImplicitVertexCollections(
     CollectionNameResolver const& resolver) {
-  // Edge Collections used in traversals/
-  auto edgeCollections = collectGraphNodeEdgeCollections();
-
   auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
 
-  for (auto&& edgeCollectionName : edgeCollections) {
-    auto r = gm.findVertexCollectionsFromEdgeCollection(edgeCollectionName);
-    if (r.has_value()) {
-      for (auto&& vertexCollectionName : *r) {
-        addDataSource(*this, resolver, std::string_view{vertexCollectionName});
-      }
+  // Collect all edge collection names used in graph operations using
+  // edge collection syntax.
+  auto edgeCollections = collectGraphNodeEdgeCollections();
+  auto maybeImplicitVertexCollections =
+      gm.findImplicitVertexCollectionsFromEdgeCollections(edgeCollections);
+
+  if (maybeImplicitVertexCollections.ok()) {
+    for (auto&& vertexCollectionName : maybeImplicitVertexCollections.get()) {
+      addDataSource(*this, resolver, std::string_view{vertexCollectionName});
     }
+  } else {
+    THROW_ARANGO_EXCEPTION(maybeImplicitVertexCollections.result());
   }
 }

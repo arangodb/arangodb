@@ -33,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashSet.h"
 #include "Graph/Graph.h"
 #include "Graph/GraphOperations.h"
 #include "Logger/LogMacros.h"
@@ -1294,25 +1295,26 @@ void GraphManager::invalidateQueryOptimizerCaches() const {
   // So we just return here and let the request objects go out of scope.
 }
 
-auto GraphManager::findVertexCollectionsFromEdgeCollection(
-    std::string edgeCollectionName) const
-    -> std::optional<std::vector<std::string>> {
-  // TODO: I hate every single step in this code.
-  auto found = false;
-  auto result = std::vector<std::string>{};
+auto GraphManager::findImplicitVertexCollectionsFromEdgeCollections(
+    containers::FlatHashSet<std::string> const& edgeCollections) const
+    -> ResultT<containers::FlatHashSet<std::string>> {
+  auto result = containers::FlatHashSet<std::string>{};
 
   auto callback = [&](std::unique_ptr<Graph> graph) -> Result {
-    if (!found) {
+    for (auto&& edgeCollectionName : edgeCollections) {
       auto maybeDef = graph->getEdgeDefinition(edgeCollectionName);
       if (maybeDef.has_value()) {
         auto& def = maybeDef->get();
+
         auto const& from = def.getFrom();
-        result.insert(std::end(result), std::cbegin(from), std::cend(from));
+        for (auto&& cn : from) {
+          result.insert(cn);
+        }
 
         auto const& to = def.getTo();
-        result.insert(std::end(result), std::cbegin(to), std::cend(to));
-
-        found = true;
+        for (auto&& cn : to) {
+          result.insert(cn);
+        }
       }
     }
     return Result{};
@@ -1321,7 +1323,7 @@ auto GraphManager::findVertexCollectionsFromEdgeCollection(
   Result res = applyOnAllGraphs(callback);
 
   if (res.fail()) {
-    return std::nullopt;
+    return res;
   } else {
     return {result};
   }

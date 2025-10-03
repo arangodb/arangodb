@@ -159,18 +159,17 @@ class GraphManager {
       std::function<Result(std::unique_ptr<Graph>)> const& callback) const;
 
   /**
-   * @brief Find whether there is a named graph which contains the
-   * given edge collection.
+   * @brief Find whether there is a named graph which contains any of the
+   * given edge collections.
    *
-   * If so, return the fromCollections and toCollections, otherwise return
-   * std::nullopt
+   * @param edgeCollectionNames The names of the edge collections to look for
    *
-   * @param edgeCollectionName The name of the edge collection to look for
-   *
-   * @return Either fromCollections and toCOllections or std::nullopt.
+   * @return a set of fromCollections and toCollections implied by
+   * edgeCollections.
    */
-  auto findVertexCollectionsFromEdgeCollection(std::string edgeCollectionName)
-      const -> std::optional<std::vector<std::string>>;
+  auto findImplicitVertexCollectionsFromEdgeCollections(
+      containers::FlatHashSet<std::string> const& edgeCollections) const
+      -> ResultT<containers::FlatHashSet<std::string>>;
 
  private:
   /**
