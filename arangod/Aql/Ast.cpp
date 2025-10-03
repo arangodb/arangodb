@@ -4564,6 +4564,42 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
   return nullptr;
 }
 
+namespace {
+
+auto getVertexCollectionsFromGraphOptionsNode(AstNode const* options)
+    -> containers::FlatHashSet<std::string> {
+  auto result = containers::FlatHashSet<std::string>{};
+
+  if (options != nullptr) {
+    TRI_ASSERT(options->type == NODE_TYPE_OBJECT);
+    auto n = options->numMembers();
+    for (auto i = size_t{0}; i < n; ++i) {
+      auto member = options->getMemberUnchecked(i);
+      if (member != nullptr and
+          member->type == arangodb::aql::NODE_TYPE_OBJECT_ELEMENT) {
+        auto const name = member->getStringView();
+        if (name == "vertexCollections") {
+          auto value = member->getMember(0);
+          if (value->isStringValue()) {
+            result.insert(value->getString());
+          } else if (value->type == NODE_TYPE_ARRAY) {
+            auto nn = value->numMembers();
+            for (auto j = size_t{0}; j < nn; ++j) {
+              auto c = value->getMemberUnchecked(j);
+              TRI_ASSERT(c->isStringValue());
+              result.insert(c->getString());
+            }
+          } else {
+            // ...
+          }
+        }
+      }
+    }
+  }
+
+  return result;
+}
+}  // namespace
 containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
     const {
   auto edgeCollections = containers::FlatHashSet<std::string>(4);
@@ -4572,12 +4608,15 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
     auto maybeMatch = [&node]() -> std::optional<AstNode const*> {
       switch (node->type) {
         case NODE_TYPE_TRAVERSAL: {
+          getVertexCollectionsFromGraphOptionsNode(node->getMember(4));
           return node->getMember(2);
         } break;
         case NODE_TYPE_SHORTEST_PATH: {
+          // getVertexCollectionsFromGraphOptionsNode(node->getMember(5));
           return node->getMember(3);
         } break;
         case NODE_TYPE_ENUMERATE_PATHS: {
+          // getVertexCollectionsFromGraphOptionsNode(node->getMember(5));
           return node->getMember(4);
         } break;
         default: {
@@ -4603,7 +4642,8 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
           }
         }
       } else {
-        // Graph syntax case (I hope); is not interesting for this function
+        // Graph syntax case (I hope); is not interesting for this
+        // function
       }
     }
   };
