@@ -511,7 +511,6 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = { qp: randomPoint };
             const plan = db._createStatement({ query, bindVars }).explain().plan;
             
-            db._explain(query, bindVars);
             const indexNodes = plan.nodes.filter(function(n) { return n.type === "EnumerateNearVectorNode"; });
             assertEqual(1, indexNodes.length);
             const filterNodes = plan.nodes.filter(function(n) { return n.type === "FilterNode"; });
