@@ -862,7 +862,6 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                 query,
                 bindVars
             }).explain().plan;
-            print(plan);
 
             // Should have vector search node but no filter node
             // isCoveredByStoredValues should be false since array/object fields are not stored
