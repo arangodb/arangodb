@@ -36,6 +36,8 @@
 
 #include <set>
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -171,7 +173,7 @@ struct AggregatorMin final : public Aggregator {
 
   ~AggregatorMin() { value.destroy(); }
 
-  void reset() override { value.erase(); }
+  void reset() override { value.destroy(); }
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isNull(true) &&
@@ -180,13 +182,15 @@ struct AggregatorMin final : public Aggregator {
       // the value `null` itself will not be used in MIN() to compare lower than
       // e.g. value `false`
       auto memoryUsage = value.memoryUsage();
+      int64_t memDelta = cmpValue.memoryUsage() - memoryUsage;
+      if (memDelta > 0) {
+        resourceUsageScope().increase(memDelta);
+      }
       value.destroy();
-      // Decrease memory after destroy(). If done before, another process might
-      // increase memory usage before it’s actually freed, possibly exceeding
-      // the limit.
-      resourceUsageScope().decrease(memoryUsage);
-      resourceUsageScope().increase(cmpValue.memoryUsage());
       value = cmpValue.clone();
+      if (memDelta < 0) {
+        resourceUsageScope().decrease(std::abs(memDelta));
+      }
     }
   }
 
@@ -207,7 +211,7 @@ struct AggregatorMax final : public Aggregator {
 
   ~AggregatorMax() { value.destroy(); }
 
-  void reset() override { value.erase(); }
+  void reset() override { value.destroy(); }
 
   void reduce(AqlValue const& cmpValue) override {
     if (value.isEmpty() ||
