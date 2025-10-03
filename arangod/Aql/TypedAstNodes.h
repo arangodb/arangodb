@@ -27,52 +27,25 @@
 
 #include <span>
 
+namespace arangodb::aql {
+struct Function;
+}
+
 namespace arangodb::aql::ast {
 
 /// @brief Base struct for immutable typed AST node wrappers
-struct ImmutableTypedAstNode {
-  explicit ImmutableTypedAstNode(AstNode const* node) : _node(node) {
+struct TypedAstNode {
+  explicit TypedAstNode(AstNode const* node) : _node(node) {
     TRI_ASSERT(_node != nullptr);
   }
-
-  AstNode const* node() const { return _node; }
-  AstNodeType type() const { return _node->type; }
 
  protected:
   AstNode const* _node;
 };
 
-/// @brief Base struct for mutable typed AST node wrappers
-struct MutableTypedAstNode {
-  explicit MutableTypedAstNode(AstNode* node) : _node(node) {
-    TRI_ASSERT(_node != nullptr);
-  }
-
-  AstNode* node() const { return _node; }
-  AstNodeType type() const { return _node->type; }
-
- protected:
-  AstNode* _node;
-};
-
-/// @brief Root node wrapper
-struct RootNode : MutableTypedAstNode {
-  explicit RootNode(AstNode* node) : MutableTypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_ROOT) << node->getTypeString();
-  }
-
-  /// @brief Get all operations in the root
-  std::span<AstNode* const> getOperations() const {
-    return _node->getMemberList();
-  }
-
-  /// @brief Add an operation to the root
-  void addOperation(AstNode* operation) { _node->addMember(operation); }
-};
-
 /// @brief FOR loop node wrapper
-struct ForNode : ImmutableTypedAstNode {
-  explicit ForNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ForNode : TypedAstNode {
+  explicit ForNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_FOR) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 3)
         << "expected 3 members in NODE_TYPE_FOR, found " << node->numMembers();
@@ -94,8 +67,8 @@ struct ForNode : ImmutableTypedAstNode {
 };
 
 /// @brief FOR VIEW node wrapper
-struct ForViewNode : ImmutableTypedAstNode {
-  explicit ForViewNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ForViewNode : TypedAstNode {
+  explicit ForViewNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_FOR_VIEW) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 4)
         << "expected 4 members in NODE_TYPE_FOR_VIEW, found "
@@ -121,8 +94,8 @@ struct ForViewNode : ImmutableTypedAstNode {
 };
 
 /// @brief LET assignment node wrapper
-struct LetNode : ImmutableTypedAstNode {
-  explicit LetNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct LetNode : TypedAstNode {
+  explicit LetNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_LET) << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 2)
         << "expected at least 2 members in NODE_TYPE_LET, found "
@@ -142,8 +115,8 @@ struct LetNode : ImmutableTypedAstNode {
 };
 
 /// @brief FILTER node wrapper
-struct FilterNode : ImmutableTypedAstNode {
-  explicit FilterNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct FilterNode : TypedAstNode {
+  explicit FilterNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_FILTER) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_FILTER, found "
@@ -155,8 +128,8 @@ struct FilterNode : ImmutableTypedAstNode {
 };
 
 /// @brief RETURN node wrapper
-struct ReturnNode : ImmutableTypedAstNode {
-  explicit ReturnNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ReturnNode : TypedAstNode {
+  explicit ReturnNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_RETURN) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_RETURN, found "
@@ -168,8 +141,8 @@ struct ReturnNode : ImmutableTypedAstNode {
 };
 
 /// @brief REMOVE node wrapper
-struct RemoveNode : ImmutableTypedAstNode {
-  explicit RemoveNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct RemoveNode : TypedAstNode {
+  explicit RemoveNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_REMOVE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 4)
         << "expected 4 members in NODE_TYPE_REMOVE, found "
@@ -189,8 +162,8 @@ struct RemoveNode : ImmutableTypedAstNode {
 };
 
 /// @brief INSERT node wrapper
-struct InsertNode : ImmutableTypedAstNode {
-  explicit InsertNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct InsertNode : TypedAstNode {
+  explicit InsertNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_INSERT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 4)
         << "expected at least 4 members in NODE_TYPE_INSERT, found "
@@ -221,8 +194,8 @@ struct InsertNode : ImmutableTypedAstNode {
 };
 
 /// @brief UPDATE node wrapper
-struct UpdateNode : ImmutableTypedAstNode {
-  explicit UpdateNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct UpdateNode : TypedAstNode {
+  explicit UpdateNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_UPDATE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 6)
         << "expected 6 members in NODE_TYPE_UPDATE, found "
@@ -236,21 +209,25 @@ struct UpdateNode : ImmutableTypedAstNode {
   AstNode const* getCollection() const { return _node->getMember(1); }
 
   /// @brief Get the document expression
-  AstNode const* getDocument() const { return _node->getMember(2); }
+  AstNode const* getDocumentExpression() const { return _node->getMember(2); }
 
   /// @brief Get the key expression
   AstNode const* getKeyExpression() const { return _node->getMember(3); }
 
   /// @brief Get the OLD variable
-  AstNode const* getOldVariable() const { return _node->getMember(4); }
+  Variable const* getOldVariable() const {
+    return static_cast<Variable*>(_node->getMember(4)->getData());
+  }
 
   /// @brief Get the NEW variable
-  AstNode const* getNewVariable() const { return _node->getMember(5); }
+  Variable const* getNewVariable() const {
+    return static_cast<Variable*>(_node->getMember(5)->getData());
+  }
 };
 
 /// @brief REPLACE node wrapper
-struct ReplaceNode : ImmutableTypedAstNode {
-  explicit ReplaceNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ReplaceNode : TypedAstNode {
+  explicit ReplaceNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_REPLACE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 6)
         << "expected 6 members in NODE_TYPE_REPLACE, found "
@@ -264,21 +241,25 @@ struct ReplaceNode : ImmutableTypedAstNode {
   AstNode const* getCollection() const { return _node->getMember(1); }
 
   /// @brief Get the document expression
-  AstNode const* getDocument() const { return _node->getMember(2); }
+  AstNode const* getDocumentExpression() const { return _node->getMember(2); }
 
   /// @brief Get the key expression
   AstNode const* getKeyExpression() const { return _node->getMember(3); }
 
   /// @brief Get the OLD variable
-  AstNode const* getOldVariable() const { return _node->getMember(4); }
+  Variable const* getOldVariable() const {
+    return static_cast<Variable*>(_node->getMember(4)->getData());
+  }
 
   /// @brief Get the NEW variable
-  AstNode const* getNewVariable() const { return _node->getMember(5); }
+  Variable const* getNewVariable() const {
+    return static_cast<Variable*>(_node->getMember(5)->getData());
+  }
 };
 
 /// @brief UPSERT node wrapper
-struct UpsertNode : ImmutableTypedAstNode {
-  explicit UpsertNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct UpsertNode : TypedAstNode {
+  explicit UpsertNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_UPSERT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 7)
         << "expected 7 members in NODE_TYPE_UPSERT, found "
@@ -291,8 +272,8 @@ struct UpsertNode : ImmutableTypedAstNode {
   /// @brief Get the collection
   AstNode const* getCollection() const { return _node->getMember(1); }
 
-  /// @brief Get the document variable
-  AstNode const* getDocumentVariable() const { return _node->getMember(2); }
+  /// @brief Get the document expression
+  AstNode const* getDocumentExpression() const { return _node->getMember(2); }
 
   /// @brief Get the insert expression
   AstNode const* getInsertExpression() const { return _node->getMember(3); }
@@ -301,10 +282,14 @@ struct UpsertNode : ImmutableTypedAstNode {
   AstNode const* getUpdateExpression() const { return _node->getMember(4); }
 
   /// @brief Get the OLD variable
-  AstNode const* getOldVariable() const { return _node->getMember(5); }
+  Variable const* getOldVariable() const {
+    return static_cast<Variable*>(_node->getMember(5)->getData());
+  }
 
   /// @brief Get the NEW variable
-  AstNode const* getNewVariable() const { return _node->getMember(6); }
+  Variable const* getNewVariable() const {
+    return static_cast<Variable*>(_node->getMember(6)->getData());
+  }
 
   /// @brief Check if can read own writes
   bool canReadOwnWrites() const {
@@ -313,8 +298,8 @@ struct UpsertNode : ImmutableTypedAstNode {
 };
 
 /// @brief COLLECT node wrapper
-struct CollectNode : ImmutableTypedAstNode {
-  explicit CollectNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct CollectNode : TypedAstNode {
+  explicit CollectNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_COLLECT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 6)
         << "expected 6 members in NODE_TYPE_COLLECT, found "
@@ -341,8 +326,8 @@ struct CollectNode : ImmutableTypedAstNode {
 };
 
 /// @brief SORT node wrapper
-struct SortNode : ImmutableTypedAstNode {
-  explicit SortNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct SortNode : TypedAstNode {
+  explicit SortNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_SORT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_SORT, found " << node->numMembers();
@@ -353,8 +338,8 @@ struct SortNode : ImmutableTypedAstNode {
 };
 
 /// @brief SORT ELEMENT node wrapper
-struct SortElementNode : ImmutableTypedAstNode {
-  explicit SortElementNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct SortElementNode : TypedAstNode {
+  explicit SortElementNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_SORT_ELEMENT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_SORT_ELEMENT, found "
@@ -369,8 +354,8 @@ struct SortElementNode : ImmutableTypedAstNode {
 };
 
 /// @brief LIMIT node wrapper
-struct LimitNode : ImmutableTypedAstNode {
-  explicit LimitNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct LimitNode : TypedAstNode {
+  explicit LimitNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_LIMIT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_LIMIT, found "
@@ -385,8 +370,8 @@ struct LimitNode : ImmutableTypedAstNode {
 };
 
 /// @brief WINDOW node wrapper
-struct WindowNode : ImmutableTypedAstNode {
-  explicit WindowNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct WindowNode : TypedAstNode {
+  explicit WindowNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_WINDOW) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 3)
         << "expected 3 members in NODE_TYPE_WINDOW, found "
@@ -404,8 +389,8 @@ struct WindowNode : ImmutableTypedAstNode {
 };
 
 /// @brief DISTINCT node wrapper
-struct DistinctNode : ImmutableTypedAstNode {
-  explicit DistinctNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct DistinctNode : TypedAstNode {
+  explicit DistinctNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_DISTINCT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_DISTINCT, found "
@@ -417,8 +402,11 @@ struct DistinctNode : ImmutableTypedAstNode {
 };
 
 /// @brief TRAVERSAL node wrapper
-struct TraversalNode : ImmutableTypedAstNode {
-  explicit TraversalNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct TraversalNode : TypedAstNode {
+  // the first 5 members are used by traversal internally.
+  // The members 6-8, where 5 and 6 are optional, are used
+  // as out variables.
+  explicit TraversalNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_TRAVERSAL) << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 6)
         << "expected at least 6 members in NODE_TYPE_TRAVERSAL, found "
@@ -435,16 +423,13 @@ struct TraversalNode : ImmutableTypedAstNode {
   AstNode const* getStart() const { return _node->getMember(1); }
 
   /// @brief Get the graph
-  AstNode const* getGraph() const { return _node->getMember(2); }
+  AstNode* getGraph() const { return _node->getMember(2); }
 
   /// @brief Get the prune expression
-  AstNode const* getPruneExpression() const { return _node->getMember(3); }
+  AstNode* getPruneExpression() const { return _node->getMember(3); }
 
   /// @brief Get the options
   AstNode const* getOptions() const { return _node->getMember(4); }
-
-  /// @brief Get the first output variable
-  AstNode const* getVariable() const { return _node->getMember(5); }
 
   /// @brief Get all output variables (1-3 variables)
   std::span<AstNode* const> getVariables() const {
@@ -454,8 +439,11 @@ struct TraversalNode : ImmutableTypedAstNode {
 };
 
 /// @brief SHORTEST PATH node wrapper
-struct ShortestPathNode : ImmutableTypedAstNode {
-  explicit ShortestPathNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ShortestPathNode : TypedAstNode {
+  // the first 4 members are used by shortest_path internally.
+  // The members 5-6, where 6 is optional, are used
+  // as out variables.
+  explicit ShortestPathNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_SHORTEST_PATH) << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 6)
         << "expected at least 6 members in NODE_TYPE_SHORTEST_PATH, found "
@@ -475,13 +463,10 @@ struct ShortestPathNode : ImmutableTypedAstNode {
   AstNode const* getTarget() const { return _node->getMember(2); }
 
   /// @brief Get the graph
-  AstNode const* getGraph() const { return _node->getMember(3); }
+  AstNode* getGraph() const { return _node->getMember(3); }
 
   /// @brief Get the options
   AstNode const* getOptions() const { return _node->getMember(4); }
-
-  /// @brief Get the first output variable
-  AstNode const* getVariable() const { return _node->getMember(5); }
 
   /// @brief Get all output variables (1-2 variables)
   std::span<AstNode* const> getVariables() const {
@@ -491,9 +476,8 @@ struct ShortestPathNode : ImmutableTypedAstNode {
 };
 
 /// @brief ENUMERATE PATHS node wrapper
-struct EnumeratePathsNode : ImmutableTypedAstNode {
-  explicit EnumeratePathsNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct EnumeratePathsNode : TypedAstNode {
+  explicit EnumeratePathsNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ENUMERATE_PATHS)
         << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 7)
@@ -514,7 +498,7 @@ struct EnumeratePathsNode : ImmutableTypedAstNode {
   AstNode const* getTarget() const { return _node->getMember(3); }
 
   /// @brief Get the graph
-  AstNode const* getGraph() const { return _node->getMember(4); }
+  AstNode* getGraph() const { return _node->getMember(4); }
 
   /// @brief Get the options
   AstNode const* getOptions() const { return _node->getMember(5); }
@@ -524,8 +508,8 @@ struct EnumeratePathsNode : ImmutableTypedAstNode {
 };
 
 /// @brief WITH node wrapper
-struct WithNode : ImmutableTypedAstNode {
-  explicit WithNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct WithNode : TypedAstNode {
+  explicit WithNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_WITH) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_WITH, found " << node->numMembers();
@@ -536,8 +520,8 @@ struct WithNode : ImmutableTypedAstNode {
 };
 
 /// @brief Variable node wrapper
-struct VariableNode : ImmutableTypedAstNode {
-  explicit VariableNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct VariableNode : TypedAstNode {
+  explicit VariableNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_VARIABLE) << node->getTypeString();
   }
 
@@ -548,8 +532,8 @@ struct VariableNode : ImmutableTypedAstNode {
 };
 
 /// @brief Assignment node wrapper
-struct AssignNode : ImmutableTypedAstNode {
-  explicit AssignNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct AssignNode : TypedAstNode {
+  explicit AssignNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ASSIGN) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ASSIGN, found "
@@ -564,9 +548,8 @@ struct AssignNode : ImmutableTypedAstNode {
 };
 
 /// @brief Unary operator node wrapper
-struct UnaryOperatorNode : ImmutableTypedAstNode {
-  explicit UnaryOperatorNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct UnaryOperatorNode : TypedAstNode {
+  explicit UnaryOperatorNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
                node->type == NODE_TYPE_OPERATOR_UNARY_MINUS ||
                node->type == NODE_TYPE_OPERATOR_UNARY_NOT)
@@ -580,8 +563,8 @@ struct UnaryOperatorNode : ImmutableTypedAstNode {
 };
 
 /// @brief Binary operator node wrapper
-struct BinaryOperatorNode : MutableTypedAstNode {
-  explicit BinaryOperatorNode(AstNode* node) : MutableTypedAstNode(node) {
+struct BinaryOperatorNode : TypedAstNode {
+  explicit BinaryOperatorNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT((node->type >= NODE_TYPE_OPERATOR_BINARY_AND &&
                 node->type <= NODE_TYPE_OPERATOR_BINARY_NIN) ||
                (node->type >= NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ &&
@@ -599,8 +582,8 @@ struct BinaryOperatorNode : MutableTypedAstNode {
 };
 
 /// @brief Ternary operator node wrapper
-struct TernaryOperatorNode : MutableTypedAstNode {
-  explicit TernaryOperatorNode(AstNode* node) : MutableTypedAstNode(node) {
+struct TernaryOperatorNode : TypedAstNode {
+  explicit TernaryOperatorNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY)
         << node->getTypeString();
     TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3)
@@ -610,7 +593,7 @@ struct TernaryOperatorNode : MutableTypedAstNode {
   }
 
   /// @brief Get the condition
-  AstNode const* getCondition() const { return _node->getMember(0); }
+  AstNode* getCondition() const { return _node->getMember(0); }
 
   bool hasTrueExpr() const { return _node->numMembers() == 3; }
 
@@ -630,8 +613,8 @@ struct TernaryOperatorNode : MutableTypedAstNode {
 };
 
 /// @brief N-ary operator node wrapper
-struct NaryOperatorNode : ImmutableTypedAstNode {
-  explicit NaryOperatorNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct NaryOperatorNode : TypedAstNode {
+  explicit NaryOperatorNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_NARY_AND ||
                node->type == NODE_TYPE_OPERATOR_NARY_OR)
         << node->getTypeString();
@@ -644,8 +627,8 @@ struct NaryOperatorNode : ImmutableTypedAstNode {
 };
 
 /// @brief Subquery node wrapper
-struct SubqueryNode : ImmutableTypedAstNode {
-  explicit SubqueryNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct SubqueryNode : TypedAstNode {
+  explicit SubqueryNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_SUBQUERY) << node->getTypeString();
   }
 
@@ -654,9 +637,8 @@ struct SubqueryNode : ImmutableTypedAstNode {
 };
 
 /// @brief Attribute access node wrapper
-struct AttributeAccessNode : ImmutableTypedAstNode {
-  explicit AttributeAccessNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct AttributeAccessNode : TypedAstNode {
+  explicit AttributeAccessNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS)
         << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
@@ -672,9 +654,8 @@ struct AttributeAccessNode : ImmutableTypedAstNode {
 };
 
 /// @brief Bound attribute access node wrapper
-struct BoundAttributeAccessNode : ImmutableTypedAstNode {
-  explicit BoundAttributeAccessNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct BoundAttributeAccessNode : TypedAstNode {
+  explicit BoundAttributeAccessNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS)
         << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
@@ -686,13 +667,12 @@ struct BoundAttributeAccessNode : ImmutableTypedAstNode {
   AstNode const* getObject() const { return _node->getMember(0); }
 
   /// @brief Get the attribute name parameter
-  AstNode const* getAttributeName() const { return _node->getMember(1); }
+  AstNode* getAttributeName() const { return _node->getMember(1); }
 };
 
 /// @brief Indexed access node wrapper
-struct IndexedAccessNode : ImmutableTypedAstNode {
-  explicit IndexedAccessNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct IndexedAccessNode : TypedAstNode {
+  explicit IndexedAccessNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_INDEXED_ACCESS, found "
@@ -707,8 +687,8 @@ struct IndexedAccessNode : ImmutableTypedAstNode {
 };
 
 /// @brief Expansion node wrapper
-struct ExpansionNode : ImmutableTypedAstNode {
-  explicit ExpansionNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ExpansionNode : TypedAstNode {
+  explicit ExpansionNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_EXPANSION) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 5)
         << "expected 5 members in NODE_TYPE_EXPANSION, found "
@@ -735,8 +715,8 @@ struct ExpansionNode : ImmutableTypedAstNode {
 };
 
 /// @brief Iterator node wrapper
-struct IteratorNode : ImmutableTypedAstNode {
-  explicit IteratorNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct IteratorNode : TypedAstNode {
+  explicit IteratorNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ITERATOR) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ITERATOR, found "
@@ -751,8 +731,8 @@ struct IteratorNode : ImmutableTypedAstNode {
 };
 
 /// @brief Value node wrapper
-struct ValueNode : ImmutableTypedAstNode {
-  explicit ValueNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ValueNode : TypedAstNode {
+  explicit ValueNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_VALUE) << node->getTypeString();
   }
 
@@ -773,8 +753,8 @@ struct ValueNode : ImmutableTypedAstNode {
 };
 
 /// @brief Array node wrapper
-struct ArrayNode : ImmutableTypedAstNode {
-  explicit ArrayNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ArrayNode : TypedAstNode {
+  explicit ArrayNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ARRAY) << node->getTypeString();
   }
 
@@ -785,8 +765,8 @@ struct ArrayNode : ImmutableTypedAstNode {
 };
 
 /// @brief Object node wrapper
-struct ObjectNode : ImmutableTypedAstNode {
-  explicit ObjectNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ObjectNode : TypedAstNode {
+  explicit ObjectNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OBJECT) << node->getTypeString();
   }
 
@@ -797,9 +777,8 @@ struct ObjectNode : ImmutableTypedAstNode {
 };
 
 /// @brief Object element node wrapper
-struct ObjectElementNode : ImmutableTypedAstNode {
-  explicit ObjectElementNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct ObjectElementNode : TypedAstNode {
+  explicit ObjectElementNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_OBJECT_ELEMENT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_OBJECT_ELEMENT, found "
@@ -810,13 +789,13 @@ struct ObjectElementNode : ImmutableTypedAstNode {
   std::string_view getAttributeName() const { return _node->getStringView(); }
 
   /// @brief Get the value
-  AstNode const* getValue() const { return _node->getMember(0); }
+  AstNode* getValue() const { return _node->getMember(0); }
 };
 
 /// @brief Calculated object element node wrapper
-struct CalculatedObjectElementNode : ImmutableTypedAstNode {
+struct CalculatedObjectElementNode : TypedAstNode {
   explicit CalculatedObjectElementNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+      : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT)
         << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
@@ -832,8 +811,8 @@ struct CalculatedObjectElementNode : ImmutableTypedAstNode {
 };
 
 /// @brief Collection node wrapper
-struct CollectionNode : ImmutableTypedAstNode {
-  explicit CollectionNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct CollectionNode : TypedAstNode {
+  explicit CollectionNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_COLLECTION) << node->getTypeString();
   }
 
@@ -842,8 +821,8 @@ struct CollectionNode : ImmutableTypedAstNode {
 };
 
 /// @brief View node wrapper
-struct ViewNode : ImmutableTypedAstNode {
-  explicit ViewNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ViewNode : TypedAstNode {
+  explicit ViewNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_VIEW) << node->getTypeString();
   }
 
@@ -852,8 +831,8 @@ struct ViewNode : ImmutableTypedAstNode {
 };
 
 /// @brief Reference node wrapper
-struct ReferenceNode : ImmutableTypedAstNode {
-  explicit ReferenceNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ReferenceNode : TypedAstNode {
+  explicit ReferenceNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_REFERENCE) << node->getTypeString();
   }
 
@@ -864,8 +843,8 @@ struct ReferenceNode : ImmutableTypedAstNode {
 };
 
 /// @brief Parameter node wrapper
-struct ParameterNode : ImmutableTypedAstNode {
-  explicit ParameterNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ParameterNode : TypedAstNode {
+  explicit ParameterNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_PARAMETER) << node->getTypeString();
   }
 
@@ -874,9 +853,8 @@ struct ParameterNode : ImmutableTypedAstNode {
 };
 
 /// @brief Datasource parameter node wrapper
-struct ParameterDatasourceNode : ImmutableTypedAstNode {
-  explicit ParameterDatasourceNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct ParameterDatasourceNode : TypedAstNode {
+  explicit ParameterDatasourceNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE)
         << node->getTypeString();
   }
@@ -886,8 +864,8 @@ struct ParameterDatasourceNode : ImmutableTypedAstNode {
 };
 
 /// @brief Function call node wrapper
-struct FunctionCallNode : ImmutableTypedAstNode {
-  explicit FunctionCallNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct FunctionCallNode : TypedAstNode {
+  explicit FunctionCallNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_FCALL ||
                node->type == NODE_TYPE_FCALL_USER)
         << node->getTypeString();
@@ -899,12 +877,16 @@ struct FunctionCallNode : ImmutableTypedAstNode {
   std::string_view getFunctionName() const { return _node->getStringView(); }
 
   /// @brief Get the arguments
-  AstNode const* getArguments() const { return _node->getMember(0); }
+  AstNode* getArguments() const { return _node->getMember(0); }
+
+  Function* getFunction() const {
+    return static_cast<Function*>(_node->getData());
+  }
 };
 
 /// @brief Range node wrapper
-struct RangeNode : ImmutableTypedAstNode {
-  explicit RangeNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct RangeNode : TypedAstNode {
+  explicit RangeNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_RANGE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_RANGE, found "
@@ -919,8 +901,8 @@ struct RangeNode : ImmutableTypedAstNode {
 };
 
 /// @brief Array limit node wrapper
-struct ArrayLimitNode : ImmutableTypedAstNode {
-  explicit ArrayLimitNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ArrayLimitNode : TypedAstNode {
+  explicit ArrayLimitNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ARRAY_LIMIT) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ARRAY_LIMIT, found "
@@ -935,8 +917,8 @@ struct ArrayLimitNode : ImmutableTypedAstNode {
 };
 
 /// @brief Array filter node wrapper
-struct ArrayFilterNode : ImmutableTypedAstNode {
-  explicit ArrayFilterNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ArrayFilterNode : TypedAstNode {
+  explicit ArrayFilterNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ARRAY_FILTER) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_ARRAY_FILTER, found "
@@ -951,9 +933,8 @@ struct ArrayFilterNode : ImmutableTypedAstNode {
 };
 
 /// @brief Destructuring node wrapper
-struct DestructuringNode : ImmutableTypedAstNode {
-  explicit DestructuringNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct DestructuringNode : TypedAstNode {
+  explicit DestructuringNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_DESTRUCTURING) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_DESTRUCTURING, found "
@@ -968,9 +949,8 @@ struct DestructuringNode : ImmutableTypedAstNode {
 };
 
 /// @brief Collection list node wrapper
-struct CollectionListNode : ImmutableTypedAstNode {
-  explicit CollectionListNode(AstNode const* node)
-      : ImmutableTypedAstNode(node) {
+struct CollectionListNode : TypedAstNode {
+  explicit CollectionListNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_COLLECTION_LIST)
         << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
@@ -983,8 +963,8 @@ struct CollectionListNode : ImmutableTypedAstNode {
 };
 
 /// @brief Direction node wrapper
-struct DirectionNode : ImmutableTypedAstNode {
-  explicit DirectionNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct DirectionNode : TypedAstNode {
+  explicit DirectionNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_DIRECTION) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_DIRECTION, found "
@@ -999,8 +979,8 @@ struct DirectionNode : ImmutableTypedAstNode {
 };
 
 /// @brief Quantifier node wrapper
-struct QuantifierNode : ImmutableTypedAstNode {
-  explicit QuantifierNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct QuantifierNode : TypedAstNode {
+  explicit QuantifierNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_QUANTIFIER) << node->getTypeString();
   }
 
@@ -1017,8 +997,8 @@ struct QuantifierNode : ImmutableTypedAstNode {
 };
 
 /// @brief Aggregations node wrapper
-struct AggregationsNode : ImmutableTypedAstNode {
-  explicit AggregationsNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct AggregationsNode : TypedAstNode {
+  explicit AggregationsNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_AGGREGATIONS) << node->getTypeString();
   }
 
@@ -1029,8 +1009,8 @@ struct AggregationsNode : ImmutableTypedAstNode {
 };
 
 /// @brief Example node wrapper
-struct ExampleNode : ImmutableTypedAstNode {
-  explicit ExampleNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct ExampleNode : TypedAstNode {
+  explicit ExampleNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_EXAMPLE) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 2)
         << "expected 2 members in NODE_TYPE_EXAMPLE, found "
@@ -1045,15 +1025,15 @@ struct ExampleNode : ImmutableTypedAstNode {
 };
 
 /// @brief NOP node wrapper
-struct NopNode : ImmutableTypedAstNode {
-  explicit NopNode(AstNode const* node) : ImmutableTypedAstNode(node) {
+struct NopNode : TypedAstNode {
+  explicit NopNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_NOP) << node->getTypeString();
   }
 };
 
 /// @brief Passthru node wrapper
-struct PassthruNode : MutableTypedAstNode {
-  explicit PassthruNode(AstNode* node) : MutableTypedAstNode(node) {
+struct PassthruNode : TypedAstNode {
+  explicit PassthruNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_PASSTHRU) << node->getTypeString();
     TRI_ASSERT(node->numMembers() == 1)
         << "expected 1 member in NODE_TYPE_PASSTHRU, found "

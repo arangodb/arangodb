@@ -671,7 +671,7 @@ class Ast {
                                             AccessMode::Type accessType);
 
   void extractCollectionsFromGraph(BindParameters& parameter,
-                                   AstNode const* graphNode);
+                                   AstNode* graphNode);
 
   /// @brief copies node payload from node into copy. this is *not* copying
   /// the subnodes

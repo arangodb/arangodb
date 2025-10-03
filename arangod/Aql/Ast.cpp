@@ -2089,8 +2089,7 @@ void Ast::injectBindParametersFirstStage(
 
         if (name->type == NODE_TYPE_PARAMETER) {
           // on-the-fly replacement of bind parameter with its value equivalent
-          name =
-              replaceValueBindParameter(const_cast<AstNode*>(name), parameters);
+          name = replaceValueBindParameter(name, parameters);
         }
 
         TRI_ASSERT(name->type != NODE_TYPE_PARAMETER);
@@ -2476,7 +2475,7 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
       if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
         continue;
       }
-      ast::ObjectElementNode objElem(const_cast<AstNode*>(member));
+      ast::ObjectElementNode objElem(member);
       auto const name = objElem.getAttributeName();
       auto value = objElem.getValue();
       TRI_ASSERT(value->isConstant());
@@ -2939,7 +2938,7 @@ bool Ast::getReferencedAttributesRecursive(
     }
 
     if (node->type == NODE_TYPE_EXPANSION) {
-      ast::ExpansionNode expansionNode(const_cast<AstNode*>(node));
+      ast::ExpansionNode expansionNode(node);
       // special stunt needed here for the [*] operator...
       // NOTE: Every [*] operator is represented as an EXPANSION
       // with 5 (or more) members.
@@ -3320,7 +3319,7 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
             "expecting object literal with literal attribute names in example");
       }
 
-      ast::ObjectElementNode objElem(const_cast<AstNode*>(member));
+      ast::ObjectElementNode objElem(member);
       attributeParts.emplace_back(objElem.getAttributeName());
 
       auto value = objElem.getValue();
@@ -3551,11 +3550,9 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
 AstNode* Ast::optimizeBinaryOperatorRelational(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-
   ast::BinaryOperatorNode binOp(node);
   AstNode* lhs = binOp.getLeft();
-  AstNode* rhs = const_cast<AstNode*>(binOp.getRight());
+  AstNode* rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3641,8 +3638,6 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
 AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-
   ast::BinaryOperatorNode binOp(node);
   AstNode const* lhs = binOp.getLeft();
   AstNode const* rhs = binOp.getRight();
@@ -3795,15 +3790,11 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 /// if the condition is constant, the operator will be replaced with either the
 /// true part or the false part
 AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
-  TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3);
-
   ast::TernaryOperatorNode ternaryOp(node);
-  AstNode const* condition = ternaryOp.getCondition();
+  AstNode* condition = ternaryOp.getCondition();
   AstNode* truePart = ternaryOp.getTrueExpr();
   if (truePart == nullptr) {
-    truePart = const_cast<AstNode*>(condition);
+    truePart = condition;
   }
   AstNode* falsePart = ternaryOp.getFalseExpr();
 
@@ -3828,8 +3819,6 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
 AstNode* Ast::optimizeAttributeAccess(
     AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
                        variableDefinitions) {
-  TRI_ASSERT(node != nullptr);
-
   ast::AttributeAccessNode attrNode(node);
   AstNode const* what = attrNode.getObject();
 
@@ -3860,7 +3849,7 @@ AstNode* Ast::optimizeAttributeAccess(
           member->getStringView() == search) {
         // found matching member
         ast::ObjectElementNode objElem(member);
-        return const_cast<AstNode*>(objElem.getValue());
+        return objElem.getValue();
       }
     }
   }
@@ -3873,8 +3862,6 @@ AstNode* Ast::optimizeFunctionCall(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node,
     Ast::ValidateAndOptimizeOptions const& options) {
-  TRI_ASSERT(node != nullptr);
-
   ast::FunctionCallNode funcNode(node);
 
   if (!options.optimizeFunctionCalls) {
@@ -3948,8 +3935,6 @@ AstNode* Ast::optimizeFunctionCall(
 AstNode* Ast::optimizeIndexedAccess(
     AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
                        variableDefinitions) {
-  TRI_ASSERT(node != nullptr);
-
   ast::IndexedAccessNode indexedNode(node);
   auto index = indexedNode.getIndex();
 
@@ -3976,8 +3961,6 @@ AstNode* Ast::optimizeIndexedAccess(
 
 /// @brief optimizes the FILTER statement
 AstNode* Ast::optimizeFilter(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-
   ast::FilterNode filterNode(node);
   AstNode const* expression = filterNode.getExpression();
 
@@ -4002,8 +3985,6 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
 /// no real optimizations are done here, but we do an early check if the
 /// FOR loop operand is actually a list
 AstNode* Ast::optimizeFor(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-
   ast::ForNode forNode(node);
   AstNode const* expression = forNode.getExpression();
 
@@ -4384,11 +4365,10 @@ AstNode* Ast::createNodeCollectionNoValidation(std::string_view name,
 }
 
 void Ast::extractCollectionsFromGraph(BindParameters& parameters,
-                                      AstNode const* graphNode) {
+                                      AstNode* graphNode) {
   TRI_ASSERT(graphNode != nullptr);
   if (graphNode->type == NODE_TYPE_PARAMETER) {
-    graphNode =
-        replaceValueBindParameter(const_cast<AstNode*>(graphNode), parameters);
+    graphNode = replaceValueBindParameter(graphNode, parameters);
   }
 
   TRI_ASSERT(graphNode->type != NODE_TYPE_PARAMETER);
