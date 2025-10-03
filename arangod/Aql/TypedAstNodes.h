@@ -607,7 +607,7 @@ struct TernaryOperatorNode : TypedAstNode {
   /// For 2-member ternary: returns the condition (same as getCondition())
   /// For 3-member ternary: returns the true expression
   AstNode* getTrueExpr() const {
-    return hasTrueExpr() ? _node->getMember(1) : nullptr;
+    return hasTrueExpr() ? _node->getMember(1) : getCondition();
   }
 
   /// @brief Get the false expression
