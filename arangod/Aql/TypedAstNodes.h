@@ -460,8 +460,8 @@ struct ShortestPathNode : ImmutableTypedAstNode {
     TRI_ASSERT(node->numMembers() >= 6)
         << "expected at least 6 members in NODE_TYPE_SHORTEST_PATH, found "
         << node->numMembers();
-    TRI_ASSERT(node->numMembers() <= 8)
-        << "expected at most 8 members in NODE_TYPE_SHORTEST_PATH, found "
+    TRI_ASSERT(node->numMembers() <= 7)
+        << "expected at most 7 members in NODE_TYPE_SHORTEST_PATH, found "
         << node->numMembers();
   }
 
@@ -496,11 +496,8 @@ struct EnumeratePathsNode : ImmutableTypedAstNode {
       : ImmutableTypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ENUMERATE_PATHS)
         << node->getTypeString();
-    TRI_ASSERT(node->numMembers() >= 7)
-        << "expected at least 7 members in NODE_TYPE_ENUMERATE_PATHS, found "
-        << node->numMembers();
-    TRI_ASSERT(node->numMembers() <= 7)
-        << "expected at most 7 members in NODE_TYPE_ENUMERATE_PATHS, found "
+    TRI_ASSERT(node->numMembers() == 7)
+        << "expected members in NODE_TYPE_ENUMERATE_PATHS, found "
         << node->numMembers();
   }
 
