@@ -87,8 +87,8 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
   /// @brief list of collections that should be used
   std::vector<aql::Collection*> _satellites;
 
- /// @brief monitor memory usage of '_temp' builder object
- ResourceMonitor& _resourceMonitor;
+  /// @brief monitor memory usage of '_temp' builder object
+  ResourceMonitor& _resourceMonitor;
 };
 
 // The DistributeBlock is actually implemented by specializing
