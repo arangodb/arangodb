@@ -173,7 +173,14 @@ struct AggregatorMin final : public Aggregator {
 
   ~AggregatorMin() { value.destroy(); }
 
-  void reset() override { value.erase(); }
+  void reset() override {
+    if (value.requiresDestruction()) {
+      value.destroy();
+    } else {
+      value.erase();  // clears inline values because destroy() doesn't call
+                      // erase() for this case
+    }
+  }
 
   void reduce(AqlValue const& cmpValue) override {
     if (!cmpValue.isNull(true) &&
@@ -211,7 +218,14 @@ struct AggregatorMax final : public Aggregator {
 
   ~AggregatorMax() { value.destroy(); }
 
-  void reset() override { value.erase(); }
+  void reset() override {
+    if (value.requiresDestruction()) {
+      value.destroy();
+    } else {
+      value.erase();  // clears inline values because destroy() doesn't call
+                      // erase() for this case
+    }
+  }
 
   void reduce(AqlValue const& cmpValue) override {
     if (value.isEmpty() ||
