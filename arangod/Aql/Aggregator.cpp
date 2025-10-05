@@ -217,13 +217,15 @@ struct AggregatorMax final : public Aggregator {
     if (value.isEmpty() ||
         AqlValue::Compare(_vpackOptions, value, cmpValue, true) < 0) {
       auto memoryUsage = value.memoryUsage();
+      int64_t memDelta = cmpValue.memoryUsage() - memoryUsage;
+      if (memDelta > 0) {
+        resourceUsageScope().increase(memDelta);
+      }
       value.destroy();
-      // Decrease memory after destroy(). If done before, another process might
-      // increase memory usage before it’s actually freed, possibly exceeding
-      // the limit.
-      resourceUsageScope().decrease(memoryUsage);
-      resourceUsageScope().increase(cmpValue.memoryUsage());
       value = cmpValue.clone();
+      if (memDelta < 0) {
+        resourceUsageScope().decrease(std::abs(memDelta));
+      }
     }
   }
 
