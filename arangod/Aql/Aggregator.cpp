@@ -36,8 +36,6 @@
 
 #include <set>
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
