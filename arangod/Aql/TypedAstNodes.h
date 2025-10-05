@@ -1008,7 +1008,7 @@ struct QuantifierNode : TypedAstNode {
 
   /// @brief Get the quantifier type
   Quantifier::Type getType() const {
-    return static_cast<Quantifier::Type>(_node->getIntValue());
+    return static_cast<Quantifier::Type>(_node->getIntValue(true));
   }
 
   bool isAll() const noexcept { return getType() == Quantifier::Type::kAll; }
