@@ -498,7 +498,8 @@ class Ast {
 
   /// @brief finds all Graph nodes that use edge collection syntax
   /// and collects the edge collections refered to.
-  containers::FlatHashSet<std::string> collectGraphNodeEdgeCollections() const;
+  containers::FlatHashSet<std::string>
+  collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const;
 
   /// @brief Adds vertex collections that are implied by using edge collection
   /// syntax in graph operations.

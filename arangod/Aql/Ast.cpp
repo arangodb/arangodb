@@ -4592,42 +4592,46 @@ auto hasVertexCollectionsOption(AstNode const* options) -> bool {
 
   return false;
 }
+
+auto matchGraphSubjectWhenVertexCollectionsNotSet(AstNode const* node)
+    -> std::optional<AstNode const*> {
+  auto const* graphSubject = (AstNode const*){};
+  auto const* options = (AstNode const*){};
+
+  switch (node->type) {
+    case NODE_TYPE_TRAVERSAL: {
+      graphSubject = node->getMember(2);
+      options = node->getMember(4);
+    } break;
+    case NODE_TYPE_SHORTEST_PATH: {
+      graphSubject = node->getMember(3);
+      options = node->getMember(5);
+    } break;
+    case NODE_TYPE_ENUMERATE_PATHS: {
+      graphSubject = node->getMember(4);
+      options = node->getMember(5);
+    } break;
+    default: {
+      return std::nullopt;
+    } break;
+  };
+
+  if (not hasVertexCollectionsOption(options)) {
+    return {graphSubject};
+  }
+
+  return std::nullopt;
+}
 }  // namespace
-containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
-    const {
+
+containers::FlatHashSet<std::string>
+Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
   auto edgeCollections = containers::FlatHashSet<std::string>(4);
 
   // Look for Graph nodes that use edge collection syntax
   // and do not have the vertexCollections option set.
   auto matcher = [&edgeCollections](AstNode const* node) -> void {
-    auto maybeMatch = [&node]() -> std::optional<AstNode const*> {
-      auto const* graphSubject = (AstNode const*){};
-      auto const* options = (AstNode const*){};
-
-      switch (node->type) {
-        case NODE_TYPE_TRAVERSAL: {
-          graphSubject = node->getMember(2);
-          options = node->getMember(4);
-        } break;
-        case NODE_TYPE_SHORTEST_PATH: {
-          graphSubject = node->getMember(3);
-          options = node->getMember(5);
-        } break;
-        case NODE_TYPE_ENUMERATE_PATHS: {
-          graphSubject = node->getMember(4);
-          options = node->getMember(5);
-        } break;
-        default: {
-          return std::nullopt;
-        } break;
-      };
-
-      if (not hasVertexCollectionsOption(options)) {
-        return {graphSubject};
-      }
-
-      return std::nullopt;
-    }();
+    auto maybeMatch = matchGraphSubjectWhenVertexCollectionsNotSet(node);
 
     if (maybeMatch.has_value()) {
       auto const* match = *maybeMatch;
@@ -4660,8 +4664,9 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
 void Ast::addGraphNodeImplicitVertexCollections(
     CollectionNameResolver const& resolver) {
   // Collect all edge collection names used in graph operations using
-  // edge collection syntax.
-  auto edgeCollections = collectGraphNodeEdgeCollections();
+  // edge collection syntax that do not have vertexCollections set.
+  auto edgeCollections =
+      collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption();
   if (edgeCollections.empty()) {
     // The operations below are fairly expensive, so at least for queries
     // that do not involve edge collection syntax, shortcut
