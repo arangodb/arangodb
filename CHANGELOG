@@ -5,7 +5,7 @@ devel
   pushed down into vector similarity searches, enabling filtering with vector index by
   evaluating filters during the index scan rather than as a post-processing step.
 
-* Upgraded OpenSSL to 3.5.3.
+* Upgraded OpenSSL to 3.5.4.
 
 * Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
 
