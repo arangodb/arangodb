@@ -35,6 +35,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const IM = global.instanceManager;
 
 function LoggerSuite() {
   'use strict';
@@ -42,17 +43,11 @@ function LoggerSuite() {
   return {
     
     testLogEntries: function() {
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-return require('internal').options()["log.output"];
-`);
-
-      assertTrue(Array.isArray(res));
-      res = res.filter((x) => x.startsWith('file://'));
-      assertTrue(res.length > 0);
-
-      let logfile = res[0].replace(/^file:\/\//, '');
+      let arangod = IM.arangods.filter(arangod => {return arangod.isFrontend();})[0];
+      let fn = arangod.args['log.output'][0].replace(/\$PID/, arangod.pid).replace(/file:\/\//, '');
+      assertTrue(fs.exists(fn), fn);
       // logfile name must end with dot and then process id
-      assertMatch(/\.testi\.[0-9]+$/, logfile);
+      assertMatch(/\.testi\.[0-9]+$/, fn);
     },
 
   };

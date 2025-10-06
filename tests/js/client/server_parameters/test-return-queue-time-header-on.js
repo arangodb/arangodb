@@ -28,7 +28,6 @@
 if (getOptions === true) {
   return {
     'http.return-queue-time-header': 'true',
-    'javascript.v8-contexts': '4',
   };
 }
 const jsunity = require('jsunity');
@@ -127,7 +126,7 @@ function testSuite() {
       let tries = 10;
       while (tries-- > 0) {
         for (let i = 0; i < n; ++i) {
-          let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(0.25);', { "x-arango-async": "store" });
+          let result = arango.POST_RAW("/_api/cursor", {"query": "return sleep(0.25)"}, { "x-arango-async": "store" });
           assertTrue(result.headers.hasOwnProperty('x-arango-async-id'));
           jobs.push(result.headers['x-arango-async-id']);
           assertTrue(result.headers.hasOwnProperty(header));
@@ -159,7 +158,7 @@ function testSuite() {
       const n = 250;
 
       for (let i = 0; i < n; ++i) {
-        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(1.0);', { "x-arango-async": "store" });
+        let result = arango.POST_RAW("/_api/cursor", {"query": "return sleep(1.0)"}, { "x-arango-async": "store" });
         jobs.push(result.headers['x-arango-async-id']);
         assertTrue(result.headers.hasOwnProperty(header));
         let value = result.headers[header];
@@ -195,7 +194,7 @@ function testSuite() {
       const n = 250;
 
       for (let i = 0; i < n; ++i) {
-        let result = arango.POST_RAW("/_admin/execute", 'require("internal").sleep(0.5);', { "x-arango-async": "store" });
+        let result = arango.POST_RAW("/_api/cursor", {"query": "return sleep(0.5)"}, { "x-arango-async": "store" });
         jobs.push(result.headers['x-arango-async-id']);
         assertTrue(result.headers.hasOwnProperty(header));
         let value = result.headers[header];
