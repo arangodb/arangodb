@@ -4566,12 +4566,9 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
 
 namespace {
 
-auto getVertexCollectionsFromGraphOptionsNode(AstNode const* options)
-    -> containers::FlatHashSet<std::string> {
-  auto result = containers::FlatHashSet<std::string>{};
-
-  if (options != nullptr) {
-    TRI_ASSERT(options->type == NODE_TYPE_OBJECT);
+auto hasVertexCollectionsOption(AstNode const* options) -> bool {
+  if (options != nullptr && options->type != NODE_TYPE_NOP) {
+    TRI_ASSERT(options->type == NODE_TYPE_OBJECT) << options->getTypeString();
     auto n = options->numMembers();
     for (auto i = size_t{0}; i < n; ++i) {
       auto member = options->getMemberUnchecked(i);
@@ -4581,48 +4578,55 @@ auto getVertexCollectionsFromGraphOptionsNode(AstNode const* options)
         if (name == "vertexCollections") {
           auto value = member->getMember(0);
           if (value->isStringValue()) {
-            result.insert(value->getString());
+            return true;
           } else if (value->type == NODE_TYPE_ARRAY) {
             auto nn = value->numMembers();
-            for (auto j = size_t{0}; j < nn; ++j) {
-              auto c = value->getMemberUnchecked(j);
-              TRI_ASSERT(c->isStringValue());
-              result.insert(c->getString());
+            if (nn > 0) {
+              return true;
             }
-          } else {
-            // ...
           }
         }
       }
     }
   }
 
-  return result;
+  return false;
 }
 }  // namespace
 containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
     const {
   auto edgeCollections = containers::FlatHashSet<std::string>(4);
 
-  auto edgeTraversalVisitor = [&edgeCollections](AstNode const* node) -> void {
+  // Look for Graph nodes that use edge collection syntax
+  // and do not have the vertexCollections option set.
+  auto matcher = [&edgeCollections](AstNode const* node) -> void {
     auto maybeMatch = [&node]() -> std::optional<AstNode const*> {
+      auto const* graphSubject = (AstNode const*){};
+      auto const* options = (AstNode const*){};
+
       switch (node->type) {
         case NODE_TYPE_TRAVERSAL: {
-          getVertexCollectionsFromGraphOptionsNode(node->getMember(4));
-          return node->getMember(2);
+          graphSubject = node->getMember(2);
+          options = node->getMember(4);
         } break;
         case NODE_TYPE_SHORTEST_PATH: {
-          // getVertexCollectionsFromGraphOptionsNode(node->getMember(5));
-          return node->getMember(3);
+          graphSubject = node->getMember(3);
+          options = node->getMember(5);
         } break;
         case NODE_TYPE_ENUMERATE_PATHS: {
-          // getVertexCollectionsFromGraphOptionsNode(node->getMember(5));
-          return node->getMember(4);
+          graphSubject = node->getMember(4);
+          options = node->getMember(5);
         } break;
         default: {
           return std::nullopt;
         } break;
       };
+
+      if (not hasVertexCollectionsOption(options)) {
+        return {graphSubject};
+      }
+
+      return std::nullopt;
     }();
 
     if (maybeMatch.has_value()) {
@@ -4642,13 +4646,13 @@ containers::FlatHashSet<std::string> Ast::collectGraphNodeEdgeCollections()
           }
         }
       } else {
-        // Graph syntax case (I hope); is not interesting for this
+        // Graph syntax case is not interesting for this
         // function
       }
     }
   };
 
-  traverseReadOnly(_root, edgeTraversalVisitor);
+  traverseReadOnly(_root, matcher);
 
   return edgeCollections;
 }
@@ -4661,6 +4665,13 @@ void Ast::addGraphNodeImplicitVertexCollections(
   if (edgeCollections.empty()) {
     // The operations below are fairly expensive, so at least for queries
     // that do not involve edge collection syntax, shortcut
+
+    // Note *also* that the graph manager executes a query to determine all
+    // graphs (which does not contain edge collection syntax); if one does not
+    // return here, the AQL execution enters an infinite loop and blows out the
+    // stack.
+    //
+    // This is clearly terrible.
     return;
   }
 

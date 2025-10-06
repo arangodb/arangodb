@@ -197,6 +197,20 @@ function withClauseTestSuite() {
     /// @brief test with clause not needed with edge collection if a named graph
     //  exists
     ////////////////////////////////////////////////////////////////////////////////
+    testWithClauseNotNeededOptions: function() {
+      const startNode = "VertexCollection1/A";
+      const query = `FOR v,e,p IN 1..1 ANY "${startNode}" ${edgeCollectionName}
+                       OPTIONS { vertexCollections: [ "${vertexCollectionName1}", "${vertexCollectionName2}" ] }
+                       RETURN LENGTH(p)`;
+
+      var actual = db._query(query).toArray();
+      assertEqual(actual, [ 3, 3 ]);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test with clause not needed with edge collection if a named graph
+    //  exists
+    ////////////////////////////////////////////////////////////////////////////////
     testWithClauseNotNeeded: function() {
       const startNode = "VertexCollection1/A";
       const query = `FOR v,e,p IN 1..1 ANY "${startNode}" ${edgeCollectionName}
