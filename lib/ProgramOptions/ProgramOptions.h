@@ -108,8 +108,9 @@ class ProgramOptions {
   ProgramOptions& operator=(ProgramOptions const&) = delete;
 
   ProgramOptions(char const* progname, std::string const& usage,
-                 std::string const& more, char const* binaryPath,
+                 std::string const& more, char const* binaryPath
 #ifndef USE_V8
+                 ,
                  ParseJsOps parseJsOptions = ParseJsOps::skipJS
 #endif
   );
