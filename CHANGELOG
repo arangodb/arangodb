@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgraded OpenSSL to 3.5.3.
+* Upgraded OpenSSL to 3.5.4.
 
 * Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
 
