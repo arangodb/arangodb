@@ -31,7 +31,7 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const isCluster = require("internal").isCluster();
 
-function ahuacatlMemoryLimitStaticQueriesTestSuite () {
+function ahuacatlMemoryLimitStaticQueriesTestSuite() {
   return {
 
     testUnlimited: function () {
@@ -90,7 +90,7 @@ function ahuacatlMemoryLimitStaticQueriesTestSuite () {
   };
 }
 
-function ahuacatlMemoryLimitReadOnlyQueriesTestSuite () {
+function ahuacatlMemoryLimitReadOnlyQueriesTestSuite() {
   const cn = "UnitTestsCollection";
 
   let c;
@@ -102,9 +102,11 @@ function ahuacatlMemoryLimitReadOnlyQueriesTestSuite () {
 
       let docs = [];
       for (let i = 0; i < 100 * 1000; ++i) {
-        docs.push({value1: i,
-value2: i % 10,
-_key: "test" + i});
+        docs.push({
+          value1: i,
+          value2: i % 10,
+          _key: "test" + i
+        });
         if (docs.length === 5000) {
           c.insert(docs);
           docs = [];
@@ -149,13 +151,17 @@ _key: "test" + i});
       const optimizer = {rules: ["-sort-limit"]};
       const query = "FOR doc IN " + cn + " SORT doc.value1 LIMIT 10 RETURN doc";
 
-      let actual = db._query(query, null, {memoryLimit: 15 * 1000 * 1000,
-optimizer}).toArray();
+      let actual = db._query(query, null, {
+        memoryLimit: 15 * 1000 * 1000,
+        optimizer
+      }).toArray();
       assertEqual(10, actual.length);
 
       try {
-        db._query(query, null, {memoryLimit: 10 * 1000 * 1000,
-optimizer});
+        db._query(query, null, {
+          memoryLimit: 10 * 1000 * 1000,
+          optimizer
+        });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -197,7 +203,7 @@ optimizer});
   };
 }
 
-function ahuacatlMemoryLimitGraphQueriesTestSuite () {
+function ahuacatlMemoryLimitGraphQueriesTestSuite() {
   const vn = "UnitTestsVertex";
   const en = "UnitTestsEdge";
 
@@ -224,9 +230,11 @@ function ahuacatlMemoryLimitGraphQueriesTestSuite () {
       docs = [];
       for (let i = 0; i < n; ++i) {
         for (let j = i + 1; j < n; ++j) {
-          docs.push({_from: vn + "/test" + i,
-_to: vn + "/test" + j,
-weight});
+          docs.push({
+            _from: vn + "/test" + i,
+            _to: vn + "/test" + j,
+            weight
+          });
           if (docs.length === 5000) {
             c.insert(docs);
             docs = [];
@@ -314,13 +322,17 @@ weight});
     testShortestPathWeightAttribute: function () {
       const query = "WITH " + vn + " FOR p IN ANY SHORTEST_PATH '" + vn + "/test0' TO '" + vn + "/test310' " + en + " RETURN p";
 
-      let actual = db._query(query, null, {memoryLimit: 30 * 1000 * 1000,
-weightAttribute: "weight"}).toArray();
+      let actual = db._query(query, null, {
+        memoryLimit: 30 * 1000 * 1000,
+        weightAttribute: "weight"
+      }).toArray();
       assertEqual(2, actual.length);
 
       try {
-        db._query(query, null, {memoryLimit: 30 * 1000,
-weightAttribute: "weight"});
+        db._query(query, null, {
+          memoryLimit: 30 * 1000,
+          weightAttribute: "weight"
+        });
         fail();
       } catch (err) {
         assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
@@ -358,7 +370,7 @@ weightAttribute: "weight"});
   };
 }
 
-function ahuacatlMemoryLimitSkipTestSuite () {
+function ahuacatlMemoryLimitSkipTestSuite() {
   const cn = "UnitTestsCollection";
 
   let c;
@@ -400,11 +412,11 @@ function ahuacatlMemoryLimitSkipTestSuite () {
   };
 }
 
-function ahuacatMemoryLimitSortedCollectTestSuite () {
+function ahuacatMemoryLimitSortedCollectTestSuite() {
   const TEST_COLLECTION = "testDocs";
   let testCollection;
 
-  function tearDown () {
+  function tearDown() {
     db._drop(TEST_COLLECTION);
   }
 
@@ -684,7 +696,8 @@ function ahuacatMemoryLimitSortedCollectTestSuite () {
             bool = SORTED_UNIQUE(d.bool),
             arr  = SORTED_UNIQUE(d.arr),
             etc  = SORTED_UNIQUE(d.etc)
-        RETURN { grp, num, txt, obj, bool, arr, etc }`;
+          RETURN { grp, num, txt, obj, bool, arr, etc }
+      `;
       try {
         db._query(query, null, {memoryLimit: 6400000}).toArray();
         fail();
@@ -717,7 +730,8 @@ function ahuacatMemoryLimitSortedCollectTestSuite () {
             bool3 = COUNT_DISTINCT(d.bool),
             arr3  = COUNT_DISTINCT(d.arr),
             etc3  = COUNT_DISTINCT(d.etc)
-        RETURN { grp, num, txt, obj, bool, arr, etc, num2, txt2, obj2, bool2, arr2, etc2, num3, txt3, obj3, bool3, arr3, etc3 }`;
+          RETURN { grp, num, txt, obj, bool, arr, etc, num2, txt2, obj2, bool2, arr2, etc2, num3, txt3, obj3, bool3, arr3, etc3 }
+      `;
       try {
         db._query(query, null, {memoryLimit: 5000000}).toArray();
         fail();
@@ -729,7 +743,7 @@ function ahuacatMemoryLimitSortedCollectTestSuite () {
   };
 }
 
-function ahuacatMemoryLimitMergeTestSuite () {
+function ahuacatMemoryLimitMergeTestSuite() {
   return {
     testMergeRecursiveSingleObjectWithinLimit: function () {
       const query = "RETURN NOOPT(MERGE_RECURSIVE({a:{b:{c:{d:{e:{f:{g:1}}}}}}}))";
@@ -877,89 +891,85 @@ function ahuacatMemoryLimitMergeTestSuite () {
   };
 }
 
-function ahuacatMemoryLimitCollectMemoryLeakTestSuite () {
+function ahuacatMemoryLimitCollectMemoryLeakTestSuite() {
+  // this test suite is just to test lsan possible errors, so we don't care about reading the query result,
+  // just run these queries that would trigger asan to be sure it doesn't happen
   return {
     testHitMemoryLimitAggregatorMin: function () {
       const query = `
-       FOR d IN 1..200
-          LET big = REPEAT('a', 4096 + d)  
+        FOR d IN 1..200
+          LET big = REPEAT('a', 4096 + d)
           SORT d DESC
           COLLECT g = d % 10
           AGGREGATE m = MIN(big)
-          RETURN [g, LENGTH(m)]                     
+          RETURN [g, LENGTH(m)]
       `;
-      db._explain(query);
       db._query(query);
     },
 
     testHitMemoryLimitAggregatorMin2: function () {
       const query = `
-       FOR d IN 1..200
-          LET big = REPEAT('a', 4096 + d)  
-          LET n = d % 10 
+        FOR d IN 1..200
+          LET big = REPEAT('a', 4096 + d)
+          LET n = d % 10
           SORT n ASC
           COLLECT g = n
           AGGREGATE m = MIN(big)
-          RETURN [g, LENGTH(m)]                     
+          RETURN [g, LENGTH(m)]
       `;
-      db._explain(query);
       db._query(query);
     },
 
     testHitMemoryLimitAggregatorMax: function () {
       const query = `
-       FOR d IN 1..200
-          LET big = REPEAT('a', 4096 + d)  
+        FOR d IN 1..200
+          LET big = REPEAT('a', 4096 + d)
           SORT d DESC
           COLLECT g = d % 10
           AGGREGATE m = MIN(big)
-          RETURN [g, LENGTH(m)]                     
+          RETURN [g, LENGTH(m)]
       `;
-      db._explain(query);
       db._query(query);
     },
 
     testHitMemoryLimitAggregatorMax2: function () {
       const query = `
-       FOR d IN 1..200
-          LET big = REPEAT('a', 4096 + d)  
-          LET n = d % 10 
+        FOR d IN 1..200
+          LET big = REPEAT('a', 4096 + d)
+          LET n = d % 10
           SORT n ASC
           COLLECT g = n
           AGGREGATE m = MIN(big)
-          RETURN [g, LENGTH(m)]                     
+          RETURN [g, LENGTH(m)]
       `;
-      db._explain(query);
       db._query(query);
     },
 
     testHitMemoryLimitAggregatorMinSorted: function () {
       const query = `
-    	FOR d IN 1..200
-      LET n = d % 10
-      LET big = REPEAT('a', 4096 + d)
-      SORT n ASC
-      COLLECT g = n
-      AGGREGATE m = MIN(big)
-      OPTIONS { method: "sorted" }
-      RETURN [g, LENGTH(m)]
-  `;
-      db._explain(query);
+        FOR d IN 1..200
+          LET n = d % 10
+          LET big = REPEAT('a', 4096 + d)
+          SORT n ASC
+          COLLECT g = n
+          AGGREGATE m = MIN(big)
+          OPTIONS { method: "sorted" }
+          RETURN [g, LENGTH(m)]
+      `;
       db._query(query);
     },
 
     testHitMemoryLimitAggregatorMaxSorted: function () {
       const query = `
-    FOR d IN 1..200
-      LET n = d % 10
-      LET big = REPEAT('a', 4096 + d)
-      SORT n ASC
-      COLLECT g = n
-      AGGREGATE m = MAX(big)
-      OPTIONS { method: "sorted" }
-      RETURN [g, LENGTH(m)]
-  `;
-      db._explain(query);
+        FOR d IN 1..200
+          LET n = d % 10
+          LET big = REPEAT('a', 4096 + d)
+          SORT n ASC
+          COLLECT g = n
+          AGGREGATE m = MAX(big)
+          OPTIONS { method: "sorted" }
+          RETURN [g, LENGTH(m)]
+      `;
       db._query(query, {});
     }
 
@@ -973,7 +983,6 @@ jsunity.run(ahuacatlMemoryLimitGraphQueriesTestSuite);
 jsunity.run(ahuacatlMemoryLimitSkipTestSuite);
 jsunity.run(ahuacatMemoryLimitSortedCollectTestSuite);
 jsunity.run(ahuacatMemoryLimitMergeTestSuite);
-// this test suite is just to test lsan possible errors, so we don't care about reading the query result
 jsunity.run(ahuacatMemoryLimitCollectMemoryLeakTestSuite);
 
 
