@@ -149,6 +149,7 @@ function httpRequestsFuzzerTestSuite() {
       let moreargv = [];
       let logFile = fs.join(fs.getTempPath(), `rta_out_create.log`);
       if (IM.options.skipServerJS) {
+        // TODO: QA-703
         moreargv = ['--skip', "070,071,801,550,900,960"].concat(moreargv);
       }
       let rc = ct.run.rtaMakedata(IM.options, IM, 0, messages[0], logFile, moreargv);
