@@ -46,7 +46,8 @@
 
 #include <string_view>
 
-// TODO: the lookupToken should probably be somewhere else?
+// TODO: these includes are here because of lookupToken below.
+//       This method should probably be somewhere else?
 #include "VocBase/vocbase.h"
 #include "VocBase/LogicalCollection.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -271,6 +272,11 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
   builder.close();
 }
 
+// TODO: lookupToken goes directly to the physical collection to lookup
+// an edge document. In the past this function was part of TraverserCache, but
+// there was no caching functionality involved whatsoever.
+//
+// Maybe the TraverserEngine is not the correct place to do this lookup.
 VPackSlice BaseEngine::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
