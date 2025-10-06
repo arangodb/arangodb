@@ -212,9 +212,7 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
     : RocksDBInvertedListsIteratorBase(
           index, collection, searchParametersContext.trx, listNumber, codeSize),
       _searchParametersContext(searchParametersContext) {
-  TRI_ASSERT(index->hasStoredValues());
-  // TODO(jbajic) Remove one
-  TRI_ASSERT(index->hasStoredValues() ==
+  TRI_ASSERT(index->hasStoredValues() &&
              searchParametersContext.isCoveredByStoredValues);
   setToValidIterator();
 }

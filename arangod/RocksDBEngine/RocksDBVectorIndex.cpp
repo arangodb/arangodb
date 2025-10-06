@@ -403,7 +403,8 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
 
       return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
     } else {
-      // Store raw encoded values directly for better performance
+      // Store raw encoded values directly for better performance and
+      // backwards compatibility
       return RocksDBValue::VectorIndexValue(flat_codes.get(),
                                             _faissIndex->code_size);
     }
