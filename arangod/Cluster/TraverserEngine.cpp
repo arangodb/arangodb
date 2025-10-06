@@ -339,16 +339,7 @@ void BaseTraverserEngine::allEdges(std::vector<std::string> const& vertices,
   }
   builder.close();
   // statistics
-  builder.add("readIndex",
-              VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
-  builder.add("filtered", VPackValue(_opts->cache()->getAndResetFiltered()));
-  builder.add("cacheHits", VPackValue(_opts->cache()->getAndResetCacheHits()));
-  builder.add("cacheMisses",
-              VPackValue(_opts->cache()->getAndResetCacheMisses()));
-  builder.add("cursorsCreated",
-              VPackValue(_opts->cache()->getAndResetCursorsCreated()));
-  builder.add("cursorsRearmed",
-              VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
+  addAndClearStatistics(builder);
   builder.close();
 }
 
@@ -399,17 +390,16 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t batchId,
   return {};
 }
 
-void BaseTraverserEngine::addStatistics(VPackBuilder& builder) {
-  builder.add("readIndex",
-              VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
-  builder.add("filtered", VPackValue(_opts->cache()->getAndResetFiltered()));
-  builder.add("cacheHits", VPackValue(_opts->cache()->getAndResetCacheHits()));
-  builder.add("cacheMisses",
-              VPackValue(_opts->cache()->getAndResetCacheMisses()));
-  builder.add("cursorsCreated",
-              VPackValue(_opts->cache()->getAndResetCursorsCreated()));
-  builder.add("cursorsRearmed",
-              VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
+void BaseTraverserEngine::addAndClearStatistics(VPackBuilder& builder) {
+  // Copy & clear is intentional
+  auto stats = *_opts->stats();
+  _opts->stats()->clear();
+  builder.add("readIndex", VPackValue(stats.getScannedIndex()));
+  builder.add("filtered", VPackValue(stats.getFiltered()));
+  builder.add("cacheHits", VPackValue(stats.getCacheHits()));
+  builder.add("cacheMisses", VPackValue(stats.getCacheMisses()));
+  builder.add("cursorsCreated", VPackValue(stats.getCursorsCreated()));
+  builder.add("cursorsRearmed", VPackValue(stats.getCursorsRearmed()));
 }
 
 bool BaseTraverserEngine::produceVertices() const {
@@ -472,7 +462,7 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
   // We create the cache, but we do not need any engines.
-  _opts->activateCache(false, nullptr);
+  _opts->activateCache(nullptr);
 
   _forwardCursor = _opts->buildCursor(false);
   _backwardCursor = _opts->buildCursor(true);
@@ -503,17 +493,18 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
   }
   builder.close();
 
+  // intentional; copy & clear
+  auto stats = *_opts->stats();
+  _opts->stats()->clear();
+
   // statistics
-  builder.add("readIndex",
-              VPackValue(_opts->cache()->getAndResetInsertedDocuments()));
+  builder.add("readIndex", VPackValue(stats.getScannedIndex()));
   builder.add("filtered", VPackValue(0));
-  builder.add("cacheHits", VPackValue(_opts->cache()->getAndResetCacheHits()));
-  builder.add("cacheMisses",
-              VPackValue(_opts->cache()->getAndResetCacheMisses()));
-  builder.add("cursorsCreated",
-              VPackValue(_opts->cache()->getAndResetCursorsCreated()));
-  builder.add("cursorsRearmed",
-              VPackValue(_opts->cache()->getAndResetCursorsRearmed()));
+  builder.add("cacheHits", VPackValue(stats.getCacheHits()));
+  builder.add("cacheMisses", VPackValue(stats.getCacheMisses()));
+  builder.add("cursorsCreated", VPackValue(stats.getCursorsCreated()));
+  builder.add("cursorsRearmed", VPackValue(stats.getCursorsRearmed()));
+
   builder.close();
 }
 
@@ -569,7 +560,7 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);
   // We create the cache, but we do not need any engines.
-  _opts->activateCache(false, nullptr);
+  _opts->activateCache(nullptr);
 }
 
 TraverserEngine::~TraverserEngine() = default;

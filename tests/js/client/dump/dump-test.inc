@@ -794,16 +794,18 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testTransactionCommit: function () {
-        var c = getCollection("UnitTestsDumpTransactionCommit");
+        if (!IM.options.skipServerJS) {
+          var c = getCollection("UnitTestsDumpTransactionCommit");
 
-        assertEqual(1000, c.count());
+          assertEqual(1000, c.count());
 
-        for (var i = 0; i < 1000; ++i) {
-          var doc = c.document("test" + i);
+          for (var i = 0; i < 1000; ++i) {
+            var doc = c.document("test" + i);
 
-          assertEqual(i, doc.value1);
-          assertEqual("this is a test", doc.value2);
-          assertEqual("test" + i, doc.value3);
+            assertEqual(i, doc.value1);
+            assertEqual("this is a test", doc.value2);
+            assertEqual("test" + i, doc.value3);
+          }
         }
       },
 
@@ -812,19 +814,21 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testTransactionUpdate: function () {
-        var c = getCollection("UnitTestsDumpTransactionUpdate");
+        if (!IM.options.skipServerJS) {
+          var c = getCollection("UnitTestsDumpTransactionUpdate");
 
-        assertEqual(1000, c.count());
+          assertEqual(1000, c.count());
 
-        for (var i = 0; i < 1000; ++i) {
-          var doc = c.document("test" + i);
+          for (var i = 0; i < 1000; ++i) {
+            var doc = c.document("test" + i);
 
-          assertEqual(i, doc.value1);
-          assertEqual("this is a test", doc.value2);
-          if (i % 2 === 0) {
-            assertEqual(i, doc.value3);
-          } else {
-            assertEqual("test" + i, doc.value3);
+            assertEqual(i, doc.value1);
+            assertEqual("this is a test", doc.value2);
+            if (i % 2 === 0) {
+              assertEqual(i, doc.value3);
+            } else {
+              assertEqual("test" + i, doc.value3);
+            }
           }
         }
       },
@@ -834,11 +838,13 @@
       ////////////////////////////////////////////////////////////////////////////////
 
       testTransactionAbort: function () {
-        var c = getCollection("UnitTestsDumpTransactionAbort");
+        if (!IM.options.skipServerJS) {
+          var c = getCollection("UnitTestsDumpTransactionAbort");
 
-        assertEqual(1, c.count());
+          assertEqual(1, c.count());
 
-        assertTrue(c.exists("foo"));
+          assertTrue(c.exists("foo"));
+        }
       },
 
       ////////////////////////////////////////////////////////////////////////////////

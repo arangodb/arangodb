@@ -1,8 +1,6 @@
 # -*- mode: CMAKE; -*-
 
-if (USE_V8)
-  include(InstallArangoDBJSClient)
-endif ()
+include(InstallArangoDBJSClient)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
@@ -37,9 +35,7 @@ add_custom_target(client-tools
             arangobench
             arangovpack)
 
-if (USE_V8)
-  add_dependencies(client-tools arangosh)
-endif ()
+add_dependencies(client-tools arangosh)
 
 if (USE_ENTERPRISE)
   add_dependencies(client-tools arangobackup)

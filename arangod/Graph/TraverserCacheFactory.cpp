@@ -31,9 +31,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Graph/TraverserCache.h"
-#include "Graph/TraverserDocumentCache.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb::graph {
@@ -43,20 +41,11 @@ TraverserCache* CacheFactory::CreateCache(
     std::unordered_map<ServerID, aql::EngineId> const* engines,
     BaseOptions* opts) {
   if (ServerState::instance()->isCoordinator()) {
-    return new ClusterTraverserCache(query, engines, opts);
-  }
-  if (activateDocumentCache) {
-    auto cacheManager =
-        query.vocbase().server().getFeature<CacheManagerFeature>().manager();
-    if (cacheManager != nullptr) {
-      std::shared_ptr<arangodb::cache::Cache> cache =
-          cacheManager->createCache<cache::BinaryKeyHasher>(
-              cache::CacheType::Plain);
-      if (cache != nullptr) {
-        return new TraverserDocumentCache(query, std::move(cache), opts);
-      }
-    }
-    // fallthrough intentional
+    // This cache is unused, but the codepath is still required
+    // for ArangoDB to work.
+    //
+    // The CacheFactory should be removed eventually.
+    return nullptr;
   }
   return new TraverserCache(query, opts);
 }

@@ -144,7 +144,7 @@ class BaseTraverserEngine : public BaseEngine {
   void rearm(size_t depth, uint64_t batchSize,
              std::vector<std::string> vertices, VPackSlice variables);
   Result nextEdgeBatch(size_t batchId, VPackBuilder& builder);
-  void addStatistics(VPackBuilder& builder);
+  void addAndClearStatistics(VPackBuilder& builder);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
                            arangodb::velocypack::Builder&) = 0;
