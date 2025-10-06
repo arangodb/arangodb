@@ -1,7 +1,7 @@
 v3.11.14.2 (XXXX-XX-XX)
 -----------------------
 
-* Upgraded OpenSSL to 3.5.3 and OpenLDAP to 2.6.10.
+* Upgraded OpenSSL to 3.5.4 and OpenLDAP to 2.6.10.
 
 * Updated arangosync to v2.19.18
 
