@@ -4605,7 +4605,7 @@ auto matchGraphSubjectWhenVertexCollectionsNotSet(AstNode const* node)
     } break;
     case NODE_TYPE_SHORTEST_PATH: {
       graphSubject = node->getMember(3);
-      options = node->getMember(5);
+      options = node->getMember(4);
     } break;
     case NODE_TYPE_ENUMERATE_PATHS: {
       graphSubject = node->getMember(4);
