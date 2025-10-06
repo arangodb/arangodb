@@ -45,12 +45,12 @@
 #ifndef USE_V8
 namespace {
 bool skipJsRelatedOption(std::string const& str,
-                           arangodb::options::ParseJsOps parseOpt) {
+                         arangodb::options::ParseJsOps parseOpt) {
   return (parseOpt == arangodb::options::ParseJsOps::skipJS &&
           (str.starts_with("javascript.") || str.starts_with("--javascript.") ||
            str.starts_with("foxx.") || str.starts_with("--foxx.")));
 }
-}
+}  // namespace
 #endif
 
 using namespace arangodb::options;
@@ -631,7 +631,7 @@ bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
 
 #ifndef USE_V8
-    if (skipJsRelatedOption(modernized, _parseJsOptions)) {
+  if (skipJsRelatedOption(modernized, _parseJsOptions)) {
     // hack: make all options starting with --javascript not require a value
     return false;
   }
