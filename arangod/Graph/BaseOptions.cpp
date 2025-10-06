@@ -38,9 +38,9 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
