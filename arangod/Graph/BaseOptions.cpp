@@ -34,6 +34,7 @@
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
+#include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
@@ -277,7 +278,8 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query)
       _useCache(true),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _vertexProjections{},
-      _edgeProjections{} {}
+      _edgeProjections{},
+      _stats(std::make_shared<TraversalStats>()) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
     : _trx(other._query.newTrxContext()),
@@ -557,7 +559,7 @@ bool BaseOptions::evaluateExpression(arangodb::aql::Expression* expression,
   TRI_ASSERT(res.isBoolean());
   bool result = res.toBoolean();
   if (!result) {
-    cache()->incrFiltered();
+    stats()->incrFiltered();
   }
   return result;
 }
