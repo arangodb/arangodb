@@ -43,11 +43,13 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 #ifndef USE_V8
+namespace {
 bool skipJsRelatedOption(std::string const& str,
-                         arangodb::options::ParseJsOps parseOpt) {
+                           arangodb::options::ParseJsOps parseOpt) {
   return (parseOpt == arangodb::options::ParseJsOps::skipJS &&
           (str.starts_with("javascript.") || str.starts_with("--javascript.") ||
            str.starts_with("foxx.") || str.starts_with("--foxx.")));
+}
 }
 #endif
 
