@@ -43,11 +43,9 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 #ifndef USE_V8
-bool isJsRelatedOption(std::string const & str) {
-  return (str.starts_with("javascript.") ||
-          str.starts_with("--javascript.") ||
-          str.starts_with("foxx.") ||
-          str.starts_with("--foxx."));
+bool isJsRelatedOption(std::string const& str) {
+  return (str.starts_with("javascript.") || str.starts_with("--javascript.") ||
+          str.starts_with("foxx.") || str.starts_with("--foxx."));
 }
 #endif
 
@@ -109,7 +107,10 @@ int ProgramOptions::ProcessingResult::exitCodeOrFailure() const noexcept {
 
 ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
                                std::string const& more, char const* binaryPath,
-                               bool parseJsOptions)
+#ifndef USE_V8
+                               bool parseJsOptions
+#endif
+                               )
     : _progname(progname),
       _usage(usage),
       _more(more),
@@ -117,8 +118,12 @@ ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
       _processingResult(),
       _sealed(false),
       _overrideOptions(false),
-      _binaryPath(binaryPath),
-      _parseJsOptions(parseJsOptions) {
+      _binaryPath(binaryPath)
+#ifndef USE_V8
+      ,
+      _parseJsOptions(parseJsOptions)
+#endif
+{
   // find progname wildcard in string
   size_t const pos = _usage.find(ARANGODB_PROGRAM_OPTIONS_PROGNAME);
 

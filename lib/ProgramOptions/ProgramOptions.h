@@ -105,7 +105,10 @@ class ProgramOptions {
 
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more, char const* binaryPath,
-                 bool parseJsOptions = false);
+#ifndef USE_V8
+                 bool parseJsOptions = false
+#endif
+  );
 
   std::string progname() const;
 
@@ -294,8 +297,10 @@ class ProgramOptions {
   std::function<std::string(std::string const&, char const*)> _translator;
   // directory of this binary
   char const* _binaryPath;
+#ifndef USE_V8
   // arangosh will still have to parse javascript options
   bool _parseJsOptions;
+#endif
 };
 
 }  // namespace arangodb::options
