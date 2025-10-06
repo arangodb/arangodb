@@ -79,7 +79,7 @@ int main(int argc, char* argv[]) {
             "For more information use:", BIN_DIRECTORY
 #ifndef USE_V8
             ,
-            arangodb::options::eParseJsOps::parseJS
+            arangodb::options::ParseJsOps::parseJS
 #endif
             ));
     ArangoshServer server(options, BIN_DIRECTORY);
