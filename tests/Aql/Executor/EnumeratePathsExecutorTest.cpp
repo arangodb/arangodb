@@ -221,7 +221,7 @@ struct KShortestPathsTestParameters {
         _inputMatrix(std::get<0>(params)),
         _paths(std::get<1>(params)),
         _call(std::get<2>(params)),
-        _blockSize(std::get<3>(params)) {};
+        _blockSize(std::get<3>(params)){};
 
   Vertex _source;
   Vertex _target;
