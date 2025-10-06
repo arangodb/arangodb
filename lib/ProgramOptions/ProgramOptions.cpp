@@ -43,9 +43,11 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 #ifndef USE_V8
-bool isJsRelatedOption(std::string const& str) {
-  return (str.starts_with("javascript.") || str.starts_with("--javascript.") ||
-          str.starts_with("foxx.") || str.starts_with("--foxx."));
+bool skipJsRelatedOption(std::string const& str,
+                         arangodb::options::eParseJsOps parseOpt) {
+  return (parseOpt == arangodb::options::eParseJsOps::skipJS &&
+          (str.starts_with("javascript.") || str.starts_with("--javascript.") ||
+           str.starts_with("foxx.") || str.starts_with("--foxx.")));
 }
 #endif
 
@@ -108,7 +110,7 @@ int ProgramOptions::ProcessingResult::exitCodeOrFailure() const noexcept {
 ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
                                std::string const& more, char const* binaryPath,
 #ifndef USE_V8
-                               bool parseJsOptions
+                               eParseJsOps parseJsOptions
 #endif
                                )
     : _progname(progname),
@@ -440,7 +442,7 @@ bool ProgramOptions::require(std::string const& name) {
 
   if (it == _sections.end()) {
 #ifndef USE_V8
-    if (!_parseJsOptions && isJsRelatedOption(modernized)) {
+    if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       return true;
     }
@@ -453,7 +455,7 @@ bool ProgramOptions::require(std::string const& name) {
 
   if (it2 == (*it).second.options.end()) {
 #ifndef USE_V8
-    if (!_parseJsOptions && isJsRelatedOption(modernized)) {
+    if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       return true;
     }
@@ -480,7 +482,7 @@ bool ProgramOptions::setValue(std::string const& name,
 
   if (it == _sections.end()) {
 #ifndef USE_V8
-    if (!_parseJsOptions && isJsRelatedOption(modernized)) {
+    if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       _processingResult.touch(modernized);
       return true;
@@ -499,7 +501,7 @@ bool ProgramOptions::setValue(std::string const& name,
 
   if (it2 == (*it).second.options.end()) {
 #ifndef USE_V8
-    if (!_parseJsOptions && isJsRelatedOption(modernized)) {
+    if (skipJsRelatedOption(modernized, _parseJsOptions)) {
       // hack: ignore all options starting with --javascript if V8 is disabled
       _processingResult.touch(modernized);
       return true;
@@ -627,7 +629,7 @@ bool ProgramOptions::requiresValue(std::string const& name) {
   std::string const& modernized = modernize(name);
 
 #ifndef USE_V8
-  if (!_parseJsOptions && isJsRelatedOption(modernized)) {
+    if (skipJsRelatedOption(modernized, _parseJsOptions)) {
     // hack: make all options starting with --javascript not require a value
     return false;
   }
