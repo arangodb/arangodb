@@ -44,8 +44,8 @@
 
 #ifndef USE_V8
 bool skipJsRelatedOption(std::string const& str,
-                         arangodb::options::eParseJsOps parseOpt) {
-  return (parseOpt == arangodb::options::eParseJsOps::skipJS &&
+                         arangodb::options::ParseJsOps parseOpt) {
+  return (parseOpt == arangodb::options::ParseJsOps::skipJS &&
           (str.starts_with("javascript.") || str.starts_with("--javascript.") ||
            str.starts_with("foxx.") || str.starts_with("--foxx.")));
 }
@@ -110,7 +110,7 @@ int ProgramOptions::ProcessingResult::exitCodeOrFailure() const noexcept {
 ProgramOptions::ProgramOptions(char const* progname, std::string const& usage,
                                std::string const& more, char const* binaryPath,
 #ifndef USE_V8
-                               eParseJsOps parseJsOptions
+                               ParseJsOps parseJsOptions
 #endif
                                )
     : _progname(progname),

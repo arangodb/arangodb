@@ -42,7 +42,7 @@ struct Option;
 struct Parameter;
 
 #ifndef USE_V8
-enum class eParseJsOps { parseJS, skipJS };
+enum class ParseJsOps { parseJS, skipJS };
 #endif
 
 // program options data structure
@@ -110,7 +110,7 @@ class ProgramOptions {
   ProgramOptions(char const* progname, std::string const& usage,
                  std::string const& more, char const* binaryPath,
 #ifndef USE_V8
-                 eParseJsOps parseJsOptions = eParseJsOps::skipJS
+                 ParseJsOps parseJsOptions = ParseJsOps::skipJS
 #endif
   );
 
@@ -303,7 +303,7 @@ class ProgramOptions {
   char const* _binaryPath;
 #ifndef USE_V8
   // arangosh will still have to parse javascript options
-  eParseJsOps _parseJsOptions;
+  ParseJsOps _parseJsOptions;
 #endif
 };
 
