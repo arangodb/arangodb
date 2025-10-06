@@ -43,6 +43,7 @@ const testPaths = {
 function communication (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   if (options.skipServerJS && testCases.length === 0) {
+    // TODO: QA-702 - remove this if. 
     return {
       communication: {
         status: true,
