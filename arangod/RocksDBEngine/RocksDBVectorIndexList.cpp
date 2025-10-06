@@ -40,11 +40,12 @@ namespace arangodb {
 
 namespace vector {
 
-RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
+RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
     : InvertedListsIterator(),
       _index(index),
+      _collection(collection),
       _listNumber(listNumber),
       _codeSize(codeSize) {
   RocksDBTransactionMethods* mthds =
@@ -57,6 +58,12 @@ RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
   _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
   _it->Seek(_rocksdbKey.string());
 }
+
+RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
+    RocksDBVectorIndex* index, LogicalCollection* collection,
+    transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
+    : RocksDBInvertedListsIteratorBase(index, collection, trx, listNumber,
+                                       codeSize) {}
 
 [[nodiscard]] bool RocksDBInvertedListsIterator::is_available() const {
   return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
@@ -92,28 +99,16 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     SearchParametersContext& searchParametersContext, std::size_t listNumber,
     std::size_t codeSize)
-    : InvertedListsIterator(),
-      _index(index),
-      _collection(collection),
-      _searchParametersContext(searchParametersContext),
-      _listNumber(listNumber),
-      _codeSize(codeSize) {
+    : RocksDBInvertedListsIteratorBase(
+          index, collection, searchParametersContext.trx, listNumber, codeSize),
+      _searchParametersContext(searchParametersContext) {
   TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
-  RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
-      searchParametersContext.trx, collection->id());
-
-  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
-  _batchIt = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
-    TRI_ASSERT(opts.prefix_same_as_start);
-  });
-  _batchIt->Seek(_rocksdbKey.string());
   setToValidIterator();
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIterator::is_available() const {
   return _filteredIdsIt != _filteredIds.end() ||
-         (_batchIt->Valid() &&
-          _batchIt->key().starts_with(_rocksdbKey.string()));
+         (_it->Valid() && _it->key().starts_with(_rocksdbKey.string()));
 }
 
 bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
@@ -123,15 +118,13 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
   idsToValue.reserve(kBatchSize);
   ids.reserve(kBatchSize);
 
-  for (size_t i{0}; i < kBatchSize && _batchIt->Valid() &&
-                    _batchIt->key().starts_with(_rocksdbKey.string());
-       ++i, _batchIt->Next()) {
-    auto const id =
-        LocalDocumentId(RocksDBKey::indexDocumentId(_batchIt->key()));
+  for (size_t i{0}; i < kBatchSize && _it->Valid() &&
+                    _it->key().starts_with(_rocksdbKey.string());
+       ++i, _it->Next()) {
+    auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
     ids.emplace_back(id);
-    std::vector<uint8_t> value(
-        _batchIt->value().data(),
-        _batchIt->value().data() + _batchIt->value().size());
+    std::vector<uint8_t> value(_it->value().data(),
+                               _it->value().data() + _it->value().size());
     idsToValue.emplace(id, std::move(value));
   }
   if (ids.empty()) {
@@ -216,23 +209,13 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
         RocksDBVectorIndex* index, LogicalCollection* collection,
         SearchParametersContext& searchParametersContext,
         std::size_t listNumber, std::size_t codeSize)
-    : InvertedListsIterator(),
-      _index(index),
-      _collection(collection),
-      _searchParametersContext(searchParametersContext),
-      _listNumber(listNumber),
-      _codeSize(codeSize) {
-  TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
-  TRI_ASSERT(_index->hasStoredValues());
-
-  RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
-      searchParametersContext.trx, collection->id());
-
-  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
-  _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
-    TRI_ASSERT(opts.prefix_same_as_start);
-  });
-  _it->Seek(_rocksdbKey.string());
+    : RocksDBInvertedListsIteratorBase(
+          index, collection, searchParametersContext.trx, listNumber, codeSize),
+      _searchParametersContext(searchParametersContext) {
+  TRI_ASSERT(index->hasStoredValues());
+  // TODO(jbajic) Remove one
+  TRI_ASSERT(index->hasStoredValues() ==
+             searchParametersContext.isCoveredByStoredValues);
   setToValidIterator();
 }
 
@@ -379,5 +362,4 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
       *iteratorContext);
 }
 };  // namespace vector
-
 };  // namespace arangodb

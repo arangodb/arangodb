@@ -56,28 +56,41 @@ inline faiss::MetricType metricToFaissMetric(
   }
 }
 
-struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
+// Base class for all RocksDB inverted list iterators used by faiss
+struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
+  RocksDBInvertedListsIteratorBase(RocksDBVectorIndex* index,
+                                   LogicalCollection* collection,
+                                   transaction::Methods* trx,
+                                   std::size_t listNumber,
+                                   std::size_t codeSize);
+
+  virtual ~RocksDBInvertedListsIteratorBase() = default;
+
+ protected:
+  RocksDBKey _rocksdbKey;
+  arangodb::RocksDBVectorIndex* _index{nullptr};
+  LogicalCollection* _collection{nullptr};
+  std::size_t _listNumber;
+  std::size_t _codeSize;
+
+  std::unique_ptr<rocksdb::Iterator> _it;
+};
+
+// Simple iterator without filtering
+struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
                                transaction::Methods* trx,
                                std::size_t listNumber, std::size_t codeSize);
-  [[nodiscard]] bool is_available() const override;
 
-  [[nodiscard]] bool searchFilteredIds();
+  [[nodiscard]] bool is_available() const override;
 
   void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
  private:
-  RocksDBKey _rocksdbKey;
-  arangodb::RocksDBVectorIndex* _index{nullptr};
-  LogicalCollection* _collection{nullptr};
-
-  std::unique_ptr<rocksdb::Iterator> _it;
   RocksDBVectorIndexEntryValue _currentValueEntry;
-  std::size_t _listNumber;
-  std::size_t _codeSize;
 };
 
 struct SearchParametersContext {
@@ -102,7 +115,8 @@ using RocksDBFaissSearchContext =
 // It contains the logic for how to read key value pairs that we wrote
 // It can also filter out certain pairs if the filterExpression has been
 // set
-struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
+struct RocksDBInvertedListsFilteringIterator final
+    : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,
       SearchParametersContext& searchParametersContext, std::size_t listNumber,
@@ -120,26 +134,21 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
 
   constexpr static auto kBatchSize{1000};
 
-  RocksDBKey _rocksdbKey;
-  arangodb::RocksDBVectorIndex* _index{nullptr};
-  LogicalCollection* _collection{nullptr};
   SearchParametersContext& _searchParametersContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
-  std::unique_ptr<rocksdb::Iterator> _batchIt;
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
       _filteredIdsIt{_filteredIds.end()};
-  std::size_t _listNumber;
-  std::size_t _codeSize;
 };
 
-struct RocksDBInvertedListsFilteringStoredValuesIterator
-    : faiss::InvertedListsIterator {
+struct RocksDBInvertedListsFilteringStoredValuesIterator final
+    : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,
       SearchParametersContext& searchParametersContext, std::size_t listNumber,
       std::size_t codeSize);
+
   [[nodiscard]] bool is_available() const override;
 
   [[nodiscard]] bool searchFilteredIds();
@@ -153,15 +162,8 @@ struct RocksDBInvertedListsFilteringStoredValuesIterator
 
   constexpr static auto kBatchSize{1000};
 
-  RocksDBKey _rocksdbKey;
-  arangodb::RocksDBVectorIndex* _index{nullptr};
-  LogicalCollection* _collection{nullptr};
   SearchParametersContext& _searchParametersContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-
-  std::unique_ptr<rocksdb::Iterator> _it;
-  std::size_t _listNumber;
-  std::size_t _codeSize;
 
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
