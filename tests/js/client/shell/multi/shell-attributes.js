@@ -28,6 +28,7 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("@arangodb");
+const IM = global.instanceManager;
 
 var db = arangodb.db;
 
@@ -550,13 +551,15 @@ function AttributesSuite () {
       assertEqual(3, result.length);
       assertEqual([ "first", "second", "third" ], result);
       
-      result = db._query("FOR doc IN @@collection FILTER V8(LIKE(doc.value, '\u0000%')) " + 
-                         "SORT doc._key RETURN doc._key", { 
-        "@collection" : c.name()
-      }).toArray().sort();
+      if (!IM.options.skipServerJS) {
+        result = db._query("FOR doc IN @@collection FILTER V8(LIKE(doc.value, '\u0000%')) " + 
+                           "SORT doc._key RETURN doc._key", { 
+                             "@collection" : c.name()
+                           }).toArray().sort();
 
-      assertEqual(3, result.length);
-      assertEqual([ "first", "second", "third" ], result);
+        assertEqual(3, result.length);
+        assertEqual([ "first", "second", "third" ], result);
+      }
       
       result = db._query("RETURN LIKE('a\nb c', '%b%')").toArray().sort();
 

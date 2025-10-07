@@ -108,6 +108,15 @@ function runArangodRecovery (params, agencyMgr) {
 }
 
 function agencyRestart (options) {
+  if (options.skipServerJS) {
+    return {
+      agencyRestart: {
+        status: true,
+        message: 'test needs v8 on the server. please recompile with -DUSE_V8=On'
+      },
+      status: true
+    };
+  }
   if (!versionHas('failure-tests')) {
     return {
       agencyRestart: {

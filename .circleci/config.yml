@@ -21,6 +21,9 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
+  arangod-without-v8:
+    type: boolean
+    default: false
   create-docker-images:
     type: boolean
     default: false
@@ -213,6 +216,7 @@ jobs:
                 --ui "<< pipeline.parameters.ui >>" \
                 --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
+                --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \

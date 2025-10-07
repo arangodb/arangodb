@@ -546,6 +546,12 @@ class instanceManager {
   // //////////////////////////////////////////////////////////////////////////////
 
   waitOnServerForGC (instanceInfo, options, waitTime) {
+    if (this.options.skipServerJS) {
+      return {
+        status: true,
+        message: "skipped for servers without javascript"
+      };
+    }
     let baseUrl = this.url;
     if (instanceInfo !== undefined) {
       baseUrl = instanceInfo.url;
@@ -1053,7 +1059,7 @@ class instanceManager {
           print(Date() + " tickeling cluster node " + arangod.url + " - " + arangod.name);
         }
         let url = arangod.url;
-        if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
+        if (!this.options.skipServerJS && arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
           url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {

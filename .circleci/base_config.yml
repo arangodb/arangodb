@@ -14,6 +14,9 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
+  arangod-without-v8:
+    type: boolean
+    default: false
   extra_args:
     type: string
     default: ""
@@ -332,6 +335,11 @@ jobs:
             if [ << pipeline.parameters.use-minimal-debug-info >> = true ]; then
               MINIMAL_DEBUGINFO="ON"
             fi
+            if [ << pipeline.parameters.arangod-without-v8 >> = true ]; then
+              BUILD_V8_ARANGOD="OFF"
+            else
+              BUILD_V8_ARANGOD="ON"
+            fi
 
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
@@ -341,6 +349,7 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
               -DOPENSSL_ROOT_DIR=/opt \
+              -DUSE_V8=$BUILD_V8_ARANGOD \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
               -DCMAKE_INSTALL_PREFIX=/ 
       - run:
