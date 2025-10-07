@@ -189,9 +189,9 @@ void ExecutionBlock::traceExecuteEnd(
                    return "nullptr";
                  } else {
                    auto const* opts = &_engine->getQuery().vpackOptions();
-                   VPackBuilder builder(
-                       std::make_shared<velocypack::SupervisedBuffer>(
-                           _engine->getQuery().resourceMonitor()));
+                   velocypack::SupervisedBuffer sb(
+                       _engine->getQuery().resourceMonitor());
+                   VPackBuilder builder(sb);
                    block->toSimpleVPack(opts, builder);
                    return VPackDumper::toString(builder.slice(), opts);
                  }
