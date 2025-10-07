@@ -23,6 +23,7 @@
 
 #include "QuerySnippet.h"
 
+#include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode/DistributeConsumerNode.h"
 #include "Aql/ExecutionNode/DistributeNode.h"
@@ -34,6 +35,7 @@
 #include "Aql/ExecutionNode/RemoteNode.h"
 #include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/QueryContext.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
@@ -41,6 +43,8 @@
 #include "Cluster/ServerState.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
+
+#include "Basics/SupervisedBuffer.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
@@ -280,7 +284,9 @@ void CloneWorker::processAfter(ExecutionNode* node) {
 
   auto deps = node->getDependencies();
   for (auto d : deps) {
-    VPackBuilder builder;
+    auto sb = std::make_shared<velocypack::SupervisedBuffer>(
+        d->plan()->getAst()->query().resourceMonitor());
+    VPackBuilder builder(sb);
     d->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
     TRI_ASSERT(_originalToClone.count(d) == 1);
     auto depClone = _originalToClone.at(d);
