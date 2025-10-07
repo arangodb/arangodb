@@ -6,7 +6,6 @@ add_library(arango_graph STATIC
   GraphOperations.cpp
   ShortestPathOptions.cpp
   PathType.cpp
-  TraverserCacheFactory.cpp
   TraverserOptions.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/CallbackGuard.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/ServerDefaults.cpp

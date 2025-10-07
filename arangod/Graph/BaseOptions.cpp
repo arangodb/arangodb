@@ -38,11 +38,9 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Containers/HashSet.h"
+#include "Basics/StaticStrings.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/TraverserCache.h"
-#include "Graph/TraverserCacheFactory.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 
@@ -587,33 +585,6 @@ double BaseOptions::costForLookupInfoList(
     cost += li.estimateCost(createItems);
   }
   return cost;
-}
-
-TraverserCache* BaseOptions::cache() const { return _cache.get(); }
-
-TraverserCache* BaseOptions::cache() {
-  ensureCache();
-  return _cache.get();
-}
-
-void BaseOptions::ensureCache() {
-  if (_cache == nullptr) {
-    // If the Coordinator does NOT activate the Cache
-    // the datalake is not created and cluster data cannot
-    // be persisted anywhere.
-    TRI_ASSERT(!arangodb::ServerState::instance()->isCoordinator());
-    // In production just gracefully initialize
-    // the cache without document cache, s.t. system does not crash
-    activateCache(nullptr);
-  }
-  TRI_ASSERT(_cache != nullptr);
-}
-
-void BaseOptions::activateCache(
-    std::unordered_map<ServerID, aql::EngineId> const* engines) {
-  // Do not call this twice.
-  TRI_ASSERT(_cache == nullptr);
-  _cache.reset(CacheFactory::CreateCache(_query, false, engines, this));
 }
 
 arangodb::aql::FixedVarExpressionContext& BaseOptions::getExpressionCtx() {

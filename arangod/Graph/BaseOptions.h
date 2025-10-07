@@ -299,12 +299,6 @@ struct BaseOptions {
   /// to in order to test the condition.
   aql::Variable const* _tmpVar;
 
-  /// @brief the traverser cache
-  /// This basically caches strings, and items we want to reference multiple
-  /// times.
-  /// (monitored: non-dynamic and dynamic memory)
-  std::unique_ptr<TraverserCache> _cache;
-
   // @brief - translations for one-shard-databases (monitored)
   MonitoredCollectionToShardMap _collectionToShard;
 
