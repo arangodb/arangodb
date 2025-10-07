@@ -331,15 +331,12 @@ arangodb.acquireHostList=true
     let propertiesFileName = fs.join(this.options.javasource, 'test-functional/src/test/resources/arangodb.properties');
     fs.write(propertiesFileName, propertiesFileContent);
     let args = [
-      'verify',
-      '-am',
-      '-pl',
-      'test-functional',
+      'integration-test',
+      '-Ddistributed',
+      '-DSslTest=false',
+      '-Dit.test=com.arangodb.kafka.SslIT'
       '-Dgpg.skip',
       '-Dmaven.javadoc.skip',
-      '-Dssl=false',
-      '-Dmaven.test.skip=false',
-      '-DskipStatefulTests',
       '-Dallure.results.directory=' + testResultsDir
       // TODO? '-Dnative=<<parameters.native>>'
     ];
