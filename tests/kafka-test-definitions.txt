@@ -6,8 +6,6 @@ add-yaml:
     - image: << parameters.docker_image >>
     - image: docker.io/bitnamilegacy/kafka:3.9
       name: kafka-1
-      ports:
-        - 19092:19092 
       environment:
         - BITNAMI_DEBUG: true 
         - ALLOW_PLAINTEXT_LISTENER: "yes" 
@@ -22,8 +20,6 @@ add-yaml:
         - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT 
     - image: docker.io/bitnamilegacy/kafka:3.9
       name: kafka-2
-      ports:
-        - 29092:29092 
       environment:
         - BITNAMI_DEBUG: true 
         - ALLOW_PLAINTEXT_LISTENER: "yes" 
@@ -38,8 +34,6 @@ add-yaml:
         - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT 
     - image: docker.io/bitnamilegacy/kafka:3.9
       name: kafka-3
-      ports:
-        - 39092:39092 
       environment:
         - BITNAMI_DEBUG: true 
         - ALLOW_PLAINTEXT_LISTENER: "yes" 
