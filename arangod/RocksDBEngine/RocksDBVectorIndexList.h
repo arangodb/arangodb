@@ -56,7 +56,10 @@ inline faiss::MetricType metricToFaissMetric(
   }
 }
 
-// Base class for all RocksDB inverted list iterators used by faiss
+// This Iterator is used by faiss library to iterate through RocksDB,
+// we set the appropriate iterator in RocksDBInvertedLists which instantiates
+// a new iterator for every nList that it needs to iterate through (nProbe)
+// It contains the logic for how to read key value pairs that we wrote
 struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
   RocksDBInvertedListsIteratorBase(RocksDBVectorIndex* index,
                                    LogicalCollection* collection,
@@ -109,12 +112,8 @@ struct SearchParametersContext {
 using RocksDBFaissSearchContext =
     std::variant<SearchParametersContext, transaction::Methods*>;
 
-// This Iterator is used by faiss library to iterate through RocksDB,
-// we set the appropriate iterator in RocksDBInvertedLists which instantiates
-// a new iterator for every nList that it needs to iterate through.
-// It contains the logic for how to read key value pairs that we wrote
-// It can also filter out certain pairs if the filterExpression has been
-// set
+// Contains logic for applying filterExpression and evaluating documents
+// Materializes documents for every vector
 struct RocksDBInvertedListsFilteringIterator final
     : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringIterator(
@@ -142,6 +141,10 @@ struct RocksDBInvertedListsFilteringIterator final
       _filteredIdsIt{_filteredIds.end()};
 };
 
+// This iterator is similar as RocksDBInvertedListsFilteringIterator
+// except it does not needs to materialize documents, since it contains
+// be used only when the storedValues fully cover the filterExpression
+// and therefore we can evaluate the expression from the written values
 struct RocksDBInvertedListsFilteringStoredValuesIterator final
     : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
