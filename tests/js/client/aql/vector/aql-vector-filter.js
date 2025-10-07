@@ -51,6 +51,34 @@ function VectorIndexL2FilterTestSuite() {
     const seed = randomInteger();
     const nProbeAndNlists = 10;
 
+    // Helper functions for verification
+    const verifyVectorIndexUsed = function(plan) {
+        const indexNodes = plan.nodes.filter(function(n) {
+            return n.type === "EnumerateNearVectorNode";
+        });
+        assertEqual(1, indexNodes.length, "Expected vector index to be used");
+    };
+
+    const verifyNoFilterNodes = function(plan) {
+        const filterNodes = plan.nodes.filter(function(n) {
+            return n.type === "FilterNode";
+        });
+        assertEqual(0, filterNodes.length, "Expected no separate filter nodes (filters should be absorbed)");
+    };
+
+    const verifyCalculationNodeCount = function(plan, expectedCount, message) {
+        const calculationNodes = plan.nodes.filter(function(n) {
+            return n.type === "CalculationNode";
+        });
+        assertEqual(expectedCount, calculationNodes.length, message || ("Expected " + expectedCount + " calculation nodes"));
+    };
+
+    const verifyResultsMatchFilter = function(results, filterFn, message) {
+        for (let i = 0; i < results.length; ++i) {
+            assertTrue(filterFn(results[i]), message || "Result should match filter condition");
+        }
+    };
+
     return {
         setUpAll: function() {
             print("Using seed: " + seed);
@@ -125,31 +153,18 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            // There can only be two calculation nodes, the bind variable calculation node and return statement 
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            // bind variable calculation node and return statement
+            verifyCalculationNodeCount(plan, 2);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val < 5, "Filter not applied correctly: " + JSON.stringify(results));
-            }
+            
+            verifyResultsMatchFilter(results, (r) => r.val < 5, "Filter not applied correctly");
+            
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
             }
@@ -165,31 +180,16 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            // There can only be two calculation nodes, the bind variable calculation node and return statement 
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 2); // bind variable calculation node and return statement
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length, JSON.stringify(results));
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val < 5, "Filter not applied correctly: " + JSON.stringify(results));
-            }
+            
+            verifyResultsMatchFilter(results, (r) => r.val < 5, "Filter not applied correctly");
         },
 
         testApproxL2WithDoubleLoop: function() {
@@ -200,28 +200,16 @@ function VectorIndexL2FilterTestSuite() {
               SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
               LIMIT 5 RETURN docInner`;
 
-            const plan = db
-                ._createStatement(query)
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(0, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
+            const plan = db._createStatement(query).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 0);
 
             const results = db._query(query).toArray();
             assertEqual(5, results.length);
 
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val > 3, "Filter not applied correctly: " + JSON.stringify(results));
-            }
+            verifyResultsMatchFilter(results, (r) => r.val > 3, "Filter not applied correctly");
         },
 
         testApproxL2WithDoubleLoopNotEnoughDocuments: function() {
@@ -232,29 +220,16 @@ function VectorIndexL2FilterTestSuite() {
               SORT APPROX_NEAR_L2(docInner.vector, docOuter.vector)
               LIMIT 6 RETURN {key: docInner._key, val: docInner.val}`;
 
-            const plan = db
-                ._createStatement(query)
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            // There is only one calculation node, from the return statement
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(1, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
+            const plan = db._createStatement(query).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 1); // return statement calculation node
 
             const results = db._query(query).toArray();
             assertEqual(6, results.length, "Inccorect number of results " + JSON.stringify(results));
 
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val < 3, "Filter not applied correctly: " + JSON.stringify(results));
-            }
+            verifyResultsMatchFilter(results, (r) => r.val < 3, "Filter not applied correctly");
         },
 
         testApproxL2WithFilterNoMatches: function() {
@@ -281,20 +256,10 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(0, results.length, "Should return no results when filtering on non-existent field");
@@ -310,30 +275,17 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db
-                ._createStatement({
-                    query,
-                    bindVars
-                })
-                .explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(2, calculationNodes.length);
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 2);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val >= 1 && results[i].val < 30, "Filter not applied correctly: " + JSON.stringify(results));
-            }
+            
+            verifyResultsMatchFilter(results, (r) => r.val >= 1 && r.val < 30, "Filter not applied correctly");
+            
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
             }
@@ -349,29 +301,17 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            const plan = db._createStatement({
-                query,
-                bindVars
-            }).explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(2, calculationNodes.length);
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 2);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 10, "Results should be limited to 10");
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val >= 2 && results[i].val <= 7, "Val filter not applied: " + JSON.stringify(results[i]));
-                assertTrue(results[i].nonVector % 2 === 0, "Even nonVector filter not applied: " + JSON.stringify(results[i]));
-            }
+            
+            verifyResultsMatchFilter(results, (r) => r.val >= 2 && r.val <= 7 && r.nonVector % 2 === 0, "Filter not applied correctly");
+            
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
             }
@@ -387,21 +327,14 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            const plan = db._createStatement({
-                query,
-                bindVars
-            }).explain().plan;
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+            
+            verifyVectorIndexUsed(plan);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
-            for (let i = 0; i < results.length; ++i) {
-                assertEqual("A", results[i].category, "Category filter not applied: " + JSON.stringify(results[i]));
-                assertTrue(results[i].priority > 0, "Priority filter not applied: " + JSON.stringify(results[i]));
-            }
+            
+            verifyResultsMatchFilter(results, (r) => r.category === 'A' && r.priority > 0, "Filter not applied correctly");
         },
 
         testApproxL2WithFilterNullHandling: function() {
@@ -521,32 +454,16 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            const plan = db._createStatement({
-                query,
-                bindVars
-            }).explain().plan;
+            const plan = db._createStatement({query, bindVars}).explain().plan;
 
-            // Verify the execution plan has both filter and vector search nodes
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length, "Should have vector search node");
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length, "Should not have filter node");
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(2, calculationNodes.length, "Calculation nodes: " + JSON.stringify(calculationNodes));
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 2);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
 
-            // Verify all results satisfy the filter
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val >= 4 && results[i].val <= 6, "Filter not applied: " + JSON.stringify(results[i]));
-            }
+            verifyResultsMatchFilter(results, (r) => r.val >= 4 && r.val <= 6, "Filter not applied");
 
             // Verify results are sorted by distance
             for (let j = 1; j < results.length; ++j) {
@@ -566,29 +483,16 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db._createStatement({
-                query,
-                bindVars
-            }).explain().plan;
+            const plan = db._createStatement({query, bindVars}).explain().plan;
 
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(2, calculationNodes.length);
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 2);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val < 10);
-            }
+            
+            verifyResultsMatchFilter(results, (r) => r.val < 10);
         },
 
         testApproxL2WithCalculationReusedInReturn: function() {
@@ -603,36 +507,97 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
+            const plan = db._createStatement({query, bindVars}).explain().plan;
+
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
+            verifyCalculationNodeCount(plan, 3); // bind variable, filter calculation, and return calculation nodes
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+            
+            verifyResultsMatchFilter(results, (r) => r.val < 10 && r.cond1 === true && r.cond2 === true);
+        },
+
+        testApproxL2CalculationAfterFilter: function() {
+            const query = `FOR d IN ${collection.name()}
+              FILTER d.val >= 5
+              LET a = 2 * d.val
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist, newVar: a}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+
             const plan = db._createStatement({
                 query,
                 bindVars
             }).explain().plan;
 
-            const indexNodes = plan.nodes.filter(function(n) {
-                return n.type === "EnumerateNearVectorNode";
-            });
-            assertEqual(1, indexNodes.length);
-            const filterNodes = plan.nodes.filter(function(n) {
-                return n.type === "FilterNode";
-            });
-            assertEqual(0, filterNodes.length);
-            // three calculation nodes, the bind variable calculation node, the filter calculation node, and the return calculation node
-            const calculationNodes = plan.nodes.filter(function(n) {
-                return n.type === "CalculationNode";
-            });
-            assertEqual(3, calculationNodes.length);
+            verifyVectorIndexUsed(plan);
+            verifyNoFilterNodes(plan);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
-            for (let i = 0; i < results.length; ++i) {
-                assertTrue(results[i].val < 10);
-                assertEqual(true, results[i].cond1);
-                assertEqual(true, results[i].cond2);
-            }
+
+            verifyResultsMatchFilter(results, (r) => r.val >= 5 && r.newVar === 2 * r.val);
+        },
+
+        testApproxL2WithFilterAfterVectorSearch: function() {
+            const query = `FOR d IN ${collection.name()}
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              FILTER d.val >= 5
+              SORT dist LIMIT 5
+              RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
+            verifyVectorIndexUsed(plan);
+
+            const results = db._query(query, bindVars).toArray();
+            assertEqual(5, results.length);
+
+            verifyResultsMatchFilter(results, (r) => r.val >= 5);
+        },
+
+        testApproxL2WithNestedLoopFilterInOuter: function() {
+            const query = `FOR x IN ${collection.name()}
+              FILTER x.val >= 5
+              FOR d IN ${collection.name()}
+                LET dist = APPROX_NEAR_L2(@qp, d.vector)
+                SORT dist LIMIT 5
+                RETURN {outerKey: x._key, key: d._key, val: d.val, dist}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
+            verifyVectorIndexUsed(plan);
+
+            const results = db._query(query, bindVars).toArray();
+
+            // Each outer loop iteration returns 5 results from the inner vector search
+            assertTrue(results.length > 0);
+            assertTrue(results.length % 5 === 0 || results.length >= 5);
+
+            verifyResultsMatchFilter(results, (r) => r.outerKey !== undefined);
         },
 
         testApproxL2WithMultipleFilterClauses: function() {
-            // Test with multiple separate FILTER clauses
             const query = `FOR d IN ${collection.name()}
               FILTER d.val >= 5
               FILTER d.val < 15
@@ -651,7 +616,6 @@ function VectorIndexL2FilterTestSuite() {
         },
 
         testApproxL2WithMultipleFiltersAndLetStatements: function() {
-            // Test with multiple FILTER and LET statements interspersed
             const query = `FOR d IN ${collection.name()}
               LET minVal = 5
               FILTER d.val >= minVal
@@ -660,6 +624,23 @@ function VectorIndexL2FilterTestSuite() {
               LET dist = APPROX_NEAR_L2(@qp, d.vector)
               SORT dist LIMIT 5
               RETURN {key: d._key, val: d.val, dist}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
+        },
+
+        testApproxL2WithFilterOnDistance: function() {
+            const query = `FOR d IN ${collection.name()}
+              LET dist = APPROX_NEAR_L2(@qp, d.vector)
+              FILTER dist < 0.5
+              SORT dist LIMIT 5
+              RETURN d  `;
 
             const bindVars = {
                 qp: randomPoint
@@ -743,6 +724,25 @@ function VectorIndexL2FilterTestMultipleCollectionsSuite() {
               LET dist = APPROX_NEAR_L2(@qp, d2.vector)
               SORT dist LIMIT 5 
               RETURN {key: d2._key, val: d2.val, dist}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            assertQueryError(
+                errors.ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED.code,
+                query,
+                bindVars,
+            );
+        },
+
+        testApproxL2FilterNotAppliedReversedLoop: function() {
+            // Test with reversed loops - vector search collection in outer loop
+            const query = `FOR d2 IN ${collection1.name()}
+              FOR d1 IN ${collection2.name()}
+              FILTER d2.val < 5 OR d1.val < 5
+              LET dist = APPROX_NEAR_L2(@qp, d1.vector)
+              SORT dist LIMIT 5 
+              RETURN {key: d1._key, val: d1.val, dist}`;
 
             const bindVars = {
                 qp: randomPoint
