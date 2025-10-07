@@ -46,7 +46,6 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/PathManagement/PathResult.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
 #include <string_view>
@@ -60,11 +59,10 @@ namespace arangodb {
 namespace tests {
 namespace aql {
 
-class TokenTranslator : public TraverserCache {
+class TokenTranslator {
  public:
   TokenTranslator(Query* query, BaseOptions* opts)
-      : TraverserCache(*query, opts),
-        _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
+      : _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
                arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() = default;
 
@@ -112,12 +110,6 @@ class TokenTranslator : public TraverserCache {
     auto it = _vertices.find(idString);
     TRI_ASSERT(it != _vertices.end());
     return it->second.get(StaticStrings::IdString).stringView();
-  }
-
-  AqlValue fetchEdgeAqlResult(EdgeDocumentToken const& edgeTkn) override {
-    auto it = _edges.find(VPackSlice(edgeTkn.vpack()));
-    TRI_ASSERT(it != _edges.end());
-    return AqlValue{*it};
   }
 
  private:
@@ -241,10 +233,7 @@ class FakePathFinder {
 };
 
 struct TestShortestPathOptions : public ShortestPathOptions {
-  TestShortestPathOptions(Query* query) : ShortestPathOptions(*query) {
-    std::unique_ptr<TraverserCache> cache =
-        std::make_unique<TokenTranslator>(query, this);
-  }
+  TestShortestPathOptions(Query* query) : ShortestPathOptions(*query) {}
 };
 
 using Vertex = GraphNode::InputVertex;
@@ -398,7 +387,6 @@ class ShortestPathExecutorTest : public ::testing::Test {
   TestShortestPathOptions options;
   ShortestPathOptions defaultOptions;
   std::unique_ptr<BaseOptions> dummy;
-  std::unique_ptr<TraverserCache> cache;
   TokenTranslator translator;
 
   RegisterInfos registerInfos;
@@ -424,9 +412,6 @@ class ShortestPathExecutorTest : public ::testing::Test {
         options(fakedQuery.get()),
         defaultOptions(*fakedQuery.get()),
         dummy(std::make_unique<ShortestPathOptions>(defaultOptions)),
-        cache(std::make_unique<TraverserCache>(
-            *fakedQuery.get(),
-            dynamic_cast<ShortestPathOptions*>(&defaultOptions))),
         translator(fakedQuery.get(), dummy.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 4, {}, {RegIdSet{0, 1}}),

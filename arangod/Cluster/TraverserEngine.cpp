@@ -31,7 +31,6 @@
 #include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -45,6 +44,12 @@
 #endif
 
 #include <string_view>
+
+// TODO: these includes are here because of lookupToken below.
+//       This method should probably be somewhere else?
+#include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
+#include "StorageEngine/PhysicalCollection.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -266,6 +271,43 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
   builder.close();
 }
 
+// TODO: lookupToken goes directly to the physical collection to lookup
+// an edge document. In the past this function was part of TraverserCache, but
+// there was no caching functionality involved whatsoever.
+//
+// Maybe the TraverserEngine is not the correct place to do this lookup.
+VPackSlice BaseEngine::lookupToken(EdgeDocumentToken const& idToken) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+
+  auto col = _trx->vocbase().lookupCollection(idToken.cid());
+
+  if (col == nullptr) {
+    // collection gone... should not happen
+    LOG_TOPIC("3b2ba", ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed edge document. collection not found";
+    TRI_ASSERT(col != nullptr);  // for maintainer mode
+    return arangodb::velocypack::Slice::nullSlice();
+  }
+
+  _docBuilder.clear();
+  auto cb = IndexIterator::makeDocumentCallback(_docBuilder);
+  if (col->getPhysical()
+          ->lookup(_trx.get(), idToken.localDocumentId(), cb,
+                   {.countBytes = true})
+          .fail()) {
+    // We already had this token, inconsistent state. Return NULL in Production
+    LOG_TOPIC("3acb3", ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed edge document, return 'null' instead. "
+        << "This is most likely a caching issue. Try: 'db." << col->name()
+        << ".unload(); db." << col->name()
+        << ".load()' in arangosh to fix this.";
+    TRI_ASSERT(false);  // for maintainer mode
+    return arangodb::velocypack::Slice::nullSlice();
+  }
+
+  return _docBuilder.slice();
+}
+
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
                                          aql::QueryContext& query,
                                          VPackSlice info)
@@ -314,7 +356,7 @@ void BaseTraverserEngine::allEdges(std::vector<std::string> const& vertices,
     cursor->readAll(
         [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
           if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid);
+            edge = lookupToken(eid);
           }
           if (edge.isNull()) {
             return;
@@ -361,7 +403,7 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t batchId,
     _cursor->_cursor->nextBatch(
         [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
           if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid);
+            edge = lookupToken(eid);
           }
           if (edge.isNull()) {
             return;
@@ -461,8 +503,6 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
-  // We create the cache, but we do not need any engines.
-  _opts->activateCache(nullptr);
 
   _forwardCursor = _opts->buildCursor(false);
   _backwardCursor = _opts->buildCursor(true);
@@ -522,7 +562,7 @@ void ShortestPathEngine::addEdgeData(VPackBuilder& builder, bool backward,
   cursor->readAll(
       [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t /*cursorId*/) {
         if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid);
+          edge = lookupToken(eid);
         }
         if (edge.isNull()) {
           return;
@@ -559,8 +599,6 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
   }
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);
-  // We create the cache, but we do not need any engines.
-  _opts->activateCache(nullptr);
 }
 
 TraverserEngine::~TraverserEngine() = default;
