@@ -23,12 +23,14 @@
 
 #pragma once
 
+#include <velocypack/Builder.h>
 #include <functional>
 #include <memory>
 #include <unordered_map>
 
 #include "Aql/Collections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
+#include "Graph/EdgeDocumentToken.h"
 
 struct TRI_vocbase_t;
 
@@ -117,6 +119,9 @@ class BaseEngine {
   virtual graph::BaseOptions const& options() const = 0;
 
  protected:
+  VPackBuilder _docBuilder;
+  VPackSlice lookupToken(graph::EdgeDocumentToken const& idToken);
+
   arangodb::aql::EngineId const _engineId;
   arangodb::aql::QueryContext& _query;
   std::unique_ptr<transaction::Methods> _trx;
