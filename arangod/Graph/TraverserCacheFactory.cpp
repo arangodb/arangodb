@@ -47,7 +47,7 @@ TraverserCache* CacheFactory::CreateCache(
     // The CacheFactory should be removed eventually.
     return nullptr;
   }
-  return new TraverserCache(query, opts);
+  return new TraverserCache();
 }
 
 }  // namespace arangodb::graph

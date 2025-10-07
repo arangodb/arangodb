@@ -63,7 +63,7 @@ namespace aql {
 class TokenTranslator : public TraverserCache {
  public:
   TokenTranslator(Query* query, BaseOptions* opts)
-      : TraverserCache(*query, opts),
+      : TraverserCache(),
         _edges(11, arangodb::basics::VelocyPackHelper::VPackHash(),
                arangodb::basics::VelocyPackHelper::VPackEqual()) {}
   ~TokenTranslator() = default;
@@ -112,12 +112,6 @@ class TokenTranslator : public TraverserCache {
     auto it = _vertices.find(idString);
     TRI_ASSERT(it != _vertices.end());
     return it->second.get(StaticStrings::IdString).stringView();
-  }
-
-  AqlValue fetchEdgeAqlResult(EdgeDocumentToken const& edgeTkn) override {
-    auto it = _edges.find(VPackSlice(edgeTkn.vpack()));
-    TRI_ASSERT(it != _edges.end());
-    return AqlValue{*it};
   }
 
  private:
@@ -424,9 +418,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
         options(fakedQuery.get()),
         defaultOptions(*fakedQuery.get()),
         dummy(std::make_unique<ShortestPathOptions>(defaultOptions)),
-        cache(std::make_unique<TraverserCache>(
-            *fakedQuery.get(),
-            dynamic_cast<ShortestPathOptions*>(&defaultOptions))),
+        cache(std::make_unique<TraverserCache>()),
         translator(fakedQuery.get(), dummy.get()),
         registerInfos(parameters._inputRegisters, parameters._outputRegisters,
                       2, 4, {}, {RegIdSet{0, 1}}),
