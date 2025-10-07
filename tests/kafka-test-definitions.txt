@@ -2,9 +2,10 @@
 add-yaml:
   derives: run-linux-tests
   derives-to: kafka-run-linux-tests
-  containers:
-    kafka-1:
-      image: docker.io/bitnamilegacy/kafka:3.9
+  docker:
+    - image: << parameters.docker_image >>
+    - image: docker.io/bitnamilegacy/kafka:3.9
+      name: kafka-1
       ports:
         - 19092:19092 
       environment:
@@ -19,8 +20,8 @@ add-yaml:
         - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://kafka-1:19092" 
         - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT 
         - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT 
-    kafka-2:
-      image: docker.io/bitnamilegacy/kafka:3.9
+    - image: docker.io/bitnamilegacy/kafka:3.9
+      name: kafka-2
       ports:
         - 29092:29092 
       environment:
@@ -35,8 +36,8 @@ add-yaml:
         - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092,PLAINTEXT_HOST://kafka-2:29092" 
         - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT 
         - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT 
-    kafka-3:
-      image: docker.io/bitnamilegacy/kafka:3.9
+    - image: docker.io/bitnamilegacy/kafka:3.9
+      name: kafka-3
       ports:
         - 39092:39092 
       environment:
