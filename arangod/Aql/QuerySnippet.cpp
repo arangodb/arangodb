@@ -283,7 +283,7 @@ void CloneWorker::processAfter(ExecutionNode* node) {
 
   auto deps = node->getDependencies();
   for (auto d : deps) {
-    auto sb = std::make_shared<velocypack::SupervisedBuffer>(
+    velocypack::SupervisedBuffer sb(
         d->plan()->getAst()->query().resourceMonitor());
     VPackBuilder builder(sb);
     d->toVelocyPack(builder, ExecutionNode::SERIALIZE_DETAILS);
