@@ -87,7 +87,7 @@ class runWithAllureReport extends testRunnerBase {
       return file.match(resultRe) !== null;
     });
     if (resultFiles.length === 0) {
-      msg = `did not find any files in ${testResultsDir}`;
+      let msg = `did not find any files in ${testResultsDir}`;
       print(msg);
       results['status'] = false;
       results['message'] = msg;
