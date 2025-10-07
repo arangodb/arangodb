@@ -153,8 +153,11 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
-            
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
             // bind variable calculation node and return statement
@@ -162,9 +165,9 @@ function VectorIndexL2FilterTestSuite() {
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
-            
+
             verifyResultsMatchFilter(results, (r) => r.val < 5, "Filter not applied correctly");
-            
+
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
             }
@@ -180,15 +183,18 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
-            
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
             verifyCalculationNodeCount(plan, 2); // bind variable calculation node and return statement
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length, JSON.stringify(results));
-            
+
             verifyResultsMatchFilter(results, (r) => r.val < 5, "Filter not applied correctly");
         },
 
@@ -201,7 +207,7 @@ function VectorIndexL2FilterTestSuite() {
               LIMIT 5 RETURN docInner`;
 
             const plan = db._createStatement(query).explain().plan;
-            
+
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
             verifyCalculationNodeCount(plan, 0);
@@ -221,7 +227,7 @@ function VectorIndexL2FilterTestSuite() {
               LIMIT 6 RETURN {key: docInner._key, val: docInner.val}`;
 
             const plan = db._createStatement(query).explain().plan;
-            
+
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
             verifyCalculationNodeCount(plan, 1); // return statement calculation node
@@ -256,8 +262,11 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
-            
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
 
@@ -275,17 +284,20 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
-            
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
             verifyCalculationNodeCount(plan, 2);
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(10, results.length);
-            
+
             verifyResultsMatchFilter(results, (r) => r.val >= 1 && r.val < 30, "Filter not applied correctly");
-            
+
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
             }
@@ -301,17 +313,20 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
-            
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
             verifyCalculationNodeCount(plan, 2);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 10, "Results should be limited to 10");
-            
+
             verifyResultsMatchFilter(results, (r) => r.val >= 2 && r.val <= 7 && r.nonVector % 2 === 0, "Filter not applied correctly");
-            
+
             for (let j = 1; j < results.length; ++j) {
                 assertTrue(results[j - 1].dist <= results[j].dist, "Distances not ascending: " + JSON.stringify(results));
             }
@@ -327,13 +342,16 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
-            
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
+
             verifyVectorIndexUsed(plan);
 
             const results = db._query(query, bindVars).toArray();
             assertTrue(results.length <= 5, "Results should be limited to 5");
-            
+
             verifyResultsMatchFilter(results, (r) => r.category === 'A' && r.priority > 0, "Filter not applied correctly");
         },
 
@@ -454,7 +472,10 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 q: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
 
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
@@ -483,7 +504,10 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
 
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
@@ -491,7 +515,7 @@ function VectorIndexL2FilterTestSuite() {
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
-            
+
             verifyResultsMatchFilter(results, (r) => r.val < 10);
         },
 
@@ -507,7 +531,10 @@ function VectorIndexL2FilterTestSuite() {
             const bindVars = {
                 qp: randomPoint
             };
-            const plan = db._createStatement({query, bindVars}).explain().plan;
+            const plan = db._createStatement({
+                query,
+                bindVars
+            }).explain().plan;
 
             verifyVectorIndexUsed(plan);
             verifyNoFilterNodes(plan);
@@ -515,7 +542,7 @@ function VectorIndexL2FilterTestSuite() {
 
             const results = db._query(query, bindVars).toArray();
             assertEqual(5, results.length);
-            
+
             verifyResultsMatchFilter(results, (r) => r.val < 10 && r.cond1 === true && r.cond2 === true);
         },
 
