@@ -334,7 +334,7 @@ arangodb.acquireHostList=true
       'integration-test',
       '-Ddistributed',
       '-DSslTest=false',
-      '-Dit.test=com.arangodb.kafka.SslIT'
+      '-Dit.test=com.arangodb.kafka.SslIT',
       '-Dgpg.skip',
       '-Dmaven.javadoc.skip',
       '-Dallure.results.directory=' + testResultsDir
