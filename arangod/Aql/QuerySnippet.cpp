@@ -40,11 +40,10 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogMacros.h"
-
-#include "Basics/SupervisedBuffer.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
