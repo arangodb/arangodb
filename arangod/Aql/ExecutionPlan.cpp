@@ -1632,8 +1632,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
                                                      AstNode const* node) {
   ast::EnumeratePathsNode enumeratePathsNode(node);
-  auto const type = static_cast<arangodb::graph::PathType::Type>(
-      enumeratePathsNode.getPathType());
+  auto const type = enumeratePathsNode.getPathType();
   TRI_ASSERT(type == arangodb::graph::PathType::Type::KShortestPaths ||
              type == arangodb::graph::PathType::Type::KPaths ||
              type == arangodb::graph::PathType::Type::AllShortestPaths);

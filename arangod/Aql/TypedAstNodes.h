@@ -25,6 +25,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Variable.h"
 #include "Aql/Quantifier.h"
+#include "Graph/PathType.h"
 
 #include <span>
 
@@ -396,7 +397,10 @@ struct EnumeratePathsNode : TypedAstNode {
         << node->numMembers();
   }
 
-  int64_t getPathType() const { return _node->getMember(0)->getIntValue(); }
+  graph::PathType::Type getPathType() const {
+    return static_cast<graph::PathType::Type>(
+        _node->getMember(0)->getIntValue());
+  }
 
   AstNode const* getDirection() const { return _node->getMember(1); }
 
