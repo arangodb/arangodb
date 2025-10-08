@@ -3380,11 +3380,7 @@ AstNode* Ast::createArithmeticResultNode(double value) {
 /// the unary plus will be converted into a simple value node if the operand of
 /// the operation is a constant number
 AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
-             node->type == NODE_TYPE_OPERATOR_UNARY_MINUS);
-
-  ast::UnaryOperatorNode unaryOp(node);
+  ast::UnaryArithmeticOperatorNode unaryOp(node);
   AstNode const* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
@@ -3447,9 +3443,7 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
     return node;
   }
 
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
-
-  ast::UnaryOperatorNode unaryOp(node);
+  ast::UnaryNotOperatorNode unaryOp(node);
   AstNode const* operand = unaryOp.getOperand();
 
   if (operand->isComparisonOperator()) {
@@ -3468,10 +3462,7 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
 /// @brief optimizes the unary operator NOT
 /// the unary NOT operation will be replaced with the result of the operation
 AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
-
-  ast::UnaryOperatorNode unaryOp(node);
+  ast::UnaryNotOperatorNode unaryOp(node);
   AstNode const* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
@@ -3487,11 +3478,7 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
 /// @brief optimizes the binary logical operators && and ||
 AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
                                             bool canModifyResultType) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
-             node->type == NODE_TYPE_OPERATOR_BINARY_OR);
-
-  ast::BinaryOperatorNode binOp(node);
+  ast::LogicalOperatorNode binOp(node);
   auto lhs = binOp.getLeft();
   auto rhs = binOp.getRight();
 
@@ -3550,7 +3537,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
 AstNode* Ast::optimizeBinaryOperatorRelational(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
-  ast::BinaryOperatorNode binOp(node);
+  ast::RelationalOperatorNode binOp(node);
   AstNode* lhs = binOp.getLeft();
   AstNode* rhs = binOp.getRight();
 
@@ -3638,7 +3625,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
 AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
-  ast::BinaryOperatorNode binOp(node);
+  ast::ArithmeticOperatorNode binOp(node);
   AstNode const* lhs = binOp.getLeft();
   AstNode const* rhs = binOp.getRight();
 

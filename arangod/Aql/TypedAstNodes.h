@@ -469,6 +469,25 @@ struct UnaryOperatorNode : TypedAstNode {
   AstNode const* getOperand() const { return _node->getMember(0); }
 };
 
+struct UnaryArithmeticOperatorNode : UnaryOperatorNode {
+  explicit UnaryArithmeticOperatorNode(AstNode const* node)
+      : UnaryOperatorNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
+               node->type == NODE_TYPE_OPERATOR_UNARY_MINUS)
+        << node->getTypeString();
+  }
+
+  bool isPlus() const { return _node->type == NODE_TYPE_OPERATOR_UNARY_PLUS; }
+  bool isMinus() const { return _node->type == NODE_TYPE_OPERATOR_UNARY_MINUS; }
+};
+
+struct UnaryNotOperatorNode : UnaryOperatorNode {
+  explicit UnaryNotOperatorNode(AstNode const* node) : UnaryOperatorNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT)
+        << node->getTypeString();
+  }
+};
+
 struct BinaryOperatorNode : TypedAstNode {
   explicit BinaryOperatorNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT((node->type >= NODE_TYPE_OPERATOR_BINARY_AND &&
@@ -483,6 +502,77 @@ struct BinaryOperatorNode : TypedAstNode {
   AstNode* getLeft() const { return _node->getMember(0); }
 
   AstNode* getRight() const { return _node->getMember(1); }
+};
+
+/// @brief Logical binary operator node wrapper (AND, OR)
+struct LogicalOperatorNode : BinaryOperatorNode {
+  explicit LogicalOperatorNode(AstNode const* node) : BinaryOperatorNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_OR)
+        << node->getTypeString();
+  }
+
+  bool isAnd() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_AND; }
+  bool isOr() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_OR; }
+};
+
+/// @brief Arithmetic binary operator node wrapper (+, -, *, /, %)
+struct ArithmeticOperatorNode : BinaryOperatorNode {
+  explicit ArithmeticOperatorNode(AstNode const* node)
+      : BinaryOperatorNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_PLUS ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_MINUS ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_TIMES ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_DIV ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_MOD)
+        << node->getTypeString();
+  }
+
+  bool isPlus() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_PLUS; }
+  bool isMinus() const {
+    return _node->type == NODE_TYPE_OPERATOR_BINARY_MINUS;
+  }
+  bool isTimes() const {
+    return _node->type == NODE_TYPE_OPERATOR_BINARY_TIMES;
+  }
+  bool isDiv() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_DIV; }
+  bool isMod() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_MOD; }
+};
+
+/// @brief Relational binary operator node wrapper (==, !=, <, <=, >, >=, IN,
+/// NOT IN)
+struct RelationalOperatorNode : BinaryOperatorNode {
+  explicit RelationalOperatorNode(AstNode const* node)
+      : BinaryOperatorNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_NE ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_LT ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
+               node->type == NODE_TYPE_OPERATOR_BINARY_NIN)
+        << node->getTypeString();
+  }
+
+  bool isEqual() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_EQ; }
+  bool isNotEqual() const {
+    return _node->type == NODE_TYPE_OPERATOR_BINARY_NE;
+  }
+  bool isLessThan() const {
+    return _node->type == NODE_TYPE_OPERATOR_BINARY_LT;
+  }
+  bool isLessEqual() const {
+    return _node->type == NODE_TYPE_OPERATOR_BINARY_LE;
+  }
+  bool isGreaterThan() const {
+    return _node->type == NODE_TYPE_OPERATOR_BINARY_GT;
+  }
+  bool isGreaterEqual() const {
+    return _node->type == NODE_TYPE_OPERATOR_BINARY_GE;
+  }
+  bool isIn() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_IN; }
+  bool isNotIn() const { return _node->type == NODE_TYPE_OPERATOR_BINARY_NIN; }
 };
 
 struct TernaryOperatorNode : TypedAstNode {
