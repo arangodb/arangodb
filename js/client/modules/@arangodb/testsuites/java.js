@@ -334,7 +334,7 @@ function kafkaDriver (options) {
     localOptions.dbServers = 3;
   }
 
-  let rc = new runInJavaTest(localOptions, 'java_test').run([ 'java_test.js']);
+  let rc = new runInKafkaTest(localOptions, 'java_test').run([ 'java_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
 }
