@@ -663,27 +663,6 @@ struct IndexedAccessNode : TypedAstNode {
   AstNode const* getIndex() const { return _node->getMember(1); }
 };
 
-struct ExpansionNode : TypedAstNode {
-  explicit ExpansionNode(AstNode const* node) : TypedAstNode(node) {
-    TRI_ASSERT(node->type == NODE_TYPE_EXPANSION) << node->getTypeString();
-    TRI_ASSERT(node->numMembers() == 5)
-        << "expected 5 members in NODE_TYPE_EXPANSION, found "
-        << node->numMembers();
-  }
-
-  int64_t getLevels() const { return _node->getIntValue(); }
-
-  AstNode const* getIterator() const { return _node->getMember(0); }
-
-  AstNode const* getExpression() const { return _node->getMember(1); }
-
-  AstNode const* getFilter() const { return _node->getMember(2); }
-
-  AstNode const* getProjection() const { return _node->getMember(3); }
-
-  AstNode const* getOptions() const { return _node->getMember(4); }
-};
-
 struct IteratorNode : TypedAstNode {
   explicit IteratorNode(AstNode const* node) : TypedAstNode(node) {
     TRI_ASSERT(node->type == NODE_TYPE_ITERATOR) << node->getTypeString();
@@ -699,6 +678,27 @@ struct IteratorNode : TypedAstNode {
   }
 
   AstNode const* getExpression() const { return _node->getMember(1); }
+};
+
+struct ExpansionNode : TypedAstNode {
+  explicit ExpansionNode(AstNode const* node) : TypedAstNode(node) {
+    TRI_ASSERT(node->type == NODE_TYPE_EXPANSION) << node->getTypeString();
+    TRI_ASSERT(node->numMembers() == 5)
+        << "expected 5 members in NODE_TYPE_EXPANSION, found "
+        << node->numMembers();
+  }
+
+  int64_t getLevels() const { return _node->getIntValue(); }
+
+  IteratorNode getIterator() const { return IteratorNode(_node->getMember(0)); }
+
+  AstNode const* getExpression() const { return _node->getMember(1); }
+
+  AstNode const* getFilter() const { return _node->getMember(2); }
+
+  AstNode const* getProjection() const { return _node->getMember(3); }
+
+  AstNode const* getOptions() const { return _node->getMember(4); }
 };
 
 struct ValueNode : TypedAstNode {

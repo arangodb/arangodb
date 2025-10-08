@@ -2966,8 +2966,8 @@ bool Ast::getReferencedAttributesRecursive(
           }
         }
 
-        ast::IteratorNode lhs(node->getMember(0));
-        AstNode const* rhs = node->getMember(1);
+        ast::IteratorNode lhs = expansionNode.getIterator();
+        AstNode const* rhs = expansionNode.getExpression();
 
         while (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                rhs->type == NODE_TYPE_INDEXED_ACCESS) {
