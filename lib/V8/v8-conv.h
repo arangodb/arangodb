@@ -23,10 +23,6 @@
 
 #pragma once
 
-#ifndef USE_V8
-#error this file is not supposed to be used in builds with -DUSE_V8=Off
-#endif
-
 #include "Basics/conversions.h"
 #include "V8/v8-globals.h"
 

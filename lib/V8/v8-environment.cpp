@@ -21,10 +21,6 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef USE_V8
-#error this file is not supposed to be used in builds with -DUSE_V8=Off
-#endif
-
 #include <stdlib.h>
 #include <string.h>
 #include <cstdint>

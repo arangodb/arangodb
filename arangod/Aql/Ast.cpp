@@ -46,6 +46,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -329,7 +330,7 @@ injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
 
 LogicalDataSource::Category addDataSource(
     Ast& ast, CollectionNameResolver const& resolver,
-    std::string_view& nameRef) {
+    std::string_view nameRef) {
   auto [category, resolved_name] = injectDataSourceInQuery(
       ast, resolver, AccessMode::Type::READ, false, nameRef);
 
@@ -370,6 +371,10 @@ std::optional<std::string> edgeCollectionNodeGetName(
   }
 
   if (edgeCollection->isStringValue()) {
+    return edgeCollection->getString();
+  }
+
+  if (edgeCollection->type == NODE_TYPE_COLLECTION) {
     return edgeCollection->getString();
   }
 
@@ -4557,4 +4562,134 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
     return it->second;
   }
   return nullptr;
+}
+
+namespace {
+
+auto hasVertexCollectionsOption(AstNode const* options) -> bool {
+  if (options != nullptr && options->type != NODE_TYPE_NOP) {
+    TRI_ASSERT(options->type == NODE_TYPE_OBJECT) << options->getTypeString();
+    auto n = options->numMembers();
+    for (auto i = size_t{0}; i < n; ++i) {
+      auto member = options->getMemberUnchecked(i);
+      if (member != nullptr and
+          member->type == arangodb::aql::NODE_TYPE_OBJECT_ELEMENT) {
+        auto const name = member->getStringView();
+        if (name == "vertexCollections") {
+          auto value = member->getMember(0);
+          if (value->isStringValue()) {
+            return true;
+          } else if (value->type == NODE_TYPE_ARRAY) {
+            auto nn = value->numMembers();
+            if (nn > 0) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+auto matchGraphSubjectWhenVertexCollectionsNotSet(AstNode const* node)
+    -> std::optional<AstNode const*> {
+  auto const* graphSubject = (AstNode const*){};
+  auto const* options = (AstNode const*){};
+
+  switch (node->type) {
+    case NODE_TYPE_TRAVERSAL: {
+      graphSubject = node->getMember(2);
+      options = node->getMember(4);
+    } break;
+    case NODE_TYPE_SHORTEST_PATH: {
+      graphSubject = node->getMember(3);
+      options = node->getMember(4);
+    } break;
+    case NODE_TYPE_ENUMERATE_PATHS: {
+      graphSubject = node->getMember(4);
+      options = node->getMember(5);
+    } break;
+    default: {
+      return std::nullopt;
+    } break;
+  };
+
+  if (not hasVertexCollectionsOption(options)) {
+    return {graphSubject};
+  }
+
+  return std::nullopt;
+}
+}  // namespace
+
+containers::FlatHashSet<std::string>
+Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
+  auto edgeCollections = containers::FlatHashSet<std::string>(4);
+
+  // Look for Graph nodes that use edge collection syntax
+  // and do not have the vertexCollections option set.
+  auto matcher = [&edgeCollections](AstNode const* node) -> void {
+    auto maybeMatch = matchGraphSubjectWhenVertexCollectionsNotSet(node);
+
+    if (maybeMatch.has_value()) {
+      auto const* match = *maybeMatch;
+
+      // Found a traversal, shortest path, path search that uses
+      // edge collection syntax
+      if (match->type == arangodb::aql::NODE_TYPE_COLLECTION_LIST) {
+        for (size_t i = 0; i < match->numMembers(); ++i) {
+          auto const* member = match->getMemberUnchecked(i);
+          auto collectionName = edgeCollectionNodeGetName(member);
+
+          TRI_ASSERT(collectionName.has_value());
+
+          if (collectionName.has_value()) {
+            edgeCollections.emplace(*collectionName);
+          }
+        }
+      } else {
+        // Graph syntax case is not interesting for this
+        // function
+      }
+    }
+  };
+
+  traverseReadOnly(_root, matcher);
+
+  return edgeCollections;
+}
+
+void Ast::addGraphNodeImplicitVertexCollections(
+    CollectionNameResolver const& resolver) {
+  // Collect all edge collection names used in graph operations using
+  // edge collection syntax that do not have vertexCollections set.
+  auto edgeCollections =
+      collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption();
+  if (edgeCollections.empty()) {
+    // The operations below are fairly expensive, so at least for queries
+    // that do not involve edge collection syntax, shortcut
+
+    // Note *also* that the graph manager executes a query to determine all
+    // graphs (which does not contain edge collection syntax); if one does not
+    // return here, the AQL execution enters an infinite loop and blows out the
+    // stack.
+    //
+    // This is clearly terrible.
+    return;
+  }
+
+  // TODO: the graphmanager should belong to the Query(Context)
+  auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
+  auto maybeImplicitVertexCollections =
+      gm.findImplicitVertexCollectionsFromEdgeCollections(edgeCollections);
+
+  if (maybeImplicitVertexCollections.ok()) {
+    for (auto&& vertexCollectionName : maybeImplicitVertexCollections.get()) {
+      addDataSource(*this, resolver, std::string_view{vertexCollectionName});
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION(maybeImplicitVertexCollections.result());
+  }
 }

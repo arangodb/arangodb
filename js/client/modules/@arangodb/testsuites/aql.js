@@ -189,6 +189,16 @@ function shellClientMulti (options) {
 //////////////////////////////////////////////////////////////////////////////
 
 function shellServerOnly (options) {
+  if (options.skipServerJS) {
+    return {
+      shell_server: {
+        status: false,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: false
+    };
+  }
+
   let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
 
   testCases = tu.splitBuckets(options, testCases);

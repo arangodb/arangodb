@@ -100,6 +100,11 @@ function makeDataWrapper (options) {
       return false;
     }
     runOneTest(file) {
+      this.options.rtaNegFilter = "";
+      if (this.options.skipServerJS) {
+        // TODO: QA-703
+        this.options.rtaNegFilter = "070,071,801,550,900,960";
+      }
       if (!this.continueTesting) {
         return {
           'forceTerminate': true,

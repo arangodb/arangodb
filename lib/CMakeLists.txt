@@ -361,6 +361,7 @@ add_library(arango STATIC
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  ApplicationFeatures/ProcessEnvironmentFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
   Basics/RocksDBLogger.cpp
@@ -444,9 +445,7 @@ add_subdirectory(Async)
 add_subdirectory(Containers)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
-if (USE_V8)
-  add_subdirectory(V8)
-endif()
+add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)

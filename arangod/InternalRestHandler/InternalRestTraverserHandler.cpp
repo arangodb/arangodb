@@ -335,7 +335,7 @@ void InternalRestTraverserHandler::queryEngine() {
                         res.errorMessage());
           return;
         }
-        eng->addStatistics(result);
+        eng->addAndClearStatistics(result);
         result.close();
 
         generateResult(ResponseCode::OK, result.slice(), engine->context());

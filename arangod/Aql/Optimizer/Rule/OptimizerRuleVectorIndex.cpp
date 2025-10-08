@@ -36,11 +36,14 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/SupervisedBuffer.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -165,8 +168,8 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
 
 // Currently this only returns nProbe, in the future it might be possible to
 // set other search parameters
-SearchParameters getSearchParameters(
-    auto const* calculationNodeExpressionNode) {
+SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
+                                     ResourceMonitor& resourceMonitor) {
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
 
@@ -176,7 +179,9 @@ SearchParameters getSearchParameters(
         approxFunctionParameters->getMemberUnchecked(2);
 
     SearchParameters searchParameters;
-    VPackBuilder builder;
+    // Buffer won't escape from this function's scope
+    velocypack::SupervisedBuffer sb(resourceMonitor);
+    VPackBuilder builder(sb);
     searchParametersNode->toVelocyPackValue(builder);
     if (auto const res = velocypack::deserializeWithStatus(builder.slice(),
                                                            searchParameters);
@@ -300,7 +305,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         continue;
       }
 
-      auto searchParameters = getSearchParameters(approxNearExpression);
+      auto searchParameters = getSearchParameters(
+          approxNearExpression, plan->getAst()->query().resourceMonitor());
 
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node

@@ -30,6 +30,7 @@ const internal = require('internal');
 const sleep = internal.sleep;
 const forceJson = internal.options().hasOwnProperty('server.force-json') && internal.options()['server.force-json'];
 const contentType = forceJson ? "application/json" :  "application/x-velocypack";
+const IM = global.instanceManager;
 
 const jsunity = require("jsunity");
 
@@ -478,31 +479,32 @@ function readingSuite () {
         assertEqual(typeof doc.parsedBody['figures']['cacheLifeTimeHitRate'], 'double');
         assertEqual(typeof doc.parsedBody['figures']['cacheWindowedHitRate'], 'double');
       }
+      if (!IM.options.skipServerJS) {
+        // delete a few documents, this should change counts;
+        let body = "{ \"collection\" : \"" + cn + "\", \"example\": { \"test\" : 5 } }";
+        doc = arango.PUT_RAW("/_api/simple/remove-by-example", body);
+        // should delete 2 docuemnts:
+        assertEqual(doc.parsedBody['deleted'], 2);
+        body = "{ \"collection\" : \"" + cn + "\", \"example\": { \"test3\" : 1 } }";
+        doc = arango.PUT_RAW("/_api/simple/remove-by-example", body);
+        // should delete no documents:
+        assertEqual(doc.parsedBody['deleted'], 0);
 
-      // delete a few documents, this should change counts;
-      let body = "{ \"collection\" : \"" + cn + "\", \"example\": { \"test\" : 5 } }";
-      doc = arango.PUT_RAW("/_api/simple/remove-by-example", body);
-      // should delete 2 docuemnts:
-      assertEqual(doc.parsedBody['deleted'], 2);
-      body = "{ \"collection\" : \"" + cn + "\", \"example\": { \"test3\" : 1 } }";
-      doc = arango.PUT_RAW("/_api/simple/remove-by-example", body);
-      // should delete no documents:
-      assertEqual(doc.parsedBody['deleted'], 0);
-
-      doc = arango.GET_RAW(cmd);
-      assertEqual(doc.code, 200);
-      assertEqual(doc.headers['content-type'], contentType);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 200);
-      assertEqual(typeof doc.parsedBody['count'], 'number');
-      assertEqual(doc.parsedBody['count'], 18);
-      assertEqual(typeof doc.parsedBody['figures']['cacheSize'], 'number');
-      assertEqual(typeof doc.parsedBody['figures']['cacheInUse'], 'boolean');
-      assertEqual(typeof doc.parsedBody['figures']['cacheUsage'], 'number');
-      assertEqual(typeof doc.parsedBody['figures']['documentsSize'], 'number');
-      if (doc.parsedBody['figures']['cacheInUse']) {
-        assertEqual(typeof doc.parsedBody['figures']['cacheLifeTimeHitRate'], 'double');
-        assertEqual(typeof doc.parsedBody['figures']['cacheWindowedHitRate'], 'double');
+        doc = arango.GET_RAW(cmd);
+        assertEqual(doc.code, 200);
+        assertEqual(doc.headers['content-type'], contentType);
+        assertFalse(doc.parsedBody['error']);
+        assertEqual(doc.parsedBody['code'], 200);
+        assertEqual(typeof doc.parsedBody['count'], 'number');
+        assertEqual(doc.parsedBody['count'], 18);
+        assertEqual(typeof doc.parsedBody['figures']['cacheSize'], 'number');
+        assertEqual(typeof doc.parsedBody['figures']['cacheInUse'], 'boolean');
+        assertEqual(typeof doc.parsedBody['figures']['cacheUsage'], 'number');
+        assertEqual(typeof doc.parsedBody['figures']['documentsSize'], 'number');
+        if (doc.parsedBody['figures']['cacheInUse']) {
+          assertEqual(typeof doc.parsedBody['figures']['cacheLifeTimeHitRate'], 'double');
+          assertEqual(typeof doc.parsedBody['figures']['cacheWindowedHitRate'], 'double');
+        }
       }
     },
 
