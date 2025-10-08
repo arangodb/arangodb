@@ -1,5 +1,23 @@
 devel
 -----
+* Add vertex collections for graph queries using edge collection syntax
+  from named graphs. This means that if a query uses edge collection syntax
+  and a named graph defines the from and to vertex collections for that edge
+  collection, the WITH statement is no longer required.
+
+* Upgraded OpenSSL to 3.5.4.
+
+* Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
+
+* Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
+  instructions in query runtime.
+
+* Fix BTS-2130: Fix the endless wait in Coordinators during
+  CreateDatabase and CreateCollection.
+
+* Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
+  We should therefore check before accessing clusterInfo() whether we're
+  in an upgrade scenario. Added those checks in iresearch.
 
 * Fix defaults for inverted indexes and views. Consolidations 5 times
   less frequently, with minimum of 50(1 before) segments and 24M bytes
@@ -81,8 +99,6 @@ devel
 
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
   dependencies.
-
-* Upgraded OpenSSL to 3.5.2
 
 * Fix error message to use proper terminology order instead of mode.
 

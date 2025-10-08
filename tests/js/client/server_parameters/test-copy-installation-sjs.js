@@ -34,9 +34,7 @@ if (getOptions === true) {
 
 const fs = require("fs");
 const jsunity = require('jsunity');
-const {
-  getDbPath
-} = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 function testSuite() {
   const errors = require('@arangodb').errors;
@@ -44,7 +42,9 @@ function testSuite() {
   return {
     testCanExecuteAction : function() {
       // fetch server-side database directory name
-      let dbPath = getDbPath();
+      let dbPath = IM.arangods.filter(arangod => {
+        return arangod.isFrontend();
+      })[0].dataDir;
       let jsPath = fs.join(dbPath, "js");
       assertTrue(fs.exists(jsPath));
       assertTrue(fs.exists(fs.join(jsPath, "node")));

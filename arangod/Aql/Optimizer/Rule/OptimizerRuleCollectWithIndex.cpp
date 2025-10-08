@@ -334,7 +334,8 @@ bool isIndexStreamSupported(IndexNode const& idx,
                             std::vector<size_t> groupFields,
                             std::vector<size_t> aggregationFields) {
   IndexStreamOptions streamOptions{.usedKeyFields = std::move(groupFields),
-                                   .projectedFields = aggregationFields};
+                                   .projectedFields = aggregationFields,
+                                   .constantFields = {}};
   if (auto support =
           idx.getSingleIndex()->supportsStreamInterface(streamOptions);
       support.hasSupport()) {

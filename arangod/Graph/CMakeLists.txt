@@ -1,15 +1,11 @@
 add_library(arango_graph STATIC
   BaseOptions.cpp
   ClusterGraphDatalake.cpp
-  ClusterTraverserCache.cpp
   Graph.cpp
   GraphManager.cpp
   GraphOperations.cpp
   ShortestPathOptions.cpp
   PathType.cpp
-  TraverserCache.cpp # maybe remove
-  TraverserCacheFactory.cpp
-  TraverserDocumentCache.cpp
   TraverserOptions.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/CallbackGuard.cpp
   ${PROJECT_SOURCE_DIR}/arangod/Cluster/ServerDefaults.cpp

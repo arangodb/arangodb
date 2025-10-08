@@ -94,6 +94,9 @@ def parse_arguments():
         "--extra-args", type=str, help="additional arguments to append to all testing.js"
     )
     parser.add_argument(
+        "--arangod-without-v8", type=str, help="whether we run a setup without .js"
+    )
+    parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
         action="store_true",
@@ -456,7 +459,8 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
         add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs)
     if args.ui == "only":
         return
-    if build_config.enterprise:
+    # TODO: QA-698
+    if build_config.enterprise and args.arangod_without_v8 != 'true':
         workflow["jobs"].append(
             {
                 "run-hotbackup-tests": {
@@ -665,6 +669,8 @@ def main():
             args.extra_args = []
         else:
             args.extra_args = args.extra_args[1:].split(' ')
+        if args.arangod_without_v8 == "true":
+            args.extra_args += [ '--skipServerJS', 'true']
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = []

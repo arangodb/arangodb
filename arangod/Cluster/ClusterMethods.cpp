@@ -43,7 +43,6 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/ClusterGraphDatalake.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Types.h"
 #include "Network/ClusterUtils.h"
@@ -51,6 +50,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/Version.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/HotBackupCommon.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -102,12 +102,6 @@ using namespace arangodb::futures;
 using namespace arangodb::rest;
 
 using Helper = arangodb::basics::VelocyPackHelper;
-
-namespace {
-std::string const edgeUrl = "/_internal/traverser/edge/";
-std::string const vertexUrl = "/_internal/traverser/vertex/";
-
-}  // namespace
 
 // Timeout for write operations, note that these are used for communication
 // with a shard leader and we always have to assume that some follower has
