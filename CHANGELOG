@@ -1,5 +1,11 @@
 devel
 -----
+
+* Fix defaults for inverted indexes and views. Consolidations 5 times
+  less frequently, with minimum of 50(1 before) segments and 24M bytes
+  (2M before), maximum 200 (10 before) segments and 8G bytes (800M
+  before).
+
 * Add vertex collections for graph queries using edge collection syntax
   from named graphs. This means that if a query uses edge collection syntax
   and a named graph defines the from and to vertex collections for that edge
@@ -18,11 +24,6 @@ devel
 * Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
   We should therefore check before accessing clusterInfo() whether we're
   in an upgrade scenario. Added those checks in iresearch.
-
-* Fix defaults for inverted indexes and views. Consolidations 5 times
-  less frequently, with minimum of 50(1 before) segments and 24M bytes
-  (2M before), maximum 200 (10 before) segments and 8G bytes (800M
-  before).
 
 * Reverted RocksDB defaults for maximum wal size, number of sub
   compactions and compaction read ahead to stay close to established
