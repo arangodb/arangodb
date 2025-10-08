@@ -297,7 +297,7 @@ class runInKafkaTest extends runWithAllureReport {
       topology,
       this.options.kafkahost,
       '-Ddistributed',
-      '-DSslTest=false',
+      `-DSslTest=${this.options.protocol == 'ssl' ? 'true' : 'false'}`,
       '-Dit.test=com.arangodb.kafka.SslIT',
       '-Dgpg.skip',
       '-Dmaven.javadoc.skip',
