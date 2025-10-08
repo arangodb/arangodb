@@ -148,6 +148,10 @@ function httpRequestsFuzzerTestSuite() {
     setUpAll: function () {
       let moreargv = [];
       let logFile = fs.join(fs.getTempPath(), `rta_out_create.log`);
+      if (IM.options.skipServerJS) {
+        // TODO: QA-703
+        moreargv = ['--skip', "070,071,801,550,900,960"].concat(moreargv);
+      }
       let rc = ct.run.rtaMakedata(IM.options, IM, 0, messages[0], logFile, moreargv);
       if (!rc.status) {
         let rx = new RegExp(/\\n/g);
@@ -159,6 +163,9 @@ function httpRequestsFuzzerTestSuite() {
     },
     tearDownAll: function () {
       let moreargv = [];
+      if (IM.options.skipServerJS) {
+        moreargv = ['--skip', "070,071,801,550,900,960"].concat(moreargv);
+      }
       let logFile = fs.join(fs.getTempPath(), `rta_out_clean.log`);
       let rc = ct.run.rtaMakedata(IM.options, IM, 2, messages[1], logFile, moreargv);
       if (!rc.status) {

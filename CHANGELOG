@@ -5,6 +5,8 @@ devel
   pushed down into vector similarity searches, enabling filtering with vector index by
   evaluating filters during the index scan rather than as a post-processing step.
 
+* Upgraded OpenSSL to 3.5.4.
+
 * Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
 
 * Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
@@ -92,8 +94,6 @@ devel
 
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
   dependencies.
-
-* Upgraded OpenSSL to 3.5.2
 
 * Fix error message to use proper terminology order instead of mode.
 

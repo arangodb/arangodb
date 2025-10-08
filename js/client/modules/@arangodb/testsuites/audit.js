@@ -67,7 +67,7 @@ class runBasicOnArangod extends trs.runOnArangodRunner{
 
 function auditLog(onServer) {
   return function(options) {
-    if (options.skipAudit === true) {
+    if (options.skipAudit === true || (onServer && options.skipServerJS)) {
       print('skipping audit log tests!');
       return {
         auditLog: {

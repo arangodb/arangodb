@@ -230,6 +230,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-sjs') !== -1) && (options.skipServerJS)) {
+    whichFilter.filter = 'skip when running the server without javascript enabled';
+    return false;
+  }
+
   if (options.failed) {
     return options.failed.hasOwnProperty(testname);
   }
@@ -367,6 +372,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     'skipNondeterministic': false,
     'skipGrey': false,
     'skipN': false,
+    'skipServerJS': false,
     'onlyGrey': false,
     'onlyNightly': false,
     'skipTimeCritical': false,
@@ -385,6 +391,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
     '   - `skipGrey`: if set, grey tests are skipped.',
     '   - `skipN`: skip the first N tests of the suite',
+    '   - `skipServerJS`: skip if the server runs without javascript enabled',
     '   - `onlyGrey`: if set, only grey tests are executed.',
     '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
     '   - `test`: path to single test to execute for "single" test target, ',

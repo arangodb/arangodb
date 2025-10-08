@@ -43,6 +43,15 @@ const testPaths = {
 };
 
 function paths_server(options) {
+  if (options.skipServerJS) {
+    return {
+      paths_server: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   let testCases = tu.scanTestPaths(testPaths.paths_server, options);
   let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
   let tmpPath = fs.getTempPath();

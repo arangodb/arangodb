@@ -25,15 +25,10 @@
 #include "gtest/gtest.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/InputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
 #include "AqlItemBlockHelper.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/VelocyPackHelper.h"
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
