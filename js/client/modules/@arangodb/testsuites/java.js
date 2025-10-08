@@ -284,9 +284,9 @@ class runInKafkaTest extends runWithAllureReport {
     };
     let matchTopology;
     if (this.options.cluster) {
-      topology = '-pcluster';
+      topology = '-Pcluster';
     } else {
-      topology = '-pstandalone';
+      topology = '-Pstandalone';
     }
 
     // strip i.e. http:// from the URL to conform with what the driver expects:
