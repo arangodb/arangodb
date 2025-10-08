@@ -28,6 +28,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
+#include "Basics/SupervisedBuffer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
@@ -45,7 +46,9 @@ MaterializeExecutorBase::MaterializeExecutorBase(Infos& infos)
 
 MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
     : MaterializeExecutorBase(infos),
-      _collection(infos.collection()->getCollection()->getPhysical()) {
+      _collection(infos.collection()->getCollection()->getPhysical()),
+      _projectionsBuilder(std::make_shared<velocypack::SupervisedBuffer>(
+          infos.query().resourceMonitor())) {
   TRI_ASSERT(_collection != nullptr);
 }
 
