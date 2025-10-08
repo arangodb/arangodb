@@ -48,6 +48,7 @@
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
@@ -232,7 +233,8 @@ std::pair<AstNode*, AstNode*> getAttributeAccessFromIndex(
         AstNode* base =
             ast->createNodeAttributeAccess(accessNodeLon, accessBase);
 
-        VPackBuilder builder;
+        velocypack::SupervisedBuffer sb(ast->query().resourceMonitor());
+        VPackBuilder builder(sb);
         idx->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
         bool geoJson = basics::VelocyPackHelper::getBooleanValue(
             builder.slice(), "geoJson", false);
@@ -471,7 +473,8 @@ AstNode* replaceWithinRectangle(AstNode* funAstNode, ExecutionNode* calcNode,
     arr->addMember(ast->createNodeAccess(collVar, index->fields()[0]));
     fargs->addMember(arr);
   } else {
-    VPackBuilder builder;
+    velocypack::SupervisedBuffer sb(ast->query().resourceMonitor());
+    VPackBuilder builder(sb);
     index->toVelocyPack(builder, Index::makeFlags(Index::Serialize::Basics));
     bool geoJson = basics::VelocyPackHelper::getBooleanValue(builder.slice(),
                                                              "geoJson", false);

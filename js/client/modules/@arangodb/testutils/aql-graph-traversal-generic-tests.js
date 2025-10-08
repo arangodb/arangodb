@@ -2201,22 +2201,6 @@ function testOpenDiamondKShortestPathEnabledWeightCheckLimit1Gen(testGraph, gene
   });
 }
 
-function testSmallCircleClusterOnlyWithInvalidStartNode(testGraph) {
-  if (isCluster) {
-    assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
-    try {
-      const query = aql`
-        FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A') + 'invalidNode'} ${testGraph.edgeCollectionName()}
-        RETURN v
-      `;
-      db._query(query);
-      fail();
-    } catch (err) {
-      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
-    }
-  }
-}
-
 function testSmallCircleTestDocumentsShardsAPI(testGraph) {
   assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
 
@@ -2268,22 +2252,6 @@ function testSmallCircleTestDocumentsShardsAPI(testGraph) {
       assertEqual(err.errorNum, errors.ERROR_NOT_IMPLEMENTED.code);
       // Unfortunately cannot assert this, different implementations client vs. server (v8)
       // assertEqual(err.errorMessage, errors.ERROR_NOT_IMPLEMENTED.message);
-    }
-  }
-}
-
-function testSmallCircleClusterOnlyWithoutWithClause(testGraph) {
-  if (isCluster) {
-    assertTrue(testGraph.name().startsWith(protoGraphs.smallCircle.name()));
-    try {
-      const query = aql`
-        FOR v IN 0..1 OUTBOUND ${testGraph.vertex('A')} ${testGraph.edgeCollectionName()}
-        RETURN v
-      `;
-      db._query(query);
-      fail();
-    } catch (err) {
-      assertEqual(err.errorNum, errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code);
     }
   }
 }
@@ -6772,8 +6740,6 @@ const testsByGraph = {
   },
   smallCircle: {
     testSmallCircleTestDocumentsShardsAPI,
-    testSmallCircleClusterOnlyWithInvalidStartNode,
-    testSmallCircleClusterOnlyWithoutWithClause,
     testSmallCircleDfsUniqueVerticesPath,
     testSmallCircleDfsUniqueVerticesNone,
     testSmallCircleDfsUniqueEdgesPath,

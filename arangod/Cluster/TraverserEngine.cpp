@@ -31,7 +31,6 @@
 #include "Graph/Cursors/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
@@ -504,8 +503,6 @@ ShortestPathEngine::ShortestPathEngine(TRI_vocbase_t& vocbase,
   }
   TRI_ASSERT(type.isEqualString("shortestPath"));
   _opts = std::make_unique<ShortestPathOptions>(_query, optsSlice, edgesSlice);
-  // We create the cache, but we do not need any engines.
-  _opts->activateCache(nullptr);
 
   _forwardCursor = _opts->buildCursor(false);
   _backwardCursor = _opts->buildCursor(true);
@@ -602,8 +599,6 @@ TraverserEngine::TraverserEngine(TRI_vocbase_t& vocbase,
   }
   TRI_ASSERT(type.isEqualString("traversal"));
   _opts = std::make_unique<TraverserOptions>(_query, optsSlice, edgesSlice);
-  // We create the cache, but we do not need any engines.
-  _opts->activateCache(nullptr);
 }
 
 TraverserEngine::~TraverserEngine() = default;
