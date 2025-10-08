@@ -295,7 +295,7 @@ class runInKafkaTest extends runWithAllureReport {
       'integration-test',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       topology,
-      options.kafkahost,
+      this.options.kafkahost,
       '-Ddistributed',
       '-DSslTest=false',
       '-Dit.test=com.arangodb.kafka.SslIT',
