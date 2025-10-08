@@ -56,5 +56,5 @@ add-yaml:
 kafka_driver priority=500 single -- --extremeVerbosity true --kafkahost -Dkafka.bootstrap.servers kafka-1:19092,kafka-2:29092,kafka-2:39092
 kafka_driver priority=500 cluster -- --extremeVerbosity true --kafkahost -Dkafka.bootstrap.servers kafka-1:19092,kafka-2:29092,kafka-2:39092
 
-kafka_driver priority=500 single -- --protocol ssl --extremeVerbosity true --kafkahost -Dkafka.bootstrap.servers kafka-1:19092,kafka-2:29092,kafka-2:39092
-kafka_driver priority=500 cluster -- --protocol ssl --extremeVerbosity true --kafkahost -Dkafka.bootstrap.servers kafka-1:19092,kafka-2:29092,kafka-2:39092
+kafka_driver priority=500 single suffix=ssl -- --protocol ssl --extremeVerbosity true --kafkahost -Dkafka.bootstrap.servers kafka-1:19092,kafka-2:29092,kafka-2:39092
+kafka_driver priority=500 cluster suffix=ssl -- --protocol ssl --extremeVerbosity true --kafkahost -Dkafka.bootstrap.servers kafka-1:19092,kafka-2:29092,kafka-2:39092
