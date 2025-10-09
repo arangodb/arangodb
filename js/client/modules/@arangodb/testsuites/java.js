@@ -32,6 +32,9 @@ const optionsDocumentation = [
   '   - `javasource`: directory of the java driver',
   '   - `javaOptions`: additional arguments to pass via the commandline',
   '                    can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java'
+  '   - `kafkasource`: directory to contain the kafka connector',
+  '   - `kafkaHost`: connection string for the possible kafka hosts',
+  '   - `kafkaSchemaHost`: connection URL for the schema server',
 ];
 
 const internal = require('internal');
@@ -299,7 +302,9 @@ class runInKafkaTest extends runWithAllureReport {
       `-Dkafka.bootstrap.servers=${this.options.kafkaHost}`,
       '-Dgpg.skip',
       '-Dmaven.javadoc.skip',
-      '-Dallure.results.directory=' + testResultsDir
+      `-Dallure.results.directory=${testResultsDir}`,
+      `-Dconnect.schema.registry.url=${options.kafkaSchemaHost}`,
+      `-Dclient.schema.registry.url=${options.kafkaSchemaHost}`,
       // TODO? '-Dnative=<<parameters.native>>'
     ];
     if (this.options.protocol === 'ssl') {
@@ -354,5 +359,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
     'javasource': '../arangodb-java-driver',
     'kafkasource': '../kafka-connect-arangodb',
     'kafkaHost': '172.28.0.1:19092,172.28.0.1:29092,172.28.0.1:39092'
+    'kafkaSchemaHost': 'http://172.28.0.1:8081'
   });
 };
