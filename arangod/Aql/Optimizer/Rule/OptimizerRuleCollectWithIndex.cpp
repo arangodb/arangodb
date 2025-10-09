@@ -164,6 +164,13 @@ bool selectivityIsLowEnough(IndexNode const& in) {
 
   double requiredSelectivity;
   if (ServerState::instance()->isSingleServer()) {
+    if (numberOfItems == 1) {
+      // log(1) is 0 so we are dividing by zero here
+      // IEEE-754 defines division-by-zero to lead to NaN, +Inf or -Inf
+      // 1.0 / 0.0 should by definition lead to +Inf, so we skip the calculation
+      // and return directly.
+      return true;
+    }
     requiredSelectivity = 1. / log(numberOfItems);
   } else {
     // in cluster mode, we use the same equation as an approximation, although
@@ -175,6 +182,20 @@ bool selectivityIsLowEnough(IndexNode const& in) {
     // TODO compare the total costs of executing the optimized vs. the
     // non-optimized execution node, which involves getting the selectivity
     // estimate of each shard separately
+
+    if (index->collection().numberOfShards() == 0 ||
+        numberOfItems == index->collection().numberOfShards()) {
+      // index->collection().numberOfShards() == 0
+      // In case of smart edge collections we do have 0 shards,
+      // this would lead to a SIGFPE(FPE_INTDIV) and crash.
+
+      // numberOfItems == index->collection().numberOfShards() means:
+      // log(1) is 0 so we are dividing by zero here
+      // IEEE-754 defines division-by-zero to lead to NaN, +Inf or -Inf
+      // 1.0 / 0.0 should by definition lead to +Inf, so we skip the calculation
+      // and return directly.
+      return true;
+    }
     requiredSelectivity =
         1. / log(numberOfItems / index->collection().numberOfShards());
   }
