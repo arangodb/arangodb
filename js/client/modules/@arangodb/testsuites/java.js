@@ -303,8 +303,8 @@ class runInKafkaTest extends runWithAllureReport {
       '-Dgpg.skip',
       '-Dmaven.javadoc.skip',
       `-Dallure.results.directory=${testResultsDir}`,
-      `-Dconnect.schema.registry.url=${options.kafkaSchemaHost}`,
-      `-Dclient.schema.registry.url=${options.kafkaSchemaHost}`,
+      `-Dconnect.schema.registry.url=${this.options.kafkaSchemaHost}`,
+      `-Dclient.schema.registry.url=${this.options.kafkaSchemaHost}`,
       // TODO? '-Dnative=<<parameters.native>>'
     ];
     if (this.options.protocol === 'ssl') {
