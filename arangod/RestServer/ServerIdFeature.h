@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Async/async.h"
-#include "Basics/ResultT.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/ServerId.h"
 
@@ -46,9 +44,6 @@ class ServerIdFeature final : public ArangodFeature {
 
   // fake the server id from the outside. used for testing only
   static void setId(ServerId serverId) { SERVERID = serverId; }
-
-  /// @brief get deployment ID (single server or cluster ID)
-  static async<ResultT<std::string>> getDeploymentId();
 
  private:
   /// @brief generates a new server id

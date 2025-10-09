@@ -27,12 +27,12 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "RestServer/ServerIdFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace arangodb;
@@ -61,7 +61,7 @@ auto RestAdminDeploymentHandler::executeAsync()
     std::string const& command = suffixes.at(0);
 
     if (command == Id) {
-      co_await handleId();
+      handleId();
       co_return;
     }
   }
@@ -71,15 +71,16 @@ auto RestAdminDeploymentHandler::executeAsync()
   co_return;
 }
 
-async<void> RestAdminDeploymentHandler::handleId() {
+void RestAdminDeploymentHandler::handleId() {
   if (request()->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    co_return;
+    return;
   }
 
-  // Get the deployment ID from ServerIdFeature
-  auto result = co_await ServerIdFeature::getDeploymentId();
+  // Get the deployment ID from ClusterFeature
+  auto& clusterFeature = server().getFeature<ClusterFeature>();
+  auto result = clusterFeature.getDeploymentId();
 
   if (result.fail()) {
     ErrorCode errorCode = result.errorNumber();
@@ -91,7 +92,7 @@ async<void> RestAdminDeploymentHandler::handleId() {
     }
 
     generateError(responseCode, errorCode, result.errorMessage());
-    co_return;
+    return;
   }
 
   VPackBuilder builder;
@@ -101,5 +102,4 @@ async<void> RestAdminDeploymentHandler::handleId() {
   }
 
   generateResult(rest::ResponseCode::OK, builder.slice());
-  co_return;
 }

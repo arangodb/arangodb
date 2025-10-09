@@ -44,7 +44,7 @@ class RestAdminDeploymentHandler : public RestVocbaseBaseHandler {
  private:
   static std::string const Id;
 
-  async<void> handleId();
+  void handleId();
 };
 
 }  // namespace arangodb
