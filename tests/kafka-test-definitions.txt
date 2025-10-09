@@ -53,9 +53,9 @@ add-yaml:
 
 
 # Single Server Replication Tests
-kafka_driver priority=500 single -- --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
-kafka_driver priority=500 cluster -- --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
+kafka_driver priority=500 single size=large -- --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
+kafka_driver priority=500 cluster size=large -- --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
 
 # for the moment SSL has issues with the certificates to match the test arangod and kafka certificates.
-# kafka_driver priority=500 single suffix=ssl -- --protocol ssl --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
-# kafka_driver priority=500 cluster suffix=ssl -- --protocol ssl --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
+# kafka_driver priority=500 single size=large suffix=ssl -- --protocol ssl --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
+# kafka_driver priority=500 cluster size=large suffix=ssl -- --protocol ssl --extremeVerbosity true --kafkahost kafka-1:19092,kafka-2:29092,kafka-2:39092
