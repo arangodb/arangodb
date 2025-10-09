@@ -33,6 +33,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
+#include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
@@ -836,6 +837,11 @@ futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
   }
 
   TRI_ASSERT(!isSideUser || AccessMode::isRead(mode));
+
+  TRI_IF_FAILURE("leaseManagedTrx::sleep") {
+    co_await sleepUsingSchedulerIfAvailable("managed-trx-lock-wait",
+                                            std::chrono::milliseconds(10));
+  }
 
   size_t bucket = getBucket(tid);
   int i = 0;

@@ -42,7 +42,7 @@ function ahuacatlFailureSuite () {
   'use strict';
   const cn = "UnitTestsAhuacatlFailures";
   const en = "UnitTestsAhuacatlEdgeFailures";
-  
+
   let  assertFailingQuery = function (query, error) {
     if (error === undefined) {
       error = internal.errors.ERROR_DEBUG;
@@ -54,7 +54,7 @@ function ahuacatlFailureSuite () {
       assertEqual(error.code, err.errorNum, query);
     }
   };
-        
+
   return {
     setUpAll: function () {
       IM.debugClearFailAt();
@@ -156,6 +156,21 @@ function ahuacatlFailureSuite () {
           " FILTER doc1._key == doc2._key RETURN doc1",
         ERROR_QUERY_COLLECTION_LOCK_FAILED
       );
+    },
+
+    // Regression test for BTS-2233
+    testRestHandlerCoroutineSuspend : function () {
+      const query = `FOR d IN ${cn} RETURN d`;
+      const opts = { collections: {write:[]} };
+      const trx = internal.db._createTransaction(opts);
+      IM.debugSetFailAt('leaseManagedTrx::sleep');
+      IM.debugSetFailAt('RemoteExecutor::sleepAfterRequest');
+      try {
+        trx.query(query).toArray();
+      } finally {
+        trx.abort();
+        IM.debugClearFailAt();
+      }
     }
   };
 }
@@ -230,7 +245,7 @@ function ahuacatlFailureOneShardSuite () {
     }
   };
 }
- 
+
 jsunity.run(ahuacatlFailureSuite);
 jsunity.run(ahuacatlFailureOneShardSuite);
 
