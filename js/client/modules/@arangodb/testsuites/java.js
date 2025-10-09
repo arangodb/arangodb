@@ -328,6 +328,7 @@ function kafkaDriver (options) {
     localOptions.dbServers = 3;
   }
 
+  localOptions.username = "root";
   localOptions.password = "test";
   let rc = new runInKafkaTest(localOptions, 'java_test').run([ 'java_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
