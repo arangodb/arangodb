@@ -498,7 +498,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -585,7 +585,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -664,7 +664,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -834,7 +834,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -921,7 +921,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -999,7 +999,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());
@@ -1168,7 +1168,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
-                1000 ==
+                5000 ==
                     slice.get("consolidationIntervalMsec").getNumber<size_t>());
     EXPECT_TRUE(slice.get("cleanupIntervalStep").isNumber() &&
                 2 == slice.get("cleanupIntervalStep").getNumber<size_t>());

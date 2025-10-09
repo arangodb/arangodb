@@ -811,7 +811,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
             meta._version);
   ASSERT_EQ(2, meta._cleanupIntervalStep);
   ASSERT_EQ(1000, meta._commitIntervalMsec);
-  ASSERT_EQ(1000, meta._consolidationIntervalMsec);
+  ASSERT_EQ(5000, meta._consolidationIntervalMsec);
   ASSERT_EQ(0, meta._writebufferActive);
   ASSERT_EQ(64, meta._writebufferIdle);
   ASSERT_EQ(33554432, meta._writebufferSizeMax);
