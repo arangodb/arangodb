@@ -34,7 +34,7 @@ function DeploymentIdSuite () {
   return {
 
     testGetDeploymentId : function () {
-      var result = arango.GET("/_admin/deployment/id");
+      var result = arango.GET_RAW("/_admin/deployment/id");
       assertEqual(200, result.code);
       assertTrue(result.parsedBody.hasOwnProperty("id"));
       
@@ -48,10 +48,10 @@ function DeploymentIdSuite () {
     
     testGetDeploymentIdConsistency : function () {
       // Multiple calls should return the same deployment ID
-      var result1 = arango.GET("/_admin/deployment/id");
+      var result1 = arango.GET_RAW("/_admin/deployment/id");
       assertEqual(200, result1.code);
       
-      var result2 = arango.GET("/_admin/deployment/id");
+      var result2 = arango.GET_RAW("/_admin/deployment/id");
       assertEqual(200, result2.code);
       
       assertEqual(result1.parsedBody.id, result2.parsedBody.id);
