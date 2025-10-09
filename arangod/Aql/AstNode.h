@@ -505,6 +505,11 @@ struct AstNode {
   /// Faster than removeMemberUnchecked
   void removeMemberUncheckedUnordered(size_t i);
 
+  /// @brief return the list of members
+  std::vector<AstNode*> const& getMemberList() const noexcept {
+    return members;
+  }
+
   /// @brief return a member of the node
   AstNode* getMember(size_t i) const;
 
