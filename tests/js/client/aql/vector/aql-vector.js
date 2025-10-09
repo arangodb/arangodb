@@ -48,7 +48,6 @@ const {
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

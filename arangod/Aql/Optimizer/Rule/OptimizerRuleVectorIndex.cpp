@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////optimizerulevectorinde
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
@@ -32,12 +32,16 @@
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/Query.h"
+#include "Aql/types.h"
 #include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
+#include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
@@ -242,6 +246,63 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
   return vectorIndexes;
 }
 
+std::unique_ptr<Expression> removeFilterNode(
+    ExecutionNode* maybeFilterNode, std::unique_ptr<ExecutionPlan>& plan,
+    Variable const* enumerateNearVectorOutputDocument) {
+  auto const* filterNode =
+      ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
+  auto* filterInVar = filterNode->inVariable();
+
+  // Find the calculation node that populates the filter variable
+  auto* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
+  if (maybeCalculationNode == nullptr ||
+      maybeCalculationNode->getType() != EN::CALCULATION) {
+    return nullptr;
+  }
+
+  auto const* calculationNode =
+      ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
+
+  // Check that all variables used in filterExpression can be handled in
+  // EnumerateNearVector node
+  VarSet calculationVars;
+  auto filterExpression = calculationNode->expression()->clone(plan->getAst());
+  filterExpression->variables(calculationVars);
+
+  for (auto const* calcVar : calculationVars) {
+    if (calcVar->type() == Variable::Type::Regular &&
+        calcVar != enumerateNearVectorOutputDocument) {
+      return nullptr;
+    }
+  }
+
+  // CalculationNode will be removed by the subsequent rule if it is not
+  // referenced by any other node
+  plan->unlinkNode(maybeFilterNode);
+
+  return filterExpression;
+}
+
+// Vector Index Optimization Rule
+//
+// This rule optimizes queries that use vector similarity search with
+// APPROX_NEAR_* functions. Similar to the use-index rule, it identifies
+// opportunities to use vector indexes for efficient nearest neighbor searches
+// by matching the vector attribute, APPROX_NEAR_* function, and the index's
+// distance metric.
+//
+// Query Pattern:
+// The rule detects queries with the pattern: SORT APPROX_NEAR_*(doc.vector,
+// target) LIMIT topK It requires the presence of APPROX_NEAR_* functions used
+// within a SORT operation followed by a LIMIT. The SORT node is removed (as the
+// vector index handles ordering), while the LIMIT node is preserved to control
+// result size.
+//
+// Filter Pushdown:
+// When a filter expression is detected, the rule pushes it down to the
+// EnumerateNearVectorNode for early evaluation during index traversal. This
+// optimization removes the FILTER node.  This transformation is safe because
+// previous optimization rules have already eliminated trivial filters.
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
@@ -261,11 +322,22 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
     // check that enumerateColNode has both sort and limit
     auto* currentNode = enumerateCollectionNode->getFirstParent();
-    // skip over some calculation nodes
-    while (currentNode != nullptr &&
-           currentNode->getType() == EN::CALCULATION) {
+    const auto skipOverCalculationNodes = [&currentNode] {
+      while (currentNode != nullptr &&
+             currentNode->getType() == EN::CALCULATION) {
+        currentNode = currentNode->getFirstParent();
+      }
+    };
+    skipOverCalculationNodes();
+
+    // We tolerate post filtering
+    // For now we can handle only a single FILTER statement
+    ExecutionNode* maybeFilterNode{nullptr};
+    if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
+      maybeFilterNode = currentNode;
       currentNode = currentNode->getFirstParent();
     }
+    skipOverCalculationNodes();
 
     if (currentNode == nullptr || currentNode->getType() != EN::SORT) {
       LOG_RULE << "DID NOT FIND SORT NODE, but instead "
@@ -325,11 +397,22 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        approximatedAttributeExpression),
           inVariable);
 
+      // If there is a FilterNode it comes with CalculationNode, we remove it
+      // and handle it in EnumerateNearVectorNode
+      std::unique_ptr<Expression> filterExpression{nullptr};
+      if (maybeFilterNode) {
+        if (filterExpression =
+                removeFilterNode(maybeFilterNode, plan, documentVariable);
+            filterExpression == nullptr) {
+          continue;
+        }
+      }
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
           limitNode->offset(), std::move(searchParameters),
-          enumerateCollectionNode->collection(), index);
+          enumerateCollectionNode->collection(), index,
+          std::move(filterExpression));
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(
