@@ -1,6 +1,17 @@
 devel
 -----
 
+* Add API for deployment ID: /_admin/deployment/id .
+
+* Add vertex collections for graph queries using edge collection syntax
+  from named graphs. This means that if a query uses edge collection syntax
+  and a named graph defines the from and to vertex collections for that edge
+  collection, the WITH statement is no longer required.
+
+* Add filtering support for vector index queries. Filter conditions can now be
+  pushed down into vector similarity searches, enabling filtering with vector index by
+  evaluating filters during the index scan rather than as a post-processing step.
+
 * Upgraded OpenSSL to 3.5.4.
 
 * Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 

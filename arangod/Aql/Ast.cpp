@@ -27,8 +27,8 @@
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AqlValueMaterializer.h"
-#include "Aql/Arithmetic.h"
 #include "Aql/AstNode.h"
+#include "Aql/TypedAstNodes.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
@@ -39,13 +39,12 @@
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Arithmetic.h"
 #include "Basics/Exceptions.h"
-#include "Basics/tri-strings.h"
-#include "Basics/tryEmplaceHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/Graph.h"
+#include "Graph/GraphManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -329,7 +328,7 @@ injectDataSourceInQuery(Ast& ast, CollectionNameResolver const& resolver,
 
 LogicalDataSource::Category addDataSource(
     Ast& ast, CollectionNameResolver const& resolver,
-    std::string_view& nameRef) {
+    std::string_view nameRef) {
   auto [category, resolved_name] = injectDataSourceInQuery(
       ast, resolver, AccessMode::Type::READ, false, nameRef);
 
@@ -363,13 +362,15 @@ LogicalDataSource::Category addDataSource(
 std::optional<std::string> edgeCollectionNodeGetName(
     AstNode const* edgeCollection) {
   if (edgeCollection->type == NODE_TYPE_DIRECTION) {
-    TRI_ASSERT(edgeCollection->numMembers() == 2)
-        << "expected 2 members in NODE_TYPE_DIRECTION, found "
-        << edgeCollection->numMembers();
-    edgeCollection = edgeCollection->getMember(1);
+    ast::DirectionNode directionNode(edgeCollection);
+    edgeCollection = directionNode.getSteps();
   }
 
   if (edgeCollection->isStringValue()) {
+    return edgeCollection->getString();
+  }
+
+  if (edgeCollection->type == NODE_TYPE_COLLECTION) {
     return edgeCollection->getString();
   }
 
@@ -465,12 +466,11 @@ void Ast::addOperation(AstNode* node) {
 /// @brief find the bottom-most expansion subnodes (if any)
 AstNode const* Ast::findExpansionSubNode(AstNode const* current) const {
   while (true) {
-    TRI_ASSERT(current->type == NODE_TYPE_EXPANSION);
-
-    if (current->getMember(1)->type != NODE_TYPE_EXPANSION) {
+    ast::ExpansionNode expansionNode(current);
+    if (expansionNode.getExpression()->type != NODE_TYPE_EXPANSION) {
       return current;
     }
-    current = current->getMember(1);
+    current = expansionNode.getExpression();
   }
 }
 
@@ -1625,11 +1625,8 @@ AstNode* Ast::createNodeWithCollections(
     AstNode const* collections, CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  TRI_ASSERT(collections->type == NODE_TYPE_ARRAY);
-
-  for (size_t i = 0; i < collections->numMembers(); ++i) {
-    auto c = collections->getMember(i);
-
+  ast::ArrayNode collectionsNode(collections);
+  for (auto c : collectionsNode.getElements()) {
     if (c->isStringValue()) {
       auto nameRef = c->getStringView();
       addDataSource(*this, resolver, nameRef);
@@ -1640,7 +1637,6 @@ AstNode* Ast::createNodeWithCollections(
   }
 
   AstNode* with = createNode(NODE_TYPE_WITH);
-
   with->addMember(node);
 
   return with;
@@ -1651,12 +1647,8 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
                                        CollectionNameResolver const& resolver) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION_LIST);
 
-  TRI_ASSERT(edgeCollections->type == NODE_TYPE_ARRAY)
-      << edgeCollections->getTypeString();
-
-  for (size_t i = 0; i < edgeCollections->numMembers(); ++i) {
-    auto edgeCollection = edgeCollections->getMember(i);
-
+  ast::ArrayNode edgeCollectionsNode(edgeCollections);
+  for (auto edgeCollection : edgeCollectionsNode.getElements()) {
     auto edgeCollectionName = edgeCollectionNodeGetName(edgeCollection);
 
     if (edgeCollectionName.has_value()) {
@@ -2097,7 +2089,8 @@ void Ast::injectBindParametersFirstStage(
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
         // look at second sub-node. this is the (replaced) bind parameter
-        auto name = node->getMember(1);
+        ast::BoundAttributeAccessNode boundAttrNode(node);
+        auto name = boundAttrNode.getAttributeName();
 
         if (name->type == NODE_TYPE_PARAMETER) {
           // on-the-fly replacement of bind parameter with its value equivalent
@@ -2107,12 +2100,12 @@ void Ast::injectBindParametersFirstStage(
         TRI_ASSERT(name->type != NODE_TYPE_PARAMETER);
 
         if (name->type == NODE_TYPE_VALUE) {
-          if (name->value.type == VALUE_TYPE_STRING &&
-              name->value.length != 0) {
+          ast::ValueNode value(name);
+          if (value.isStringValue() && value.getStringLength() != 0) {
             // convert into a regular attribute access node to simplify handling
             // later
-            return createNodeAttributeAccess(node->getMember(0),
-                                             name->getStringView());
+            return createNodeAttributeAccess(boundAttrNode.getObject(),
+                                             value.getStringValue());
           }
         } else if (name->type == NODE_TYPE_ARRAY) {
           // bind parameter is an array (e.g. ["a", "b", "c"]. now build the
@@ -2147,11 +2140,14 @@ void Ast::injectBindParametersFirstStage(
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
                                       node->getString().c_str());
       } else if (node->type == NODE_TYPE_TRAVERSAL) {
-        extractCollectionsFromGraph(parameters, node->getMember(2));
+        ast::TraversalNode traversalNode(node);
+        extractCollectionsFromGraph(parameters, traversalNode.getGraph());
       } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
-        extractCollectionsFromGraph(parameters, node->getMember(3));
+        ast::ShortestPathNode pathNode(node);
+        extractCollectionsFromGraph(parameters, pathNode.getGraph());
       } else if (node->type == NODE_TYPE_ENUMERATE_PATHS) {
-        extractCollectionsFromGraph(parameters, node->getMember(4));
+        ast::EnumeratePathsNode pathsNode(node);
+        extractCollectionsFromGraph(parameters, pathsNode.getGraph());
       }
 
       return node;
@@ -2377,7 +2373,8 @@ AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
     // same attribute
 
     if (node->type == NODE_TYPE_REFERENCE) {
-      auto v = static_cast<Variable*>(node->getData());
+      ast::ReferenceNode refNode(node);
+      auto v = refNode.getVariable();
       if (v != nullptr && v->id == searchVariable->id) {
         // our variable... now replace the attribute access with just the
         // variable
@@ -2405,7 +2402,8 @@ AstNode* Ast::replaceAttributeAccess(Ast* ast, AstNode* node,
 
     // reference to a variable
     if (node->type == NODE_TYPE_REFERENCE) {
-      auto variable = static_cast<Variable*>(node->getData());
+      ast::ReferenceNode refNode(node);
+      auto variable = refNode.getVariable();
 
       if (variable != nullptr) {
         auto it = replacements.find(variable->id);
@@ -2482,8 +2480,9 @@ size_t Ast::extractParallelism(AstNode const* optionsNode) {
       if (member == nullptr || member->type != NODE_TYPE_OBJECT_ELEMENT) {
         continue;
       }
-      auto const name = member->getStringView();
-      auto value = member->getMember(0);
+      ast::ObjectElementNode objElem(member);
+      auto const name = objElem.getAttributeName();
+      auto value = objElem.getValue();
       TRI_ASSERT(value->isConstant());
 
       if (name == "parallelism") {
@@ -2693,7 +2692,8 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     if (node->type == NODE_TYPE_PASSTHRU) {
       // optimize away passthru node. this type of node is only used during
       // parsing
-      return node->getMember(0);
+      ast::PassthruNode passthruNode(node);
+      return passthruNode.getWrappedNode();
     }
 
     // call to built-in function
@@ -2746,10 +2746,9 @@ void Ast::validateAndOptimize(transaction::Methods& trx,
     // LET
     if (node->type == NODE_TYPE_LET) {
       // remember variable assignments
-      TRI_ASSERT(node->numMembers() == 2);
-      Variable const* variable =
-          static_cast<Variable const*>(node->getMember(0)->getData());
-      AstNode const* source = node->getMember(1);
+      ast::LetNode letNode(node);
+      Variable const* variable = letNode.getVariable();
+      AstNode const* source = letNode.getExpression();
       // recursively process assignments so we can track LET a = b LET c = b
 
       while (source->type == NODE_TYPE_REFERENCE) {
@@ -2944,6 +2943,7 @@ bool Ast::getReferencedAttributesRecursive(
     }
 
     if (node->type == NODE_TYPE_EXPANSION) {
+      ast::ExpansionNode expansionNode(node);
       // special stunt needed here for the [*] operator...
       // NOTE: Every [*] operator is represented as an EXPANSION
       // with 5 (or more) members.
@@ -2953,8 +2953,8 @@ bool Ast::getReferencedAttributesRecursive(
           // p.vertices[*].a
           // here we need to take special precautions that we normally
           // don't need
-          if (node->getMember(2)->type != NODE_TYPE_NOP ||
-              node->getMember(4)->type != NODE_TYPE_NOP) {
+          if (expansionNode.getFilter()->type != NODE_TYPE_NOP ||
+              expansionNode.getOptions()->type != NODE_TYPE_NOP) {
             // expansion has a filter or a projection set, e.g.
             // p.vertices[FILTER CURRENT.x == 1 RETURN CURRENT.y].
             // we currently cannot handle this.
@@ -2971,11 +2971,8 @@ bool Ast::getReferencedAttributesRecursive(
           }
         }
 
-        AstNode const* lhs = node->getMember(0);
-        TRI_ASSERT(lhs->type == NODE_TYPE_ITERATOR);
-        TRI_ASSERT(lhs->numMembers() == 2);
-
-        AstNode const* rhs = node->getMember(1);
+        ast::IteratorNode lhs = expansionNode.getIterator();
+        AstNode const* rhs = expansionNode.getExpression();
 
         while (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                rhs->type == NODE_TYPE_INDEXED_ACCESS) {
@@ -2984,10 +2981,10 @@ bool Ast::getReferencedAttributesRecursive(
         }
 
         if (rhs->type == NODE_TYPE_REFERENCE) {
-          AstNode const* iterLhs = lhs->getMember(0);
-          TRI_ASSERT(rhs->getData() == iterLhs->getData());
+          Variable const* iterLhs = lhs.getVariable();
+          TRI_ASSERT(rhs->getData() == iterLhs);
 
-          AstNode const* iterRhs = lhs->getMember(1);
+          AstNode const* iterRhs = lhs.getExpression();
           // push the expansion on the stack
           state.seen.push_back(node);
 
@@ -3327,9 +3324,10 @@ AstNode* Ast::makeConditionFromExample(AstNode const* node) {
             "expecting object literal with literal attribute names in example");
       }
 
-      attributeParts.emplace_back(member->getStringView());
+      ast::ObjectElementNode objElem(member);
+      attributeParts.emplace_back(objElem.getAttributeName());
 
-      auto value = member->getMember(0);
+      auto value = objElem.getValue();
 
       if (value->type == NODE_TYPE_OBJECT && value->numMembers() != 0) {
         createCondition(value);
@@ -3387,13 +3385,8 @@ AstNode* Ast::createArithmeticResultNode(double value) {
 /// the unary plus will be converted into a simple value node if the operand of
 /// the operation is a constant number
 AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_PLUS ||
-             node->type == NODE_TYPE_OPERATOR_UNARY_MINUS);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  AstNode* operand = node->getMember(0);
+  ast::UnaryArithmeticOperatorNode unaryOp(node);
+  AstNode const* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
     return node;
@@ -3455,10 +3448,8 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
     return node;
   }
 
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  AstNode* operand = node->getMember(0);
+  ast::UnaryNotOperatorNode unaryOp(node);
+  AstNode const* operand = unaryOp.getOperand();
 
   if (operand->isComparisonOperator()) {
     // remove the NOT and reverse the operation, e.g. NOT (a == b) => (a != b)
@@ -3476,11 +3467,8 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
 /// @brief optimizes the unary operator NOT
 /// the unary NOT operation will be replaced with the result of the operation
 AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  AstNode* operand = node->getMember(0);
+  ast::UnaryNotOperatorNode unaryOp(node);
+  AstNode const* operand = unaryOp.getOperand();
   if (!operand->isConstant()) {
     // operand is dynamic, cannot statically optimize it
     return optimizeNotExpression(node);
@@ -3495,13 +3483,9 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
 /// @brief optimizes the binary logical operators && and ||
 AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
                                             bool canModifyResultType) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
-             node->type == NODE_TYPE_OPERATOR_BINARY_OR);
-  TRI_ASSERT(node->numMembers() == 2);
-
-  auto lhs = node->getMember(0);
-  auto rhs = node->getMember(1);
+  ast::LogicalOperatorNode binOp(node);
+  auto lhs = binOp.getLeft();
+  auto rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3558,11 +3542,9 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
 AstNode* Ast::optimizeBinaryOperatorRelational(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->numMembers() == 2);
-
-  AstNode* lhs = node->getMember(0);
-  AstNode* rhs = node->getMember(1);
+  ast::RelationalOperatorNode binOp(node);
+  AstNode* lhs = binOp.getLeft();
+  AstNode* rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3648,11 +3630,9 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
 AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->numMembers() == 2);
-
-  AstNode* lhs = node->getMember(0);
-  AstNode* rhs = node->getMember(1);
+  ast::ArithmeticOperatorNode binOp(node);
+  AstNode const* lhs = binOp.getLeft();
+  AstNode const* rhs = binOp.getRight();
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3802,15 +3782,13 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
 /// if the condition is constant, the operator will be replaced with either the
 /// true part or the false part
 AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_TERNARY);
-  TRI_ASSERT(node->numMembers() >= 2 && node->numMembers() <= 3);
-
-  AstNode* condition = node->getMember(0);
-  AstNode* truePart =
-      (node->numMembers() == 2) ? condition : node->getMember(1);
-  AstNode* falsePart =
-      (node->numMembers() == 2) ? node->getMember(1) : node->getMember(2);
+  ast::TernaryOperatorNode ternaryOp(node);
+  AstNode* condition = ternaryOp.getCondition();
+  AstNode* truePart = ternaryOp.getTrueExpr();
+  if (truePart == nullptr) {
+    truePart = condition;
+  }
+  AstNode* falsePart = ternaryOp.getFalseExpr();
 
   if (condition == nullptr || truePart == nullptr || falsePart == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -3833,11 +3811,8 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
 AstNode* Ast::optimizeAttributeAccess(
     AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
                        variableDefinitions) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_ATTRIBUTE_ACCESS);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  AstNode const* what = node->getMember(0);
+  ast::AttributeAccessNode attrNode(node);
+  AstNode const* what = attrNode.getObject();
 
   if (what->type == NODE_TYPE_REFERENCE) {
     // check if the access value is a variable and if it is an alias
@@ -3857,15 +3832,13 @@ AstNode* Ast::optimizeAttributeAccess(
     // accessing an attribute from an object
     std::string_view search = node->getStringView();
 
-    size_t const n = what->numMembers();
-
-    for (size_t i = 0; i < n; ++i) {
-      AstNode const* member = what->getMember(i);
-
+    ast::ObjectNode object(what);
+    for (auto member : object.getElements()) {
       if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
           member->getStringView() == search) {
         // found matching member
-        return member->getMember(0);
+        ast::ObjectElementNode objElem(member);
+        return objElem.getValue();
       }
     }
   }
@@ -3878,9 +3851,7 @@ AstNode* Ast::optimizeFunctionCall(
     transaction::Methods& trx,
     AqlFunctionsInternalCache& aqlFunctionsInternalCache, AstNode* node,
     Ast::ValidateAndOptimizeOptions const& options) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_FCALL);
-  TRI_ASSERT(node->numMembers() == 1);
+  ast::FunctionCallNode funcNode(node);
 
   if (!options.optimizeFunctionCalls) {
     // function call optimization not allowed
@@ -3953,11 +3924,8 @@ AstNode* Ast::optimizeFunctionCall(
 AstNode* Ast::optimizeIndexedAccess(
     AstNode* node, std::unordered_map<Variable const*, AstNode const*> const&
                        variableDefinitions) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
-  TRI_ASSERT(node->numMembers() == 2);
-
-  auto index = node->getMember(1);
+  ast::IndexedAccessNode indexedNode(node);
+  auto index = indexedNode.getIndex();
 
   if (index->isConstant() && index->type == NODE_TYPE_VALUE &&
       index->value.type == VALUE_TYPE_STRING) {
@@ -3982,11 +3950,8 @@ AstNode* Ast::optimizeIndexedAccess(
 
 /// @brief optimizes the FILTER statement
 AstNode* Ast::optimizeFilter(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_FILTER);
-  TRI_ASSERT(node->numMembers() == 1);
-
-  AstNode* expression = node->getMember(0);
+  ast::FilterNode filterNode(node);
+  AstNode const* expression = filterNode.getExpression();
 
   if (expression == nullptr || !expression->isDeterministic()) {
     return node;
@@ -4009,11 +3974,8 @@ AstNode* Ast::optimizeFilter(AstNode* node) {
 /// no real optimizations are done here, but we do an early check if the
 /// FOR loop operand is actually a list
 AstNode* Ast::optimizeFor(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_FOR);
-  TRI_ASSERT(node->numMembers() == 3);
-
-  AstNode* expression = node->getMember(1);
+  ast::ForNode forNode(node);
+  AstNode const* expression = forNode.getExpression();
 
   if (expression == nullptr) {
     return node;
@@ -4036,18 +3998,14 @@ AstNode* Ast::optimizeFor(AstNode* node) {
 
 /// @brief optimizes an object literal or an object expression
 AstNode* Ast::optimizeObject(AstNode* node) {
-  TRI_ASSERT(node != nullptr);
-  TRI_ASSERT(node->type == NODE_TYPE_OBJECT);
+  ast::ObjectNode object(node);
 
-  size_t const n = node->numMembers();
+  auto members = object.getElements();
 
   // only useful to check when there are 2 or more keys
-  if (n >= 2) {
+  if (members.size() >= 2) {
     containers::FlatHashSet<std::string> keys;
-
-    for (size_t i = 0; i < n; ++i) {
-      auto member = node->getMemberUnchecked(i);
-
+    for (auto member : members) {
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         // constant key
         if (!keys.emplace(member->getString()).second) {
@@ -4191,7 +4149,8 @@ AstNode const* Ast::resolveConstAttributeAccess(AstNode const* node,
         if (member->type == NODE_TYPE_OBJECT_ELEMENT &&
             member->getStringView() == attributeName) {
           // found the attribute
-          node = member->getMember(0);
+          ast::ObjectElementNode objElem(member);
+          node = objElem.getValue();
           if (which == 0) {
             // we found what we looked for
             isValid = true;
@@ -4557,4 +4516,134 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
     return it->second;
   }
   return nullptr;
+}
+
+namespace {
+
+auto hasVertexCollectionsOption(AstNode const* options) -> bool {
+  if (options != nullptr && options->type != NODE_TYPE_NOP) {
+    TRI_ASSERT(options->type == NODE_TYPE_OBJECT) << options->getTypeString();
+    auto n = options->numMembers();
+    for (auto i = size_t{0}; i < n; ++i) {
+      auto member = options->getMemberUnchecked(i);
+      if (member != nullptr and
+          member->type == arangodb::aql::NODE_TYPE_OBJECT_ELEMENT) {
+        auto const name = member->getStringView();
+        if (name == "vertexCollections") {
+          auto value = member->getMember(0);
+          if (value->isStringValue()) {
+            return true;
+          } else if (value->type == NODE_TYPE_ARRAY) {
+            auto nn = value->numMembers();
+            if (nn > 0) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+auto matchGraphSubjectWhenVertexCollectionsNotSet(AstNode const* node)
+    -> std::optional<AstNode const*> {
+  auto const* graphSubject = (AstNode const*){};
+  auto const* options = (AstNode const*){};
+
+  switch (node->type) {
+    case NODE_TYPE_TRAVERSAL: {
+      graphSubject = node->getMember(2);
+      options = node->getMember(4);
+    } break;
+    case NODE_TYPE_SHORTEST_PATH: {
+      graphSubject = node->getMember(3);
+      options = node->getMember(4);
+    } break;
+    case NODE_TYPE_ENUMERATE_PATHS: {
+      graphSubject = node->getMember(4);
+      options = node->getMember(5);
+    } break;
+    default: {
+      return std::nullopt;
+    } break;
+  };
+
+  if (not hasVertexCollectionsOption(options)) {
+    return {graphSubject};
+  }
+
+  return std::nullopt;
+}
+}  // namespace
+
+containers::FlatHashSet<std::string>
+Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
+  auto edgeCollections = containers::FlatHashSet<std::string>(4);
+
+  // Look for Graph nodes that use edge collection syntax
+  // and do not have the vertexCollections option set.
+  auto matcher = [&edgeCollections](AstNode const* node) -> void {
+    auto maybeMatch = matchGraphSubjectWhenVertexCollectionsNotSet(node);
+
+    if (maybeMatch.has_value()) {
+      auto const* match = *maybeMatch;
+
+      // Found a traversal, shortest path, path search that uses
+      // edge collection syntax
+      if (match->type == arangodb::aql::NODE_TYPE_COLLECTION_LIST) {
+        for (size_t i = 0; i < match->numMembers(); ++i) {
+          auto const* member = match->getMemberUnchecked(i);
+          auto collectionName = edgeCollectionNodeGetName(member);
+
+          TRI_ASSERT(collectionName.has_value());
+
+          if (collectionName.has_value()) {
+            edgeCollections.emplace(*collectionName);
+          }
+        }
+      } else {
+        // Graph syntax case is not interesting for this
+        // function
+      }
+    }
+  };
+
+  traverseReadOnly(_root, matcher);
+
+  return edgeCollections;
+}
+
+void Ast::addGraphNodeImplicitVertexCollections(
+    CollectionNameResolver const& resolver) {
+  // Collect all edge collection names used in graph operations using
+  // edge collection syntax that do not have vertexCollections set.
+  auto edgeCollections =
+      collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption();
+  if (edgeCollections.empty()) {
+    // The operations below are fairly expensive, so at least for queries
+    // that do not involve edge collection syntax, shortcut
+
+    // Note *also* that the graph manager executes a query to determine all
+    // graphs (which does not contain edge collection syntax); if one does not
+    // return here, the AQL execution enters an infinite loop and blows out the
+    // stack.
+    //
+    // This is clearly terrible.
+    return;
+  }
+
+  // TODO: the graphmanager should belong to the Query(Context)
+  auto gm = graph::GraphManager(query().vocbase(), query().operationOrigin());
+  auto maybeImplicitVertexCollections =
+      gm.findImplicitVertexCollectionsFromEdgeCollections(edgeCollections);
+
+  if (maybeImplicitVertexCollections.ok()) {
+    for (auto&& vertexCollectionName : maybeImplicitVertexCollections.get()) {
+      addDataSource(*this, resolver, std::string_view{vertexCollectionName});
+    }
+  } else {
+    THROW_ARANGO_EXCEPTION(maybeImplicitVertexCollections.result());
+  }
 }

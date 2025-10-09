@@ -32,36 +32,29 @@
 
 namespace arangodb::aql::functions {
 
+constexpr static std::string_view kVectorSearchNotAppliedErrorMessage =
+    "Vector search could not be applied. Please ensure a vector index has "
+    "been created and that your query uses the correct syntax for vector "
+    "search. Note that filtering can be applied in trivial cases.";
+
 AqlValue ApproxNearCosine(ExpressionContext* expressionContext,
                           AstNode const& node,
                           VPackFunctionParametersView parameters) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
-      "Vector search could not be applied. Please ensure a vector index has "
-      "been created and that your query uses the correct syntax for vector "
-      "search.  Note that filtering is currently not supported "
-      "with vector search.");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+                                 kVectorSearchNotAppliedErrorMessage);
 }
 
 AqlValue ApproxNearL2(ExpressionContext* expressionContext, AstNode const& node,
                       VPackFunctionParametersView parameters) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
-      "Vector search could not be applied. Please ensure a vector index has "
-      "been created and that your query uses the correct syntax for vector "
-      "search.  Note that filtering is currently not supported "
-      "with vector search.");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+                                 kVectorSearchNotAppliedErrorMessage);
 }
 
 AqlValue ApproxNearInnerProduct(ExpressionContext* expressionContext,
                                 AstNode const& node,
                                 VPackFunctionParametersView parameters) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
-      "Vector search could not be applied. Please ensure a vector index has "
-      "been created and that your query uses the correct syntax for vector "
-      "search.  Note that filtering is currently not supported "
-      "with vector search.");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
+                                 kVectorSearchNotAppliedErrorMessage);
 }
 
 }  // namespace arangodb::aql::functions
