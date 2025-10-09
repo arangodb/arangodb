@@ -26,6 +26,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
+#include "Graph/Queues/NextBatchMarker.h"
 
 #include <queue>
 #include <vector>
@@ -53,11 +54,12 @@ class WeightedQueue {
     }
   }
 
-  void append(Step step) {
+  void append(QueueEntry<Step> step) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
     // if emplace() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    _queue.emplace_back(std::move(step));
+    TRI_ASSERT(std::holds_alternative<Step>(step));
+    _queue.emplace_back(std::move(std::get<Step>(step)));
     guard.steal();  // now we are responsible for tracking the memory
     // std::push_heap takes the last element in the queue, assumes that all
     // other elements are in heap structure, and moves the last element into
@@ -76,7 +78,7 @@ class WeightedQueue {
     for (auto& s : startSteps) {
       // Just resort on insert.
       // This is proven to be correct, but may not be the fastest possible way.
-      append(std::move(s));
+      append({std::move(s)});
     }
   }
 
@@ -127,7 +129,7 @@ class WeightedQueue {
     return first;
   }
 
-  Step pop() {
+  QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
     // std::pop_heap will move the front element (the one we would like to
     // steal) to the back of the vector, keeping the tree intact otherwise. Now
@@ -138,7 +140,7 @@ class WeightedQueue {
         << "<WeightedQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_back();
-    return first;
+    return {first};
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {

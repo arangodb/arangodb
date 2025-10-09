@@ -75,7 +75,7 @@ void WeightedShortestPathEnumerator<ProviderType>::Ball::reset(VertexRef center,
   clear();
   _center = center;
   auto firstStep = _provider.startVertex(center, depth);
-  _queue.append(std::move(firstStep));
+  _queue.append({std::move(firstStep)});
   _queued = 1;
   _expanded = 0;
   _foundVertices.emplace(center, VertexInfo(0.0));
@@ -170,10 +170,11 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::validateSingletonPath(
     std::optional<CalculatedCandidate>& bestPath) -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
 
   TRI_ASSERT(_queue.isEmpty());
 
-  auto posPrevious = _interior.append(std::move(tmp));
+  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
   ValidationResult res = _validator.validatePath(step);
 
@@ -189,8 +190,9 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::
         Ball& other, std::optional<CalculatedCandidate>& bestPath) -> void {
   ensureQueueHasProcessableElement();
   auto tmp = _queue.pop();
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
 
-  auto posPrevious = _interior.append(std::move(tmp));
+  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
 
   TRI_ASSERT(step.getWeight() >= _diameter);
@@ -261,7 +263,7 @@ auto WeightedShortestPathEnumerator<ProviderType>::Ball::
         // If the other side has already expanded the vertex, we do not
         // have to put it on our queue. But if not, we must look at it
         // later:
-        _queue.append(std::move(n));
+        _queue.append({std::move(n)});
         _queued++;
         reachedIt->second.cancelled = false;  // Make sure we expand the vertex
       } else if (weightReduced) {

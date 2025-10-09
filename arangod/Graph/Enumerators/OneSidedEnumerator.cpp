@@ -124,7 +124,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
 
   TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
-  auto posPrevious = _interior.append(std::move(tmp));
+  TRI_ASSERT(std::holds_alternative<Step>(tmp));
+  auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
 
   if constexpr (std::is_same_v<ResultList, std::vector<Step>>) {
@@ -168,7 +169,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
         TRI_ASSERT(step.edgeFetched());
       }
       _provider.expand(step, posPrevious,
-                       [&](Step n) -> void { _queue.append(n); });
+                       [&](Step n) -> void { _queue.append({n}); });
     }
   } else if constexpr (std::is_same_v<
                            ResultList,
@@ -209,7 +210,7 @@ void OneSidedEnumerator<Configuration>::reset(VertexRef source, size_t depth,
                                               bool keepPathStore) {
   clear(keepPathStore);
   auto firstStep = _provider.startVertex(source, depth, weight);
-  _queue.append(std::move(firstStep));
+  _queue.append({std::move(firstStep)});
 }
 
 template<class Configuration>

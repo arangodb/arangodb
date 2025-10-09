@@ -26,8 +26,10 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
+#include "Graph/Queues/NextBatchMarker.h"
 
 #include <queue>
+#include <variant>
 
 namespace arangodb {
 namespace graph {
@@ -52,11 +54,12 @@ class FifoQueue {
     }
   }
 
-  void append(Step step) {
+  void append(QueueEntry<Step> step) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
     // if push_back() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    _queue.push_back(std::move(step));
+    TRI_ASSERT(std::holds_alternative<Step>(step));
+    _queue.push_back(std::move(std::get<Step>(step)));
     guard.steal();  // now we are responsible for tracking the memory
   }
 
@@ -132,14 +135,14 @@ class FifoQueue {
     return first;
   }
 
-  Step pop() {
+  QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
     LOG_TOPIC("9cd65", TRACE, Logger::GRAPHS)
         << "<FifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
-    return first;
+    return {first};
   }
 
  private:
