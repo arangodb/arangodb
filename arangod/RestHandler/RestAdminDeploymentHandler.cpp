@@ -25,6 +25,9 @@
 
 #include <velocypack/Builder.h>
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 #include "Agency/AgencyPaths.h"
 #include "Agency/AsyncAgencyComm.h"
 #include "Agency/TransactionBuilder.h"
@@ -35,6 +38,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Utils/ExecContext.h"
 
 using namespace std::chrono_literals;
@@ -82,10 +86,41 @@ async<void> RestAdminDeploymentHandler::handleId() {
     co_return;
   }
 
-  std::string deploymentId = "SOME_ID";
+  std::string deploymentId;
 
-  // For coordinators, query the cluster ID from the agency
-  if (ServerState::instance()->isCoordinator()) {
+  // For single servers, use the server ID
+  if (ServerState::instance()->isSingleServer()) {
+    // Create a UUID with the lower 48 bits from server ID
+    // and constant upper 80 bits
+    boost::uuids::uuid uuid;
+    
+    // Get the server ID (only lower 48 bits are usable)
+    uint64_t serverId = ServerIdFeature::getId().id();
+    uint64_t serverIdLower48 = serverId & 0xFFFFFFFFFFFFULL;
+    
+    // Set the first 10 bytes (80 bits) to a constant pattern
+    // Using a recognizable pattern for ArangoDB single server deployment IDs
+    uuid.data[0] = 0x61;  // 'a'
+    uuid.data[1] = 0x72;  // 'r'
+    uuid.data[2] = 0x61;  // 'a'
+    uuid.data[3] = 0x6e;  // 'n'
+    uuid.data[4] = 0x67;  // 'g'
+    uuid.data[5] = 0x6f;  // 'o'
+    uuid.data[6] = 0x73;  // 's'
+    uuid.data[7] = 0x73;  // 's'
+    uuid.data[8] = 0x00;
+    uuid.data[9] = 0x00;
+    
+    // Set the last 6 bytes (48 bits) to the server ID
+    uuid.data[10] = static_cast<uint8_t>((serverIdLower48 >> 40) & 0xFF);
+    uuid.data[11] = static_cast<uint8_t>((serverIdLower48 >> 32) & 0xFF);
+    uuid.data[12] = static_cast<uint8_t>((serverIdLower48 >> 24) & 0xFF);
+    uuid.data[13] = static_cast<uint8_t>((serverIdLower48 >> 16) & 0xFF);
+    uuid.data[14] = static_cast<uint8_t>((serverIdLower48 >> 8) & 0xFF);
+    uuid.data[15] = static_cast<uint8_t>(serverIdLower48 & 0xFF);
+    
+    deploymentId = boost::uuids::to_string(uuid);
+  } else if (ServerState::instance()->isCoordinator()) {
     if (AsyncAgencyCommManager::INSTANCE == nullptr) {
       generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
                     TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
