@@ -208,7 +208,7 @@ async<ResultT<std::string>> ServerIdFeature::getDeploymentId() {
   // Check if ServerState is available (not during early startup or shutdown)
   if (ServerState::instance() == nullptr) {
     co_return ResultT<std::string>::error(
-        TRI_ERROR_SERVICE_UNAVAILABLE,
+        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
         "server state not yet available or already shut down");
   }
 

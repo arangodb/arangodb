@@ -25,12 +25,8 @@
 
 #include "Async/async.h"
 #include "Basics/ResultT.h"
-#include "Basics/debugging.h"
-#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "VocBase/Identifiers/ServerId.h"
-
-#include <string>
 
 namespace arangodb {
 

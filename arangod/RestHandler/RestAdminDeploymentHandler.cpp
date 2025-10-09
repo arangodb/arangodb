@@ -86,7 +86,7 @@ async<void> RestAdminDeploymentHandler::handleId() {
     rest::ResponseCode responseCode = rest::ResponseCode::SERVER_ERROR;
 
     if (errorCode == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE ||
-        errorCode == TRI_ERROR_SERVICE_UNAVAILABLE) {
+        errorCode == TRI_ERROR_HTTP_SERVICE_UNAVAILABLE) {
       responseCode = rest::ResponseCode::SERVICE_UNAVAILABLE;
     }
 
