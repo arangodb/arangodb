@@ -67,16 +67,6 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 class runWithAllureReport extends testRunnerBase {
-  constructor(options, testname, ...optionalArgs) {
-    let opts = _.clone(tu.testClientJwtAuthInfo);
-    opts['password'] = 'testjava';
-    opts['username'] = 'root';
-    opts['arangodConfig'] = 'arangod-auth.conf';
-    _.defaults(opts, options);
-    super(opts, testname, ...optionalArgs);
-    this.info = "runInJavaTest";
-  }
-
   getAllureResults(testResultsDir, results, status) {
     let allResultJsons = {};
     let topLevelContainers = [];
@@ -196,6 +186,15 @@ class runWithAllureReport extends testRunnerBase {
 }
 
 class runInJavaTest extends runWithAllureReport {
+  constructor(options, testname, ...optionalArgs) {
+    let opts = _.clone(tu.testClientJwtAuthInfo);
+    opts['password'] = 'testjava';
+    opts['username'] = 'root';
+    opts['arangodConfig'] = 'arangod-auth.conf';
+    _.defaults(opts, options);
+    super(opts, testname, ...optionalArgs);
+    this.info = "runInJavaTest";
+  }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
@@ -272,6 +271,16 @@ function javaDriver (options) {
 
 
 class runInKafkaTest extends runWithAllureReport {
+  constructor(options, testname, ...optionalArgs) {
+    let opts = _.clone(tu.testClientJwtAuthInfo);
+    opts['password'] = 'test';
+    opts['username'] = 'root';
+    opts['jwtSecret'] = "halloJava";
+    opts['arangodConfig'] = 'arangod-auth.conf';
+    _.defaults(opts, options);
+    super(opts, testname, ...optionalArgs);
+    this.info = "runInKafkaTest";
+  }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
@@ -328,8 +337,6 @@ function kafkaDriver (options) {
     localOptions.dbServers = 3;
   }
 
-  localOptions.username = "root";
-  localOptions.password = "test";
   let rc = new runInKafkaTest(localOptions, 'java_test').run([ 'java_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;

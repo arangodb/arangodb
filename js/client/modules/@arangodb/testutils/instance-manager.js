@@ -205,6 +205,7 @@ class instanceManager {
     if (!arango.isConnected()) {
       throw new Error('connecting the database failed');
     }
+    print(this.options.username, this.options.password);
     try {
       return require('org/arangodb/users').save(this.options.username, this.options.password);
     } catch (ex) {
