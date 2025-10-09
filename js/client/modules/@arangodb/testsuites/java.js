@@ -31,7 +31,7 @@ const functionsDocumentation = {
 const optionsDocumentation = [
   '   - `javasource`: directory of the java driver',
   '   - `javaOptions`: additional arguments to pass via the commandline',
-  '                    can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java'
+  '                    can be found in arangodb-java-driver/src/test/java/utils/TestUtils.java',
   '   - `kafkasource`: directory to contain the kafka connector',
   '   - `kafkaHost`: connection string for the possible kafka hosts',
   '   - `kafkaSchemaHost`: connection URL for the schema server',
