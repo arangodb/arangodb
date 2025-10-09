@@ -358,7 +358,7 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
     'javaOptions': '',
     'javasource': '../arangodb-java-driver',
     'kafkasource': '../kafka-connect-arangodb',
-    'kafkaHost': '172.28.0.1:19092,172.28.0.1:29092,172.28.0.1:39092'
-    'kafkaSchemaHost': 'http://172.28.0.1:8081'
+    'kafkaHost': '172.28.0.1:19092,172.28.0.1:29092,172.28.0.1:39092',
+    'kafkaSchemaHost': 'http://172.28.0.1:8081',
   });
 };
