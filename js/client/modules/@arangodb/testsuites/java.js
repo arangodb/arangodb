@@ -282,19 +282,12 @@ class runInKafkaTest extends runWithAllureReport {
     let results = {
       'message': ''
     };
-    let matchTopology;
-    if (this.options.cluster) {
-      topology = '-Pcluster';
-    } else {
-      topology = '-Pstandalone';
-    }
 
     // strip i.e. http:// from the URL to conform with what the driver expects:
     let rx = /.*:\/\//gi;
     let args = [
       'integration-test',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
-      topology,
       `-Dkafka.bootstrap.servers=${this.options.kafkahost}`,
       '-Dgpg.skip',
       '-Dmaven.javadoc.skip',
