@@ -43,6 +43,13 @@ namespace {
 class QueryTraversal : public QueryTest {
  protected:
   void create() {
+    // create _graphs system collection as it is required to parse graph queries
+    {
+      auto createJson = arangodb::velocypack::Parser::fromJson(
+          "{ \"name\": \"_graphs\", \"isSystem\": true }");
+      auto collection = _vocbase.createCollection(createJson->slice());
+      ASSERT_NE(nullptr, collection);
+    }
     // create collection0
     {
       auto createJson = arangodb::velocypack::Parser::fromJson(

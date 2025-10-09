@@ -50,7 +50,6 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/GraphTestTools.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 
 #include "../Mocks/Servers.h"

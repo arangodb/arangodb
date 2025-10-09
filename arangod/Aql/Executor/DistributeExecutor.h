@@ -35,6 +35,7 @@
 #include <vector>
 
 namespace arangodb {
+struct ResourceMonitor;
 namespace velocypack {
 class Slice;
 }
@@ -53,7 +54,8 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
                           Collection const* collection, RegisterId regId,
                           std::vector<std::string> attribute,
                           ScatterNode::ScatterType type,
-                          std::vector<aql::Collection*> satellites);
+                          std::vector<aql::Collection*> satellites,
+                          ResourceMonitor& resourceMonitor);
 
   auto registerId() const noexcept -> RegisterId;
   auto scatterType() const noexcept -> ScatterNode::ScatterType;
@@ -64,6 +66,8 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
       -> ResultT<std::string>;
 
   auto shouldDistributeToAll(arangodb::velocypack::Slice value) const -> bool;
+
+  ResourceMonitor& resourceMonitor() const noexcept;
 
  private:
   RegisterId const _regId;
@@ -82,6 +86,9 @@ class DistributeExecutorInfos : public ClientsExecutorInfos {
 
   /// @brief list of collections that should be used
   std::vector<aql::Collection*> _satellites;
+
+  /// @brief monitor memory usage of '_temp' builder object
+  ResourceMonitor& _resourceMonitor;
 };
 
 // The DistributeBlock is actually implemented by specializing

@@ -225,8 +225,8 @@ runtime with the current temporary directory, e.g. `/tmp/arangodb_i37Xxh`
 (automatically created on startup with a randomly generated suffix).
 
 Keep in mind that `@NAME@` is also the syntax for using the value of an
-environment variable `NAME`. If there is a environment variable called `PID` or
-`TEMP_BASE_DIR`, then `@PID@` and `@TEMP_BASE_DIR@` are substituted with the
+environment variable `NAME`. If there is an environment variable called `PID` or
+`TEMP_BASE_DIR`, then `@PID@` or `@TEMP_BASE_DIR@` is substituted with the
 value of the respective environment variable.
 
 If you specify `--log.file-mode <octalvalue>`, then any newly created log

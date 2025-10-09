@@ -196,8 +196,6 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
 }
 
 std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
-  ensureCache();
-
   TRI_ASSERT(not _isCoordinator);
 
   return std::make_unique<
