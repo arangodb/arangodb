@@ -39,7 +39,7 @@ class RestAdminDeploymentHandler : public RestVocbaseBaseHandler {
   char const* name() const override final {
     return "RestAdminDeploymentHandler";
   }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
  private:
   static std::string const Id;
