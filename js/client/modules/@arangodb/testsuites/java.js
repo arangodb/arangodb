@@ -303,6 +303,7 @@ class runInKafkaTest extends runWithAllureReport {
       // TODO? '-Dnative=<<parameters.native>>'
     ];
     if (this.options.protocol === 'ssl') {
+      args.push('-Dit.test=com.arangodb.kafka.SslIT');
       args.push('-DSslTest=true');
     }
 
