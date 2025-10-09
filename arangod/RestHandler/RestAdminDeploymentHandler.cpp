@@ -93,11 +93,11 @@ async<void> RestAdminDeploymentHandler::handleId() {
     // Create a UUID with the lower 48 bits from server ID
     // and constant upper 80 bits
     boost::uuids::uuid uuid;
-    
+
     // Get the server ID (only lower 48 bits are usable)
     uint64_t serverId = ServerIdFeature::getId().id();
     uint64_t serverIdLower48 = serverId & 0xFFFFFFFFFFFFULL;
-    
+
     // Set the first 10 bytes (80 bits) to a constant pattern
     // Using a recognizable pattern for ArangoDB single server deployment IDs
     uuid.data[0] = 0x61;  // 'a'
@@ -110,7 +110,7 @@ async<void> RestAdminDeploymentHandler::handleId() {
     uuid.data[7] = 0x73;  // 's'
     uuid.data[8] = 0x00;
     uuid.data[9] = 0x00;
-    
+
     // Set the last 6 bytes (48 bits) to the server ID
     uuid.data[10] = static_cast<uint8_t>((serverIdLower48 >> 40) & 0xFF);
     uuid.data[11] = static_cast<uint8_t>((serverIdLower48 >> 32) & 0xFF);
@@ -118,7 +118,7 @@ async<void> RestAdminDeploymentHandler::handleId() {
     uuid.data[13] = static_cast<uint8_t>((serverIdLower48 >> 16) & 0xFF);
     uuid.data[14] = static_cast<uint8_t>((serverIdLower48 >> 8) & 0xFF);
     uuid.data[15] = static_cast<uint8_t>(serverIdLower48 & 0xFF);
-    
+
     deploymentId = boost::uuids::to_string(uuid);
   } else if (ServerState::instance()->isCoordinator()) {
     if (AsyncAgencyCommManager::INSTANCE == nullptr) {
