@@ -265,7 +265,7 @@ function javaDriver (options) {
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-
+  localOptions.password = "test";
   let rc = new runInJavaTest(localOptions, 'java_test').run([ 'java_test.js']);
   options.cleanup = options.cleanup && localOptions.cleanup;
   return rc;
