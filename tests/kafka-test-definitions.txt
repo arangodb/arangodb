@@ -46,7 +46,6 @@ add-yaml:
         - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092,PLAINTEXT_HOST://kafka-3:39092" 
         - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT 
         - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT 
-
     - image: docker.io/confluentinc/cp-schema-registry:7.5.2
       name: kafka-schema-registry
       environment:
