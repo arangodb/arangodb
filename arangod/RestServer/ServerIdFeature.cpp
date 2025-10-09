@@ -23,12 +23,19 @@
 
 #include "ServerIdFeature.h"
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
+#include "Agency/AgencyPaths.h"
+#include "Agency/AsyncAgencyComm.h"
+#include "Agency/TransactionBuilder.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -38,6 +45,7 @@
 #include "RestServer/DatabasePathFeature.h"
 
 using namespace arangodb::options;
+using namespace std::chrono_literals;
 
 namespace arangodb {
 
@@ -193,6 +201,104 @@ ErrorCode ServerIdFeature::determineId(bool checkVersion) {
   }
 
   return res;
+}
+
+/// @brief get deployment ID (single server or cluster ID)
+async<ResultT<std::string>> ServerIdFeature::getDeploymentId() {
+  // Check if ServerState is available (not during early startup or shutdown)
+  if (ServerState::instance() == nullptr) {
+    co_return ResultT<std::string>::error(
+        TRI_ERROR_SERVICE_UNAVAILABLE,
+        "server state not yet available or already shut down");
+  }
+
+  std::string deploymentId;
+
+  // For single servers, use the server ID
+  if (ServerState::instance()->isSingleServer()) {
+    // Create a UUID with the lower 48 bits from server ID
+    // and constant upper 80 bits
+    boost::uuids::uuid uuid;
+
+    // Get the server ID (only lower 48 bits are usable)
+    uint64_t serverId = ServerIdFeature::getId().id();
+    uint64_t serverIdLower48 = serverId & 0xFFFFFFFFFFFFULL;
+
+    // Set the first 10 bytes (80 bits) to a constant pattern
+    // Using a recognizable pattern for ArangoDB single server deployment IDs
+    uuid.data[0] = 0x61;  // 'a'
+    uuid.data[1] = 0x72;  // 'r'
+    uuid.data[2] = 0x61;  // 'a'
+    uuid.data[3] = 0x6e;  // 'n'
+    uuid.data[4] = 0x67;  // 'g'
+    uuid.data[5] = 0x6f;  // 'o'
+    uuid.data[6] = 0x73;  // 's'
+    uuid.data[7] = 0x73;  // 's'
+    uuid.data[8] = 0x00;
+    uuid.data[9] = 0x00;
+
+    // Set the last 6 bytes (48 bits) to the server ID
+    uuid.data[10] = static_cast<uint8_t>((serverIdLower48 >> 40) & 0xFF);
+    uuid.data[11] = static_cast<uint8_t>((serverIdLower48 >> 32) & 0xFF);
+    uuid.data[12] = static_cast<uint8_t>((serverIdLower48 >> 24) & 0xFF);
+    uuid.data[13] = static_cast<uint8_t>((serverIdLower48 >> 16) & 0xFF);
+    uuid.data[14] = static_cast<uint8_t>((serverIdLower48 >> 8) & 0xFF);
+    uuid.data[15] = static_cast<uint8_t>(serverIdLower48 & 0xFF);
+
+    deploymentId = boost::uuids::to_string(uuid);
+    co_return ResultT<std::string>::success(std::move(deploymentId));
+  } else if (ServerState::instance()->isCoordinator()) {
+    if (AsyncAgencyCommManager::INSTANCE == nullptr) {
+      co_return ResultT<std::string>::error(
+          TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+          "agency communication not available");
+    }
+
+    try {
+      // Build a read transaction to query /arango/cluster
+      auto rootPath = arangodb::cluster::paths::root()->arango();
+      VPackBuffer<uint8_t> trx;
+      {
+        VPackBuilder builder(trx);
+        arangodb::agency::envelope::into_builder(builder)
+            .read()
+            .key(rootPath->cluster()->str())
+            .end()
+            .done();
+      }
+
+      // Send the read transaction to the agency
+      auto result =
+          co_await AsyncAgencyComm().sendReadTransaction(60.0s, std::move(trx));
+
+      if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+        // Extract the cluster ID from the response
+        // The result is an array with one element containing the value
+        VPackSlice slice = result.slice();
+        if (slice.isArray() && slice.length() > 0) {
+          VPackSlice clusterSlice = slice.at(0);
+          if (clusterSlice.isObject()) {
+            VPackSlice arangoSlice =
+                clusterSlice.get(std::vector<std::string>{"arango", "Cluster"});
+            if (arangoSlice.isString()) {
+              deploymentId = arangoSlice.copyString();
+              co_return ResultT<std::string>::success(std::move(deploymentId));
+            }
+          }
+        }
+      }
+
+      co_return ResultT<std::string>::error(
+          TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+          "failed to query cluster ID from agency");
+    } catch (std::exception const& e) {
+      co_return ResultT<std::string>::error(TRI_ERROR_HTTP_SERVER_ERROR,
+                                            e.what());
+    }
+  }
+
+  co_return ResultT<std::string>::error(TRI_ERROR_INTERNAL,
+                                        "unexpected server state");
 }
 
 }  // namespace arangodb
