@@ -49,7 +49,7 @@ add-yaml:
     - image: docker.io/confluentinc/cp-schema-registry:7.5.2
       name: kafka-schema-registry
       environment:
-        - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS="kafka-1:19092,kafka-2:29092,kafka-3:39092"
+        - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS="PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092"
         - SCHEMA_REGISTRY_HOST_NAME=kafka-schema-registry
 
 # test_suite [flags ...] -- [additional-params...]
