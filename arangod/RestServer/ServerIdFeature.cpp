@@ -232,8 +232,8 @@ async<ResultT<std::string>> ServerIdFeature::getDeploymentId() {
     uuid.data[3] = 0x6e;  // 'n'
     uuid.data[4] = 0x67;  // 'g'
     uuid.data[5] = 0x6f;  // 'o'
-    uuid.data[6] = 0x73;  // 's'
-    uuid.data[7] = 0x73;  // 's'
+    uuid.data[6] = 0x40;  // Version 4: random bits
+    uuid.data[7] = 0x00;
     uuid.data[8] = 0x00;
     uuid.data[9] = 0x00;
 
