@@ -103,7 +103,7 @@ class InsertNode : public ModificationNode {
 
   /// @brief variable used when we refer to alternative
   /// input variable
-  Variable const* _oldSmartGraphVariable;
+  Variable const* _oldSmartGraphVariable{nullptr};
 };
 
 }  // namespace arangodb::aql
