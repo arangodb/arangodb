@@ -296,7 +296,7 @@ class runInKafkaTest extends runWithAllureReport {
     let args = [
       'integration-test',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
-      `-Dkafka.bootstrap.servers=${this.options.kafkahost}`,
+      `-Dkafka.bootstrap.servers=${this.options.kafkaHost}`,
       '-Dgpg.skip',
       '-Dmaven.javadoc.skip',
       '-Dallure.results.directory=' + testResultsDir
@@ -353,6 +353,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
     'javaOptions': '',
     'javasource': '../arangodb-java-driver',
     'kafkasource': '../kafka-connect-arangodb',
-    'kafkahost': '172.28.0.1:19092,172.28.0.1:29092,172.28.0.1:39092'
+    'kafkaHost': '172.28.0.1:19092,172.28.0.1:29092,172.28.0.1:39092'
   });
 };
