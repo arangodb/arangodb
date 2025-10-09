@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,49 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "RestServer/arangod.h"
-#include "VocBase/Identifiers/ServerId.h"
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
 
-class ServerIdFeature final : public ArangodFeature {
+class RestAdminDeploymentHandler : public RestVocbaseBaseHandler {
  public:
-  static constexpr std::string_view name() noexcept { return "ServerId"; }
+  RestAdminDeploymentHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  ~RestAdminDeploymentHandler() override = default;
 
-  explicit ServerIdFeature(Server& server);
-  ~ServerIdFeature();
-
-  void start() override final;
-
-  static ServerId getId() {
-    TRI_ASSERT(SERVERID.isSet());
-    return SERVERID;
+ public:
+  auto executeAsync() -> futures::Future<futures::Unit> override;
+  char const* name() const override final {
+    return "RestAdminDeploymentHandler";
   }
-
-  // fake the server id from the outside. used for testing only
-  static void setId(ServerId serverId) { SERVERID = serverId; }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
  private:
-  /// @brief generates a new server id
-  void generateId();
+  static std::string const Id;
 
-  /// @brief reads server id from file
-  ErrorCode readId();
-
-  /// @brief writes server id to file
-  ErrorCode writeId();
-
-  /// @brief read / create the server id on startup
-  ErrorCode determineId(bool checkVersion);
-
-  std::string _idFilename;
-
-  static ServerId SERVERID;
+  void handleId();
 };
 
 }  // namespace arangodb
