@@ -56,6 +56,7 @@
 #include "Rest/HttpResponse.h"
 #include "RestHandler/RestAdminClusterHandler.h"
 #include "RestHandler/RestAdminDatabaseHandler.h"
+#include "RestHandler/RestAdminDeploymentHandler.h"
 #ifdef USE_V8
 #include "RestHandler/RestAdminExecuteHandler.h"
 #endif
@@ -846,6 +847,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/cluster",
       RestHandlerCreator<arangodb::RestAdminClusterHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_admin/deployment",
+      RestHandlerCreator<arangodb::RestAdminDeploymentHandler>::createNoData);
 
   if (_supportInfoApiPolicy != "disabled") {
     f.addHandler("/_admin/support-info",
