@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "GeneralServer/RestHandler.h"
 #include "RestHandler/RestCursorHandler.h"
 
 namespace arangodb {
@@ -40,8 +41,8 @@ class RestSimpleQueryHandler : public RestCursorHandler {
   char const* name() const override final { return "RestSimpleQueryHandler"; }
 
  private:
-  futures::Future<RestStatus> allDocuments();
-  futures::Future<RestStatus> allDocumentKeys();
-  futures::Future<RestStatus> byExample();
+  RestStatus allDocuments();
+  RestStatus allDocumentKeys();
+  RestStatus byExample();
 };
 }  // namespace arangodb

@@ -35,6 +35,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Unit.h"
+#include "GeneralServer/RestHandler.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/OperationOrigin.h"
@@ -80,7 +82,11 @@ RestStatus RestCursorHandler::execute() {
   if (type == rest::RequestType::POST) {
     if (_request->suffixes().size() == 0) {
       // POST /_api/cursor
-      return createQueryCursor();
+      auto res = createQueryCursor();
+      if (res == RestStatus::WAITING) {
+        return res;
+      }
+      return continueExecute();
     } else if (_request->suffixes().size() == 1) {
       // POST /_api/cursor/cursor-id
       return modifyQueryCursor();
@@ -172,18 +178,18 @@ void RestCursorHandler::cancel() {
 ///
 /// return If true, we need to continue processing,
 ///        If false we are done (error or stream)
-futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
+futures::Future<futures::Unit> RestCursorHandler::registerQueryOrCursor(
     velocypack::Slice slice, transaction::OperationOrigin operationOrigin) {
   TRI_ASSERT(_query == nullptr);
 
   if (!slice.isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    co_return RestStatus::DONE;
+    co_return;
   }
   VPackSlice querySlice = slice.get("query");
   if (!querySlice.isString() || querySlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_EMPTY);
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   VPackSlice bindVars = slice.get("bindVars");
@@ -191,7 +197,7 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
     if (!bindVars.isObject() && !bindVars.isNull()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting object for <bindVars>");
-      co_return RestStatus::DONE;
+      co_return;
     }
   }
 
@@ -219,17 +225,17 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
   // simon: access mode can always be write on the coordinator
   AccessMode::Type mode = AccessMode::Type::WRITE;
 
-  auto query = aql::Query::create(
-      co_await createTransactionContext(mode, operationOrigin),
-      aql::QueryString(querySlice.stringView()), std::move(bindVarsBuilder),
-      aql::QueryOptions(opts));
+  auto ctx = co_await createTransactionContext(mode, operationOrigin);
+  auto query =
+      aql::Query::create(ctx, aql::QueryString(querySlice.stringView()),
+                         std::move(bindVarsBuilder), aql::QueryOptions(opts));
 
   if (stream) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
     if (count) {
       generateError(Result(TRI_ERROR_BAD_PARAMETER,
                            "cannot use 'count' option for a streaming query"));
-      co_return RestStatus::DONE;
+      co_return;
     }
 
     CursorRepository* cursors = _vocbase.cursorRepository();
@@ -239,18 +245,15 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
     // Throws if soft shutdown is ongoing!
     _cursor->setWakeupHandler(withLogContext(
         [self = shared_from_this()]() { return self->wakeupHandler(); }));
-
-    co_return generateCursorResult(rest::ResponseCode::CREATED);
+    co_return;
   }
 
-  // non-stream case. Execute query, then build a cursor
-  // with the entire result set.
   if (!ServerState::instance()->isDBServer()) {
     auto ss = query->sharedState();
     TRI_ASSERT(ss != nullptr);
     if (ss == nullptr) {
       generateError(Result(TRI_ERROR_INTERNAL, "invalid query state"));
-      co_return RestStatus::DONE;
+      co_return;
     }
 
     ss->setWakeupHandler(withLogContext(
@@ -258,7 +261,7 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
   }
 
   registerQuery(std::move(query));
-  co_return processQuery();
+  co_return;
 }
 
 /// @brief Process the query registered in _query.

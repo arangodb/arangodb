@@ -50,13 +50,13 @@ RestStatus RestSimpleQueryHandler::execute() {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
-      return waitForFuture(allDocuments());
+      return allDocuments();
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
-      return waitForFuture(allDocumentKeys());
+      return allDocumentKeys();
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
       // by-example query
-      return waitForFuture(byExample());
+      return byExample();
     }
   }
 
@@ -65,12 +65,12 @@ RestStatus RestSimpleQueryHandler::execute() {
   return RestStatus::DONE;
 }
 
-futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {
+RestStatus RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   std::string collectionName;
@@ -86,7 +86,7 @@ futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -148,20 +148,25 @@ futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  co_return co_await registerQueryOrCursor(
-      data.slice(), transaction::OperationOriginREST{"fetching all documents"});
+  auto res = waitForFuture(registerQueryOrCursor(
+      data.slice(),
+      transaction::OperationOriginREST{"fetching all documents"}));
+  if (res == RestStatus::WAITING) {
+    return res;
+  }
+  return continueExecute();
 }
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief return a cursor with all document keys from the collection
 //////////////////////////////////////////////////////////////////////////////
 
-futures::Future<RestStatus> RestSimpleQueryHandler::allDocumentKeys() {
+RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   std::string collectionName;
@@ -177,7 +182,7 @@ futures::Future<RestStatus> RestSimpleQueryHandler::allDocumentKeys() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -216,9 +221,13 @@ futures::Future<RestStatus> RestSimpleQueryHandler::allDocumentKeys() {
   data.close();  // bindVars
   data.close();
 
-  co_return co_await registerQueryOrCursor(
+  auto res = waitForFuture(registerQueryOrCursor(
       data.slice(),
-      transaction::OperationOriginREST{"fetching all document keys"});
+      transaction::OperationOriginREST{"fetching all document keys"}));
+  if (res == RestStatus::WAITING) {
+    return res;
+  }
+  return continueExecute();
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
@@ -260,17 +269,17 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
 /// @brief return a cursor with all documents matching the example
 //////////////////////////////////////////////////////////////////////////////
 
-futures::Future<RestStatus> RestSimpleQueryHandler::byExample() {
+RestStatus RestSimpleQueryHandler::byExample() {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   if (!body.isObject() || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   // velocypack will throw an exception for negative numbers
@@ -293,7 +302,7 @@ futures::Future<RestStatus> RestSimpleQueryHandler::byExample() {
   if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(cname);
@@ -315,6 +324,10 @@ futures::Future<RestStatus> RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  co_return co_await registerQueryOrCursor(
-      data.slice(), transaction::OperationOriginREST{"querying by example"});
+  auto res = waitForFuture(registerQueryOrCursor(
+      data.slice(), transaction::OperationOriginREST{"querying by example"}));
+  if (res == RestStatus::WAITING) {
+    return res;
+  }
+  return continueExecute();
 }

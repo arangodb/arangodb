@@ -65,9 +65,9 @@ RestStatus RestSimpleHandler::execute() {
     std::string const& prefix = _request->requestPath();
 
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      return waitForFuture(removeByKeys(body));
+      return removeByKeys(body);
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      return waitForFuture(lookupByKeys(body));
+      return lookupByKeys(body);
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
@@ -81,8 +81,7 @@ RestStatus RestSimpleHandler::execute() {
   return RestStatus::DONE;
 }
 
-futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
-    VPackSlice const& slice) {
+RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
   {
@@ -91,7 +90,7 @@ futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
     if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
-      co_return RestStatus::DONE;
+      return RestStatus::DONE;
     }
 
     collectionName = value.copyString();
@@ -110,7 +109,7 @@ futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting array for <keys>");
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   bool waitForSync = false;
@@ -157,9 +156,13 @@ futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
   data.close();  // bindVars
   data.close();
 
-  co_return co_await registerQueryOrCursor(
+  auto res = waitForFuture(registerQueryOrCursor(
       data.slice(),
-      transaction::OperationOriginREST{"removing documents by keys"});
+      transaction::OperationOriginREST{"removing documents by keys"}));
+  if (res == RestStatus::WAITING) {
+    return res;
+  }
+  return continueExecute();
 }
 
 RestStatus RestSimpleHandler::handleQueryResult() {
@@ -248,8 +251,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                  _queryResult.context);
 }
 
-futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
-    VPackSlice const& slice) {
+RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
@@ -261,7 +263,7 @@ futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
     if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
-      co_return RestStatus::DONE;
+      return RestStatus::DONE;
     }
 
     collectionName = value.copyString();
@@ -282,7 +284,7 @@ futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting array for <keys>");
-    co_return RestStatus::DONE;
+    return RestStatus::DONE;
   }
 
   std::string const aql(
@@ -300,7 +302,11 @@ futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
   data.close();  // bindVars
   data.close();
 
-  co_return co_await registerQueryOrCursor(
+  auto res = waitForFuture(registerQueryOrCursor(
       data.slice(),
-      transaction::OperationOriginREST{"looking up documents by keys"});
+      transaction::OperationOriginREST{"looking up documents by keys"}));
+  if (res == RestStatus::WAITING) {
+    return res;
+  }
+  return continueExecute();
 }
