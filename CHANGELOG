@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fix BTS-2231: Fix a divide-by-zero crash in case a smart edge collection is used in a
+  collect query with a custom index.
+
 * Add API for deployment ID: /_admin/deployment/id .
 
 * Add vertex collections for graph queries using edge collection syntax
