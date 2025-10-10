@@ -46,7 +46,7 @@ using EN = arangodb::aql::ExecutionNode;
 
 namespace {
 
-#define LOG_RULE_ENABLED true
+#define LOG_RULE_ENABLED false
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
