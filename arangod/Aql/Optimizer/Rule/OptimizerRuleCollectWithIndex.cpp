@@ -39,6 +39,10 @@
 #include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 
+#if USE_ENTERPRISE
+#include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::containers;
@@ -164,6 +168,13 @@ bool selectivityIsLowEnough(IndexNode const& in) {
 
   double requiredSelectivity;
   if (ServerState::instance()->isSingleServer()) {
+    if (numberOfItems == 1) {
+      // log(1) is 0 so we are dividing by zero here
+      // IEEE-754 defines division-by-zero to lead to NaN, +Inf or -Inf
+      // 1.0 / 0.0 should by definition lead to +Inf, so we skip the calculation
+      // and return directly.
+      return true;
+    }
     requiredSelectivity = 1. / log(numberOfItems);
   } else {
     // in cluster mode, we use the same equation as an approximation, although
@@ -175,8 +186,36 @@ bool selectivityIsLowEnough(IndexNode const& in) {
     // TODO compare the total costs of executing the optimized vs. the
     // non-optimized execution node, which involves getting the selectivity
     // estimate of each shard separately
-    requiredSelectivity =
-        1. / log(numberOfItems / index->collection().numberOfShards());
+    auto numberOfShards = index->collection().numberOfShards();
+    if (numberOfShards == 0) {
+#if USE_ENTERPRISE
+      // In case of smart edge collections we do have 0 shards,
+      // this would lead to a SIGFPE(FPE_INTDIV) and crash.
+      // So we get the number of shards of the underlying collections
+      // e.g. _local
+      try {
+        auto& virtualEdgeCol = dynamic_cast<VirtualClusterSmartEdgeCollection&>(
+            index->collection());
+        numberOfShards = virtualEdgeCol.numberOfUnderlyingShards();
+      } catch (std::bad_cast&) {
+      }
+#endif  // USE_ENTERPRISE
+      if (numberOfShards == 0) {
+        LOG_RULE << "IndexNode " << in.id()
+                 << " detected a node with zero shards,"
+                 << " which is not a virtual smart edge collection";
+        return false;
+      }
+    }
+
+    if (numberOfItems == numberOfShards) {
+      // log(1) is 0 so we are dividing by zero here
+      // IEEE-754 defines division-by-zero to lead to NaN, +Inf or -Inf
+      // 1.0 / 0.0 should by definition lead to +Inf, so we skip the calculation
+      // and return directly.
+      return true;
+    }
+    requiredSelectivity = 1. / log(numberOfItems / numberOfShards);
   }
 
   if (index_selectivity > requiredSelectivity) {
