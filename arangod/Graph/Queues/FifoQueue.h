@@ -44,7 +44,9 @@ class FifoQueue {
   // -> loose ends to the front
 
   explicit FifoQueue(arangodb::ResourceMonitor& resourceMonitor)
-      : _resourceMonitor{resourceMonitor} {}
+      : _resourceMonitor{resourceMonitor} {
+    LOG_DEVEL << "Fifo Queue";
+  }
   ~FifoQueue() { this->clear(); }
 
   bool isBatched() { return false; }

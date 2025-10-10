@@ -29,6 +29,7 @@
 #include "Graph/Enumerators/WeightedShortestPathEnumerator.h"
 #include "Graph/Enumerators/YenEnumerator.h"
 
+#include "Graph/Queues/BatchedLifoQueue.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/Queues/LifoQueue.h"
 #include "Graph/Queues/WeightedQueue.h"
@@ -113,7 +114,7 @@ template<class ProviderType, VertexUniquenessLevel vertexUniqueness,
 struct DFSConfiguration {
   using Provider = ProviderType;
   using Step = typename Provider::Step;
-  using Queue = LifoQueue<Step>;
+  using Queue = BatchedLifoQueue<Step>;
   using Store = PathStore<Step>;
   using Validator =
       PathValidator<Provider, Store, vertexUniqueness, edgeUniqueness>;

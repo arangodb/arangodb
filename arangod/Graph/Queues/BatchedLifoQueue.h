@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Heiko Kernbach
+/// @author Julia Volmer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
@@ -34,7 +34,7 @@ namespace arangodb {
 namespace graph {
 
 template<class StepType>
-class LifoQueue {
+class BatchedLifoQueue {
  public:
   static constexpr bool RequiresWeight = false;
   using Step = StepType;
@@ -42,14 +42,13 @@ class LifoQueue {
   // cluster relevant)
   // -> loose ends to the end
 
-  explicit LifoQueue(arangodb::ResourceMonitor& resourceMonitor)
+  explicit BatchedLifoQueue(arangodb::ResourceMonitor& resourceMonitor)
       : _resourceMonitor{resourceMonitor} {
-    LOG_DEVEL << "Lifo Queue";
+    LOG_DEVEL << "Batched Lifo Queue";
   }
-  ~LifoQueue() { this->clear(); }
+  ~BatchedLifoQueue() { this->clear(); }
 
   bool isBatched() { return false; }
-
   void clear() {
     if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
@@ -124,7 +123,7 @@ class LifoQueue {
     TRI_ASSERT(!isEmpty());
     Step first = std::move(_queue.front());
     LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
-        << "<LifoQueue> Pop: " << first.toString();
+        << "<BatchedLifoQueue> Pop: " << first.toString();
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
     return {first};
