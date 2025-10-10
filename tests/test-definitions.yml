@@ -30,7 +30,7 @@
         priority: 500
         parallelity: 4
         size: small
-        single
+        type: single
     - args:
         - extraArgs:log.level: replication=trace
 - replication_ongoing:
@@ -120,7 +120,7 @@
     - options:
         - priority: 250
         - type: single
-    --args:
+    - args:
       - skipEndpointsIpv6: true
 
 - recovery:
@@ -152,7 +152,7 @@
     - options:
         - priority: 500
         - type: single
-    --args:
+    - args:
       - moreArgv: $EncryptionAtRest
 
 # this options json will be built:  --optionsJson [{"http":true},{"ssl":true,"suffix":"ssl"}] $EncryptionAtRest
@@ -180,7 +180,7 @@
         - buckets: 4
         - type: single
         - size: medium
-    --args:
+    - args:
       - moreArgv: $EncryptionAtRest
 
 # shell_client_multi tests run quite long, so want to have a separate job for each protocol
@@ -276,12 +276,13 @@
         - type: single
         - suffix: http
 - fuerte:
-    - coverage: false
-    - priority: 500
-    - type: single
-    - suffix: ssl-http
-  - args:
-      protocol: ssl
+    - options:
+        - coverage: false
+        - priority: 500
+        - type: single
+        - suffix: ssl-http
+    - args:
+        - protocol: ssl
 
 - rta_makedata:
     - options:
@@ -565,9 +566,10 @@
         - dumpAgencyOnError: true
 
 # Dump Tests
-- bucket: # TODO yaml: this represents into one circle-ci bucket
+# TODO yaml: this represents into one circle-ci bucket
+- bucket:
     - name: dump
-  - suites:
+    - suites:
       - dump:
           - options:
               - type: cluster
@@ -835,8 +837,8 @@
         - full: true
         - type: cluster
         - priority: 500
-    args:
-      - dumpAgencyOnError: true
+    - args:
+        - dumpAgencyOnError: true
 - resilience_failover_view:
     - options:
         - full: true
@@ -849,8 +851,8 @@
         - full: true
         - type: cluster
         - priority: 500
-    args:
-      - dumpAgencyOnError: true
+    - args:
+        - dumpAgencyOnError: true
 - wal_cleanup:
     - options:
         - full: true
