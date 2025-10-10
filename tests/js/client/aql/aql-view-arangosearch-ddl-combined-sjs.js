@@ -447,10 +447,10 @@ function IResearchFeatureDDLTestSuite1() {
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(50, properties.consolidationPolicy.segmentsMin);
+      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       meta = {
@@ -1246,10 +1246,10 @@ function IResearchFeatureDDLTestSuite1() {
       assertTrue(Object === properties.consolidationPolicy.constructor);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(50, properties.consolidationPolicy.segmentsMin);
+      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
@@ -1319,10 +1319,10 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(5000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(50, properties.consolidationPolicy.segmentsMin);
+      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
 
       meta = {};
@@ -1379,10 +1379,10 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(5000, properties.consolidationIntervalMsec);
       assertEqual(6, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(1, properties.consolidationPolicy.segmentsMin);
-      assertEqual(10, properties.consolidationPolicy.segmentsMax);
-      assertEqual(5 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(2 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
+      assertEqual(50, properties.consolidationPolicy.segmentsMin);
+      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+      assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
+      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
       assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
     },
 
