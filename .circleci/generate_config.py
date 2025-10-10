@@ -261,7 +261,6 @@ def read_definitions(filename, override_branch):
             except Exception as exc:
                 print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
                 has_error = True
-    print(parsed_yaml)
     if has_error:
         raise Exception("abort due to errors")
     return tests, parsed_yaml
@@ -706,7 +705,6 @@ def main():
             (new_tests, new_parsed_yaml) = read_definitions(one_definition, override_branch)
             tests += new_tests
             parsed_yamls.append(new_parsed_yaml)
-            print(new_parsed_yaml)
         # if args.validate_only:
         #    return  # nothing left to do
         with open(args.base_config, "r", encoding="utf-8") as instream:
@@ -715,7 +713,6 @@ def main():
                 generate_jobs(config, args, tests)
                 for one_yaml in parsed_yamls:
                     if one_yaml != {}:
-                        print('asnotehusantoehu')
                         original_job = one_yaml['add-yaml']['derives']
                         new_job = one_yaml['add-yaml']['derives-to']
                         del one_yaml['add-yaml']['derives-to']
