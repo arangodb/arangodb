@@ -63,16 +63,16 @@ TEST_F(IResearchViewMetaTest, test_defaults) {
   EXPECT_TRUE(std::string("tier") ==
               meta._consolidationPolicy.properties().get("type").copyString());
   EXPECT_TRUE(false == !meta._consolidationPolicy.policy());
-  EXPECT_TRUE(1 == meta._consolidationPolicy.properties()
-                       .get("segmentsMin")
-                       .getNumber<size_t>());
-  EXPECT_TRUE(10 == meta._consolidationPolicy.properties()
-                        .get("segmentsMax")
+  EXPECT_TRUE(50 == meta._consolidationPolicy.properties()
+                        .get("segmentsMin")
                         .getNumber<size_t>());
-  EXPECT_TRUE(size_t(2) * (1 << 20) == meta._consolidationPolicy.properties()
-                                           .get("segmentsBytesFloor")
-                                           .getNumber<size_t>());
-  EXPECT_TRUE(size_t(5) * (1 << 30) == meta._consolidationPolicy.properties()
+  EXPECT_TRUE(200 == meta._consolidationPolicy.properties()
+                         .get("segmentsMax")
+                         .getNumber<size_t>());
+  EXPECT_TRUE(size_t(24) * (1 << 20) == meta._consolidationPolicy.properties()
+                                            .get("segmentsBytesFloor")
+                                            .getNumber<size_t>());
+  EXPECT_TRUE(size_t(8) * (1 << 30) == meta._consolidationPolicy.properties()
                                            .get("segmentsBytesMax")
                                            .getNumber<size_t>());
   EXPECT_TRUE(0 == meta._writebufferActive);
@@ -159,16 +159,16 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
         (std::string("tier") ==
          meta._consolidationPolicy.properties().get("type").copyString()));
     EXPECT_TRUE((false == !meta._consolidationPolicy.policy()));
-    EXPECT_TRUE(1 == meta._consolidationPolicy.properties()
-                         .get("segmentsMin")
-                         .getNumber<size_t>());
-    EXPECT_TRUE(10 == meta._consolidationPolicy.properties()
-                          .get("segmentsMax")
+    EXPECT_TRUE(50 == meta._consolidationPolicy.properties()
+                          .get("segmentsMin")
                           .getNumber<size_t>());
-    EXPECT_TRUE(size_t(2) * (1 << 20) == meta._consolidationPolicy.properties()
-                                             .get("segmentsBytesFloor")
-                                             .getNumber<size_t>());
-    EXPECT_TRUE(size_t(5) * (1 << 30) == meta._consolidationPolicy.properties()
+    EXPECT_TRUE(200 == meta._consolidationPolicy.properties()
+                           .get("segmentsMax")
+                           .getNumber<size_t>());
+    EXPECT_TRUE(size_t(24) * (1 << 20) == meta._consolidationPolicy.properties()
+                                              .get("segmentsBytesFloor")
+                                              .getNumber<size_t>());
+    EXPECT_TRUE(size_t(8) * (1 << 30) == meta._consolidationPolicy.properties()
                                              .get("segmentsBytesMax")
                                              .getNumber<size_t>());
     EXPECT_TRUE((0 == meta._writebufferActive));
@@ -632,15 +632,15 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
   EXPECT_TRUE(
       (tmpSlice2.isString() && std::string("tier") == tmpSlice2.copyString()));
   tmpSlice2 = tmpSlice.get("segmentsMin");
-  EXPECT_TRUE((tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>()));
+  EXPECT_TRUE((tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("segmentsMax");
-  EXPECT_TRUE((tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>()));
+  EXPECT_TRUE((tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
   EXPECT_TRUE((tmpSlice2.isNumber() &&
-               (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>()));
+               (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("segmentsBytesMax");
   EXPECT_TRUE((tmpSlice2.isNumber() &&
-               (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>()));
+               (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("minScore");
   EXPECT_TRUE((tmpSlice2.isNumber() && (0. == tmpSlice2.getNumber<double>())));
   tmpSlice = slice.get("version");
