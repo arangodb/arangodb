@@ -305,7 +305,6 @@ class runInKafkaTest extends runWithAllureReport {
       `-Dallure.results.directory=${testResultsDir}`,
       `-Dconnect.schema.registry.url=${this.options.kafkaSchemaHost}`,
       `-Dclient.schema.registry.url=${this.options.kafkaSchemaHost}`,
-      // TODO? '-Dnative=<<parameters.native>>'
     ];
     if (this.options.protocol === 'ssl') {
       args.push('-Dit.test=com.arangodb.kafka.SslIT');
