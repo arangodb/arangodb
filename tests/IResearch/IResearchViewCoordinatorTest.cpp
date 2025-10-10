@@ -1201,15 +1201,15 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -1295,15 +1295,15 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -1367,15 +1367,15 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -1580,15 +1580,15 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -1674,15 +1674,15 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -1746,15 +1746,15 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -1957,15 +1957,15 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -2051,15 +2051,15 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -2123,15 +2123,15 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -2336,15 +2336,15 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -2430,15 +2430,15 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -2502,15 +2502,15 @@ TEST_F(IResearchViewCoordinatorTest,
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -2719,15 +2719,15 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
@@ -2803,15 +2803,15 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
       tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 1 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 10 == tmpSlice2.getNumber<size_t>());
+      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(2) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(5) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
+                  (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
       tmpSlice2 = tmpSlice.get("minScore");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (0. == tmpSlice2.getNumber<double>()));
