@@ -1,6 +1,9 @@
 3.12.5.2 (2025-08-01)
 ---------------------
 
+* Fix BTS-2231: Fix a divide-by-zero crash in case a smart edge collection is used in a
+  collect query with a custom index.
+
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection
 	that has an	index used in the query.
 
