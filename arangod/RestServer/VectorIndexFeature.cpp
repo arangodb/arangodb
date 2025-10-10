@@ -37,9 +37,25 @@ void VectorIndexFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
       ->addOption(
-          "--experimental-vector-index",
-          "Enable the experimental vector index feature."
+          "--vector-index",
+          "Enable the vector index feature. "
           "Once in use, this option cannot be turned off again.",
+          new options::BooleanParameter(&_useVectorIndexNew),
+          options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
+                             arangodb::options::Flags::OnCoordinator,
+                             arangodb::options::Flags::OnDBServer,
+                             arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31206)
+      .setLongDescription(R"(This startup option should not be enabled for
+Agents in a cluster as it has no effect on them other than that you need to
+leave the option enabled.)");
+
+  options
+      ->addOption(
+          "--experimental-vector-index",
+          "Enable the experimental vector index feature. "
+          "Once in use, this option cannot be turned off again. "
+          "This option is deprecated, use --vector-index instead.",
           new options::BooleanParameter(&_useVectorIndex),
           options::makeFlags(arangodb::options::Flags::DefaultNoComponents,
                              arangodb::options::Flags::OnCoordinator,
@@ -47,13 +63,14 @@ void VectorIndexFeature::collectOptions(
                              arangodb::options::Flags::OnSingle,
                              arangodb::options::Flags::Experimental))
       .setIntroducedIn(31204)
+      .setDeprecatedIn(31206)
       .setLongDescription(R"(This startup option should not be enabled for
 Agents in a cluster as it has no effect on them other than that you need to
-leave the option enabled.)");
+leave the option enabled. This option is deprecated, use --vector-index instead.)");
 }
 
 bool VectorIndexFeature::isVectorIndexEnabled() const {
-  return _useVectorIndex;
+  return _useVectorIndex || _useVectorIndexNew;
 }
 
 }  // namespace arangodb
