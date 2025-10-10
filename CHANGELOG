@@ -1,6 +1,9 @@
 3.12.5.4 (2025-09-22)
 ---------------------
 
+* Fix BTS-2231: Fix a divide-by-zero crash in case a smart edge collection is used in a
+  collect query with a custom index.
+
 * Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
   We should therefore check before accessing clusterInfo() whether we are in an
   upgrade scenario. Added those checks in iresearch.
