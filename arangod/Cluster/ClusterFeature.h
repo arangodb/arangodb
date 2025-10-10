@@ -137,6 +137,9 @@ class ClusterFeature : public ArangodFeature {
     return _statusCodeFailedWriteConcern;
   }
 
+  /// @brief get deployment ID (single server or cluster ID)
+  ResultT<std::string> getDeploymentId() const;
+
   metrics::Counter& followersDroppedCounter() {
     TRI_ASSERT(_followersDroppedCounter != nullptr);
     return *_followersDroppedCounter;
