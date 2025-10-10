@@ -45,6 +45,9 @@ known_parameter = {
     "priority": "priority that controls execution order. Testsuites with lower priority are executed later",
     "parallelity": "parallelity how many resources will the job use in the SUT? Default: 1 in Single server, 4 in Clusters",
     "size": "docker container size to be used in CircleCI",
+    "type": "single or cluster flag",
+    "full": "whether to spare from a single or full run",
+    "sniff": "whether to enable sniffing",
 }
 
 
@@ -148,17 +151,18 @@ def validate_params(params):
         except Exception as exc:
             raise Exception(f"invalid numeric value: {value}") from exc
 
-    def parse_number_or_default(key, default_value=None):
-        """check number"""
-        if key in params:
-            if params[key][0] == "*":  # factor the default
-                params[key] = default_value * parse_number(params[key][1:])
-            else:
-                params[key] = parse_number(params[key])
-        elif default_value is not None:
-            params[key] = default_value
+    # nothing uses this atm?
+    #def parse_number_or_default(key, default_value=None):
+    #    """check number"""
+    #    if key in params:
+    #        if params[key][0] == "*":  # factor the default
+    #            params[key] = default_value * parse_number(params[key][1:])
+    #        else:
+    #          params[key] = parse_number(params[key])
+    #    elif default_value is not None:
+    #        params[key] = default_value
 
-    parse_number_or_default("buckets")
+    # parse_number_or_default("buckets")
 
     return params
 
@@ -227,6 +231,92 @@ def read_definition_line(line, testfile_definitions, yaml_struct):
         "run_job": run_job,
     }
 
+def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
+    """ convert yaml representation into the internal one """
+    if not 'options' in definition:
+        definition['options'] = {}
+    flags = []
+    params = {}
+    arangosh_args = []
+    args = []
+    if 'args' in definition:
+        for key, val in definition['args'].items():
+            if key == 'moreArgv':
+                args.append(val)
+            else:
+              args.append(f"--{key}")
+              if isinstance(val, bool):
+                  args.append("true" if val else "false")
+              else:
+                  args.append(val)
+    if 'arangosh_args' in definition:
+        for key, val in definition['arangosh_args'].items():
+            arangosh_args.append(f"--{key}")
+            if isinstance(val, bool):
+                arangosh_args.append("true" if val else "false")
+            else:
+                arangosh_args.append(val)
+    params = validate_params(definition['options'])
+
+    is_cluster = 'type' in params and params['type'] == "cluster"
+
+    size = "medium" if is_cluster else "small"
+    size = size if not "size" in params else params['size']
+
+    if 'full' in params:
+        flags.append("full" if params["full"] else "!full")
+    if 'coverage' in params:
+        flags.append("coverage" if params["coverage"] else "!coverage")
+    if 'sniff' in params:
+        flags.append("sniff" if params["sniff"] else "!sniff")
+    return {
+        "bucket": bucket_name,
+        "name": name if not "name" in params else params['name'],
+        "suites": suite,
+        "size": size,
+        "flags": flags,
+        "args": args,
+        "arangosh_args": arangosh_args,
+        "params": params,
+        "testfile_definitions": testfile_definitions,
+    }
+
+def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name):
+    """ convert yaml representation into the internal one """
+    generated_definition = {
+    }
+    if 'options' in definition:
+        generated_definition['options'] = definition['options']
+    args = {}
+    generated_name = ""
+    if 'args' in definition:
+        args = definition['args']
+    if isinstance(definition['suites'][0], str):
+        generated_name = ','.join(definition['suites'])
+    else:
+        suite_strs = []
+        optionsJson = []
+        for suite in definition['suites']:
+            suite_name = list(suite.keys())[0]
+            if 'args' in suite[suite_name]:
+                optionsJson.append(suite[suite_name]['args'])
+            suite_strs.append(suite_name)
+        generated_name = ','.join(suite_strs)
+        args['optionsJson'] = json.dumps(optionsJson)
+    if args != {}:
+        generated_definition['args'] = args
+    name = generated_name
+    if 'name' in definition:
+        name = definition['name']
+    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, bucket_name)
+
+def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name):
+    """ convert yaml representation into the internal one """
+    bucket_name = definition['name']
+    ret = []
+    for suite in definition['suites']:
+        ret.append(read_yaml_suite(bucket_name, bucket_name, suite, testfile_definitions, bucket_name))
+    return ret
 
 def read_definitions(filename, override_branch):
     """read test definitions txt"""
@@ -236,31 +326,46 @@ def read_definitions(filename, override_branch):
     yaml_text = ""
     have_yaml = False
     parsed_yaml = {}
-    with open(filename, "r", encoding="utf-8") as filep:
-        for line_no, raw_line in enumerate(filep):
-            line = raw_line.strip()
-            if len(line) == 0:
-                if have_yaml:
-                    parsed_yaml = yaml.safe_load(yaml_text)
-                    have_yaml = False
-                continue
-            if line.startswith("#"):
-                if line[2] == '{':
-                    testfile_definitions = json.loads(line[2:])
-                    if override_branch is not None:
-                        testfile_definitions['branch'] = override_branch
-                continue  # ignore comments
-            if line == "add-yaml:" or have_yaml:
-                yaml_text += raw_line + "\n"
-                have_yaml = True
-                continue
-            try:
-                test = read_definition_line(line, testfile_definitions, parsed_yaml)
-                test["lineNumber"] = line_no
-                tests.append(test)
-            except Exception as exc:
-                print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
-                has_error = True
+    if filename.endswith(".yml"):
+      print(filename)
+      with open(filename, "r", encoding="utf-8") as filep:
+          config = yaml.safe_load(filep)
+          for testcase in config:
+              suite_name = list(testcase.keys())[0]
+              if suite_name == "serial":
+                  tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None))
+              elif suite_name == "bucket":
+                  tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None)
+                  print('bucket')
+                  None
+              else:
+                  tests.append(read_yaml_suite(suite_name, suite_name, testcase[suite_name], testfile_definitions, None))
+    else:
+      with open(filename, "r", encoding="utf-8") as filep:
+          for line_no, raw_line in enumerate(filep):
+              line = raw_line.strip()
+              if len(line) == 0:
+                  if have_yaml:
+                      parsed_yaml = yaml.safe_load(yaml_text)
+                      have_yaml = False
+                  continue
+              if line.startswith("#"):
+                  if line[2] == '{':
+                      testfile_definitions = json.loads(line[2:])
+                      if override_branch is not None:
+                          testfile_definitions['branch'] = override_branch
+                  continue  # ignore comments
+              if line == "add-yaml:" or have_yaml:
+                  yaml_text += raw_line + "\n"
+                  have_yaml = True
+                  continue
+              try:
+                  test = read_definition_line(line, testfile_definitions, parsed_yaml)
+                  test["lineNumber"] = line_no
+                  tests.append(test)
+              except Exception as exc:
+                  print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
+                  has_error = True
     if has_error:
         raise Exception("abort due to errors")
     return tests, parsed_yaml
