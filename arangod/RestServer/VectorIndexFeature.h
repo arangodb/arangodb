@@ -41,7 +41,6 @@ class VectorIndexFeature final : public ArangodFeature {
 
  private:
   bool _useVectorIndex{false};
-  bool _useVectorIndexNew{false};
 };
 
 }  // namespace arangodb
