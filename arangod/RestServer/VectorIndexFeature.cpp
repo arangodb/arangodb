@@ -48,7 +48,7 @@ void VectorIndexFeature::collectOptions(
       .setIntroducedIn(31204)
       .setLongDescription(R"(This startup option should not be enabled for
 Agents in a cluster as it has no effect on them other than that you need to
-leave the option enabled. This option is deprecated, use --vector-index instead.)");
+leave the option enabled.)");
   options->addOldOption("--experimental-vector-index", "--vector-index");
 }
 
