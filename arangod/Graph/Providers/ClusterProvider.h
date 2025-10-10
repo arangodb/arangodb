@@ -90,6 +90,14 @@ class ClusterProvider {
   auto fetchEdges(const std::vector<Step*>& fetchedVertices) -> Result;
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;
+  auto addNextBatch(Step const& from, std::function<void()> const& callback)
+      -> void {
+    return;
+  }
+  auto expandNextBatch(Step const& step, size_t previous,
+                       std::function<void(Step)> const& callback) -> bool {
+    return true;
+  }
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);

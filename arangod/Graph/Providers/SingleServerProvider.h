@@ -86,6 +86,10 @@ class SingleServerProvider {
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
+  auto addNextBatch(Step const& from, std::function<void()> const& callback)
+      -> void;
+  auto expandNextBatch(Step const& step, size_t previous,
+                       std::function<void(Step)> const& callback) -> bool;
   auto clear() -> void;
 
   void insertEdgeIntoResult(EdgeDocumentToken edge,
@@ -152,6 +156,7 @@ class SingleServerProvider {
   EdgeLookup _edgeLookup;
 
   SingleServerNeighbourProvider<Step> _neighbours;
+  std::vector<SingleServerNeighbourProvider<Step>> _neighboursStack;
 };
 }  // namespace graph
 }  // namespace arangodb

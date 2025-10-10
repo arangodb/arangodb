@@ -4,7 +4,9 @@
 
 namespace arangodb::graph {
 
-struct NextBatch {};
+struct NextBatch {
+  std::size_t from;
+};
 
 template<typename Step>
 struct QueueEntry : std::variant<Step, NextBatch> {};

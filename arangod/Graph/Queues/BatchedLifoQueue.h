@@ -29,6 +29,7 @@
 #include "Graph/Queues/NextBatchMarker.h"
 
 #include <queue>
+#include <variant>
 
 namespace arangodb {
 namespace graph {
@@ -48,7 +49,7 @@ class BatchedLifoQueue {
   }
   ~BatchedLifoQueue() { this->clear(); }
 
-  bool isBatched() { return false; }
+  bool isBatched() { return true; }
   void clear() {
     if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
@@ -60,8 +61,7 @@ class BatchedLifoQueue {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
     // if push_front() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    TRI_ASSERT(std::holds_alternative<Step>(step));
-    _queue.push_front(std::move(std::get<Step>(step)));
+    _queue.push_front(std::move(step));
     guard.steal();  // now we are responsible for tracking the memory
   }
 
@@ -73,7 +73,7 @@ class BatchedLifoQueue {
       // For LIFO just append to the back,
       // The handed in vector will then be processed from start to end.
       // And appending would queue BEFORE items in the queue.
-      _queue.push_back(std::move(s));
+      _queue.push_back({std::move(s)});
     }
     guard.steal();  // now we are responsible for tracking the memory
   }
@@ -81,7 +81,11 @@ class BatchedLifoQueue {
   bool firstIsVertexFetched() const {
     if (!isEmpty()) {
       auto const& first = _queue.front();
-      return first.vertexFetched();
+      if (std::holds_alternative<Step>(first)) {
+        return std::get<Step>(first).vertexFetched();
+      } else {
+        return true;  // vertex was already fetched before
+      }
     }
     return false;
   }
@@ -89,7 +93,9 @@ class BatchedLifoQueue {
   bool hasProcessableElement() const {
     if (!isEmpty()) {
       auto const& first = _queue.front();
-      return first.isProcessable();
+      if (std::holds_alternative<Step>(first)) {
+        return std::get<Step>(first).isProcessable();
+      }
     }
 
     return false;
@@ -103,9 +109,12 @@ class BatchedLifoQueue {
     TRI_ASSERT(!hasProcessableElement());
 
     std::vector<Step*> steps;
-    for (auto& step : _queue) {
-      if (!step.isProcessable()) {
-        steps.emplace_back(&step);
+    for (auto& item : _queue) {
+      if (std::holds_alternative<Step>(item)) {
+        auto step = std::get<Step>(item);
+        if (!step.isProcessable()) {
+          steps.emplace_back(&step);
+        }
       }
     }
 
@@ -115,41 +124,48 @@ class BatchedLifoQueue {
   Step const& peek() const {
     // Currently only implemented and used in WeightedQueue
     TRI_ASSERT(false);
-    auto const& first = _queue.front();
-    return first;
   }
 
   QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
-    Step first = std::move(_queue.front());
-    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
-        << "<BatchedLifoQueue> Pop: " << first.toString();
+    auto first = std::move(_queue.front());
+    // LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
+    LOG_DEVEL << "<BatchedLifoQueue> Pop: "
+              << (std::holds_alternative<Step>(first)
+                      ? std::get<Step>(first).toString()
+                      : "next batch");
     _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
-    return {first};
+    return first;
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
     std::vector<Step*> steps{};
-    for (auto& step : _queue) {
-      if (!step.vertexFetched()) {
-        steps.emplace_back(&step);
+    for (auto& item : _queue) {
+      if (std::holds_alternative<Step>(item)) {
+        auto step = std::get<Step>(item);
+        if (!step.vertexFetched()) {
+          steps.emplace_back(&step);
+        }
       }
     }
     return steps;
   }
 
   void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
-    for (auto& step : _queue) {
-      if (!step.edgeFetched() && !step.isUnknown()) {
-        steps.emplace_back(&step);
+    for (auto& item : _queue) {
+      if (std::holds_alternative<Step>(item)) {
+        auto step = std::get<Step>(item);
+        if (!step.edgeFetched() && !step.isUnknown()) {
+          steps.emplace_back(&step);
+        }
       }
     }
   }
 
  private:
   /// @brief queue datastore
-  std::deque<Step> _queue;
+  std::deque<QueueEntry<Step>> _queue;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;

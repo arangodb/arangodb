@@ -169,6 +169,73 @@ auto SingleServerProvider<Step>::expand(
 }
 
 template<class Step>
+auto SingleServerProvider<Step>::expandNextBatch(
+    Step const& step, size_t previous,
+    std::function<void(Step)> const& callback) -> bool {
+  TRI_ASSERT(!step.isLooseEnd());
+  auto const& vertex = step.getVertex();
+
+  LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
+      << "<SingleServerProvider> Expanding (next batch) " << vertex.getID();
+
+  while (not _neighboursStack.empty()) {
+    auto& last = _neighboursStack.back();
+    if (last.hasMore(step.getDepth())) {
+      break;
+    } else {
+      _neighboursStack.pop_back();
+    }
+  }
+  if (_neighboursStack.empty()) {
+    return false;
+  }
+  auto& last = _neighboursStack.back();
+  auto batch = last.next(*this, _stats);
+  for (auto const& neighbour : *batch) {
+    VPackSlice edge = neighbour.edge();
+    VertexType id = _cache.persistString(([&]() -> auto {
+      if (edge.isString()) {
+        return VertexType(edge);
+      } else {
+        VertexType other(transaction::helpers::extractFromFromDocument(edge));
+        if (other == vertex.getID()) {  // TODO: Check getId - discuss
+          other = VertexType(transaction::helpers::extractToFromDocument(edge));
+        }
+        return other;
+      }
+    })());
+    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
+        << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
+        << id;
+
+    EdgeDocumentToken edgeToken{neighbour.eid};
+    callback(Step{id, std::move(edgeToken), previous, step.getDepth() + 1,
+                  _opts.weightEdge(step.getWeight(), edge),
+                  neighbour.cursorId});
+    // TODO [GraphRefactor]: Why is cursorID set, but never used?
+    // Note: There is one implementation that used, it, but there is a high
+    // probability we do not need it anymore after refactoring is complete.
+  }
+  return true;
+}
+
+template<class Step>
+auto SingleServerProvider<Step>::addNextBatch(
+    Step const& step, std::function<void()> const& callback) -> void {
+  TRI_ASSERT(!step.isLooseEnd());
+  auto const& vertex = step.getVertex();
+
+  LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
+      << "<SingleServerProvider> Expanding (new batch) " << vertex.getID();
+
+  _neighboursStack.emplace_back(_opts, _trx.get(), _monitor,
+                                aql::ExecutionBlock::DefaultBatchSize);
+  auto& last = _neighboursStack.back();
+  last.rearm(step, _stats);
+  callback();
+}
+
+template<class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(
     typename Step::Vertex const& vertex, arangodb::velocypack::Builder& builder,
     bool writeIdIfNotFound) {

@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OneSidedEnumerator.h"
+#include <variant>
 
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
@@ -124,6 +125,21 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
 
   TRI_ASSERT(!_queue.isEmpty());
   auto tmp = _queue.pop();
+  if (std::holds_alternative<NextBatch>(tmp)) {
+    _queue.append(tmp);  // push it back
+    auto posPrevious = std::get<NextBatch>(tmp).from;
+    auto& step = _interior.getStepReference(posPrevious);
+    auto notFinished = _provider.expandNextBatch(
+        step, posPrevious, [&](Step n) -> void { _queue.append({n}); });
+    if (notFinished) {
+      computeNeighbourhoodOfNextVertex();  // call itself again, now with a
+                                           // vertex on top of queue
+      return;
+    } else {         // no items added
+      _queue.pop();  // now we can pop the NextBatch item savely
+      return;
+    }
+  }
   TRI_ASSERT(std::holds_alternative<Step>(tmp));
   auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
   auto& step = _interior.getStepReference(posPrevious);
@@ -169,7 +185,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
         TRI_ASSERT(step.edgeFetched());
       }
       if (_queue.isBatched()) {
-        _queue.append({NextBatch{}});
+        _provider.addNextBatch(
+            step, [&]() -> void { _queue.append({NextBatch{posPrevious}}); });
       } else {
         _provider.expand(step, posPrevious,
                          [&](Step n) -> void { _queue.append({n}); });
