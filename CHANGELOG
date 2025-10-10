@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improved performance of filtered vector index queries by batching document
+  fetches during index iteration.
+
 * Add API for deployment ID: /_admin/deployment/id .
 
 * Add vertex collections for graph queries using edge collection syntax
