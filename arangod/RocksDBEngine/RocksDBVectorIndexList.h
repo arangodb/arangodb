@@ -123,7 +123,11 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   std::unique_ptr<rocksdb::Iterator> _batchIt;
+  // Contains pairs of filtered ids and their encoded values
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
+
+  // Current element from the _filteredIds, which is the current state of this
+  // iterator
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
       _filteredIdsIt{_filteredIds.end()};
   std::size_t _listNumber;
