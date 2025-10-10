@@ -47,6 +47,8 @@ class FifoQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~FifoQueue() { this->clear(); }
 
+  bool isBatched() { return false; }
+
   void clear() {
     if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));

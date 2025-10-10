@@ -46,6 +46,8 @@ class LifoQueue {
       : _resourceMonitor{resourceMonitor} {}
   ~LifoQueue() { this->clear(); }
 
+  bool isBatched() { return false; }
+
   void clear() {
     if (!_queue.empty()) {
       _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));

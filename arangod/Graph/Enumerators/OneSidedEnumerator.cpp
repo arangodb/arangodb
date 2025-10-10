@@ -168,8 +168,12 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
         _provider.fetchEdges(stepsToFetch);
         TRI_ASSERT(step.edgeFetched());
       }
-      _provider.expand(step, posPrevious,
-                       [&](Step n) -> void { _queue.append({n}); });
+      if (_queue.isBatched()) {
+        _queue.append({NextBatch{}});
+      } else {
+        _provider.expand(step, posPrevious,
+                         [&](Step n) -> void { _queue.append({n}); });
+      }
     }
   } else if constexpr (std::is_same_v<
                            ResultList,
