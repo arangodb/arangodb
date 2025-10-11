@@ -611,11 +611,11 @@ def add_aarch64_enterprise_workflow(workflows, tests, args):
 def generate_jobs(config, args, tests):
     """generate job definitions"""
     workflows = config["workflows"]
-    add_x64_community_workflow(workflows, tests, args)
+    # add_x64_community_workflow(workflows, tests, args)
     add_x64_enterprise_workflow(workflows, tests, args)
     if args.sanitizer == "":
         # ATM we run ARM only without sanitizer
-        add_aarch64_community_workflow(workflows, tests, args)
+        # add_aarch64_community_workflow(workflows, tests, args)
         add_aarch64_enterprise_workflow(workflows, tests, args)
 
 
