@@ -71,31 +71,22 @@ AqlValue::AqlValue(arangodb::ResourceMonitor& resourceMonitor,
     return;
   }
 
-  auto n = static_cast<uint64_t>(length);
-  auto* sh =
-      static_cast<SupervisedHeader*>(::operator new(sizeof(SupervisedHeader)));
-  resourceMonitor.increaseMemoryUsage(sizeof(SupervisedHeader));
-  sh->rm = &resourceMonitor;
+  uint64_t const n = static_cast<uint64_t>(length);
+  constexpr size_t head = sizeof(arangodb::ResourceMonitor*); // 8
+  void* base = ::operator new(head + static_cast<size_t>(n));
+  resourceMonitor.increaseMemoryUsage(head + static_cast<size_t>(n));
 
-  void* p = nullptr;
-  if (adopt) {
-    p = const_cast<uint8_t*>(slice.begin());
-    if (n != 0) {
-      resourceMonitor.increaseMemoryUsage(n);
-    }
-  } else {
-    if (n != 0) {
-      p = ::operator new(static_cast<size_t>(n));
-      std::memcpy(p, slice.begin(), static_cast<size_t>(n));
-      resourceMonitor.increaseMemoryUsage(n);
-    }
+  *reinterpret_cast<arangodb::ResourceMonitor**>(base) = &resourceMonitor;
+
+  auto* payload = static_cast<uint8_t*>(base) + head;
+  if (n != 0) {
+    std::memcpy(payload, slice.begin(), static_cast<size_t>(n));
   }
-  sh->dataPtr = p;
 
-  _data.supervisedSliceMeta.header = sh;
-
-  _data.supervisedSliceMeta.lengthOrigin = encodeTypeOriginLength(
-      AqlValueType::VPACK_SUPERVISED_SLICE, adopt ? 1 : 0, n);
+  _data.supervisedSliceMeta.lengthOrigin =
+    encodeTypeOriginLength(AqlValueType::VPACK_SUPERVISED_SLICE,
+      /* MO = */ 0, /* copy */ n );
+  _data.supervisedSliceMeta.pointer = static_cast<uint8_t*>(base);
 }
 
 /**

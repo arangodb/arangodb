@@ -300,12 +300,18 @@ struct AqlValue final {
         }
       }
       arangodb::ResourceMonitor* getResourceMonitor() const noexcept {
-        return header->rm;
+        // PD points to [ RM* | payload ... ]
+        // So 'pointer' itself is a pointer to a pointer
+        return *reinterpret_cast<arangodb::ResourceMonitor* const*>(pointer);
       }
-      void* getPointer() const noexcept { return header->dataPtr; }
-
-      uint64_t lengthOrigin;     // | AT | MO | 6 x ML |
-      SupervisedHeader* header;  // PD -> header {rm + dataPtr}
+      uint8_t const* getPayload() const noexcept {
+        // payload starts at the 9th byte
+        return pointer + sizeof(arangodb::ResourceMonitor*);
+      }
+      uint64_t lengthOrigin;  // First byte - AqlValue type
+                              // Second byte - Memory origin
+                              // The following 6 bytes  - Length
+      uint8_t* pointer;
     } supervisedSliceMeta;
     static_assert(sizeof(supervisedSliceMeta) == 16,
                   "VPACK_SUPERVISED_SLICE layout must be 16 bytes!");
