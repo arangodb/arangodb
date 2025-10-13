@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-2226: Fix INSERT with overwriteMode: "ignore" failing when run
+  multiple times on smart graph edge collections in cluster mode. The issue
+  occurred when inserting edges that already existed, causing the operation
+  to fail instead of silently ignoring duplicates as expected.
+
 * Fix defaults for inverted indexes and views. Consolidations 5 times
   less frequently, with minimum of 50(1 before) segments and 24M bytes
   (2M before), maximum 200 (10 before) segments and 8G bytes (800M
