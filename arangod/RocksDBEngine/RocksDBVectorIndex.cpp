@@ -31,7 +31,6 @@
 #include <omp.h>
 
 #include "Aql/AstNode.h"
-#include "Basics/SourceLocation.h"
 #include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
@@ -206,8 +205,15 @@ bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
 
   UserVectorIndexDefinition definition;
   velocypack::deserialize(info.get("params"), definition);
-
   if (definition != _definition) {
+    return false;
+  }
+
+  auto storedValues =
+      Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                         /*allowEmpty*/ true,
+                         /*allowExpansion*/ false);
+  if (storedValues != _storedValues) {
     return false;
   }
 

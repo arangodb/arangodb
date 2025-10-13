@@ -35,10 +35,10 @@
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
+#include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
-#include "RocksDBEngine/RocksDBVectorIndex.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -204,16 +204,10 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     auto filterVarsToRegs = extractFilterVarToRegs(
         filterExpression, enumerateNearVectorNode, filterNode);
 
-    auto const* vecIdx = reinterpret_cast<RocksDBVectorIndex*>(
-        enumerateNearVectorNode->index().get());
-    // Get stored values from the vector index
-    auto const& storedValues = vecIdx->storedValues();
+    auto const& storedValues =
+        enumerateNearVectorNode->index()->getStoredFields();
     if (storedValues.empty()) {
-      continue;
-    }
-    if (!vecIdx->hasStoredValues() || storedValues.empty()) {
-      LOG_RULE << "Could not use storedValues, hasStoredValues: "
-               << vecIdx->hasStoredValues()
+      LOG_RULE << "Could not use storedValues:"
                << " storedValues size: " << storedValues.size();
       continue;
     }
