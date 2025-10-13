@@ -664,7 +664,6 @@
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
-            dumpVPack: true
     - dump_maskings:
           options:
             size: medium
