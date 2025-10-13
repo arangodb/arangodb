@@ -240,6 +240,8 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
     arangosh_args = []
     args = []
     if 'args' in definition:
+        if not isinstance(definition['args'], dict):
+            raise Exception(f"expected args to be a key value list! have: {definition['args']}")
         for key, val in definition['args'].items():
             if key == 'moreArgv':
                 args.append(val)
@@ -250,6 +252,8 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
                 else:
                     args.append(val)
     if 'arangosh_args' in definition:
+        if not isinstance(definition['arangosh_args'], dict):
+            raise Exception(f"expected arangosh_args to be a key value list! have: {definition['arangosh_args']}")
         for key, val in definition['arangosh_args'].items():
             arangosh_args.append(f"--{key}")
             if isinstance(val, bool):
@@ -340,13 +344,16 @@ def read_definitions(filename, override_branch):
     if filename.endswith(".yml"):
         with open(filename, "r", encoding="utf-8") as filep:
             config = yaml.safe_load(filep)
-            if "add-yaml" in config:
-                parsed_yaml = {"add-yaml": config["add-yaml"].copy()}
-                del config["add-yaml"]
-            if "jobProperties" in config:
-                testfile_definitions = config["jobProperties"].copy()
-                del config["jobProperties"]
+            filtered_config = []
             for testcase in config:
+                suite_name = list(testcase.keys())[0]
+                if suite_name == "add-yaml":
+                    parsed_yaml = {"add-yaml": copy.deepcopy(testcase["add-yaml"])}
+                elif suite_name == "jobProperties":
+                    testfile_definitions = copy.deepcopy(testcase["jobProperties"])
+                else:
+                    filtered_config.append(testcase)
+            for testcase in filtered_config:
                 suite_name = list(testcase.keys())[0]
                 if suite_name == "serial":
                     tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml))
