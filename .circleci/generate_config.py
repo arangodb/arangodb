@@ -3,13 +3,13 @@
 from collections import namedtuple
 from datetime import date
 import argparse
+import copy
 import json
 import os
 import re
 import sys
 import traceback
 import yaml
-import copy
 
 BuildConfig = namedtuple(
     "BuildConfig", ["arch", "enterprise", "sanitizer", "isNightly"]
@@ -224,9 +224,9 @@ def read_definition_line(line, testfile_definitions, yaml_struct):
         "suites": suites,
         "size": params.get("size", "medium" if is_cluster else "small"),
         "flags": flags,
-        "args": args,
+        "args": args.copy(),
         "arangosh_args": arangosh_args,
-        "params": params,
+        "params": params.copy(),
         "testfile_definitions": testfile_definitions,
         "run_job": run_job,
     }
@@ -244,11 +244,11 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
             if key == 'moreArgv':
                 args.append(val)
             else:
-              args.append(f"--{key}")
-              if isinstance(val, bool):
-                  args.append("true" if val else "false")
-              else:
-                  args.append(val)
+                args.append(f"--{key}")
+                if isinstance(val, bool):
+                    args.append("true" if val else "false")
+                else:
+                    args.append(val)
     if 'arangosh_args' in definition:
         for key, val in definition['arangosh_args'].items():
             arangosh_args.append(f"--{key}")
@@ -295,7 +295,7 @@ def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name):
     args = {}
     generated_name = ""
     if 'args' in definition:
-        args = definition['args']
+        args = definition['args'].copy()
     if isinstance(definition['suites'][0], str):
         generated_name = ','.join(definition['suites'])
     else:
@@ -307,7 +307,7 @@ def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name):
                 optionsJson.append(suite[suite_name]['args'])
             suite_strs.append(suite_name)
         generated_name = ','.join(suite_strs)
-        args['optionsJson'] = json.dumps(optionsJson)
+        args['optionsJson'] = json.dumps(optionsJson, separators=(',', ':'))
     if args != {}:
         generated_definition['args'] = args
     name = generated_name
@@ -333,43 +333,43 @@ def read_definitions(filename, override_branch):
     have_yaml = False
     parsed_yaml = {}
     if filename.endswith(".yml"):
-      with open(filename, "r", encoding="utf-8") as filep:
-          config = yaml.safe_load(filep)
-          for testcase in config:
-              suite_name = list(testcase.keys())[0]
-              if suite_name == "serial":
-                  tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None))
-              elif suite_name == "bucket":
-                  tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None)
-                  None
-              else:
-                  tests.append(read_yaml_suite(suite_name, suite_name, testcase[suite_name], testfile_definitions, None))
+        with open(filename, "r", encoding="utf-8") as filep:
+            config = yaml.safe_load(filep)
+            for testcase in config:
+                suite_name = list(testcase.keys())[0]
+                if suite_name == "serial":
+                    tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None))
+                elif suite_name == "bucket":
+                    tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None)
+                    None
+                else:
+                    tests.append(read_yaml_suite(suite_name, suite_name, testcase[suite_name], testfile_definitions, None))
     else:
-      with open(filename, "r", encoding="utf-8") as filep:
-          for line_no, raw_line in enumerate(filep):
-              line = raw_line.strip()
-              if len(line) == 0:
-                  if have_yaml:
-                      parsed_yaml = yaml.safe_load(yaml_text)
-                      have_yaml = False
-                  continue
-              if line.startswith("#"):
-                  if line[2] == '{':
-                      testfile_definitions = json.loads(line[2:])
-                      if override_branch is not None:
-                          testfile_definitions['branch'] = override_branch
-                  continue  # ignore comments
-              if line == "add-yaml:" or have_yaml:
-                  yaml_text += raw_line + "\n"
-                  have_yaml = True
-                  continue
-              try:
-                  test = read_definition_line(line, testfile_definitions, parsed_yaml)
-                  test["lineNumber"] = line_no
-                  tests.append(test)
-              except Exception as exc:
-                  print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
-                  has_error = True
+        with open(filename, "r", encoding="utf-8") as filep:
+            for line_no, raw_line in enumerate(filep):
+                line = raw_line.strip()
+                if len(line) == 0:
+                    if have_yaml:
+                        parsed_yaml = yaml.safe_load(yaml_text)
+                        have_yaml = False
+                    continue
+                if line.startswith("#"):
+                    if line[2] == '{':
+                        testfile_definitions = json.loads(line[2:])
+                        if override_branch is not None:
+                            testfile_definitions['branch'] = override_branch
+                    continue  # ignore comments
+                if line == "add-yaml:" or have_yaml:
+                    yaml_text += raw_line + "\n"
+                    have_yaml = True
+                    continue
+                try:
+                    test = read_definition_line(line, testfile_definitions, parsed_yaml)
+                    test["lineNumber"] = line_no
+                    tests.append(test)
+                except Exception as exc:
+                    print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
+                    has_error = True
     if has_error:
         raise Exception("abort due to errors")
     return tests, parsed_yaml
@@ -444,7 +444,7 @@ def get_test_size(size, build_config, cluster):
 def create_test_job(test, cluster, build_config, build_jobs, args, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
-    params = test["params"]
+    params = test["params"].copy()
     suite_name = test["name"]
     suffix = params.get("suffix", "")
     if suffix:
@@ -511,7 +511,8 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
         job['driver-git-repo'] = ""
         job['driver-git-branch'] = ""
         job['init_driver_repo_command'] = ""
-    return {test['run_job']: job}
+    test['run_job'] = job
+    return test
 
 
 def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, rta_branch):
@@ -536,16 +537,16 @@ def add_test_definition_jobs_to_workflow(
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
+            jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
+                jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
+            jobs.append(create_test_job(test.copy(), False, build_config, build_jobs, args))
         else:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
+            jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
-            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
+                jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args, 2))
+            jobs.append(create_test_job(test.copy(), False, build_config, build_jobs, args))
 
 
 def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
