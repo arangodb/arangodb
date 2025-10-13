@@ -258,8 +258,15 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
                 arangosh_args.append(val)
     params = validate_params(definition['options'])
 
-    is_cluster = 'type' in params and params['type'] == "cluster"
-
+    is_cluster = False
+    if 'type' in params:
+        if params['type'] == "cluster":
+            is_cluster = True
+            flags.append('cluster')
+        else:
+            flags.append('single')
+    if 'buckets' in params:
+        params['buckets'] = f"{params['buckets']}"
     size = "medium" if is_cluster else "small"
     size = size if not "size" in params else params['size']
 
@@ -315,7 +322,8 @@ def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name):
     bucket_name = definition['name']
     ret = []
     for suite in definition['suites']:
-        ret.append(read_yaml_suite(bucket_name, bucket_name, suite, testfile_definitions, bucket_name))
+        suite_name = list(suite.keys())[0]
+        ret.append(read_yaml_suite(suite_name, suite_name, suite[suite_name], testfile_definitions, bucket_name))
     return ret
 
 def read_definitions(filename, override_branch):
@@ -327,7 +335,6 @@ def read_definitions(filename, override_branch):
     have_yaml = False
     parsed_yaml = {}
     if filename.endswith(".yml"):
-      print(filename)
       with open(filename, "r", encoding="utf-8") as filep:
           config = yaml.safe_load(filep)
           for testcase in config:
@@ -336,7 +343,6 @@ def read_definitions(filename, override_branch):
                   tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None))
               elif suite_name == "bucket":
                   tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None)
-                  print('bucket')
                   None
               else:
                   tests.append(read_yaml_suite(suite_name, suite_name, testcase[suite_name], testfile_definitions, None))
