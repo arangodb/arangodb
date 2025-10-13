@@ -231,7 +231,7 @@ def read_definition_line(line, testfile_definitions, yaml_struct):
         "run_job": run_job,
     }
 
-def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
+def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, yaml_struct):
     """ convert yaml representation into the internal one """
     if not 'options' in definition:
         definition['options'] = {}
@@ -274,6 +274,10 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
         flags.append("coverage" if params["coverage"] else "!coverage")
     if 'sniff' in params:
         flags.append("sniff" if params["sniff"] else "!sniff")
+    if yaml_struct != {}:
+        run_job = yaml_struct['add-yaml']['derives-to']
+    else:
+        run_job = 'run-linux-tests'
     return {
         "bucket": bucket_name,
         "name": name if not "name" in params else params['name'],
@@ -284,9 +288,10 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
         "arangosh_args": arangosh_args.copy(),
         "params": params.copy(),
         "testfile_definitions": testfile_definitions,
+        "run_job": run_job,
     }
 
-def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name):
+def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
     """ convert yaml representation into the internal one """
     generated_definition = {
     }
@@ -313,15 +318,15 @@ def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name):
     name = generated_name
     if 'name' in definition:
         name = definition['name']
-    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, bucket_name)
+    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, bucket_name, yaml_struct)
 
-def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name):
+def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
     """ convert yaml representation into the internal one """
     bucket_name = definition['name']
     ret = []
     for suite in definition['suites']:
         suite_name = list(suite.keys())[0]
-        ret.append(read_yaml_suite(suite_name, suite_name, suite[suite_name], testfile_definitions, bucket_name))
+        ret.append(read_yaml_suite(suite_name, suite_name, suite[suite_name], testfile_definitions, bucket_name, yaml_struct))
     return ret
 
 def read_definitions(filename, override_branch):
@@ -335,15 +340,21 @@ def read_definitions(filename, override_branch):
     if filename.endswith(".yml"):
         with open(filename, "r", encoding="utf-8") as filep:
             config = yaml.safe_load(filep)
+            if "add-yaml" in config:
+                parsed_yaml = {"add-yaml": config["add-yaml"].copy()}
+                del config["add-yaml"]
+            if "jobProperties" in config:
+                testfile_definitions = config["jobProperties"].copy()
+                del config["jobProperties"]
             for testcase in config:
                 suite_name = list(testcase.keys())[0]
                 if suite_name == "serial":
-                    tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None))
+                    tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml))
                 elif suite_name == "bucket":
-                    tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None)
+                    tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml)
                     None
                 else:
-                    tests.append(read_yaml_suite(suite_name, suite_name, testcase[suite_name], testfile_definitions, None))
+                    tests.append(read_yaml_suite(suite_name, suite_name, testcase[suite_name], testfile_definitions, None, parsed_yaml))
     else:
         with open(filename, "r", encoding="utf-8") as filep:
             for line_no, raw_line in enumerate(filep):
