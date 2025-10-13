@@ -46,6 +46,9 @@ struct ModificationOptions : OperationOptions {
   bool ignoreDocumentNotFound{false};
   bool consultAqlWriteFilter{false};
   bool exclusive{false};
+  // only used in smart graph in InsertNode when overwriteMode: "ignore"
+  // to set the alternativeVariable to a non-null
+  // Introduced by solving BTS-2226
   bool ignoreNulls{false};
 };
 
