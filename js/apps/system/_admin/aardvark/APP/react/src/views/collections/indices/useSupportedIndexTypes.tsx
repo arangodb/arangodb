@@ -65,7 +65,7 @@ const indexTypeOptions: {
     value: "inverted"
   },
   {
-    label: "Vector index (beta)",
+    label: "Vector index",
     value: "vector"
   }
 ];
