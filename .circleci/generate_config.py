@@ -265,8 +265,6 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
             flags.append('cluster')
         else:
             flags.append('single')
-    if 'buckets' in params:
-        params['buckets'] = f"{params['buckets']}"
     size = "medium" if is_cluster else "small"
     size = size if not "size" in params else params['size']
 
