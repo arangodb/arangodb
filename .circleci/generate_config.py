@@ -151,18 +151,17 @@ def validate_params(params):
         except Exception as exc:
             raise Exception(f"invalid numeric value: {value}") from exc
 
-    # nothing uses this atm?
-    #def parse_number_or_default(key, default_value=None):
-    #    """check number"""
-    #    if key in params:
-    #        if params[key][0] == "*":  # factor the default
-    #            params[key] = default_value * parse_number(params[key][1:])
-    #        else:
-    #          params[key] = parse_number(params[key])
-    #    elif default_value is not None:
-    #        params[key] = default_value
+    def parse_number_or_default(key, default_value=None):
+        """check number"""
+        if key in params and not isinstance(params[key], int):
+            if params[key][0] == "*":  # factor the default
+                params[key] = default_value * parse_number(params[key][1:])
+            else:
+              params[key] = parse_number(params[key])
+        elif default_value is not None:
+            params[key] = default_value
 
-    # parse_number_or_default("buckets")
+    parse_number_or_default("buckets")
 
     return params
 
