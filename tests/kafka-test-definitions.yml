@@ -1,11 +1,12 @@
 - jobProperties:
-    container_suffix: -java:
+    container_suffix: '-java:'
     second_repo: git@github.com:arangodb/kafka-connect-arangodb.git
     branch: main
+    init_command: ""
 - add-yaml:
-    - derives: run-linux-tests
-    - derives-to: kafka-run-linux-tests
-    - docker:
+    derives: run-linux-tests
+    derives-to: kafka-run-linux-tests
+    docker:
       - image: << parameters.docker_image >>
       - image: docker.io/bitnamilegacy/kafka:3.9
         name: kafka-1
@@ -55,25 +56,20 @@
           - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092
           - SCHEMA_REGISTRY_HOST_NAME=kafka-schema-registry
 
-# test_suite [flags ...] -- [additional-params...]
-# for possible flags and params see
-# https://github.com/arangodb/oskar#testing
-
-
 - kafka_driver:
     options:
-      - priority 500
-      - type: single
-      - size: large
+      priority: 500
+      type: single
+      size: large
     args:
       extremeVerbosity: true
       kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
       kafkaSchemaHost: http://kafka-schema-registry:8081
 - kafka_driver:
     options:
-      - priority: 500
-      - type: cluster
-      - size: large
+      priority: 500
+      type: cluster
+      size: large
     args:
       extremeVerbosity: true
       kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
