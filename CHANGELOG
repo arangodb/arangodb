@@ -1,6 +1,9 @@
 3.12.5.5 (XXXX-XX-XX)
 ---------------------
 
+* Fix BTS-2233: Fix a concurrency issue in AQL which can occur if an AQL
+  query is executed in the context of a streaming transaction.
+
 * Updated ArangoDB Starter to v0.19.13.
 
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
