@@ -1,0 +1,17 @@
+- jobProperties:
+    container_suffix: -java:
+    second_repo: git@github.com:arangodb/arangodb-java-driver.git
+    branch: main
+
+- java_driver:
+    options:
+      priority: 500
+      type: single
+    args:
+      extremeVerbosity: true
+- java_driver:
+    options:
+      priority: 500
+      type: cluster
+    args:
+      extremeVerbosity: true
