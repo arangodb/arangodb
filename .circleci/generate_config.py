@@ -308,14 +308,14 @@ def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name, 
         generated_name = ','.join(definition['suites'])
     else:
         suite_strs = []
-        optionsJson = []
+        options_json = []
         for suite in definition['suites']:
             suite_name = list(suite.keys())[0]
             if 'args' in suite[suite_name]:
-                optionsJson.append(suite[suite_name]['args'])
+                options_json.append(suite[suite_name]['args'])
             suite_strs.append(suite_name)
         generated_name = ','.join(suite_strs)
-        args['optionsJson'] = json.dumps(optionsJson, separators=(',', ':'))
+        args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
     if args != {}:
         generated_definition['args'] = args
     name = generated_name
