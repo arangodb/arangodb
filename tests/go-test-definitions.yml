@@ -1,11 +1,8 @@
 - jobProperties:
-    container_suffix: -go:
+    container_suffix: '-go:'
     second_repo: git@github.com:arangodb/go-driver.git
     branch: master
-# test_suite [flags ...] -- [additional-params...]
-# for possible flags and params see
-# https://github.com/arangodb/oskar#testing
-
+    init_command: ''
 
 - go_driver:
     options:
@@ -14,14 +11,14 @@
       size: medium
       suffix: v1
     args:
-      goDriverVersion 1
+      goDriverVersion: '1'
 - go_driver:
     options:
       priority: 500
       type: cluster
       suffix: v1
     args:
-      goDriverVersion 1
+      goDriverVersion: '1'
 - go_driver:
     options:
       priority: 500
@@ -29,11 +26,11 @@
       size: medium
       suffix: v2
     args:
-      goDriverVersion 2
+      goDriverVersion: '2'
 - go_driver:
     options:
       priority: 500
       type: cluster
       suffix: v2
     args:
-      goDriverVersion 2
+      goDriverVersion: '2'
