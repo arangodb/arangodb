@@ -224,9 +224,9 @@ def read_definition_line(line, testfile_definitions, yaml_struct):
         "suites": suites,
         "size": params.get("size", "medium" if is_cluster else "small"),
         "flags": flags,
-        "args": args.copy(),
+        "args": args,
         "arangosh_args": arangosh_args,
-        "params": params.copy(),
+        "params": params,
         "testfile_definitions": testfile_definitions,
         "run_job": run_job,
     }
@@ -280,9 +280,9 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name):
         "suites": suite,
         "size": size,
         "flags": flags,
-        "args": args,
-        "arangosh_args": arangosh_args,
-        "params": params,
+        "args": args.copy(),
+        "arangosh_args": arangosh_args.copy(),
+        "params": params.copy(),
         "testfile_definitions": testfile_definitions,
     }
 
@@ -444,7 +444,7 @@ def get_test_size(size, build_config, cluster):
 def create_test_job(test, cluster, build_config, build_jobs, args, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
-    params = test["params"].copy()
+    params = test["params"]
     suite_name = test["name"]
     suffix = params.get("suffix", "")
     if suffix:
@@ -511,8 +511,7 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
         job['driver-git-repo'] = ""
         job['driver-git-branch'] = ""
         job['init_driver_repo_command'] = ""
-    test['run_job'] = job
-    return test
+    return {test['run_job']: job}
 
 
 def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, rta_branch):
@@ -537,16 +536,16 @@ def add_test_definition_jobs_to_workflow(
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args, 2))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test.copy(), False, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
         else:
-            jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test.copy(), True, build_config, build_jobs, args, 2))
-            jobs.append(create_test_job(test.copy(), False, build_config, build_jobs, args))
+                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
+            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
 
 
 def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
