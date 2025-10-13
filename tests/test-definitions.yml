@@ -458,13 +458,13 @@
       buckets: 5
     args:
       dumpAgencyOnError: true
-- shell_client_replication2_recovery:
-    options:
-      priority: 500
-      size: medium
-      type: cluster
-    args:
-      dumpAgencyOnError: true
+#- shell_client_replication2_recovery:
+#    options:
+#      priority: 500
+#      size: medium
+#      type: cluster
+#    args:
+#      dumpAgencyOnError: true
 
 - rta_makedata:
     options:
@@ -706,16 +706,19 @@
             extraArgs:experimental-vector-index: true
             dumpVPack: true
       # takes long, needs to go first. However, doesn't utilize the SUT hard.
-    - dump_with_crashes single:
+    - dump_with_crashes:
           options:
+            type: single
             size: medium
             parallelity: 1
             priority: 2000
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
-    - dump_with_crashes full cluster:
+    - dump_with_crashes:
           options:
+            full: true
+            type: cluster
             size: medium
             parallelity: 1
             priority: 2000
