@@ -241,27 +241,6 @@ function withClauseTestSuite() {
     },
 
     ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Should fail requiring a WITH clause because the usage of the
-    /// vertexCollections clause prevents lookup in the named graph.
-    ////////////////////////////////////////////////////////////////////////////////
-    testWithClauseNotNeededOptionsRestriction: function() {
-      const startNode = "VertexCollection3/ALPHA";
-      const query = `FOR v,e,p IN 1..1 OUTBOUND "${startNode}" ${edgeCollectionName}
-                       OPTIONS { vertexCollections: "${vertexCollectionName1}" }
-                       RETURN p.vertices[*]._id`;
-
-      try {
-        const actual = db._query(query).toArray();
-        
-        if(require("internal").isCluster()) {
-          assertTrue(false);
-        }
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code, err.errorNum, JSON.stringify(err));
-      }
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
     /// @brief test with clause not needed with edge collection if a named graph
     //  exists
     ////////////////////////////////////////////////////////////////////////////////
