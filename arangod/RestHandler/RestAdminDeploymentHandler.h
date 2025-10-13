@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2025 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Business Source License 1.1 (the "License");
@@ -18,30 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/types.h"
-#include "Cluster/ClusterInfo.h"
+#include "Futures/Future.h"
+#include "Futures/Unit.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
-struct ResourceMonitor;
 
-namespace aql {
-class QueryContext;
-}
-namespace graph {
-class TraverserCache;
-struct BaseOptions;
+class RestAdminDeploymentHandler : public RestVocbaseBaseHandler {
+ public:
+  RestAdminDeploymentHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
+  ~RestAdminDeploymentHandler() override = default;
 
-namespace CacheFactory {
-TraverserCache* CreateCache(
-    arangodb::aql::QueryContext& query, bool activateDocumentCache,
-    std::unordered_map<ServerID, aql::EngineId> const* engines,
-    BaseOptions* opts);
+ public:
+  auto executeAsync() -> futures::Future<futures::Unit> override;
+  char const* name() const override final {
+    return "RestAdminDeploymentHandler";
+  }
+  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
 
-}  // namespace CacheFactory
-}  // namespace graph
+ private:
+  static std::string const Id;
+
+  void handleId();
+};
+
 }  // namespace arangodb

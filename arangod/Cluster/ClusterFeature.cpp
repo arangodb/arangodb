@@ -23,6 +23,9 @@
 
 #include "ClusterFeature.h"
 
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_io.hpp>
+
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
@@ -46,6 +49,7 @@
 #include "ProgramOptions/Section.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/ServerIdFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1358,4 +1362,77 @@ void ClusterFeature::runConnectivityCheck() {
       }
     }
   }
+}
+
+ResultT<std::string> ClusterFeature::getDeploymentId() const {
+  // Check if ServerState is available (not during early startup or shutdown)
+  if (ServerState::instance() == nullptr) {
+    return ResultT<std::string>::error(
+        TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
+        "server state not yet available or already shut down");
+  }
+
+  std::string deploymentId;
+
+  // For single servers, use the server ID
+  if (ServerState::instance()->isSingleServer()) {
+    // Create a UUID with the lower 48 bits from server ID
+    // and constant upper 80 bits
+    boost::uuids::uuid uuid;
+
+    // Get the server ID (only lower 48 bits are usable)
+    uint64_t serverId = ServerIdFeature::getId().id();
+    uint64_t serverIdLower48 = serverId & 0xFFFFFFFFFFFFULL;
+
+    // Set the first 10 bytes (80 bits) to a constant pattern
+    // Using a recognizable pattern for ArangoDB single server deployment IDs
+    uuid.data[0] = 0x61;  // 'a'
+    uuid.data[1] = 0x72;  // 'r'
+    uuid.data[2] = 0x61;  // 'a'
+    uuid.data[3] = 0x6e;  // 'n'
+    uuid.data[4] = 0x67;  // 'g'
+    uuid.data[5] = 0x6f;  // 'o'
+    uuid.data[6] = 0x40;  // Version 4: random bits
+    uuid.data[7] = 0x00;
+    uuid.data[8] = 0x00;
+    uuid.data[9] = 0x00;
+
+    // Set the last 6 bytes (48 bits) to the server ID
+    uuid.data[10] = static_cast<uint8_t>((serverIdLower48 >> 40) & 0xFF);
+    uuid.data[11] = static_cast<uint8_t>((serverIdLower48 >> 32) & 0xFF);
+    uuid.data[12] = static_cast<uint8_t>((serverIdLower48 >> 24) & 0xFF);
+    uuid.data[13] = static_cast<uint8_t>((serverIdLower48 >> 16) & 0xFF);
+    uuid.data[14] = static_cast<uint8_t>((serverIdLower48 >> 8) & 0xFF);
+    uuid.data[15] = static_cast<uint8_t>(serverIdLower48 & 0xFF);
+
+    deploymentId = boost::uuids::to_string(uuid);
+    return ResultT<std::string>::success(std::move(deploymentId));
+  } else if (ServerState::instance()->isCoordinator()) {
+    // In cluster mode, use AgencyCache to read cluster ID synchronously
+    if (_agencyCache == nullptr) {
+      return ResultT<std::string>::error(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                                         "agency cache not available");
+    }
+
+    try {
+      // Read from AgencyCache (path "Cluster" will be prefixed with "arango/")
+      VPackBuilder builder;
+      _agencyCache->get(builder, "Cluster");
+
+      VPackSlice slice = builder.slice();
+      if (slice.isString()) {
+        deploymentId = slice.copyString();
+        return ResultT<std::string>::success(std::move(deploymentId));
+      }
+
+      return ResultT<std::string>::error(
+          TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+          "cluster ID not found in agency cache");
+    } catch (std::exception const& e) {
+      return ResultT<std::string>::error(TRI_ERROR_HTTP_SERVER_ERROR, e.what());
+    }
+  }
+
+  return ResultT<std::string>::error(TRI_ERROR_INTERNAL,
+                                     "unexpected server state");
 }

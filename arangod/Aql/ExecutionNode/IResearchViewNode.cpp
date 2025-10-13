@@ -1160,7 +1160,7 @@ IResearchViewNode* IResearchViewNode::getByVar(
 IResearchViewNode::IResearchViewNode(
     aql::ExecutionPlan& plan, aql::ExecutionNodeId id, TRI_vocbase_t& vocbase,
     std::shared_ptr<LogicalView const> view, aql::Variable const& outVariable,
-    aql::AstNode* filterCondition, aql::AstNode* options,
+    aql::AstNode const* filterCondition, aql::AstNode const* options,
     std::vector<SearchFunc>&& scorers)
     : aql::ExecutionNode{&plan, id},
       _vocbase{vocbase},

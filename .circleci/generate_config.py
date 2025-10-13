@@ -9,6 +9,7 @@ import re
 import sys
 import traceback
 import yaml
+import copy
 
 BuildConfig = namedtuple(
     "BuildConfig", ["arch", "enterprise", "sanitizer", "isNightly"]
@@ -94,6 +95,9 @@ def parse_arguments():
         "--extra-args", type=str, help="additional arguments to append to all testing.js"
     )
     parser.add_argument(
+        "--arangod-without-v8", type=str, help="whether we run a setup without .js"
+    )
+    parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
         action="store_true",
@@ -167,7 +171,7 @@ def validate_flags(flags):
         raise Exception("`full` and `!full` specified for the same test")
 
 
-def read_definition_line(line, testfile_definitions):
+def read_definition_line(line, testfile_definitions, yaml_struct):
     """parse one test definition line"""
     bits = line.split()
     if len(bits) < 1:
@@ -207,6 +211,10 @@ def read_definition_line(line, testfile_definitions):
 
     if len(arangosh_args) == 0:
         arangosh_args = ""
+    if yaml_struct != {}:
+        run_job = yaml_struct['add-yaml']['derives-to']
+    else:
+        run_job = 'run-linux-tests'
     return {
         "name": params.get("name", suites),
         "suites": suites,
@@ -216,6 +224,7 @@ def read_definition_line(line, testfile_definitions):
         "arangosh_args": arangosh_args,
         "params": params,
         "testfile_definitions": testfile_definitions,
+        "run_job": run_job,
     }
 
 
@@ -224,19 +233,29 @@ def read_definitions(filename, override_branch):
     tests = []
     has_error = False
     testfile_definitions = {}
+    yaml_text = ""
+    have_yaml = False
+    parsed_yaml = {}
     with open(filename, "r", encoding="utf-8") as filep:
-        for line_no, line in enumerate(filep):
-            line = line.strip()
+        for line_no, raw_line in enumerate(filep):
+            line = raw_line.strip()
             if len(line) == 0:
+                if have_yaml:
+                    parsed_yaml = yaml.safe_load(yaml_text)
+                    have_yaml = False
                 continue
-            elif line.startswith("#"):
+            if line.startswith("#"):
                 if line[2] == '{':
                     testfile_definitions = json.loads(line[2:])
                     if override_branch is not None:
                         testfile_definitions['branch'] = override_branch
                 continue  # ignore comments
+            if line == "add-yaml:" or have_yaml:
+                yaml_text += raw_line + "\n"
+                have_yaml = True
+                continue
             try:
-                test = read_definition_line(line, testfile_definitions)
+                test = read_definition_line(line, testfile_definitions, parsed_yaml)
                 test["lineNumber"] = line_no
                 tests.append(test)
             except Exception as exc:
@@ -244,7 +263,7 @@ def read_definitions(filename, override_branch):
                 has_error = True
     if has_error:
         raise Exception("abort due to errors")
-    return tests
+    return tests, parsed_yaml
 
 
 def filter_tests(args, tests, enterprise, nightly):
@@ -352,7 +371,8 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
     if suite_name == "shell_client_aql" and build_config.isNightly and not cluster:
         # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size
         job["size"] = get_test_size("medium+", build_config, cluster)
-
+    if 'more_yaml' in test:
+        job ['foo'] = test['more_yaml']
     sub_extra_args = test["args"].copy()
     if cluster:
         sub_extra_args += ["--replicationVersion", f"{replication_version}"]
@@ -382,7 +402,7 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
         job['driver-git-repo'] = ""
         job['driver-git-branch'] = ""
         job['init_driver_repo_command'] = ""
-    return {"run-linux-tests": job}
+    return {test['run_job']: job}
 
 
 def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, rta_branch):
@@ -456,7 +476,8 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
         add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs)
     if args.ui == "only":
         return
-    if build_config.enterprise:
+    # TODO: QA-698
+    if build_config.enterprise and args.arangod_without_v8 != 'true':
         workflow["jobs"].append(
             {
                 "run-hotbackup-tests": {
@@ -665,9 +686,12 @@ def main():
             args.extra_args = []
         else:
             args.extra_args = args.extra_args[1:].split(' ')
+        if args.arangod_without_v8 == "true":
+            args.extra_args += [ '--skipServerJS', 'true']
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = []
+        parsed_yamls = []
         for one_definition in args.definitions:
             override_branch = None
             if args.test_branches is not None and args.test_branches != "":
@@ -678,13 +702,27 @@ def main():
                             override_branch = branch
                 except Exception as ex:
                     raise Exception(f"Syntax error in --test-branches: {branch_name_pair} must be 'name=branch:name2=branch2'") from ex
-            tests += read_definitions(one_definition, override_branch)
+            (new_tests, new_parsed_yaml) = read_definitions(one_definition, override_branch)
+            tests += new_tests
+            parsed_yamls.append(new_parsed_yaml)
         # if args.validate_only:
         #    return  # nothing left to do
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
                 generate_jobs(config, args, tests)
+                for one_yaml in parsed_yamls:
+                    if one_yaml != {}:
+                        original_job = one_yaml['add-yaml']['derives']
+                        new_job = one_yaml['add-yaml']['derives-to']
+                        del one_yaml['add-yaml']['derives-to']
+                        del one_yaml['add-yaml']['derives']
+                        orig_test_job = copy.deepcopy(config['jobs']['run-linux-tests'])
+                        new_job_definition = {
+                            **orig_test_job,
+                            **one_yaml['add-yaml']
+                        }
+                        config['jobs'][new_job] = new_job_definition
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)

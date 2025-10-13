@@ -58,8 +58,17 @@ const testPaths = {
 // / @brief TEST: resilience*
 // //////////////////////////////////////////////////////////////////////////////
 
-var _resilience = function(path, enableAliveMonitor) {
+var _resilience = function(path, enableAliveMonitor, skipServerJS) {
   this.func = function resilience (options) {
+    if (skipServerJS && options.skipServerJS) {
+      return {
+        [path]: {
+          status: true,
+          message: 'test needs v8 on the server. please recompile with -DUSE_V8=On'
+        },
+        status: true
+      };
+    }
     let suiteName = path;
     let localOptions = _.clone(options);
     localOptions.cluster = true;
@@ -87,15 +96,15 @@ var _resilience = function(path, enableAliveMonitor) {
   };
 };
 
-const resilienceMove = (new _resilience('resilience_move', false)).func;
-const resilienceMoveView = (new _resilience('resilience_move_view', true)).func;
-const resilienceRepair = (new _resilience('resilience_repair', true)).func;
-const resilienceFailover = (new _resilience('resilience_failover', false)).func;
-const resilienceFailoverFailure = (new _resilience('resilience_failover_failure', false)).func;
-const resilienceFailoverView = (new _resilience('resilience_failover_view', false)).func;
-const resilienceTransactions = (new _resilience('resilience_transactions', false)).func;
-const resilienceSharddist = (new _resilience('resilience_sharddist', true)).func;
-const resilienceAnalyzers = (new _resilience('resilience_analyzers', true)).func;
+const resilienceMove = (new _resilience('resilience_move', false, false)).func;
+const resilienceMoveView = (new _resilience('resilience_move_view', true, false)).func;
+const resilienceRepair = (new _resilience('resilience_repair', true, false)).func;
+const resilienceFailover = (new _resilience('resilience_failover', false, false)).func;
+const resilienceFailoverFailure = (new _resilience('resilience_failover_failure', false, false)).func;
+const resilienceFailoverView = (new _resilience('resilience_failover_view', false, false)).func;
+const resilienceTransactions = (new _resilience('resilience_transactions', false, true)).func;
+const resilienceSharddist = (new _resilience('resilience_sharddist', true, false)).func;
+const resilienceAnalyzers = (new _resilience('resilience_analyzers', true, false)).func;
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: client resilience

@@ -39,12 +39,15 @@
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
+#include "Aql/QueryContext.h"
 #include "Assertions/Assert.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
 #include "Indexes/VectorIndexDefinition.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
+#include "Basics/ResourceUsage.h"
+#include "Basics/SupervisedBuffer.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -170,8 +173,8 @@ std::pair<AstNode const*, bool> getApproxNearExpression(
 
 // Currently this only returns nProbe, in the future it might be possible to
 // set other search parameters
-SearchParameters getSearchParameters(
-    auto const* calculationNodeExpressionNode) {
+SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
+                                     ResourceMonitor& resourceMonitor) {
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
 
@@ -181,7 +184,9 @@ SearchParameters getSearchParameters(
         approxFunctionParameters->getMemberUnchecked(2);
 
     SearchParameters searchParameters;
-    VPackBuilder builder;
+    // Buffer won't escape from this function's scope
+    velocypack::SupervisedBuffer sb(resourceMonitor);
+    VPackBuilder builder(sb);
     searchParametersNode->toVelocyPackValue(builder);
     if (auto const res = velocypack::deserializeWithStatus(builder.slice(),
                                                            searchParameters);
@@ -242,6 +247,7 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 }
 }  // namespace
 
+
 // Vector Index Optimization Rule
 //
 // This rule optimizes queries that use vector similarity search with
@@ -260,9 +266,8 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 // Filter Pushdown:
 // When a filter expression is detected, the rule pushes it down to the
 // EnumerateNearVectorNode for early evaluation during index traversal. This
-// optimization removes both the FILTER node and its associated CALCULATION
-// node. This transformation is safe because previous optimization rules have
-// already eliminated trivial filters.
+// optimization removes the FILTER node.  This transformation is safe because
+// previous optimization rules have already eliminated trivial filters.
 void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
@@ -290,7 +295,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     };
     skipOverCalculationNodes();
 
-    // We tolerate filter node and handle it in another rule
+    // We tolerate post filtering
+    // For now we can handle only a single FILTER statement
     if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
       currentNode = currentNode->getFirstParent();
       triggerFilterOptimization = true;
@@ -336,7 +342,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         continue;
       }
 
-      auto searchParameters = getSearchParameters(approxNearExpression);
+      auto searchParameters = getSearchParameters(
+          approxNearExpression, plan->getAst()->query().resourceMonitor());
 
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node

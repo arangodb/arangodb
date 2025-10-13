@@ -95,8 +95,6 @@ class EnumerateNearVectorNode : public ExecutionNode,
   void doToVelocyPack(arangodb::velocypack::Builder& builder,
                       unsigned flags) const final;
 
-  RegisterId getRegisterId(VariableId const var) const;
-
  private:
   /// @brief input variable to read the query point from
   Variable const* _inVariable;

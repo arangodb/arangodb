@@ -40,6 +40,7 @@
 #include <memory>
 #include <string_view>
 #include <type_traits>
+#include <Aql/ExecutionEngine.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -116,9 +117,9 @@ std::unique_ptr<ExecutionBlock> DistributeNode::createBlock(
 
   auto inRegs = RegIdSet{regId};
   auto registerInfos = createRegisterInfos(std::move(inRegs), {});
-  auto infos =
-      DistributeExecutorInfos(clients(), collection(), regId, _attribute,
-                              getScatterType(), getSatellites());
+  auto infos = DistributeExecutorInfos(
+      clients(), collection(), regId, _attribute, getScatterType(),
+      getSatellites(), engine.getQuery().resourceMonitor());
 
   return std::make_unique<ExecutionBlockImpl<DistributeExecutor>>(
       &engine, this, std::move(registerInfos), std::move(infos));

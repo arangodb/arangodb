@@ -43,7 +43,6 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/ClusterGraphDatalake.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Types.h"
 #include "Network/ClusterUtils.h"

@@ -26,7 +26,6 @@
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterMethods.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Graph/Cursors/DBServerEdgeCursor.h"
 #include "Graph/Cursors/DBServerIndexCursor.h"
 #include "Indexes/Index.h"
@@ -197,15 +196,13 @@ double ShortestPathOptions::weightEdge(VPackSlice edge) const {
 }
 
 std::unique_ptr<EdgeCursor> ShortestPathOptions::buildCursor(bool backward) {
-  ensureCache();
-
   TRI_ASSERT(not _isCoordinator);
 
   return std::make_unique<
       graph::DBServerEdgeCursor<graph::DBServerIndexCursor>>(
       graph::DBServerEdgeCursor(graph::createDBServerIndexCursors(
           backward ? _reverseLookupInfos : _baseLookupInfos, _tmpVar, trx(),
-          cache(), query().resourceMonitor())));
+          stats(), query().resourceMonitor())));
 }
 
 auto ShortestPathOptions::estimateDepth() const noexcept -> uint64_t {

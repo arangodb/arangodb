@@ -116,7 +116,7 @@ MAINTAINER Max Neunhoeffer <max@arangodb.com>
 ARG ARCH="aarch64"
 ARG COMPILER_VERSION
 ARG CLANG_VERSION
-ARG SCCACHE_VERSION="0.9.1"
+ARG SCCACHE_VERSION="0.10.0"
 
 # We provide gcc 13.2.0 as well as clang 19 (latest) from LLVM
 
@@ -155,7 +155,7 @@ COPY --from=openmp /opt/omp /opt/omp
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.5", "2" ]
+RUN [ "/tools/install.sh", "3.5", "4" ]
 
 COPY ./scripts /scripts
 

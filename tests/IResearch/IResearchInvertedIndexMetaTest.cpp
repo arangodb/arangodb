@@ -811,7 +811,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
             meta._version);
   ASSERT_EQ(2, meta._cleanupIntervalStep);
   ASSERT_EQ(1000, meta._commitIntervalMsec);
-  ASSERT_EQ(1000, meta._consolidationIntervalMsec);
+  ASSERT_EQ(5000, meta._consolidationIntervalMsec);
   ASSERT_EQ(0, meta._writebufferActive);
   ASSERT_EQ(64, meta._writebufferIdle);
   ASSERT_EQ(33554432, meta._writebufferSizeMax);
@@ -831,7 +831,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
     ASSERT_TRUE(valueSlice.isNumber());
     size_t segmentsBytesFloor;
     ASSERT_TRUE(getNumber(segmentsBytesFloor, valueSlice));
-    ASSERT_EQ(2097152, segmentsBytesFloor);
+    ASSERT_EQ(24 * (1ul << 20), segmentsBytesFloor);
   }
   {
     ASSERT_TRUE(propSlice.hasKey("segmentsBytesMax"));
@@ -839,7 +839,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
     ASSERT_TRUE(valueSlice.isNumber());
     size_t segmentsBytesMax;
     ASSERT_TRUE(getNumber(segmentsBytesMax, valueSlice));
-    ASSERT_EQ(5368709120, segmentsBytesMax);
+    ASSERT_EQ(8 * (1ul << 30), segmentsBytesMax);
   }
   {
     ASSERT_TRUE(propSlice.hasKey("segmentsMax"));
@@ -847,7 +847,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
     ASSERT_TRUE(typeSlice.isNumber());
     size_t segmentsMax;
     ASSERT_TRUE(getNumber(segmentsMax, typeSlice));
-    ASSERT_EQ(10, segmentsMax);
+    ASSERT_EQ(200, segmentsMax);
   }
   {
     ASSERT_TRUE(propSlice.hasKey("segmentsMin"));
@@ -855,7 +855,7 @@ TEST_F(IResearchInvertedIndexMetaTest, testDefaults) {
     ASSERT_TRUE(valueSlice.isNumber());
     size_t segmentsMin;
     ASSERT_TRUE(getNumber(segmentsMin, valueSlice));
-    ASSERT_EQ(1, segmentsMin);
+    ASSERT_EQ(50, segmentsMin);
   }
   {
     ASSERT_TRUE(propSlice.hasKey("minScore"));

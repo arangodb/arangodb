@@ -123,13 +123,14 @@ struct RocksDBInvertedListsFilteringIterator final
   [[nodiscard]] bool is_available() const override;
 
   [[nodiscard]] bool searchFilteredIds();
+  // This should be only called when we have filterExpression
 
   void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
  private:
-  void setToValidIterator();
+  void skipOverFilteredDocuments();
 
   constexpr static auto kBatchSize{1000};
 
@@ -137,6 +138,9 @@ struct RocksDBInvertedListsFilteringIterator final
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
+
+  // Current element from the _filteredIds, which is the current state of this
+  // iterator
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
       _filteredIdsIt{_filteredIds.end()};
 };

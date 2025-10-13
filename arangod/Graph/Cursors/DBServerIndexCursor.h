@@ -27,6 +27,7 @@
 #include <vector>
 #include <optional>
 
+#include "Aql/TraversalStats.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/Cursors/EdgeCursor.h"
 #include "Aql/AqlValue.h"
@@ -50,7 +51,6 @@ class Methods;
 }
 
 namespace graph {
-class TraverserCache;
 
 struct DBServerIndexCursor {
   void all(EdgeCursor::Callback const& callback);
@@ -63,7 +63,8 @@ struct DBServerIndexCursor {
                       size_t cursorId, uint16_t coveringIndexPosition,
                       aql::AstNode* indexCondition,
                       std::optional<size_t> conditionMemberToUpdate,
-                      transaction::Methods* trx, TraverserCache* traverserCache,
+                      transaction::Methods* trx,
+                      std::shared_ptr<aql::TraversalStats> stats,
                       aql::Variable const* tmpVar, ResourceMonitor& monitor)
       : _idxHandle{idxHandle},
         _cursorId{cursorId},
@@ -71,10 +72,9 @@ struct DBServerIndexCursor {
         _indexCondition{indexCondition},
         _conditionMemberToUpdate{conditionMemberToUpdate},
         _trx{trx},
-        _traverserCache{traverserCache},
         _tmpVar{tmpVar},
-        _monitor{monitor} {
-    TRI_ASSERT(_traverserCache != nullptr);
+        _monitor{monitor},
+        _stats{stats} {
     _cache.reserve(1000);
   }
 
@@ -100,18 +100,19 @@ struct DBServerIndexCursor {
   std::optional<size_t> _conditionMemberToUpdate;  // "
 
   transaction::Methods* _trx;
-  TraverserCache* _traverserCache;
   aql::Variable const* _tmpVar;  // only needed in ctor and rearm
   ResourceMonitor& _monitor;     // only needed in ctor and rearm
 
   std::vector<LocalDocumentId> _cache;
   size_t _cachePos = 0;
+
+  std::shared_ptr<aql::TraversalStats> _stats;
 };
 
 auto createDBServerIndexCursors(
     std::vector<BaseOptions::LookupInfo> const& lookupInfos,
     aql::Variable const* tmpVar, transaction::Methods* trx,
-    TraverserCache* traverserCache, ResourceMonitor& monitor)
+    std::shared_ptr<aql::TraversalStats> stats, ResourceMonitor& monitor)
     -> std::vector<DBServerIndexCursor>;
 
 }  // namespace graph

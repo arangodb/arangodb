@@ -103,7 +103,15 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
           index, collection, searchParametersContext.trx, listNumber, codeSize),
       _searchParametersContext(searchParametersContext) {
   TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
-  setToValidIterator();
+  RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
+      searchParametersContext.trx, collection->id());
+
+  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
+  _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
+    TRI_ASSERT(opts.prefix_same_as_start);
+  });
+  _it->Seek(_rocksdbKey.string());
+  skipOverFilteredDocuments();
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIterator::is_available() const {
@@ -181,7 +189,7 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
   return true;
 }
 
-void RocksDBInvertedListsFilteringIterator::setToValidIterator() {
+void RocksDBInvertedListsFilteringIterator::skipOverFilteredDocuments() {
   while (_filteredIdsIt == _filteredIds.end()) {
     if (!searchFilteredIds()) {
       // If we enter here we could not produce any documents
@@ -191,10 +199,10 @@ void RocksDBInvertedListsFilteringIterator::setToValidIterator() {
 }
 
 void RocksDBInvertedListsFilteringIterator::next() {
-  setToValidIterator();
+  skipOverFilteredDocuments();
   ++_filteredIdsIt;
   if (_filteredIdsIt == _filteredIds.end()) {
-    setToValidIterator();
+    skipOverFilteredDocuments();
   }
 }
 
