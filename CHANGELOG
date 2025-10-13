@@ -1,8 +1,10 @@
 3.12.5.5 (XXXX-XX-XX)
 ---------------------
 
-* Fix BTS-2233: Fix a concurrency issue in AQL which can occur if an AQL
-  query is executed in the context of a streaming transaction.
+* Fix BTS-2233: Starting an AQL query inside a streaming transaction could
+  result in a race where two threads could try to work with the same
+  ExecutionBlock. There are safeguards in place to detect that, which would
+  log some backtraces and abort the query with an error.
 
 * Updated ArangoDB Starter to v0.19.13.
 
@@ -128,7 +130,7 @@
 
 * Improved the error message displayed when the APPROX_NEAR function fails to
   apply a vector index.
- 
+
 * Upgrade LZ4 to 1.10.0
 
 * Fix BTS-2135: A global lock on the query registry was in some cases
@@ -162,7 +164,7 @@
 
 * Fix BTS-2119: The optimization rule `async-prefetch` could cause crashes when
   a query aborts early, e.g. due to a runtime error, the query being killed, or
-  the memory limit being reached. 
+  the memory limit being reached.
 
 * Upgraded OpenSSL to 3.5.0.
 
@@ -835,24 +837,24 @@
       FOR v, e, p IN 1..2 OUTBOUND 'vertex/123' edges OPTIONS {useCache:false}
         ...
 
-* Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries 
+* Fixed MDS-1225: reloading of AQL user-defined functions inside AQL queries
   could cause trouble if the `_aqlfunctions` collection is located on different
   DB server than the leader shards of other collections used in the same query.
 
-* Fix comparison of numeric values in AQL to bring it in line with the 
+* Fix comparison of numeric values in AQL to bring it in line with the
   now correct VPack numerical sorting.
 
 * Include LANGUAGE file in hotbackups. This is necessary to be able to detect
   locale changes across a hotbackup create/restore process.
 
 * Fix sorting behaviour of VelocyPack values w.r.t. numbers. This has an
-  impact on indexes indexing VPackValues. Therefore, after an upgrade the 
+  impact on indexes indexing VPackValues. Therefore, after an upgrade the
   old sorting order will be retained to allow smooth upgrades. Newly started
   instances with a fresh database directory will only use the new sorting
-  method. There is also a migration API under 
-  GET /_admin/cluster/vpackSortMigration/check and 
+  method. There is also a migration API under
+  GET /_admin/cluster/vpackSortMigration/check and
   PUT /_admin/cluster/vpackSortMigration/migrate to check for problematic
-  indexes and - provided there are none - to migrate the instance to 
+  indexes and - provided there are none - to migrate the instance to
   the new sorting order.
 
 * Forcefully kill all running AQL queries on server shutdown.
@@ -877,20 +879,20 @@
   - `stream`: whether or not the query was a streaming AQL query
   - `modificationQuery`: whether or not the query was a modification query
   - `warnings`: number of warnings issued by the query
-  - `exitCode`: exit code of the query (0 = success, any other exit code 
+  - `exitCode`: exit code of the query (0 = success, any other exit code
     indicates a specific error)
 
   Note the following restrictions for the above attributes:
   - `query` will only contain the query string if the startup option
     `--query.tracking-with-querystring` is set to `true`. This is the default.
-    The query string will also be cut off after 
+    The query string will also be cut off after
     `--query.max-artifact-log-length` characters.
   - `bindVars` will only contain data if the startup option
     `--query.tracking-with-bindvars` is set to `true`. This is the default.
   - `dataSources` will only contain data if the startup option
-    `--query.tracking-with-datasources` is set to `true`. This is not the 
+    `--query.tracking-with-datasources` is set to `true`. This is not the
     default.
-  
+
   Only finished queries will be logged to the `_queries` system collection.
   Queries are considered "finished" in case they have executed completely
   or have failed with an error. In-flight queries will not be logged, but
@@ -905,11 +907,11 @@
   probability for logging queries to the system collection. If set to a value
   of `100`, all executed queries will be logged. If set to a value less than
   `100`, only the specified percentage of queries will be logged. This can be
-  used to draw a random sample from the total set of queries on very busy 
+  used to draw a random sample from the total set of queries on very busy
   systems on which tracking every individual query would have prohibitive
   overhead. For example, using `--query.collection-logger-probability=1` will
   log approximately every 100th query to the system collection, and ignore all
-  others. 
+  others.
   Which exact queries are logged and which aren't is based on randomness.
   The startup option `--query.collection-logger-all-slow-queries` can be used
   to make all slow queries be logged, regardless of whether they were selected
@@ -939,14 +941,14 @@
         WITH COUNT INTO count
         RETURN {db, user, count}
 
-  When query logging is enabled, obsolete entries from the `_queries` 
+  When query logging is enabled, obsolete entries from the `_queries`
   collection are purged with a configurable schedule. The startup option
   `--query.collection-logger-retention-time` is used to determine how long
   after a query's start time it will be approximately retained in the system
   collection. For example, `--query.collection-logger-retention-time=86400`
   will keep query information around for approximately 1 day (86400 seconds).
   The default retention time is 28800 seconds, i.e. 8 hours.
-  The actual cleanup of the system collection is only executed with a 
+  The actual cleanup of the system collection is only executed with a
   configurable interval as well, so that the cleanup process does not cause
   much traffic. The cleanup interval can be controlled by setting the option
   `--query.collection-logger-cleanup-interval`. The value is in milliseconds.
@@ -959,7 +961,7 @@
   are actually written to the system collection. When additional queries
   arrive within this interval, they will be batched together into a single
   write operation to the system collection. This can amortize the cost of
-  writing the query metadata to the system collection across multiple user 
+  writing the query metadata to the system collection across multiple user
   queries.
 
   The option `--query.collection-logger-max-buffered-queries` can be used to
@@ -1008,8 +1010,8 @@
   It is also possible to destructure array inputs into separate variables.
   For example, the following query
 
-      FOR doc IN collection 
-        FOR [key, value] IN ENTRIES(doc) 
+      FOR doc IN collection
+        FOR [key, value] IN ENTRIES(doc)
         RETURN {key, value}
 
   can be used to destructure all members from the expression `ENTRIES(doc)` and
@@ -1018,7 +1020,7 @@
 
   This is equivalent to writing:
 
-      FOR doc IN collection 
+      FOR doc IN collection
         FOR entry IN ENTRIES(doc)
           LET key = entry[0]
           LET value = entry[1]
@@ -1109,11 +1111,11 @@
     neither of these attributes exist in the source object.
 
 * Added `verifyCertificates` attribute option for the `requests` JavaScript
-  module. This option defaults to false, so that no certificates will be 
+  module. This option defaults to false, so that no certificates will be
   verified in an HTTPS connection made with the `requests` module. If the
   option is set to true, the server certificate of the remote server will be
   verified using the default certificate store of the system.
-  There is also a `verifyDepth` attribute to limit the maximum length of the 
+  There is also a `verifyDepth` attribute to limit the maximum length of the
   certificate chain that counts as valid.
 
 
@@ -1386,7 +1388,7 @@
   views relying on the old sort order can still be used without problems.
   The prevent issues with RocksDB going into read-only mode after an upgrade
   from 3.11, if it encounters persistent index values in an unexpected sort
-  order. RocksDB's error message in this case was "Corruption: Compaction sees 
+  order. RocksDB's error message in this case was "Corruption: Compaction sees
   out-of-order keys".
   The out-of-order keys were caused by a changed sort order for some Unicode
   characters. The newer ICU 73 version that ArangoDB 3.12 bundles includes the
@@ -1569,7 +1571,7 @@
   operations.
   In order to control the maximum amount of prefetch operations, the following
   startup options have been added:
-  
+
   - `--query.max-total-async-prefetch-slots`: the maximum total number of slots
     available for asynchronous prefetching, across all AQL queries.
   - `--query.max-query-async-prefetch-slots`: the maximum per-query number of
@@ -1927,7 +1929,7 @@
     --enable-opt-size-checks
   This is supposed to help find bugs w.r.t. memory manangement.
 
-* FE-406: update docs links on web UI. 
+* FE-406: update docs links on web UI.
 
 * Added an optimizer rule `optimize-enumerate-paths` that pulls filters of the
   form
@@ -1994,7 +1996,7 @@
   network communication between the server and clients is slow and there is
   enough CPU capacity left for the extra compression/decompression work.
   work. Furthermore, responses should only be compressed when they exceed a
-  certain minimum size, e.g. 250 bytes. 
+  certain minimum size, e.g. 250 bytes.
 
 * Fixed BTS-1698: Inverted index can be hinted/forced for UPSERT, which is
   invalid.
@@ -2082,7 +2084,7 @@
 * Support alternative syntax for UPSERT queries, so that arbitrary filter
   conditions can be used. The alternative syntax is:
 
-      UPSERT FILTER <expression> 
+      UPSERT FILTER <expression>
       UPDATE|REPLACE ...
 
   The key change here is that the UPSERT will produce a new variable `$CURRENT`
@@ -2134,7 +2136,7 @@
   graph definition itself, this will now properly be reported by either
   `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED`, in case of a vertex, or
   by `ERROR_GRAPH_EDGE_COLLECTION_NOT_USED`, in case of an edge.
-    
+
 * Added metric `arangodb_aql_cursors_active` to show the number of active AQL
   query cursors.
 
@@ -2525,13 +2527,13 @@
 
   These functions were only available previously after explicitly calling the
   `_registerCompatibilityFunctions()` function from any of the JavaScript graph
-  modules. 
+  modules.
   The `_registerCompatibilityFunctions()` exports have also been removed from
   the JavaScript graph modules.
 
 * Removed the following long-deprecated features for the HTTP server:
 
-  - overriding the HTTP method by setting one of the HTTP headers 
+  - overriding the HTTP method by setting one of the HTTP headers
     - `x-http-method`
     - `x-http-method-override`
     - `x-method-override`
@@ -2762,7 +2764,7 @@ v3.11.7 (2024-01-29)
 * BTS-1741: fix updates of values in unique persistent indexes with stored
   values defined for them. When such an index value was updated, it was
   possible that the stored value was not correctly updated, so that subsequent
-  reads of the index value would run into exceptions such as 
+  reads of the index value would run into exceptions such as
   `Expecting type Array or Object`.
 
 * APM-828: Per collection/database/user monitoring.
@@ -2784,8 +2786,8 @@ v3.11.7 (2024-01-29)
   - `enabled-per-shard-per-user`: this will make DB-Servers collect per-shard
     and per-user metrics. This is more granular than `enabled-per-shard` but
     can produce a lot of metrics.
-  
-  If enabled, the metrics are only exposed on DB servers and not on 
+
+  If enabled, the metrics are only exposed on DB servers and not on
   Coordinators or single servers.
 
   Whenever a shard is accessed in read or write mode by one of the following
@@ -2815,9 +2817,9 @@ v3.11.7 (2024-01-29)
   are not decreased should an operation abort or if an operation does not
   lead to any actual reads or writes.
 
-  Note that internal operations, such as internal queries executed for 
+  Note that internal operations, such as internal queries executed for
   statistics gathering, internal garbage collection, and TTL index cleanup are
-  not counted in these metrics. Additionally, all requests that use the 
+  not counted in these metrics. Additionally, all requests that use the
   superuser JWT for authentication and that do not have a specific user set,
   are not counted.
   Requests are also only counted if they have an ArangoDB user associated with
@@ -2833,20 +2835,20 @@ v3.11.7 (2024-01-29)
   shard on DB-Servers:
 
   - `arangodb_collection_requests_bytes_read_total`:
-    This metric exposes the per-shard number of bytes read by read operation 
-    requests on DB-Servers. 
+    This metric exposes the per-shard number of bytes read by read operation
+    requests on DB-Servers.
     It is increased by AQL queries that read documents or edges and for single-
     or multi-document read operations.
-    The metric is normally increased only on the leader, but it can also 
+    The metric is normally increased only on the leader, but it can also
     increase on followers if "reads from followers" are enabled.
 
-    For every read operation, the metric will be increased by the approximate 
+    For every read operation, the metric will be increased by the approximate
     number of bytes read to retrieve the underlying document or edge data. This
     is also true if a document or edge is served from an in-memory cache.
-    If an operation reads multiple documents/edges, it will increase the 
+    If an operation reads multiple documents/edges, it will increase the
     counter multiple times, each time with the approximate number of bytes read
     for the particular document/edge.
-    
+
     The numbers reported by this metric normally relate to the cumulated sizes
     of documents/edges read.
     The metric is also increased for transactions that are started but later
@@ -2859,50 +2861,50 @@ v3.11.7 (2024-01-29)
     This metric exposes the per-shard number of bytes written by write operation
     requests on DB-Servers, on both leaders and followers.
     It is increased by AQL queries and single-/multi-document write operations.
-    The metric is first increased only the leader, but for every replication 
+    The metric is first increased only the leader, but for every replication
     request to followers it is also increased on followers.
-    
-    For every write operation, the metric will be increased by the approximate 
-    number of bytes written for the document or edge in question. 
-    If an operation writes multiple documents/edges, it will increase the 
-    counter multiple times, each time with the approximate number of bytes 
+
+    For every write operation, the metric will be increased by the approximate
+    number of bytes written for the document or edge in question.
+    If an operation writes multiple documents/edges, it will increase the
+    counter multiple times, each time with the approximate number of bytes
     written for the particular document/edge.
 
-    An AQL query will also increase the counter for every document or edge 
-    written, each time with the approximate number of bytes written for 
+    An AQL query will also increase the counter for every document or edge
+    written, each time with the approximate number of bytes written for
     document/edge.
-    
+
     The numbers reported by this metric normally relate to the cumulated sizes
     of documents/edges written. For remove operations however only a fixed
-    number of bytes is counted per removed document/edge. For truncate 
+    number of bytes is counted per removed document/edge. For truncate
     operations, the metrics will be affected differently depending on how the
     truncate is executed internally.
     For truncates on smaller shards, the truncate operation will be executed as
     the removal of the individual documents in the shard. Thus the metric will
     also be increased as if the documents were removed individually. Truncate
-    operations on larger shards however will be executed via a special 
+    operations on larger shards however will be executed via a special
     operation in the storage engine, which marks a whole range of documents as
-    removed, but defers the actual removal until much later (compaction 
-    process). If a truncate is executed like this, the metric will not be 
+    removed, but defers the actual removal until much later (compaction
+    process). If a truncate is executed like this, the metric will not be
     increased at all.
     Writes into secondary indexes are not counted at all.
 
     The metric is also increased for transactions that are started but later
     aborted.
-  
-  These metrics are not exposed by default. It is only present if the startup 
-  option `--server.export-shard-usage-metrics` is set to either 
+
+  These metrics are not exposed by default. It is only present if the startup
+  option `--server.export-shard-usage-metrics` is set to either
   `enabled-per-shard` or `enabled-per-shard-per-user`. With the former setting,
   the metric will have different labels for each shard that was read from. With
-  the latter setting, the metric will have different labels for each 
+  the latter setting, the metric will have different labels for each
   combination of shard and user that accessed the shard.
-  
-  If enabled, the metrics are only exposed on DB servers and not on 
+
+  If enabled, the metrics are only exposed on DB servers and not on
   Coordinators or single servers.
-  
-  Note that internal operations, such as internal queries executed for 
+
+  Note that internal operations, such as internal queries executed for
   statistics gathering, internal garbage collection, and TTL index cleanup are
-  not counted in these metrics. Additionally, all requests that use the 
+  not counted in these metrics. Additionally, all requests that use the
   superuser JWT for authentication and that do not have a specific user set,
   are not counted.
   Requests are also only counted if they have an ArangoDB user associated with
@@ -3022,7 +3024,7 @@ v3.11.6 (2023-11-29)
   connection statistics were built up in memory, but were never released because
   the statistics background thread was not running.
 
-* Avoid memory leak in case an arangod instance is started with the option 
+* Avoid memory leak in case an arangod instance is started with the option
   `--server.statistics false`. Previously, with that setting the request
   and connection statistics were built up in memory, but were never released
   because the statistics background thread was not running.
@@ -3045,7 +3047,7 @@ v3.11.5 (2023-11-09)
   deadlock situations. The number of detached threads is limited by a
   configurable option. Currently, only threads waiting for more than 1 second on
   a collection lock will detach themselves.
- 
+
 * MDS-1164: Added Publisher and Company to the Windows binaries.
 
 * Silence TSAN for shutdown for access to the SchedulerFeature::SCHEDULER
@@ -3184,10 +3186,10 @@ v3.11.4 (2023-10-04)
   of inserts into the edge cache for non-connected edges.
 
 * Renamed two edge-cache related metrics to improve naming consistency:
-  - `rocksdb_cache_edge_effective_entries_size` was renamed to 
+  - `rocksdb_cache_edge_effective_entries_size` was renamed to
     `rocksdb_cache_edge_inserts_effective_entries_size_total` and was changed
     from a gauge to a counter.
-  - `rocksdb_cache_edge_uncompressed_entries_size` was renamed to 
+  - `rocksdb_cache_edge_uncompressed_entries_size` was renamed to
     `rocksdb_cache_edge_inserts_uncompressed_entries_size_total` and is now
     also a counter instead of a gauge.
 
@@ -3202,14 +3204,14 @@ v3.11.4 (2023-10-04)
   correctly, but the sizes of the cache payloads (keys and values) were not
   accounted for under all circumstances (at least for the initial entries in
   the caches).
-  This change leads to more accurate memory usage tracking and reporting by the 
-  in-memory cache subsystem, and to the cache subsystem not exceeding its 
-  configured memory usage limit. 
+  This change leads to more accurate memory usage tracking and reporting by the
+  in-memory cache subsystem, and to the cache subsystem not exceeding its
+  configured memory usage limit.
   The cache subsystem was also changed so that it can use as much memory as
   configured by the global cache memory limit (configurable via startup options
-  `--cache.size` and `--cache.high-water-multiplier`). Previously the cache 
+  `--cache.size` and `--cache.high-water-multiplier`). Previously the cache
   subsystem was freeing memory as soon as it hit 56% of the configured limit.
-  Overall, the effective memory usage of the cache subsystem can be different 
+  Overall, the effective memory usage of the cache subsystem can be different
   to the cache memory usage in previous versions. In previous versions the
   configured memory usage limit could be temporarily exceeded, but in most
   cases the cache used considerably less memory than allowed by the limit.
@@ -3223,13 +3225,13 @@ v3.11.4 (2023-10-04)
 * Expose the "high water multiplier" for the in-memory cache subsystem. The
   high water multiplier is used to calculate the effective memory usage limit
   for the in-memory cache subsystem. The cache's configured memory usage limit
-  (`--cache.size`) is multiplied by the high water multiplier, and the 
+  (`--cache.size`) is multiplied by the high water multiplier, and the
   resulting value is used as the effective memory limit. It defaults to 56%
   to ensure compatibility with previous versions, in which the threshold was
   effectively hard-coded to the same value.
 
 * Reduce memory usage for empty in-memory edge caches by ~40%. This is achieved
-  by allocating each cache's statistics objects only lazily, when actually 
+  by allocating each cache's statistics objects only lazily, when actually
   needed.
 
 * Added the following metrics for the in-memory edge cache:
@@ -3242,7 +3244,7 @@ v3.11.4 (2023-10-04)
 * Added the startup option `--cache.max-spare-memory-usage` to control memory
   usage for spare, unused hash tables in the in-memory caching subsystem. This
   option can be used to cap the memory used by spare tables. It can be set to
-  a value of 0 to not use any memory except for active hash tables. 
+  a value of 0 to not use any memory except for active hash tables.
 
 * Fixed BTS-1556: Potential shutdown race, when the server is shutting down and
   still AgencyCommunication was going on it could use the scheduler which was
@@ -3421,13 +3423,13 @@ v3.11.2 (2023-07-21)
   queries or applications.
   The compression can add CPU overhead for compressing values when storing them
   in the cache, and for decompressing values when fetching them from the cache.
-  
+
   The new startup option `--cache.min-value-size-for-edge-compression` can be
   used to set a threshold value size for compression edge index cache payload
   values. The default value is `1GB`, which will effectively turn compression
   off. Setting the option to a lower value (e.g. `100`) will turn on the
   compression for any payloads whose size exceeds this value.
-  
+
   The new startup option `--cache.acceleration-factor-for-edge-compression` can
   be used to fine-tune the compression. It controls the LZ4-internal
   "acceleration" factor used for the compression. The default value is `1`.
@@ -3703,13 +3705,13 @@ v3.11.0-rc.1 (2023-05-13)
   collections with `edgeCollections` traversal option.
 
   If a non-existing collection is specified in the `edgeCollections` or
-  `vertexCollections` options of an AQL traversal, the query will now fail 
+  `vertexCollections` options of an AQL traversal, the query will now fail
   with a `collection or view not found` error. Also, if wrong collection
-  types are used (e.g. a document collection or a view for `edgeCollections`), 
+  types are used (e.g. a document collection or a view for `edgeCollections`),
   then an error is raised about an invalid collection type being used.
 
-  This is a behavior change compared to previous versions, which ignored 
-  specifying non-existing vertex collections and had undefined behavior when 
+  This is a behavior change compared to previous versions, which ignored
+  specifying non-existing vertex collections and had undefined behavior when
   specifying non-existing edge collections or using a vertex collection
   instead of an edge collection.
 
@@ -3717,7 +3719,7 @@ v3.11.0-rc.1 (2023-05-13)
   allocation value for in-memory caches.
 
 * Remove leftover in-memory cache tables after dropping collections that
-  had their `cacheEnabled` flag set to `true`. Previously some memory 
+  had their `cacheEnabled` flag set to `true`. Previously some memory
   could remain allocated in the in-memory cache even after such collections
   were dropped.
 
