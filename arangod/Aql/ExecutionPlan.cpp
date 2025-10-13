@@ -1180,6 +1180,10 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
 
           if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {
             options.overwriteMode = overwriteMode;
+            // Set ignoreNulls to true when overwriteMode is "ignore"
+            if (overwriteMode == OperationOptions::OverwriteMode::Ignore) {
+              options.ignoreNulls = true;
+            }
           }
         } else if (name == StaticStrings::IgnoreRevsString) {
           options.ignoreRevs = value->isTrue();

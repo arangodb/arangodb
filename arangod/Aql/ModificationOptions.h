@@ -38,19 +38,15 @@ struct ModificationOptions : OperationOptions {
   explicit ModificationOptions(velocypack::Slice slice);
 
   // constructor, using default values
-  ModificationOptions()
-      : OperationOptions(),
-        ignoreErrors(false),
-        ignoreDocumentNotFound(false),
-        consultAqlWriteFilter(false),
-        exclusive(false) {}
+  ModificationOptions() : OperationOptions() {}
 
   void toVelocyPack(velocypack::Builder&) const;
 
-  bool ignoreErrors;
-  bool ignoreDocumentNotFound;
-  bool consultAqlWriteFilter;
-  bool exclusive;
+  bool ignoreErrors{false};
+  bool ignoreDocumentNotFound{false};
+  bool consultAqlWriteFilter{false};
+  bool exclusive{false};
+  bool ignoreNulls{false};
 };
 
 }  // namespace aql
