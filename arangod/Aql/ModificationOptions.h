@@ -49,7 +49,7 @@ struct ModificationOptions : OperationOptions {
   // only used in smart graph in InsertNode when overwriteMode: "ignore"
   // to set the alternativeVariable to a non-null
   // Introduced by solving BTS-2226
-  bool ignoreNulls{false};
+  bool useOldSmartGraphVariable{false};
 };
 
 }  // namespace aql
