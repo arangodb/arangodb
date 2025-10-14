@@ -224,8 +224,6 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     enumerateNearVectorNode->setIsCoveredByStoredValues(
         isCoveredByStoredValues);
     enumerateNearVectorNode->setFilterVarToRegs(std::move(filterVarsToRegs));
-
-    plan->show();
   }
 
   opt->addPlan(std::move(plan), rule, modified);
