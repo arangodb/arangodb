@@ -760,6 +760,7 @@
             size: large
             parallelity: 5
           args:
+            extremeVerbosity: true
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_mixed_single_cluster:
@@ -767,6 +768,7 @@
             type: cluster
             size: large
           args:
+            extremeVerbosity: true
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_mixed_single_cluster:
@@ -775,6 +777,7 @@
             suffix: vpack
             size: large
           args:
+            extremeVerbosity: true
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
             dumpVPack: true
