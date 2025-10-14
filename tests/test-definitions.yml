@@ -768,6 +768,7 @@
             size: large
           args:
             dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
     - dump_mixed_single_cluster:
           options:
             type: cluster
