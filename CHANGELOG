@@ -1,10 +1,27 @@
 devel
 -----
 
+* Add option --server.jwt-token to arangosh and all other client tools.
+  This allows you to login with a JWT token that is valid for the system.
+  You can get this token from the _open/auth endpoint. You need to either
+  pick username and password, or the JWT token when starting
+  a client tool. Please note: You can write "--server.jwt-token -"
+  to get prompted for the token, so it is not visible in the
+  process list.
+
+* Fix defaults for inverted indexes and views. Consolidations 5 times
+  less frequently, with minimum of 50(1 before) segments and 24M bytes
+  (2M before), maximum 200 (10 before) segments and 8G bytes (800M
+  before).
+
 * Fix BTS-2231: Fix a divide-by-zero crash in case a smart edge collection is used in a
   collect query with a custom index.
 
 * Add API for deployment ID: /_admin/deployment/id .
+
+* Rename the `--experimental-vector-index` startup option to `--vector-index`
+  and remove the experimental flag. The old name can still be used to enable the
+  vector index feature.
 
 * Add vertex collections for graph queries using edge collection syntax
   from named graphs. This means that if a query uses edge collection syntax

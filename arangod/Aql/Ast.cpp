@@ -4519,61 +4519,21 @@ AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
 }
 
 namespace {
-
-auto hasVertexCollectionsOption(AstNode const* options) -> bool {
-  if (options != nullptr && options->type != NODE_TYPE_NOP) {
-    TRI_ASSERT(options->type == NODE_TYPE_OBJECT) << options->getTypeString();
-    auto n = options->numMembers();
-    for (auto i = size_t{0}; i < n; ++i) {
-      auto member = options->getMemberUnchecked(i);
-      if (member != nullptr and
-          member->type == arangodb::aql::NODE_TYPE_OBJECT_ELEMENT) {
-        auto const name = member->getStringView();
-        if (name == "vertexCollections") {
-          auto value = member->getMember(0);
-          if (value->isStringValue()) {
-            return true;
-          } else if (value->type == NODE_TYPE_ARRAY) {
-            auto nn = value->numMembers();
-            if (nn > 0) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
-auto matchGraphSubjectWhenVertexCollectionsNotSet(AstNode const* node)
-    -> std::optional<AstNode const*> {
-  auto const* graphSubject = (AstNode const*){};
-  auto const* options = (AstNode const*){};
-
+auto matchGraphSubject(AstNode const* node) -> std::optional<AstNode const*> {
   switch (node->type) {
     case NODE_TYPE_TRAVERSAL: {
-      graphSubject = node->getMember(2);
-      options = node->getMember(4);
+      return node->getMember(2);
     } break;
     case NODE_TYPE_SHORTEST_PATH: {
-      graphSubject = node->getMember(3);
-      options = node->getMember(4);
+      return node->getMember(3);
     } break;
     case NODE_TYPE_ENUMERATE_PATHS: {
-      graphSubject = node->getMember(4);
-      options = node->getMember(5);
+      return node->getMember(4);
     } break;
     default: {
       return std::nullopt;
     } break;
   };
-
-  if (not hasVertexCollectionsOption(options)) {
-    return {graphSubject};
-  }
-
   return std::nullopt;
 }
 }  // namespace
@@ -4585,7 +4545,7 @@ Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
   // Look for Graph nodes that use edge collection syntax
   // and do not have the vertexCollections option set.
   auto matcher = [&edgeCollections](AstNode const* node) -> void {
-    auto maybeMatch = matchGraphSubjectWhenVertexCollectionsNotSet(node);
+    auto maybeMatch = matchGraphSubject(node);
 
     if (maybeMatch.has_value()) {
       auto const* match = *maybeMatch;
@@ -4618,7 +4578,7 @@ Ast::collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const {
 void Ast::addGraphNodeImplicitVertexCollections(
     CollectionNameResolver const& resolver) {
   // Collect all edge collection names used in graph operations using
-  // edge collection syntax that do not have vertexCollections set.
+  // edge collection syntax.
   auto edgeCollections =
       collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption();
   if (edgeCollections.empty()) {
@@ -4626,9 +4586,9 @@ void Ast::addGraphNodeImplicitVertexCollections(
     // that do not involve edge collection syntax, shortcut
 
     // Note *also* that the graph manager executes a query to determine all
-    // graphs (which does not contain edge collection syntax); if one does not
-    // return here, the AQL execution enters an infinite loop and blows out the
-    // stack.
+    // graphs (this query does not contain edge collection syntax); if one does
+    // not return here, the AQL execution enters an infinite loop and blows out
+    // the stack.
     //
     // This is clearly terrible.
     return;
