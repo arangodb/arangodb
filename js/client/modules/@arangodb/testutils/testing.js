@@ -414,8 +414,26 @@ function iterateTests(cases, options) {
       throw new Error("optionsJson must have one entry per suite!");
     }
   }
+
+  let testSuiteStart = 0;
+  let testSuiteEnd = caselist.length;
+  let nTests = optionsList.length;
+  if (nTests > 0) {
+    if (options.testBuckets !== undefined) {
+      let n = options.testBuckets.split('/');
+      let r = parseInt(n[0]);
+      let s = parseInt(n[1]);
+      if (s !== nTests) {
+        throw new Error(`buckets unequal the number of test-definitions - ${nTests} != ${s}`);
+      }
+      testSuiteStart = r;
+      testSuiteEnd = r + 1;
+      options.testBuckets = undefined;
+    }
+  }
+
   // running all tests
-  for (let n = 0; n < caselist.length; ++n) {
+  for (let n = testSuiteStart; n < testSuiteEnd; ++n) {
     // required, because each different test suite may operate with a different set of servers!
     flushInstanceInfo();
 
