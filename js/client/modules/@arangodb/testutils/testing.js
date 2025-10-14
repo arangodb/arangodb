@@ -443,7 +443,7 @@ function iterateTests(cases, options) {
       localOptions.failed = localOptions.failed[currentTest];
     }
     if (nTests !== 0) {
-      print(`Applying options ${optionsList[n]{`);
+      print(`Applying options ${optionsList[n]}`);
       localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
