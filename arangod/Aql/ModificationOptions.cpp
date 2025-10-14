@@ -70,6 +70,8 @@ ModificationOptions::ModificationOptions(velocypack::Slice slice)
       obj, "consultAqlWriteFilter", false);
   exclusive =
       basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
+  useOldSmartGraphVariable = basics::VelocyPackHelper::getBooleanValue(
+      obj, StaticStrings::UseOldSmartGraphVariable, false);
 }
 
 void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
@@ -108,4 +110,6 @@ void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
+  builder.add(StaticStrings::UseOldSmartGraphVariable,
+              VPackValue(useOldSmartGraphVariable));
 }
