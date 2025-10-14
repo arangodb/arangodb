@@ -156,7 +156,7 @@ function shellClient (options) {
   // increase timeouts after which servers count as BAD/FAILED.
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
-  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30", "experimental-vector-index": true };
+  let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
   let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
@@ -189,6 +189,16 @@ function shellClientMulti (options) {
 //////////////////////////////////////////////////////////////////////////////
 
 function shellServerOnly (options) {
+  if (options.skipServerJS) {
+    return {
+      shell_server: {
+        status: false,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: false
+    };
+  }
+
   let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
 
   testCases = tu.splitBuckets(options, testCases);

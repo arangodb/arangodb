@@ -162,59 +162,6 @@ futures::Future<OperationResult> getDocumentOnCoordinator(
     transaction::Methods& trx, LogicalCollection&, VPackSlice slice,
     OperationOptions const& options, transaction::MethodsApi api);
 
-/// @brief fetch edges from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        All non-empty and non-cached results
-///        of DBServers will be inserted in the
-///        datalake. Slices used in the result
-///        point to content inside of this lake
-///        only and do not run out of scope unless
-///        the lake is cleared.
-///        TraversalVariant
-
-Result fetchEdgesFromEngines(
-    transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
-    arangodb::aql::FixedVarExpressionContext const& opts,
-    std::string_view vertexId, size_t depth,
-    std::vector<arangodb::velocypack::Slice>& result);
-
-/// @brief fetch edges from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        All non-empty and non-cached results
-///        of DBServers will be inserted in the
-///        datalake. Slices used in the result
-///        point to content inside of this lake
-///        only and do not run out of scope unless
-///        the lake is cleared.
-///        ShortestPathVariant
-
-Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             graph::ClusterTraverserCache& travCache,
-                             arangodb::velocypack::Slice vertexId,
-                             bool backward,
-                             std::vector<arangodb::velocypack::Slice>& result,
-                             uint64_t& read);
-
-/// @brief fetch vertices from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        If any server responds with a document
-///        it will be inserted into the result.
-///        If no server responds with a document
-///        a 'null' will be inserted into the result.
-
-void fetchVerticesFromEngines(
-    transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
-    std::unordered_set<arangodb::velocypack::HashedStringRef>& vertexId,
-    std::unordered_map<arangodb::velocypack::HashedStringRef,
-                       arangodb::velocypack::Slice>& result,
-    bool forShortestPath);
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief modify a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////

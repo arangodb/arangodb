@@ -38,12 +38,16 @@ const {
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
+    createVectorGenerator,
+    DistanceFunctions,
+} = require("@arangodb/testutils/vector-generator");
+
+const {
     versionHas
 } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -55,6 +59,17 @@ function VectorIndexL2TestSuite() {
     const dimension = 500;
     const numberOfDocs = 500;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+    // Create vector generator with L2 distance function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.l2Distance
+    });
 
     return {
         setUpAll: function() {
@@ -66,22 +81,11 @@ function VectorIndexL2TestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < numberOfDocs; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === (numberOfDocs / 2)) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_l2",
@@ -517,12 +521,25 @@ function VectorIndexL2TestSuite() {
     };
 }
 
+
 function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
     const numberOfDocs = 1000;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+    // Create vector generator with cosine distance function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.cosineDistance
+    });
+
 
     return {
         setUpAll: function() {
@@ -534,22 +551,11 @@ function VectorIndexCosineTestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < numberOfDocs; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === (numberOfDocs / 2)) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_cosine",
@@ -668,12 +674,12 @@ function VectorIndexCosineTestSuite() {
             const queryWithSkip =
                 "FOR d IN " +
                 collection.name() +
-                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) " + 
+                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) " +
                 " SORT sim DESC LIMIT 3, 5 RETURN {k: d._key, sim}";
             const queryWithoutSkip =
                 "FOR d IN " +
                 collection.name() +
-                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp)" + 
+                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp)" +
                 " SORT sim DESC LIMIT 8 RETURN {k: d._key, sim}";
 
             const bindVars = {
@@ -698,7 +704,20 @@ function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
+    const numberOfDocs = 1000;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+
+    // Create vector generator with dot product function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.dotProduct
+    });
 
     return {
         setUpAll: function() {
@@ -710,22 +729,11 @@ function VectorIndexInnerProductTestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === 250) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_inner_product",

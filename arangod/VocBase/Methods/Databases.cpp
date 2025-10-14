@@ -143,8 +143,7 @@ Result Databases::info(TRI_vocbase_t* vocbase, velocypack::Builder& result) {
 
 // Grant permissions on newly created database to current user
 // to be able to run the upgrade script
-Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
-                                   int64_t timeout) {
+Result Databases::grantCurrentUser(CreateDatabaseInfo const& info) {
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
   Result res;
@@ -155,25 +154,15 @@ Result Databases::grantCurrentUser(CreateDatabaseInfo const& info,
     // called us, or when authentication is off), granting rights
     // will fail. We hence ignore it here, but issue a warning below
     if (!exec.isAdminUser()) {
-      auto const endTime =
-          std::chrono::steady_clock::now() + std::chrono::seconds(timeout);
-      while (true) {
-        res = um->updateUser(exec.user(), [&](auth::User& entry) {
-          entry.grantDatabase(info.getName(), auth::Level::RW);
-          entry.grantCollection(info.getName(), "*", auth::Level::RW);
-          return TRI_ERROR_NO_ERROR;
-        });
-        if (res.ok() || !res.is(TRI_ERROR_ARANGO_CONFLICT) ||
-            std::chrono::steady_clock::now() > endTime) {
-          break;
-        }
-
-        if (info.server().isStopping()) {
-          res.reset(TRI_ERROR_SHUTTING_DOWN);
-          break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      }
+      res = um->updateUser(
+          exec.user(),
+          [&](auth::User& entry) {
+            entry.grantDatabase(info.getName(), auth::Level::RW);
+            entry.grantCollection(info.getName(), "*", auth::Level::RW);
+            return TRI_ERROR_NO_ERROR;
+          },
+          auth::UserManager::RetryOnConflict::Yes);
+      return res;
     }
 
     LOG_TOPIC("2a4dd", DEBUG, Logger::FIXME)
@@ -263,7 +252,7 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
     }
   });
 
-  res = grantCurrentUser(info, 5);
+  res = grantCurrentUser(info);
   if (!res.ok()) {
     return res;
   }
@@ -345,7 +334,7 @@ Result Databases::createOther(CreateDatabaseInfo const& info) {
 
   auto sg = scopeGuard([&]() noexcept { vocbase->release(); });
 
-  Result res = grantCurrentUser(info, 10);
+  Result res = grantCurrentUser(info);
   if (!res.ok()) {
     return res;
   }
@@ -589,7 +578,8 @@ Result Databases::drop(ExecContext const& exec, TRI_vocbase_t* systemVocbase,
     auto cb = [&](auth::User& entry) -> bool {
       return entry.removeDatabase(dbName);
     };
-    if (auto cleanupUsersRes = um->enumerateUsers(cb, /*retryOnConflict*/ true);
+    if (auto cleanupUsersRes =
+            um->enumerateUsers(cb, auth::UserManager::RetryOnConflict::Yes);
         cleanupUsersRes.fail()) {
       LOG_TOPIC("9f8b7", WARN, Logger::AUTHORIZATION)
           << "Failed to cleanup "

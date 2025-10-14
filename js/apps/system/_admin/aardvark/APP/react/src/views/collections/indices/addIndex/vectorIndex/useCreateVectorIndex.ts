@@ -77,6 +77,13 @@ export const FIELDS = [
     type: "number",
     tooltip: "Number of threads to use for indexing. The default is 2."
   },
+  {
+    label: "Sparse",
+    name: "sparse",
+    type: "boolean",
+    tooltip:
+      "If true, then create a sparse index. Sparse indexes do not include documents for which the index attributes do not exist or have a value of null."
+  },
   commonFieldsMap.inBackground,
 ];
 

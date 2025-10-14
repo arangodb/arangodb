@@ -1412,6 +1412,27 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   return { result: true };
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test function to corrupt a revision tree
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._CollectionRevisionTreeCorrupt = function (count, hash) {
+  let requestResult = this._database._connection.PUT(this._prefixurl(
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&count=${count}&hash=${hash}`), {});
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test function to enlist the pending tree updates
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoCollection.prototype._revisionTreePendingUpdates = function () {
+  let requestResult = this._database._connection.GET(this._prefixurl(
+    `/_api/replication/revisions/treepending?collection=${encodeURIComponent(this._name)}`), {});
+  arangosh.checkRequestResult(requestResult);
+  return requestResult;
+};
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief MerkleTreeVerification
 //////////////////////////////////////////////////////////////////////////////

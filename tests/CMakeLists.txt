@@ -72,7 +72,7 @@ target_include_directories(arango_tests_basics
     ${PROJECT_SOURCE_DIR}/tests
     ${PROJECT_SOURCE_DIR}/tests/Mocks/)
 
-target_link_libraries(arango_tests_basics gtest velocypack fmt fuerte arango_iresearch)
+target_link_libraries(arango_tests_basics gtest gmock velocypack fmt fuerte arango_iresearch)
 
 add_subdirectory(IResearch)
 
@@ -100,6 +100,7 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlItemBlockTest.cpp
   Aql/AqlItemRowPrinter.cpp
   Aql/AqlItemRowTest.cpp
+  Aql/AqlMergeTest.cpp
   Aql/AqlShadowRowTest.cpp
   Aql/AqlValueCompare.cpp
   Aql/AqlValueMemoryLayoutTest.cpp
@@ -337,6 +338,7 @@ target_link_libraries(arangodbtests
   arango_tests_zkd
   arango_tests_actor
   arango_tests_inspection
+  arango_tests_internal_rest_handler
   arango_inspection_test_helper
   arango_agency
   arango_cluster_engine
@@ -425,3 +427,4 @@ add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)
 add_subdirectory(TaskMonitoring)
 add_subdirectory(SystemMonitor)
+add_subdirectory(InternalRestHandler)

@@ -25,12 +25,12 @@
 
 #include <cstdint>
 #include <sstream>
-#include <string_view>
 
 #include <openssl/ssl.h>
 
 #include <rocksdb/convenience.h>
 #include <rocksdb/version.h>
+#include <faiss/Index.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Version.h>
@@ -308,6 +308,8 @@ void Version::initialize() {
 #else
   Values["libunwind"] = "false";
 #endif
+  Values["faiss"] = getFaissVersion();
+  Values["openmp"] = getOpenMPVersion();
 
   if constexpr (arangodb::build_id::supportsBuildIdReader()) {
     Values["build-id"] =
@@ -376,6 +378,19 @@ std::string Version::getBoostVersion() {
   return std::string(ARANGODB_BOOST_VERSION);
 #else
   return std::string();
+#endif
+}
+
+std::string Version::getFaissVersion() {
+  return std::format("{}.{}.{}", FAISS_VERSION_MAJOR, FAISS_VERSION_MINOR,
+                     FAISS_VERSION_PATCH);
+}
+
+std::string Version::getOpenMPVersion() {
+#if defined(ARANGODB_OPENMP_VERSION)
+  return std::format("{}", ARANGODB_OPENMP_VERSION);
+#else
+  return {};
 #endif
 }
 

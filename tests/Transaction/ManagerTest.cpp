@@ -52,17 +52,7 @@ static arangodb::aql::QueryResult executeQuery(
   auto query = arangodb::aql::Query::create(
       ctx, arangodb::aql::QueryString(queryString), nullptr);
 
-  arangodb::aql::QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == arangodb::aql::ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
-
-  return result;
+  return query->executeSync();
 }
 
 // -----------------------------------------------------------------------------
@@ -304,7 +294,8 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
     ASSERT_TRUE(
         trx.state()->hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX));
 
-    auto doc = arangodb::velocypack::Parser::fromJson("{ \"abc\": 1}");
+    auto doc = arangodb::velocypack::Parser::fromJson(
+        "{ \"_key\": \"blablabla\", \"abc\": 1}");
 
     OperationOptions opts;
     auto opRes = trx.insert(coll->name(), doc->slice(), opts);

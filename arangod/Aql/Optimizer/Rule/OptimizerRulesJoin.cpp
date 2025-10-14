@@ -1082,6 +1082,7 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
 
               auto info = JoinNode::IndexInfo{
                   .collection = c->collection(),
+                  .usedShard = {},
                   .outVariable = c->outVariable(),
                   .condition = c->condition()->clone(),
                   .filter = c->hasFilter() ? c->filter()->clone(plan->getAst())

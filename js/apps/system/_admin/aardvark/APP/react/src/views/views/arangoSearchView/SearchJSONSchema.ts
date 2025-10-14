@@ -172,7 +172,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
         type: "integer",
         nullable: true,
         minimum: 0,
-        default: 1000
+        default: 5000
       },
       writebufferIdle: {
         type: "integer",
@@ -226,7 +226,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                 maximum: {
                   $data: "1/segmentsMax"
                 },
-                default: 1
+                default:50 
               },
               segmentsMax: {
                 type: "integer",
@@ -234,19 +234,19 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
                 minimum: {
                   $data: "1/segmentsMin"
                 },
-                default: 10
+                default: 200
               },
               segmentsBytesMax: {
                 type: "integer",
                 nullable: false,
                 minimum: 0,
-                default: 5368709120
+                default: 8589934592
               },
               segmentsBytesFloor: {
                 type: "integer",
                 nullable: false,
                 minimum: 0,
-                default: 2097152
+                default: 25165824
               },
               minScore: {
                 type: "number",
@@ -261,10 +261,10 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
         ],
         default: {
           type: "tier",
-          segmentsMin: 1,
-          segmentsMax: 10,
-          segmentsBytesMax: 5368709120,
-          segmentsBytesFloor: 2097152
+          segmentsMin: 50,
+          segmentsMax: 200,
+          segmentsBytesMax: 8589934592,
+          segmentsBytesFloor: 25165824
         },
         required: ["type"]
       },

@@ -26,6 +26,21 @@
 #include "RestServer/VocbaseContext.h"
 #include "VocBase/vocbase.h"
 
+auto GeneralRequestMock::generate(TRI_vocbase_t& vocbase,
+                                  arangodb::rest::RequestType type,
+                                  std::vector<std::string> suffixes,
+                                  VPackBuilder payload)
+    -> std::unique_ptr<GeneralRequestMock> {
+  auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
+
+  fakeRequest->setRequestType(type);
+  for (auto const& s : suffixes) {
+    fakeRequest->addSuffix(s);
+  }
+  fakeRequest->setData(VPackSlice{payload.data()});
+  return fakeRequest;
+}
+
 GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
     : arangodb::GeneralRequest(arangodb::ConnectionInfo{}, 1) {
   _authenticated = false;  // must be set before VocbaseContext::create(...)

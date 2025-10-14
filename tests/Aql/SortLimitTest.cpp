@@ -142,16 +142,7 @@ class SortLimitTest
     auto query = arangodb::aql::Query::create(
         ctx, arangodb::aql::QueryString(queryString), nullptr,
         arangodb::aql::QueryOptions(options->slice()));
-    arangodb::aql::QueryResult result;
-
-    while (true) {
-      auto state = query->execute(result);
-      if (state == arangodb::aql::ExecutionState::WAITING) {
-        query->sharedState()->waitForAsyncWakeup();
-      } else {
-        break;
-      }
-    }
+    auto result = query->executeSync();
 
     EXPECT_TRUE(result.result.ok());
     auto slice = result.data->slice();

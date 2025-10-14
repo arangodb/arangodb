@@ -26,6 +26,20 @@
 #include <fuerte/waitgroup.h>
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
+
+std::string to_string(Connection::State state) {
+  switch(state) {
+  case Connection::State::Created:
+    return "Created";
+  case Connection::State::Connecting:
+    return "Connecting";
+  case Connection::State::Connected:
+    return "Connected";
+  case Connection::State::Closed:
+    return "Closed";
+  }
+}
+
 // Deconstructor
 Connection::~Connection() {
   FUERTE_LOG_DEBUG << "Destroying Connection"

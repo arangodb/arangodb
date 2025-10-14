@@ -651,18 +651,27 @@ IResearchDataStore::IResearchDataStore(
       _asyncSelf(std::make_shared<AsyncLinkHandle>(nullptr)),
       _maintenanceState(std::make_shared<MaintenanceState>()) {
   // initialize transaction callback
+
 #ifdef USE_ENTERPRISE
   if (!collection.isAStub() && _asyncFeature->columnsCacheOnlyLeaders()) {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
     auto maybeShardID = ShardID::shardIdFromString(collection.name());
     if (maybeShardID.fail()) {
       // Illegal shard name, could be collection name
       _useSearchCache = false;
     } else {
-      TRI_ASSERT(maybeShardID.ok());
-      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                     maybeShardID.get());
-      _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+      if (server.hasFeature<ClusterFeature>() &&
+          server.getFeature<ClusterFeature>().isEnabled()) {
+        TRI_ASSERT(maybeShardID.ok());
+
+        auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+        auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                       maybeShardID.get());
+        _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+      } else {
+        //  During an upgrade, the ClusterFeature is disabled.
+        //  Therefore we disable search cache.
+        _useSearchCache = false;
+      }
     }
   }
 #endif
@@ -904,6 +913,17 @@ Result IResearchDataStore::commitUnsafeImpl(
         return false;
       }
       auto& collection = index().collection();
+
+      if (!collection.vocbase().server().hasFeature<ClusterFeature>() ||
+          !collection.vocbase()
+               .server()
+               .getFeature<ClusterFeature>()
+               .isEnabled()) {
+        //  clusterInfo() is only availbale when ClusterFeature is enabled
+        //  which is not the case during a local upgrade.
+        return false;
+      }
+
       auto& ci = collection.vocbase()
                      .server()
                      .getFeature<ClusterFeature>()

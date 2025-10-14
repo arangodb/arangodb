@@ -146,7 +146,8 @@ class IResearchViewNode final : public aql::ExecutionNode,
                     TRI_vocbase_t& vocbase,
                     std::shared_ptr<const LogicalView> view,
                     aql::Variable const& outVariable,
-                    aql::AstNode* filterCondition, aql::AstNode* options,
+                    aql::AstNode const* filterCondition,
+                    aql::AstNode const* options,
                     std::vector<SearchFunc>&& scorers);
 
   IResearchViewNode(aql::ExecutionPlan&, velocypack::Slice base);

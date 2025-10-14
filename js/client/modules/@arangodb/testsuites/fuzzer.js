@@ -53,11 +53,13 @@ function shellFuzzer(options) {
       status: false
     };
   }
-
-  let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
+  let opts = _.clone(options);
+  // override the defaults - we need more time.
+  opts['oneTestTimeout'] = (opts.isInstrumented? 60 : 20) * 60;
+  let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, opts);
 
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_fuzzer').run(testCases);
   return rc;
 }
 

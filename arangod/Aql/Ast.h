@@ -496,6 +496,16 @@ class Ast {
 
   static size_t extractParallelism(AstNode const* optionsNode);
 
+  /// @brief finds all Graph nodes that use edge collection syntax
+  /// and collects the edge collections refered to.
+  containers::FlatHashSet<std::string>
+  collectGraphNodeEdgeCollectionsWithoutVertexCollectionOption() const;
+
+  /// @brief Adds vertex collections that are implied by using edge collection
+  /// syntax in graph operations.
+  void addGraphNodeImplicitVertexCollections(
+      CollectionNameResolver const& resolver);
+
   /// @brief optimizes the AST
   void validateAndOptimize(transaction::Methods&,
                            ValidateAndOptimizeOptions const& options);

@@ -200,7 +200,7 @@ IResearchDataStoreMeta::Mask::Mask(bool mask /*=false*/) noexcept
 IResearchDataStoreMeta::IResearchDataStoreMeta()
     : _cleanupIntervalStep(2),
       _commitIntervalMsec(1000),
-      _consolidationIntervalMsec(1000),
+      _consolidationIntervalMsec(5000),
       _version(static_cast<uint32_t>(ViewVersion::MAX)),
       _writebufferActive(0),
       _writebufferIdle(64),

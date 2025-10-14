@@ -200,118 +200,116 @@ void MockGraph::prepareServer(MockCoordinator& server) const {
                               getEdgeShardNameServerPairs(), TRI_COL_TYPE_EDGE);
 }
 
+auto MockGraph::createEngine(MockDBServer& server,
+                             arangodb::graph::BaseOptions const& opts,
+                             aql::QueryRegistry& queryRegistry) const
+    -> uint64_t {
+  // init restaqlhandler
+  arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
+
+  // generate and add body here
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("lockInfo", VPackValue(VPackValueType::Object));
+
+  builder.add("read", VPackValue(VPackValueType::Array));
+  // append here the collection names (?) <-- TODO: Check
+  // RestAqlHandler.cpp:230 builder.add(VPackValue(_vertexCollectionName));
+  // builder.add(VPackValue(_edgeCollectionName));
+  // appending collection shard ids
+  for (auto const& vShard : _vertexShards) {
+    builder.add(VPackValue(vShard.first));
+  }
+  for (auto const& eShard : _edgeShards) {
+    builder.add(VPackValue(eShard.first));
+  }
+  builder.close();  // array READ
+  builder.close();  // object lockInfo
+
+  builder.add("options", VPackValue(VPackValueType::Object));
+  builder.add("ttl", VPackValue(120));
+  builder.close();  // object options
+
+  builder.add("snippets", VPackValue(VPackValueType::Object));
+  builder.close();  // object snippets
+
+  builder.add("variables", VPackValue(VPackValueType::Array));
+  builder.close();  // object variables
+
+  builder.add("traverserEngines", VPackValue(VPackValueType::Array));
+
+  builder.openObject();  // main container
+
+  builder.add(VPackValue("options"));
+
+  opts.buildEngineInfo(builder);
+
+  builder.add(VPackValue("shards"));
+  builder.openObject();
+
+  builder.add(VPackValue("vertices"));
+  builder.openObject();
+
+  for (auto const& vertexTuple : getVertexShardNameServerPairs()) {
+    builder.add(_vertexCollectionName, VPackValue(VPackValueType::Array));
+    builder.add(VPackValue(vertexTuple.first));  // shardID
+    builder.close();                             // inner array
+  }
+
+  builder.close();  // vertices
+
+  builder.add(VPackValue("edges"));
+  builder.openArray();
+  for (auto const& edgeTuple : getEdgeShardNameServerPairs()) {
+    builder.openArray();
+    builder.add(VPackValue(edgeTuple.first));  // shardID
+    builder.close();                           // inner array
+  }
+  builder.close();  // edges
+  builder.close();  // shards
+  builder.close();  // main container
+  builder.close();  // array traverserEngines
+  builder.close();  // object (outer)
+
+  prep.addBody(builder.slice());
+  prep.addSuffix("setup");
+
+  prep.setRequestType(arangodb::rest::RequestType::POST);
+  auto fakeRequest = prep.generateRequest();
+  auto fakeResponse = std::make_unique<GeneralResponseMock>();
+  arangodb::aql::RestAqlHandler aqlHandler{
+      server.server(), fakeRequest.release(), fakeResponse.release(),
+      &queryRegistry};
+
+  aqlHandler.executeAsync().wait();
+  auto response = aqlHandler.stealResponse();
+  auto resBody =
+      static_cast<GeneralResponseMock*>(response.get())->_payload.slice();
+  TRI_ASSERT(resBody.hasKey("result"));
+  resBody = resBody.get("result");
+  TRI_ASSERT(resBody.hasKey("traverserEngines"));
+  auto engines = resBody.get("traverserEngines");
+  TRI_ASSERT(engines.isArray());
+  TRI_ASSERT(engines.length() == 1);
+  auto eidSlice = engines.at(0);
+  TRI_ASSERT(eidSlice.isNumber());
+  return eidSlice.getNumericValue<uint64_t>();
+}
+
 template<>
 // Future: Also engineID's need to be returned here.
 std::pair<std::vector<arangodb::tests::PreparedRequestResponse>, uint64_t>
-MockGraph::simulateApi(
-    MockDBServer& server,
-    std::unordered_map<size_t, std::vector<std::pair<size_t, size_t>>> const&
-        expectedVerticesEdgesBundleToFetch,
-    arangodb::graph::BaseOptions& opts) const {
+MockGraph::simulateApi(MockDBServer& server,
+                       std::vector<size_t> const& expectedVerticesToFetch,
+                       arangodb::graph::BaseOptions& opts) const {
   // NOTE: We need the server input only for template magic.
   // Can be solved differently, but for a test i think this is sufficient.
   std::vector<arangodb::tests::PreparedRequestResponse> preparedResponses{};
 
   aql::QueryRegistry queryRegistry{120};
-  uint64_t engineId = 0;
+  uint64_t engineId = createEngine(server, opts, queryRegistry);
 
-  {
-    // init restaqlhandler
-    arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
-
-    // generate and add body here
-    VPackBuilder builder;
-    builder.openObject();
-    builder.add("lockInfo", VPackValue(VPackValueType::Object));
-
-    builder.add("read", VPackValue(VPackValueType::Array));
-    // append here the collection names (?) <-- TODO: Check
-    // RestAqlHandler.cpp:230 builder.add(VPackValue(_vertexCollectionName));
-    // builder.add(VPackValue(_edgeCollectionName));
-    // appending collection shard ids
-    for (auto const& vShard : _vertexShards) {
-      builder.add(VPackValue(vShard.first));
-    }
-    for (auto const& eShard : _edgeShards) {
-      builder.add(VPackValue(eShard.first));
-    }
-    builder.close();  // array READ
-    builder.close();  // object lockInfo
-
-    builder.add("options", VPackValue(VPackValueType::Object));
-    builder.add("ttl", VPackValue(120));
-    builder.close();  // object options
-
-    builder.add("snippets", VPackValue(VPackValueType::Object));
-    builder.close();  // object snippets
-
-    builder.add("variables", VPackValue(VPackValueType::Array));
-    builder.close();  // object variables
-
-    builder.add("traverserEngines", VPackValue(VPackValueType::Array));
-
-    builder.openObject();  // main container
-
-    builder.add(VPackValue("options"));
-
-    opts.buildEngineInfo(builder);
-
-    builder.add(VPackValue("shards"));
-    builder.openObject();
-
-    builder.add(VPackValue("vertices"));
-    builder.openObject();
-
-    for (auto const& vertexTuple : getVertexShardNameServerPairs()) {
-      builder.add(_vertexCollectionName, VPackValue(VPackValueType::Array));
-      builder.add(VPackValue(vertexTuple.first));  // shardID
-      builder.close();                             // inner array
-    }
-
-    builder.close();  // vertices
-
-    builder.add(VPackValue("edges"));
-    builder.openArray();
-    for (auto const& edgeTuple : getEdgeShardNameServerPairs()) {
-      builder.openArray();
-      builder.add(VPackValue(edgeTuple.first));  // shardID
-      builder.close();                           // inner array
-    }
-    builder.close();  // edges
-    builder.close();  // shards
-    builder.close();  // main container
-    builder.close();  // array traverserEngines
-    builder.close();  // object (outer)
-
-    prep.addBody(builder.slice());
-    prep.addSuffix("setup");
-
-    prep.setRequestType(arangodb::rest::RequestType::POST);
-    auto fakeRequest = prep.generateRequest();
-    auto fakeResponse = std::make_unique<GeneralResponseMock>();
-    arangodb::aql::RestAqlHandler aqlHandler{
-        server.server(), fakeRequest.release(), fakeResponse.release(),
-        &queryRegistry};
-
-    aqlHandler.executeAsync().wait();
-    auto response = aqlHandler.stealResponse();  // Read: (EngineId eid)
-    auto resBody =
-        static_cast<GeneralResponseMock*>(response.get())->_payload.slice();
-    TRI_ASSERT(resBody.hasKey("result"));
-    resBody = resBody.get("result");
-    TRI_ASSERT(resBody.hasKey("traverserEngines"));
-    auto engines = resBody.get("traverserEngines");
-    TRI_ASSERT(engines.isArray());
-    TRI_ASSERT(engines.length() == 1);
-    auto eidSlice = engines.at(0);
-    TRI_ASSERT(eidSlice.isNumber());
-    engineId = eidSlice.getNumericValue<uint64_t>();
-  }
-
-  for (auto const& vertexBundle : expectedVerticesEdgesBundleToFetch) {
-    auto vertex = vertexBundle.first;
-    auto edges = vertexBundle.second;
-
+  for (auto const& vertex : expectedVerticesToFetch) {
     {
       // 1.) fetch the vertex itself
       arangodb::tests::PreparedRequestResponse prep{server.getSystemDatabase()};
@@ -339,7 +337,7 @@ MockGraph::simulateApi(
           server.server(), fakeRequest.release(), fakeResponse.release(),
           &queryRegistry};
 
-      std::ignore = testee.execute();
+      testee.executeAsync().wait();
 
       auto res = testee.stealResponse();
       FixCustomTypesResponse(res.get(), opts.query());
@@ -361,6 +359,7 @@ MockGraph::simulateApi(
       leased.add("keys", VPackValue(vertexToId(vertex)));
       leased.add("backward", VPackValue(false));
       leased.add("depth", VPackValue(0));
+      leased.add("batchSize", 1000);
       leased.close();  // base object
 
       prep.setRequestType(arangodb::rest::RequestType::PUT);
@@ -374,7 +373,7 @@ MockGraph::simulateApi(
           server.server(), fakeRequest.release(), fakeResponse.release(),
           &queryRegistry};
 
-      std::ignore = testee.execute();
+      testee.executeAsync().wait();
 
       auto res = testee.stealResponse();
       FixCustomTypesResponse(res.get(), opts.query());

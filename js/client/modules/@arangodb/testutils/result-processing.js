@@ -304,9 +304,11 @@ function saveToJunitXML(options, results) {
       };
       state.xml.elem('testsuite', addOptionalDuration(elm, testSuite));
       if (testSuite.hasOwnProperty('message')) {
+        state.xml.elem('testcase', addOptionalDuration({ name: `whole testsuite ${testSuiteName} failed` }, testSuiteName), false);
         state.xml.elem('failure');
         state.xml.text('<![CDATA[' + stripAnsiColors(testSuite.message) + ']]>\n');
         state.xml.elem('/failure');
+        state.xml.elem('/testcase');
       }
     },
     testCase: function(options, state, testCase, testCaseName) {
@@ -1132,7 +1134,10 @@ function getGTestResults(fileName, defaultResults, name) {
       const message = testSuite.testsuite.flatMap(
         suite => {
           if (suite.hasOwnProperty('failures')) {
-            return suite.failures.map(fail => fail.failure).join("\n");
+            return suite.classname + " - " +
+              suite.file + ":" + suite.line + " - " +
+              suite.name + ":\n" +
+              suite.failures.map(fail => fail.failure).join("\n");
           }
           return [];
         }).join("\n");

@@ -2712,6 +2712,8 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
             << " local theLeader = " << theLeader.toJson();
 
         if (!feature.increaseNumberOfSyncShardActionsQueued()) {
+          // Roll back the counting:
+          feature.decreaseNumberOfSyncShardActionsQueued();
           // Need to revisit this database on next run:
           makeDirty.emplace(dbname);
           LOG_TOPIC("25342", DEBUG, Logger::MAINTENANCE)

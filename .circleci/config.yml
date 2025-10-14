@@ -21,6 +21,9 @@ parameters:
   use-minimal-debug-info:
     type: boolean
     default: true
+  arangod-without-v8:
+    type: boolean
+    default: false
   create-docker-images:
     type: boolean
     default: false
@@ -32,10 +35,10 @@ parameters:
     default: false
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:15"
+    default: "arangodb/ubuntubuildarangodb-devel:18"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-e6d3371f
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4b7ae2aa
   nightly:
     type: boolean
     default: false
@@ -166,11 +169,12 @@ jobs:
       - run:
           name: Checkout
           command: |
-            # We do not want to clone the whole repository since we only need a few files.
-            # Unfortunately GitHub does not support the git-archive protocol, so we need to fetch the required files by hand.
-            (mkdir .circleci && cd .circleci && curl https://api.github.com/repos/arangodb/arangodb/contents/.circleci?ref=$CIRCLE_SHA1 | jq ".[].download_url" | xargs wget)
-            (mkdir tests && cd tests && for def in << parameters.definitions >>; do wget https://raw.githubusercontent.com/arangodb/arangodb/$CIRCLE_SHA1/$def; done)
-
+            git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
+            cd arangodb
+            git sparse-checkout set --no-cone tests/*txt .circleci
+            git checkout $CIRCLE_SHA1
+            mv tests ..
+            mv .circleci ..
       - add_ssh_keys:
           fingerprints:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
@@ -212,6 +216,7 @@ jobs:
                 --ui "<< pipeline.parameters.ui >>" \
                 --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
+                --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \

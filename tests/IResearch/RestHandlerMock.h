@@ -44,6 +44,9 @@ struct GeneralRequestMock : public arangodb::GeneralRequest {
 
   GeneralRequestMock(TRI_vocbase_t& vocbase);
   ~GeneralRequestMock();
+  static auto generate(TRI_vocbase_t& vocbase, arangodb::rest::RequestType type,
+                       std::vector<std::string> suffixes, VPackBuilder payload)
+      -> std::unique_ptr<GeneralRequestMock>;
   using arangodb::GeneralRequest::addSuffix;
   size_t contentLength() const noexcept override;
   void setDefaultContentType() noexcept override {

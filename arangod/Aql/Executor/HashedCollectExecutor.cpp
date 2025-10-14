@@ -187,7 +187,6 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
   }
 
   _infos.getResourceMonitor().decreaseMemoryUsage(memoryUsage);
-
   if (!_infos.getAggregatedRegisters().empty()) {
     TRI_ASSERT(_currentGroup->second.first != nullptr);
     auto& aggregators = *_currentGroup->second.first;
@@ -204,13 +203,9 @@ void HashedCollectExecutor::writeCurrentGroupToOutput(
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     auto& builder = *_currentGroup->second.second;
     builder.close();
-
-    // steals the Builder's Buffer
     AqlValue val(std::move(*builder.steal()));
     AqlValueGuard guard{val, true};
-    // destroys the Builder
     _currentGroup->second.second.reset();
-
     output.moveValueInto(_infos.getCollectRegister(), _lastInitializedInputRow,
                          &guard);
   }
@@ -341,7 +336,8 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
     if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
       // fill INTO register
       TRI_ASSERT(it->second.second != nullptr);
-      auto& builder = *(it->second.second);
+      auto& builder =
+          *(it->second.second);  // This builder already holds SupervisedBuffer
       addToIntoRegister(input, builder);
     }
     return it;
@@ -349,6 +345,7 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
 
   _nextGroup.values.clear();
 
+  //  If new group
   if (_infos.getGroupRegisters().size() == 1) {
     auto const& reg = _infos.getGroupRegisters().back();
     // On a single register there can be no duplicate value
@@ -387,7 +384,11 @@ HashedCollectExecutor::findOrEmplaceGroup(InputAqlItemRow& input) {
 
   if (_infos.getCollectRegister().value() != RegisterId::maxRegisterId) {
     // fill INTO register
-    builder = std::make_unique<velocypack::Builder>();
+    auto sb = std::make_shared<velocypack::SupervisedBuffer>(
+        _infos.getResourceMonitor());
+    builder = std::make_unique<velocypack::Builder>(
+        sb);  // Supervised builder; This is the only place to instantiate
+              // builder objects in this Executor
     builder->openArray();
     addToIntoRegister(input, *builder);
   }
@@ -438,8 +439,6 @@ HashedCollectExecutor::Infos const& HashedCollectExecutor::infos()
 
 void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
                                               velocypack::Builder& builder) {
-  size_t previousSize = builder.buffer()->size();
-
   if (_infos.getExpressionVariable() != nullptr) {
     // get result of INTO expression variable
     input.getValue(_infos.getExpressionRegister())
@@ -456,12 +455,6 @@ void HashedCollectExecutor::addToIntoRegister(InputAqlItemRow const& input,
     }
     builder.close();
   }
-
-  // track memory usage of what we just added
-  size_t memoryUsage = builder.buffer()->size() - previousSize;
-  _infos.getResourceMonitor().increaseMemoryUsage(memoryUsage);
-
-  _memoryUsageForInto += memoryUsage;
 }
 
 size_t HashedCollectExecutor::memoryUsageForGroup(GroupKeyType const& group,
@@ -498,19 +491,20 @@ HashedCollectExecutor::makeAggregateValues() const {
     size += factory->getAggregatorSize();
   }
   void* p = ::operator new(size);
-  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions());
+  new (p) ValueAggregators(_aggregatorFactories, _infos.getVPackOptions(),
+                           _infos.getResourceMonitor());
   return std::unique_ptr<ValueAggregators>(static_cast<ValueAggregators*>(p));
 }
 
 HashedCollectExecutor::ValueAggregators::ValueAggregators(
     std::vector<Aggregator::Factory const*> factories,
-    velocypack::Options const* opts)
+    velocypack::Options const* opts, ResourceMonitor& resourceMonitor)
     : _size(factories.size()) {
   TRI_ASSERT(!factories.empty());
   auto* aggregatorPointers = reinterpret_cast<Aggregator**>(this + 1);
   void* aggregators = aggregatorPointers + _size;
   for (auto factory : factories) {
-    factory->createInPlace(aggregators, opts);
+    factory->createInPlace(aggregators, opts, resourceMonitor);
     *aggregatorPointers = static_cast<Aggregator*>(aggregators);
     ++aggregatorPointers;
     aggregators =

@@ -40,14 +40,13 @@
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerMock.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
@@ -64,7 +63,7 @@
 
 namespace {
 
-struct TestView : public arangodb::LogicalView {
+struct TestView : arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
@@ -81,41 +80,40 @@ struct TestView : public arangodb::LogicalView {
     build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
-  virtual arangodb::Result dropImpl() override {
+  arangodb::Result dropImpl() override {
     return arangodb::storage_helper::drop(*this);
   }
-  virtual void open() override {}
-  virtual arangodb::Result renameImpl(std::string const& oldName) override {
+  void open() override {}
+  arangodb::Result renameImpl(std::string const& oldName) override {
     return arangodb::storage_helper::rename(*this, oldName);
   }
-  virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
-                                      bool isUserRequest,
-                                      bool /*partialUpdate*/) override {
+  arangodb::Result properties(arangodb::velocypack::Slice properties,
+                              bool isUserRequest,
+                              bool /*partialUpdate*/) override {
     EXPECT_TRUE(isUserRequest);
     _properties = arangodb::velocypack::Builder(properties);
     return arangodb::Result();
   }
-  virtual bool visitCollections(
-      CollectionVisitor const& /*visitor*/) const override {
+  bool visitCollections(CollectionVisitor const& /*visitor*/) const override {
     return true;
   }
 };
 
-struct ViewFactory : public arangodb::ViewFactory {
-  virtual arangodb::Result create(arangodb::LogicalView::ptr& view,
-                                  TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice definition,
-                                  bool isUserRequest) const override {
+struct ViewFactory : arangodb::ViewFactory {
+  arangodb::Result create(arangodb::LogicalView::ptr& view,
+                          TRI_vocbase_t& vocbase,
+                          arangodb::velocypack::Slice definition,
+                          bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
     view = vocbase.createView(definition, false);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
-                                       TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice definition,
-                                       bool /*isUserRequest*/) const override {
+  arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                               TRI_vocbase_t& vocbase,
+                               arangodb::velocypack::Slice definition,
+                               bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -177,10 +175,37 @@ class V8ViewsTest
 
   V8ViewsTest() {
     arangodb::tests::v8Init();  // on-time initialize V8
-
+    expectUserManagerCalls();
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
+
+  void expectUserManagerCalls() {
+    using namespace arangodb;
+    auto* authFeature = AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    auto* um =
+        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
+    EXPECT_NE(um, nullptr);
+
+    using namespace ::testing;
+    EXPECT_CALL(*um, databaseAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly(WithArgs<0, 1>(
+            [this](std::string const& username, std::string const& dbname) {
+              if (_userMap.empty()) {
+                return auth::Level::NONE;
+              }
+              auto const it = _userMap.find(username);
+              EXPECT_NE(it, _userMap.end());
+              return it->second.databaseAuthLevel(dbname);
+            }));
+    EXPECT_CALL(*um, setAuthInfo)
+        .Times(AtLeast(1))
+        .WillRepeatedly(
+            [this](auth::UserMap const& userMap) { _userMap = userMap; });
+  }
+  arangodb::auth::UserMap _userMap;
 };
 
 TEST_F(V8ViewsTest, test_auth) {
@@ -238,11 +263,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -381,11 +401,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -523,11 +538,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -660,11 +670,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -857,11 +862,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {
@@ -1057,11 +1057,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1222,11 +1217,6 @@ TEST_F(V8ViewsTest, test_auth) {
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
-
     // not authorized (missing user)
     {
       arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
@@ -1385,11 +1375,6 @@ TEST_F(V8ViewsTest, test_auth) {
     arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
-
-    auto resetUserManager = std::shared_ptr<arangodb::auth::UserManager>(
-        userManager, [](arangodb::auth::UserManager* ptr) -> void {
-          ptr->removeAllUsers();
-        });
 
     // not authorized (missing user)
     {

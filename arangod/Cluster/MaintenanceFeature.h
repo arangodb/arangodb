@@ -158,11 +158,7 @@ class MaintenanceFeature : public ArangodFeature {
   /// increased.
   bool increaseNumberOfSyncShardActionsQueued() noexcept {
     uint64_t n = _numberOfSyncShardActionsQueued.fetch_add(1);
-    if (n + 1 > _maximalNumberOfSyncShardActionsQueued) {
-      _numberOfSyncShardActionsQueued.fetch_sub(1);
-      return false;
-    }
-    return true;
+    return n <= _maximalNumberOfSyncShardActionsQueued;
   }
 
   void decreaseNumberOfSyncShardActionsQueued() noexcept {
