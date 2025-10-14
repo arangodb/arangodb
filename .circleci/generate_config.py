@@ -334,6 +334,7 @@ def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name, 
         suite_names.append(suite_name)
         sub_suites.append(suite[suite_name])
     joint_suite_name = ','.join(suite_names)
+    definition['options']['buckets'] = len(suite_names)
     return read_yaml_serial_suite(joint_suite_name,
                                   {
                                       'options': definition['options'],
