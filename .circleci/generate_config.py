@@ -294,7 +294,7 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
         "run_job": run_job,
     }
 
-def read_yaml_serial_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
+def read_yaml_multi_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
     """ convert yaml representation into the internal one """
     generated_definition = {
     }
@@ -354,13 +354,14 @@ def read_definitions(filename, override_branch):
                     filtered_config.append(testcase)
             for testcase in filtered_config:
                 suite_name = list(testcase.keys())[0]
-                if suite_name == "serial":
-                    tests.append(read_yaml_serial_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml))
-                elif suite_name == "bucket":
+                if suite_name == "bucket":
                     tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml)
                     None
+                elif "suites" in testcase:
+                    tests.append(read_yaml_multi_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml))
                 else:
-                    tests.append(read_yaml_suite(suite_name, suite_name, testcase[suite_name], testfile_definitions, None, parsed_yaml))
+                    tests.append(read_yaml_suite(suite_name, suite_name,
+                                                 testcase[suite_name], testfile_definitions, None, parsed_yaml))
     else:
         with open(filename, "r", encoding="utf-8") as filep:
             for line_no, raw_line in enumerate(filep):
