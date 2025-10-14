@@ -442,7 +442,8 @@ function iterateTests(cases, options) {
     if (localOptions.failed) {
       localOptions.failed = localOptions.failed[currentTest];
     }
-    if (optionsList.length !== 0) {
+    if (nTests !== 0) {
+      print(`Applying options ${optionsList[n]{`);
       localOptions = _.defaults(optionsList[n], localOptions);
     }
     let printTestName = currentTest;
