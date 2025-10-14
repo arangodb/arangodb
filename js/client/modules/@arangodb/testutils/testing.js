@@ -418,7 +418,7 @@ function iterateTests(cases, options) {
   let testSuiteStart = 0;
   let testSuiteEnd = caselist.length;
   let nTests = optionsList.length;
-  if (nTests > 0) {
+  if (nTests > 1) {
     if (options.testBuckets !== undefined) {
       let n = options.testBuckets.split('/');
       let r = parseInt(n[0]);
