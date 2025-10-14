@@ -68,7 +68,7 @@ parameters:
     default: "main"
   config-definitions:
     type: string
-    default: tests/test-definitions.txt
+    default: tests/test-definitions.yml
   config-definitions-branches:
     type: string
     default: ""
@@ -244,8 +244,8 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
-            #"tests/test-definitions.txt tests/go-test-definitions.txt tests/arangojs-test-definitions.txt"
-            # tests/java-test-definitions.txt"
-            # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
+            #"tests/test-definitions.yml tests/go-test-definitions.yml tests/arangojs-test-definitions.yml"
+            # tests/java-test-definitions.yml"
+            # TODO: make go driver tests work and add " tests/go-test-definitions.yml
           requires:
             - cancel-redundant-pipelines
