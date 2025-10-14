@@ -554,9 +554,85 @@
       dumpAgencyOnError: true
 
 # Dump Tests
-# TODO yaml: this represents into one circle-ci bucket
 - bucket:
-  name: dump
+  name: dump_single
+  options:
+    type: single
+    size: medium
+  suites:
+    - dump:
+          options:
+            type: single
+            size: medium
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+    - dump:
+          options:
+            type: single
+            suffix: _vpack
+            size: medium
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+            dumpVPack: true
+    - dump_jwt:
+          options:
+            size: medium
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+    - dump_multiple_same:
+          options:
+            type: single
+            size: medium
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+    - dump_multiple_two:
+          options:
+            type: single
+            size: medium
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+    - dump_non_parallel:
+          options:
+            size: medium
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+    - dump_maskings:
+          options:
+            size: medium
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+      # takes long, needs to go first. However, doesn't utilize the SUT hard.
+    - dump_with_crashes:
+          options:
+            type: single
+            size: medium
+            parallelity: 1
+            priority: 2000
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+    - dump_with_crashes_non_parallel:
+          options:
+            size: medium
+            parallelity: 1
+            priority: 2000
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+
+- bucket:
+  name: dump_cluster_medium
+  options:
+    type: cluster
+    size: medium
+    parallelity: 5
   suites:
     - dump:
           options:
@@ -568,26 +644,10 @@
             extraArgs:experimental-vector-index: true
     - dump:
           options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump:
-          options:
             type: cluster
             suffix: _vpack
             size: medium
             parallelity: 5
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            dumpVPack: true
-    - dump:
-          options:
-            type: single
-            suffix: _vpack
-            size: medium
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
@@ -618,30 +678,8 @@
             extraArgs:experimental-vector-index: true
     - dump_multiple_same:
           options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_same:
-          options:
             type: cluster
             size: medium
-            parallelity: 5
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_two:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_two:
-          options:
-            type: cluster
-            size: large
             parallelity: 5
           args:
             dumpAgencyOnError: true
@@ -670,11 +708,6 @@
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
-    - dump_mixed_single_cluster:
-          options:
-            size: large
-          args:
-            dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_mixed_cluster_single:
           options:
@@ -684,24 +717,6 @@
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
             dumpVPack: true
-    - dump_mixed_single_cluster:
-          options:
-            suffix: vpack
-            size: large
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            dumpVPack: true
-      # takes long, needs to go first. However, doesn't utilize the SUT hard.
-    - dump_with_crashes:
-          options:
-            type: single
-            size: medium
-            parallelity: 1
-            priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
     - dump_with_crashes:
           options:
             full: true
@@ -721,6 +736,34 @@
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
 
+- bucket:
+  name: dump_cluster_large
+  options:
+    type: cluster
+    size: large
+    parallelity: 5
+  suites:
+    - dump_multiple_two:
+          options:
+            type: cluster
+            size: large
+            parallelity: 5
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+    - dump_mixed_single_cluster:
+          options:
+            size: large
+          args:
+            dumpAgencyOnError: true
+    - dump_mixed_single_cluster:
+          options:
+            suffix: vpack
+            size: large
+          args:
+            dumpAgencyOnError: true
+            extraArgs:experimental-vector-index: true
+            dumpVPack: true
 # Audit Tests
 - audit:
   suites:
