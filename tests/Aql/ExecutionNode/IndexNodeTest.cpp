@@ -29,6 +29,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/async.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
@@ -39,6 +40,8 @@
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/LogicalCollection.h"
+
+#include "IResearch/common.h"
 
 #include <velocypack/Iterator.h>
 
@@ -81,16 +84,7 @@ arangodb::aql::QueryResult executeQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  arangodb::aql::QueryResult result;
-  while (true) {
-    auto state = query->execute(result);
-    if (state == arangodb::aql::ExecutionState::WAITING) {
-      query->sharedState()->waitForAsyncWakeup();
-    } else {
-      break;
-    }
-  }
-  return result;
+  return query->executeSync();
 }
 
 TEST_F(IndexNodeTest, objectQuery) {
@@ -529,7 +523,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery();
+  arangodb::tests::waitForAsync(query->prepareQuery());
 
   {
     // short path for a test
@@ -620,7 +614,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery();
+  arangodb::tests::waitForAsync(query->prepareQuery());
 
   auto vars = query->plan()->getAst()->variables();
   auto const& v =

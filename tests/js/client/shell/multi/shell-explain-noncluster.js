@@ -31,6 +31,7 @@ var arangodb = require("@arangodb");
 var ArangoStatement = require("@arangodb/arango-statement").ArangoStatement;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
+const IM = global.instanceManager;
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,12 +459,14 @@ function ExplainSuite () {
     },
 
     testV8QueryWithFCall : function () {
-      // should not crash the server either
-      var st = new ArangoStatement(db, { query : "FOR i IN [ 1, 2, 3 ] FILTER V8(TO_STRING(i)) == '1' RETURN i" });
-      var nodes = st.explain().plan.nodes, node;
+      if (!IM.options.skipServerJS) {
+        // should not crash the server either
+        var st = new ArangoStatement(db, { query : "FOR i IN [ 1, 2, 3 ] FILTER V8(TO_STRING(i)) == '1' RETURN i" });
+        var nodes = st.explain().plan.nodes, node;
 
-      node = nodes[0];
-      assertEqual("SingletonNode", node.type);
+        node = nodes[0];
+        assertEqual("SingletonNode", node.type);
+      }
     }
   };
 }

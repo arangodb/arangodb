@@ -27,38 +27,25 @@
 
 const internal = require('internal');
 const jsunity = require('jsunity');
+let IM = global.instanceManager;
 
 const request = require('@arangodb/request');
-const endpointToURL = (endpoint) => {
-  if (endpoint.substr(0, 6) === 'ssl://') {
-    return 'https://' + endpoint.substr(6);
-  }
-  const pos = endpoint.indexOf('://');
-  if (pos === -1) {
-    return 'http://' + endpoint;
-  }
-  return 'http' + endpoint.substr(pos);
-};
 
 const db = require("@arangodb").db;
 
 const MOUNT = "/test";
-const serviceUrl = (endpoint) => {
-  return endpointToURL(endpoint) + "/_db/" + encodeURIComponent(db._name()) + MOUNT;
+const serviceUrl = (url) => {
+  return url + "/_db/" + encodeURIComponent(db._name()) + MOUNT;
 };
-const baseUrl = serviceUrl(arango.getEndpoint());
 const _ = require('lodash');
 const options = {
   json: true
 };
 
 function getCoordinators() {
-  const isCoordinator = (d) => (_.toLower(d.role) === 'coordinator');
-  const toEndpoint = (d) => (d.endpoint);
-  let IM = global.instanceManager;
-  return IM.arangods.filter(isCoordinator)
-                              .map(toEndpoint)
-                              .map(serviceUrl);
+  return IM.arangods.filter(arangod => {
+    return arangod.isFrontend(); }).map(arangod => {
+      return arangod.url;}).map(serviceUrl);
 }
 
 
@@ -69,7 +56,8 @@ function foxxTestSuite () {
     tearDown: () => {},
 
     testServiceIsMounted: function () {
-      const res = request.get(baseUrl, options);
+      const serversToTest = getCoordinators();
+      const res = request.get(serversToTest[0], options);
       assertEqual(200, res.statusCode);
       assertEqual({hello: 'world'}, res.json);
     },
@@ -88,8 +76,8 @@ function foxxTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
-
-jsunity.run(foxxTestSuite);
-
+if (!IM.options.skipServerJS) {
+  jsunity.run(foxxTestSuite);
+}
 return jsunity.done();
 

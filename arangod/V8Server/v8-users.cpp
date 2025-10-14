@@ -178,18 +178,21 @@ static void JS_UpdateUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "users are not supported on this server");
   }
-  um->updateUser(username, [&](auth::User& u) {
-    if (args.Length() > 1 && args[1]->IsString()) {
-      u.updatePassword(TRI_ObjectToString(isolate, args[1]));
-    }
-    if (args.Length() > 2 && args[2]->IsBoolean()) {
-      u.setActive(TRI_ObjectToBoolean(isolate, args[2]));
-    }
-    if (!extras.isEmpty()) {
-      u.setUserData(std::move(extras));
-    }
-    return TRI_ERROR_NO_ERROR;
-  });
+  um->updateUser(
+      username,
+      [&](auth::User& u) {
+        if (args.Length() > 1 && args[1]->IsString()) {
+          u.updatePassword(TRI_ObjectToString(isolate, args[1]));
+        }
+        if (args.Length() > 2 && args[2]->IsBoolean()) {
+          u.setActive(TRI_ObjectToBoolean(isolate, args[2]));
+        }
+        if (!extras.isEmpty()) {
+          u.setUserData(std::move(extras));
+        }
+        return TRI_ERROR_NO_ERROR;
+      },
+      auth::UserManager::RetryOnConflict::No);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
@@ -260,7 +263,6 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um != nullptr) {
-    um->triggerLocalReload();
     um->triggerGlobalReload();  // noop except on coordinator
   }
 
@@ -291,10 +293,13 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "user are not supported on this server");
   }
-  Result r = um->updateUser(username, [&](auth::User& entry) {
-    entry.grantDatabase(db, lvl);
-    return TRI_ERROR_NO_ERROR;
-  });
+  Result r = um->updateUser(
+      username,
+      [&](auth::User& entry) {
+        entry.grantDatabase(db, lvl);
+        return TRI_ERROR_NO_ERROR;
+      },
+      auth::UserManager::RetryOnConflict::No);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -321,10 +326,13 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string username = TRI_ObjectToString(isolate, args[0]);
   std::string db = TRI_ObjectToString(isolate, args[1]);
-  Result r = um->updateUser(username, [&](auth::User& entry) {
-    entry.removeDatabase(db);
-    return TRI_ERROR_NO_ERROR;
-  });
+  Result r = um->updateUser(
+      username,
+      [&](auth::User& entry) {
+        entry.removeDatabase(db);
+        return TRI_ERROR_NO_ERROR;
+      },
+      auth::UserManager::RetryOnConflict::Yes);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -373,10 +381,13 @@ static void JS_GrantCollection(
     lvl = auth::convertToAuthLevel(type);
   }
 
-  Result r = um->updateUser(username, [&](auth::User& entry) {
-    entry.grantCollection(db, coll, lvl);
-    return TRI_ERROR_NO_ERROR;
-  });
+  Result r = um->updateUser(
+      username,
+      [&](auth::User& entry) {
+        entry.grantCollection(db, coll, lvl);
+        return TRI_ERROR_NO_ERROR;
+      },
+      auth::UserManager::RetryOnConflict::No);
 
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -419,10 +430,13 @@ static void JS_RevokeCollection(
     }
   }
 
-  Result r = um->updateUser(username, [&](auth::User& entry) {
-    entry.removeCollection(db, coll);
-    return TRI_ERROR_NO_ERROR;
-  });
+  Result r = um->updateUser(
+      username,
+      [&](auth::User& entry) {
+        entry.removeCollection(db, coll);
+        return TRI_ERROR_NO_ERROR;
+      },
+      auth::UserManager::RetryOnConflict::Yes);
 
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
@@ -461,12 +475,15 @@ static void JS_UpdateConfigData(
                                    "user are not supported on this server");
   }
 
-  Result r = um->updateUser(username, [&](auth::User& u) {
-    VPackBuilder updated = velocypack::Collection::merge(
-        u.configData(), merge.slice(), true, true);
-    u.setConfigData(std::move(updated));
-    return TRI_ERROR_NO_ERROR;
-  });
+  Result r = um->updateUser(
+      username,
+      [&](auth::User& u) {
+        VPackBuilder updated = velocypack::Collection::merge(
+            u.configData(), merge.slice(), true, true);
+        u.setConfigData(std::move(updated));
+        return TRI_ERROR_NO_ERROR;
+      },
+      auth::UserManager::RetryOnConflict::No);
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);
   }
@@ -534,9 +551,9 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     auth::Level lvl;
     if (args.Length() == 3) {
       std::string collection = TRI_ObjectToString(isolate, args[2]);
-      lvl = um->collectionAuthLevel(username, dbname, collection);
+      lvl = um->collectionAuthLevel(username, dbname, collection, false);
     } else {
-      lvl = um->databaseAuthLevel(username, dbname);
+      lvl = um->databaseAuthLevel(username, dbname, false);
     }
 
     if (lvl == auth::Level::RO) {
@@ -552,7 +569,7 @@ static void JS_GetPermission(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_GET_SERVER_GLOBALS(ArangodServer);
     v8g->server().getFeature<DatabaseFeature>().enumerateDatabases(
         [&](TRI_vocbase_t& vocbase) -> void {
-          auto lvl = um->databaseAuthLevel(username, vocbase.name());
+          auto lvl = um->databaseAuthLevel(username, vocbase.name(), false);
 
           if (lvl != auth::Level::NONE) {  // hide non accessible collections
             result

@@ -1290,11 +1290,21 @@ Result MaintenanceFeature::requeueAction(
              action->getState() == ActionState::FAILED);
   if (action->describe().get(NAME) == SYNCHRONIZE_SHARD) {
     increaseNumberOfSyncShardActionsQueued();
+    // We intentionally ignore the result here, since we **must**
+    // count the job anyway, since it will be scheduled. And thus it will
+    // eventually be executed, which will decrease the counter again!
   }
-  auto newAction =
-      std::make_shared<maintenance::Action>(*this, action->describe());
-  newAction->setPriority(newPriority);
-  std::unique_lock guard(_actionRegistryLock);
-  registerAction(std::move(newAction));
+  // We use a try/catch here to prevent miscounting if something throws during
+  // the registration:
+  try {
+    auto newAction =
+        std::make_shared<maintenance::Action>(*this, action->describe());
+    newAction->setPriority(newPriority);
+    std::unique_lock guard(_actionRegistryLock);
+    registerAction(std::move(newAction));
+  } catch (...) {
+    decreaseNumberOfSyncShardActionsQueued();
+    throw;
+  }
   return {};
 }

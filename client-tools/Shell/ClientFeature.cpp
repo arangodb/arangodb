@@ -96,9 +96,11 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "not affect the server-side authentication settings).",
                      new BooleanParameter(&_authentication));
 
-  options->addOption("--server.username",
-                     "The username to use when connecting.",
-                     new StringParameter(&_username));
+  options->addOption(
+      "--server.username",
+      "The username to use when connecting.\nIf you want to specify an access "
+      "token as the password, set the user name as encoded in the token.",
+      new StringParameter(&_username));
 
   std::string basename = TRI_Basename(options->progname());
   bool isArangosh = basename == "arangosh";
@@ -127,8 +129,8 @@ arangosh without connecting to a server.)");
 
   options->addOption(
       "--server.password",
-      "The password to use when connecting. If not specified and "
-      "authentication is required, you are prompted for a password.\n"
+      "The password or access token to use when connecting. If not specified "
+      "and authentication is required, you are prompted for a password.\n"
       "In startup options, you can wrap the names of environment variables "
       "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
       "expose the password less, like to the process list. "

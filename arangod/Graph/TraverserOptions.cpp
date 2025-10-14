@@ -31,8 +31,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"
-#include "Cluster/ClusterEdgeCursor.h"
-#include "Graph/SingleServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerEdgeCursor.h"
+#include "Graph/Cursors/DBServerIndexCursor.h"
 #include "Indexes/Index.h"
 
 #include <velocypack/Iterator.h>
@@ -657,9 +657,9 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           aql::AstNode* condition,
                                           uint64_t depth,
                                           TRI_edge_direction_e direction) {
-  auto& list = _depthLookupInfo[depth];
-  injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         /*onlyEdgeIndexes*/ false, direction, depth);
+  _depthLookupInfo[depth].emplace_back(
+      createLookupInfo(plan, collectionName, attributeName, condition,
+                       /*onlyEdgeIndexes*/ false, direction, depth));
 }
 
 bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {
@@ -753,22 +753,23 @@ void TraverserOptions::calculateIndexExpressions(aql::Ast* ast) {
 
 std::unique_ptr<EdgeCursor> arangodb::traverser::TraverserOptions::buildCursor(
     uint64_t depth) {
-  ensureCache();
-
-  if (_isCoordinator) {
-    return std::make_unique<ClusterTraverserEdgeCursor>(this);
-  }
+  TRI_ASSERT(not _isCoordinator);
 
   auto specific = _depthLookupInfo.find(depth);
   if (specific != _depthLookupInfo.end()) {
-    // use specific cursor
-    return std::make_unique<graph::SingleServerEdgeCursor>(
-        this, _tmpVar, nullptr, specific->second);
+    return std::make_unique<
+        graph::DBServerEdgeCursor<graph::DBServerIndexCursor>>(
+        graph::createDBServerIndexCursors(specific->second, _tmpVar, trx(),
+                                          stats(), query().resourceMonitor()),
+        depth);
   }
 
   // otherwise, retain / reuse the general (global) cursor
-  return std::make_unique<graph::SingleServerEdgeCursor>(this, _tmpVar, nullptr,
-                                                         _baseLookupInfos);
+  return std::make_unique<
+      graph::DBServerEdgeCursor<graph::DBServerIndexCursor>>(
+      graph::createDBServerIndexCursors(_baseLookupInfos, _tmpVar, trx(),
+                                        stats(), query().resourceMonitor()),
+      depth);
 }
 
 double TraverserOptions::estimateCost(size_t& nrItems) const {

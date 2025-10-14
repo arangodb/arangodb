@@ -31,6 +31,7 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SkipResult.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/SupervisedBuffer.h"
 #include "Containers/FlatHashMap.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -42,14 +43,16 @@ namespace arangodb::aql {
 DistributeExecutorInfos::DistributeExecutorInfos(
     std::vector<std::string> clientIds, Collection const* collection,
     RegisterId regId, std::vector<std::string> attribute,
-    ScatterNode::ScatterType type, std::vector<aql::Collection*> satellites)
+    ScatterNode::ScatterType type, std::vector<aql::Collection*> satellites,
+    ResourceMonitor& resourceMonitor)
     : ClientsExecutorInfos(std::move(clientIds)),
       _regId(regId),
       _type(type),
       _attribute(std::move(attribute)),
       _collection(collection),
       _logCol(collection->getCollection()),
-      _satellites(std::move(satellites)) {}
+      _satellites(std::move(satellites)),
+      _resourceMonitor(resourceMonitor) {}
 
 auto DistributeExecutorInfos::registerId() const noexcept -> RegisterId {
   TRI_ASSERT(_regId.isValid());
@@ -121,8 +124,14 @@ auto DistributeExecutorInfos::shouldDistributeToAll(
   return false;
 }
 
+ResourceMonitor& DistributeExecutorInfos::resourceMonitor() const noexcept {
+  return _resourceMonitor;
+}
+
 DistributeExecutor::DistributeExecutor(DistributeExecutorInfos const& infos)
-    : _infos(infos) {}
+    : _infos(infos),
+      _temp(std::make_shared<velocypack::SupervisedBuffer>(
+          infos.resourceMonitor())) {}
 
 auto DistributeExecutor::distributeBlock(
     SharedAqlItemBlockPtr const& block, SkipResult skipped,

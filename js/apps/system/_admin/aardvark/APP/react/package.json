@@ -97,8 +97,9 @@
     "@types/underscore": "^1.11.4",
     "compression-webpack-plugin": "^10.0.0",
     "html-loader": "^4.2.0",
-    "http-proxy-middleware": "^2.0.6",
+    "http-proxy-middleware": "^2.0.9",
     "imports-loader": "^4.0.1",
+    "jest-environment-jsdom": "^30.0.5",
     "patch-package": "^6.5.1",
     "querystring-es3": "^0.2.1",
     "raw-loader": "^4.0.2",
@@ -108,6 +109,11 @@
     "typescript": "^4.9.5",
     "underscore-template-loader": "^1.2.0",
     "url": "^0.11.0"
+  },
+  "resolutions": {
+    "jest": "^30.0.5",
+    "jest-worker": "^30.0.5",
+    "@babel/traverse": "^7.28.0"
   },
   "babel": {
     "presets": [

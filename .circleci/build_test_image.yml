@@ -33,6 +33,16 @@ commands:
             echo "Fetching stuff"
             git fetch --depth 1 origin << pipeline.git.revision >>
             git checkout << pipeline.git.revision >>
+  checkout-rta:
+    parameters:
+      destination:
+        type: string
+    steps:
+      - run:
+          name: Checkout RTA
+          command: |
+            ssh-keyscan github.com >> ~/.ssh/known_hosts
+            git clone git@github.com:arangodb/release-test-automation.git <<parameters.destination>>
 
 jobs:
   build-test-docker-image:
@@ -57,6 +67,8 @@ jobs:
           public_registry: true
       - checkout-arangodb:
           destination: /home/circleci/project
+      - checkout-rta:
+          destination: /home/circleci/project-rta
       - run:
           name: Build Docker Image
           command: |
@@ -72,6 +84,15 @@ jobs:
             docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
             docker tag $image:latest-<< parameters.arch >> $image:latest
             docker push $image:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
+      - run:
+          name: Build RTA Docker Image
+          command: |
+            set -x
+            TAG="$(cat /home/circleci/project/scripts/docker/<< parameters.arch >>-tag.txt)"
+            cd /home/circleci/project-rta
+            ls -alh
+            image=<< parameters.image >>
+            ./jenkins/build_and_push_circle-ci-containers.sh "${image}" "${TAG}"
       - run:
           name: Build GO Docker Image
           command: |
@@ -126,6 +147,8 @@ jobs:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - checkout-arangodb:
           destination: /home/circleci/project
+      - checkout-rta:
+          destination: /home/circleci/project-rta
       - attach_workspace:
           at: .
       - setup_remote_docker:
@@ -139,6 +162,12 @@ jobs:
           command: |
             cd scripts/docker/
             ./build-manifest.sh << parameters.image >> $(cat amd64-tag.txt)
+      - run:
+          name: Build RTA container manifest
+          command: |
+            TAG="$(cat /home/circleci/project/scripts/docker/amd64-tag.txt)"
+            cd /home/circleci/project-rta
+            ./jenkins/build_and_push_circle-ci-manifests.sh << parameters.image >> $TAG
       - run:
           name: Build go test container manifest
           command: |

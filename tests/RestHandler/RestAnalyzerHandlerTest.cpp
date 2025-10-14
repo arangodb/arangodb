@@ -37,16 +37,13 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerMock.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
 #include "RestHandler/RestAnalyzerHandler.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "RestServer/SystemDatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -119,6 +116,7 @@ class RestAnalyzerHandlerTest
   };
   std::shared_ptr<ExecContext> execContext;
   arangodb::ExecContextScope execContextScope;  // (execContext);
+  arangodb::auth::User _user{arangodb::auth::User::newUser("", "")};
 
   RestAnalyzerHandlerTest()
       : server(),
@@ -130,6 +128,7 @@ class RestAnalyzerHandlerTest
         userManager(authFeature.userManager()),
         execContext(std::make_shared<ExecContext>()),
         execContextScope(execContext) {
+    expectUserManagerCalls();
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::RW);
 
@@ -207,30 +206,60 @@ class RestAnalyzerHandlerTest
   // NOTE that permissions are always overwritten.
   void grantOnDb(std::string const& dbName,
                  arangodb::auth::Level const& level) {
-    arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
-                     .first->second;
+    _user = arangodb::auth::User::newUser("", "");
 
     // for system collections User::collectionAuthLevel(...) returns database
     // auth::Level
-    user.grantDatabase(dbName, level);
-    // set user map to avoid loading configuration from system database
-    userManager->setAuthInfo(userMap);
+    _user.grantDatabase(dbName, level);
   }
 
   // Grant permissions on multiple DBs
   // NOTE that permissions are always overwritten.
   void grantOnDb(
-      std::vector<std::pair<std::string const&, arangodb::auth::Level const&>>
-          grants) {
+      std::vector<std::pair<std::string const&,
+                            arangodb::auth::Level const&>> const& grants) {
     arangodb::auth::UserMap userMap;
-    auto& user = userMap.emplace("", arangodb::auth::User::newUser(""s, ""s))
-                     .first->second;
+    _user = arangodb::auth::User::newUser("", "");
 
-    for (auto& g : grants) {
-      user.grantDatabase(g.first, g.second);
+    for (auto const& [dbName, level] : grants) {
+      _user.grantDatabase(dbName, level);
     }
-    userManager->setAuthInfo(userMap);
+  }
+
+  void expectUserManagerCalls() {
+    using namespace arangodb;
+    auto* authFeature = AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    auto* um =
+        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
+    EXPECT_NE(um, nullptr);
+
+    using namespace ::testing;
+    EXPECT_CALL(*um, databaseAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly(WithArgs<0, 1>(
+            [this](std::string const& username, std::string const& dbname) {
+              EXPECT_EQ(username, _user.username());
+              return _user.databaseAuthLevel(dbname);
+            }));
+    EXPECT_CALL(*um, collectionAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+                                                 std::string const& dbname,
+                                                 std::string_view const cname) {
+          EXPECT_EQ(username, _user.username());
+          return _user.collectionAuthLevel(dbname, cname);
+        }));
+    EXPECT_CALL(*um, updateUser)
+        .Times(AtLeast(1))
+        .WillRepeatedly([this](std::string const& username,
+                               auth::UserManager::UserCallback&& cb,
+                               auth::UserManager::RetryOnConflict const) {
+          EXPECT_EQ(username, _user.username());
+          auto const r = cb(_user);
+          EXPECT_TRUE(r.ok());
+          return Result{};
+        });
   }
 };
 
@@ -391,7 +420,7 @@ TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols) {
                slice.get(arangodb::StaticStrings::ErrorNum).getNumber<int>()}));
 }
 
-// TODO: is this the smae test as above?
+// TODO: is this the same test as above?
 TEST_F(RestAnalyzerHandlerTest, test_create_invalid_symbols_2) {
   grantOnDb(arangodb::StaticStrings::SystemDatabase, arangodb::auth::Level::RW);
 

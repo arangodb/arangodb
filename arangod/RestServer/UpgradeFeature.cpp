@@ -224,10 +224,16 @@ void UpgradeFeature::start() {
         // for coordinators, the default password will be installed by the
         // BootstrapFeature later.
         Result res = catchToResult([&]() {
-          Result res = um->updateUser("root", [&](auth::User& user) {
-            user.updatePassword(init.defaultPassword());
-            return TRI_ERROR_NO_ERROR;
-          });
+          if (ServerState::instance()->isSingleServer()) {
+            um->loadUserCacheAndStartUpdateThread();
+          }
+          Result res = um->updateUser(
+              "root",
+              [&](auth::User& user) {
+                user.updatePassword(init.defaultPassword());
+                return TRI_ERROR_NO_ERROR;
+              },
+              auth::UserManager::RetryOnConflict::Yes);
           if (res.is(TRI_ERROR_USER_NOT_FOUND)) {
             VPackSlice extras = VPackSlice::noneSlice();
             res = um->storeUser(false, "root", init.defaultPassword(), true,
@@ -246,6 +252,7 @@ void UpgradeFeature::start() {
     // change admin user
     if (init.restoreAdmin() &&
         ServerState::instance()->isSingleServerOrCoordinator()) {
+      um->loadUserCacheAndStartUpdateThread();
       Result res = um->removeAllUsers();
       if (res.fail()) {
         LOG_TOPIC("70922", ERR, arangodb::Logger::FIXME)

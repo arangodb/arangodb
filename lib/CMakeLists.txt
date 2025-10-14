@@ -80,6 +80,7 @@ add_library(arango_basic_utils STATIC
         Basics/ReadWriteSpinLock.cpp
         Basics/ResourceUsage.cpp
         Basics/StringBufferAdvanced.cpp
+        Basics/SupervisedBuffer.h
         Basics/Utf8Helper.cpp
         Basics/VelocyPackHelper.cpp
         Basics/csv.cpp
@@ -270,9 +271,9 @@ target_link_libraries(arango_basic_http_client
          arango_basic_errors
          arango_build_id
          boost_boost
-         fuerte
          rocksdb
-         rocksdb_interface
+         fuerte
+         faiss_interface
 )
 target_include_directories(arango_basic_http_client PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if (USE_ENTERPRISE)
@@ -360,6 +361,7 @@ add_library(arango STATIC
   ApplicationFeatures/ShutdownFeature.cpp
   ApplicationFeatures/TempFeature.cpp
   ApplicationFeatures/VersionFeature.cpp
+  ApplicationFeatures/ProcessEnvironmentFeature.cpp
   Assertions/AssertionConditionalLogger.cpp
   Assertions/AssertionLogger.cpp
   Basics/RocksDBLogger.cpp
@@ -408,7 +410,6 @@ target_include_directories(arango PUBLIC ${BUILD_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
-target_link_libraries(arango PUBLIC rocksdb_interface)
 target_link_libraries(arango PUBLIC zlib_interface)
 if (USE_V8)
   target_link_libraries(arango PUBLIC v8_interface)
@@ -444,9 +445,7 @@ add_subdirectory(Async)
 add_subdirectory(Containers)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
-if (USE_V8)
-  add_subdirectory(V8)
-endif()
+add_subdirectory(V8)
 add_subdirectory(VelocypackUtils)
 add_subdirectory(CrashHandler)
 add_subdirectory(Assertions)
