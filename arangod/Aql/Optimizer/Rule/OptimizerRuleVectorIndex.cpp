@@ -247,7 +247,6 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 }
 }  // namespace
 
-
 // Vector Index Optimization Rule
 //
 // This rule optimizes queries that use vector similarity search with
