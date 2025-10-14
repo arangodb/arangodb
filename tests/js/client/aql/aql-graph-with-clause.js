@@ -222,9 +222,6 @@ function withClauseTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief WITH clause not needed: vertexCollections option gives the only
     ///        required vertex collection.
-    ///        If the OPTIONS are not given, the query works too, but the query
-    ///        engine automatically adds all vertex collections to the query, as
-    ///        they are part of the named graph definition including EdgeCollection
     ////////////////////////////////////////////////////////////////////////////////
     testWithClauseNotNeededOptions: function() {
       const startNode = "VertexCollection3/ALPHA";
@@ -238,27 +235,6 @@ function withClauseTestSuite() {
               "VertexCollection3/ALPHA",
               "VertexCollection3/ALPHA"
           ]]); 
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief Should fail requiring a WITH clause because the usage of the
-    /// vertexCollections clause prevents lookup in the named graph.
-    ////////////////////////////////////////////////////////////////////////////////
-    testWithClauseNotNeededOptionsRestriction: function() {
-      const startNode = "VertexCollection3/ALPHA";
-      const query = `FOR v,e,p IN 1..1 OUTBOUND "${startNode}" ${edgeCollectionName}
-                       OPTIONS { vertexCollections: "${vertexCollectionName1}" }
-                       RETURN p.vertices[*]._id`;
-
-      try {
-        const actual = db._query(query).toArray();
-        
-        if(require("internal").isCluster()) {
-          assertTrue(false);
-        }
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code, err.errorNum, JSON.stringify(err));
-      }
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -390,6 +366,28 @@ function withClauseTestSuite() {
 
       try {
         const actual = db._query(query, bindVars).toArray();
+        
+        if(require("internal").isCluster()) {
+          assertTrue(false);
+        }
+      } catch (err) {
+        assertEqual(internal.errors.ERROR_QUERY_COLLECTION_LOCK_FAILED.code, err.errorNum, JSON.stringify(err));
+      }
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief Should fail requiring a WITH clause because the usage of the
+    /// vertexCollections clause does *not* add vertex collections to the query
+    /// context
+    ////////////////////////////////////////////////////////////////////////////////
+    testWithClauseNeededOptionsRestriction: function() {
+      const startNode = vertexCollectionName1 + "/A";
+      const query = `FOR v,e,p IN 1..1 OUTBOUND "${startNode}" ${edgeCollectionName3}
+                       OPTIONS { vertexCollections: "${vertexCollectionName1}" }
+                       RETURN p.vertices[*]._id`;
+
+      try {
+        const actual = db._query(query).toArray();
         
         if(require("internal").isCluster()) {
           assertTrue(false);
