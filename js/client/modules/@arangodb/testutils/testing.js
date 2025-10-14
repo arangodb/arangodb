@@ -423,11 +423,11 @@ function iterateTests(cases, options) {
       let n = options.testBuckets.split('/');
       let r = parseInt(n[0]);
       let s = parseInt(n[1]);
-      if (s !== nTests) {
-        throw new Error(`buckets unequal the number of test-definitions - ${nTests} != ${s}`);
+      if (r !== nTests) {
+        throw new Error(`buckets unequal the number of test-definitions - ${nTests} != ${r}`);
       }
-      testSuiteStart = r;
-      testSuiteEnd = r + 1;
+      testSuiteStart = s;
+      testSuiteEnd = s + 1;
       options.testBuckets = undefined;
     }
   }
