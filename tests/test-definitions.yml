@@ -598,12 +598,14 @@
             extraArgs:experimental-vector-index: true
     - dump_non_parallel:
           options:
+            type: single
             size: medium
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_maskings:
           options:
+            type: single
             size: medium
           args:
             dumpAgencyOnError: true
@@ -620,6 +622,7 @@
             extraArgs:experimental-vector-index: true
     - dump_with_crashes_non_parallel:
           options:
+            type: single
             size: medium
             parallelity: 1
             priority: 2000
@@ -666,12 +669,14 @@
       #      cluster: true
     - dump_authentication:
           options:
+            type: cluster
             size: medium
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_jwt:
           options:
+            type: cluster
             size: medium
           args:
             dumpAgencyOnError: true
@@ -686,24 +691,28 @@
             extraArgs:experimental-vector-index: true
     - dump_non_parallel:
           options:
+            type: cluster
             size: medium
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_maskings:
           options:
+            type: cluster
             size: medium
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_encrypted:
           options:
+            type: cluster
             size: medium
           args:
             dumpAgencyOnError: true
             extraArgs:experimental-vector-index: true
     - dump_mixed_cluster_single:
           options:
+            type: cluster
             size: medium
           args:
             dumpAgencyOnError: true
@@ -711,6 +720,7 @@
             extraArgs:experimental-vector-index: true
     - dump_mixed_cluster_single:
           options:
+            type: cluster
             suffix: vpack
             size: medium
           args:
@@ -729,6 +739,7 @@
             extraArgs:experimental-vector-index: true
     - dump_with_crashes_non_parallel:
           options:
+            type: cluster
             size: medium
             parallelity: 1
             priority: 2000
@@ -753,11 +764,13 @@
             extraArgs:experimental-vector-index: true
     - dump_mixed_single_cluster:
           options:
+            type: cluster
             size: large
           args:
             dumpAgencyOnError: true
     - dump_mixed_single_cluster:
           options:
+            type: cluster
             suffix: vpack
             size: large
           args:
