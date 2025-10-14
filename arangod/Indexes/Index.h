@@ -449,7 +449,7 @@ class Index {
 
   virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
 
-  virtual StoredValues const& storedValues() const noexcept;
+  virtual StoredValues const& storedValues() const;
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();

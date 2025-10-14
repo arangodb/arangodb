@@ -517,9 +517,7 @@ UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
   return *_vectorIndexDefinition;
 }
 
-StoredValues const& ClusterIndex::storedValues() const noexcept {
-  return _storedValues;
-}
+StoredValues const& ClusterIndex::storedValues() const { return _storedValues; }
 
 bool ClusterIndex::supportsDistinctScan(
     IndexDistinctScanOptions const& scanOptions) const noexcept {

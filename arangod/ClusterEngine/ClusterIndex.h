@@ -121,7 +121,7 @@ class ClusterIndex : public Index {
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
-  StoredValues const& storedValues() const noexcept override;
+  StoredValues const& storedValues() const override;
 
  protected:
   ClusterEngineType _engineType;

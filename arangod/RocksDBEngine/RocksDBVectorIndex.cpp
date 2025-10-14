@@ -530,8 +530,7 @@ bool RocksDBVectorIndex::hasStoredValues() const noexcept {
   return !_storedValues.empty();
 }
 
-std::vector<std::vector<basics::AttributeName>> const&
-RocksDBVectorIndex::storedValues() const noexcept {
+StoredValues const& RocksDBVectorIndex::storedValues() const {
   return _storedValues;
 }
 

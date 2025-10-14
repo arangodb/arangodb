@@ -1028,7 +1028,7 @@ UserVectorIndexDefinition const& Index::getVectorIndexDefinition() {
       "Requesting vector index definition on a non-vector index");
 }
 
-StoredValues const& Index::storedValues() const noexcept {
+StoredValues const& Index::storedValues() const {
   TRI_ASSERT(false);
   THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_NOT_IMPLEMENTED,
