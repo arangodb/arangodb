@@ -1,11 +1,7 @@
-# test_suite [flags ...] -- [additional-params...]
-# for possible flags and params see
 # https://github.com/arangodb/oskar#testing
 
-
 # Single Server only Tests
-- serial:
-  name: single_server_only
+- single_server_only:
   options:
     type: single
   suites:
@@ -13,8 +9,7 @@
     - BackupAuthSysTests
     - BackupNoAuthSysTests
     - arangosh 
-- serial:
-  name: single_server_only_part2
+- single_server_only_part2:
   options:
     type: single
   suites:
@@ -22,7 +17,6 @@
     - permissions
     - paths_server
     - version
-
 
 # Single Server Replication Tests
 - replication_fuzz:
@@ -100,7 +94,7 @@
       type: single
 
 # Misc single server tests
-- serial:
+- agency_tests:
   options:
     priority: 350
     parallelity: 3
@@ -156,9 +150,8 @@
       moreArgv: $EncryptionAtRest
 
 # this options json will be built:  --optionsJson [{"http":true},{"ssl":true,"suffix":"ssl"}] $EncryptionAtRest
-- serial:
+- shell_api_multi:
   options:
-    name: shell_api_multi
     priority: 500
     type: single
   args:
@@ -202,9 +195,8 @@
       http: true
 
 # will build this:  --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"}] 
-- serial:
+- shell_client_transaction:
   options:
-    name: shell_client_transaction
     priority: 750
     type: single
   args:
@@ -220,9 +212,8 @@
           suffix: http
 
 # will build this: --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"},{"http":true,"ssl":true,"suffix":"http-ssl"},{"http2":true,"ssl":true,"suffix":"http2-ssl"}]
-- serial:
+- shell_client_traffic:
   options:
-    name: shell_client_traffic
     priority: 250
     parallelity: 1
     type: single
@@ -492,10 +483,8 @@
       dumpAgencyOnError: true
 
 # Common Tests
-# TODO yaml: args shall be outside jsonoptions!
-- serial:
+- import_export:
   options:
-    name: import_export
     parallelity: 5
     size: small
     type: cluster
@@ -504,9 +493,8 @@
   suites:
     - importing
     - export
-- serial:
+- import_export:
   options:
-    name: import_export
     parallelity: 3
     size: small
     type: single
@@ -734,9 +722,7 @@
             extraArgs:experimental-vector-index: true
 
 # Audit Tests
-- serial:
-  options:
-      name: audit
+- audit:
   suites:
     - audit_client
     - audit_server
