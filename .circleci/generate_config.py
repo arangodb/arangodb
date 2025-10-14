@@ -157,7 +157,7 @@ def validate_params(params):
             if params[key][0] == "*":  # factor the default
                 params[key] = default_value * parse_number(params[key][1:])
             else:
-              params[key] = parse_number(params[key])
+                params[key] = parse_number(params[key])
         elif default_value is not None:
             params[key] = default_value
 
@@ -230,7 +230,7 @@ def read_definition_line(line, testfile_definitions, yaml_struct):
         "run_job": run_job,
     }
 
-def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, yaml_struct):
+def read_yaml_suite(name, suite, definition, testfile_definitions, yaml_struct):
     """ convert yaml representation into the internal one """
     if not 'options' in definition:
         definition['options'] = {}
@@ -282,7 +282,6 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
     else:
         run_job = 'run-linux-tests'
     return {
-        "bucket": bucket_name,
         "name": name if not "name" in params else params['name'],
         "suites": suite,
         "size": size,
@@ -294,7 +293,7 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
         "run_job": run_job,
     }
 
-def read_yaml_multi_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
+def read_yaml_multi_suite(definition, testfile_definitions, yaml_struct):
     """ convert yaml representation into the internal one """
     generated_definition = {
     }
@@ -313,6 +312,8 @@ def read_yaml_multi_suite(name, definition, testfile_definitions, bucket_name, y
             suite_name = list(suite.keys())[0]
             if 'args' in suite[suite_name]:
                 options_json.append(suite[suite_name]['args'])
+            else:
+                options_json.append({})
             suite_strs.append(suite_name)
         generated_name = ','.join(suite_strs)
         args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
@@ -321,29 +322,40 @@ def read_yaml_multi_suite(name, definition, testfile_definitions, bucket_name, y
     name = generated_name
     if 'name' in definition:
         name = definition['name']
-    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, bucket_name, yaml_struct)
+    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, yaml_struct)
 
-def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
+def read_yaml_bucket_suite(definition, testfile_definitions, yaml_struct):
     """ convert yaml representation into the internal one """
     bucket_name = definition['name']
-    ret = []
+    args = {}
+    if 'args' in definition:
+        args = definition['args']
     suite_names = []
     sub_suites = []
+    options_json = []
     for suite in definition['suites']:
         suite_name = list(suite.keys())[0]
         suite_names.append(suite_name)
         sub_suites.append(suite[suite_name])
+        if 'args' in suite[suite_name]:
+            options_json.append(suite[suite_name]['args'])
+        else:
+            options_json.append({})
+    args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
     joint_suite_name = ','.join(suite_names)
     definition['options']['buckets'] = len(suite_names)
-    return read_yaml_serial_suite(joint_suite_name,
-                                  {
-                                      'options': definition['options'],
-                                      'name': bucket_name,
-                                      'suites': definition['suites']
-                                  },
-                                  testfile_definitions,
-                                  bucket_name,
-                                  yaml_struct)
+    definition['options']['args'] = args
+
+    return read_yaml_suite(bucket_name,
+                           joint_suite_name,
+                           {
+                               'options': definition['options'],
+                               'name': bucket_name,
+                               'args': args,
+                               'suites': definition['suites']
+                           },
+                           testfile_definitions,
+                           yaml_struct)
 
 def read_definitions(filename, override_branch):
     """read test definitions txt"""
@@ -368,13 +380,13 @@ def read_definitions(filename, override_branch):
             for testcase in filtered_config:
                 suite_name = list(testcase.keys())[0]
                 if suite_name == "bucket":
-                    tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml)
+                    tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, parsed_yaml)
                     None
                 elif "suites" in testcase:
-                    tests.append(read_yaml_multi_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml))
+                    tests.append(read_yaml_bucket_suite(testcase, testfile_definitions, parsed_yaml))
                 else:
                     tests.append(read_yaml_suite(suite_name, suite_name,
-                                                 testcase[suite_name], testfile_definitions, None, parsed_yaml))
+                                                 testcase[suite_name], testfile_definitions, parsed_yaml))
     else:
         with open(filename, "r", encoding="utf-8") as filep:
             for line_no, raw_line in enumerate(filep):
