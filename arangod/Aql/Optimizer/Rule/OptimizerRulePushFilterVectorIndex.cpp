@@ -204,8 +204,7 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     auto filterVarsToRegs = extractFilterVarToRegs(
         filterExpression, enumerateNearVectorNode, filterNode);
 
-    auto const& storedValues =
-        enumerateNearVectorNode->index()->getStoredFields();
+    auto const& storedValues = enumerateNearVectorNode->index()->storedValues();
     if (storedValues.empty()) {
       LOG_RULE << "Could not use storedValues:"
                << " storedValues size: " << storedValues.size();

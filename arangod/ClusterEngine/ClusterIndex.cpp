@@ -517,7 +517,7 @@ UserVectorIndexDefinition const& ClusterIndex::getVectorIndexDefinition() {
   return *_vectorIndexDefinition;
 }
 
-StoredValues const& ClusterIndex::getStoredFields() noexcept {
+StoredValues const& ClusterIndex::storedValues() const noexcept {
   return _storedValues;
 }
 

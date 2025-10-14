@@ -99,8 +99,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   bool hasStoredValues() const noexcept;
 
-  std::vector<std::vector<basics::AttributeName>> const& storedValues()
-      const noexcept;
+  StoredValues const& storedValues() const noexcept override;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,

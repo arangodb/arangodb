@@ -162,8 +162,7 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 
-  std::vector<std::vector<basics::AttributeName>> const& storedValues()
-      const noexcept {
+  StoredValues const& storedValues() const noexcept override {
     return _storedValues;
   }
 
