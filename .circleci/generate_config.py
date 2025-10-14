@@ -327,10 +327,22 @@ def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name, 
     """ convert yaml representation into the internal one """
     bucket_name = definition['name']
     ret = []
+    suite_names = []
+    sub_suites = []
     for suite in definition['suites']:
         suite_name = list(suite.keys())[0]
-        ret.append(read_yaml_suite(suite_name, suite_name, suite[suite_name], testfile_definitions, bucket_name, yaml_struct))
-    return ret
+        suite_names.append(suite_name)
+        sub_suites.append(suite[suite_name])
+    joint_suite_name = ','.join(suite_names)
+    return read_yaml_serial_suite(joint_suite_name,
+                                  {
+                                      'options': definition['options'],
+                                      'name': bucket_name,
+                                      'suites': definition['suites']
+                                  },
+                                  testfile_definitions,
+                                  bucket_name,
+                                  yaml_struct)
 
 def read_definitions(filename, override_branch):
     """read test definitions txt"""
