@@ -38,7 +38,7 @@ parameters:
     default: "arangodb/ubuntubuildarangodb-devel:18"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4c8e1373
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4b7ae2aa
   nightly:
     type: boolean
     default: false
@@ -244,5 +244,8 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
+            #"tests/test-definitions.yml tests/go-test-definitions.yml tests/arangojs-test-definitions.yml"
+            # tests/java-test-definitions.yml"
+            # TODO: make go driver tests work and add " tests/go-test-definitions.yml
           requires:
             - cancel-redundant-pipelines
