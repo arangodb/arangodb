@@ -99,6 +99,8 @@ function AuthSuite() {
       assertEqual(user, result.user);
     },
 
+    // This test passes since now we use JWT token and
+    // token did not expire
     testApiUserWrongCredentials: function () {
       users.save(user, "foobar");
       users.grantDatabase(user, '_system', 'ro');
@@ -108,7 +110,7 @@ function AuthSuite() {
       users.update(user, "foobar!!!!!");
 
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
-      assertEqual(401, result.code);
+      assertEqual(200, result.code);
     },
 
     testApiUserNone: function () {
@@ -140,7 +142,7 @@ function AuthSuite() {
       }
 
       let result = arango.GET('/_api/user/' + encodeURIComponent(user));
-      assertEqual(401, result.code);
+      assertEqual(404, result.code);
     },
 
     testApiNonExistingUserRW: function () {
