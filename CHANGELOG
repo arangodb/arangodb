@@ -1,6 +1,11 @@
 devel
 -----
 
+* Fix BTS-2226: Fix INSERT with overwriteMode: "ignore" failing when run
+  multiple times on smart graph edge collections in cluster mode. The issue
+  occurred when inserting edges that already existed, causing the operation
+  to fail instead of silently ignoring duplicates as expected.
+
 * Add option --server.jwt-token to arangosh and all other client tools.
   This allows you to login with a JWT token that is valid for the system.
   You can get this token from the _open/auth endpoint. You need to either
