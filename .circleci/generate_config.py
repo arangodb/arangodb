@@ -326,6 +326,7 @@ def read_yaml_multi_suite(definition, testfile_definitions, yaml_struct):
                             sub_args[key] = [value]
                     else:
                         sub_args[key] = value
+                options_json.append(sub_args)
             else:
                 options_json.append({})
             suite_strs.append(suite_name)
