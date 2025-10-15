@@ -93,29 +93,25 @@
       size: small
       type: single
 
-# Misc single server tests
-- agency_tests:
+
+- authentication_audit_endpoints_import_export_agency:
   options:
-    priority: 350
-    parallelity: 3
-    size: small
     type: single
-  args:
-    dumpAgencyOnError: true
   suites:
+    - fuerte:
+        args:
+          protocol: ssl
+    - endpoints:
+        args:
+          skipEndpointsIpv6: true
+    - audit_client
+    - audit_server
+    - authentication
+    - importing
+    - export
     - agency
     - agency-restart
-
-- authentication:
-    options:
-      priority: 1000
-      type: single
-- endpoints:
-    options:
-      priority: 250
-      type: single
-    args:
-      skipEndpointsIpv6: true
+    - fuerte
 
 - recovery:
     options:
@@ -277,20 +273,25 @@
 
 - rta_makedata:
     options:
-      type: single
-    args:
-      extraArgs:experimental-vector-index: true
+      type: mixed
+      size: large
+    suites:
+      - rta_makedata:
+          args:
+            extraArgs:experimental-vector-index: true
+      - rta_makedata:
+          args:
+            cluster: true
+            extraArgs:experimental-vector-index: true
+      - rta_makedata:
+          args:
+            cluster: true
+            forceOneShard: true
+            extraArgs:experimental-vector-index: true
 
 
 # Cluster Tests
 
-- arangobench:
-    options:
-      priority: 1000
-      size: small
-      type: cluster
-    args:
-      dumpAgencyOnError: true
 # TODO yaml: full? 
 - chaos:
     options:
@@ -311,12 +312,26 @@
       javascript.gc-interval: 25
     args:
       dumpAgencyOnError: true
-- deadlock:
+
+- arangobench_deadlock_audit:
     options:
-      type: cluster
       coverage: false
-    args:
-      dumpAgencyOnError: true
+      priority: 1000
+      size: small
+      type: cluster
+    suites:
+      - arangobench:
+        args:
+          dumpAgencyOnError: true
+      - deadlock:
+        args:
+          dumpAgencyOnError: true
+      - server_secrets:
+        args:
+          dumpAgencyOnError: true
+      - audit_client
+      - audit_server
+
 - restart:
     options:
       priority: 1000
@@ -457,20 +472,6 @@
 #    args:
 #      dumpAgencyOnError: true
 
-- rta_makedata:
-    options:
-      type: cluster
-      parallelity: 6
-    args:
-      extraArgs:experimental-vector-index: true 
-- rta_makedata:
-    options:
-      type: cluster
-      name: rta_makedata_force_oneshard
-      parallelity: 5
-    args:
-      forceOneShard: true
-      extraArgs:experimental-vector-index: true
 
 # shell aql vector index tests
 - shell_client_aql_vector:
@@ -488,16 +489,6 @@
     parallelity: 5
     size: small
     type: cluster
-  args:
-    dumpAgencyOnError: true
-  suites:
-    - importing
-    - export
-- import_export:
-  options:
-    parallelity: 3
-    size: small
-    type: single
   args:
     dumpAgencyOnError: true
   suites:
@@ -547,247 +538,105 @@
       dumpAgencyOnError: true
 - server_secrets:
     options:
+      type: single
       priority: 1000
       parallelity: 5
       size: small
-    args:
-      dumpAgencyOnError: true
 
 # Dump Tests
-- bucket:
-  name: dump_single
+- dump_single:
   options:
+    bucket: auto
     type: single
     size: medium
+  args:
+    dumpAgencyOnError: true
+    extraArgs:experimental-vector-index: true
   suites:
+    - dump_jwt
+    - dump_multiple_same
+    - dump_multiple_two
+    - dump_non_parallel
+    - dump_maskings
+    - dump
     - dump:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump:
-          options:
-            type: single
-            suffix: _vpack
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            dumpVPack: true
-    - dump_jwt:
-          options:
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_same:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_two:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_non_parallel:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_maskings:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
+        options:
+          suffix: _vpack
+        args:
+          dumpVPack: true
       # takes long, needs to go first. However, doesn't utilize the SUT hard.
     - dump_with_crashes:
-          options:
-            type: single
-            size: medium
-            parallelity: 1
-            priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
+        options:
+          parallelity: 1
+          priority: 2000
     - dump_with_crashes_non_parallel:
-          options:
-            type: single
-            size: medium
-            parallelity: 1
-            priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
+        options:
+          parallelity: 1
+          priority: 2000
 
-- bucket:
-  name: dump_cluster_medium
+- dump_cluster_medium:
   options:
+    bucket: auto
     type: cluster
     size: medium
     parallelity: 5
+  args:
+    dumpAgencyOnError: true
+    extraArgs:experimental-vector-index: true
   suites:
+    - dump
     - dump:
           options:
-            type: cluster
-            size: medium
-            parallelity: 5
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump:
-          options:
-            type: cluster
             suffix: _vpack
-            size: medium
-            parallelity: 5
           args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
             dumpVPack: true
-      # BTS-1852 enable after fix:
-      #- dump:
-      #    options:
-      #      size: medium
-      #      type: cluster
-      #      name: dump_singleshard_cluster
-      #    args:
-      #      dumpAgencyOnError: true
-      #      extraArgs:experimental-vector-index: true
-      #      dumpVPack: true
-      #      forceOneShard: true
-      #      cluster: true
-    - dump_authentication:
-          options:
-            type: cluster
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_jwt:
-          options:
-            type: cluster
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_same:
-          options:
-            type: cluster
-            size: medium
-            parallelity: 5
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_non_parallel:
-          options:
-            type: cluster
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_maskings:
-          options:
-            type: cluster
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_encrypted:
-          options:
-            type: cluster
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
+    - dump_authentication
+    - dump_jwt
+    - dump_multiple_same
+    - dump_non_parallel
+    - dump_maskings
+    - dump_encrypted
+    - dump_mixed_cluster_single
     - dump_mixed_cluster_single:
           options:
-            type: cluster
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            extraArgs:experimental-vector-index: true
-    - dump_mixed_cluster_single:
-          options:
-            type: cluster
             suffix: vpack
-            size: medium
           args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
             dumpVPack: true
     - dump_with_crashes:
           options:
             full: true
-            type: cluster
-            size: medium
             parallelity: 1
             priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
     - dump_with_crashes_non_parallel:
           options:
-            type: cluster
-            size: medium
             parallelity: 1
             priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
+      # BTS-1852 enable after fix:
+      #- dump:
+      #    options:
+      #      name: dump_singleshard_cluster
+      #    args:
+      #      dumpVPack: true
+      #      forceOneShard: true
 
-- bucket:
-  name: dump_cluster_large
+- dump_cluster_large:
   options:
+    bucket: auto
     type: cluster
     size: large
     parallelity: 5
-  suites:
-    - dump_multiple_two:
-          options:
-            type: cluster
-            size: large
-            parallelity: 5
-          args:
-            extremeVerbosity: true
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_mixed_single_cluster:
-          options:
-            type: cluster
-            size: large
-          args:
-            extremeVerbosity: true
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_mixed_single_cluster:
-          options:
-            type: cluster
-            suffix: vpack
-            size: large
-          args:
-            extremeVerbosity: true
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            dumpVPack: true
-# Audit Tests
-- audit:
-  suites:
-    - audit_client
-    - audit_server
   args:
+    extremeVerbosity: true
     dumpAgencyOnError: true
+    extraArgs:experimental-vector-index: true
+  suites:
+    - dump_multiple_two
+    - dump_mixed_single_cluster
+    - dump_mixed_single_cluster:
+          options:
+            suffix: vpack
+          args:
+            dumpVPack: true
 
 # Full Tests Single Server
 - shell_fuzzer:
