@@ -114,6 +114,7 @@ class ClientFeature final : public HttpEndpointProvider {
   void setCompressTransfer(bool value) noexcept;
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
+  bool authentication() const noexcept;
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);

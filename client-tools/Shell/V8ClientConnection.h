@@ -24,10 +24,6 @@
 
 #pragma once
 
-// Compile-time switch for new authentication method
-// Set to 1 to use new /_open/auth endpoint, 0 for original Basic auth
-#define USE_NEW_AUTH_METHOD 1
-
 #include "Shell/arangosh.h"
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
@@ -201,10 +197,8 @@ class V8ClientConnection {
     _lastErrorMessage = msg;
   }
 
-#ifdef USE_NEW_AUTH_METHOD
   // Helper function to authenticate via /_open/auth endpoint
   std::string authenticateViaOpenAuth();
-#endif
 
  private:
   ArangoshServer& _server;

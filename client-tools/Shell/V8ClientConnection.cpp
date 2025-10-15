@@ -31,6 +31,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Import/ImportHelper.h"
+#include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
@@ -388,7 +389,6 @@ std::string V8ClientConnection::protocol() const {
   }
 }
 
-#if USE_NEW_AUTH_METHOD
 // Helper function to authenticate via /_open/auth endpoint
 std::string V8ClientConnection::authenticateViaOpenAuth() {
   // Create a temporary connection builder for the auth request
@@ -466,7 +466,6 @@ std::string V8ClientConnection::authenticateViaOpenAuth() {
 
   return VelocyPackHelper::getStringValue(slice, "jwt", "");
 }
-#endif
 
 void V8ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
@@ -478,6 +477,11 @@ void V8ClientConnection::prepareConnection() {
   // check jwtToken first, then jwtSecret, as they are empty by default,
   // but username defaults to "root" in most configurations
   TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
+
+  if(!_client.authentication()) {
+    return;
+  }
+
   if (!_client.jwtToken().empty()) {
     _builder.jwtToken(_client.jwtToken());
     _builder.authenticationType(fu::AuthenticationType::Jwt);
@@ -485,22 +489,21 @@ void V8ClientConnection::prepareConnection() {
     _builder.jwtToken(
         fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
-#if USE_NEW_AUTH_METHOD
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
     try {
       std::string jwtToken = authenticateViaOpenAuth();
-      _builder.jwtToken(jwtToken);
-      _builder.authenticationType(fu::AuthenticationType::Jwt);
+      if (!jwtToken.empty()) {
+        // Server has authentication enabled, use the JWT token
+        _builder.jwtToken(jwtToken);
+        _builder.authenticationType(fu::AuthenticationType::Jwt);
+      }
+      // If jwtToken is empty, server has authentication disabled
+      // Proceed without authentication
     } catch (std::exception const& e) {
       throw std::runtime_error("Authentication failed: " +
                                std::string(e.what()));
     }
-#else
-  } else if (!_client.username().empty()) {
-    _builder.user(_client.username()).password(_client.password());
-    _builder.authenticationType(fu::AuthenticationType::Basic);
-#endif
   }
 }
 
