@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/EncodingUtils.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -208,6 +209,7 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
             << "' failed fatally from: " << newConnection->localEndpoint();
+        newConnection->cancel();
         return nullptr;
       }
 
