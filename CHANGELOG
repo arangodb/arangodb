@@ -1,6 +1,9 @@
 devel
 -----
 
+* Improved performance of filtered vector index queries by batching document
+  fetches during index iteration.
+
 * Fix BTS-2226: Fix INSERT with overwriteMode: "ignore" failing when run
   multiple times on smart graph edge collections in cluster mode. The issue
   occurred when inserting edges that already existed, causing the operation

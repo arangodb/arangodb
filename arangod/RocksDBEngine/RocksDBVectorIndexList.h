@@ -53,6 +53,29 @@ inline faiss::MetricType metricToFaissMetric(
   }
 }
 
+struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
+  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
+                               LogicalCollection* collection,
+                               transaction::Methods* trx,
+                               std::size_t listNumber, std::size_t codeSize);
+  [[nodiscard]] bool is_available() const override;
+
+  [[nodiscard]] bool searchFilteredIds();
+
+  void next() override;
+
+  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
+
+ private:
+  RocksDBKey _rocksdbKey;
+  arangodb::RocksDBVectorIndex* _index{nullptr};
+  LogicalCollection* _collection{nullptr};
+
+  std::unique_ptr<rocksdb::Iterator> _it;
+  std::size_t _listNumber;
+  std::size_t _codeSize;
+};
+
 struct SearchParametersContext {
   transaction::Methods* trx;
   aql::Expression* filterExpression;
@@ -63,34 +86,51 @@ struct SearchParametersContext {
   aql::Variable const* documentVariable;
 };
 
+// This is used to pass a different search context via RocksDBInvertedList it
+// the iterators
+using RocksDBFaissSearchContext =
+    std::variant<SearchParametersContext, transaction::Methods*>;
+
 // This Iterator is used by faiss library to iterate through RocksDB,
 // we set the appropriate iterator in RocksDBInvertedLists which instantiates
 // a new iterator for every nList that it needs to iterate through.
 // It contains the logic for how to read key value pairs that we wrote
 // It can also filter out certain pairs if the filterExpression has been
 // set
-struct RocksDBInvertedListsIterator : faiss::InvertedListsIterator {
-  RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
-                               LogicalCollection* collection,
-                               SearchParametersContext& searchParametersContext,
-                               std::size_t listNumber, std::size_t codeSize);
+struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
+  RocksDBInvertedListsFilteringIterator(
+      RocksDBVectorIndex* index, LogicalCollection* collection,
+      SearchParametersContext& searchParametersContext, std::size_t listNumber,
+      std::size_t codeSize);
   [[nodiscard]] bool is_available() const override;
 
+  [[nodiscard]] bool searchFilteredIds();
   // This should be only called when we have filterExpression
-  void skipOverFilteredDocuments();
 
   void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
  private:
+  void skipOverFilteredDocuments();
+
+  // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
+  constexpr static auto kBatchSize{1000};
+
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
   LogicalCollection* _collection{nullptr};
   SearchParametersContext& _searchParametersContext;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
 
-  std::unique_ptr<rocksdb::Iterator> _it;
+  std::unique_ptr<rocksdb::Iterator> _batchIt;
+  // Contains pairs of filtered ids and their encoded values
+  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
+
+  // Current element from the _filteredIds, which is the current state of this
+  // iterator
+  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
+      _filteredIdsIt{_filteredIds.end()};
   std::size_t _listNumber;
   std::size_t _codeSize;
 };
