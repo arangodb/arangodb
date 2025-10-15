@@ -114,6 +114,7 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
  private:
   void skipOverFilteredDocuments();
 
+  // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
   constexpr static auto kBatchSize{1000};
 
   RocksDBKey _rocksdbKey;
