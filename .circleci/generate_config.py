@@ -380,10 +380,9 @@ def read_definitions(filename, override_branch):
             for testcase in filtered_config:
                 suite_name = list(testcase.keys())[0]
                 if suite_name == "bucket":
-                    tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, parsed_yaml)
-                    None
-                elif "suites" in testcase:
                     tests.append(read_yaml_bucket_suite(testcase, testfile_definitions, parsed_yaml))
+                elif "suites" in testcase:
+                    tests.append(read_yaml_multi_suite(testcase, testfile_definitions, parsed_yaml))
                 else:
                     tests.append(read_yaml_suite(suite_name, suite_name,
                                                  testcase[suite_name], testfile_definitions, parsed_yaml))
