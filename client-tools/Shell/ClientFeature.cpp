@@ -672,9 +672,7 @@ uint64_t ClientFeature::compressRequestThreshold() const noexcept {
   return _compressRequestThreshold;
 }
 
-bool ClientFeature::authentication() const noexcept {
-  return _authentication;
-}
+bool ClientFeature::authentication() const noexcept { return _authentication; }
 
 ApplicationServer& ClientFeature::server() const noexcept {
   return _comm.server();

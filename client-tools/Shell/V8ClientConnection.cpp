@@ -478,7 +478,7 @@ void V8ClientConnection::prepareConnection() {
   // but username defaults to "root" in most configurations
   TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
 
-  if(!_client.authentication()) {
+  if (!_client.authentication()) {
     return;
   }
 
