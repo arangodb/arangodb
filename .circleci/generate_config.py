@@ -311,7 +311,20 @@ def read_yaml_multi_suite(definition, testfile_definitions, yaml_struct):
         for suite in definition['suites']:
             suite_name = list(suite.keys())[0]
             if 'args' in suite[suite_name]:
-                options_json.append(suite[suite_name]['args'])
+                sub_args = {}
+                for key, value in suite[suite_name]['args']:
+                    if ":" in key:
+                        keyparts = key.split(":")
+                        if not keyparts[0] in sub_args:
+                            sub_args[keyparts[0]] = {}
+                        sub_args[keyparts[0]][keyparts[1]] = value
+                    elif key in sub_args:
+                        if isinstance(sub_args[key], list):
+                            sub_args[key].append(value)
+                        else:
+                            sub_args[key] = [value]
+                    else:
+                        sub_args[key] = value
             else:
                 options_json.append({})
             suite_strs.append(suite_name)
@@ -338,7 +351,21 @@ def read_yaml_bucket_suite(definition, testfile_definitions, yaml_struct):
         suite_names.append(suite_name)
         sub_suites.append(suite[suite_name])
         if 'args' in suite[suite_name]:
-            options_json.append(suite[suite_name]['args'])
+            sub_args = {}
+            for key, value in suite[suite_name]['args']:
+                if ":" in key:
+                    keyparts = key.split(":")
+                    if not keyparts[0] in sub_args:
+                        sub_args[keyparts[0]] = {}
+                    sub_args[keyparts[0]][keyparts[1]] = value
+                elif key in sub_args:
+                    if isinstance(sub_args[key], list):
+                        sub_args[key].append(value)
+                    else:
+                        sub_args[key] = [value]
+                else:
+                    sub_args[key] = value
+            options_json.append(sub_args)
         else:
             options_json.append({})
     args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
