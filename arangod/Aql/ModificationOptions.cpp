@@ -70,6 +70,8 @@ ModificationOptions::ModificationOptions(velocypack::Slice slice)
       obj, "consultAqlWriteFilter", false);
   exclusive =
       basics::VelocyPackHelper::getBooleanValue(obj, "exclusive", false);
+  useOldSmartGraphVariable = basics::VelocyPackHelper::getBooleanValue(
+      obj, StaticStrings::UseOldSmartGraphVariable, false);
 }
 
 void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
@@ -82,6 +84,8 @@ void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
   builder.add(StaticStrings::MergeObjectsString, VPackValue(mergeObjects));
   builder.add(StaticStrings::IgnoreRevsString, VPackValue(ignoreRevs));
   builder.add(StaticStrings::IsRestoreString, VPackValue(isRestore));
+  builder.add(StaticStrings::UseOldSmartGraphVariable,
+              VPackValue(useOldSmartGraphVariable));
 
   if (refillIndexCaches != RefillIndexCaches::kDefault) {
     // this attribute can have 3 values: default, true and false. only
@@ -106,4 +110,6 @@ void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
   builder.add("ignoreDocumentNotFound", VPackValue(ignoreDocumentNotFound));
   builder.add("consultAqlWriteFilter", VPackValue(consultAqlWriteFilter));
   builder.add("exclusive", VPackValue(exclusive));
+  builder.add(StaticStrings::UseOldSmartGraphVariable,
+              VPackValue(useOldSmartGraphVariable));
 }
