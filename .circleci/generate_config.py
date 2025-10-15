@@ -312,7 +312,8 @@ def read_yaml_multi_suite(definition, testfile_definitions, yaml_struct):
             suite_name = list(suite.keys())[0]
             if 'args' in suite[suite_name]:
                 sub_args = {}
-                for key, value in suite[suite_name]['args']:
+                for key in suite[suite_name]['args'].keys():
+                    value = suite[suite_name]['args'][key]
                     if ":" in key:
                         keyparts = key.split(":")
                         if not keyparts[0] in sub_args:
@@ -352,7 +353,8 @@ def read_yaml_bucket_suite(definition, testfile_definitions, yaml_struct):
         sub_suites.append(suite[suite_name])
         if 'args' in suite[suite_name]:
             sub_args = {}
-            for key, value in suite[suite_name]['args']:
+            for key in suite[suite_name]['args'].keys():
+                value = suite[suite_name]['args'][key]
                 if ":" in key:
                     keyparts = key.split(":")
                     if not keyparts[0] in sub_args:
