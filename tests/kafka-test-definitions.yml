@@ -1,9 +1,9 @@
-- jobProperties:
+jobProperties:
     container_suffix: '-java:'
     second_repo: git@github.com:arangodb/kafka-connect-arangodb.git
     branch: main
     init_command: ""
-- add-yaml:
+add-yaml:
     derives: run-linux-tests
     derives-to: kafka-run-linux-tests
     docker:
@@ -56,24 +56,24 @@
           - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092
           - SCHEMA_REGISTRY_HOST_NAME=kafka-schema-registry
 
+tests:
 - kafka_driver:
     options:
       priority: 500
-      type: single
+      type: mixed
       size: large
-    args:
-      extremeVerbosity: true
-      kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
-      kafkaSchemaHost: http://kafka-schema-registry:8081
-- kafka_driver:
-    options:
-      priority: 500
-      type: cluster
-      size: large
-    args:
-      extremeVerbosity: true
-      kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
-      kafkaSchemaHost: http://kafka-schema-registry:8081
+    suites:
+      - kafka_driver:
+          args:
+            extremeVerbosity: true
+            kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
+            kafkaSchemaHost: http://kafka-schema-registry:8081
+      - kafka_driver:
+          args:
+            cluster: true
+            extremeVerbosity: true
+            kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
+            kafkaSchemaHost: http://kafka-schema-registry:8081
 
 # for the moment SSL has issues with the certificates to match the test arangod and kafka certificates.
 # - kafka_driver:

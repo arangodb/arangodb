@@ -1,9 +1,9 @@
-- jobProperties:
+jobProperties:
     container_suffix: '-java:'
     second_repo: git@github.com:arangodb/arangodb-java-driver.git
     branch: main
     init_command: ''
-
+tests:
 - java_driver:
     options:
       priority: 500
