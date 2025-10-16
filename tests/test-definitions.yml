@@ -257,19 +257,15 @@
 
 # Fuerte tests are executed in single env
 - fuerte:
-    options: 
-      coverage: false
-      priority: 500
-      type: single
-      suffix: http
-- fuerte:
     options:
       coverage: false
       priority: 500
       type: single
-      suffix: ssl-http
-    args:
-      protocol: ssl
+    suites:
+      - fuerte
+      - fuerte:
+          args:
+            protocol: ssl
 
 - rta_makedata:
     options:
@@ -288,9 +284,6 @@
             cluster: true
             forceOneShard: true
             extraArgs:experimental-vector-index: true
-
-
-# Cluster Tests
 
 # TODO yaml: full? 
 - chaos:
@@ -763,29 +756,23 @@
 # Common Full Tests
 - communication:
     options:
+      bucket: auto
       full: true
       priority: 1000
       parallelity: 2
       type: single
-- communication_ssl:
-    options:
-      full: true
-      priority: 1000
-      parallelity: 2
-      type: single
-
+    suites:
+      - communication
+      - communication_ssl
 - communication:
     options:
+      bucket: auto
       full: true
       priority: 1000
       size: large
       parallelity: 6
       type: cluster
-- communication_ssl:
-    options:
-      full: true
-      priority: 1000
-      size: large
-      parallelity: 6
-      type: cluster
+    suites:
+      - communication
+      - communication_ssl
 
