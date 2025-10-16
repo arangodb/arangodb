@@ -49,7 +49,8 @@ static std::mutex singletonDeadlineMutex;
 
 const char* errorDeadline = "Execution deadline reached!";
 const char* errorExternalDeadline = "Signaled deadline from extern!";
-const char* errorProcessMonitor = "Monitored child process exited unexpectedly";
+const char* errorProcessMonitor = "Monitored child process exited unexpectedly - ";
+uint32_t offending_PID = 0;
 
 const char* errorState = errorDeadline;
 
@@ -94,7 +95,13 @@ bool isExecutionDeadlineReached() {
 
 bool isExecutionDeadlineReached(v8::Isolate* isolate) {
   if (isExecutionDeadlineReached()) {
-    TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorState, true);
+    if (offending_PID == 0) {
+      TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorState, true);
+    } else {
+      std::string errorMsg = errorState;
+      errorMsg += offending_PID;
+      TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorMsg, true);
+    }
     return true;
   }
   return false;
@@ -150,10 +157,11 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
   return delta;
 }
 
-void triggerV8DeadlineNow(bool fromSignal) {
+void triggerV8DeadlineNow(bool fromSignal, uint32_t pid) {
   // Set the deadline to expired:
   std::lock_guard mutex{singletonDeadlineMutex};
   errorState = fromSignal ? errorExternalDeadline : errorProcessMonitor;
+  offending_PID = pid;
   executionDeadline = TRI_microtime() - 100;
 }
 
@@ -262,7 +270,13 @@ static void JS_GetDeadlineString(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
   std::lock_guard mutex{singletonDeadlineMutex};
-  TRI_V8_RETURN_STRING(errorState);
+  if (offending_PID == 0) {
+    TRI_V8_RETURN_STRING(errorState);
+  } else {
+    std::string errorMsg = errorState;
+    errorMsg += offending_PID;
+    TRI_V8_RETURN_STD_STRING(errorMsg);
+  }
   TRI_V8_TRY_CATCH_END
 }
 
