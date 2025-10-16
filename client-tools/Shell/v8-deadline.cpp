@@ -50,7 +50,7 @@ static std::mutex singletonDeadlineMutex;
 const char* errorDeadline = "Execution deadline reached!";
 const char* errorExternalDeadline = "Signaled deadline from extern!";
 const char* errorProcessMonitor = "Monitored child process exited unexpectedly - ";
-uint32_t offending_PID = 0;
+ExternalId offending_PID = 0;
 
 const char* errorState = errorDeadline;
 
@@ -157,7 +157,7 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeoutMS) {
   return delta;
 }
 
-void triggerV8DeadlineNow(bool fromSignal, uint32_t pid) {
+void triggerV8DeadlineNow(bool fromSignal, ExternalId pid) {
   // Set the deadline to expired:
   std::lock_guard mutex{singletonDeadlineMutex};
   errorState = fromSignal ? errorExternalDeadline : errorProcessMonitor;
