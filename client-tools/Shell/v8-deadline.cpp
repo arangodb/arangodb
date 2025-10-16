@@ -49,7 +49,8 @@ static std::mutex singletonDeadlineMutex;
 
 const char* errorDeadline = "Execution deadline reached!";
 const char* errorExternalDeadline = "Signaled deadline from extern!";
-const char* errorProcessMonitor = "Monitored child process exited unexpectedly - ";
+const char* errorProcessMonitor =
+    "Monitored child process exited unexpectedly - ";
 ExternalId offending_PID = 0;
 
 const char* errorState = errorDeadline;
