@@ -323,7 +323,7 @@ def get_args(args):
     return sub_args
 
 
-def read_yaml_multi_suite(definition, testfile_definitions, yaml_struct):
+def read_yaml_multi_suite(name, definition, testfile_definitions, yaml_struct, cli_args):
     """ convert yaml representation into the internal one """
     generated_definition = {
     }
@@ -344,7 +344,13 @@ def read_yaml_multi_suite(definition, testfile_definitions, yaml_struct):
                 suite_name = suite
             else:
                 suite_name = list(suite.keys())[0]
-                if isinstance(suite, dict) and 'args' in suite[suite_name]:
+                if not isinstance(suite, dict):
+                    raise Exception(f"suite should be a dict, it is {type(suite)}")
+                if 'options' in suite[suite_name]:
+                    if filter_one_test(cli_args, suite[suite_name]['options']):
+                        print(f"skipping {suite}")
+                        continue
+                if 'args' in suite[suite_name]:
                     options_json.append(get_args(suite[suite_name]['args']))
                 else:
                     options_json.append({})
@@ -353,9 +359,6 @@ def read_yaml_multi_suite(definition, testfile_definitions, yaml_struct):
         args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
     if args != {}:
         generated_definition['args'] = args
-    name = generated_name
-    if 'name' in definition:
-        name = definition['name']
     return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, yaml_struct)
 
 def read_yaml_bucket_suite(bucket_name, definition, testfile_definitions, yaml_struct, cli_args):
@@ -418,14 +421,15 @@ def read_definitions(filename, override_branch, args):
             for testcase in config:
                 suite_name = list(testcase.keys())[0]
                 try:
-                    if "suites" in testcase:
-                        if 'options' in testcase and 'bucket' in testcase['options']:
-                            tests.append(read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, parsed_yaml, args))
+                    suite = testcase[suite_name]
+                    if "suites" in suite:
+                        if 'options' in suite and 'bucket' in suite['options']:
+                            tests.append(read_yaml_bucket_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))
                         else:
-                            tests.append(read_yaml_multi_suite(testcase, testfile_definitions, parsed_yaml))
+                            tests.append(read_yaml_multi_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))
                     else:
                         tests.append(read_yaml_suite(suite_name, suite_name,
-                                                     testcase[suite_name], testfile_definitions, parsed_yaml))
+                                                     suite, testfile_definitions, parsed_yaml))
                 except Exception as ex:
                     print(f"while parsing {suite_name} {testcase}")
                     raise ex
