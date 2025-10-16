@@ -369,6 +369,7 @@ def read_yaml_bucket_suite(bucket_name, definition, testfile_definitions, yaml_s
     for suite in definition['suites']:
         if isinstance(suite, str):
             options_json.append({})
+            suite_names.append(suite)
         else:
             suite_name = list(suite.keys())[0]
             if 'options' in suite[suite_name]:
