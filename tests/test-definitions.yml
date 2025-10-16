@@ -2,21 +2,21 @@
 
 # Single Server only Tests
 - single_server_only:
-  options:
-    type: single
-  suites:
-    - BackupAuthNoSysTests
-    - BackupAuthSysTests
-    - BackupNoAuthSysTests
-    - arangosh 
+    options:
+      type: single
+    suites:
+      - BackupAuthNoSysTests
+      - BackupAuthSysTests
+      - BackupNoAuthSysTests
+      - arangosh 
 - single_server_only_part2:
-  options:
-    type: single
-  suites:
-    - arangobench
-    - permissions
-    - paths_server
-    - version
+    options:
+      type: single
+    suites:
+      - arangobench
+      - permissions
+      - paths_server
+      - version
 
 # Single Server Replication Tests
 - replication_fuzz:
@@ -93,29 +93,29 @@
       size: small
       type: single
 
-# Misc single server tests
-- agency_tests:
-  options:
-    priority: 350
-    parallelity: 3
-    size: small
-    type: single
-  args:
-    dumpAgencyOnError: true
-  suites:
-    - agency
-    - agency-restart
 
-- authentication:
+- authentication_audit_endpoints_import_export_agency:
     options:
-      priority: 1000
       type: single
-- endpoints:
-    options:
-      priority: 250
-      type: single
-    args:
-      skipEndpointsIpv6: true
+    suites:
+      - fuerte:
+          args:
+            protocol: ssl
+          options:
+            coverage: false
+      - endpoints:
+          args:
+            skipEndpointsIpv6: true
+      - audit_client
+      - audit_server
+      - authentication
+      - importing
+      - export
+      - agency
+      - agency-restart
+      - fuerte:
+          options:
+            coverage: false
 
 - recovery:
     options:
@@ -151,19 +151,19 @@
 
 # this options json will be built:  --optionsJson [{"http":true},{"ssl":true,"suffix":"ssl"}] $EncryptionAtRest
 - shell_api_multi:
-  options:
-    priority: 500
-    type: single
-  args:
-    moreArgv: $EncryptionAtRest
-  suites:
-    - shell_api_multi:
-        args:
-          http: true
-    - shell_api_multi:
-        args:
-          ssl: true
-          suffix: ssl
+    options:
+      priority: 500
+      type: single
+    args:
+      moreArgv: $EncryptionAtRest
+    suites:
+      - shell_api_multi:
+          args:
+            http: true
+      - shell_api_multi:
+          args:
+            ssl: true
+            suffix: ssl
 
 # Shell client tests Single Server; distribute evenly
 - shell_client:
@@ -196,46 +196,46 @@
 
 # will build this:  --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"}] 
 - shell_client_transaction:
-  options:
-    priority: 750
-    type: single
-  args:
-    moreArgv: $EncryptionAtRest
-  suites:
-    - shell_client_transaction:
-        args:
-          http2: true
-          suffix: http2
-    - shell_client_transaction:
-        args:
-          http: true
-          suffix: http
+    options:
+      priority: 750
+      type: single
+    args:
+      moreArgv: $EncryptionAtRest
+    suites:
+      - shell_client_transaction:
+          args:
+            http2: true
+            suffix: http2
+      - shell_client_transaction:
+          args:
+            http: true
+            suffix: http
 
 # will build this: --optionsJson [{"http":true,"suffix":"http"},{"http2":true,"suffix":"http2"},{"http":true,"ssl":true,"suffix":"http-ssl"},{"http2":true,"ssl":true,"suffix":"http2-ssl"}]
 - shell_client_traffic:
-  options:
-    priority: 250
-    parallelity: 1
-    type: single
-  suites:
-    - shell_client_traffic:
-        args:
-          http: true
-          suffix: http
-    - shell_client_traffic:
-        args:
-          http2: true
-          suffix: http2
-    - shell_client_traffic:
-        args:
-          http: true
-          ssl: true
-          suffix: http-ssl
-    - shell_client_traffic:
-        args:
-          http2: true
-          ssl: true
-          suffix: http2-ssl
+    options:
+      priority: 250
+      parallelity: 1
+      type: single
+    suites:
+      - shell_client_traffic:
+          args:
+            http: true
+            suffix: http
+      - shell_client_traffic:
+          args:
+            http2: true
+            suffix: http2
+      - shell_client_traffic:
+          args:
+            http: true
+            ssl: true
+            suffix: http-ssl
+      - shell_client_traffic:
+          args:
+            http2: true
+            ssl: true
+            suffix: http2-ssl
 
 - shell_client_aql:
     options:
@@ -259,38 +259,24 @@
       size: large
       type: single
 
-# Fuerte tests are executed in single env
-- fuerte:
-    options: 
-      coverage: false
-      priority: 500
-      type: single
-      suffix: http
-- fuerte:
-    options:
-      coverage: false
-      priority: 500
-      type: single
-      suffix: ssl-http
-    args:
-      protocol: ssl
-
 - rta_makedata:
     options:
-      type: single
-    args:
-      extraArgs:experimental-vector-index: true
+      type: mixed
+      size: large
+    suites:
+      - rta_makedata:
+          args:
+            extraArgs:experimental-vector-index: true
+      - rta_makedata:
+          args:
+            cluster: true
+            extraArgs:experimental-vector-index: true
+      - rta_makedata:
+          args:
+            cluster: true
+            forceOneShard: true
+            extraArgs:experimental-vector-index: true
 
-
-# Cluster Tests
-
-- arangobench:
-    options:
-      priority: 1000
-      size: small
-      type: cluster
-    args:
-      dumpAgencyOnError: true
 # TODO yaml: full? 
 - chaos:
     options:
@@ -311,12 +297,26 @@
       javascript.gc-interval: 25
     args:
       dumpAgencyOnError: true
-- deadlock:
+
+- arangobench_deadlock_audit:
     options:
-      type: cluster
       coverage: false
-    args:
-      dumpAgencyOnError: true
+      priority: 1000
+      size: small
+      type: cluster
+    suites:
+      - arangobench:
+          args:
+            dumpAgencyOnError: true
+      - deadlock:
+          args:
+            dumpAgencyOnError: true
+      - server_secrets:
+          args:
+            dumpAgencyOnError: true
+      - audit_client
+      - audit_server
+
 - restart:
     options:
       priority: 1000
@@ -457,20 +457,6 @@
 #    args:
 #      dumpAgencyOnError: true
 
-- rta_makedata:
-    options:
-      type: cluster
-      parallelity: 6
-    args:
-      extraArgs:experimental-vector-index: true 
-- rta_makedata:
-    options:
-      type: cluster
-      name: rta_makedata_force_oneshard
-      parallelity: 5
-    args:
-      forceOneShard: true
-      extraArgs:experimental-vector-index: true
 
 # shell aql vector index tests
 - shell_client_aql_vector:
@@ -484,25 +470,15 @@
 
 # Common Tests
 - import_export:
-  options:
-    parallelity: 5
-    size: small
-    type: cluster
-  args:
-    dumpAgencyOnError: true
-  suites:
-    - importing
-    - export
-- import_export:
-  options:
-    parallelity: 3
-    size: small
-    type: single
-  args:
-    dumpAgencyOnError: true
-  suites:
-    - importing
-    - export
+    options:
+      parallelity: 5
+      size: small
+      type: cluster
+    args:
+      dumpAgencyOnError: true
+    suites:
+      - importing
+      - export
 - hot_backup:
     options:
       type: single
@@ -547,187 +523,105 @@
       dumpAgencyOnError: true
 - server_secrets:
     options:
+      type: single
       priority: 1000
       parallelity: 5
       size: small
-    args:
-      dumpAgencyOnError: true
 
 # Dump Tests
-# TODO yaml: this represents into one circle-ci bucket
-- bucket:
-  name: dump
-  suites:
-    - dump:
+- dump_single:
+    options:
+      bucket: auto
+      type: single
+      size: medium
+    args:
+      dumpAgencyOnError: true
+      extraArgs:experimental-vector-index: true
+    suites:
+      - dump_jwt
+      - dump_multiple_same
+      - dump_multiple_two
+      - dump_non_parallel
+      - dump_maskings
+      - dump
+      - dump:
           options:
-            type: cluster
-            size: medium
-            parallelity: 5
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump:
-          options:
-            type: cluster
             suffix: _vpack
-            size: medium
-            parallelity: 5
           args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
             dumpVPack: true
-    - dump:
+        # takes long, needs to go first. However, doesn't utilize the SUT hard.
+      - dump_with_crashes:
           options:
-            type: single
-            suffix: _vpack
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            dumpVPack: true
-      # BTS-1852 enable after fix:
-      #- dump:
-      #    options:
-      #      size: medium
-      #      type: cluster
-      #      name: dump_singleshard_cluster
-      #    args:
-      #      dumpAgencyOnError: true
-      #      extraArgs:experimental-vector-index: true
-      #      dumpVPack: true
-      #      forceOneShard: true
-      #      cluster: true
-    - dump_authentication:
-          options:
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_jwt:
-          options:
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_same:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_same:
-          options:
-            type: cluster
-            size: medium
-            parallelity: 5
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_two:
-          options:
-            type: single
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_multiple_two:
-          options:
-            type: cluster
-            size: large
-            parallelity: 5
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_non_parallel:
-          options:
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_maskings:
-          options:
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_encrypted:
-          options:
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_mixed_cluster_single:
-          options:
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_mixed_single_cluster:
-          options:
-            size: large
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_mixed_cluster_single:
-          options:
-            suffix: vpack
-            size: medium
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            dumpVPack: true
-    - dump_mixed_single_cluster:
-          options:
-            suffix: vpack
-            size: large
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-            dumpVPack: true
-      # takes long, needs to go first. However, doesn't utilize the SUT hard.
-    - dump_with_crashes:
-          options:
-            type: single
-            size: medium
             parallelity: 1
             priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_with_crashes:
+      - dump_with_crashes_non_parallel:
           options:
-            full: true
-            type: cluster
-            size: medium
             parallelity: 1
             priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
-    - dump_with_crashes_non_parallel:
-          options:
-            size: medium
-            parallelity: 1
-            priority: 2000
-          args:
-            dumpAgencyOnError: true
-            extraArgs:experimental-vector-index: true
 
-# Audit Tests
-- audit:
-  suites:
-    - audit_client
-    - audit_server
-  args:
-    dumpAgencyOnError: true
+- dump_cluster_medium:
+    options:
+      bucket: auto
+      type: cluster
+      size: medium
+      parallelity: 5
+    args:
+      dumpAgencyOnError: true
+      extraArgs:experimental-vector-index: true
+    suites:
+      - dump
+      - dump:
+            options:
+              suffix: _vpack
+            args:
+              dumpVPack: true
+      - dump_authentication
+      - dump_jwt
+      - dump_multiple_same
+      - dump_non_parallel
+      - dump_maskings
+      - dump_encrypted
+      - dump_mixed_cluster_single
+      - dump_mixed_cluster_single:
+            options:
+              suffix: vpack
+            args:
+              dumpVPack: true
+      - dump_with_crashes:
+            options:
+              full: true
+              parallelity: 1
+              priority: 2000
+      - dump_with_crashes_non_parallel:
+            options:
+              parallelity: 1
+              priority: 2000
+        # BTS-1852 enable after fix:
+        #- dump:
+        #    options:
+        #      name: dump_singleshard_cluster
+        #    args:
+        #      dumpVPack: true
+        #      forceOneShard: true
+
+- dump_cluster_large:
+    options:
+      bucket: auto
+      type: cluster
+      size: large
+      parallelity: 5
+    args:
+      extremeVerbosity: true
+      dumpAgencyOnError: true
+      extraArgs:experimental-vector-index: true
+    suites:
+      - dump_multiple_two
+      - dump_mixed_single_cluster
+      - dump_mixed_single_cluster:
+            options:
+              suffix: vpack
+            args:
+              dumpVPack: true
 
 # Full Tests Single Server
 - shell_fuzzer:
@@ -854,29 +748,23 @@
 # Common Full Tests
 - communication:
     options:
+      bucket: auto
       full: true
       priority: 1000
       parallelity: 2
       type: single
-- communication_ssl:
-    options:
-      full: true
-      priority: 1000
-      parallelity: 2
-      type: single
-
+    suites:
+      - communication
+      - communication_ssl
 - communication:
     options:
+      bucket: auto
       full: true
       priority: 1000
       size: large
       parallelity: 6
       type: cluster
-- communication_ssl:
-    options:
-      full: true
-      priority: 1000
-      size: large
-      parallelity: 6
-      type: cluster
+    suites:
+      - communication
+      - communication_ssl
 

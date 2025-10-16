@@ -1,9 +1,9 @@
-- jobProperties:
+jobProperties:
     container_suffix: '-go:'
     second_repo: git@github.com:arangodb/go-driver.git
     branch: master
     init_command: ''
-
+tests:
 - go_driver:
     options:
       priority: 500

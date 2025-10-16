@@ -10,6 +10,12 @@ import re
 import sys
 import traceback
 import yaml
+from enum import Enum
+
+class deployment_variant(Enum):
+    SINGLE = 1,
+    MIXED = 2,
+    CLUSTER = 3
 
 BuildConfig = namedtuple(
     "BuildConfig", ["arch", "enterprise", "sanitizer", "isNightly"]
@@ -26,6 +32,7 @@ IS_COVERAGE = "COVERAGE" in os.environ and os.environ["COVERAGE"] == "On"
 known_flags = {
     "cluster": "this test requires a cluster",
     "single": "this test requires a single server",
+    "mixed": "some buckets will run cluster, some not.",
     "full": "this test is only executed in full tests",
     "!full": "this test is only executed in non-full tests",
     "gtest": "only the gtest are to be executed",
@@ -157,7 +164,7 @@ def validate_params(params):
             if params[key][0] == "*":  # factor the default
                 params[key] = default_value * parse_number(params[key][1:])
             else:
-              params[key] = parse_number(params[key])
+                params[key] = parse_number(params[key])
         elif default_value is not None:
             params[key] = default_value
 
@@ -230,7 +237,7 @@ def read_definition_line(line, testfile_definitions, yaml_struct):
         "run_job": run_job,
     }
 
-def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, yaml_struct):
+def read_yaml_suite(name, suite, definition, testfile_definitions, yaml_struct):
     """ convert yaml representation into the internal one """
     if not 'options' in definition:
         definition['options'] = {}
@@ -261,14 +268,17 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
                 arangosh_args.append(val)
     params = validate_params(definition['options'])
 
-    is_cluster = False
+    medium_size = False
     if 'type' in params:
         if params['type'] == "cluster":
-            is_cluster = True
+            medium_size = True
             flags.append('cluster')
+        elif params['type'] == "mixed":
+            medium_size = True
+            flags.append('mixed')
         else:
             flags.append('single')
-    size = "medium" if is_cluster else "small"
+    size = "medium" if medium_size else "small"
     size = size if not "size" in params else params['size']
 
     if 'full' in params:
@@ -282,7 +292,6 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
     else:
         run_job = 'run-linux-tests'
     return {
-        "bucket": bucket_name,
         "name": name if not "name" in params else params['name'],
         "suites": suite,
         "size": size,
@@ -294,7 +303,27 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, bucket_name, 
         "run_job": run_job,
     }
 
-def read_yaml_multi_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
+def get_args(args):
+    """ serialize args into json similar to fromArgv in testing.js """
+    sub_args = {}
+    for key in args.keys():
+        value = args[key]
+        if ":" in key:
+            keyparts = key.split(":")
+            if not keyparts[0] in sub_args:
+                sub_args[keyparts[0]] = {}
+            sub_args[keyparts[0]][keyparts[1]] = value
+        elif key in sub_args:
+            if isinstance(sub_args[key], list):
+                sub_args[key].append(value)
+            else:
+                sub_args[key] = [value]
+        else:
+            sub_args[key] = value
+    return sub_args
+
+
+def read_yaml_multi_suite(name, definition, testfile_definitions, yaml_struct, cli_args):
     """ convert yaml representation into the internal one """
     generated_definition = {
     }
@@ -310,29 +339,69 @@ def read_yaml_multi_suite(name, definition, testfile_definitions, bucket_name, y
         suite_strs = []
         options_json = []
         for suite in definition['suites']:
-            suite_name = list(suite.keys())[0]
-            if 'args' in suite[suite_name]:
-                options_json.append(suite[suite_name]['args'])
+            if isinstance(suite, str):
+                options_json.append({})
+                suite_name = suite
+            else:
+                suite_name = list(suite.keys())[0]
+                if not isinstance(suite, dict):
+                    raise Exception(f"suite should be a dict, it is {type(suite)}")
+                if 'options' in suite[suite_name]:
+                    if filter_one_test(cli_args, suite[suite_name]['options']):
+                        print(f"skipping {suite}")
+                        continue
+                if 'args' in suite[suite_name]:
+                    options_json.append(get_args(suite[suite_name]['args']))
+                else:
+                    options_json.append({})
             suite_strs.append(suite_name)
         generated_name = ','.join(suite_strs)
         args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
     if args != {}:
         generated_definition['args'] = args
-    name = generated_name
-    if 'name' in definition:
-        name = definition['name']
-    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, bucket_name, yaml_struct)
+    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, yaml_struct)
 
-def read_yaml_bucket_suite(name, definition, testfile_definitions, bucket_name, yaml_struct):
+def read_yaml_bucket_suite(bucket_name, definition, testfile_definitions, yaml_struct, cli_args):
     """ convert yaml representation into the internal one """
-    bucket_name = definition['name']
-    ret = []
+    args = {}
+    if 'args' in definition:
+        args = definition['args']
+    suite_names = []
+    sub_suites = []
+    options_json = []
     for suite in definition['suites']:
-        suite_name = list(suite.keys())[0]
-        ret.append(read_yaml_suite(suite_name, suite_name, suite[suite_name], testfile_definitions, bucket_name, yaml_struct))
-    return ret
+        if isinstance(suite, str):
+            options_json.append({})
+            suite_names.append(suite)
+        else:
+            suite_name = list(suite.keys())[0]
+            if 'options' in suite[suite_name]:
+                if filter_one_test(cli_args, suite[suite_name]['options']):
+                    print(f"skipping {suite}")
+                    continue
+            suite_names.append(suite_name)
+            sub_suites.append(suite[suite_name])
+            if 'args' in suite[suite_name]:
+                options_json.append(get_args(suite[suite_name]['args']))
+            else:
+                options_json.append({})
+    args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
+    joint_suite_name = ','.join(suite_names)
+    definition['options']['buckets'] = len(suite_names)
+    definition['options']['args'] = args
 
-def read_definitions(filename, override_branch):
+    return read_yaml_suite(bucket_name,
+                           joint_suite_name,
+                           {
+                               'options': definition['options'],
+                               'name': bucket_name,
+                               'args': args,
+                               'suites': definition['suites']
+                           },
+                           testfile_definitions,
+                           yaml_struct)
+
+def read_definitions(filename, override_branch, args):
     """read test definitions txt"""
     tests = []
     has_error = False
@@ -343,25 +412,27 @@ def read_definitions(filename, override_branch):
     if filename.endswith(".yml"):
         with open(filename, "r", encoding="utf-8") as filep:
             config = yaml.safe_load(filep)
-            filtered_config = []
+            if isinstance(config, dict):
+                if "add-yaml" in config:
+                    parsed_yaml = {"add-yaml": copy.deepcopy(config["add-yaml"])}
+                if "jobProperties" in config:
+                    testfile_definitions = copy.deepcopy(config["jobProperties"])
+                config = config['tests']
             for testcase in config:
                 suite_name = list(testcase.keys())[0]
-                if suite_name == "add-yaml":
-                    parsed_yaml = {"add-yaml": copy.deepcopy(testcase["add-yaml"])}
-                elif suite_name == "jobProperties":
-                    testfile_definitions = copy.deepcopy(testcase["jobProperties"])
-                else:
-                    filtered_config.append(testcase)
-            for testcase in filtered_config:
-                suite_name = list(testcase.keys())[0]
-                if suite_name == "bucket":
-                    tests += read_yaml_bucket_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml)
-                    None
-                elif "suites" in testcase:
-                    tests.append(read_yaml_multi_suite(suite_name, testcase, testfile_definitions, None, parsed_yaml))
-                else:
-                    tests.append(read_yaml_suite(suite_name, suite_name,
-                                                 testcase[suite_name], testfile_definitions, None, parsed_yaml))
+                try:
+                    suite = testcase[suite_name]
+                    if "suites" in suite:
+                        if 'options' in suite and 'bucket' in suite['options']:
+                            tests.append(read_yaml_bucket_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))
+                        else:
+                            tests.append(read_yaml_multi_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))
+                    else:
+                        tests.append(read_yaml_suite(suite_name, suite_name,
+                                                     suite, testfile_definitions, parsed_yaml))
+                except Exception as ex:
+                    print(f"while parsing {suite_name} {testcase}")
+                    raise ex
     else:
         with open(filename, "r", encoding="utf-8") as filep:
             for line_no, raw_line in enumerate(filep):
@@ -393,30 +464,17 @@ def read_definitions(filename, override_branch):
     return tests, parsed_yaml
 
 
-def filter_tests(args, tests, enterprise, nightly):
+def filter_tests(args, tests, nightly):
     """filter testcase by operations target Single/Cluster/full"""
     if args.all:
         return tests
 
     full = args.full or nightly
     filters = []
-    # if args.cluster:
-    #     filters.append(lambda test: "single" not in test["flags"])
-    # else:
-    #     filters.append(lambda test: "cluster" not in test["flags"])
-
     if full:
         filters.append(lambda test: "!full" not in test["flags"])
     else:
         filters.append(lambda test: "full" not in test["flags"])
-
-    # if args.gtest:
-    #     filters.append(lambda test: "gtest" == test["name"])
-    # else:
-    #   filters.append(lambda test: "gtest" != test["name"])
-
-    if not enterprise:
-        filters.append(lambda test: "enterprise" not in test["flags"])
 
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
@@ -428,6 +486,22 @@ def filter_tests(args, tests, enterprise, nightly):
         tests = filter(one_filter, tests)
     return list(tests)
 
+def filter_one_test(args, test):
+    """filter testcase by operations target Single/Cluster/full"""
+    if args.all:
+        return False
+    if IS_COVERAGE:
+        if 'coverage' in test:
+            return True
+    full = args.full or args.nightly
+    filters = []
+
+    if 'full' in test:
+        if full and not test['full']:
+            return True
+        if not full and test['full']:
+            return True
+    return False
 
 def get_size(size, arch):
     aarch64_sizes = {
@@ -459,7 +533,7 @@ def get_test_size(size, build_config, cluster):
     return get_size(size, build_config.arch)
 
 
-def create_test_job(test, cluster, build_config, build_jobs, args, replication_version=1):
+def create_test_job(test, depl_variant, build_config, build_jobs, args, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
     params = test["params"]
@@ -472,9 +546,13 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
     if not size in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception(f"Invalid resource class size {size}")
 
-    deployment_variant = (
-        f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
-    )
+    deployment_v_str = ""
+    if depl_variant == deployment_variant.CLUSTER:
+        deployment_v_str = f"cluster{'-repl2' if replication_version==2 else ''}"
+    elif depl_variant == deployment_variant.SINGLE:
+        deployment_v_str = "single"
+    else:
+        deployment_v_str = "mixed"
     sub_arangosh_args = args.arangosh_args
     if 'arangosh_args' in test:
         # Yaml workaround: prepend an A to stop bad things from happening.
@@ -482,11 +560,12 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
             sub_arangosh_args = test["arangosh_args"] + args.arangosh_args
         del test["arangosh_args"]
     job = {
-        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
+        # "name": f"test-{edition}-{deployment_v_str}-{suite_name}-{build_config.arch}",
+        "name": f"test-{deployment_v_str}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_test_size(size, build_config, cluster),
-        "cluster": cluster,
+        "size": get_test_size(size, build_config, depl_variant == deployment_variant.CLUSTER),
+        "cluster": depl_variant == deployment_variant.CLUSTER,
         "requires": build_jobs,
         "arangosh_args": "A " + json.dumps(sub_arangosh_args),
 
@@ -501,7 +580,7 @@ def create_test_job(test, cluster, build_config, build_jobs, args, replication_v
     if 'more_yaml' in test:
         job ['foo'] = test['more_yaml']
     sub_extra_args = test["args"].copy()
-    if cluster:
+    if depl_variant == deployment_variant.CLUSTER:
         sub_extra_args += ["--replicationVersion", f"{replication_version}"]
     if build_config.isNightly:
         sub_extra_args += ["--skipNightly", "false"]
@@ -554,16 +633,18 @@ def add_test_definition_jobs_to_workflow(
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
+                jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, deployment_variant.SINGLE, build_config, build_jobs, args))
+        elif "mixed" in test["flags"]:
+            jobs.append(create_test_job(test, deployment_variant.MIXED, build_config, build_jobs, args))
         else:
-            jobs.append(create_test_job(test, True, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, True, build_config, build_jobs, args, 2))
-            jobs.append(create_test_job(test, False, build_config, build_jobs, args))
+                jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args, 2))
+            jobs.append(create_test_job(test, deployment_variant.SINGLE, build_config, build_jobs, args))
 
 
 def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
@@ -725,7 +806,7 @@ def add_workflow(workflows, tests, build_config, args):
         add_cppcheck_job(workflow, build_job)
     add_create_docker_image_job(workflow, build_config, build_jobs, args)
 
-    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
+    tests = filter_tests(args, tests, build_config.isNightly)
     add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs)
     return workflow
 
@@ -829,7 +910,7 @@ def main():
                             override_branch = branch
                 except Exception as ex:
                     raise Exception(f"Syntax error in --test-branches: {branch_name_pair} must be 'name=branch:name2=branch2'") from ex
-            (new_tests, new_parsed_yaml) = read_definitions(one_definition, override_branch)
+            (new_tests, new_parsed_yaml) = read_definitions(one_definition, override_branch, args)
             tests += new_tests
             parsed_yamls.append(new_parsed_yaml)
         # if args.validate_only:
