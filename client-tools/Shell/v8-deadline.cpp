@@ -172,7 +172,7 @@ void triggerV8DeadlineNow(bool fromSignal, const ExternalId& pid) {
 
 static void SignalHandler(int /*signal*/) {
   // Set the deadline to expired:
-  triggerV8DeadlineNow(true);
+  triggerV8DeadlineNow(true, ExternalId());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
