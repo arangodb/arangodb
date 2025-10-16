@@ -27,9 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/EncodingUtils.h"
-#include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Import/ImportHelper.h"
 #include "Rest/GeneralResponse.h"
@@ -40,9 +37,7 @@
 #endif
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 #include "Ssl/ssl-helper.h"
 #include "Utilities/NameValidator.h"
@@ -209,7 +204,6 @@ std::shared_ptr<fu::Connection> V8ClientConnection::createConnection(
         LOG_TOPIC("9daaa", DEBUG, arangodb::Logger::HTTPCLIENT)
             << "Connection attempt to endpoint '" << _client.endpoint()
             << "' failed fatally from: " << newConnection->localEndpoint();
-        newConnection->cancel();
         return nullptr;
       }
 
