@@ -387,15 +387,20 @@ std::string V8ClientConnection::protocol() const {
   }
 }
 
-void V8ClientConnection::connect() {
-  std::lock_guard<std::recursive_mutex> guard(_lock);
+void V8ClientConnection::prepareConnection() {
+  // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
   _builder.endpoint(_client.endpoint());
-  // check jwtSecret first, as it is empty by default,
+
+  // check jwtToken first, then jwtSecret, as they are empty by default,
   // but username defaults to "root" in most configurations
-  if (!_client.jwtSecret().empty()) {
+  TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
+  if (!_client.jwtToken().empty()) {
+    _builder.jwtToken(_client.jwtToken());
+    _builder.authenticationType(fu::AuthenticationType::Jwt);
+  } else if (!_client.jwtSecret().empty()) {
     _builder.jwtToken(
         fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
@@ -403,6 +408,11 @@ void V8ClientConnection::connect() {
     _builder.user(_client.username()).password(_client.password());
     _builder.authenticationType(fu::AuthenticationType::Basic);
   }
+}
+
+void V8ClientConnection::connect() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  prepareConnection();
   createConnection();
 }
 
@@ -411,20 +421,7 @@ void V8ClientConnection::reconnect() {
 
   std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
 
-  _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
-  _databaseName = _client.databaseName();
-  _builder.endpoint(_client.endpoint());
-  _forceJson = _client.forceJson();
-  // check jwtSecret first, as it is empty by default,
-  // but username defaults to "root" in most configurations
-  if (!_client.jwtSecret().empty()) {
-    _builder.jwtToken(
-        fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
-    _builder.authenticationType(fu::AuthenticationType::Jwt);
-  } else if (!_client.username().empty()) {
-    _builder.user(_client.username()).password(_client.password());
-    _builder.authenticationType(fu::AuthenticationType::Basic);
-  }
+  prepareConnection();
 
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);

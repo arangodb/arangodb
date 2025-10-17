@@ -36,10 +36,9 @@
 #include <faiss/invlists/InvertedLists.h>
 #include <velocypack/Builder.h>
 
-namespace arangodb {
+namespace arangodb::vector {
 
-namespace vector {
-
+/// RocksDBInvertedListsIteratorBase
 RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
@@ -59,6 +58,7 @@ RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
   _it->Seek(_rocksdbKey.string());
 }
 
+/// RocksDBInvertedListsIterator
 RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
@@ -95,6 +95,7 @@ RocksDBInvertedListsIterator::get_id_and_codes() {
   }
 }
 
+/// RocksDBInvertedListsFilteringIterator
 RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     SearchParametersContext& searchParametersContext, std::size_t listNumber,
@@ -103,14 +104,6 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
           index, collection, searchParametersContext.trx, listNumber, codeSize),
       _searchParametersContext(searchParametersContext) {
   TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
-  RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
-      searchParametersContext.trx, collection->id());
-
-  _rocksdbKey.constructVectorIndexValue(_index->objectId(), _listNumber);
-  _it = mthds->NewIterator(index->columnFamily(), [&](auto& opts) {
-    TRI_ASSERT(opts.prefix_same_as_start);
-  });
-  _it->Seek(_rocksdbKey.string());
   skipOverFilteredDocuments();
 }
 
@@ -212,6 +205,7 @@ RocksDBInvertedListsFilteringIterator::get_id_and_codes() {
           _filteredIdsIt->second.data()};
 }
 
+/// RocksDBInvertedListsFilteringStoredValuesIterator
 RocksDBInvertedListsFilteringStoredValuesIterator::
     RocksDBInvertedListsFilteringStoredValuesIterator(
         RocksDBVectorIndex* index, LogicalCollection* collection,
@@ -222,7 +216,7 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
       _searchParametersContext(searchParametersContext) {
   TRI_ASSERT(index->hasStoredValues() &&
              searchParametersContext.isCoveredByStoredValues);
-  setToValidIterator();
+  skipOverFilteredDocuments();
 }
 
 [[nodiscard]] bool
@@ -310,7 +304,8 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
   return true;
 }
 
-void RocksDBInvertedListsFilteringStoredValuesIterator::setToValidIterator() {
+void RocksDBInvertedListsFilteringStoredValuesIterator::
+    skipOverFilteredDocuments() {
   while (_filteredIdsIt == _filteredIds.end()) {
     if (!searchFilteredIds()) {
       // If we enter here we could not produce any documents
@@ -320,10 +315,10 @@ void RocksDBInvertedListsFilteringStoredValuesIterator::setToValidIterator() {
 }
 
 void RocksDBInvertedListsFilteringStoredValuesIterator::next() {
-  setToValidIterator();
+  skipOverFilteredDocuments();
   ++_filteredIdsIt;
   if (_filteredIdsIt == _filteredIds.end()) {
-    setToValidIterator();
+    skipOverFilteredDocuments();
   }
 }
 
@@ -333,6 +328,7 @@ RocksDBInvertedListsFilteringStoredValuesIterator::get_id_and_codes() {
           _filteredIdsIt->second.data()};
 }
 
+/// RocksDBInvertedLists
 RocksDBInvertedLists::RocksDBInvertedLists(RocksDBVectorIndex* index,
                                            LogicalCollection* collection,
                                            std::size_t nlist, size_t codeSize)
@@ -367,5 +363,4 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
       },
       *iteratorContext);
 }
-};  // namespace vector
-};  // namespace arangodb
+};  // namespace arangodb::vector

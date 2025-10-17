@@ -132,6 +132,7 @@ struct RocksDBInvertedListsFilteringIterator final
  private:
   void skipOverFilteredDocuments();
 
+  // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
   constexpr static auto kBatchSize{1000};
 
   SearchParametersContext& _searchParametersContext;
@@ -165,7 +166,7 @@ struct RocksDBInvertedListsFilteringStoredValuesIterator final
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
  private:
-  void setToValidIterator();
+  void skipOverFilteredDocuments();
 
   constexpr static auto kBatchSize{1000};
 
