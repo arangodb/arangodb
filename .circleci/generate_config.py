@@ -507,7 +507,7 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
         "deployment": deployment_mode,
         "browser": "Remote_CHROME",
         "enterprise": "EP" if build_config.enterprise else "C",
-        "filterStatement": f"--ui-include-test-suite {filter_statement}",
+        "filterStatement": filter_statement,
         "requires": build_jobs,
         "rta-branch": rta_branch,
         "buckets": buckets,
@@ -561,9 +561,12 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
     if args.ui_deployments:
         deployments = args.ui_deployments.split(",")
 
+    filter_str = ""
+    for one_filter in ui-testsuites:
+        filter_str += f"--ui-include-test-suite {+one_filter}"
     for deployment in deployments:
         jobs.append(
-            create_rta_test_job(build_config, build_jobs, deployment, ",".join(ui_testsuites), len(ui_testsuites), args.rta_branch)
+            create_rta_test_job(build_config, build_jobs, deployment, filter_str, len(ui_testsuites), args.rta_branch)
         )
 
 
