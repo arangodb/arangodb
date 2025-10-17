@@ -497,8 +497,7 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
         job['init_driver_repo_command'] = ""
     return {test['run_job']: job}
 
-
-def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, rta_branch):
+def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, buckets, rta_branch):
     """ this job will use RTA to launch arangod """
     edition = "ee" if build_config.enterprise else "ce"
     job = {
@@ -511,6 +510,7 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
         "filterStatement": f"--ui-include-test-suite {filter_statement}",
         "requires": build_jobs,
         "rta-branch": rta_branch,
+        "buckets": buckets,
     }
     return {"run-rta-tests": job}
 
@@ -562,10 +562,9 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
         deployments = args.ui_deployments.split(",")
 
     for deployment in deployments:
-        for test_suite in ui_testsuites:
-            jobs.append(
-                create_rta_test_job(build_config, build_jobs, deployment, test_suite, args.rta_branch)
-            )
+        jobs.append(
+            create_rta_test_job(build_config, build_jobs, deployment, ",".join(ui_testsuites), len(ui_testsuites), args.rta_branch)
+        )
 
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):

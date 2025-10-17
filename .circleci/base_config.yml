@@ -665,6 +665,10 @@ jobs:
       docker_image:
         type: string
         default: "<< pipeline.parameters.test-docker-image >>"
+      buckets:
+        type: integer
+        default: 1
+    parallelism: << parameters.buckets >>
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -711,6 +715,7 @@ jobs:
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
+              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
