@@ -35,6 +35,7 @@
 #include "Rest/GeneralResponse.h"
 #include "Rest/Version.h"
 #include "Shell/ClientFeature.h"
+#include "fuerte/types.h"
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include "Shell/RequestFuzzer.h"
 #endif
@@ -390,7 +391,7 @@ std::string V8ClientConnection::protocol() const {
 }
 
 // Helper function to authenticate via /_open/auth endpoint
-std::string V8ClientConnection::authenticateViaOpenAuth() {
+ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
   // Create a temporary connection builder for the auth request
   fuerte::ConnectionBuilder tempBuilder;
   tempBuilder.endpoint(_client.endpoint());
@@ -428,7 +429,7 @@ std::string V8ClientConnection::authenticateViaOpenAuth() {
     throw std::runtime_error("Failed to send authentication request");
   }
 
-  if (response->statusCode() != 200) {
+  if (response->statusCode() != fuerte::StatusOK) {
     std::string errorMsg = "Authentication failed with status code: " +
                            std::to_string(response->statusCode());
     if (response->payloadSize() > 0) {
@@ -442,6 +443,17 @@ std::string V8ClientConnection::authenticateViaOpenAuth() {
           errorMsg =
               VelocyPackHelper::getStringValue(slice, "errorMessage", errorMsg);
         }
+
+        // This means that open/auth endpoint is not implemented and we are not
+        // communicating to the coordinator
+        if (slice.hasKey("code") && slice.get("code").isNumber()) {
+          auto const errorCode = ErrorCode(slice.get("code").getNumber<int>());
+          if (errorCode == TRI_ERROR_HTTP_NOT_IMPLEMENTED ||
+              errorCode == TRI_ERROR_HTTP_NOT_FOUND) {
+            return {TRI_ERROR_ARANGO_TRY_AGAIN};
+          }
+        }
+
       } catch (...) {
         // Ignore parsing errors, use default error message
       }
@@ -464,7 +476,7 @@ std::string V8ClientConnection::authenticateViaOpenAuth() {
         "Invalid response format from authentication endpoint");
   }
 
-  return VelocyPackHelper::getStringValue(slice, "jwt", "");
+  return {VelocyPackHelper::getStringValue(slice, "jwt", "")};
 }
 
 void V8ClientConnection::prepareConnection() {
@@ -478,10 +490,6 @@ void V8ClientConnection::prepareConnection() {
   // but username defaults to "root" in most configurations
   TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
 
-  if (!_client.authentication()) {
-    return;
-  }
-
   if (!_client.jwtToken().empty()) {
     _builder.jwtToken(_client.jwtToken());
     _builder.authenticationType(fu::AuthenticationType::Jwt);
@@ -492,11 +500,18 @@ void V8ClientConnection::prepareConnection() {
   } else if (!_client.username().empty()) {
     // Use new authentication method via /_open/auth endpoint
     try {
-      std::string jwtToken = authenticateViaOpenAuth();
-      if (!jwtToken.empty()) {
+      auto const res = authenticateViaOpenAuth();
+
+      if (res.ok()) {
+        auto const jwtToken = res.get();
         // Server has authentication enabled, use the JWT token
         _builder.jwtToken(jwtToken);
         _builder.authenticationType(fu::AuthenticationType::Jwt);
+      } else if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN) {
+        // This happens only on agents and dbsevers since they do noe implement
+        // _open/auth API and we will try basic auth. Used only in tests
+        _builder.user(_client.username()).password(_client.password());
+        _builder.authenticationType(fu::AuthenticationType::Basic);
       }
       // If jwtToken is empty, server has authentication disabled
       // Proceed without authentication

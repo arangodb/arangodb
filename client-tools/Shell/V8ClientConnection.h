@@ -198,7 +198,7 @@ class V8ClientConnection {
   }
 
   // Helper function to authenticate via /_open/auth endpoint
-  std::string authenticateViaOpenAuth();
+  ResultT<std::string> authenticateViaOpenAuth();
 
  private:
   ArangoshServer& _server;
