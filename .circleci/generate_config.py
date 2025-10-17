@@ -501,7 +501,7 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
     """ this job will use RTA to launch arangod """
     edition = "ee" if build_config.enterprise else "ce"
     job = {
-        "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
+        "name": f"test-{deployment_mode}-UI",
         "suiteName": filter_statement,
         "arangosh_args": "",
         "deployment": deployment_mode,
