@@ -593,7 +593,7 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
               --suiteName '<< parameters.suiteName >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
               --extraArgs '<< parameters.extraArgs >>'
       - run:
