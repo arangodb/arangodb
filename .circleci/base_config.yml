@@ -593,7 +593,7 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
               --suiteName '<< parameters.suiteName >>' \
               --arangosh_args '<< parameters.arangosh_args >>' \
-              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
               --extraArgs '<< parameters.extraArgs >>'
       - run:
@@ -715,7 +715,7 @@ jobs:
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >> \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --buckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               << parameters.filterStatement >>
             exit_code=$?
             docker run \
