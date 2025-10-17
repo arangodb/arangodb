@@ -562,7 +562,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
         deployments = args.ui_deployments.split(",")
 
     filter_str = ""
-    for one_filter in ui-testsuites:
+    for one_filter in ui_testsuites:
         filter_str += f"--ui-include-test-suite {+one_filter}"
     for deployment in deployments:
         jobs.append(
