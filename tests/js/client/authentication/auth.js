@@ -25,6 +25,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+const _ = require('lodash');
 const jsunity = require("jsunity");
 const arango = require("@arangodb").arango;
 const db = require("internal").db;
