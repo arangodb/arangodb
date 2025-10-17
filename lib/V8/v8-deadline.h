@@ -47,7 +47,7 @@ uint32_t correctTimeoutToExecutionDeadline(uint32_t timeout);
 void TRI_InitV8Deadline(v8::Isolate* isolate, uint32_t timeout);
 
 // make the deadline handling bite Now.
-void triggerV8DeadlineNow(bool fromSignal);
+void triggerV8DeadlineNow(bool fromSignal, const ExternalId& pid);
 
 namespace arangodb {
 extern std::optional<ExternalProcessStatus> getHistoricStatus(
