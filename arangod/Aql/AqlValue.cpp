@@ -784,6 +784,51 @@ void AqlValue::setManagedSliceData(MemoryOriginType mot,
   TRI_ASSERT(memoryUsage() == length);
 }
 
+void AqlValue::setSupervisedData(AqlValueType at,
+                                 MemoryOriginType mot,
+                                 velocypack::ValueLength length) {
+  TRI_ASSERT(at == VPACK_SUPERVISED_SLICE || at == VPACK_SUPERVISED_STRING);
+  TRI_ASSERT(length > 0);
+  TRI_ASSERT(mot == MemoryOriginType::New || mot == MemoryOriginType::Malloc);
+
+  if (ADB_UNLIKELY(length > 0x0000ffffffffffffULL)) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_OUT_OF_MEMORY,
+                                   "invalid AqlValue length");
+  }
+
+  // assemble a 64 bit value with meta information for this AqlValue:
+  // the first 6 bytes contain the byteSize
+  // the next byte contains the memoryOriginType (0 = new[], 1 = malloc)
+  // the last byte contains the AqlValueType (SUPERVISED_* variant)
+  uint64_t lo = static_cast<uint64_t>(length);
+  if constexpr (basics::isLittleEndian()) {
+    lo <<= 16;
+    lo |= (static_cast<uint64_t>(mot) << 8);
+    lo |= static_cast<uint64_t>(at);
+  } else {
+    lo |= (static_cast<uint64_t>(mot) << 48);
+    lo |= (static_cast<uint64_t>(at) << 56);
+  }
+
+  if (at == VPACK_SUPERVISED_SLICE) {
+    TRI_ASSERT(type() == VPACK_SUPERVISED_SLICE);
+    _data.supervisedSliceMeta.lengthOrigin = lo;
+    TRI_ASSERT(_data.supervisedSliceMeta.getOrigin() ==
+               static_cast<uint64_t>(mot));
+    TRI_ASSERT(_data.supervisedSliceMeta.getLength() ==
+               static_cast<uint64_t>(length));
+  } else { // VPACK_SUPERVISED_STRING
+    TRI_ASSERT(type() == VPACK_SUPERVISED_STRING);
+    _data.supervisedStringMeta.lengthOrigin = lo;
+    TRI_ASSERT(_data.supervisedStringMeta.getOrigin() ==
+               static_cast<uint64_t>(mot));
+    TRI_ASSERT(_data.supervisedStringMeta.getLength() ==
+               static_cast<uint64_t>(length));
+  }
+
+  TRI_ASSERT(memoryUsage() == length);
+}
+
 #ifdef USE_V8
 v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
                                      velocypack::Options const* options) const {
@@ -1062,7 +1107,7 @@ int AqlValue::Compare(velocypack::Options const* options, AqlValue const& left,
 
 AqlValue::AqlValue() noexcept { erase(); }
 
-AqlValue::AqlValue(DocumentData& data) noexcept {
+AqlValue::AqlValue(DocumentData& data, ResourceMonitor* rmPtr) noexcept {
   TRI_ASSERT(data);
   auto size = data->size();
   TRI_ASSERT(size >= 1);
@@ -1070,8 +1115,21 @@ AqlValue::AqlValue(DocumentData& data) noexcept {
   TRI_ASSERT(size == slice.byteSize());
   TRI_ASSERT(!slice.isExternal());
   if (size < sizeof(AqlValue)) {
-    initFromSlice(slice, size);
+    initFromSlice(slice, size, rmPtr);
   } else {
+    if (rmPtr) {
+      uint64_t totalSize = size + sizeof(ResourceMonitor*);
+      setSupervisedData(AqlValueType::VPACK_SUPERVISED_STRING, MemoryOriginType::New, totalSize);
+
+      auto* base = new uint8_t[totalSize];
+      *reinterpret_cast<ResourceMonitor**>(base) = rmPtr;
+      auto* strObj = reinterpret_cast<std::string*>(base + sizeof(ResourceMonitor*));
+      new (strObj) std::string(std::move(*data));  // move contents
+
+      _data.supervisedStringMeta.pointer = base;
+      rmPtr->increaseMemoryUsage(totalSize);
+      return;
+    }
     setType(AqlValueType::VPACK_MANAGED_STRING);
     _data.managedStringMeta.pointer = data.release();
   }
@@ -1295,11 +1353,28 @@ size_t AqlValue::memoryUsage() const noexcept {
   }
 }
 
-void AqlValue::initFromSlice(VPackSlice slice, VPackValueLength length) {
+void AqlValue::initFromSlice(VPackSlice slice, VPackValueLength length, ResourceMonitor* rmPtr) {
   TRI_ASSERT(!slice.isExternal());
   TRI_ASSERT(length > 0);
   TRI_ASSERT(slice.byteSize() == length);
   if (length > sizeof(_data.inlineSliceMeta.slice)) {
+    if (rmPtr) {
+      setSupervisedData(AqlValueType::VPACK_SUPERVISED_SLICE,
+                        MemoryOriginType::New, length);
+      // Allocate [ RM* | payload ]
+      auto const rmPtrBytes =
+          static_cast<std::size_t>(sizeof(ResourceMonitor*));
+      auto const payloadBytes = static_cast<std::size_t>(length);
+      auto* base = new uint8_t[sizeof(ResourceMonitor*) + length];
+
+      *reinterpret_cast<ResourceMonitor**>(base) =
+          rmPtr;  // Write RM* at the first 8 bytes
+      std::memcpy(base + rmPtrBytes, slice.begin(),
+                  payloadBytes);  // Copy heap data after RM*
+      _data.supervisedSliceMeta.pointer = base;
+      rmPtr->increaseMemoryUsage(rmPtrBytes + payloadBytes);
+      return;
+    }
     // Use managed slice
     setManagedSliceData(MemoryOriginType::New, length);
     _data.managedSliceMeta.pointer = new uint8_t[length];

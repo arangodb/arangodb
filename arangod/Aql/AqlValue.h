@@ -28,6 +28,7 @@
 #include "Aql/RegisterId.h"
 #include "Aql/RegIdFlatSet.h"
 #include "Basics/Endian.h"
+#include "Basics/ResourceUsage.h"
 #include "IResearch/Misc.h"
 
 #include <velocypack/Slice.h>
@@ -135,6 +136,8 @@ struct AqlValue final {
     VPACK_MANAGED_STRING,  // contains vpack in std::string*,
                            // std::string always bigger than 15 bytes,
                            // std::string* allocated via new
+    VPACK_SUPERVISED_SLICE,
+    VPACK_SUPERVISED_STRING,
     RANGE,  // a pointer to a range remembering lower and upper bound, managed
     VPACK_INLINE_INT64,   // contains vpack data, inline and unpacked 64bit int
                           // number value (in little-endian)
@@ -237,6 +240,81 @@ struct AqlValue final {
     static_assert(sizeof(managedStringMeta) == 16,
                   "VPACK_MANAGED_STRING layout is not 16 bytes!");
 
+    // VPACK_SUPERVISED_SLICE
+    struct {
+      uint64_t getLength() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;
+        } else {
+          return (lengthOrigin & 0x0000ffffffffffffULL);
+        }
+      }
+      uint64_t getOrigin() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0x000000000000ff00ULL) >> 8;
+        } else {
+          return (lengthOrigin & 0x00ff000000000000ULL) >> 48;
+        }
+      }
+      arangodb::ResourceMonitor* getResourceMonitor() const noexcept {
+        // PD points to [ RM* | payload ... ]
+        // So 'pointer' itself is a pointer to a pointer
+        return *reinterpret_cast<arangodb::ResourceMonitor* const*>(pointer);
+      }
+      uint8_t const* getPayload() const noexcept {
+        // payload starts at the 9th byte
+        return pointer + sizeof(arangodb::ResourceMonitor*);
+      }
+      uint64_t lengthOrigin;  // First byte - AqlValue type
+                              // Second byte - Memory origin
+                              // The following 6 bytes  - Length
+      uint8_t* pointer; // Points to [ RM* / payload ... ]
+    } supervisedSliceMeta;
+    static_assert(sizeof(supervisedSliceMeta) == 16,
+              "VPACK_SUPERVISED_SLICE layout must be 16 bytes!");
+
+    // VPACK_SUPERVISED_STRING
+    struct {
+      uint64_t getLength() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;   // ML
+        } else {
+          return (lengthOrigin & 0x0000ffffffffffffULL);
+        }
+      }
+      uint64_t getOrigin() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0x000000000000ff00ULL) >> 8;    // MO
+        } else {
+          return (lengthOrigin & 0x00ff000000000000ULL) >> 48;
+        }
+      }
+
+      arangodb::ResourceMonitor* getResourceMonitor() const noexcept {
+        // PD points to [ RM* | string object ]
+        return *reinterpret_cast<arangodb::ResourceMonitor* const*>(pointer);
+      }
+
+      std::string const* getString() const noexcept {
+        // string payload starts at the 9th byte
+        return reinterpret_cast<std::string const*>(
+          pointer + sizeof(arangodb::ResourceMonitor*)
+        );
+      }
+
+      velocypack::Slice toSlice() const {
+        auto s = getString();
+        return velocypack::Slice(reinterpret_cast<uint8_t const*>(s->data()));
+      }
+
+      size_t getLengthFromString() const { return getString()->size(); }
+
+      uint64_t  lengthOrigin;   // [ AT | MO | ML ]
+      uint8_t*  pointer;        // points to [ RM* | string object ]
+    } supervisedStringMeta;
+    static_assert(sizeof(supervisedStringMeta) == 16,
+                  "VPACK_SUPERVISED_STRING layout must be 16 bytes!");
+
     // VPACK_SLICE_POINTER
     struct {
       uint8_t padding[8];
@@ -286,7 +364,7 @@ struct AqlValue final {
   // note: this is the default constructor and should be as cheap as possible
   AqlValue() noexcept;
 
-  explicit AqlValue(DocumentData& data) noexcept;
+  explicit AqlValue(DocumentData& data, ResourceMonitor* rmPtr = nullptr) noexcept;
 
   // construct from pointer, not copying!
   explicit AqlValue(uint8_t const* pointer) noexcept;
@@ -475,7 +553,7 @@ struct AqlValue final {
 
  private:
   /// @brief initializes value from a slice, when the length is already known
-  void initFromSlice(velocypack::Slice slice, velocypack::ValueLength length);
+  void initFromSlice(velocypack::Slice slice, velocypack::ValueLength length, ResourceMonitor* rmPtr = nullptr);
   void initFromUint(uint64_t v);
   void initFromInt(int64_t v);
 
@@ -491,6 +569,9 @@ struct AqlValue final {
   /// @brief store meta information for values of type VPACK_MANAGED_SLICE
   void setManagedSliceData(MemoryOriginType mot,
                            velocypack::ValueLength length);
+
+  void setSupervisedData(AqlValueType at, MemoryOriginType mot,
+                         velocypack::ValueLength length);
 };
 
 static_assert(std::is_trivially_copy_constructible_v<AqlValue>);
