@@ -242,13 +242,6 @@ struct AqlValue final {
 
     // VPACK_SUPERVISED_SLICE
     struct {
-      uint64_t getLength() const noexcept {
-        if constexpr (basics::isLittleEndian()) {
-          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;
-        } else {
-          return (lengthOrigin & 0x0000ffffffffffffULL);
-        }
-      }
       uint64_t getOrigin() const noexcept {
         if constexpr (basics::isLittleEndian()) {
           return (lengthOrigin & 0x000000000000ff00ULL) >> 8;
@@ -256,15 +249,26 @@ struct AqlValue final {
           return (lengthOrigin & 0x00ff000000000000ULL) >> 48;
         }
       }
+
+      uint64_t getLength() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;
+        } else {
+          return (lengthOrigin & 0x0000ffffffffffffULL);
+        }
+      }
+
       arangodb::ResourceMonitor* getResourceMonitor() const noexcept {
         // PD points to [ RM* | payload ... ]
         // So 'pointer' itself is a pointer to a pointer
         return *reinterpret_cast<arangodb::ResourceMonitor* const*>(pointer);
       }
+
       uint8_t const* getPayload() const noexcept {
         // payload starts at the 9th byte
         return pointer + sizeof(arangodb::ResourceMonitor*);
       }
+
       uint64_t lengthOrigin;  // First byte - AqlValue type
                               // Second byte - Memory origin
                               // The following 6 bytes  - Length
@@ -275,18 +279,19 @@ struct AqlValue final {
 
     // VPACK_SUPERVISED_STRING
     struct {
-      uint64_t getLength() const noexcept {
-        if constexpr (basics::isLittleEndian()) {
-          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;   // ML
-        } else {
-          return (lengthOrigin & 0x0000ffffffffffffULL);
-        }
-      }
       uint64_t getOrigin() const noexcept {
         if constexpr (basics::isLittleEndian()) {
           return (lengthOrigin & 0x000000000000ff00ULL) >> 8;    // MO
         } else {
           return (lengthOrigin & 0x00ff000000000000ULL) >> 48;
+        }
+      }
+
+      uint64_t getLength() const noexcept {
+        if constexpr (basics::isLittleEndian()) {
+          return (lengthOrigin & 0xffffffffffff0000ULL) >> 16;   // ML
+        } else {
+          return (lengthOrigin & 0x0000ffffffffffffULL);
         }
       }
 

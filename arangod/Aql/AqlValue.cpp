@@ -1118,16 +1118,17 @@ AqlValue::AqlValue(DocumentData& data, ResourceMonitor* rmPtr) noexcept {
     initFromSlice(slice, size, rmPtr);
   } else {
     if (rmPtr) {
-      uint64_t totalSize = size + sizeof(ResourceMonitor*);
-      setSupervisedData(AqlValueType::VPACK_SUPERVISED_STRING, MemoryOriginType::New, totalSize);
+      setSupervisedData(AqlValueType::VPACK_SUPERVISED_STRING, MemoryOriginType::New, size);
 
-      auto* base = new uint8_t[totalSize];
+      auto rmPtrSize = sizeof(ResourceMonitor*);
+
+      auto* base = new uint8_t[rmPtrSize + sizeof(std::string)];
       *reinterpret_cast<ResourceMonitor**>(base) = rmPtr;
-      auto* strObj = reinterpret_cast<std::string*>(base + sizeof(ResourceMonitor*));
+      auto* strObj = reinterpret_cast<std::string*>(base + rmPtrSize);
       new (strObj) std::string(std::move(*data));  // move contents
 
       _data.supervisedStringMeta.pointer = base;
-      rmPtr->increaseMemoryUsage(totalSize);
+      rmPtr->increaseMemoryUsage(rmPtrSize + strObj->capacity());
       return;
     }
     setType(AqlValueType::VPACK_MANAGED_STRING);
@@ -1361,18 +1362,16 @@ void AqlValue::initFromSlice(VPackSlice slice, VPackValueLength length, Resource
     if (rmPtr) {
       setSupervisedData(AqlValueType::VPACK_SUPERVISED_SLICE,
                         MemoryOriginType::New, length);
+      auto rmPtrSize = sizeof(ResourceMonitor*);
       // Allocate [ RM* | payload ]
-      auto const rmPtrBytes =
-          static_cast<std::size_t>(sizeof(ResourceMonitor*));
-      auto const payloadBytes = static_cast<std::size_t>(length);
-      auto* base = new uint8_t[sizeof(ResourceMonitor*) + length];
+      auto* base = new uint8_t[rmPtrSize + length];
 
-      *reinterpret_cast<ResourceMonitor**>(base) =
-          rmPtr;  // Write RM* at the first 8 bytes
-      std::memcpy(base + rmPtrBytes, slice.begin(),
-                  payloadBytes);  // Copy heap data after RM*
+      // Write RM* at the first 8 bytes
+      *reinterpret_cast<ResourceMonitor**>(base) = rmPtr;
+      // Copy heap data after RM*
+      std::memcpy(base + rmPtrSize, slice.begin(), length);
       _data.supervisedSliceMeta.pointer = base;
-      rmPtr->increaseMemoryUsage(rmPtrBytes + payloadBytes);
+      rmPtr->increaseMemoryUsage(rmPtrSize + length);
       return;
     }
     // Use managed slice
