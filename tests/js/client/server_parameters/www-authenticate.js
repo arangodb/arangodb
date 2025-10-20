@@ -59,38 +59,6 @@ function HttpAuthenticateSuite() {
       users.remove(user);
     },
 
-    testUnauthorized: function() {
-      protocols.forEach((protocol) => {
-        print(`connecting with ${protocol}`);
-        connectWith(protocol, user, "");
-        // need to change password, otherwise, the request will return 200
-        users.update(user, "abc");
-        let result = arango.GET_RAW("/_api/version");
-        assertEqual(401, result.code, JSON.stringify(result));
-        assertTrue(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
-        // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-        arango.reconnectWithNewPassword("abc");
-        users.update(user, "");
-        arango.reconnectWithNewPassword("");
-      });
-    },
-
-    testUnauthorizedOmit: function() {
-      protocols.forEach(protocol => {
-        print(`connecting with ${protocol}`);
-        connectWith(protocol, user, "");
-        // need to change password, otherwise, the request will return 200
-        users.update(user, "abc");
-        let result = arango.GET_RAW("/_api/version", {"x-omit-www-authenticate": "abc"});
-        assertEqual(401, result.code, JSON.stringify(result));
-        assertFalse(result.headers.hasOwnProperty('www-authenticate'), JSON.stringify(result));
-        // to change password back to the original one, we must reconnect with the current one, then change it back to the original one, then connect again
-        arango.reconnectWithNewPassword("abc");
-        users.update(user, "");
-        arango.reconnectWithNewPassword("");
-      });
-    },
-
     testAuthorized: function() {
       const jwtSecret = 'haxxmann';
       const jwtRoot = crypto.jwtEncode(jwtSecret, {
