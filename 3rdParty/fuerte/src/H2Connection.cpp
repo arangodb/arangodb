@@ -260,6 +260,8 @@ H2Connection<T>::H2Connection(EventLoopService& loop,
 
 template <SocketType T>
 H2Connection<T>::~H2Connection() try {
+  this->cancelTimer();
+  _ping.cancel();
   abortRequests(Error::ConnectionCanceled, /*now*/ Clock::time_point::max());
   nghttp2_session_del(_session);
   _session = nullptr;

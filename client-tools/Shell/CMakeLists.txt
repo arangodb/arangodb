@@ -37,7 +37,6 @@ target_link_libraries(${BIN_ARANGOSH}
   arango_v8
   v8_interface
   arango_basic_http_client
-  ${V8_LIBS}
   fuerte
   ${SYSTEM_LIBRARIES}
   boost_system
@@ -47,6 +46,7 @@ target_link_libraries(${BIN_ARANGOSH}
   clienttools_utils
   ${ICU64_LIBS}
   ${ICU_STATIC_LIBS}
+  ${V8_LIBS}
   )
 
 install(FILES ${ICU_DT}
