@@ -196,6 +196,7 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
 
 template <SocketType ST>
 H1Connection<ST>::~H1Connection() try {
+  this->cancelTimer();
   abortRequests(Error::ConnectionCanceled, Clock::time_point::max());
 } catch (...) {
 }

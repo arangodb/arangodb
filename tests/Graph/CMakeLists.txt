@@ -1,5 +1,5 @@
 add_library(arango_tests_graph OBJECT
-        ClusterTraverserCacheTest.cpp
+        DBServerEdgeCursorTest.cpp
         TraverserCacheTest.cpp
         GenericGraphProviderTest.cpp
         GraphMockProviderInstances.cpp
@@ -14,7 +14,8 @@ add_library(arango_tests_graph OBJECT
         WeightedQueueTest.cpp
         KShortestPathsFinderTest.cpp
         WeightedShortestPathTest.cpp
-        SingleServerProviderTest.cpp)
+        SingleServerProviderTest.cpp
+        SingleServerNeighbourCacheTest.cpp)
 
 target_link_libraries(arango_tests_graph
         PRIVATE

@@ -166,8 +166,9 @@ endif()
 # note that V8 will always be built, regardless of the value of this option.
 # this is required because the V8 build step also builds ICU, which is needed
 # in all programs.
-# if set to OFF, V8 will not be linked to arangod and the client-tools, 
-# and V8 integration code for arangod will not be compiled. 
+# if set to OFF, V8 will not be linked to arangod.
+# The arangosh will be built with V8 support in order to execute tests.
+# with V8 integration code for arangod will not be compiled.
 # additionally, arangosh will not be built.
 # setting the option to OFF will further disable all JavaScript support in
 # arangod, rendering the web UI, JavaScript transactions, AQL user-defined
@@ -507,14 +508,10 @@ set(BASE_LIBS                         "$ENV{LIBS}"     CACHE STRING "base librar
 include(CheckCompilerVersion)
 
 CheckCompilerVersion(
-  11.2 # GCC
   16.0 # Clang
 )
 
 if(CMAKE_COMPILER_IS_CLANG) 
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "16.0")
-    message(WARNING "ArangoDB requires clang 16.0 or newer, building with older compiler versions is unsupported")
-  endif()
   list(APPEND BASE_LIBS atomic)
 endif()
 
@@ -1036,7 +1033,8 @@ if(STATIC_EXECUTABLES)
     set(BLAS_LIBRARIES "/usr/lib/aarch64-linux-gnu/libblas.a" CACHE PATH "BLAS static library path")
     set(OpenMP_gomp_LIBRARY "/usr/lib/gcc/aarch64-linux-gnu/13/libgomp.a")
   endif()
-  message("LAPACK: ${LAPACK_LIBRARIES} and BLAS: to ${BLAS_LIBRARIES}")
+  message(STATUS "LAPACK: ${LAPACK_LIBRARIES}")
+  message(STATUS "BLAS: ${BLAS_LIBRARIES}")
 
   # Setting this is necessary because we want to bind to gcc static library
   # since the LLVM OpenMP implementation fails in our CI
@@ -1046,18 +1044,21 @@ if(STATIC_EXECUTABLES)
   set(OpenMP_C_LIB_NAMES "gomp;pthread")
   set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
   set(OpenMP_pthread_LIBRARY "pthread")
+  # This is hardcoded since we know exactly with which OpenMP version we want to build
+  add_definitions(-DARANGODB_OPENMP_VERSION="5.1")
 
-  # TODO avoid hard coded paths
-  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -L/opt/omp -llapack -lgfortran")
+  set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -llapack -lgfortran")
+  message(STATUS "OpenMP version: " ${OpenMP_CXX_VERSION})
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
   find_package(OpenMP REQUIRED)
+  add_definitions(-DARANGODB_OPENMP_VERSION=${OpenMP_CXX_VERSION})
+
   find_package(LAPACK)
   find_package(BLAS)
 
   set(FAISS_EXE_LINKER_FLAGS "${OpenMP_CXX_FLAGS}")
-
   foreach(lapack_lib ${LAPACK_LIBRARIES})
     message(STATUS "Using LAPACK library: ${lapack_lib}")
     set(FAISS_EXE_LINKER_FLAGS "${FAISS_EXE_LINKER_FLAGS} ${lapack_lib}")
@@ -1077,6 +1078,9 @@ set(FAISS_ENABLE_PYTHON OFF CACHE BOOL "Disable Python bindings")
 set(FAISS_ENABLE_RAFT OFF CACHE BOOL "Disable RAFT")
 
 add_subdirectory(3rdParty/faiss EXCLUDE_FROM_ALL)
+
+add_library(faiss_interface INTERFACE)
+target_include_directories(faiss_interface SYSTEM INTERFACE ${PROJECT_SOURCE_DIR}/3rdParty/faiss)
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS_ORIG}")
 

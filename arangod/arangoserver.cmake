@@ -5,7 +5,7 @@ add_library(arangoserver STATIC
   Auth/Common.cpp
   Auth/TokenCache.cpp
   Auth/User.cpp
-  Auth/UserManager.cpp
+  Auth/UserManagerImpl.cpp
   Cluster/Action.cpp
   Cluster/ActionBase.cpp
   Cluster/ActionDescription.cpp
@@ -72,6 +72,7 @@ add_library(arangoserver STATIC
   RestHandler/RestAccessTokenHandler.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
+  RestHandler/RestAdminDeploymentHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAdminStatisticsHandler.cpp

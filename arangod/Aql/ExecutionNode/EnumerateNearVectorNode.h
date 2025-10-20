@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
@@ -51,7 +52,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           std::size_t limit, bool ascending, std::size_t offset,
                           SearchParameters searchParameters,
                           aql::Collection const* collection,
-                          transaction::Methods::IndexHandle indexHandle);
+                          transaction::Methods::IndexHandle indexHandle,
+                          std::unique_ptr<Expression> filterExpression);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -84,6 +86,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
   void doToVelocyPack(arangodb::velocypack::Builder& builder,
                       unsigned flags) const final;
 
+  std::vector<std::pair<VariableId, RegisterId>> extractFilterVarsToRegs()
+      const;
+
  private:
   /// @brief input variable to read the query point from
   Variable const* _inVariable;
@@ -109,5 +114,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
 
   /// @brief selected index for vector search
   transaction::Methods::IndexHandle _index;
+
+  /// @brief filter expression if filter was pushed down into this node
+  std::unique_ptr<Expression> _filterExpression;
 };
 }  // namespace arangodb::aql

@@ -35,8 +35,7 @@ const helper = require("@arangodb/test-helper");
 function waitForTreeReady(c) {
   while (true) {
     let name = c.name();
-    let pending = db._connection.POST("/_admin/execute?returnAsJSON=true",
-      `return require("internal").db._collection("${name}")._revisionTreePendingUpdates();`);
+    let pending = c._revisionTreePendingUpdates();
     // For whatever reason, sometimes we get an empty object back, let's
     // skip that.
     if (pending.hasOwnProperty("inserts")) {
@@ -61,10 +60,13 @@ function corruptRepairSuite () {
       db._drop(colName1);
       let c = db._create(colName1);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.save({ _key: "test_" + i });
+        docs.push({ _key: "test_" + i });
       }
+      c.save(docs);
 
+      c._revisionTreeVerification();
       waitForTreeReady(c);
     },
 
@@ -76,18 +78,15 @@ function corruptRepairSuite () {
       const c1 = db._collection(colName1);
       let trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
-
-      // Not let's corrupt the tree:
-      db._connection.POST("/_admin/execute?returnAsJSON=true",
-        `require("internal").db._collection("${colName1}")._revisionTreeCorrupt(17, 17); return true;`);
+      // Now let's corrupt the tree:
+      c1._CollectionRevisionTreeCorrupt(17,17);
       global.instanceManager.debugSetFailAt("MerkleTree::skipConsistencyCheck", '', primaryEndpoint);
       trees = c1._revisionTreeVerification();
       assertFalse(trees.equal);
       global.instanceManager.debugClearFailAt();
 
       // And repair it again:
-      db._connection.POST("/_admin/execute?returnAsJSON=true",
-        `require("internal").db._collection("${colName1}")._revisionTreeRebuild(); return true;`);
+      c1._revisionTreeRebuild();
       trees = c1._revisionTreeVerification();
       assertTrue(trees.equal);
     },

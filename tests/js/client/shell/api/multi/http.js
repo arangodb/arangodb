@@ -35,6 +35,7 @@ const pragma = "no-cache";
 const strictTransportSecurity = "max-age=31536000 ; includeSubDomains";
 const xContentTypeOptions = "nosniff";
 const jsunity = require("jsunity");
+const IM = global.instanceManager;
 
 function assertCspHeaders(doc, customContentType = contentType) {
   assertEqual(doc.headers['content-type'], customContentType);
@@ -82,12 +83,15 @@ function head_requestsSuite () {
     },
 
     test_checks_whether_HEAD_returns_a_body_on_4xx: function() {
-      let cmd = "/_api/non-existing-method";
-      let doc = arango.HEAD_RAW(cmd);
+      if (!IM.options.skipServerJS) {
+        // if the server doesn't have dynamic routing for js, this will return a 500
+        let cmd = "/_api/non-existing-method";
+        let doc = arango.HEAD_RAW(cmd);
 
-      assertEqual(doc.code, 404);
-      assertEqual(doc.parsedBody, undefined);
-      assertCspHeaders(doc);
+        assertEqual(doc.code, 404);
+        assertEqual(doc.parsedBody, undefined);
+        assertCspHeaders(doc);
+      }
     },
 
     test_checks_whether_HEAD_returns_a_body_on_an_existing_document: function() {
@@ -343,7 +347,9 @@ function CORS_requestSuite () {
 }
 
 jsunity.run(head_requestsSuite);
-jsunity.run(get_requestSuite);
+if (!IM.options.skipServerJS) {
+  jsunity.run(get_requestSuite);
+}
 jsunity.run(options_requestSuite);
 jsunity.run(CORS_requestSuite);
 return jsunity.done();

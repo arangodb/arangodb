@@ -122,20 +122,26 @@ std::mutex crashHandlerThreadMutex;
 
 // Static variables to store crash data for the dedicated crash handler thread
 /// @brief stores the crash context/reason
-static std::string_view crashContext;
+std::string_view crashContext;
 
 /// @brief stores the signal number
-static int crashSignal = 0;
+int crashSignal = 0;
+
+/// @brief stores the thread id (pthread id)
+uint64_t crashThreadId = 0;
+
+/// @brief stores the thread number (arangodb Thread number)
+uint64_t crashThreadNumber = 0;
 
 /// @brief stores a pointer to the signal info
-static siginfo_t* crashSiginfo = nullptr;
+siginfo_t* crashSiginfo = nullptr;
 
 /// @brief stores a pointer to the user context
-static void* crashUcontext = nullptr;
+void* crashUcontext = nullptr;
 
 /// @brief stores crash data for later use by the crash handler thread
-void storeCrashData(std::string_view context, int signal, siginfo_t* info,
-                    void* ucontext) {
+void storeCrashData(std::string_view context, int signal, uint64_t threadId,
+                    uint64_t threadNumber, siginfo_t* info, void* ucontext) {
   // We intentionally do not protect this by a mutex. After all, acquiring
   // a mutex in a signal handler is not allowed. Rather, this is protected
   // by the exchange method used on ::crashHandlerInvoked, which can only
@@ -144,6 +150,8 @@ void storeCrashData(std::string_view context, int signal, siginfo_t* info,
   // CrashHandler thread through atomics, so this is in fact safe.
   crashContext = context;
   crashSignal = signal;
+  crashThreadId = threadId;
+  crashThreadNumber = threadNumber;
   crashSiginfo = info;
   crashUcontext = ucontext;
 }
@@ -188,6 +196,7 @@ void appendAddress(SmallString& dst, unw_word_t pc, long base) {
 /// does not allocate any memory, so should be safe to call even
 /// in context of SIGSEGV, with a broken heap etc.
 void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
+                     uint64_t threadId, uint64_t threadNumber,
                      siginfo_t const* info, void* ucontext) {
   // build a crash message
   buffer.append("💥 ArangoDB ").append(ARANGODB_VERSION_FULL);
@@ -201,11 +210,10 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   }
 
   // append thread id
-  buffer.append(", thread ")
-      .appendUInt64(uint64_t(arangodb::Thread::currentThreadNumber()));
+  buffer.append(", thread ").appendUInt64(threadNumber);
 
   // append thread name
-  arangodb::ThreadNameFetcher nameFetcher;
+  arangodb::ThreadNameFetcher nameFetcher(threadId);
   buffer.append(" [").append(nameFetcher.get()).append("]");
 
   // append signal number and name
@@ -283,8 +291,8 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
 #endif
 }
 
-void logCrashInfo(std::string_view context, int signal, siginfo_t* info,
-                  void* ucontext) try {
+void logCrashInfo(std::string_view context, int signal, uint64_t threadId,
+                  uint64_t threadNumber, siginfo_t* info, void* ucontext) try {
   // Note that this uses the Logger and should thus not be called
   // directly in a signal handler. The idea is that this is actually
   // executed in the dedicated CrashHandler thread.
@@ -292,7 +300,8 @@ void logCrashInfo(std::string_view context, int signal, siginfo_t* info,
   // fixed buffer for constructing temporary log messages (to avoid malloc):
   SmallString buffer;
 
-  buildLogMessage(buffer, context, signal, info, ucontext);
+  buildLogMessage(buffer, context, signal, threadId, threadNumber, info,
+                  ucontext);
   // note: LOG_TOPIC() can allocate memory
   LOG_TOPIC("a7902", FATAL, arangodb::Logger::CRASH) << buffer.view();
 } catch (...) {
@@ -512,7 +521,8 @@ void actuallyDumpCrashInfo() {
   // handler
   try {
     // Log crash information using the stored data
-    logCrashInfo(crashContext, crashSignal, crashSiginfo, crashUcontext);
+    logCrashInfo(crashContext, crashSignal, crashThreadId, crashThreadNumber,
+                 crashSiginfo, crashUcontext);
     SmallString buffer;
     buffer.append(
         "💥 Hello, this is the dedicated crash handler thread, I will "
@@ -601,14 +611,17 @@ void crashHandlerSignalHandler(int signal, siginfo_t* info, void* ucontext) {
   if (!::crashHandlerInvoked.exchange(true)) {
     // Now let's check we are not the Logging thread:
     arangodb::ThreadNameFetcher fetcher;
-    if (fetcher.get() == "Logging") {
+    auto threadName = fetcher.get();
+    if (threadName == "Logging") {
       // We cannot really log in here, since most likely we will be holding
       // a mutex in the Logger, so directly kill the process.
       killProcess(signal);
     }
 
     // Store crash data for the dedicated crash handler thread
-    storeCrashData("signal handler invoked", signal, info, ucontext);
+    storeCrashData("signal handler invoked", signal,
+                   arangodb::Thread::currentThreadId(),
+                   arangodb::Thread::currentThreadNumber(), info, ucontext);
 
     // Now acquire the backtrace from the crashed thread (only the crashed
     // thread can do this) and store it in the preallocated buffer
@@ -683,7 +696,8 @@ void CrashHandler::logBacktrace() {
 /// @brief logs a fatal message and crashes the program
 void CrashHandler::crash(std::string_view context) {
   // Store crash data for the dedicated crash handler thread
-  ::storeCrashData(context.data(), SIGABRT, /*no signal*/ nullptr,
+  ::storeCrashData(context.data(), SIGABRT, arangodb::Thread::currentThreadId(),
+                   arangodb::Thread::currentThreadNumber(), /*no info*/ nullptr,
                    /*no context*/ nullptr);
 
   // Now acquire the backtrace from the crashed thread (only the crashed
@@ -867,10 +881,23 @@ void CrashHandler::shutdownCrashHandler() {
   std::lock_guard<std::mutex> lock(::crashHandlerThreadMutex);
 
   if (::crashHandlerThread != nullptr) {
-    // Signal the thread to shutdown and notify it
-    ::crashHandlerState.store(arangodb::CrashHandlerState::SHUTDOWN,
-                              std::memory_order_release);
-    ::crashHandlerState.notify_all();
+    // Signal the thread to shutdown and notify it if it's idle. If it is
+    // already handling a crash (or has finished handling a crash) it will stop
+    // afterwards (and of course the crash will terminate the process after the
+    // crash handler is done).
+    // We must not change the state if it is CRASH_DETECTED, to not interfere
+    // with the signal handler waiting upon completion of the crash handler
+    // thread. Note that the signal handler must not finish before the crash
+    // handler, due to object lifetimes.
+    auto expected = arangodb::CrashHandlerState::IDLE;
+    if (::crashHandlerState.compare_exchange_strong(
+            expected, arangodb::CrashHandlerState::SHUTDOWN,
+            std::memory_order_relaxed, std::memory_order_relaxed)) {
+      ::crashHandlerState.notify_all();
+    } else {
+      TRI_ASSERT(expected == arangodb::CrashHandlerState::CRASH_DETECTED ||
+                 expected == arangodb::CrashHandlerState::HANDLING_COMPLETE);
+    }
 
     // Wait for the thread to finish
     if (::crashHandlerThread->joinable()) {

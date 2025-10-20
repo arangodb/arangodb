@@ -27,8 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/EncodingUtils.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Import/ImportHelper.h"
 #include "Rest/GeneralResponse.h"
@@ -39,9 +37,7 @@
 #endif
 #include "Shell/ShellConsoleFeature.h"
 #include "Shell/ShellFeature.h"
-#include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Ssl/SslInterface.h"
 #include "Ssl/ssl-helper.h"
 #include "Utilities/NameValidator.h"
@@ -114,6 +110,7 @@ V8ClientConnection::V8ClientConnection(ArangoshServer& server,
       _mode("unknown mode"),
       _role("UNKNOWN"),
       _loop(1, "V8ClientConnection"),
+      _foundConnectionClose(false),
       _vpackOptions(VPackOptions::Defaults),
       _forceJson(false),
       _setCustomError(false) {
@@ -323,7 +320,9 @@ std::shared_ptr<fu::Connection> V8ClientConnection::acquireConnection(
   _lastErrorMessage.clear();
   _lastHttpReturnCode = 0;
 
-  if (!_connection || (_connection->state() == fu::Connection::State::Closed)) {
+  if (!_connection || (_connection->state() == fu::Connection::State::Closed) ||
+      _foundConnectionClose) {
+    _foundConnectionClose = false;
     return createConnection(bypassCache);
   }
   return _connection;
@@ -384,15 +383,20 @@ std::string V8ClientConnection::protocol() const {
   }
 }
 
-void V8ClientConnection::connect() {
-  std::lock_guard<std::recursive_mutex> guard(_lock);
+void V8ClientConnection::prepareConnection() {
+  // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
   _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
   _databaseName = _client.databaseName();
   _builder.endpoint(_client.endpoint());
-  // check jwtSecret first, as it is empty by default,
+
+  // check jwtToken first, then jwtSecret, as they are empty by default,
   // but username defaults to "root" in most configurations
-  if (!_client.jwtSecret().empty()) {
+  TRI_ASSERT(_client.jwtToken().empty() || _client.jwtSecret().empty());
+  if (!_client.jwtToken().empty()) {
+    _builder.jwtToken(_client.jwtToken());
+    _builder.authenticationType(fu::AuthenticationType::Jwt);
+  } else if (!_client.jwtSecret().empty()) {
     _builder.jwtToken(
         fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
     _builder.authenticationType(fu::AuthenticationType::Jwt);
@@ -400,6 +404,11 @@ void V8ClientConnection::connect() {
     _builder.user(_client.username()).password(_client.password());
     _builder.authenticationType(fu::AuthenticationType::Basic);
   }
+}
+
+void V8ClientConnection::connect() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+  prepareConnection();
   createConnection();
 }
 
@@ -408,20 +417,7 @@ void V8ClientConnection::reconnect() {
 
   std::string oldConnectionId = connectionIdentifier(_connectedBuilder);
 
-  _requestTimeout = std::chrono::duration<double>(_client.requestTimeout());
-  _databaseName = _client.databaseName();
-  _builder.endpoint(_client.endpoint());
-  _forceJson = _client.forceJson();
-  // check jwtSecret first, as it is empty by default,
-  // but username defaults to "root" in most configurations
-  if (!_client.jwtSecret().empty()) {
-    _builder.jwtToken(
-        fu::jwt::generateInternalToken(_client.jwtSecret(), "arangosh"));
-    _builder.authenticationType(fu::AuthenticationType::Jwt);
-  } else if (!_client.username().empty()) {
-    _builder.user(_client.username()).password(_client.password());
-    _builder.authenticationType(fu::AuthenticationType::Basic);
-  }
+  prepareConnection();
 
   std::shared_ptr<fu::Connection> oldConnection;
   _connection.swap(oldConnection);
@@ -1472,7 +1468,7 @@ static void ClientConnection_httpFuzzRequests(
     // log the random seed value for later reproducibility.
     // log level must be warning here because log levels < WARN are suppressed
     // during testing.
-    LOG_TOPIC("39e50", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("39e50", WARN, arangodb::Logger::HTTPCLIENT)
         << "fuzzer producing " << numReqs << " requests(s) with " << numIts
         << " iteration(s) each, using seed " << fuzzer.getSeed()
         << " from: " << v8connection->getLocalEndpoint();
@@ -2875,18 +2871,23 @@ uint32_t V8ClientConnection::sendFuzzRequest(fuzzer::RequestFuzzer& fuzzer) {
   } catch (fu::Error const& ec) {
     rc = ec;
     if (rc != fu::Error::NoError) {
-      LOG_TOPIC("39e53", WARN, arangodb::Logger::FIXME)
+      LOG_TOPIC("39e53", INFO, arangodb::Logger::HTTPCLIENT)
           << "rc: " << static_cast<uint32_t>(rc)
           << " from: " << getLocalEndpoint();
     }
   }
   if (!connection || connection->state() == fu::Connection::State::Closed) {
-    LOG_TOPIC("39e51", WARN, arangodb::Logger::FIXME)
+    LOG_TOPIC("39e51", INFO, arangodb::Logger::HTTPCLIENT)
         << "connection closed after " << fuerte::v1::to_string(req_copy)
+        << " state: " << to_string(connection->state())
         << " from: " << localEndpoint;
-    if (response) {
-      LOG_TOPIC("39e52", WARN, arangodb::Logger::FIXME)
-          << "Server responce: " << response;
+  }
+  if (response) {
+    LOG_TOPIC("39e52", INFO, arangodb::Logger::HTTPCLIENT)
+        << " state: " << to_string(connection->state())
+        << "Server response: " << fuerte::v1::to_string(*response);
+    if (response->messageHeader().metaByKey("connection") == "Close") {
+      _foundConnectionClose = true;
     }
   }
 

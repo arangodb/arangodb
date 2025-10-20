@@ -72,6 +72,27 @@ RestStatus RocksDBRestWalHandler::execute() {
       properties();
       return RestStatus::DONE;
     }
+  } else if (operation == "wait_for_estimator_sync") {
+#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
+    if (!ExecContext::current().isSuperuser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "system level access is needed for this API");
+      return RestStatus::DONE;
+    }
+#else
+    if (!ExecContext::current().isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to produce a cluster info dump");
+      return RestStatus::DONE;
+    }
+#endif
+    server()
+        .getFeature<EngineSelectorFeature>()
+        .engine()
+        .waitForEstimatorSync();
+    generateResult(rest::ResponseCode::OK,
+                   arangodb::velocypack::Slice::emptyObjectSlice());
+    return RestStatus::DONE;
   } else {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");

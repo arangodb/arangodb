@@ -33,6 +33,7 @@ if (getOptions === true) {
 }
 
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
 
 function testSuite() {
   let checkEmpty = function() {
@@ -59,7 +60,9 @@ function testSuite() {
   };
       
   let log = function(level) {
-    arango.POST("/_admin/execute", `for (let i = 0; i < 50; ++i) require('console')._log('general=${level}', 'testi');`);
+    for (let i = 1; i <= 50; ++i) {
+      logServer('testi', level);
+    }
   };
 
   let oldLogLevel;

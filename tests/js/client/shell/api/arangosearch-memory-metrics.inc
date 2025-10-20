@@ -93,7 +93,7 @@
 
       testArangoSearchMetrics: function () {
 
-        db._view(viewName).properties({commitIntervalMsec: 0});
+        db._view(viewName).properties({commitIntervalMsec: 0, consolidationPolicy: { segmentsMin: 1, type: "tier" }});
         let writers_prev = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
         let writers_curr = writers_prev;
         for (let i = 0; i < 5; i++) {

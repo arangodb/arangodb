@@ -96,9 +96,11 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                      "not affect the server-side authentication settings).",
                      new BooleanParameter(&_authentication));
 
-  options->addOption("--server.username",
-                     "The username to use when connecting.",
-                     new StringParameter(&_username));
+  options->addOption(
+      "--server.username",
+      "The username to use when connecting.\nIf you want to specify an access "
+      "token as the password, set the user name as encoded in the token.",
+      new StringParameter(&_username));
 
   std::string basename = TRI_Basename(options->progname());
   bool isArangosh = basename == "arangosh";
@@ -127,8 +129,8 @@ arangosh without connecting to a server.)");
 
   options->addOption(
       "--server.password",
-      "The password to use when connecting. If not specified and "
-      "authentication is required, you are prompted for a password.\n"
+      "The password or access token to use when connecting. If not specified "
+      "and authentication is required, you are prompted for a password.\n"
       "In startup options, you can wrap the names of environment variables "
       "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
       "expose the password less, like to the process list. "
@@ -166,6 +168,19 @@ arangosh without connecting to a server.)");
         new StringParameter(&_jwtSecretFile),
         arangodb::options::makeDefaultFlags(
             arangodb::options::Flags::Uncommon));
+
+    options->addOption(
+        "--server.jwt-token",
+        "If enabled, the JWT token is used directly for authentication. You "
+        "can either "
+        "specify the token directly or use the - sign to be prompted for it to "
+        "not leak "
+        "the token to the process list. This "
+        "option is not compatible with --server.ask-jwt-secret, "
+        "--server.jwt-secret-keyfile, --server.username and --server.password. "
+        "If specified, it is used for all connections - even if a new "
+        "connection to another server is created.",
+        new StringParameter(&_jwtToken));
   }
 
   options->addOption("--server.connection-timeout",
@@ -245,6 +260,11 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   }
 
   bool hasJwtSecretFile = !_jwtSecretFile.empty();
+  bool hasJwtToken = !_jwtToken.empty();
+
+  if (hasJwtToken || hasJwtSecretFile) {
+    _authentication = false;
+  }
 
   // check timeouts
   if (_connectionTimeout < 0.0) {
@@ -298,6 +318,31 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     FATAL_ERROR_EXIT();
   }
 
+  if (hasJwtToken && options->processingResult().touched("server.password")) {
+    LOG_TOPIC("65476", FATAL, arangodb::Logger::FIXME)
+        << "cannot specify both --server.password and --server.jwt-token";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (hasJwtToken && options->processingResult().touched("server.username")) {
+    LOG_TOPIC("9d887", FATAL, arangodb::Logger::FIXME)
+        << "cannot specify both --server.username and --server.jwt-token";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (hasJwtToken && _askJwtSecret) {
+    LOG_TOPIC("aeaed", FATAL, arangodb::Logger::FIXME)
+        << "cannot specify both --server.ask-jwt-secret and --server.jwt-token";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (hasJwtToken && hasJwtSecretFile) {
+    LOG_TOPIC("aeaee", FATAL, arangodb::Logger::FIXME)
+        << "cannot specify both --server.jwt-secret-keyfile and "
+           "--server.jwt-token";
+    FATAL_ERROR_EXIT();
+  }
+
   if (!_endpoints.empty()) {
     std::for_each(
         _endpoints.begin(), _endpoints.end(), [](auto const& endpoint) {
@@ -337,6 +382,19 @@ void ClientFeature::readPassword() {
 
   std::cout << "Please specify a password: " << std::flush;
   setPassword(ShellConsoleFeature::readPassword());
+  std::cout << std::endl << std::flush;
+}
+
+void ClientFeature::readJwtToken() {
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+  if (_console && _console->isEnabled()) {
+    setJwtToken(_console->readPassword("Please specify a JWT token: "));
+    return;
+  }
+
+  std::cout << "Please specify a JWT token: " << std::flush;
+  setJwtToken(ShellConsoleFeature::readPassword());
   std::cout << std::endl << std::flush;
 }
 
@@ -386,6 +444,9 @@ void ClientFeature::prepare() {
   } else if (_authentication && _haveServerPassword) {
     // ask for a password
     readPassword();
+  } else if (!_jwtToken.empty() && _jwtToken == "-") {
+    // if the jwt token is set to "-" we will ask for it
+    readJwtToken();
   }
 }
 
@@ -440,7 +501,9 @@ std::unique_ptr<httpclient::SimpleHttpClient> ClientFeature::createHttpClient(
   httpClient->params().setLocationRewriter(static_cast<void const*>(this),
                                            &ClientManager::rewriteLocation);
   httpClient->params().setUserNamePassword("/", _username, _password);
-  if (!_jwtSecret.empty()) {
+  if (!_jwtToken.empty()) {
+    httpClient->params().setJwt(_jwtToken);
+  } else if (!_jwtSecret.empty()) {
     TRI_ASSERT(!_endpoints.empty());
     httpClient->params().setJwt(
         fuerte::jwt::generateInternalToken(_jwtSecret, _endpoints[0]));
@@ -478,11 +541,6 @@ void ClientFeature::setDatabaseName(std::string_view databaseName) {
   _databaseName = databaseName;
 }
 
-bool ClientFeature::authentication() const noexcept {
-  READ_LOCKER(locker, _settingsLock);
-  return _authentication;
-}
-
 // get single endpoint. used by client tools that can handle only one endpoint
 std::string ClientFeature::endpoint() const {
   READ_LOCKER(locker, _settingsLock);
@@ -515,6 +573,11 @@ void ClientFeature::setPassword(std::string_view value) {
   _password = value;
 }
 
+void ClientFeature::setJwtToken(std::string_view jwtToken) {
+  WRITE_LOCKER(locker, _settingsLock);
+  _jwtToken = jwtToken;
+}
+
 std::string ClientFeature::jwtSecret() const {
   READ_LOCKER(locker, _settingsLock);
   return _jwtSecret;
@@ -523,6 +586,11 @@ std::string ClientFeature::jwtSecret() const {
 void ClientFeature::setJwtSecret(std::string_view jwtSecret) {
   WRITE_LOCKER(locker, _settingsLock);
   _jwtSecret = jwtSecret;
+}
+
+std::string ClientFeature::jwtToken() const {
+  READ_LOCKER(locker, _settingsLock);
+  return _jwtToken;
 }
 
 double ClientFeature::connectionTimeout() const noexcept {

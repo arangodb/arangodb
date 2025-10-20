@@ -620,6 +620,11 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
     return idCounter.fetch_add(1);
   }
 
+  TRI_IF_FAILURE("always-fetch-new-cluster-wide-uniqid") {
+    uint64_t result = _agency.uniqid(count, 0.0);
+    return result;
+  }
+
   std::lock_guard mutexLocker{_idLock};
 
   if (_uniqid._currentValue + count - 1 <= _uniqid._upperValue) {
@@ -659,6 +664,21 @@ uint64_t ClusterInfo::uniqid(uint64_t count) {
 
   TRI_ASSERT(result != 0);
   return result;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief get a number of cluster-wide unique IDs, returns the first
+/// one and guarantees that <number> are reserved for the caller.
+/// This variant uses _agency to directly get things from the agency.
+//////////////////////////////////////////////////////////////////////////////
+
+std::optional<uint64_t> ClusterInfo::uniqidFromAgency(uint64_t number) {
+  try {
+    uint64_t result = _agency.uniqid(number, 0.0);
+    return {result};
+  } catch (...) {
+    return {};
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2891,6 +2911,20 @@ Result ClusterInfo::waitForDatabaseInCurrent(
         std::lock_guard locker{agencyCallback->_cv.mutex};
         agencyCallback->executeByCallbackOrTimeout(
             getReloadServerListTimeout() / interval);
+      }
+
+      //  Between the starting of database creation process and its
+      //  completion, if the agency supervision momentarily marks the
+      //  coordinator as BAD (maybe because it is unreachable due to n/w
+      //  issues), the agency supervision will delete this database name
+      //  from Plan/Databases. When the coordinator comes back, it will
+      //  continue waiting endlessly for this database that will never
+      //  be created.
+      //
+      auto [query, index] = _agencyCache.get("Plan/Databases/");
+      auto qSlice = query->slice();
+      if (!qSlice.hasKey(database.getName())) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE);
       }
 
       if (_server.isStopping()) {
@@ -5430,7 +5464,6 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       SetOldEntry("Plan/Views", {"arango", "Plan", "Views"}, plan),
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
-      {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/FoxxQueueVersion", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/HotBackupRestoreDone", AgencySimpleOperationType::INCREMENT_OP}};
 

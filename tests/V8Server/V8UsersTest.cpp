@@ -38,17 +38,14 @@
 #include "Mocks/LogLevels.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/QueryRegistry.h"
-#include "Auth/UserManager.h"
+#include "Auth/UserManagerMock.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
 #include "V8/v8-vpack.h"
@@ -64,7 +61,7 @@
 #endif
 
 namespace {
-struct TestView : public arangodb::LogicalView {
+struct TestView : arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
 
@@ -81,39 +78,38 @@ struct TestView : public arangodb::LogicalView {
     build.add("properties", _properties.slice());
     return _appendVelocyPackResult;
   }
-  virtual arangodb::Result dropImpl() override { return arangodb::Result(); }
-  virtual void open() override {}
-  virtual arangodb::Result renameImpl(std::string const&) override {
+  arangodb::Result dropImpl() override { return arangodb::Result(); }
+  void open() override {}
+  arangodb::Result renameImpl(std::string const&) override {
     return arangodb::Result();
   }
-  virtual arangodb::Result properties(arangodb::velocypack::Slice properties,
-                                      bool isUserRequest,
-                                      bool /*partialUpdate*/) override {
+  arangodb::Result properties(arangodb::velocypack::Slice properties,
+                              bool isUserRequest,
+                              bool /*partialUpdate*/) override {
     EXPECT_TRUE(isUserRequest);
     _properties = arangodb::velocypack::Builder(properties);
     return arangodb::Result();
   }
-  virtual bool visitCollections(
-      CollectionVisitor const& /*visitor*/) const override {
+  bool visitCollections(CollectionVisitor const& /*visitor*/) const override {
     return true;
   }
 };
 
-struct ViewFactory : public arangodb::ViewFactory {
-  virtual arangodb::Result create(arangodb::LogicalView::ptr& view,
-                                  TRI_vocbase_t& vocbase,
-                                  arangodb::velocypack::Slice definition,
-                                  bool isUserRequest) const override {
+struct ViewFactory : arangodb::ViewFactory {
+  arangodb::Result create(arangodb::LogicalView::ptr& view,
+                          TRI_vocbase_t& vocbase,
+                          arangodb::velocypack::Slice definition,
+                          bool isUserRequest) const override {
     EXPECT_TRUE(isUserRequest);
     view = vocbase.createView(definition, isUserRequest);
 
     return arangodb::Result();
   }
 
-  virtual arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
-                                       TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice definition,
-                                       bool /*isUserRequest*/) const override {
+  arangodb::Result instantiate(arangodb::LogicalView::ptr& view,
+                               TRI_vocbase_t& vocbase,
+                               arangodb::velocypack::Slice definition,
+                               bool /*isUserRequest*/) const override {
     view = std::make_shared<TestView>(vocbase, definition);
 
     return arangodb::Result();
@@ -135,15 +131,79 @@ class V8UsersTest
       : server(),
         system(server.getFeature<arangodb::SystemDatabaseFeature>().use()) {
     arangodb::tests::v8Init();  // on-time initialize V8
-
+    expectUserManagerCalls();
     auto& viewTypesFeature = server.getFeature<arangodb::ViewTypesFeature>();
     viewTypesFeature.emplace(TestView::typeInfo().second, viewFactory);
   }
+
+  void expectUserManagerCalls() {
+    using namespace arangodb;
+    auto* authFeature = AuthenticationFeature::instance();
+    auto* userManager = authFeature->userManager();
+    auto* um =
+        dynamic_cast<testing::StrictMock<auth::UserManagerMock>*>(userManager);
+    EXPECT_NE(um, nullptr);
+
+    using namespace ::testing;
+    EXPECT_CALL(*um, storeUser)
+        .Times(AtLeast(1))
+        .WillRepeatedly([this](bool const replace, std::string const& username,
+                               std::string const& pass, bool const active,
+                               velocypack::Slice const extras) {
+          auto user = auth::User::newUser(username, pass);
+          user.setActive(active);
+          if (extras.isObject() && !extras.isEmptyObject()) {
+            user.setUserData(VPackBuilder(extras));
+          }
+          const auto it = _userMap.find(username);
+          EXPECT_NE(replace, it == _userMap.end());
+          if (replace) {
+            it->second = user;
+          } else {
+            _userMap.emplace(username, user);
+          }
+          return Result{};
+        });
+    EXPECT_CALL(*um, accessUser)
+        .Times(AtLeast(1))
+        .WillRepeatedly([this](std::string const& username,
+                               auth::UserManager::ConstUserCallback&& cb) {
+          const auto it = _userMap.find(username);
+          EXPECT_NE(it, _userMap.end());
+          auto const r = cb(it->second);
+          EXPECT_TRUE(r.ok());
+          return Result{};
+        });
+    EXPECT_CALL(*um, updateUser)
+        .Times(AtLeast(1))
+        .WillRepeatedly([this](std::string const& username,
+                               auth::UserManager::UserCallback&& cb,
+                               auth::UserManager::RetryOnConflict const) {
+          const auto it = _userMap.find(username);
+          EXPECT_NE(it, _userMap.end());
+          auto const r = cb(it->second);
+          EXPECT_TRUE(r.ok());
+          return Result{};
+        });
+    EXPECT_CALL(*um, collectionAuthLevel)
+        .Times(AtLeast(1))
+        .WillRepeatedly(WithArgs<0, 1, 2>([this](std::string const& username,
+                                                 std::string const& dbname,
+                                                 std::string_view cname) {
+          auto const it = _userMap.find(username);
+          EXPECT_NE(it, _userMap.end());
+          EXPECT_EQ(username, it->second.username());
+          return it->second.collectionAuthLevel(dbname, cname);
+        }));
+    EXPECT_CALL(*um, setAuthInfo)
+        .Times(AtLeast(1))
+        .WillRepeatedly(WithArgs<0>(
+            [this](auth::UserMap const& userMap) { _userMap = userMap; }));
+  }
+  arangodb::auth::UserMap _userMap;
 };
 
 TEST_F(V8UsersTest, test_collection_auth) {
-  auto usersJson = arangodb::velocypack::Parser::fromJson(
-      "{ \"name\": \"_users\", \"isSystem\": true }");
   static const std::string userName("testUser");
   auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
   TRI_vocbase_t* vocbase;  // will be owned by DatabaseFeature
@@ -229,15 +289,9 @@ TEST_F(V8UsersTest, test_collection_auth) {
   arangodb::ExecContextScope execContextScope(execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
-  userManager->setGlobalVersion(0);  // required for UserManager::loadFromDB()
 
   // test auth missing (grant)
   {
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -278,11 +332,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
 
   // test auth missing (revoke)
   {
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -331,11 +380,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -377,11 +421,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -420,7 +459,7 @@ TEST_F(V8UsersTest, test_collection_auth) {
     EXPECT_TRUE(result.ToLocalChecked()->IsUndefined());
     EXPECT_FALSE(tryCatch.HasCaught());
     EXPECT_TRUE(
-        (arangodb::auth::Level::NONE ==
+        (arangodb::auth::Level::UNDEFINED ==
          execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
   }
 
@@ -428,11 +467,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
   {
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -481,11 +515,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
   {
     auto viewJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\", \"type\": \"testViewType\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -540,11 +569,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before
@@ -587,11 +611,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson(
         "{ \"name\": \"testDataSource\" }");
-    auto scopedUsers = std::shared_ptr<arangodb::LogicalCollection>(
-        system->createCollection(usersJson->slice()).get(),
-        [this](arangodb::LogicalCollection* ptr) -> void {
-          system->dropCollection(ptr->id(), true);
-        });
     arangodb::auth::UserMap userMap;
     arangodb::auth::User* userPtr = nullptr;
     userManager->setAuthInfo(userMap);  // insure an empty map is set before

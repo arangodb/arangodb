@@ -140,6 +140,12 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
+std::string const RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/edge/";
+
+std::string const RestVocbaseBaseHandler::TRAVERSER_PATH_VERTEX =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/vertex/";
+
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)

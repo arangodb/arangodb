@@ -249,9 +249,10 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
                                                   std::forward<F>(fun));
   }
 
- private:
+ protected:
   SuspensionCounter _suspensionCounter;
 
+ private:
   std::function<void(rest::RestHandler*)> _sendResponseCallback;
 
   uint64_t _handlerId;

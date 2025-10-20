@@ -89,7 +89,6 @@ function VectorIndexL2NprobeTestSuite() {
                     metric: "l2",
                     dimension: dimension,
                     nLists: 300,
-                    trainingIterations: 10,
                 },
             });
         },
@@ -134,12 +133,12 @@ function VectorIndexL2NprobeTestSuite() {
             const queryWithoutNProbe =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_L2(d.vector, @qp) LIMIT 5 RETURN {key: d._key}";
+                " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 1}) LIMIT 20 RETURN {key: d._key}";
             const queryWithNProbe =
                 "FOR d IN " +
                 collection.name() +
                 " SORT APPROX_NEAR_L2(d.vector, @qp, {nProbe: 100}) " +
-                " LIMIT 5 RETURN {key: d._key}";
+                " LIMIT 20 RETURN {key: d._key}";
 
             const bindVars = {
                 qp: randomPoint

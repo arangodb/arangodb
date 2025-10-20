@@ -417,6 +417,7 @@ std::string const RestReplicationHandler::Inventory = "inventory";
 std::string const RestReplicationHandler::Keys = "keys";
 std::string const RestReplicationHandler::Revisions = "revisions";
 std::string const RestReplicationHandler::Tree = "tree";
+std::string const RestReplicationHandler::TreePending = "treepending";
 std::string const RestReplicationHandler::Ranges = "ranges";
 std::string const RestReplicationHandler::Documents = "documents";
 std::string const RestReplicationHandler::Dump = "dump";
@@ -583,6 +584,9 @@ auto RestReplicationHandler::executeAsync() -> futures::Future<futures::Unit> {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
         } else if (type == rest::RequestType::PUT && subCommand == Tree) {
           handleCommandCorruptRevisionTree();
+        } else if (type == rest::RequestType::GET &&
+                   subCommand == TreePending) {
+          handleCommandRevisionTreePendingUpdates();
 #endif
         } else if (type == rest::RequestType::PUT && subCommand == Ranges) {
           handleCommandRevisionRanges();
@@ -3172,7 +3176,11 @@ RestReplicationHandler::handleCommandRebuildRevisionTree() {
   TRI_ASSERT(ctx.collection != nullptr);
 
   // increase metric
-  ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
+  if (ServerState::instance()->isCoordinator() ||
+      ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isAgent()) {
+    ++server().getFeature<ClusterFeature>().syncTreeRebuildCounter();
+  }
 
   Result res = co_await ctx.collection->getPhysical()->rebuildRevisionTree();
   if (res.fail()) {
@@ -3200,6 +3208,23 @@ void RestReplicationHandler::handleCommandCorruptRevisionTree() {
       ->corruptRevisionTree(count, hash);
 
   generateResult(rest::ResponseCode::OK, VPackSlice::nullSlice());
+}
+
+void RestReplicationHandler::handleCommandRevisionTreePendingUpdates() {
+  RevisionOperationContext ctx;
+  // get collection name
+  if (!prepareCollectionForRevisionOperation(ctx)) {
+    // error was already generator by called function
+    return;
+  }
+  TRI_ASSERT(!ctx.cname.empty());
+  TRI_ASSERT(ctx.collection != nullptr);
+
+  VPackBuilder builder;
+  static_cast<RocksDBCollection*>(ctx.collection->getPhysical())
+      ->revisionTreePendingUpdates(builder);
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 #endif
 

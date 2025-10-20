@@ -120,7 +120,8 @@ class WindowNode : public ExecutionNode {
       RegIdSet& writeableOutputRegisters) const;
 
   void calcAggregateTypes(
-      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes) const;
+      std::vector<std::unique_ptr<Aggregator>>& aggregateTypes,
+      ResourceMonitor& resourceMonitor) const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(

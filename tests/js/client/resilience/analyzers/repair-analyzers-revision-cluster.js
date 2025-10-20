@@ -30,10 +30,7 @@ var analyzers = require("@arangodb/analyzers");
 const expect = require('chai').expect;
 const wait = require('internal').wait;
 var internal = require('internal');
-const {
-  arangoClusterInfoFlush,
-  arangoClusterInfoGetAnalyzersRevision,
-} = require("@arangodb/test-helper");
+const CI = require('@arangodb/cluster-info');
 let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,8 +42,8 @@ function repairAnalyzersRevisionTestSuite () {
   function waitForRevision(dbName, revisionNumber, buildingRevision) {
     let tries = 0;
     while(true) {
-      arangoClusterInfoFlush();
-      let revision = arangoClusterInfoGetAnalyzersRevision(dbName);
+      CI.flush();
+      let revision = CI.getAnalyzersRevision(dbName);
       assertTrue(revision.hasOwnProperty("revision"));
       assertTrue(revision.hasOwnProperty("buildingRevision"));
       if ((revision.revision === revisionNumber && 
@@ -67,7 +64,7 @@ function repairAnalyzersRevisionTestSuite () {
   }
 
   function waitForAllAgencyJobs() {
-    const prefix = arango.POST("/_admin/execute", `return global.ArangoAgency.prefix()`);
+    const prefix = "arango";
     const paths = [
       "Target/ToDo/",
       "Target/Pending/",
@@ -125,7 +122,7 @@ function repairAnalyzersRevisionTestSuite () {
         db._createDatabase(dbName + i);
         db._useDatabase(dbName + i);
         revisionNumber = 0;
-        let revision = arangoClusterInfoGetAnalyzersRevision(dbName + i);
+        let revision = CI.getAnalyzersRevision(dbName + i);
         assertTrue(revision.hasOwnProperty("revision"));
         assertTrue(revision.hasOwnProperty("buildingRevision"));
         assertFalse(revision.hasOwnProperty("coordinator"));

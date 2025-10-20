@@ -76,6 +76,10 @@ class AuthenticationFeature final : public ArangodFeature {
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setUserManager(std::unique_ptr<auth::UserManager>);
+#endif  // ARANGODB_USE_GOOGLE_TESTS
+
  private:
   /// load JWT secret from file specified at startup
   [[nodiscard]] Result loadJwtSecretKeyfile();

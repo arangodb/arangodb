@@ -38,12 +38,16 @@ const {
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
 const {
+    createVectorGenerator,
+    DistanceFunctions,
+} = require("@arangodb/testutils/vector-generator");
+
+const {
     versionHas
 } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -55,6 +59,17 @@ function VectorIndexL2TestSuite() {
     const dimension = 500;
     const numberOfDocs = 500;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+    // Create vector generator with L2 distance function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.l2Distance
+    });
 
     return {
         setUpAll: function() {
@@ -66,22 +81,11 @@ function VectorIndexL2TestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < numberOfDocs; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === (numberOfDocs / 2)) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_l2",
@@ -517,11 +521,7 @@ function VectorIndexL2TestSuite() {
     };
 }
 
-// When cosine similarity scores are too close to each other,  
-// vector search results can become non-deterministic due to floating-point 
-// precision issues. This causes test failures where document ordering 
-// changes between test runs. We ensure minimum distance separation between 
-// vectors' cosine distances from the query point to guarantee deterministic results.
+
 function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
@@ -531,36 +531,14 @@ function VectorIndexCosineTestSuite() {
     // ~1.19 × 10^−7
     const floatEpsilon = 0.0000001;
 
-    // Helper function to calculate cosine similarity between two vectors
-    function cosineSimilarity(vec1, vec2) {
-        if (vec1.length !== vec2.length) {
-            throw new Error("Vectors must have the same length");
-        }
-        
-        let dotProduct = 0;
-        let norm1 = 0;
-        let norm2 = 0;
-        
-        for (let i = 0; i < vec1.length; i++) {
-            dotProduct += vec1[i] * vec2[i];
-            norm1 += vec1[i] * vec1[i];
-            norm2 += vec2[i] * vec2[i];
-        }
-        
-        norm1 = Math.sqrt(norm1);
-        norm2 = Math.sqrt(norm2);
-        
-        if (norm1 === 0 || norm2 === 0) {
-            return 0;
-        }
-        
-        return dotProduct / (norm1 * norm2);
-    }
-
-    // Helper function to calculate cosine distance (1 - cosine similarity)
-    function cosineDistance(vec1, vec2) {
-        return 1 - cosineSimilarity(vec1, vec2);
-    }
+    // Create vector generator with cosine distance function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.cosineDistance
+    });
 
 
     return {
@@ -573,108 +551,11 @@ function VectorIndexCosineTestSuite() {
                 numberOfShards: 3
             });
 
-            const docs = [];
-            const gen = randomNumberGeneratorFloat(seed); // Assumed to be provided externally
-            const maxAttemptsPerDoc = 100; // Limit attempts for each vector generation
-        
-            // This array will store the cosine distances of generated vectors from 'randomPoint'.
-            // It will be kept sorted to enable faster proximity checks.
-            const distancesFromRandomPoint = [];
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
 
-            // Helper function to find if a targetDistance is too close to any existing distance
-            // in the sorted distancesFromRandomPoint array.
-            function findProximity(targetDistance) {
-                let low = 0;
-                let high = distancesFromRandomPoint.length - 1;
-
-                // Binary search to find a starting point for linear scan
-                let startIndex = 0; // Default to start of array
-                while (low <= high) {
-                    const mid = Math.floor((low + high) / 2);
-                    if (distancesFromRandomPoint[mid] < targetDistance) {
-                        low = mid + 1;
-                    } else {
-                        startIndex = mid;
-                        high = mid - 1;
-                    }
-                }
-
-                // Linearly scan from the determined startIndex to find a close match.
-                // We only need to check values that could possibly be within the floatEpsilon range.
-                for (let k = startIndex; k < distancesFromRandomPoint.length; k++) {
-                    const existingDistance = distancesFromRandomPoint[k];
-                    // If the current existingDistance is already too far, we can stop early
-                    if (existingDistance > targetDistance + floatEpsilon) {
-                        break;
-                    }
-                    // Check if it's within the epsilon range
-                    if (Math.abs(existingDistance - targetDistance) < floatEpsilon) {
-                        return true; // Found a close distance
-                    }
-                }
-                return false; // No close distance found
-            }
-
-            // Helper function to insert a value into the sorted distancesFromRandomPoint array
-            function insertSorted(value) {
-                let low = 0;
-                let high = distancesFromRandomPoint.length;
-                // Binary search to find the correct insertion point
-                while (low < high) {
-                    const mid = Math.floor((low + high) / 2);
-                    if (distancesFromRandomPoint[mid] < value) {
-                        low = mid + 1;
-                    } else {
-                        high = mid;
-                    }
-                }
-                // Insert the value at the found position, maintaining sort order
-                distancesFromRandomPoint.splice(low, 0, value);
-            }
-        
-            for (let i = 0; i < numberOfDocs; i++) {
-                let attempts = 0;
-                let vector = null;
-                let isTooClose = false;
-        
-                while (attempts < maxAttemptsPerDoc) {
-                    vector = Array.from({ length: dimension }, () => gen());
-                    isTooClose = false;
-        
-                    // Set the randomPoint
-                    if (i === 0) {
-                        randomPoint = vector;
-                        break;
-                    }
-        
-                    const currentDistance = cosineDistance(vector, randomPoint);
-                    isTooClose = findProximity(currentDistance);
-        
-                    if (!isTooClose) {
-                        // If the vector is suitable, and randomPoint is set and active,
-                        // add its distance to our sorted array for future checks.
-                        insertSorted(currentDistance);
-                        break; // Found a suitable vector, exit inner loop
-                    }
-                    attempts++;
-                }
-        
-                if (attempts === maxAttemptsPerDoc) {
-                    console.warn(`Warning: Could not generate a sufficiently unique vector for index ${i} after ${maxAttemptsPerDoc} attempts. Consider adjusting parameters.`);
-                }
-        
-                docs.push({
-                    vector: vector,
-                    nonVector: i, // Use the loop index directly for simplicity
-                    unIndexedVector: vector // Redundant if 'vector' is the stored value, but kept for original intent
-                });
-            }
-            
-            if (docs.length < numberOfDocs) {
-                throw new Error(`Could not generate ${numberOfDocs} vectors with sufficient distance separation after ${maxAttemptsPerDoc} attempts. Generated ${docs.length} vectors.`);
-            }
-            
-            collection.insert(docs);
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_cosine",
@@ -793,12 +674,12 @@ function VectorIndexCosineTestSuite() {
             const queryWithSkip =
                 "FOR d IN " +
                 collection.name() +
-                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) " + 
+                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) " +
                 " SORT sim DESC LIMIT 3, 5 RETURN {k: d._key, sim}";
             const queryWithoutSkip =
                 "FOR d IN " +
                 collection.name() +
-                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp)" + 
+                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp)" +
                 " SORT sim DESC LIMIT 8 RETURN {k: d._key, sim}";
 
             const bindVars = {
@@ -823,7 +704,20 @@ function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
+    const numberOfDocs = 1000;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+
+    // Create vector generator with dot product function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.dotProduct
+    });
 
     return {
         setUpAll: function() {
@@ -835,22 +729,11 @@ function VectorIndexInnerProductTestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === 250) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_inner_product",
