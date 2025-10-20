@@ -160,7 +160,9 @@ def validate_params(params):
 
     def parse_number_or_default(key, default_value=None):
         """check number"""
-        if key in params and not isinstance(params[key], int):
+        if key in params:
+            if isinstance(params[key], int):
+                return
             if params[key][0] == "*":  # factor the default
                 params[key] = default_value * parse_number(params[key][1:])
             else:
@@ -179,63 +181,6 @@ def validate_flags(flags):
         raise Exception("`cluster` and `single` specified for the same test")
     if "full" in flags and "!full" in flags:
         raise Exception("`full` and `!full` specified for the same test")
-
-
-def read_definition_line(line, testfile_definitions, yaml_struct):
-    """parse one test definition line"""
-    bits = line.split()
-    if len(bits) < 1:
-        raise Exception("expected at least one argument: <testname>")
-    suites, *remainder = bits
-
-    flags = []
-    params = {}
-    arangosh_args = []
-    args = []
-
-    for idx, bit in enumerate(remainder):
-        if bit == "--":
-            args = remainder[idx + 1 :]
-            break
-        if bit.startswith("--"):
-            arangosh_args.append(bit)
-        elif "=" in bit:
-            key, value = bit.split("=", maxsplit=1)
-            params[key] = value
-        else:
-            flags.append(bit)
-
-    # check all flags
-    for flag in flags:
-        if flag not in known_flags:
-            raise Exception(f"Unknown flag `{flag}` in `{line}`")
-
-    # check all params
-    for param in params:
-        if param not in known_parameter:
-            raise Exception(f"Unknown parameter `{param}` in `{line}`")
-
-    validate_flags(flags)
-    is_cluster = "cluster" in flags
-    params = validate_params(params)
-
-    if len(arangosh_args) == 0:
-        arangosh_args = ""
-    if yaml_struct != {}:
-        run_job = yaml_struct['add-yaml']['derives-to']
-    else:
-        run_job = 'run-linux-tests'
-    return {
-        "name": params.get("name", suites),
-        "suites": suites,
-        "size": params.get("size", "medium" if is_cluster else "small"),
-        "flags": flags,
-        "args": args,
-        "arangosh_args": arangosh_args,
-        "params": params,
-        "testfile_definitions": testfile_definitions,
-        "run_job": run_job,
-    }
 
 def read_yaml_suite(name, suite, definition, testfile_definitions, yaml_struct):
     """ convert yaml representation into the internal one """
@@ -364,20 +309,17 @@ def read_yaml_multi_bucket_suite(name, definition, testfile_definitions, yaml_st
                            testfile_definitions,
                            yaml_struct)
 
-def read_definitions(filename, override_branch, args):
+def read_definitions(filename, override_branch, cli_args):
     """read test definitions txt"""
     tests = []
-    has_error = False
-    testfile_definitions = {}
-    yaml_text = ""
-    have_yaml = False
-    parsed_yaml = {}
+    add_yaml = {}
     if filename.endswith(".yml"):
         with open(filename, "r", encoding="utf-8") as filep:
+            testfile_definitions = {}
             config = yaml.safe_load(filep)
             if isinstance(config, dict):
                 if "add-yaml" in config:
-                    parsed_yaml = {"add-yaml": copy.deepcopy(config["add-yaml"])}
+                    add_yaml = {"add-yaml": copy.deepcopy(config["add-yaml"])}
                 if "jobProperties" in config:
                     testfile_definitions = copy.deepcopy(config["jobProperties"])
                 config = config['tests']
@@ -389,42 +331,20 @@ def read_definitions(filename, override_branch, args):
                         tests.append(read_yaml_multi_bucket_suite(suite_name,
                                                                   suite,
                                                                   testfile_definitions,
-                                                                  parsed_yaml, args))
+                                                                  add_yaml,
+                                                                  cli_args))
                     else:
-                        tests.append(read_yaml_suite(suite_name, suite_name,
-                                                     suite, testfile_definitions, parsed_yaml))
+                        tests.append(read_yaml_suite(suite_name,
+                                                     suite_name,
+                                                     suite,
+                                                     testfile_definitions,
+                                                     add_yaml))
                 except Exception as ex:
                     print(f"while parsing {suite_name} {testcase}")
                     raise ex
     else:
-        with open(filename, "r", encoding="utf-8") as filep:
-            for line_no, raw_line in enumerate(filep):
-                line = raw_line.strip()
-                if len(line) == 0:
-                    if have_yaml:
-                        parsed_yaml = yaml.safe_load(yaml_text)
-                        have_yaml = False
-                    continue
-                if line.startswith("#"):
-                    if line[2] == '{':
-                        testfile_definitions = json.loads(line[2:])
-                        if override_branch is not None:
-                            testfile_definitions['branch'] = override_branch
-                    continue  # ignore comments
-                if line == "add-yaml:" or have_yaml:
-                    yaml_text += raw_line + "\n"
-                    have_yaml = True
-                    continue
-                try:
-                    test = read_definition_line(line, testfile_definitions, parsed_yaml)
-                    test["lineNumber"] = line_no
-                    tests.append(test)
-                except Exception as exc:
-                    print(f"{filename}:{line_no + 1}: \n`{line}`\n {exc}", file=sys.stderr)
-                    has_error = True
-    if has_error:
-        raise Exception("abort due to errors")
-    return tests, parsed_yaml
+        raise Error("only .yml file format supported")
+    return tests, add_yaml
 
 
 def filter_tests(args, tests, nightly):
