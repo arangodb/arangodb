@@ -423,7 +423,10 @@ def read_definitions(filename, override_branch, args):
                 try:
                     suite = testcase[suite_name]
                     if "suites" in suite:
-                        if 'options' in suite and 'bucket' in suite['options']:
+                        if ('options' in suite and
+                            'buckets' in suite['options'] and
+                            suite['options']['buckets'] == "auto"):
+                            del suite['options']['buckets']
                             tests.append(read_yaml_bucket_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))
                         else:
                             tests.append(read_yaml_multi_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))

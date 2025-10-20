@@ -526,7 +526,7 @@
 # Dump Tests
 - dump_single:
     options:
-      bucket: auto
+      buckets: auto
       type: single
       size: medium
     args:
@@ -556,7 +556,7 @@
 
 - dump_cluster_medium:
     options:
-      bucket: auto
+      buckets: auto
       type: cluster
       size: medium
       parallelity: 5
@@ -601,7 +601,7 @@
 
 - dump_cluster_large:
     options:
-      bucket: auto
+      buckets: auto
       type: cluster
       size: large
       parallelity: 5
@@ -743,7 +743,7 @@
 # Common Full Tests
 - communication:
     options:
-      bucket: auto
+      buckets: auto
       full: true
       priority: 1000
       parallelity: 2
@@ -753,7 +753,7 @@
       - communication_ssl
 - communication:
     options:
-      bucket: auto
+      buckets: auto
       full: true
       priority: 1000
       size: large
