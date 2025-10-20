@@ -203,5 +203,9 @@ ResultT<transaction::BuilderLeaser> extractAttributeValues(
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
     velocypack::Slice doc, bool nullAllowed);
 
+ResultT<velocypack::Builder> extractAttributeValues(
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed);
+
 }  // namespace transaction
 }  // namespace arangodb

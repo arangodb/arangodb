@@ -955,4 +955,44 @@ ResultT<transaction::BuilderLeaser> extractAttributeValues(
   return leased;
 }
 
+ResultT<velocypack::Builder> extractAttributeValues(
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed) {
+  velocypack::Builder builder;
+  builder.openArray(true);
+  for (auto const& it : storedValues) {
+    VPackSlice s;
+    if (it.size() == 1 && it[0].name == StaticStrings::IdString) {
+      // instead of storing the value of _id, we instead store the
+      // value of _key. we will retranslate the value to an _id later
+      // again upon retrieval
+      s = transaction::helpers::extractKeyFromDocument(doc);
+    } else {
+      s = doc;
+      for (auto const& part : it) {
+        if (!s.isObject()) {
+          s = VPackSlice ::noneSlice();
+          break;
+        }
+        s = s.get(part.name);
+        if (s.isNone()) {
+          break;
+        }
+      }
+    }
+    if (s.isNone()) {
+      s = VPackSlice::nullSlice();
+    }
+
+    if (s.isNull() && !nullAllowed) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+    }
+
+    builder.add(s);
+  }
+  builder.close();
+
+  return builder;
+}
+
 }  // namespace arangodb::transaction

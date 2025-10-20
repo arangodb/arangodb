@@ -67,47 +67,6 @@
 
 namespace arangodb {
 
-// TODO(jbajic) Same exists in RocksdbMultiDimIndex.cpp
-ResultT<velocypack::Builder> extractAttributeValuesWithoutTrx(
-    std::vector<std::vector<basics::AttributeName>> const& storedValues,
-    velocypack::Slice doc, bool nullAllowed) {
-  velocypack::Builder leased;
-  leased.openArray(true);
-  for (auto const& it : storedValues) {
-    VPackSlice s;
-    if (it.size() == 1 && it[0].name == StaticStrings::IdString) {
-      // instead of storing the value of _id, we instead store the
-      // value of _key. we will retranslate the value to an _id later
-      // again upon retrieval
-      s = transaction::helpers::extractKeyFromDocument(doc);
-    } else {
-      s = doc;
-      for (auto const& part : it) {
-        if (!s.isObject()) {
-          s = VPackSlice ::noneSlice();
-          break;
-        }
-        s = s.get(part.name);
-        if (s.isNone()) {
-          break;
-        }
-      }
-    }
-    if (s.isNone()) {
-      s = VPackSlice::nullSlice();
-    }
-
-    if (s.isNull() && !nullAllowed) {
-      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
-    }
-
-    leased.add(s);
-  }
-  leased.close();
-
-  return leased;
-}
-
 // This assertion must hold for faiss::idx_t to be used
 static_assert(sizeof(faiss::idx_t) == sizeof(LocalDocumentId::BaseType),
               "Faiss id and LocalDocumentId must be of same size");
@@ -142,8 +101,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (_trainedData) {
     faiss::VectorIOReader reader;
     // TODO prevent this copy, but instead implement own IOReader, reading
-    // directly from the
-    //  training data.
+    // directly from the training data.
     reader.data = _trainedData->codeData;
     _faissIndex = std::unique_ptr<faiss::IndexIVF>{
         dynamic_cast<faiss::IndexIVF*>(faiss::read_index(&reader))};
@@ -652,7 +610,7 @@ Result RocksDBVectorIndex::ingestVectors(
         batch->docIds.push_back(docId);
         if (hasStoredValues()) {
           auto const extractedAttributeValues =
-              extractAttributeValuesWithoutTrx(_storedValues, doc, true);
+              transaction::extractAttributeValues(_storedValues, doc, true);
           batch->storedValues.push_back(
               extractedAttributeValues->sharedSlice());
         }
