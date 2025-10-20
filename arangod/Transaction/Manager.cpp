@@ -1542,6 +1542,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
           return;
         }
 
+        READ_LOCKER(guard, trx.rwlock);
+
         builder.openObject(true);
         builder.add("id", VPackValue(std::to_string(tid.id())));
         if (trx.state == nullptr) {
