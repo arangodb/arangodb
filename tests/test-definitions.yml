@@ -300,13 +300,12 @@
     options:
       coverage: false
       priority: 1000
-      size: small
       type: cluster
     suites:
-      - arangobench:
+      - deadlock:
           args:
             dumpAgencyOnError: true
-      - deadlock:
+      - arangobench:
           args:
             dumpAgencyOnError: true
       - server_secrets:
