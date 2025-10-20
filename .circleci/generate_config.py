@@ -4,15 +4,16 @@ from collections import namedtuple
 from datetime import date
 import argparse
 import copy
+from enum import Enum
 import json
 import os
 import re
 import sys
 import traceback
 import yaml
-from enum import Enum
-
-class deployment_variant(Enum):
+# pylint: disable=broad-exception-raised
+class DeploymentVariant(Enum):
+    """ which sort of arangodb deployment? """
     SINGLE = 1,
     MIXED = 2,
     CLUSTER = 3
@@ -184,6 +185,7 @@ def validate_flags(flags):
 
 def read_yaml_suite(name, suite, definition, testfile_definitions, yaml_struct):
     """ convert yaml representation into the internal one """
+    # pylint: disable=too-many-branches
     if not 'options' in definition:
         definition['options'] = {}
     flags = []
@@ -322,6 +324,8 @@ def read_definitions(filename, override_branch, cli_args):
                     add_yaml = {"add-yaml": copy.deepcopy(config["add-yaml"])}
                 if "jobProperties" in config:
                     testfile_definitions = copy.deepcopy(config["jobProperties"])
+                    if override_branch is not None:
+                        testfile_definitions['branch'] = override_branch
                 config = config['tests']
             for testcase in config:
                 suite_name = list(testcase.keys())[0]
@@ -343,7 +347,7 @@ def read_definitions(filename, override_branch, cli_args):
                     print(f"while parsing {suite_name} {testcase}")
                     raise ex
     else:
-        raise Error("only .yml file format supported")
+        raise Exception("only .yml file format supported")
     return tests, add_yaml
 
 
@@ -377,7 +381,6 @@ def filter_one_test(args, test):
         if 'coverage' in test:
             return True
     full = args.full or args.nightly
-    filters = []
 
     if 'full' in test:
         if full and not test['full']:
@@ -418,7 +421,6 @@ def get_test_size(size, build_config, cluster):
 
 def create_test_job(test, depl_variant, build_config, build_jobs, args, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
-    edition = "ee" if build_config.enterprise else "ce"
     params = test["params"]
     suite_name = test["name"]
     suffix = params.get("suffix", "")
@@ -430,9 +432,11 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
         raise Exception(f"Invalid resource class size {size}")
 
     deployment_v_str = ""
-    if depl_variant == deployment_variant.CLUSTER:
+    cluster = False
+    if depl_variant == DeploymentVariant.CLUSTER:
         deployment_v_str = f"cluster{'-repl2' if replication_version==2 else ''}"
-    elif depl_variant == deployment_variant.SINGLE:
+        cluster = True
+    elif depl_variant == DeploymentVariant.SINGLE:
         deployment_v_str = "single"
     else:
         deployment_v_str = "mixed"
@@ -447,8 +451,8 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
         "name": f"test-{deployment_v_str}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_test_size(size, build_config, depl_variant == deployment_variant.CLUSTER),
-        "cluster": depl_variant == deployment_variant.CLUSTER,
+        "size": get_test_size(size, build_config, depl_variant == DeploymentVariant.CLUSTER),
+        "cluster": depl_variant == DeploymentVariant.CLUSTER,
         "requires": build_jobs,
         "arangosh_args": "A " + json.dumps(sub_arangosh_args),
 
@@ -463,7 +467,7 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
     if 'more_yaml' in test:
         job ['foo'] = test['more_yaml']
     sub_extra_args = test["args"].copy()
-    if depl_variant == deployment_variant.CLUSTER:
+    if depl_variant == DeploymentVariant.CLUSTER:
         sub_extra_args += ["--replicationVersion", f"{replication_version}"]
     if build_config.isNightly:
         sub_extra_args += ["--skipNightly", "false"]
@@ -495,6 +499,7 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
 
 
 def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, rta_branch):
+    """ this job will use RTA to launch arangod """
     edition = "ee" if build_config.enterprise else "ce"
     job = {
         "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
@@ -513,21 +518,22 @@ def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statem
 def add_test_definition_jobs_to_workflow(
         workflow, tests, build_config, build_jobs, args
 ):
+    """ add tests for one architecture """
     jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, DeploymentVariant.CLUSTER, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args, 2))
+                jobs.append(create_test_job(test, DeploymentVariant.CLUSTER, build_config, build_jobs, args, 2))
         elif "single" in test["flags"]:
-            jobs.append(create_test_job(test, deployment_variant.SINGLE, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, DeploymentVariant.SINGLE, build_config, build_jobs, args))
         elif "mixed" in test["flags"]:
-            jobs.append(create_test_job(test, deployment_variant.MIXED, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, DeploymentVariant.MIXED, build_config, build_jobs, args))
         else:
-            jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args))
+            jobs.append(create_test_job(test, DeploymentVariant.CLUSTER, build_config, build_jobs, args))
             if args.replication_two:
-                jobs.append(create_test_job(test, deployment_variant.CLUSTER, build_config, build_jobs, args, 2))
-            jobs.append(create_test_job(test, deployment_variant.SINGLE, build_config, build_jobs, args))
+                jobs.append(create_test_job(test, DeploymentVariant.CLUSTER, build_config, build_jobs, args, 2))
+            jobs.append(create_test_job(test, DeploymentVariant.SINGLE, build_config, build_jobs, args))
 
 
 def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
@@ -563,6 +569,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs):
 
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
+    """ add jobs for all architectures """
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_jobs)
     if args.ui == "only":
@@ -584,6 +591,7 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_jobs):
 
 
 def add_cppcheck_job(workflow, build_job):
+    """ add the cppcheck job """
     workflow["jobs"].append(
         {
             "run-cppcheck": {
@@ -595,6 +603,7 @@ def add_cppcheck_job(workflow, build_job):
 
 
 def add_create_docker_image_job(workflow, build_config, build_jobs, args):
+    """ add the job to build a docker image """
     if not args.create_docker_images:
         return
     edition = "ee" if build_config.enterprise else "ce"
@@ -629,6 +638,7 @@ def add_create_docker_image_job(workflow, build_config, build_jobs, args):
 
 
 def add_build_job(workflow, build_config, overrides=None):
+    """ add the jobs to compile arangod """
     edition = "ee" if build_config.enterprise else "ce"
     preset = "enterprise-pr" if build_config.enterprise else "community-pr"
     if build_config.sanitizer != "":
@@ -653,6 +663,7 @@ def add_build_job(workflow, build_config, overrides=None):
 
 
 def add_frontend_build_job(workflow, build_config):
+    """ add the job to build the aardvark """
     edition = "ee" if build_config.enterprise else "ce"
     preset = "enterprise-pr" if build_config.enterprise else "community-pr"
     if build_config.sanitizer != "":
@@ -664,6 +675,7 @@ def add_frontend_build_job(workflow, build_config):
 
 
 def add_workflow(workflows, tests, build_config, args):
+    """ add the complete overal workflow """
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         ui = True
@@ -707,6 +719,7 @@ def add_x64_community_workflow(workflows, tests, args):
 
 
 def add_x64_enterprise_workflow(workflows, tests, args):
+    """ add the enterprise run """
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
     workflow = add_workflow(workflows, tests, build_config, args)
     if args.sanitizer == "" and args.ui != "only":
@@ -808,7 +821,7 @@ def main():
                         new_job = one_yaml['add-yaml']['derives-to']
                         del one_yaml['add-yaml']['derives-to']
                         del one_yaml['add-yaml']['derives']
-                        orig_test_job = copy.deepcopy(config['jobs']['run-linux-tests'])
+                        orig_test_job = copy.deepcopy(config['jobs'][original_job])
                         new_job_definition = {
                             **orig_test_job,
                             **one_yaml['add-yaml']
