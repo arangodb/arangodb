@@ -322,46 +322,7 @@ def get_args(args):
             sub_args[key] = value
     return sub_args
 
-
-def read_yaml_multi_suite(name, definition, testfile_definitions, yaml_struct, cli_args):
-    """ convert yaml representation into the internal one """
-    generated_definition = {
-    }
-    if 'options' in definition:
-        generated_definition['options'] = definition['options']
-    args = {}
-    generated_name = ""
-    if 'args' in definition:
-        args = definition['args'].copy()
-    if isinstance(definition['suites'][0], str):
-        generated_name = ','.join(definition['suites'])
-    else:
-        suite_strs = []
-        options_json = []
-        for suite in definition['suites']:
-            if isinstance(suite, str):
-                options_json.append({})
-                suite_name = suite
-            else:
-                suite_name = list(suite.keys())[0]
-                if not isinstance(suite, dict):
-                    raise Exception(f"suite should be a dict, it is {type(suite)}")
-                if 'options' in suite[suite_name]:
-                    if filter_one_test(cli_args, suite[suite_name]['options']):
-                        print(f"skipping {suite}")
-                        continue
-                if 'args' in suite[suite_name]:
-                    options_json.append(get_args(suite[suite_name]['args']))
-                else:
-                    options_json.append({})
-            suite_strs.append(suite_name)
-        generated_name = ','.join(suite_strs)
-        args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
-    if args != {}:
-        generated_definition['args'] = args
-    return read_yaml_suite(name, generated_name, generated_definition, testfile_definitions, yaml_struct)
-
-def read_yaml_bucket_suite(bucket_name, definition, testfile_definitions, yaml_struct, cli_args):
+def read_yaml_multi_bucket_suite(name, definition, testfile_definitions, yaml_struct, cli_args):
     """ convert yaml representation into the internal one """
     args = {}
     if 'args' in definition:
@@ -387,14 +348,16 @@ def read_yaml_bucket_suite(bucket_name, definition, testfile_definitions, yaml_s
                 options_json.append({})
     args['optionsJson'] = json.dumps(options_json, separators=(',', ':'))
     joint_suite_name = ','.join(suite_names)
-    definition['options']['buckets'] = len(suite_names)
+    if ('buckets' in definition['options'] and
+        definition['options']['buckets'] == 'auto'):
+        definition['options']['buckets'] = len(suite_names)
     definition['options']['args'] = args
 
-    return read_yaml_suite(bucket_name,
+    return read_yaml_suite(name,
                            joint_suite_name,
                            {
                                'options': definition['options'],
-                               'name': bucket_name,
+                               'name': name,
                                'args': args,
                                'suites': definition['suites']
                            },
@@ -423,13 +386,10 @@ def read_definitions(filename, override_branch, args):
                 try:
                     suite = testcase[suite_name]
                     if "suites" in suite:
-                        if ('options' in suite and
-                            'buckets' in suite['options'] and
-                            suite['options']['buckets'] == "auto"):
-                            del suite['options']['buckets']
-                            tests.append(read_yaml_bucket_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))
-                        else:
-                            tests.append(read_yaml_multi_suite(suite_name, suite, testfile_definitions, parsed_yaml, args))
+                        tests.append(read_yaml_multi_bucket_suite(suite_name,
+                                                                  suite,
+                                                                  testfile_definitions,
+                                                                  parsed_yaml, args))
                     else:
                         tests.append(read_yaml_suite(suite_name, suite_name,
                                                      suite, testfile_definitions, parsed_yaml))
