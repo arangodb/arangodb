@@ -38,19 +38,18 @@ struct ModificationOptions : OperationOptions {
   explicit ModificationOptions(velocypack::Slice slice);
 
   // constructor, using default values
-  ModificationOptions()
-      : OperationOptions(),
-        ignoreErrors(false),
-        ignoreDocumentNotFound(false),
-        consultAqlWriteFilter(false),
-        exclusive(false) {}
+  ModificationOptions() : OperationOptions() {}
 
   void toVelocyPack(velocypack::Builder&) const;
 
-  bool ignoreErrors;
-  bool ignoreDocumentNotFound;
-  bool consultAqlWriteFilter;
-  bool exclusive;
+  bool ignoreErrors{false};
+  bool ignoreDocumentNotFound{false};
+  bool consultAqlWriteFilter{false};
+  bool exclusive{false};
+  // only used in smart graph in InsertNode when overwriteMode: "ignore"
+  // to set the alternativeVariable to a non-null
+  // Introduced by solving BTS-2226
+  bool useOldSmartGraphVariable{false};
 };
 
 }  // namespace aql

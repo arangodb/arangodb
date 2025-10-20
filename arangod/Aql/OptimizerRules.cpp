@@ -8926,6 +8926,9 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
         setInVariable = [insertNode](Variable* var) {
           insertNode->setInVariable(var);
         };
+
+        alternativeVariable = insertNode->oldSmartGraphVariable();
+
       } break;
       case ExecutionNode::REMOVE: {
         auto* removeNode = ExecutionNode::castTo<RemoveNode*>(targetNode);

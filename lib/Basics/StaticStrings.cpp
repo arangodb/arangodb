@@ -74,6 +74,8 @@ std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
 std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
 std::string const StaticStrings::UserString("user");
+std::string const StaticStrings::UseOldSmartGraphVariable(
+    "useOldSmartGraphVariable");
 
 // dump headers
 std::string const StaticStrings::DumpAuthUser("x-arango-dump-auth-user");

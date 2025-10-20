@@ -26,6 +26,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <cstring>
 #include <omp.h>
 
@@ -202,20 +203,28 @@ RocksDBVectorIndex::readBatch(
     faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
   }
 
-  faiss::SearchParametersIVF searchParametersIvf;
-  vector::SearchParametersContext searchCtx{};
-  searchCtx.trx = trx;
-  searchCtx.filterExpression = filterExpression;
-  if (inputRow != nullptr) {
-    searchCtx.inputRow = *inputRow;
-  }
-  searchCtx.queryContext = &queryContext;
-  searchCtx.filterVarsToRegs = &filterVarsToRegs;
-  searchCtx.documentVariable = documentVariable;
+  auto faissSearchContext =
+      std::invoke([&]() -> vector::RocksDBFaissSearchContext {
+        if (filterExpression == nullptr) {
+          return {trx};
+        }
 
+        vector::SearchParametersContext searchCtx;
+        searchCtx.trx = trx;
+        searchCtx.filterExpression = filterExpression;
+        if (inputRow != nullptr) {
+          searchCtx.inputRow = *inputRow;
+        }
+        searchCtx.queryContext = &queryContext;
+        searchCtx.filterVarsToRegs = &filterVarsToRegs;
+        searchCtx.documentVariable = documentVariable;
+        return searchCtx;
+      });
+
+  faiss::SearchParametersIVF searchParametersIvf;
   searchParametersIvf.nprobe =
       searchParameters.nProbe.value_or(_definition.defaultNProbe);
-  searchParametersIvf.inverted_list_context = &searchCtx;
+  searchParametersIvf.inverted_list_context = &faissSearchContext;
   _faissIndex->search(count, inputs.data(), topK, distances.data(),
                       labels.data(), &searchParametersIvf);
 
