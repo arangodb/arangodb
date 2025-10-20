@@ -424,7 +424,7 @@ function iterateTests(cases, options) {
       let r = parseInt(n[0]);
       let s = parseInt(n[1]);
       if (r !== nTests) {
-        throw new Error(`buckets unequal the number of test-definitions - ${nTests} != ${r}`);
+        throw new Error(`Number of buckets (${r}) must be equal the number of suites to run (${nTests})`);
       }
       testSuiteStart = s;
       testSuiteEnd = s + 1;
