@@ -57,7 +57,7 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
       _authenticationTimeout(0.0),
       _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) /
                                           std::chrono::seconds(1))),  // 1 hour
-      _minimalJwtExpiryTime(60.0),     // 60 seconds
+      _minimalJwtExpiryTime(10.0),     // 10 seconds
       _maximalJwtExpiryTime(3600.0) {  // 3600 seconds
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
