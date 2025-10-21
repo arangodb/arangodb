@@ -626,7 +626,7 @@ void V8ClientConnection::prepareConnection() {
         _storedUsername = _client.username();
         _storedPassword = _client.password();
         _currentJwtToken = jwtToken;
-        
+
         // Extract and store the expiration time
         auto expiry = extractJwtExpiration(_currentJwtToken);
         _jwtTokenExpiry = expiry.value_or(0.0);
@@ -637,7 +637,7 @@ void V8ClientConnection::prepareConnection() {
         // _open/auth API and we will try basic auth. Used only in tests
         _builder.user(_client.username()).password(_client.password());
         _builder.authenticationType(fu::AuthenticationType::Basic);
-        
+
         // Store credentials for potential future use
         _storedUsername = _client.username();
         _storedPassword = _client.password();
