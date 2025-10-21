@@ -1,7 +1,7 @@
 jobProperties:
     container_suffix: '-java:'
     second_repo: git@github.com:arangodb/kafka-connect-arangodb.git
-    branch: feature/script-to-wait-for-host
+    branch: main
     init_command: "./docker/wait_server.sh kafka-1 9092 kafka-2 9092 kafka-3 9092"
 add-yaml:
     derives: run-linux-tests
