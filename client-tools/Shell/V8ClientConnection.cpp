@@ -511,7 +511,7 @@ void V8ClientConnection::prepareConnection() {
       }
       // If jwtToken is empty, server has authentication disabled
       // Proceed without authentication
-    } catch (std::exception& e) {
+    } catch (...) {
       _builder = fuerte::ConnectionBuilder();
     }
   }
