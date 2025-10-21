@@ -57,7 +57,7 @@ RestStatus RestAuthHandler::execute() {
     VPackBuilder builder;
     {
       VPackObjectBuilder guard(&builder);
-      builder.add("jwt", VPackValue("bla"));
+      builder.add("jwt", VPackValue(""));
     }
     generateResult(rest::ResponseCode::OK, builder.slice());
     return RestStatus::DONE;
