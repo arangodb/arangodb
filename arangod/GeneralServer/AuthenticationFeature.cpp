@@ -57,9 +57,9 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
       _authenticationTimeout(0.0),
       _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) /
                                           std::chrono::seconds(1))),  // 1 hour
-      _minimalJwtExpiryTime(60.0),   // 60 seconds
-      _maximalJwtExpiryTime(3600.0), // 3600 seconds
-      _jwtExpiryTime(3600.0) {       // 3600 seconds
+      _minimalJwtExpiryTime(60.0),    // 60 seconds
+      _maximalJwtExpiryTime(3600.0),  // 3600 seconds
+      _jwtExpiryTime(3600.0) {        // 3600 seconds
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -159,7 +159,8 @@ endpoint. Requests with expiry times above this value will be rejected.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(This option sets the default lifetime for JWT tokens
+      .setLongDescription(
+          R"(This option sets the default lifetime for JWT tokens
 created via the `POST /_open/auth` endpoint when no explicit `expiryTime` is
 provided in the request.)");
 

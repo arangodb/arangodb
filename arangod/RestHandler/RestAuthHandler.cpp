@@ -96,7 +96,8 @@ RestStatus RestAuthHandler::execute() {
           AuthenticationFeature* af = AuthenticationFeature::instance();
           std::chrono::seconds expiry(
               static_cast<uint64_t>(af->jwtExpiryTime()));
-          resultBuilder.add("jwt", VPackValue(generateJwt(_request->user(), expiry)));
+          resultBuilder.add("jwt",
+                            VPackValue(generateJwt(_request->user(), expiry)));
         }
         // otherwise we will send an empty body back. callers must handle
         // this case!
@@ -138,19 +139,21 @@ RestStatus RestAuthHandler::execute() {
   // Handle optional expiryTime parameter
   if (expiryTimeSlice.isNumber()) {
     expiryTimeSeconds = expiryTimeSlice.getNumber<double>();
-    
+
     // Validate against min/max bounds
     if (expiryTimeSeconds < af->minimalJwtExpiryTime()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expiryTime is below the minimal allowed value of " +
-                        std::to_string(af->minimalJwtExpiryTime()) + " seconds");
+                        std::to_string(af->minimalJwtExpiryTime()) +
+                        " seconds");
       return RestStatus::DONE;
     }
-    
+
     if (expiryTimeSeconds > af->maximalJwtExpiryTime()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                     "expiryTime exceeds the maximal allowed value of " +
-                        std::to_string(af->maximalJwtExpiryTime()) + " seconds");
+                        std::to_string(af->maximalJwtExpiryTime()) +
+                        " seconds");
       return RestStatus::DONE;
     }
   } else if (!expiryTimeSlice.isNone()) {
@@ -193,12 +196,12 @@ RestStatus RestAuthHandler::execute() {
   return RestStatus::DONE;
 }
 
-std::string RestAuthHandler::generateJwt(std::string const& username,
-                                         std::chrono::seconds expiryTime) const {
+std::string RestAuthHandler::generateJwt(
+    std::string const& username, std::chrono::seconds expiryTime) const {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
-  return fuerte::jwt::generateUserToken(
-      af->tokenCache().jwtSecret(), username, expiryTime);
+  return fuerte::jwt::generateUserToken(af->tokenCache().jwtSecret(), username,
+                                        expiryTime);
 }
 
 RestStatus RestAuthHandler::badRequest() {
