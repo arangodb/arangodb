@@ -72,6 +72,9 @@ class AuthenticationFeature final : public ArangodFeature {
 #endif
 
   double sessionTimeout() const { return _sessionTimeout; }
+  double minimalJwtExpiryTime() const { return _minimalJwtExpiryTime; }
+  double maximalJwtExpiryTime() const { return _maximalJwtExpiryTime; }
+  double jwtExpiryTime() const { return _jwtExpiryTime; }
 
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
@@ -96,6 +99,9 @@ class AuthenticationFeature final : public ArangodFeature {
   bool _active;
   double _authenticationTimeout;
   double _sessionTimeout;
+  double _minimalJwtExpiryTime;
+  double _maximalJwtExpiryTime;
+  double _jwtExpiryTime;
 
   mutable std::mutex _jwtSecretsLock;
 
