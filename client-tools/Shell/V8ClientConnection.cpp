@@ -511,9 +511,9 @@ void V8ClientConnection::prepareConnection() {
       }
       // If jwtToken is empty, server has authentication disabled
       // Proceed without authentication
-    } catch (std::exception const& e) {
-      throw std::runtime_error("Authentication failed: " +
-                               std::string(e.what()));
+    } catch (...) {
+      LOG_TOPIC("7e1d1", INFO, arangodb::Logger::AUTHENTICATION)
+          << "Could not authenticate.";
     }
   }
 }
