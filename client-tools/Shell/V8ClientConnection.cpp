@@ -497,13 +497,16 @@ void V8ClientConnection::prepareConnection() {
     // Use new authentication method via /_open/auth endpoint
     try {
       auto const res = authenticateViaOpenAuth();
+      std::string jwtToken;
 
       if (res.ok()) {
-        auto const jwtToken = res.get();
+        jwtToken = res.get();
         // Server has authentication enabled, use the JWT token
         _builder.jwtToken(jwtToken);
         _builder.authenticationType(fu::AuthenticationType::Jwt);
-      } else if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN) {
+      }
+      if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
+          jwtToken == "invalid") {
         // This happens only on agents and dbsevers since they do noe implement
         // _open/auth API and we will try basic auth. Used only in tests
         _builder.user(_client.username()).password(_client.password());
