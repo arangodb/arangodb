@@ -53,6 +53,15 @@ RestStatus RestAuthHandler::execute() {
     return RestStatus::DONE;
   }
 
+  if (!AuthenticationFeature::instance()->isActive()) {
+    VPackBuilder builder;
+    {
+      VPackObjectBuilder guard(&builder);
+      builder.add("jwt", VPackValue("bla"));
+    }
+    generateResult(rest::ResponseCode::OK, builder.slice());
+    return RestStatus::DONE;
+  }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
     std::string msg = "This server does not support users";

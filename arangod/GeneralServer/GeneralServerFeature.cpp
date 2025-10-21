@@ -629,8 +629,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   AgencyFeature& agency = server().getFeature<AgencyFeature>();
   ClusterFeature& cluster = server().getFeature<ClusterFeature>();
-  AuthenticationFeature& authentication =
-      server().getFeature<AuthenticationFeature>();
 
   // ...........................................................................
   // /_api
@@ -903,11 +901,9 @@ void GeneralServerFeature::defineRemainingHandlers(
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
 
-  if (authentication.isActive()) {
-    f.addPrefixHandler(
-        "/_open/auth",
-        RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
-  }
+  f.addPrefixHandler(
+      "/_open/auth",
+      RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);
 
   f.addPrefixHandler(
       "/_admin/server",
