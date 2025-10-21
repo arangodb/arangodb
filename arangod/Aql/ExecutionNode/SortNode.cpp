@@ -230,8 +230,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
           ConstraintSortExecutorInfos(
               registerInfos.numberOfOutputRegisters(),
               registerInfos.registersToClear(), std::move(sortRegs), _limit,
-              engine.itemBlockManager(), engine.getQuery(),
-              &engine.getQuery().vpackOptions(),
+              engine.itemBlockManager(), &engine.getQuery().vpackOptions(),
               engine.getQuery().resourceMonitor()));
     }
   }

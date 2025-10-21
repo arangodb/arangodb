@@ -87,7 +87,6 @@ struct IndexDistinctScanExecutor {
  private:
   void constructIterator();
 
-  Fetcher& _fetcher;
   Infos& _infos;
   transaction::Methods _trx;
   std::unique_ptr<AqlIndexDistinctScanIterator> _iterator;

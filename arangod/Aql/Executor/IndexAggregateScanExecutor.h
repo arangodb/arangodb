@@ -102,7 +102,6 @@ struct IndexAggregateScanExecutor {
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
  private:
-  Fetcher& _fetcher;
   Infos& _infos;
   transaction::Methods _trx;
 
