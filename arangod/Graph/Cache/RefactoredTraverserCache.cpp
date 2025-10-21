@@ -111,7 +111,6 @@ RefactoredTraverserCache::RefactoredTraverserCache(
       _vertexProjections(vertexProjections),
       _edgeProjections(edgeProjections) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  TRI_ASSERT(_collectionToShardMap.empty());
 }
 
 RefactoredTraverserCache::~RefactoredTraverserCache() { clear(); }
