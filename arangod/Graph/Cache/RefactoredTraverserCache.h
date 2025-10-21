@@ -25,10 +25,10 @@
 
 #include "Aql/Projections.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Containers/FlatHashSet.h"
+#include "Indexes/IndexIterator.h"
 
 #include <velocypack/HashedStringRef.h>
 
@@ -60,8 +60,6 @@ struct EdgeDocumentToken;
 
 class RefactoredTraverserCache {
  public:
-  enum EdgeReadType { ONLYID, DOCUMENT, ID_DOCUMENT };
-
   RefactoredTraverserCache(
       arangodb::transaction::Methods* trx, aql::QueryContext* query,
       arangodb::ResourceMonitor& resourceMonitor,
@@ -125,32 +123,24 @@ class RefactoredTraverserCache {
   ///        if this returns false the result is unmodified
   //////////////////////////////////////////////////////////////////////////////
 
-  template<typename ResultType>
   bool appendVertex(aql::TraversalStats& stats,
                     arangodb::velocypack::HashedStringRef const& idString,
-                    ResultType& result);
+                    velocypack::Builder& result);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup an edge document from the database.
   ///        if this returns false the result is unmodified
-  ///        if readType is set to ONLYID: the result will only contain the _Id
-  ///        if readType is set to DOCUMENT: the result will contain the data
-  ///        if readType is set to ID_DOCUMENT: the result will contain {id:
-  ///        data}
   //////////////////////////////////////////////////////////////////////////////
 
-  template<typename ResultType>
-  bool appendEdge(graph::EdgeDocumentToken const& etkn, EdgeReadType readType,
-                  ResultType& result);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Helper Method to extract collection Name from given
-  /// VertexIdentifier
-  ///        Will translate to ShardName in case of Satellite Graphs
-  //////////////////////////////////////////////////////////////////////////////
-
-  ResultT<std::pair<std::string, size_t>> extractCollectionName(
-      velocypack::HashedStringRef const& idHashed) const;
+  bool doAppendEdge(EdgeDocumentToken const& idToken,
+                    IndexIterator::DocumentCallback const& cb);
+  bool appendEdgeString(EdgeDocumentToken const& idToken, std::string& result);
+  bool appendEdgeOnlyId(EdgeDocumentToken const& idToken,
+                        velocypack::Builder& result);
+  bool appendEdgeIdDocument(EdgeDocumentToken const& idToken,
+                            velocypack::Builder& result);
+  bool appendEdgeDocument(EdgeDocumentToken const& idToken,
+                          velocypack::Builder& result);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -170,7 +160,8 @@ class RefactoredTraverserCache {
   arangodb::StringHeap _stringHeap;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Set of all strings persisted in the stringHeap. So we can save some
+  /// @brief Set of all strings persisted in the stringHeap. So we can save
+  /// some
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
   containers::FlatHashSet<arangodb::velocypack::HashedStringRef>

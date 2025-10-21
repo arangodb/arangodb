@@ -69,6 +69,24 @@ bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
 
   return false;
 }
+
+ResultT<std::pair<std::string, std::string>> splitDocumentId(
+    velocypack::HashedStringRef idHashed) {
+  size_t pos = idHashed.find('/');
+
+  if (pos == std::string::npos) {
+    // Invalid input. If we get here somehow we managed to store invalid
+    // _from/_to values or the traverser did a let an illegal start through
+    TRI_ASSERT(false);
+    return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
+                  "edge contains invalid value " + idHashed.toString()};
+  }
+
+  std::string colName = idHashed.substr(0, pos).toString();
+  std::string key = idHashed.substr(pos + 1, std::string::npos).toString();
+  return {std::make_pair(colName, key)};
+}
+
 }  // namespace
 
 RefactoredTraverserCache::RefactoredTraverserCache(
@@ -93,6 +111,7 @@ RefactoredTraverserCache::RefactoredTraverserCache(
       _vertexProjections(vertexProjections),
       _edgeProjections(edgeProjections) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  TRI_ASSERT(_collectionToShardMap.empty());
 }
 
 RefactoredTraverserCache::~RefactoredTraverserCache() { clear(); }
@@ -104,14 +123,9 @@ void RefactoredTraverserCache::clear() {
   _stringHeap.clear();
 }
 
-template<typename ResultType>
-bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
-                                          EdgeReadType readType,
-                                          ResultType& result) {
-  if constexpr (std::is_same_v<ResultType, std::string>) {
-    // Only Ids can be extracted into a std::string
-    TRI_ASSERT(readType == EdgeReadType::ONLYID);
-  }
+bool RefactoredTraverserCache::doAppendEdge(
+    EdgeDocumentToken const& idToken,
+    IndexIterator::DocumentCallback const& cb) {
   auto col = _trx->vocbase().lookupCollection(idToken.cid());
 
   if (ADB_UNLIKELY(col == nullptr)) {
@@ -121,19 +135,64 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
     TRI_ASSERT(col != nullptr);  // for maintainer mode
     return false;
   }
-  auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
-    if (readType == EdgeReadType::ONLYID) {
-      if constexpr (std::is_same_v<ResultType, std::string>) {
+
+  auto res =
+      col->getPhysical()->lookup(_trx, idToken.localDocumentId(), cb, {}).ok();
+
+  if (ADB_UNLIKELY(!res)) {
+    // We already had this token, inconsistent state. Return NULL in Production
+    LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
+        << "Could not extract indexed edge document, return 'null' instead. "
+        << "This is most likely a caching issue. Try: 'db." << col->name()
+        << ".unload(); db." << col->name()
+        << ".load()' in arangosh to fix this.";
+  }
+
+  return res;
+}
+
+bool RefactoredTraverserCache::appendEdgeString(
+    EdgeDocumentToken const& idToken, std::string& result) {
+  return doAppendEdge(
+      idToken, [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
         // If we want to expose the ID, we need to translate the
         // custom type Unfortunately we cannot do this in slice only
         // manner, as there is no complete slice with the _id.
         result = transaction::helpers::extractIdString(_trx->resolver(), edge,
                                                        VPackSlice::noneSlice());
         return true;
-      }
-      edge = edge.get(StaticStrings::IdString).translate();
-    } else if (readType == EdgeReadType::ID_DOCUMENT) {
-      if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
+      });
+}
+
+bool RefactoredTraverserCache::appendEdgeOnlyId(
+    EdgeDocumentToken const& idToken, velocypack::Builder& result) {
+  return doAppendEdge(
+      idToken,
+
+      [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
+        result.add(edge.get(StaticStrings::IdString).translate());
+        return true;
+      });
+}
+
+bool RefactoredTraverserCache::appendEdgeDocument(
+    EdgeDocumentToken const& idToken, velocypack::Builder& result) {
+  return doAppendEdge(
+      idToken, [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
+        if (!_edgeProjections.empty()) {
+          VPackObjectBuilder guard(&result);
+          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
+        } else {
+          result.add(edge);
+        }
+        return true;
+      });
+}
+
+bool RefactoredTraverserCache::appendEdgeIdDocument(
+    EdgeDocumentToken const& idToken, velocypack::Builder& result) {
+  return doAppendEdge(
+      idToken, [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
         TRI_ASSERT(result.isOpenObject());
         TRI_ASSERT(edge.isObject());
         // Extract and Translate the _key value
@@ -146,122 +205,45 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
           result.add(edge);
         }
         return true;
-      } else {
-        // We can only inject key_value pairs into velocypack
-        TRI_ASSERT(false);
-      }
-    }
-    // NOTE: Do not count this as Primary Index Scan, we
-    // counted it in the edge Index before copying...
-    if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-      if (!_edgeProjections.empty()) {
-        // TODO: This does one unnecessary copy.
-        // We should be able to move the Projection into the
-        // AQL value.
-        transaction::BuilderLeaser builder(_trx);
-        {
-          VPackObjectBuilder guard(builder.get());
-          _edgeProjections.toVelocyPackFromDocument(*builder, edge, _trx);
-        }
-        result = aql::AqlValue(builder->slice());
-      } else if (data) {
-        result = aql::AqlValue(data);
-      } else {
-        result = aql::AqlValue(edge);
-      }
-    } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-      if (!_edgeProjections.empty()) {
-        VPackObjectBuilder guard(&result);
-        _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
-      } else {
-        result.add(edge);
-      }
-    }
-    return true;
-  };
-  auto res =
-      col->getPhysical()->lookup(_trx, idToken.localDocumentId(), cb, {}).ok();
-  if (ADB_UNLIKELY(!res)) {
-    // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC("daac5", ERR, arangodb::Logger::GRAPHS)
-        << "Could not extract indexed edge document, return 'null' instead. "
-        << "This is most likely a caching issue. Try: 'db." << col->name()
-        << ".unload(); db." << col->name()
-        << ".load()' in arangosh to fix this.";
-  }
-  return res;
+      });
 }
 
-ResultT<std::pair<std::string, size_t>>
-RefactoredTraverserCache::extractCollectionName(
-    velocypack::HashedStringRef const& idHashed) const {
-  size_t pos = idHashed.find('/');
-  if (pos == std::string::npos) {
-    // Invalid input. If we get here somehow we managed to store invalid
-    // _from/_to values or the traverser did a let an illegal start through
-    TRI_ASSERT(false);
-    return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
-                  "edge contains invalid value " + idHashed.toString()};
-  }
-
-  std::string colName = idHashed.substr(0, pos).toString();
-  return std::make_pair(colName, pos);
-}
-
-template<typename ResultType>
 bool RefactoredTraverserCache::appendVertex(
     aql::TraversalStats& stats, velocypack::HashedStringRef const& id,
-    ResultType& result) {
-  auto collectionNameResult = extractCollectionName(id);
+    velocypack::Builder& result) {
+  auto collectionNameResult = splitDocumentId(id);
   if (collectionNameResult.fail()) {
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
 
+  // if we do not produce vertices, we always add null slice
+  if (!_produceVertices) {
+    result.add(VPackSlice::nullSlice());
+    return true;
+  }
+
+  auto [collectionName, key] = collectionNameResult.get();
+
   auto findDocumentInCollection = [&](std::string const& shardId) -> bool {
-    if (!_produceVertices) {
-      // we don't need any vertex data, return quickly
-      result.add(VPackSlice::nullSlice());
-      return true;
-    }
     try {
       transaction::AllowImplicitCollectionsSwitcher disallower(
           _trx->state()->options(), _allowImplicitCollections);
 
       auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
         stats.incrScannedIndex(1);
+
         // copying...
-        if constexpr (std::is_same_v<ResultType, aql::AqlValue>) {
-          if (!_vertexProjections.empty()) {
-            // TODO: This does one unnecessary copy.
-            // We should be able to move the Projection into the
-            // AQL value.
-            transaction::BuilderLeaser builder(_trx);
-            {
-              VPackObjectBuilder guard(builder.get());
-              _vertexProjections.toVelocyPackFromDocument(*builder, doc, _trx);
-            }
-            result = aql::AqlValue(builder->slice());
-          } else if (data) {
-            result = aql::AqlValue(data);
-          } else {
-            result = aql::AqlValue(doc);
-          }
-        } else if constexpr (std::is_same_v<ResultType, velocypack::Builder>) {
-          if (!_vertexProjections.empty()) {
-            VPackObjectBuilder guard(&result);
-            _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
-          } else {
-            result.add(doc);
-          }
+        if (!_vertexProjections.empty()) {
+          VPackObjectBuilder guard(&result);
+          _vertexProjections.toVelocyPackFromDocument(result, doc, _trx);
+        } else {
+          result.add(doc);
         }
+
         return true;
       };
-      Result res =
-          _trx->documentFastPathLocal(
-                  shardId,
-                  id.substr(collectionNameResult.get().second + 1).stringView(),
-                  cb)
-              .waitAndGet();
+
+      Result res = _trx->documentFastPathLocal(shardId, key, cb).waitAndGet();
       if (res.ok()) {
         return true;
       }
@@ -285,7 +267,6 @@ bool RefactoredTraverserCache::appendVertex(
     return false;
   };
 
-  std::string const& collectionName = collectionNameResult.get().first;
   if (_collectionToShardMap.empty()) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
     if (findDocumentInCollection(collectionName)) {
@@ -320,21 +301,21 @@ bool RefactoredTraverserCache::appendVertex(
 
 void RefactoredTraverserCache::insertEdgeIntoResult(
     EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdge(idToken, EdgeReadType::DOCUMENT, builder)) {
+  if (!appendEdgeDocument(idToken, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
 
 void RefactoredTraverserCache::insertEdgeIdIntoResult(
     EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdge(idToken, EdgeReadType::ONLYID, builder)) {
+  if (!appendEdgeOnlyId(idToken, builder)) {
     builder.add(VPackSlice::nullSlice());
   }
 }
 
 void RefactoredTraverserCache::insertEdgeIntoLookupMap(
     EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdge(idToken, EdgeReadType::ID_DOCUMENT, builder)) {
+  if (!appendEdgeIdDocument(idToken, builder)) {
     // The IDToken has been expanded by an index used on for the edges.
     // The invariant is that an index only delivers existing edges so this
     // case should never happen in production. If it shows up we have
@@ -350,7 +331,7 @@ void RefactoredTraverserCache::insertEdgeIntoLookupMap(
 std::string RefactoredTraverserCache::getEdgeId(
     EdgeDocumentToken const& idToken) {
   std::string res;
-  if (!appendEdge(idToken, EdgeReadType::ONLYID, res)) {
+  if (!appendEdgeString(idToken, res)) {
     res = "null";
   }
   return res;
