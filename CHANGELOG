@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-825: add new logo, update colors based on new branding.
+
 * FE-835: Escape HTML in notifications.
 
 * Improved performance of filtered vector index queries by batching document
