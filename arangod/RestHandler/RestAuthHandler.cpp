@@ -95,7 +95,7 @@ RestStatus RestAuthHandler::execute() {
             _request->tokenExpiry() - TRI_microtime() < 150.0) {
           AuthenticationFeature* af = AuthenticationFeature::instance();
           std::chrono::seconds expiry(
-              static_cast<uint64_t>(af->jwtExpiryTime()));
+              static_cast<uint64_t>(af->sessionTimeout()));
           resultBuilder.add("jwt",
                             VPackValue(generateJwt(_request->user(), expiry)));
         }
@@ -125,7 +125,7 @@ RestStatus RestAuthHandler::execute() {
 
   std::string username;
   std::string password;
-  double expiryTimeSeconds = af->jwtExpiryTime();  // default value
+  double expiryTimeSeconds = af->sessionTimeout();  // default value
 
   if (usernameSlice.isString() && passwordSlice.isString()) {
     username = usernameSlice.copyString();

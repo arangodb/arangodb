@@ -58,8 +58,7 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
       _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) /
                                           std::chrono::seconds(1))),  // 1 hour
       _minimalJwtExpiryTime(60.0),    // 60 seconds
-      _maximalJwtExpiryTime(3600.0),  // 3600 seconds
-      _jwtExpiryTime(3600.0) {        // 3600 seconds
+      _maximalJwtExpiryTime(3600.0) {  // 3600 seconds
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -146,23 +145,6 @@ endpoint. Requests with expiry times below this value will be rejected.)");
       .setLongDescription(R"(This option sets the maximum lifetime that can be
 requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
 endpoint. Requests with expiry times above this value will be rejected.)");
-
-  options
-      ->addOption(
-          "--server.auth.jwt-expiry-time",
-          "The default expiry time (in seconds) for JWT tokens obtained from "
-          "the `POST /_open/auth` endpoint.",
-          new DoubleParameter(&_jwtExpiryTime, /*base*/ 1.0, /*minValue*/ 1.0,
-                              /*maxValue*/ std::numeric_limits<double>::max(),
-                              /*minInclusive*/ false),
-          arangodb::options::makeFlags(
-              arangodb::options::Flags::DefaultNoComponents,
-              arangodb::options::Flags::OnCoordinator,
-              arangodb::options::Flags::OnSingle))
-      .setLongDescription(
-          R"(This option sets the default lifetime for JWT tokens
-created via the `POST /_open/auth` endpoint when no explicit `expiryTime` is
-provided in the request.)");
 
   options->addObsoleteOption(
       "--server.local-authentication",
@@ -295,24 +277,8 @@ void AuthenticationFeature::validateOptions(
   // Validate JWT expiry time settings
   if (_minimalJwtExpiryTime > _maximalJwtExpiryTime) {
     LOG_TOPIC("a4b5c", FATAL, Logger::STARTUP)
-        << "--server.auth.minimal-jwt-expiry-time (" << _minimalJwtExpiryTime
-        << ") must not be greater than --server.auth.maximal-jwt-expiry-time ("
-        << _maximalJwtExpiryTime << ")";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_jwtExpiryTime < _minimalJwtExpiryTime) {
-    LOG_TOPIC("d6e7f", FATAL, Logger::STARTUP)
-        << "--server.auth.jwt-expiry-time (" << _jwtExpiryTime
-        << ") must not be less than --server.auth.minimal-jwt-expiry-time ("
-        << _minimalJwtExpiryTime << ")";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_jwtExpiryTime > _maximalJwtExpiryTime) {
-    LOG_TOPIC("g8h9i", FATAL, Logger::STARTUP)
-        << "--server.auth.jwt-expiry-time (" << _jwtExpiryTime
-        << ") must not be greater than --server.auth.maximal-jwt-expiry-time ("
+        << "--auth.minimal-jwt-expiry-time (" << _minimalJwtExpiryTime
+        << ") must not be greater than --auth.maximal-jwt-expiry-time ("
         << _maximalJwtExpiryTime << ")";
     FATAL_ERROR_EXIT();
   }
