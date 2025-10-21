@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-835: Escape HTML in notifications.
+
 * Improved performance of filtered vector index queries by batching document
   fetches during index iteration.
 
