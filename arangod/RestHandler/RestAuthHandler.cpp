@@ -54,6 +54,13 @@ RestStatus RestAuthHandler::execute() {
   }
 
   if (!AuthenticationFeature::instance()->isActive()) {
+    // Since 3.12.6 we actually mount this RestHandler in the case that
+    // server authentication is switched off. This is because we need
+    // that an `arangosh` can run our tests even in this case by just
+    // using username and password. Since from 3.12.6 on we use `/_open/auth`
+    // in this case in the client tools, we need to get some positive
+    // response, if only with an `invalid` token. If server authentication
+    // is switched off, then even that invalid token will be accepted.
     VPackBuilder builder;
     {
       VPackObjectBuilder guard(&builder);
