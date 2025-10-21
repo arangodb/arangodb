@@ -24,6 +24,7 @@
 #pragma once
 
 #include <iosfwd>
+#include <string>
 
 namespace arangodb {
 enum class RequestLane {
