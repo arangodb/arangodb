@@ -29,6 +29,7 @@
 #include "Graph/Enumerators/OneSidedEnumeratorInterface.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/SingleProviderPathResult.h"
+#include "Graph/Queues/NextBatchMarker.h"
 
 namespace arangodb {
 
@@ -162,6 +163,7 @@ class OneSidedEnumerator final : public TraversalEnumerator {
  private:
   [[nodiscard]] auto searchDone() const -> bool;
 
+  auto popFromQueue() -> QueueEntry<Step>;
   auto computeNeighbourhoodOfNextVertex() -> void;
 
   // Ensure that we have fetched all vertices in the _results list.

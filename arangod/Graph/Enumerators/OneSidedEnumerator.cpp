@@ -32,6 +32,7 @@
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
+#include "Graph/Queues/NextBatchMarker.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
@@ -107,10 +108,7 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 }
 
 template<class Configuration>
-auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
-    -> void {
-  // Pull next element from Queue
-  // Do 1 step search
+auto OneSidedEnumerator<Configuration>::popFromQueue() -> QueueEntry<Step> {
   TRI_ASSERT(!_queue.isEmpty());
   if (!_queue.firstIsVertexFetched()) {
     std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
@@ -122,23 +120,23 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }
-
-  TRI_ASSERT(!_queue.isEmpty());
-  auto tmp = _queue.pop();
+  return _queue.pop();
+}
+template<class Configuration>
+auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
+    -> void {
+  auto tmp = popFromQueue();
   if (std::holds_alternative<NextBatch>(tmp)) {
     _queue.append(tmp);  // push it back
     auto posPrevious = std::get<NextBatch>(tmp).from;
     auto& step = _interior.getStepReference(posPrevious);
-    auto notFinished = _provider.expandNextBatch(
+    auto stepsAdded = _provider.expandNextBatch(
         step, posPrevious, [&](Step n) -> void { _queue.append({n}); });
-    if (notFinished) {
-      computeNeighbourhoodOfNextVertex();  // call itself again, now with a
-                                           // vertex on top of queue
-      return;
-    } else {         // no items added
-      _queue.pop();  // now we can pop the NextBatch item savely
+    if (not stepsAdded) {  // means that NextBatch iterator is exhausted
+      _queue.pop();        // now we can pop NextBatch item savely
       return;
     }
+    tmp = popFromQueue();  // get next item in queue (which is by sure a Step)
   }
   TRI_ASSERT(std::holds_alternative<Step>(tmp));
   auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));

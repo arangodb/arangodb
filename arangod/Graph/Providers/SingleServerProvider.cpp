@@ -175,27 +175,21 @@ auto SingleServerProvider<Step>::expandNextBatch(
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
+  TRI_ASSERT(not _neighboursStack.empty());
+  auto& last = _neighboursStack.back();
+
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding (next batch) " << vertex.getID();
 
-  // get next batch of top-most stack item
-  if (_neighboursStack.empty()) {
-    return false;
-  }
-  auto& last = _neighboursStack.back();
   if (not last.hasMore(step.getDepth())) {
     _neighboursStack.pop_back();
     return false;
   }
+
+  auto count = 0;
   auto batch = last.next(*this, _stats);
-
-  if (batch->size() == 0) {
-    _neighboursStack.pop_back();
-    return false;
-  }
-
-  // execute callback on each item in batch
   for (auto const& neighbour : *batch) {
+    count++;
     VPackSlice edge = neighbour.edge();
     VertexType id = _cache.persistString(([&]() -> auto {
       if (edge.isString()) {
@@ -219,6 +213,11 @@ auto SingleServerProvider<Step>::expandNextBatch(
     // TODO [GraphRefactor]: Why is cursorID set, but never used?
     // Note: There is one implementation that used, it, but there is a high
     // probability we do not need it anymore after refactoring is complete.
+  }
+  if (count == 0) {
+    last.clear();
+    _neighboursStack.pop_back();
+    return false;
   }
   return true;
 }
@@ -262,6 +261,7 @@ auto SingleServerProvider<Step>::clear() -> void {
   // We need to make sure that no one holds references to the cache (!)
   _cache.clear();
   _neighbours.clear();
+  _neighboursStack.clear();
 }
 
 template<class Step>
