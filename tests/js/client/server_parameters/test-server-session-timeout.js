@@ -135,10 +135,6 @@ function arangoshTokenRenewalSuite() {
     testArangoshAutomaticRenewal: function() {
       const internal = require("internal");
       
-      // Set JWT renewal threshold to 2 seconds before expiry
-      // (server issues tokens with 5 second expiry)
-      arango.jwtRenewalThreshold(2);
-      
       // Reconnect with username/password - gets JWT token with 5-second expiry
       arango.reconnect(arango.getEndpoint(), "_system", "root", "");
       
@@ -153,9 +149,6 @@ function arangoshTokenRenewalSuite() {
 
     testArangoshRenewalAfterExpiry: function() {
       const internal = require("internal");
-      
-      // Set JWT renewal threshold to 2 seconds before expiry
-      arango.jwtRenewalThreshold(2);
       
       arango.reconnect(arango.getEndpoint(), "_system", "root", "");
       
