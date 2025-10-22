@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, before, after, it */
+/* global describe, before, after, it, SYS_IS_V8_BUILD */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
