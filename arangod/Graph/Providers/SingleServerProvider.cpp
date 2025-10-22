@@ -178,23 +178,21 @@ auto SingleServerProvider<Step>::expandNextBatch(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding (next batch) " << vertex.getID();
 
-  // pop all empty items from stack
-  while (not _neighboursStack.empty()) {
-    auto& last = _neighboursStack.back();
-    if (last.hasMore(step.getDepth())) {
-      break;
-    } else {
-      _neighboursStack.pop_back();
-    }
-  }
-
+  // get next batch of top-most stack item
   if (_neighboursStack.empty()) {
     return false;
   }
-
-  // get next batch of top-most stack item
   auto& last = _neighboursStack.back();
+  if (not last.hasMore(step.getDepth())) {
+    _neighboursStack.pop_back();
+    return false;
+  }
   auto batch = last.next(*this, _stats);
+
+  if (batch->size() == 0) {
+    _neighboursStack.pop_back();
+    return false;
+  }
 
   // execute callback on each item in batch
   for (auto const& neighbour : *batch) {
