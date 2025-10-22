@@ -874,29 +874,31 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionCommit : function () {
-      cache.properties({ mode: "on" });
-      
-      var query = "FOR doc IN @@collection RETURN doc.value";
-      var result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
-      assertFalse(result._cached);
-      assertEqual([ ], result.toArray());
+      if (SYS_IS_V8_BUILD) {
+        cache.properties({ mode: "on" });
+        
+        var query = "FOR doc IN @@collection RETURN doc.value";
+        var result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
+        assertFalse(result._cached);
+        assertEqual([ ], result.toArray());
 
-      db._executeTransaction({
-        collections: { write: c1.name() },
-        action: function(params) {
-          var db = require("@arangodb").db;
-          db._collection(params.c1).insert({ value: "foo" });
-        },
-        params: { c1: c1.name() }
-      });
-      
-      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
-      assertFalse(result._cached);
-      assertEqual([ "foo" ], result.toArray());
-      
-      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
-      assertTrue(result._cached);
-      assertEqual([ "foo" ], result.toArray());
+        db._executeTransaction({
+          collections: { write: c1.name() },
+          action: function(params) {
+            var db = require("@arangodb").db;
+            db._collection(params.c1).insert({ value: "foo" });
+          },
+          params: { c1: c1.name() }
+        });
+        
+        result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
+        assertFalse(result._cached);
+        assertEqual([ "foo" ], result.toArray());
+        
+        result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
+        assertTrue(result._cached);
+        assertEqual([ "foo" ], result.toArray());
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,69 +906,70 @@ function ahuacatlQueryCacheTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionRollback : function () {
-      cache.properties({ mode: "on" });
+      if (SYS_IS_V8_BUILD) {
+        cache.properties({ mode: "on" });
 
-      var query = "FOR doc IN @@collection RETURN doc.value";
-      
-      try {
-        db._executeTransaction({
-          collections: { write: c1.name() },
-          action: function(params) {
-            var db = require("@arangodb").db;
-            const _ = require('lodash');
-
-            var result = db._query(params.query, { "@collection": params.c1 });
-            if (result._cached) {
-              throw "err1";
-            }
-            if (!_.isEqual([ ], result.toArray())) {
-              throw "err2";
-            }
-            
-            result = db._query(params.query, { "@collection": params.c1 });
-            if (result._cached) {
-              throw "err3";
-            }
-            if (!_.isEqual([ ], result.toArray())) {
-              throw "err4";
-            }
-
-            db._collection(params.c1).insert({ value: "foo" });
+        var query = "FOR doc IN @@collection RETURN doc.value";
         
-            result = db._query(params.query, { "@collection": params.c1 });
-            if(result._cached) {
-              throw "err5";
-            }
-            if(!_.isEqual([ "foo" ], result.toArray())) {
-              throw "err6";
-            }
-            
-            result = db._query(params.query, { "@collection": params.c1 });
-            if (result._cached) {
-              throw "err7";
-            }
-            if (!_.isEqual([ "foo" ], result.toArray())) {
-              throw "err8";
-            }
+        try {
+          db._executeTransaction({
+            collections: { write: c1.name() },
+            action: function(params) {
+              var db = require("@arangodb").db;
+              const _ = require('lodash');
 
-            throw "peng!";
-          },
-          params: { c1: c1.name(), query }
-        });
-        fail();
-      } catch (err) {
-        assertMatch(/peng!/, String(err));
+              var result = db._query(params.query, { "@collection": params.c1 });
+              if (result._cached) {
+                throw "err1";
+              }
+              if (!_.isEqual([ ], result.toArray())) {
+                throw "err2";
+              }
+              
+              result = db._query(params.query, { "@collection": params.c1 });
+              if (result._cached) {
+                throw "err3";
+              }
+              if (!_.isEqual([ ], result.toArray())) {
+                throw "err4";
+              }
+
+              db._collection(params.c1).insert({ value: "foo" });
+              
+              result = db._query(params.query, { "@collection": params.c1 });
+              if(result._cached) {
+                throw "err5";
+              }
+              if(!_.isEqual([ "foo" ], result.toArray())) {
+                throw "err6";
+              }
+              
+              result = db._query(params.query, { "@collection": params.c1 });
+              if (result._cached) {
+                throw "err7";
+              }
+              if (!_.isEqual([ "foo" ], result.toArray())) {
+                throw "err8";
+              }
+
+              throw "peng!";
+            },
+            params: { c1: c1.name(), query }
+          });
+          fail();
+        } catch (err) {
+          assertMatch(/peng!/, String(err));
+        }
+        
+        var result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
+        assertFalse(result._cached);
+        assertEqual([ ], result.toArray());
+
+        result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
+        assertTrue(result._cached);
+        assertEqual([ ], result.toArray());
       }
-            
-      var result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
-      assertFalse(result._cached);
-      assertEqual([ ], result.toArray());
-
-      result = db._createStatement({query, bindVars:  { "@collection": c1.name() }}).execute();
-      assertTrue(result._cached);
-      assertEqual([ ], result.toArray());
     }
-
   };
 }
 

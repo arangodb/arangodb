@@ -727,14 +727,25 @@ ArangoCollection.prototype.exists = function (id, options) {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief gets a random element from the collection
 // //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.any = function () {
-  let requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/any'), { collection: this._name });
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.document;
-};
-
+if (SYS_IS_V8_BUILD) {
+  ArangoCollection.prototype.any = function () {
+  print('blub')
+    let requestResult = this._database._connection.PUT(
+      this._prefixurl('/_api/simple/any'), { collection: this._name });
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.document;
+  };
+} else {
+  ArangoCollection.prototype.any = function () {
+    let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
+    let cursor = db._query(query, {"@coll": this.name()});
+    if (cursor.hasNext()) {
+      document = cursor.next();
+      return document;
+    }
+    return null;
+  };
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief constructs a query-by-example for a collection
 // //////////////////////////////////////////////////////////////////////////////
