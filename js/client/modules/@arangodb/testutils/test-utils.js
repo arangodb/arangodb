@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print db arango */
+/* global print, db, arango, SYS_IS_V8_BUILD */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
