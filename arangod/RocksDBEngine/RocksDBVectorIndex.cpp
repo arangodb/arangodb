@@ -723,9 +723,7 @@ Result RocksDBVectorIndex::ingestVectors(
           });
 
           status = batch.Put(_cf, key.string(), value.string());
-          // LOG_DEVEL << ADB_HERE;
           if (not status.ok()) {
-            // LOG_DEVEL << "NOT OK";
             THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
           }
         }

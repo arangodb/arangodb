@@ -209,7 +209,7 @@ struct OptimizerRule {
     // try to use vector index if possible
     useVectorIndexForSort,
 
-    // push Filter node into EnumerateNearVector node
+    // push FilterNode into EnumerateNearVector node
     // this rule must be called after useVectorIndexForSort since that rule
     // enables this one and works only with EnumerateNearVector nodes
     pushFilterIntoEnumerateNear,
@@ -455,6 +455,11 @@ struct OptimizerRule {
       "views so it should have a try before late materialization. "
       "Also constrained sort rule now does not expects any late "
       "materialization variables replacement");
+
+  static_assert(
+      useVectorIndexForSort < pushFilterIntoEnumerateNear,
+      "useVectorIndexForSort sort enables pushFilterIntoEnumerateNear rule, "
+      "otherwise the pushFilterIntoEnumerateNear can never trigger");
 
   std::string_view name;
   RuleFunction func;

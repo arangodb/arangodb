@@ -99,11 +99,6 @@ bool areAllAttributesCovered(
       filterExpression->node(), enumerateNearVectorNode->documentOutVariable(),
       "", filterAttributes, plan->getAst()->query().resourceMonitor());
 
-  if (storedValues.size() < filterAttributes.size()) {
-    LOG_RULE << "storedValues size: " << storedValues.size()
-             << ", filterAttributes size: " << filterAttributes.size();
-    return false;
-  }
   for (auto const& attr : filterAttributes) {
     auto const matchesAttribute =
         [&attr](std::vector<basics::AttributeName> const& elem) {
@@ -158,9 +153,8 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
       currentNode = currentNode->getFirstParent();
     }
 
-    // We expect filter node
-    // This should no be possible since we enable this rule only if
-    // the EnumerateNearVectorNode was inserted and filter node was found
+    // We expect filter node since this rules is enabled only when 
+    // vector index was used and we see a filter node
     if (currentNode == nullptr || currentNode->getType() != EN::FILTER) {
       LOG_RULE << ADB_HERE << ": No filter node";
       continue;
@@ -182,7 +176,7 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     modified = true;
 
     // This part is additional optimization to see if we can use storedFields of
-    // this vector
+    // this vector index
     auto const& storedValues = enumerateNearVectorNode->index()->storedValues();
     if (storedValues.empty()) {
       LOG_RULE << "Could not use storedValues:"

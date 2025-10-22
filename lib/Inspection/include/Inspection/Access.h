@@ -329,14 +329,6 @@ struct Access<VPackBuilder> : AccessBase<VPackBuilder> {
   }
 };
 
-template<>
-struct Access<velocypack::SharedSlice> : AccessBase<velocypack::SharedSlice> {
-  template<class Inspector>
-  static auto apply(Inspector& f, velocypack::SharedSlice& x) {
-    return f.value(x);
-  }
-};
-
 template<typename T>
 struct Access<std::reference_wrapper<T>>
     : AccessBase<std::reference_wrapper<T>> {

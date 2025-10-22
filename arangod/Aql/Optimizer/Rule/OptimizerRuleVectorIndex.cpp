@@ -388,7 +388,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
   }
 
-  // If the plan was modified and if the filterExpression was encounter
+  // If the plan was modified and if the filterExpression was encountered
   if (modified && triggerFilterOptimization) {
     LOG_RULE << "Enabling push-filter-into-enumerater-near rule";
     plan->enableRule(OptimizerRule::pushFilterIntoEnumerateNear);
