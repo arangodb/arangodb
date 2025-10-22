@@ -1,6 +1,12 @@
 devel
 -----
 
+* Added automatic authentication via /_open/auth to client tools as well
+  as automatic JWT token renewals. Made the expiry time of the generated
+  JWT token configurable (within the boundaries of the new options
+  --auth.minimal-jwt-expiry-time and --auth.maximal-jwt-expiry-time.
+  This is needed for SSO on the platform to work with client tools.
+
 * FE-825: add new logo, update colors based on new branding.
 
 * FE-835: Escape HTML in notifications.
