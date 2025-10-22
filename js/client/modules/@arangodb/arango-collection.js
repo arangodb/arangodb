@@ -738,10 +738,9 @@ if (SYS_IS_V8_BUILD) {
 } else {
   ArangoCollection.prototype.any = function () {
     let query = "FOR doc IN @@coll SORT RAND() LIMIT 1 RETURN doc";
-    let cursor = db._query(query, {"@coll": this.name()});
+    let cursor = require('internal').db._query(query, {"@coll": this.name()});
     if (cursor.hasNext()) {
-      document = cursor.next();
-      return document;
+      return cursor.next();
     }
     return null;
   };
