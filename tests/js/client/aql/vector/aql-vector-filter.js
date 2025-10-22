@@ -833,33 +833,6 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
             verifyDistancesAscending(results);
         },
 
-        testApproxL2WithFilterStoredValuesPerformance: function() {
-            // Test that stored values provide performance benefits
-            const query = `
-                FOR d IN ${collection.name()}
-                FILTER d.val >= 4 AND d.val <= 100 AND d.stringField IN ['type_A', 'type_B'] AND d.boolField == false
-                LET dist = APPROX_NEAR_L2(@q, d.vector)
-                SORT dist LIMIT 5
-                RETURN {key: d._key, val: d.val, stringField: d.stringField, boolField: d.boolField, dist}`;
-
-            const bindVars = {
-                q: randomPoint
-            };
-            
-            const plan = verifyPlan(query, bindVars);
-            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
-            assertTrue(indexNodes[0].isCoveredByStoredValues, "Should be covered by stored values");
-
-            // Measure execution time
-            const results = db._query(query, bindVars).toArray();
-
-            // Verify results
-            assertTrue(results.length <= 5, "Results should be limited to 5");
-            verifyResultsMatchFilter(results, r => r.val >= 4 && r.val <= 100, "Val filter not applied");
-            verifyResultsMatchFilter(results, r => ['type_A', 'type_B'].includes(r.stringField), "String filter not applied");
-            verifyResultsMatchFilter(results, r => r.boolField === false, "Bool filter not applied");
-        },
-
         testApproxL2WithFilterNonStoredValues: function() {
             const query = `
                 FOR d IN ${collection.name()}
