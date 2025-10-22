@@ -88,6 +88,26 @@ size_t EnumerateNearVectorNode::getMemoryUsedBytes() const {
   return sizeof(*this);
 }
 
+std::vector<std::pair<VariableId, RegisterId>>
+EnumerateNearVectorNode::extractFilterVarsToRegs() const {
+  VarSet inVars;
+  _filterExpression->variables(inVars);
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+  filterVarsToRegs.reserve(inVars.size());
+
+  // Here we take all variables in the expression
+  for (auto const& var : inVars) {
+    TRI_ASSERT(var != nullptr);
+    if (var->id == _oldDocumentVariable->id) {
+      continue;
+    }
+    auto regId = variableToRegisterId(var);
+    filterVarsToRegs.emplace_back(var->id, regId);
+  }
+
+  return filterVarsToRegs;
+}
+
 std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     ExecutionEngine& engine) const {
   auto writableOutputRegisters = RegIdSet{};
@@ -102,11 +122,17 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
   RegIdSet readableInputRegisters;
   readableInputRegisters.emplace(inNmDocIdRegId);
 
+  // check which variables are used by the node's post-filter
+  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
+  if (_filterExpression) {
+    filterVarsToRegs = extractFilterVarsToRegs();
+  }
+
   // TODO Change filterVarsToRegs into ref to avoid copy
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
       engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
-      _searchParameters, _filterExpression.get(), _filterVarToRegs,
+      _searchParameters, _filterExpression.get(), std::move(filterVarsToRegs),
       _isCoveredByStoredValues, _oldDocumentVariable);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));

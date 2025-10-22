@@ -95,6 +95,9 @@ class EnumerateNearVectorNode : public ExecutionNode,
   void doToVelocyPack(arangodb::velocypack::Builder& builder,
                       unsigned flags) const final;
 
+  std::vector<std::pair<VariableId, RegisterId>> extractFilterVarsToRegs()
+      const;
+
  private:
   /// @brief input variable to read the query point from
   Variable const* _inVariable;
@@ -125,7 +128,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
   /// @brief filter expression if filter was pushed down into this node
   std::unique_ptr<Expression> _filterExpression;
 
-  /// @brief indicates if the filter expression is covered by stored values
+  /// @brief indicates if the filter expression is fully covered by stored
+  /// values
   bool _isCoveredByStoredValues;
 
   /// @brief filterVarToRegs is set in optimization rule

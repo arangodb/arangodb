@@ -50,18 +50,18 @@ namespace {
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
-bool removedFilterNode(auto* maybeFilterNode, auto& plan,
-                       auto& filterExpression,
-                       auto const* enumerateNearVectorOutputDocument) {
+std::unique_ptr<Expression> removeFilterNode(
+    auto* maybeFilterNode, auto& plan,
+    auto const* enumerateNearVectorOutputDocument) {
   auto const* filterNode =
       ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
-  auto* filterInVar = filterNode->inVariable();
+  auto const* filterInVar = filterNode->inVariable();
 
   // Find the calculation node that populates the filter variable
-  auto* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
+  auto const* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
   if (maybeCalculationNode == nullptr ||
       maybeCalculationNode->getType() != EN::CALCULATION) {
-    return false;
+    return nullptr;
   }
 
   auto const* calculationNode =
@@ -70,7 +70,7 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
   // Check that all variables used in filterExpression can be handled in
   // EnumerateNearVector node
   VarSet calculationVars;
-  filterExpression = calculationNode->expression()->clone(plan->getAst());
+  auto filterExpression = calculationNode->expression()->clone(plan->getAst());
   filterExpression->variables(calculationVars);
 
   for (auto const* calcVar : calculationVars) {
@@ -78,7 +78,7 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
       continue;
     }
     if (calcVar != enumerateNearVectorOutputDocument) {
-      return false;
+      return nullptr;
     }
   }
 
@@ -86,60 +86,42 @@ bool removedFilterNode(auto* maybeFilterNode, auto& plan,
   // referenced by any other node
   plan->unlinkNode(maybeFilterNode);
 
-  return true;
-}
-
-auto extractFilterVarToRegs(auto const& filterExpression,
-                            auto const* enumerateNearVectorNode,
-                            auto const* filterNode) {
-  std::vector<std::pair<VariableId, RegisterId>> filterVarsToRegs;
-  VarSet inVars;
-  filterExpression->variables(inVars);
-  filterVarsToRegs.reserve(inVars.size());
-  LOG_RULE << "Number of inVars: " << inVars.size();
-
-  auto const* oldDocumentVariable =
-      enumerateNearVectorNode->oldDocumentVariable();
-  // Here we take all variables in the expression
-  for (auto const& var : inVars) {
-    TRI_ASSERT(var != nullptr);
-    if (var->id == oldDocumentVariable->id) {
-      continue;
-    }
-    auto const regId = filterNode->getRegisterPlan()->variableToRegisterId(var);
-
-    filterVarsToRegs.emplace_back(var->id, regId);
-  }
-
-  return filterVarsToRegs;
+  return filterExpression;
 }
 
 bool areAllAttributesCovered(
-    auto const& plan, auto const& filterExpression,
-    auto const* enumerateNearVectorNode,
+    std::unique_ptr<ExecutionPlan> const& plan,
+    std::unique_ptr<Expression> const& filterExpression,
+    EnumerateNearVectorNode const* enumerateNearVectorNode,
     std::vector<std::vector<basics::AttributeName>> const& storedValues) {
   containers::FlatHashSet<aql::AttributeNamePath> filterAttributes;
   Ast::getReferencedAttributesRecursive(
       filterExpression->node(), enumerateNearVectorNode->documentOutVariable(),
       "", filterAttributes, plan->getAst()->query().resourceMonitor());
 
+  if (storedValues.size() < filterAttributes.size()) {
+    LOG_RULE << "storedValues size: " << storedValues.size()
+             << ", filterAttributes size: " << filterAttributes.size();
+    return false;
+  }
   for (auto const& attr : filterAttributes) {
-    if (auto it = std::ranges::find_if(
-            storedValues,
-            [&attr](std::vector<basics::AttributeName> const& elem) {
-              if (attr.size() != elem.size()) {
-                return false;
-              }
-              for (size_t i = 0; i < attr.size(); ++i) {
-                if (elem[i].shouldExpand) {
-                  return false;
-                }
-                if (attr[i] != elem[i].name) {
-                  return false;
-                }
-              }
-              return true;
-            });
+    auto const matchesAttribute =
+        [&attr](std::vector<basics::AttributeName> const& elem) {
+          if (attr.size() != elem.size()) {
+            return false;
+          }
+          for (size_t i = 0; i < attr.size(); ++i) {
+            if (elem[i].shouldExpand) {
+              return false;
+            }
+            if (attr[i] != elem[i].name) {
+              return false;
+            }
+          }
+          return true;
+        };
+    if (auto const it =
+            std::ranges::find_if(storedValues, std::move(matchesAttribute));
         it == storedValues.end()) {
       return false;
     }
@@ -147,11 +129,10 @@ bool areAllAttributesCovered(
 
   return true;
 }
-
 }  // namespace
 
 // This rule check if EnumerateNearVectorNode has a FilterNode and if so tries
-// to remove it and apply early pruning int EnumerateNearVectorNode.
+// to remove it and apply early pruning in EnumerateNearVectorNode.
 // Also we check if we can use storedFields optimization with the given index.
 //
 // If we have found both EnumerateNearVectorNode and Filter node we must
@@ -178,6 +159,8 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     }
 
     // We expect filter node
+    // This should no be possible since we enable this rule only if
+    // the EnumerateNearVectorNode was inserted and filter node was found
     if (currentNode == nullptr || currentNode->getType() != EN::FILTER) {
       LOG_RULE << ADB_HERE << ": No filter node";
       continue;
@@ -187,10 +170,9 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
 
     // If there is a FilterNode it comes with CalculationNode, we remove it
     // and handle it in EnumerateNearVectorNode
-    std::unique_ptr<Expression> filterExpression{nullptr};
-    if (!removedFilterNode(filterNode, plan, filterExpression,
-                           enumerateNearVectorNode->documentOutVariable())) {
-      LOG_RULE << "Could not remove FilterNode";
+    std::unique_ptr<Expression> filterExpression = removeFilterNode(
+        filterNode, plan, enumerateNearVectorNode->documentOutVariable());
+    if (!filterExpression) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_VECTOR_SEARCH_NOT_APPLIED,
           "filter node could not be moved into EnumerateNearVector node!");
@@ -201,9 +183,6 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
 
     // This part is additional optimization to see if we can use storedFields of
     // this vector
-    auto filterVarsToRegs = extractFilterVarToRegs(
-        filterExpression, enumerateNearVectorNode, filterNode);
-
     auto const& storedValues = enumerateNearVectorNode->index()->storedValues();
     if (storedValues.empty()) {
       LOG_RULE << "Could not use storedValues:"
@@ -223,7 +202,6 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
     LOG_RULE << ADB_HERE << "Using storedValues in optimization";
     enumerateNearVectorNode->setIsCoveredByStoredValues(
         isCoveredByStoredValues);
-    enumerateNearVectorNode->setFilterVarToRegs(std::move(filterVarsToRegs));
   }
 
   opt->addPlan(std::move(plan), rule, modified);
