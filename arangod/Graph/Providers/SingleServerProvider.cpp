@@ -178,6 +178,7 @@ auto SingleServerProvider<Step>::expandNextBatch(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding (next batch) " << vertex.getID();
 
+  // pop all empty items from stack
   while (not _neighboursStack.empty()) {
     auto& last = _neighboursStack.back();
     if (last.hasMore(step.getDepth())) {
@@ -186,11 +187,16 @@ auto SingleServerProvider<Step>::expandNextBatch(
       _neighboursStack.pop_back();
     }
   }
+
   if (_neighboursStack.empty()) {
     return false;
   }
+
+  // get next batch of top-most stack item
   auto& last = _neighboursStack.back();
   auto batch = last.next(*this, _stats);
+
+  // execute callback on each item in batch
   for (auto const& neighbour : *batch) {
     VPackSlice edge = neighbour.edge();
     VertexType id = _cache.persistString(([&]() -> auto {

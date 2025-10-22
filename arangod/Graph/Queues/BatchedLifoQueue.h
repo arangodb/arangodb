@@ -50,19 +50,35 @@ class BatchedLifoQueue {
   ~BatchedLifoQueue() { this->clear(); }
 
   bool isBatched() { return true; }
+
   void clear() {
     if (!_queue.empty()) {
-      _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
+      // TODO
+      for (auto const& item : _queue) {
+        if (std::holds_alternative<Step>(item)) {
+          _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
+        } else {
+          _resourceMonitor.decreaseMemoryUsage(sizeof(NextBatch));
+        }
+      }
       _queue.clear();
     }
   }
 
   void append(QueueEntry<Step> step) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
-    // if push_front() throws, no harm is done, and the memory usage increase
-    // will be rolled back
-    _queue.push_front(std::move(step));
-    guard.steal();  // now we are responsible for tracking the memory
+    if (std::holds_alternative<Step>(step)) {
+      arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
+      // if push_front() throws, no harm is done, and the memory usage increase
+      // will be rolled back
+      _queue.push_front(std::move(step));
+      guard.steal();  // now we are responsible for tracking the memory
+    } else {
+      arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(NextBatch));
+      // if push_front() throws, no harm is done, and the memory usage increase
+      // will be rolled back
+      _queue.push_front(std::move(step));
+      guard.steal();  // now we are responsible for tracking the memory
+    }
   }
 
   void setStartContent(std::vector<Step> startSteps) {
@@ -134,7 +150,11 @@ class BatchedLifoQueue {
               << (std::holds_alternative<Step>(first)
                       ? std::get<Step>(first).toString()
                       : "next batch");
-    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
+    if (std::holds_alternative<Step>(first)) {
+      _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
+    } else {
+      _resourceMonitor.decreaseMemoryUsage(sizeof(NextBatch));
+    }
     _queue.pop_front();
     return first;
   }
