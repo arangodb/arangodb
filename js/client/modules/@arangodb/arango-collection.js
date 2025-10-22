@@ -745,44 +745,85 @@ if (SYS_IS_V8_BUILD) {
     return null;
   };
 }
+
+// //////////////////////////////////////////////////////////////////////////////
+// / arangod/RestHandler/RestSimpleQueryHandler.cpp::buildExampleQuery
+// //////////////////////////////////////////////////////////////////////////////
+
+let buildExampleQuery = function(col, exampleDoc, skip, limit) {
+  let bindVars = {'@collection': col};
+  let query = "FOR doc IN @@collection";
+  let count = 0;
+  for (const [key, value] of Object.entries(exampleDoc)) {
+    if (count > 0) {
+      query += " and ";
+    }
+    let filteredKey = key.replace("`", "").replace(".", "`.`");
+    let BVName = `value${count}`;
+    query += " FILTER doc.`" + key + "` == @" + BVName;
+    bindVars[BVName] = value;
+    count += 1;
+  }
+  if (limit > 0 || skip > 0) {
+    query += ` LIMIT ${skip}, ${(limit > 0) ? limit : "null"}`;
+  }
+  query += " RETURN doc";
+  return {
+    query,
+    bindVars
+  };
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief constructs a query-by-example for a collection
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.firstExample = function (example) {
-  let e;
-  if (arguments.length === 1) {
-    // example is given as only argument
-    e = example;
-  } else {
-    // example is given as list
-    e = {};
+if (SYS_IS_V8_BUILD) {
+  ArangoCollection.prototype.firstExample = function (example) {
+    let e;
+    if (arguments.length === 1) {
+      // example is given as only argument
+      e = example;
+    } else {
+      // example is given as list
+      e = {};
 
-    for (let i = 0;  i < arguments.length;  i += 2) {
-      e[arguments[i]] = arguments[i + 1];
+      for (let i = 0;  i < arguments.length;  i += 2) {
+        e[arguments[i]] = arguments[i + 1];
+      }
     }
-  }
 
-  let data = {
-    collection: this.name(),
-    example: e
+    let data = {
+      collection: this.name(),
+      example: e
+    };
+
+    let requestResult = this._database._connection.PUT(
+      this._prefixurl('/_api/simple/first-example'),
+      data
+    );
+
+    if (requestResult !== null
+        && requestResult.error === true
+        && requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+      return null;
+    }
+
+    arangosh.checkRequestResult(requestResult);
+
+    return requestResult.document;
   };
-
-  let requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/first-example'),
-    data
-  );
-
-  if (requestResult !== null
-    && requestResult.error === true
-    && requestResult.errorNum === internal.errors.ERROR_HTTP_NOT_FOUND.code) {
+} else {
+  ArangoCollection.prototype.firstExample = function (example) {
+    let cursor = require('internal').db._query(
+      buildExampleQuery(this.name(), example, 0, 1)
+    );
+    if (cursor.hasNext()) {
+      return cursor.next();
+    }
     return null;
-  }
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult.document;
-};
+  };
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief saves a document in the collection
