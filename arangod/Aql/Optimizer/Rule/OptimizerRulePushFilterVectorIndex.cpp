@@ -153,7 +153,7 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
       currentNode = currentNode->getFirstParent();
     }
 
-    // We expect filter node since this rules is enabled only when 
+    // We expect filter node since this rules is enabled only when
     // vector index was used and we see a filter node
     if (currentNode == nullptr || currentNode->getType() != EN::FILTER) {
       LOG_RULE << ADB_HERE << ": No filter node";
