@@ -3597,7 +3597,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
 #else
                                v8::True(isolate)
 #endif
-    );
+  );
 }
 
 void V8ClientConnection::shutdownConnection() {
