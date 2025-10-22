@@ -27,7 +27,9 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/EncodingUtils.h"
+#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/system-functions.h"
 #include "Import/ImportHelper.h"
 #include "Logger/LogMacros.h"
 #include "Rest/GeneralResponse.h"
@@ -53,6 +55,7 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
+#include <absl/strings/escaping.h>
 #include <absl/strings/str_cat.h>
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
@@ -107,6 +110,7 @@ V8ClientConnection::V8ClientConnection(ArangoshServer& server,
     : _server(server),
       _client(client),
       _requestTimeout(_client.requestTimeout()),
+      _jwtTokenExpiry(0.0),
       _lastHttpReturnCode(0),
       _lastErrorMessage(""),
       _version("arango"),
@@ -475,6 +479,117 @@ ResultT<std::string> V8ClientConnection::authenticateViaOpenAuth() {
   return {VelocyPackHelper::getStringValue(slice, "jwt", "")};
 }
 
+// Helper function to extract expiration time from JWT token
+std::optional<double> V8ClientConnection::extractJwtExpiration(
+    std::string const& jwt) {
+  // JWT tokens consist of three parts separated by dots: header.body.signature
+  std::vector<std::string> const parts = basics::StringUtils::split(jwt, '.');
+  if (parts.size() != 3) {
+    // Invalid JWT format
+    return std::nullopt;
+  }
+
+  // Decode the body (second part) which contains the expiration time
+  std::string const& bodyWebBase64 = parts[1];
+  std::string body;
+  if (!absl::WebSafeBase64Unescape(bodyWebBase64, &body)) {
+    // Failed to decode base64
+    return std::nullopt;
+  }
+
+  // Parse the JSON body
+  try {
+    auto bodyBuilder = VPackParser::fromJson(body);
+    if (bodyBuilder == nullptr) {
+      return std::nullopt;
+    }
+
+    VPackSlice const bodySlice = bodyBuilder->slice();
+    if (!bodySlice.isObject()) {
+      return std::nullopt;
+    }
+
+    // Extract the expiration time from the "exp" field
+    VPackSlice const expSlice = bodySlice.get("exp");
+    if (!expSlice.isNone() && expSlice.isNumber()) {
+      return expSlice.getNumber<double>();
+    }
+  } catch (...) {
+    // Parsing failed
+    return std::nullopt;
+  }
+
+  // No expiration time found (some tokens don't expire)
+  return std::nullopt;
+}
+
+// Helper function to check if JWT token needs renewal
+bool V8ClientConnection::needsTokenRenewal() {
+  // If we don't have stored credentials, we can't renew
+  if (_storedUsername.empty() && _storedPassword.empty()) {
+    return false;
+  }
+
+  // If we don't have a JWT token or expiry time, no renewal needed
+  if (_currentJwtToken.empty() || _jwtTokenExpiry == 0.0) {
+    return false;
+  }
+
+  // Get current time in seconds since epoch
+  double now = TRI_microtime();
+
+  // Get renewal threshold from client feature (configurable via
+  // --server.jwt-renewal-threshold)
+  double renewalThreshold = _client.jwtRenewalThreshold();
+
+  // Check if token is expired or will expire within the threshold
+  return (now + renewalThreshold) >= _jwtTokenExpiry;
+}
+
+// Helper function to renew JWT token
+void V8ClientConnection::renewJwtToken() {
+  std::lock_guard<std::recursive_mutex> guard(_lock);
+
+  try {
+    // Temporarily store the current values to restore _builder later
+    auto oldUsername = _client.username();
+    auto oldPassword = _client.password();
+
+    // Set the stored credentials for authentication
+    _client.setUsername(_storedUsername);
+    _client.setPassword(_storedPassword);
+
+    // Authenticate and get new JWT token
+    auto const res = authenticateViaOpenAuth();
+    if (res.ok()) {
+      std::string newJwtToken = res.get();
+      if (!newJwtToken.empty() && newJwtToken != "invalid") {
+        // Update the JWT token in the builder
+        _builder.jwtToken(newJwtToken);
+        _builder.authenticationType(fu::AuthenticationType::Jwt);
+
+        // Store the new token and extract its expiration time
+        _currentJwtToken = newJwtToken;
+        auto expiry = extractJwtExpiration(_currentJwtToken);
+        _jwtTokenExpiry = expiry.value_or(0.0);
+
+        // Force reconnection with the new token
+        shutdownConnection();
+        createConnection();
+      }
+    }
+
+    // Restore original client credentials (in case they were different)
+    _client.setUsername(oldUsername);
+    _client.setPassword(oldPassword);
+  } catch (std::exception const& ex) {
+    // Log error but don't throw - let the request fail normally
+    // This prevents disrupting the existing error handling
+  } catch (...) {
+    // Ignore errors during renewal
+  }
+}
+
 void V8ClientConnection::prepareConnection() {
   // Need to hold _lock when running this function
   _forceJson = _client.forceJson();
@@ -504,6 +619,15 @@ void V8ClientConnection::prepareConnection() {
         // Server has authentication enabled, use the JWT token
         _builder.jwtToken(jwtToken);
         _builder.authenticationType(fu::AuthenticationType::Jwt);
+
+        // Store credentials and JWT token for automatic renewal
+        _storedUsername = _client.username();
+        _storedPassword = _client.password();
+        _currentJwtToken = jwtToken;
+
+        // Extract and store the expiration time
+        auto expiry = extractJwtExpiration(_currentJwtToken);
+        _jwtTokenExpiry = expiry.value_or(0.0);
       }
       if (res.errorNumber() == TRI_ERROR_ARANGO_TRY_AGAIN ||
           jwtToken == "invalid") {
@@ -511,6 +635,10 @@ void V8ClientConnection::prepareConnection() {
         // _open/auth API and we will try basic auth. Used only in tests
         _builder.user(_client.username()).password(_client.password());
         _builder.authenticationType(fu::AuthenticationType::Basic);
+
+        // Store credentials for potential future use
+        _storedUsername = _client.username();
+        _storedPassword = _client.password();
       }
       // If jwtToken is empty, server has authentication disabled
       // Proceed without authentication
@@ -2326,6 +2454,37 @@ static void ClientConnection_compressTransfer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "jwtRenewalThreshold"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_jwtRenewalThreshold(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "jwtRenewalThreshold() unable to get client instance");
+  }
+
+  if (args.Length() == 0) {
+    // Get current value
+    TRI_V8_RETURN(v8::Number::New(isolate, client->jwtRenewalThreshold()));
+  } else {
+    // Set new value
+    double value = TRI_ObjectToDouble(isolate, args[0]);
+    client->setJwtRenewalThreshold(value);
+
+    TRI_V8_RETURN_UNDEFINED();
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "toString"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3026,6 +3185,11 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields,
     bool isFile) {
+  // Check if JWT token needs renewal before sending request
+  if (needsTokenRenewal()) {
+    renewJwtToken();
+  }
+
   bool retry = true;
 
 again:
@@ -3102,6 +3266,11 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Isolate* isolate, fu::RestVerb method, std::string_view location,
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
+  // Check if JWT token needs renewal before sending request
+  if (needsTokenRenewal()) {
+    renewJwtToken();
+  }
+
   bool retry = true;
 
 again:
@@ -3358,6 +3527,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "compressTransfer",
       v8::FunctionTemplate::New(isolate, ClientConnection_compressTransfer,
+                                v8client));
+
+  connection_proto->Set(
+      isolate, "jwtRenewalThreshold",
+      v8::FunctionTemplate::New(isolate, ClientConnection_jwtRenewalThreshold,
                                 v8client));
 
   connection_proto->Set(
