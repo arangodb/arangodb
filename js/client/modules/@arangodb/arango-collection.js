@@ -729,7 +729,6 @@ ArangoCollection.prototype.exists = function (id, options) {
 // //////////////////////////////////////////////////////////////////////////////
 if (SYS_IS_V8_BUILD) {
   ArangoCollection.prototype.any = function () {
-  print('blub')
     let requestResult = this._database._connection.PUT(
       this._prefixurl('/_api/simple/any'), { collection: this._name });
     arangosh.checkRequestResult(requestResult);
