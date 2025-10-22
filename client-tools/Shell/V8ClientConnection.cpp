@@ -526,7 +526,7 @@ std::optional<double> V8ClientConnection::extractJwtExpiration(
 // Helper function to check if JWT token needs renewal
 bool V8ClientConnection::needsTokenRenewal() {
   // If we don't have stored credentials, we can't renew
-  if (_storedUsername.empty() || _storedPassword.empty()) {
+  if (_storedUsername.empty() && _storedPassword.empty()) {
     return false;
   }
 
@@ -538,19 +538,17 @@ bool V8ClientConnection::needsTokenRenewal() {
   // Get current time in seconds since epoch
   double now = TRI_microtime();
 
-  // Check if token is expired or will expire within 5 minutes (300 seconds)
-  constexpr double kRenewalThreshold = 300.0;  // 5 minutes
-  return (now + kRenewalThreshold) >= _jwtTokenExpiry;
+  // Get renewal threshold from client feature (configurable via
+  // --server.jwt-renewal-threshold)
+  double renewalThreshold = _client.jwtRenewalThreshold();
+
+  // Check if token is expired or will expire within the threshold
+  return (now + renewalThreshold) >= _jwtTokenExpiry;
 }
 
 // Helper function to renew JWT token
 void V8ClientConnection::renewJwtToken() {
   std::lock_guard<std::recursive_mutex> guard(_lock);
-
-  // Only renew if we have stored credentials
-  if (_storedUsername.empty() || _storedPassword.empty()) {
-    return;
-  }
 
   try {
     // Temporarily store the current values to restore _builder later
@@ -2456,6 +2454,37 @@ static void ClientConnection_compressTransfer(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "jwtRenewalThreshold"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_jwtRenewalThreshold(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL(
+        "jwtRenewalThreshold() unable to get client instance");
+  }
+
+  if (args.Length() == 0) {
+    // Get current value
+    TRI_V8_RETURN(v8::Number::New(isolate, client->jwtRenewalThreshold()));
+  } else {
+    // Set new value
+    double value = TRI_ObjectToDouble(isolate, args[0]);
+    client->setJwtRenewalThreshold(value);
+
+    TRI_V8_RETURN_UNDEFINED();
+  }
+
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief ClientConnection method "toString"
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3498,6 +3527,11 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "compressTransfer",
       v8::FunctionTemplate::New(isolate, ClientConnection_compressTransfer,
+                                v8client));
+
+  connection_proto->Set(
+      isolate, "jwtRenewalThreshold",
+      v8::FunctionTemplate::New(isolate, ClientConnection_jwtRenewalThreshold,
                                 v8client));
 
   connection_proto->Set(
