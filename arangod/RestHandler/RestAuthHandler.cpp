@@ -37,6 +37,8 @@
 #include <fuerte/jwt.h>
 #include <velocypack/Builder.h>
 
+#include <format>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -142,18 +144,20 @@ RestStatus RestAuthHandler::execute() {
 
     // Validate against min/max bounds
     if (expiryTimeSeconds < af->minimalJwtExpiryTime()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expiryTime is below the minimal allowed value of " +
-                        std::to_string(af->minimalJwtExpiryTime()) +
-                        " seconds");
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          std::format(
+              "expiryTime is below the minimal allowed value of {} seconds",
+              af->minimalJwtExpiryTime()));
       return RestStatus::DONE;
     }
 
     if (expiryTimeSeconds > af->maximalJwtExpiryTime()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "expiryTime exceeds the maximal allowed value of " +
-                        std::to_string(af->maximalJwtExpiryTime()) +
-                        " seconds");
+      generateError(
+          rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+          std::format(
+              "expiryTime exceeds the maximal allowed value of {} seconds",
+              af->maximalJwtExpiryTime()));
       return RestStatus::DONE;
     }
   } else if (!expiryTimeSlice.isNone()) {

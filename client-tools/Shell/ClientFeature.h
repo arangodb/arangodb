@@ -114,7 +114,6 @@ class ClientFeature final : public HttpEndpointProvider {
   void setCompressTransfer(bool value) noexcept;
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
-  bool authentication() const noexcept;
   double jwtRenewalThreshold() const noexcept;
   void setJwtRenewalThreshold(double value) noexcept;
 
