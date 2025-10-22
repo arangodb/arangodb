@@ -273,9 +273,4 @@ void EnumerateNearVectorNode::setIsCoveredByStoredValues(
   _isCoveredByStoredValues = isCoveredByStoredValues;
 }
 
-void EnumerateNearVectorNode::setFilterVarToRegs(
-    std::vector<std::pair<VariableId, RegisterId>> filterVarToRegs) noexcept {
-  _filterVarToRegs = std::move(filterVarToRegs);
-}
-
 }  // namespace arangodb::aql
