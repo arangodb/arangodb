@@ -64,7 +64,7 @@ function testSuite() {
           bearer: jwt,
         }
       });
-      print(JSON.stringify(result));
+      //print(JSON.stringify(result));
 
       // access granted
       assertEqual(200, result.statusCode);
@@ -77,7 +77,7 @@ function testSuite() {
           bearer: jwt,
         }
       });
-      print(JSON.stringify(result));
+      //print(JSON.stringify(result));
 
       // JWT is still valid
       assertEqual(401, result.statusCode);
@@ -97,7 +97,7 @@ function testSuite() {
         json: true
       });
 
-      print(JSON.stringify(result));
+      //print(JSON.stringify(result));
       assertEqual(200, result.statusCode);
       const jwt = result.json.jwt;
 
@@ -114,7 +114,7 @@ function testSuite() {
         url: baseUrl() + "/_api/version",
         auth: { bearer: jwt }
       });
-      print(JSON.stringify(result));
+      //print(JSON.stringify(result));
       
       // JWT is still valid
       assertEqual(200, result.statusCode);
@@ -125,7 +125,7 @@ function testSuite() {
         url: baseUrl() + "/_api/version",
         auth: { bearer: jwt }
       });
-      print(JSON.stringify(result));
+      //print(JSON.stringify(result));
       
       // JWT expired
       assertEqual(401, result.statusCode);
@@ -147,7 +147,7 @@ function arangoshTokenRenewalSuite() {
       // Automatic renewal should keep requests working
       for (let i = 0; i < 6; i++) {
         let result = arango.GET_RAW("/_api/version");
-        print(JSON.stringify(result));
+        //print(JSON.stringify(result));
         assertEqual(200, result.code);
         internal.sleep(2);
       }
