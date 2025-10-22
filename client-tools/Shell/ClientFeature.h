@@ -115,6 +115,8 @@ class ClientFeature final : public HttpEndpointProvider {
   bool compressTransfer() const noexcept;
   uint64_t compressRequestThreshold() const noexcept;
   bool authentication() const noexcept;
+  double jwtRenewalThreshold() const noexcept;
+  void setJwtRenewalThreshold(double value) noexcept;
 
   std::unique_ptr<httpclient::GeneralClientConnection> createConnection(
       std::string const& definition);
@@ -169,6 +171,7 @@ class ClientFeature final : public HttpEndpointProvider {
   std::string _jwtToken;
   double _connectionTimeout;
   double _requestTimeout;
+  double _jwtRenewalThreshold;  // seconds before expiry to renew JWT
   uint64_t _maxPacketSize;
   // if > 0, it means that request bodies >= this value will be
   // sent our compressed.
