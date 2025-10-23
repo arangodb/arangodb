@@ -29,6 +29,7 @@
 #include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexStoredValuesStrategy.h"
 
 #include <faiss/IndexIVFFlat.h>
 #include <faiss/MetricType.h>
@@ -80,6 +81,8 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
 };
 
 // Simple iterator without filtering
+// Template parameter allows compile-time selection of stored values strategy
+template<VectorIndexStoredValuesStrategy Strategy>
 struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsIterator(RocksDBVectorIndex* index,
                                LogicalCollection* collection,
@@ -93,7 +96,10 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
  private:
-  RocksDBVectorIndexEntryValue _currentValueEntry;
+  // Storage varies based on strategy
+  std::conditional_t<Strategy::hasStoredValues, RocksDBVectorIndexEntryValue,
+                     std::vector<uint8_t>>
+      _currentEntry;
 };
 
 struct SearchParametersContext {
@@ -113,6 +119,8 @@ using RocksDBFaissSearchContext =
     std::variant<SearchParametersContext, transaction::Methods*>;
 
 // Materializes document for every record
+// Template parameter allows compile-time selection of stored values strategy
+template<VectorIndexStoredValuesStrategy Strategy>
 struct RocksDBInvertedListsFilteringIterator final
     : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringIterator(
@@ -224,5 +232,6 @@ struct RocksDBInvertedLists : faiss::InvertedLists {
   RocksDBVectorIndex* _index;
   LogicalCollection* _collection;
 };
+
 };  // namespace vector
 };  // namespace arangodb

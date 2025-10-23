@@ -29,6 +29,7 @@
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBVectorIndex.h"
+#include "RocksDBEngine/RocksDBVectorIndexStoredValuesStrategy.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -59,47 +60,59 @@ RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
 }
 
 /// RocksDBInvertedListsIterator
-RocksDBInvertedListsIterator::RocksDBInvertedListsIterator(
+template<VectorIndexStoredValuesStrategy Strategy>
+RocksDBInvertedListsIterator<Strategy>::RocksDBInvertedListsIterator(
     RocksDBVectorIndex* index, LogicalCollection* collection,
     transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
     : RocksDBInvertedListsIteratorBase(index, collection, trx, listNumber,
                                        codeSize) {}
 
-[[nodiscard]] bool RocksDBInvertedListsIterator::is_available() const {
+template<VectorIndexStoredValuesStrategy Strategy>
+[[nodiscard]] bool RocksDBInvertedListsIterator<Strategy>::is_available()
+    const {
   return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
 }
 
-void RocksDBInvertedListsIterator::next() { _it->Next(); }
+template<VectorIndexStoredValuesStrategy Strategy>
+void RocksDBInvertedListsIterator<Strategy>::next() {
+  _it->Next();
+}
 
+template<VectorIndexStoredValuesStrategy Strategy>
 std::pair<faiss::idx_t, uint8_t const*>
-RocksDBInvertedListsIterator::get_id_and_codes() {
-  auto const docId = RocksDBKey::indexDocumentId(_it->key());
+RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
+  // Use strategy to extract entry from RocksDB
+  auto [docId, entry] =
+      Strategy::extractVectorIndexEntry(_it->key(), _it->value(), _codeSize);
 
-  if (_index->hasStoredValues()) {
-    // Index has stored values, deserialize full entry
-    _currentValueEntry.clear();
-    _currentValueEntry = RocksDBValue::vectorIndexEntryValue(_it->value());
-    TRI_ASSERT(_currentValueEntry.encodedValue.size() == _codeSize)
-        << "The encoded size is: " << _currentValueEntry.encodedValue.size()
+  _currentEntry = std::move(entry);
+
+  // Return pointer to encoded data (location differs based on strategy)
+  if constexpr (Strategy::hasStoredValues) {
+    TRI_ASSERT(_currentEntry.encodedValue.size() == _codeSize)
+        << "The encoded size is: " << _currentEntry.encodedValue.size()
         << " should be: " << _codeSize;
     return {static_cast<faiss::idx_t>(docId.id()),
-            _currentValueEntry.encodedValue.data()};
+            _currentEntry.encodedValue.data()};
   } else {
-    // No stored values, value is raw encoded bytes
-    auto const& value = _it->value();
-    TRI_ASSERT(value.size() == _codeSize)
-        << "The encoded size is: " << value.size()
+    TRI_ASSERT(_currentEntry.size() == _codeSize)
+        << "The encoded size is: " << _currentEntry.size()
         << " should be: " << _codeSize;
-    return {static_cast<faiss::idx_t>(docId.id()),
-            reinterpret_cast<uint8_t const*>(value.data())};
+    return {static_cast<faiss::idx_t>(docId.id()), _currentEntry.data()};
   }
 }
 
+// Explicit instantiations
+template struct RocksDBInvertedListsIterator<NoStoredValuesStrategy>;
+template struct RocksDBInvertedListsIterator<WithStoredValuesStrategy>;
+
 /// RocksDBInvertedListsFilteringIterator
-RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
-    RocksDBVectorIndex* index, LogicalCollection* collection,
-    SearchParametersContext& searchParametersContext, std::size_t listNumber,
-    std::size_t codeSize)
+template<VectorIndexStoredValuesStrategy Strategy>
+RocksDBInvertedListsFilteringIterator<Strategy>::
+    RocksDBInvertedListsFilteringIterator(
+        RocksDBVectorIndex* index, LogicalCollection* collection,
+        SearchParametersContext& searchParametersContext,
+        std::size_t listNumber, std::size_t codeSize)
     : RocksDBInvertedListsIteratorBase(
           index, collection, searchParametersContext.trx, listNumber, codeSize),
       _searchParametersContext(searchParametersContext) {
@@ -107,12 +120,15 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
   skipOverFilteredDocuments();
 }
 
-[[nodiscard]] bool RocksDBInvertedListsFilteringIterator::is_available() const {
+template<VectorIndexStoredValuesStrategy Strategy>
+[[nodiscard]] bool
+RocksDBInvertedListsFilteringIterator<Strategy>::is_available() const {
   return _filteredIdsIt != _filteredIds.end() ||
          (_it->Valid() && _it->key().starts_with(_rocksdbKey.string()));
 }
 
-bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
+template<VectorIndexStoredValuesStrategy Strategy>
+bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
   // Get documents ids from the vector index
   std::vector<LocalDocumentId> ids;
   std::unordered_map<LocalDocumentId, std::vector<uint8_t>> idsToValue;
@@ -162,15 +178,20 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
         aql::AqlValueGuard guard(a, mustDestroy);
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
-          // We do not keep whole value but only the encoded part used by faiss
-          if (_index->hasStoredValues()) {
-            auto entry = RocksDBValue::vectorIndexEntryValue(std::string_view(
-                reinterpret_cast<const char*>(idsToValue[id].data()),
-                idsToValue[id].size()));
+          // Use strategy to extract only the encoded part used by faiss
+          auto [docId, entry] = Strategy::extractVectorIndexEntry(
+              rocksdb::Slice(
+                  reinterpret_cast<const char*>(idsToValue[id].data()),
+                  idsToValue[id].size()),
+              rocksdb::Slice(
+                  reinterpret_cast<const char*>(idsToValue[id].data()),
+                  idsToValue[id].size()),
+              _codeSize);
+
+          if constexpr (Strategy::hasStoredValues) {
             _filteredIds.emplace_back(id, std::move(entry.encodedValue));
           } else {
-            // Value is already raw encoded bytes
-            _filteredIds.emplace_back(id, std::move(idsToValue[id]));
+            _filteredIds.emplace_back(id, std::move(entry));
           }
         }
 
@@ -182,7 +203,9 @@ bool RocksDBInvertedListsFilteringIterator::searchFilteredIds() {
   return true;
 }
 
-void RocksDBInvertedListsFilteringIterator::skipOverFilteredDocuments() {
+template<VectorIndexStoredValuesStrategy Strategy>
+void RocksDBInvertedListsFilteringIterator<
+    Strategy>::skipOverFilteredDocuments() {
   while (_filteredIdsIt == _filteredIds.end()) {
     if (!searchFilteredIds()) {
       // If we enter here we could not produce any documents
@@ -191,7 +214,8 @@ void RocksDBInvertedListsFilteringIterator::skipOverFilteredDocuments() {
   }
 }
 
-void RocksDBInvertedListsFilteringIterator::next() {
+template<VectorIndexStoredValuesStrategy Strategy>
+void RocksDBInvertedListsFilteringIterator<Strategy>::next() {
   skipOverFilteredDocuments();
   ++_filteredIdsIt;
   if (_filteredIdsIt == _filteredIds.end()) {
@@ -199,11 +223,16 @@ void RocksDBInvertedListsFilteringIterator::next() {
   }
 }
 
+template<VectorIndexStoredValuesStrategy Strategy>
 std::pair<faiss::idx_t, uint8_t const*>
-RocksDBInvertedListsFilteringIterator::get_id_and_codes() {
+RocksDBInvertedListsFilteringIterator<Strategy>::get_id_and_codes() {
   return {static_cast<faiss::idx_t>(_filteredIdsIt->first.id()),
           _filteredIdsIt->second.data()};
 }
+
+// Explicit instantiations
+template struct RocksDBInvertedListsFilteringIterator<NoStoredValuesStrategy>;
+template struct RocksDBInvertedListsFilteringIterator<WithStoredValuesStrategy>;
 
 /// RocksDBInvertedListsFilteringStoredValuesIterator
 RocksDBInvertedListsFilteringStoredValuesIterator::
@@ -339,19 +368,37 @@ faiss::InvertedListsIterator* RocksDBInvertedLists::get_iterator(
       overload{
           [&](SearchParametersContext& searchParametersContext)
               -> faiss::InvertedListsIterator* {
+            // Use stored values filtering iterator if it can optimize the query
             if (searchParametersContext.isCoveredByStoredValues) {
               return new RocksDBInvertedListsFilteringStoredValuesIterator(
                   _index, _collection, searchParametersContext, listNumber,
                   this->code_size);
             }
 
-            return new RocksDBInvertedListsFilteringIterator(
-                _index, _collection, searchParametersContext, listNumber,
-                this->code_size);
+            // Choose the filtering iterator based on whether index has stored
+            // values
+            if (_index->hasStoredValues()) {
+              return new RocksDBInvertedListsFilteringIterator<
+                  WithStoredValuesStrategy>(_index, _collection,
+                                            searchParametersContext, listNumber,
+                                            this->code_size);
+            } else {
+              return new RocksDBInvertedListsFilteringIterator<
+                  NoStoredValuesStrategy>(_index, _collection,
+                                          searchParametersContext, listNumber,
+                                          this->code_size);
+            }
           },
           [&](transaction::Methods* trx) -> faiss::InvertedListsIterator* {
-            return new RocksDBInvertedListsIterator(
-                _index, _collection, trx, listNumber, this->code_size);
+            // Choose the simple iterator based on whether index has stored
+            // values
+            if (_index->hasStoredValues()) {
+              return new RocksDBInvertedListsIterator<WithStoredValuesStrategy>(
+                  _index, _collection, trx, listNumber, this->code_size);
+            } else {
+              return new RocksDBInvertedListsIterator<NoStoredValuesStrategy>(
+                  _index, _collection, trx, listNumber, this->code_size);
+            }
           },
       },
       *iteratorContext);
