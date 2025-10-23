@@ -245,18 +245,11 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
   // Filter using stored values instead of fetching full documents
   _filteredIds.clear();
   for (auto const& [id, value] : items) {
-    // value.storedValues is already a SharedSlice containing the array
-    // (or None if index doesn't have stored values configured)
     auto storedValuesSlice = value.storedValues.slice();
 
-    // If no stored values were stored during insertion, we cannot use them for
-    // filtering. This might happen if:
-    // 1) The index was created without storedValues and later modified
-    // 2) Old documents inserted before storedValues was configured
-    // In this case, skip this document as we cannot properly evaluate the
-    // filter.
+    // This should not happen...
     if (storedValuesSlice.isNone()) {
-      LOG_TOPIC("c42a1", WARN, Logger::ENGINES)
+      LOG_TOPIC("c42a1", ERR, Logger::ENGINES)
           << "Document " << id
           << " in vector index lacks stored values but filtering iterator "
           << "expects them. Skipping document.";

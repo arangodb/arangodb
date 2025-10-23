@@ -112,8 +112,7 @@ struct SearchParametersContext {
 using RocksDBFaissSearchContext =
     std::variant<SearchParametersContext, transaction::Methods*>;
 
-// Contains logic for applying filterExpression and evaluating documents
-// Materializes documents for every vector
+// Materializes document for every record
 struct RocksDBInvertedListsFilteringIterator final
     : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringIterator(
@@ -148,8 +147,8 @@ struct RocksDBInvertedListsFilteringIterator final
 
 // This iterator is similar as RocksDBInvertedListsFilteringIterator
 // except it does not needs to materialize documents, since it contains
-// be used only when the storedValues fully cover the filterExpression
-// and therefore we can evaluate the expression from the written values
+// values that will be used during expression evaluation.
+// It can be used iff storedValues fully cover the filterExpression
 struct RocksDBInvertedListsFilteringStoredValuesIterator final
     : RocksDBInvertedListsIteratorBase {
   RocksDBInvertedListsFilteringStoredValuesIterator(
@@ -168,6 +167,7 @@ struct RocksDBInvertedListsFilteringStoredValuesIterator final
  private:
   void skipOverFilteredDocuments();
 
+  // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
   constexpr static auto kBatchSize{1000};
 
   SearchParametersContext& _searchParametersContext;

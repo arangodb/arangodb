@@ -360,10 +360,10 @@ Result RocksDBVectorIndex::insert(transaction::Methods& trx,
       rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
           flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
 
-      auto const extractedAttribtueValues =
+      auto const extractedAttributeValues =
           transaction::extractAttributeValues(trx, _storedValues, doc, true)
               ->get();
-      rocksdbEntryValue.storedValues = extractedAttribtueValues->sharedSlice();
+      rocksdbEntryValue.storedValues = extractedAttributeValues->sharedSlice();
 
       return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
     } else {

@@ -229,7 +229,6 @@ RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
 RocksDBVectorIndexEntryValue RocksDBValue::vectorIndexEntryValue(
     std::string_view s) {
   TRI_ASSERT(s.data() != nullptr);
-  TRI_ASSERT(s.size() >= sizeof(char));
   VPackSlice slice(reinterpret_cast<uint8_t const*>(s.data()));
   RocksDBVectorIndexEntryValue result;
   velocypack::deserialize(slice, result);

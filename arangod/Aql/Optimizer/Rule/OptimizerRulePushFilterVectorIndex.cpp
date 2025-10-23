@@ -36,7 +36,6 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/QueryContext.h"
-#include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
 
