@@ -337,9 +337,11 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
 
   auto edgeExpr = _options.getEdgeExpression();
-  if (edgeExpr != nullptr) {
-    // if (step.getEdge().isValid()) {
-    //   edgeBuilder.clear();
+  // TODO: what is it about step.getEdge().isValid()? Leaving this out
+  // breaks precisely one test.
+  // testSameResultEdges_K_SHORTEST_PATHS *when the optimizer rule
+  // optimize-enumerate-path-filters is not on*
+  if (edgeExpr != nullptr and step.getEdge().isValid()) {
     if (edgeBuilder->isEmpty()) {
       _provider.addEdgeToBuilder(step.getEdge(), *edgeBuilder);
     }
