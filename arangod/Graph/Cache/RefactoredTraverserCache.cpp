@@ -150,6 +150,45 @@ bool RefactoredTraverserCache::doAppendEdge(
   return res;
 }
 
+bool RefactoredTraverserCache::findDocumentInCollection(
+    std::string shardId, std::string key, velocypack::Builder& result) {
+  try {
+    transaction::AllowImplicitCollectionsSwitcher disallower(
+        _trx->state()->options(), _allowImplicitCollections);
+
+    Result res =
+        _trx->documentFastPathLocal(
+                shardId, key,
+                [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
+                  stats.incrScannedIndex(1);
+                  _vertexProjections.toVelocyPackFromDocumentFull(result, doc,
+                                                                  _trx);
+                  return true;
+                })
+            .waitAndGet();
+    if (res.ok()) {
+      return true;
+    }
+
+    if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // ok we are in a rather bad state. Better throw and abort.
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  } catch (basics::Exception const& ex) {
+    if (isWithClauseMissing(ex)) {
+      // turn the error into a different error
+      auto message = absl::StrCat("collection not known to traversal: '",
+                                  shardId, "'. please add 'WITH ", shardId,
+                                  "' as the first line in your AQL");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     message);
+    }
+    // rethrow original error
+    throw;
+  }
+  return false;
+}
+
 bool RefactoredTraverserCache::appendVertex(
     aql::TraversalStats& stats, velocypack::HashedStringRef const& id,
     velocypack::Builder& result) {
@@ -245,12 +284,7 @@ void RefactoredTraverserCache::insertEdgeIntoResult(
     EdgeDocumentToken const& idToken, VPackBuilder& result) {
   if (!doAppendEdge(idToken, [&](LocalDocumentId, aql::DocumentData&& data,
                                  VPackSlice edge) {
-        if (!_edgeProjections.empty()) {
-          VPackObjectBuilder guard(&result);
-          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
-        } else {
-          result.add(edge);
-        }
+        _edgeProjections.toVelocyPackFromDocumentFull(result, edge, _trx);
         return true;
       })) {
     result.add(VPackSlice::nullSlice());
@@ -279,12 +313,7 @@ void RefactoredTraverserCache::insertEdgeIntoLookupMap(
         // Extract and Translate the _key value
         result.add(VPackValue(transaction::helpers::extractIdString(
             _trx->resolver(), edge, VPackSlice::noneSlice())));
-        if (!_edgeProjections.empty()) {
-          VPackObjectBuilder guard(&result);
-          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
-        } else {
-          result.add(edge);
-        }
+        _edgeProjections.toVelocyPackFromDocumentFull(result, edge, _trx);
         return true;
       })) {
     // The IDToken has been expanded by an index used on for the edges.
