@@ -68,7 +68,7 @@ function testSuite() {
       // access granted
       assertEqual(200, result.statusCode);
 
-      require("internal").sleep(7);
+      require("internal").sleep(6);
 
       result = request.get({
         url: baseUrl() + "/_api/version",
@@ -77,11 +77,94 @@ function testSuite() {
         }
       });
 
-      // JWT expired
+      // JWT is still valid
+      assertEqual(401, result.statusCode);
+    },
+
+    testCustomExpiryTime: function() {
+      const internal = require("internal");
+      
+      // Request JWT with custom 3-second expiry
+      let result = request.post({
+        url: baseUrl() + "/_open/auth", 
+        body: {
+          username: "root",
+          password: "",
+          expiryTime: 10
+        },
+        json: true
+      });
+
+      assertEqual(200, result.statusCode);
+      const jwt = result.json.jwt;
+
+      // Token should work immediately
+      result = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: { bearer: jwt }
+      });
+      assertEqual(200, result.statusCode);
+
+      internal.sleep(8);
+
+      result = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: { bearer: jwt }
+      });
+      
+      // JWT is still valid
+      assertEqual(200, result.statusCode);
+
+      internal.sleep(4);
+
+      result = request.get({
+        url: baseUrl() + "/_api/version",
+        auth: { bearer: jwt }
+      });
+      
+      // JWT expired, here is without renewal
       assertEqual(401, result.statusCode);
     },
   };
 }
 
+function arangoshTokenRenewalSuite() {
+  'use strict';
+  
+  return {
+    testArangoshAutomaticRenewal: function() {
+      const internal = require("internal");
+      
+      // Reconnect with username/password - gets JWT token with 5-second expiry
+      arango.reconnect(arango.getEndpoint(), "_system", "root", "");
+      
+      // Make requests over 12 seconds - token expires after 5 seconds
+      // Automatic renewal should keep requests working
+      for (let i = 0; i < 6; i++) {
+        let result = arango.GET_RAW("/_api/version");
+        assertEqual(200, result.code);
+        internal.sleep(2);
+      }
+    },
+
+    testArangoshRenewalAfterExpiry: function() {
+      const internal = require("internal");
+      
+      arango.reconnect(arango.getEndpoint(), "_system", "root", "");
+      
+      let result = arango.GET_RAW("/_api/version");
+      assertEqual(200, result.code);
+      
+      // Wait past token expiry (5 seconds)
+      internal.sleep(6);
+      
+      // Request should still work (auto-renewed)
+      result = arango.GET_RAW("/_api/version");
+      assertEqual(200, result.code);
+    },
+  };
+}
+
 jsunity.run(testSuite);
+jsunity.run(arangoshTokenRenewalSuite);
 return jsunity.done();

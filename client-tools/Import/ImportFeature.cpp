@@ -98,7 +98,7 @@ void ImportFeature::collectOptions(
 
   options->addOption("--backslash-escape",
                      "Use backslash as the escape character for quotes. Used "
-                     "for CSV and TSV imports.",
+                     "for CSV imports only.",
                      new BooleanParameter(&_useBackslash));
 
   options->addOption("--batch-size",
@@ -220,8 +220,10 @@ data once the server reported at least this many errors back.)");
       "from the collection!",
       new BooleanParameter(&_overwrite));
 
-  options->addOption("--quote", "Quote character(s). Used for CSV and TSV.",
-                     new StringParameter(&_quote));
+  options->addOption(
+      "--quote",
+      "The character that encloses field values. Used for CSV imports only.",
+      new StringParameter(&_quote));
 
   options->addOption(
       "--separator",
@@ -587,7 +589,7 @@ void ImportFeature::start() {
     ih.setSeparator(_separator);
   } else {
     LOG_TOPIC("59186", FATAL, arangodb::Logger::FIXME)
-        << "_separator must be exactly one character.";
+        << "The separator must be exactly one character.";
     FATAL_ERROR_EXIT();
   }
 

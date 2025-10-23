@@ -69,6 +69,7 @@ ClientFeature::ClientFeature(ApplicationServer& server,
       _username("root"),
       _connectionTimeout(connectionTimeout),
       _requestTimeout(requestTimeout),
+      _jwtRenewalThreshold(300.0),  // default: 5 minutes before expiry
       _maxPacketSize(1024 * 1024 * 1024),
       _compressRequestThreshold(0),
       _sslProtocol(TLS_V12),
@@ -173,9 +174,8 @@ arangosh without connecting to a server.)");
         "--server.jwt-token",
         "If enabled, the JWT token is used directly for authentication. You "
         "can either "
-        "specify the token directly or use the - sign to be prompted for it to "
-        "not leak "
-        "the token to the process list. This "
+        "specify the token directly or set the value to \"-\" to get prompted "
+        "for the token to not leak the token to the process list. This "
         "option is not compatible with --server.ask-jwt-secret, "
         "--server.jwt-secret-keyfile, --server.username and --server.password. "
         "If specified, it is used for all connections - even if a new "
@@ -190,6 +190,13 @@ arangosh without connecting to a server.)");
   options->addOption("--server.request-timeout",
                      "The request timeout (in seconds).",
                      new DoubleParameter(&_requestTimeout));
+
+  options->addOption(
+      "--server.jwt-renewal-threshold",
+      "The time (in seconds) before JWT token expiry to trigger "
+      "automatic renewal. Default is 300 seconds (5 minutes).",
+      new DoubleParameter(&_jwtRenewalThreshold),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   // note: the max-packet-size is used for all client tools that use the
   // SimpleHttpClient. fuerte does not use this
@@ -666,6 +673,16 @@ bool ClientFeature::compressTransfer() const noexcept {
 void ClientFeature::setCompressTransfer(bool value) noexcept {
   WRITE_LOCKER(locker, _settingsLock);
   _compressTransfer = value;
+}
+
+double ClientFeature::jwtRenewalThreshold() const noexcept {
+  READ_LOCKER(locker, _settingsLock);
+  return _jwtRenewalThreshold;
+}
+
+void ClientFeature::setJwtRenewalThreshold(double value) noexcept {
+  WRITE_LOCKER(locker, _settingsLock);
+  _jwtRenewalThreshold = value;
 }
 
 uint64_t ClientFeature::compressRequestThreshold() const noexcept {

@@ -56,7 +56,9 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
       _active(true),
       _authenticationTimeout(0.0),
       _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) /
-                                          std::chrono::seconds(1))) {  // 1 hour
+                                          std::chrono::seconds(1))),  // 1 hour
+      _minimalJwtExpiryTime(10.0),     // 10 seconds
+      _maximalJwtExpiryTime(3600.0) {  // 3600 seconds
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
@@ -107,6 +109,42 @@ the server to `localhost` to not expose it to the public internet)");
 However, the session are renewed automatically as long as you regularly interact
 with the web interface in your browser. You are not logged out while actively
 using it.)");
+
+  options
+      ->addOption(
+          "--auth.minimal-jwt-expiry-time",
+          "The minimal expiry time (in seconds) allowed for JWT tokens "
+          "requested via the `POST /_open/auth` endpoint.",
+          new DoubleParameter(&_minimalJwtExpiryTime, /*base*/ 1.0,
+                              /*minValue*/ 1.0,
+                              /*maxValue*/ std::numeric_limits<double>::max(),
+                              /*minInclusive*/ false),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31206)
+      .setLongDescription(R"(This option sets the minimum lifetime that can be
+requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
+endpoint. Requests with expiry times below this value will be rejected.)");
+
+  options
+      ->addOption(
+          "--auth.maximal-jwt-expiry-time",
+          "The maximal expiry time (in seconds) allowed for JWT tokens "
+          "requested via the `POST /_open/auth` endpoint.",
+          new DoubleParameter(&_maximalJwtExpiryTime, /*base*/ 1.0,
+                              /*minValue*/ 1.0,
+                              /*maxValue*/ std::numeric_limits<double>::max(),
+                              /*minInclusive*/ false),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31206)
+      .setLongDescription(R"(This option sets the maximum lifetime that can be
+requested for JWT tokens via the `expiryTime` parameter in the `POST /_open/auth`
+endpoint. Requests with expiry times above this value will be rejected.)");
 
   options->addObsoleteOption(
       "--server.local-authentication",
@@ -234,6 +272,15 @@ void AuthenticationFeature::validateOptions(
     LOG_TOPIC("1aaae", WARN, arangodb::Logger::AUTHENTICATION)
         << "--server.jwt-secret is insecure. Use --server.jwt-secret-keyfile "
            "instead.";
+  }
+
+  // Validate JWT expiry time settings
+  if (_minimalJwtExpiryTime > _maximalJwtExpiryTime) {
+    LOG_TOPIC("a4b5c", FATAL, Logger::STARTUP)
+        << "--auth.minimal-jwt-expiry-time (" << _minimalJwtExpiryTime
+        << ") must not be greater than --auth.maximal-jwt-expiry-time ("
+        << _maximalJwtExpiryTime << ")";
+    FATAL_ERROR_EXIT();
   }
 }
 
