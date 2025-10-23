@@ -161,8 +161,12 @@ template<class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(
     typename Step::Vertex const& vertex, arangodb::velocypack::Builder& builder,
     bool writeIdIfNotFound) {
-  _cache.insertVertexIntoResult(_stats, vertex.getID(), builder,
-                                writeIdIfNotFound);
+  if (_opts.produceVertices()) {
+    _cache.insertVertexIntoResult(_stats, vertex.getID(), builder,
+                                  writeIdIfNotFound);
+  } else {
+    builder.add(VPackSlice::nullSlice());
+  }
 }
 
 template<class Step>
