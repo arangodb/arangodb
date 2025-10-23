@@ -23,29 +23,8 @@
 
 #include "RefactoredTraverserCache.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AqlValue.h"
-#include "Aql/Query.h"
-#include "Aql/TraversalStats.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/StringHeap.h"
-#include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
-#include "Graph/BaseOptions.h"
-#include "Graph/EdgeDocumentToken.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/PhysicalCollection.h"
-#include "StorageEngine/TransactionState.h"
-#include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
-#include "Transaction/Options.h"
-#include "VocBase/LogicalCollection.h"
-
-#include <absl/strings/str_cat.h>
-#include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
 #include <velocypack/Slice.h>
 

@@ -23,35 +23,13 @@
 
 #pragma once
 
-#include "Aql/Projections.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Containers/FlatHashSet.h"
-#include "Indexes/IndexIterator.h"
 
 #include <velocypack/HashedStringRef.h>
 
-namespace arangodb {
-
-namespace transaction {
-class Methods;
-}
-
-namespace velocypack {
-class Builder;
-class Slice;
-}  // namespace velocypack
-
-namespace aql {
-struct AqlValue;
-class QueryContext;
-class TraversalStats;
-}  // namespace aql
-
-namespace graph {
-
-struct EdgeDocumentToken;
+namespace arangodb::graph {
 
 /// Small wrapper around the actual datastore in
 /// which edges and vertices are stored.
@@ -97,5 +75,4 @@ class RefactoredTraverserCache {
   arangodb::ResourceMonitor& _resourceMonitor;
 };
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph
