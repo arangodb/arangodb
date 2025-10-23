@@ -34,45 +34,47 @@ bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
   return false;
 }
 
-ResultT<std::pair<std::string, std::string>> splitDocumentId(
-    velocypack::HashedStringRef idHashed) {
+auto splitDocumentId(velocypack::HashedStringRef idHashed)
+    -> std::pair<velocypack::HashedStringRef, velocypack::HashedStringRef> {
   size_t pos = idHashed.find('/');
 
   if (pos == std::string::npos) {
     // Invalid input. If we get here somehow we managed to store invalid
     // _from/_to values or the traverser did a let an illegal start through
     TRI_ASSERT(false);
-    return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
-                  "edge contains invalid value " + idHashed.toString()};
+    auto res = Result(TRI_ERROR_GRAPH_INVALID_EDGE,
+                      "edge contains invalid value " + idHashed.toString());
+    THROW_ARANGO_EXCEPTION(res);
   }
 
-  std::string colName = idHashed.substr(0, pos).toString();
-  std::string key = idHashed.substr(pos + 1, std::string::npos).toString();
-  return {std::make_pair(colName, key)};
+  return std::make_pair(idHashed.substr(0, pos),
+                        idHashed.substr(pos + 1, std::string::npos));
 }
 
 }  // namespace
 
 namespace arangodb::graph {
 
-auto VertexLookup::findDocumentInCollection(std::string shardId,
-                                            std::string key,
+auto VertexLookup::findDocumentInCollection(velocypack::HashedStringRef shardId,
+                                            velocypack::HashedStringRef key,
                                             velocypack::Builder& result)
     -> bool {
   try {
     transaction::AllowImplicitCollectionsSwitcher disallower(
         _trx->state()->options(), _allowImplicitVertexCollections);
 
-    auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
-      _stats.incrScannedIndex(1);
+    Result res =
+        _trx->documentFastPathLocal(
+                shardId.stringView(), key.stringView(),  //
+                [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
+                  _stats.incrScannedIndex(1);
 
-      // copying...
-      _projections.toVelocyPackFromDocumentFull(result, doc, _trx);
+                  // copying...
+                  _projections.toVelocyPackFromDocumentFull(result, doc, _trx);
 
-      return true;
-    };
-
-    Result res = _trx->documentFastPathLocal(shardId, key, cb).waitAndGet();
+                  return true;
+                })
+            .waitAndGet();
     if (res.ok()) {
       return true;
     }
@@ -84,9 +86,10 @@ auto VertexLookup::findDocumentInCollection(std::string shardId,
   } catch (basics::Exception const& ex) {
     if (isWithClauseMissing(ex)) {
       // turn the error into a different error
-      auto message = absl::StrCat("collection not known to traversal: '",
-                                  shardId, "'. please add 'WITH ", shardId,
-                                  "' as the first line in your AQL");
+      auto message =
+          absl::StrCat("collection not known to traversal: '",
+                       shardId.stringView(), "'. please add 'WITH ",
+                       shardId.stringView(), "' as the first line in your AQL");
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                                      message);
     }
@@ -98,18 +101,13 @@ auto VertexLookup::findDocumentInCollection(std::string shardId,
 
 auto VertexLookup::appendVertex(velocypack::HashedStringRef id,
                                 velocypack::Builder& result) -> bool {
-  auto collectionNameResult = splitDocumentId(id);
-  if (collectionNameResult.fail()) {
-    THROW_ARANGO_EXCEPTION(collectionNameResult.result());
-  }
-
-  // if we do not produce vertices, we always add null slice
+  // TODO: kann weg. if we do not produce vertices, we always add null slice
   if (!_produceVertices) {
     result.add(VPackSlice::nullSlice());
     return true;
   }
 
-  auto [collectionName, key] = collectionNameResult.get();
+  auto [collectionName, key] = splitDocumentId(id);
 
   if (_collectionToShardMap.empty()) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
@@ -117,17 +115,20 @@ auto VertexLookup::appendVertex(velocypack::HashedStringRef id,
       return true;
     }
   } else {
-    auto it = _collectionToShardMap.find(collectionName);
+    auto it = _collectionToShardMap.find(collectionName.toString());
     if (it == _collectionToShardMap.end()) {
       // Connected to a vertex where we do not know the Shard to.
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-          "collection not known to traversal: '" + collectionName +
-              "'. please add 'WITH " + collectionName +
+          "collection not known to traversal: '" + collectionName.toString() +
+              "'. please add 'WITH " + collectionName.toString() +
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInCollection(shard, key, result)) {
+      auto str = std::string(shard);
+      if (findDocumentInCollection(
+              velocypack::HashedStringRef(str.c_str(), str.size()), key,
+              result)) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;

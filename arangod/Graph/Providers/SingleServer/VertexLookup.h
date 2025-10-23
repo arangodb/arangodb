@@ -1,5 +1,6 @@
 #pragma once
 
+#include <velocypack/HashedStringRef.h>
 #include "Aql/Projections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "velocypack/Builder.h"
@@ -26,7 +27,8 @@ struct VertexLookup {
   VertexLookup(VertexLookup const&) = delete;
   VertexLookup(VertexLookup&&) = default;
 
-  auto findDocumentInCollection(std::string shardId, std::string key,
+  auto findDocumentInCollection(velocypack::HashedStringRef shardId,
+                                velocypack::HashedStringRef key,
                                 velocypack::Builder& result) -> bool;
 
   //////////////////////////////////////////////////////////////////////////////
