@@ -757,17 +757,19 @@ let buildExampleQuery = function(col, exampleDoc, skip, limit) {
   for (const [key, value] of Object.entries(exampleDoc)) {
     if (count > 0) {
       query += " and ";
+    } else {
+      query += " FILTER ";
     }
-    let filteredKey = key.replace("`", "").replace(".", "`.`");
-    let BVName = `value${count}`;
-    query += " FILTER doc.`" + key + "` == @" + BVName;
-    bindVars[BVName] = value;
+    let bVName = `value${count}`;
+    let attName = `att${count}`;
+        query += ` doc.@${attName} == @${bVName}`;
+    bindVars[bVName] = value;
+    bindVars[attName] = key;
     count += 1;
   }
   if (limit > 0 || skip > 0) {
     query += ` LIMIT ${skip}, ${(limit > 0) ? limit : "null"}`;
   }
-  query += " RETURN doc";
   return {
     query,
     bindVars
@@ -815,9 +817,9 @@ if (SYS_IS_V8_BUILD) {
   };
 } else {
   ArangoCollection.prototype.firstExample = function (example) {
-    let cursor = require('internal').db._query(
-      buildExampleQuery(this.name(), example, 0, 1)
-    );
+    let query = buildExampleQuery(this.name(), example, 0, 1);
+    query.query += " RETURN doc";
+    let cursor = require('internal').db._query(query);
     if (cursor.hasNext()) {
       return cursor.next();
     }
@@ -1324,94 +1326,132 @@ ArangoCollection.prototype.outEdges = function (vertex) {
 // / @brief removes documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.removeByExample = function (example,
-  waitForSync, limit) {
-  let data = {
-    collection: this._name,
-    example: example,
-    waitForSync: waitForSync,
-    limit: limit
-  };
-
-  if (typeof waitForSync === 'object') {
-    if (typeof limit !== 'undefined') {
-      throw 'too many parameters';
-    }
-    data = {
+if (SYS_IS_V8_BUILD) {
+  ArangoCollection.prototype.removeByExample = function (example,
+                                                         waitForSync, limit) {
+    let data = {
       collection: this._name,
       example: example,
-      options: waitForSync
+      waitForSync: waitForSync,
+      limit: limit
     };
-  }
 
-  let requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/remove-by-example'), data);
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.deleted;
-};
+    if (typeof waitForSync === 'object') {
+      if (typeof limit !== 'undefined') {
+        throw 'too many parameters';
+      }
+      data = {
+        collection: this._name,
+        example: example,
+        options: waitForSync
+      };
+    }
 
+    let requestResult = this._database._connection.PUT(
+      this._prefixurl('/_api/simple/remove-by-example'), data);
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.deleted;
+  };
+} else {
+  ArangoCollection.prototype.removeByExample = function (example,
+                                                         waitForSync, limit) {
+    let query = buildExampleQuery(this.name(), example, 0, limit);
+    var opts = {
+      waitForSync: waitForSync
+    };
+    query['query'] += ' REMOVE doc IN @@collection OPTIONS ' + JSON.stringify(opts);
+    return require('internal').db._query(query).getExtra().stats.writesExecuted;
+  };
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief replaces documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.replaceByExample = function (example,
-  newValue, waitForSync, limit) {
-  let data = {
-    collection: this._name,
-    example: example,
-    newValue: newValue,
-    waitForSync: waitForSync,
-    limit: limit
-  };
-
-  if (typeof waitForSync === 'object') {
-    if (typeof limit !== 'undefined') {
-      throw 'too many parameters';
-    }
-    data = {
+if (SYS_IS_V8_BUILD) {
+  ArangoCollection.prototype.replaceByExample = function (example,
+                                                          newValue, waitForSync, limit) {
+    let data = {
       collection: this._name,
       example: example,
       newValue: newValue,
-      options: waitForSync
+      waitForSync: waitForSync,
+      limit: limit
     };
-  }
-  let requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/replace-by-example'), data);
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.replaced;
-};
 
+    if (typeof waitForSync === 'object') {
+      if (typeof limit !== 'undefined') {
+        throw 'too many parameters';
+      }
+      data = {
+        collection: this._name,
+        example: example,
+        newValue: newValue,
+        options: waitForSync
+      };
+    }
+    let requestResult = this._database._connection.PUT(
+      this._prefixurl('/_api/simple/replace-by-example'), data);
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.replaced;
+  };
+} else {
+  ArangoCollection.prototype.replaceByExample = function (example,
+                                                          newValue, waitForSync, limit) {
+    let query = buildExampleQuery(this.name(), example, 0, limit);
+    var opts = {
+      waitForSync: waitForSync,
+      mergeObjects: false
+    };
+    query['query'] += ' REPLACE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
+    query.bindVars['newValue'] = newValue;
+    return require('internal').db._query(query).getExtra().stats.writesExecuted;
+  };
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief updates documents matching an example
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.updateByExample = function (example,
-  newValue, keepNull, waitForSync, limit) {
-  let data = {
-    collection: this._name,
-    example: example,
-    newValue: newValue,
-    keepNull: keepNull,
-    waitForSync: waitForSync,
-    limit: limit
-  };
-  if (typeof keepNull === 'object') {
-    if (typeof waitForSync !== 'undefined') {
-      throw 'too many parameters';
-    }
-    data = {
+if (SYS_IS_V8_BUILD) {
+  ArangoCollection.prototype.updateByExample = function (example,
+                                                         newValue, keepNull, waitForSync, limit) {
+    let data = {
       collection: this._name,
       example: example,
       newValue: newValue,
-      options: keepNull
+      keepNull: keepNull,
+      waitForSync: waitForSync,
+      limit: limit
     };
-  }
-  let requestResult = this._database._connection.PUT(
-    this._prefixurl('/_api/simple/update-by-example'), data);
-  arangosh.checkRequestResult(requestResult);
-  return requestResult.updated;
-};
-
+    if (typeof keepNull === 'object') {
+      if (typeof waitForSync !== 'undefined') {
+        throw 'too many parameters';
+      }
+      data = {
+        collection: this._name,
+        example: example,
+        newValue: newValue,
+        options: keepNull
+      };
+    }
+    let requestResult = this._database._connection.PUT(
+      this._prefixurl('/_api/simple/update-by-example'), data);
+    arangosh.checkRequestResult(requestResult);
+    return requestResult.updated;
+  };
+} else {
+  ArangoCollection.prototype.updateByExample = function (example,
+                                                         newValue, keepNull, waitForSync, limit) {
+    let query = buildExampleQuery(this.name(), example, 0, limit);
+    var opts = {
+      waitForSync: waitForSync,
+      keepNull: keepNull,
+      mergeObjects: false
+    };
+    query['query'] += ' UPDATE doc WITH @newValue IN @@collection OPTIONS ' + JSON.stringify(opts);
+    query.bindVars['newValue'] = newValue;
+    return require('internal').db._query(query).getExtra().stats.writesExecuted;
+  };
+}
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief looks up documents by keys
 // //////////////////////////////////////////////////////////////////////////////
