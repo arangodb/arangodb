@@ -30,6 +30,8 @@
 #include "Graph/Providers/BaseStep.h"
 #include "Graph/Providers/TypeAliases.h"
 #include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
+#include "Graph/Providers/SingleServer/VertexLookup.h"
+#include "Graph/Providers/SingleServer/EdgeLookup.h"
 
 #include "Aql/TraversalStats.h"
 #include "Basics/ResourceUsage.h"
@@ -97,6 +99,7 @@ class SingleServerProvider {
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder,
                           bool writeIdIfNotFound = false);
+
   void addEdgeToBuilder(typename Step::Edge const& edge,
                         arangodb::velocypack::Builder& builder);
 
@@ -143,6 +146,8 @@ class SingleServerProvider {
   SingleServerBaseProviderOptions _opts;
 
   RefactoredTraverserCache _cache;
+  VertexLookup _vertexLookup;
+  EdgeLookup _edgeLookup;
 
   arangodb::aql::TraversalStats _stats;
   SingleServerNeighbourProvider<Step> _neighbours;

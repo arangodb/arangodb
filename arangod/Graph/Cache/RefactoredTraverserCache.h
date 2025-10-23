@@ -60,12 +60,7 @@ struct EdgeDocumentToken;
 
 class RefactoredTraverserCache {
  public:
-  RefactoredTraverserCache(
-      arangodb::transaction::Methods* trx, aql::QueryContext* query,
-      arangodb::ResourceMonitor& resourceMonitor,
-      MonitoredCollectionToShardMap const& collectionToShardMap,
-      arangodb::aql::Projections const& vertexProjections,
-      arangodb::aql::Projections const& edgeProjections, bool produceVertices);
+  RefactoredTraverserCache(arangodb::ResourceMonitor& resourceMonitor);
 
   ~RefactoredTraverserCache();
 
@@ -78,39 +73,6 @@ class RefactoredTraverserCache {
   void clear();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts the real document stored within the token
-  ///        into the given builder.
-  //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
-                            velocypack::Builder& builder);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts only the edges _id value into the given builder.
-  //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIdIntoResult(graph::EdgeDocumentToken const& etkn,
-                              velocypack::Builder& builder);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts { [...], _id : edge, [...] } into the given builder.
-  /// The builder has to be an open Object.
-  //////////////////////////////////////////////////////////////////////////////
-  void insertEdgeIntoLookupMap(graph::EdgeDocumentToken const& etkn,
-                               velocypack::Builder& builder);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Returns the Translated Edge _id value, translating the custom type
-  //////////////////////////////////////////////////////////////////////////////
-  std::string getEdgeId(EdgeDocumentToken const& idToken);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Inserts the real document identified by the _id string
-  //////////////////////////////////////////////////////////////////////////////
-  void insertVertexIntoResult(
-      aql::TraversalStats& stats,
-      arangodb::velocypack::HashedStringRef const& idString,
-      velocypack::Builder& builder, bool writeIdIfNotFound);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief Persist the given id string. The return value is guaranteed to
   ///        stay valid as long as this cache is valid
   //////////////////////////////////////////////////////////////////////////////
@@ -118,34 +80,6 @@ class RefactoredTraverserCache {
       arangodb::velocypack::HashedStringRef idString);
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Lookup a document from the database.
-  ///        if this returns false the result is unmodified
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool appendVertex(aql::TraversalStats& stats,
-                    arangodb::velocypack::HashedStringRef const& idString,
-                    velocypack::Builder& result);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Lookup an edge document from the database.
-  ///        if this returns false the result is unmodified
-  //////////////////////////////////////////////////////////////////////////////
-
-  bool doAppendEdge(EdgeDocumentToken const& idToken,
-                    IndexIterator::DocumentCallback const& cb);
-
- private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Query used to register warnings to.
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::aql::QueryContext* _query;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Transaction to access data, This class is NOT responsible for it.
-  //////////////////////////////////////////////////////////////////////////////
-  arangodb::transaction::Methods* _trx;
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Stringheap to take care of _id strings, s.t. they stay valid
   ///        during the entire traversal.
@@ -160,22 +94,7 @@ class RefactoredTraverserCache {
   containers::FlatHashSet<arangodb::velocypack::HashedStringRef>
       _persistedStrings;
 
- private:
-  MonitoredCollectionToShardMap const& _collectionToShardMap;
   arangodb::ResourceMonitor& _resourceMonitor;
-
-  /// @brief whether or not to produce vertices
-  bool const _produceVertices;
-
-  /// @brief whether or not to allow adding of previously unknown collections
-  /// during the traversal
-  bool const _allowImplicitCollections;
-
-  /// @brief Projections on vertex data, responsibility is with BaseOptions
-  aql::Projections const& _vertexProjections;
-
-  /// @brief Projections on edge data, responsibility is with BaseOptions
-  aql::Projections const& _edgeProjections;
 };
 
 }  // namespace graph

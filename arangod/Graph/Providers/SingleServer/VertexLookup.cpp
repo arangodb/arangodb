@@ -1,0 +1,161 @@
+#include "Graph/Providers/SingleServer/VertexLookup.h"
+
+#include "Graph/Providers/SingleServer/VertexLookup.h"
+#include "velocypack/HashedStringRef.h"
+#include "Logger/LogMacros.h"
+#include "Basics/ResultT.h"
+#include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
+#include "Transaction/Options.h"
+#include "Transaction/Methods.h"
+#include "StorageEngine/TransactionState.h"
+
+#include <string>
+
+#include <velocypack/Slice.h>
+
+using namespace arangodb;
+
+namespace {
+bool isWithClauseMissing(arangodb::basics::Exception const& ex) {
+  if (ServerState::instance()->isDBServer() &&
+      ex.code() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+    // on a DB server, we could have got here only in the OneShard case.
+    // in this case turn the rather misleading "collection or view not found"
+    // error into a nicer "collection not known to traversal, please add WITH"
+    // message, so users know what to do
+    return true;
+  }
+  if (ServerState::instance()->isSingleServer() &&
+      ex.code() == TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION) {
+    return true;
+  }
+
+  return false;
+}
+
+ResultT<std::pair<std::string, std::string>> splitDocumentId(
+    velocypack::HashedStringRef idHashed) {
+  size_t pos = idHashed.find('/');
+
+  if (pos == std::string::npos) {
+    // Invalid input. If we get here somehow we managed to store invalid
+    // _from/_to values or the traverser did a let an illegal start through
+    TRI_ASSERT(false);
+    return Result{TRI_ERROR_GRAPH_INVALID_EDGE,
+                  "edge contains invalid value " + idHashed.toString()};
+  }
+
+  std::string colName = idHashed.substr(0, pos).toString();
+  std::string key = idHashed.substr(pos + 1, std::string::npos).toString();
+  return {std::make_pair(colName, key)};
+}
+
+}  // namespace
+
+namespace arangodb::graph {
+
+auto VertexLookup::appendVertex(aql::TraversalStats& stats,
+                                velocypack::HashedStringRef const& id,
+                                velocypack::Builder& result) const -> bool {
+  auto collectionNameResult = splitDocumentId(id);
+  if (collectionNameResult.fail()) {
+    THROW_ARANGO_EXCEPTION(collectionNameResult.result());
+  }
+
+  // if we do not produce vertices, we always add null slice
+  if (!_produceVertices) {
+    result.add(VPackSlice::nullSlice());
+    return true;
+  }
+
+  auto [collectionName, key] = collectionNameResult.get();
+
+  auto findDocumentInCollection = [&](std::string const& shardId) -> bool {
+    try {
+      transaction::AllowImplicitCollectionsSwitcher disallower(
+          _trx->state()->options(), _allowImplicitVertexCollections);
+
+      auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
+        stats.incrScannedIndex(1);
+
+        // copying...
+        _projections.toVelocyPackFromDocumentFull(result, doc, _trx);
+
+        return true;
+      };
+
+      Result res = _trx->documentFastPathLocal(shardId, key, cb).waitAndGet();
+      if (res.ok()) {
+        return true;
+      }
+
+      if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+        // ok we are in a rather bad state. Better throw and abort.
+        THROW_ARANGO_EXCEPTION(res);
+      }
+    } catch (basics::Exception const& ex) {
+      if (isWithClauseMissing(ex)) {
+        // turn the error into a different error
+        auto message = absl::StrCat("collection not known to traversal: '",
+                                    shardId, "'. please add 'WITH ", shardId,
+                                    "' as the first line in your AQL");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                       message);
+      }
+      // rethrow original error
+      throw;
+    }
+    return false;
+  };
+
+  if (_collectionToShardMap.empty()) {
+    TRI_ASSERT(!ServerState::instance()->isDBServer());
+    if (findDocumentInCollection(collectionName)) {
+      return true;
+    }
+  } else {
+    auto it = _collectionToShardMap.find(collectionName);
+    if (it == _collectionToShardMap.end()) {
+      // Connected to a vertex where we do not know the Shard to.
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+          "collection not known to traversal: '" + collectionName +
+              "'. please add 'WITH " + collectionName +
+              "' as the first line in your AQL");
+    }
+    for (auto const& shard : it->second) {
+      if (findDocumentInCollection(shard)) {
+        // Short circuit, as soon as one shard contains this document
+        // we can return it.
+        return true;
+      }
+    }
+  }
+
+  // Register a warning. It is okay though but helps the user
+  std::string msg = "vertex '" + id.toString() + "' not found";
+  _queryCtx->warnings().registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND,
+                                        msg.c_str());
+  // This is expected, we may have dangling edges. Interpret as NULL
+  return false;
+}
+
+auto VertexLookup::insertVertexIntoResult(
+    aql::TraversalStats& stats,
+    arangodb::velocypack::HashedStringRef const& idString,
+    VPackBuilder& builder, bool writeIdIfNotFound) const -> void {
+  if (!_produceVertices) {
+    builder.add(VPackSlice::nullSlice());
+  }
+
+  if (!appendVertex(stats, idString, builder)) {
+    if (writeIdIfNotFound) {
+      builder.add(VPackValue(idString.toString()));
+    } else {
+      builder.add(VPackSlice::nullSlice());
+    }
+  }
+}
+
+}  // namespace arangodb::graph
