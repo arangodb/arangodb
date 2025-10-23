@@ -627,11 +627,11 @@ describe('Rule optimize-traversals', () => {
       `{foo: 'bar'}`
     ];
 
-    const functValues = [
+    let functValues = [
       `APPEND(['foo'], ['bar'], false)`
     ];
     if (SYS_IS_V8_BUILD) {
-      functValues.append(`NOOPT(V8(3+2))`);
+      functValues.push(`NOOPT(V8(3+2))`);
     }
     const queryStart = `FOR v,e,p IN 1..3 OUTBOUND 'circles/A' GRAPH '${graphName}' FILTER `;
     const queryEnd = ` RETURN {v,e,p}`;
