@@ -386,6 +386,48 @@ function VectorIndexTestCreationWithVectors() {
                 assertEqual(undefined, e);
             }
         },
+
+        testCreatingVectorIndexNoFields: function() {
+            let gen = randomNumberGeneratorFloat(seed);
+
+            let docs = [];
+            for (let i = 0; i < 30; ++i) {
+                if (i >= 20) {
+                  // Documents with vector and all stored value fields
+                  const vector = Array.from({
+                      length: dimension
+                  }, () => gen());
+                  docs.push({vector, name: `doc_${i}`, category: `cat_${i % 3}`, value: i});
+                } else if (i >= 10) {
+                  // Documents with vector but missing some stored value fields
+                  const vector = Array.from({
+                      length: dimension
+                  }, () => gen());
+                  docs.push({vector, name: `doc_${i}`});
+                } else {
+                  // Documents without vector field
+                  docs.push({name: `doc_${i}`, category: `cat_${i % 3}`, value: i});
+                }
+            }
+            collection.insert(docs);
+
+            try {
+                let result = collection.ensureIndex({
+                    name: "vector_l2_stored",
+                    type: "vector",
+                    inBackground: false,
+                    storedValues: ["name", "category", "value"],
+                    params: {
+                        metric: "l2",
+                        dimension: dimension,
+                        nLists: 1,
+                        trainingIterations: 10,
+                    },
+                });
+            } catch (e) {
+                assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+            }
+        },
     };
 }
 
