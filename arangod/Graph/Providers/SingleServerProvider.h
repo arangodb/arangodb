@@ -145,11 +145,12 @@ class SingleServerProvider {
 
   SingleServerBaseProviderOptions _opts;
 
+  aql::TraversalStats _stats;
+
   RefactoredTraverserCache _cache;
   VertexLookup _vertexLookup;
   EdgeLookup _edgeLookup;
 
-  arangodb::aql::TraversalStats _stats;
   SingleServerNeighbourProvider<Step> _neighbours;
 };
 }  // namespace graph

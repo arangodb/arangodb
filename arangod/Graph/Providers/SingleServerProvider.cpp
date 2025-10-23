@@ -85,9 +85,10 @@ SingleServerProvider<Step>::SingleServerProvider(
       _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
+      _stats{},
       _cache(resourceMonitor),
       _vertexLookup(_trx.get(), &queryContext, _opts.getVertexProjections(),
-                    _opts.collectionToShardMap(),
+                    _opts.collectionToShardMap(), _stats,
                     ServerState::instance()->isSingleServer() &&
                         queryContext.vocbase()
                             .server()
@@ -95,7 +96,6 @@ SingleServerProvider<Step>::SingleServerProvider(
                             .requireWith(),
                     _opts.produceVertices()),
       _edgeLookup(_trx.get(), _opts.getEdgeProjections()),
-      _stats{},
       _neighbours{_opts, _trx.get(), _monitor,
                   aql::ExecutionBlock::DefaultBatchSize} {}
 
@@ -172,7 +172,7 @@ void SingleServerProvider<Step>::addVertexToBuilder(
     typename Step::Vertex const& vertex, arangodb::velocypack::Builder& builder,
     bool writeIdIfNotFound) {
   if (_opts.produceVertices()) {
-    _vertexLookup.insertVertexIntoResult(_stats, vertex.getID(), builder,
+    _vertexLookup.insertVertexIntoResult(vertex.getID(), builder,
                                          writeIdIfNotFound);
   } else {
     builder.add(VPackSlice::nullSlice());

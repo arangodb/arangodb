@@ -55,9 +55,49 @@ ResultT<std::pair<std::string, std::string>> splitDocumentId(
 
 namespace arangodb::graph {
 
-auto VertexLookup::appendVertex(aql::TraversalStats& stats,
-                                velocypack::HashedStringRef const& id,
-                                velocypack::Builder& result) const -> bool {
+auto VertexLookup::findDocumentInCollection(std::string shardId,
+                                            std::string key,
+                                            velocypack::Builder& result)
+    -> bool {
+  try {
+    transaction::AllowImplicitCollectionsSwitcher disallower(
+        _trx->state()->options(), _allowImplicitVertexCollections);
+
+    auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
+      _stats.incrScannedIndex(1);
+
+      // copying...
+      _projections.toVelocyPackFromDocumentFull(result, doc, _trx);
+
+      return true;
+    };
+
+    Result res = _trx->documentFastPathLocal(shardId, key, cb).waitAndGet();
+    if (res.ok()) {
+      return true;
+    }
+
+    if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
+      // ok we are in a rather bad state. Better throw and abort.
+      THROW_ARANGO_EXCEPTION(res);
+    }
+  } catch (basics::Exception const& ex) {
+    if (isWithClauseMissing(ex)) {
+      // turn the error into a different error
+      auto message = absl::StrCat("collection not known to traversal: '",
+                                  shardId, "'. please add 'WITH ", shardId,
+                                  "' as the first line in your AQL");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
+                                     message);
+    }
+    // rethrow original error
+    throw;
+  }
+  return false;
+}
+
+auto VertexLookup::appendVertex(velocypack::HashedStringRef id,
+                                velocypack::Builder& result) -> bool {
   auto collectionNameResult = splitDocumentId(id);
   if (collectionNameResult.fail()) {
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
@@ -71,47 +111,9 @@ auto VertexLookup::appendVertex(aql::TraversalStats& stats,
 
   auto [collectionName, key] = collectionNameResult.get();
 
-  auto findDocumentInCollection = [&](std::string const& shardId) -> bool {
-    try {
-      transaction::AllowImplicitCollectionsSwitcher disallower(
-          _trx->state()->options(), _allowImplicitVertexCollections);
-
-      auto cb = [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
-        stats.incrScannedIndex(1);
-
-        // copying...
-        _projections.toVelocyPackFromDocumentFull(result, doc, _trx);
-
-        return true;
-      };
-
-      Result res = _trx->documentFastPathLocal(shardId, key, cb).waitAndGet();
-      if (res.ok()) {
-        return true;
-      }
-
-      if (!res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
-        // ok we are in a rather bad state. Better throw and abort.
-        THROW_ARANGO_EXCEPTION(res);
-      }
-    } catch (basics::Exception const& ex) {
-      if (isWithClauseMissing(ex)) {
-        // turn the error into a different error
-        auto message = absl::StrCat("collection not known to traversal: '",
-                                    shardId, "'. please add 'WITH ", shardId,
-                                    "' as the first line in your AQL");
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                                       message);
-      }
-      // rethrow original error
-      throw;
-    }
-    return false;
-  };
-
   if (_collectionToShardMap.empty()) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
-    if (findDocumentInCollection(collectionName)) {
+    if (findDocumentInCollection(collectionName, key, result)) {
       return true;
     }
   } else {
@@ -125,7 +127,7 @@ auto VertexLookup::appendVertex(aql::TraversalStats& stats,
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInCollection(shard)) {
+      if (findDocumentInCollection(shard, key, result)) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;
@@ -142,14 +144,13 @@ auto VertexLookup::appendVertex(aql::TraversalStats& stats,
 }
 
 auto VertexLookup::insertVertexIntoResult(
-    aql::TraversalStats& stats,
-    arangodb::velocypack::HashedStringRef const& idString,
-    VPackBuilder& builder, bool writeIdIfNotFound) const -> void {
+    arangodb::velocypack::HashedStringRef idString, VPackBuilder& builder,
+    bool writeIdIfNotFound) -> void {
   if (!_produceVertices) {
     builder.add(VPackSlice::nullSlice());
   }
 
-  if (!appendVertex(stats, idString, builder)) {
+  if (!appendVertex(idString, builder)) {
     if (writeIdIfNotFound) {
       builder.add(VPackValue(idString.toString()));
     } else {

@@ -14,37 +14,41 @@ struct VertexLookup {
       transaction::Methods* trx, aql::QueryContext* queryCtx,
       aql::Projections const& projections,
       MonitoredCollectionToShardMap const& collectionToShardMap,
-      bool allowImplicitVertexCollections, bool produceVertices)
+      aql::TraversalStats& stats, bool allowImplicitVertexCollections,
+      bool produceVertices)
       : _trx(std::move(trx)),
         _queryCtx(queryCtx),
         _projections(projections),
         _collectionToShardMap(collectionToShardMap),
+        _stats(stats),
         _allowImplicitVertexCollections(allowImplicitVertexCollections),
-        _produceVertices(produceVertices){};
+        _produceVertices(produceVertices) {};
   VertexLookup(VertexLookup const&) = delete;
   VertexLookup(VertexLookup&&) = default;
+
+  auto findDocumentInCollection(std::string shardId, std::string key,
+                                velocypack::Builder& result) -> bool;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Lookup a document from the database.
   ///        if this returns false the result is unmodified
   //////////////////////////////////////////////////////////////////////////////
-  auto appendVertex(aql::TraversalStats& stats,
-                    velocypack::HashedStringRef const& id,
-                    velocypack::Builder& result) const -> bool;
+  auto appendVertex(velocypack::HashedStringRef id, velocypack::Builder& result)
+      -> bool;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document identified by the _id string
   //////////////////////////////////////////////////////////////////////////////
-  auto insertVertexIntoResult(
-      aql::TraversalStats& stats,
-      arangodb::velocypack::HashedStringRef const& idString,
-      VPackBuilder& builder, bool writeIdIfNotFound) const -> void;
+  auto insertVertexIntoResult(velocypack::HashedStringRef idString,
+                              VPackBuilder& builder, bool writeIdIfNotFound)
+      -> void;
 
  private:
   transaction::Methods* _trx;
   aql::QueryContext* _queryCtx;
   aql::Projections const& _projections;
   MonitoredCollectionToShardMap const& _collectionToShardMap;
+  aql::TraversalStats _stats;
   bool _allowImplicitVertexCollections;
   bool _produceVertices;
 };
