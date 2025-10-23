@@ -12,7 +12,7 @@ struct EdgeDocumentToken;
 struct EdgeLookup {
   explicit EdgeLookup(transaction::Methods* trx,
                       aql::Projections const& projections)
-      : _trx(std::move(trx)), _projections(projections) {};
+      : _trx(std::move(trx)), _projections(projections){};
   EdgeLookup(EdgeLookup const&) = delete;
   EdgeLookup(EdgeLookup&&) = default;
 
