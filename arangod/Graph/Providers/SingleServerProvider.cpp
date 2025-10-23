@@ -169,7 +169,7 @@ auto SingleServerProvider<Step>::expand(
 }
 
 template<class Step>
-auto SingleServerProvider<Step>::expandNextBatch(
+auto SingleServerProvider<Step>::expandToNextBatch(
     Step const& step, size_t previous,
     std::function<void(Step)> const& callback) -> bool {
   TRI_ASSERT(!step.isLooseEnd());
@@ -223,13 +223,13 @@ auto SingleServerProvider<Step>::expandNextBatch(
 }
 
 template<class Step>
-auto SingleServerProvider<Step>::addNextBatch(
+auto SingleServerProvider<Step>::addExpansionIterator(
     Step const& step, std::function<void()> const& callback) -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
-      << "<SingleServerProvider> Expanding (new batch) " << vertex.getID();
+      << "<SingleServerProvider> Add expansion iterator " << vertex.getID();
 
   // create neighbour provider without using cache because:
   // 1. cache does not make sense when we create a new provider and with it a

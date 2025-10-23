@@ -32,7 +32,7 @@
 #include "Graph/PathManagement/PathValidator.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
-#include "Graph/Queues/NextBatchMarker.h"
+#include "Graph/Queues/ExpansionMarker.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Steps/VertexDescription.h"
 #include "Graph/Types/ValidationResult.h"
@@ -126,11 +126,11 @@ template<class Configuration>
 auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     -> void {
   auto tmp = popFromQueue();
-  if (std::holds_alternative<NextBatch>(tmp)) {
+  if (std::holds_alternative<Expansion>(tmp)) {
     _queue.append(tmp);  // push it back
-    auto posPrevious = std::get<NextBatch>(tmp).from;
+    auto posPrevious = std::get<Expansion>(tmp).from;
     auto& step = _interior.getStepReference(posPrevious);
-    auto stepsAdded = _provider.expandNextBatch(
+    auto stepsAdded = _provider.expandToNextBatch(
         step, posPrevious, [&](Step n) -> void { _queue.append({n}); });
     if (not stepsAdded) {  // means that NextBatch iterator is exhausted
       _queue.pop();        // now we can pop NextBatch item savely
@@ -183,8 +183,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
         TRI_ASSERT(step.edgeFetched());
       }
       if (_queue.isBatched()) {
-        _provider.addNextBatch(
-            step, [&]() -> void { _queue.append({NextBatch{posPrevious}}); });
+        _provider.addExpansionIterator(
+            step, [&]() -> void { _queue.append({Expansion{posPrevious}}); });
       } else {
         _provider.expand(step, posPrevious,
                          [&](Step n) -> void { _queue.append({n}); });

@@ -26,7 +26,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "Graph/Queues/NextBatchMarker.h"
+#include "Graph/Queues/ExpansionMarker.h"
 
 #include <queue>
 #include <variant>
@@ -58,7 +58,7 @@ class BatchedLifoQueue {
         if (std::holds_alternative<Step>(item)) {
           _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
         } else {
-          _resourceMonitor.decreaseMemoryUsage(sizeof(NextBatch));
+          _resourceMonitor.decreaseMemoryUsage(sizeof(Expansion));
         }
       }
       _queue.clear();
@@ -73,7 +73,7 @@ class BatchedLifoQueue {
       _queue.push_front(std::move(step));
       guard.steal();  // now we are responsible for tracking the memory
     } else {
-      arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(NextBatch));
+      arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Expansion));
       // if push_front() throws, no harm is done, and the memory usage increase
       // will be rolled back
       _queue.push_front(std::move(step));
@@ -153,7 +153,7 @@ class BatchedLifoQueue {
     if (std::holds_alternative<Step>(first)) {
       _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     } else {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(NextBatch));
+      _resourceMonitor.decreaseMemoryUsage(sizeof(Expansion));
     }
     _queue.pop_front();
     return first;

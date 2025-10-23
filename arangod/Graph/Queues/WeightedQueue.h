@@ -26,7 +26,7 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"
-#include "Graph/Queues/NextBatchMarker.h"
+#include "Graph/Queues/ExpansionMarker.h"
 
 #include <queue>
 #include <vector>
