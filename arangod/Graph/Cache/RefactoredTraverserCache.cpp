@@ -150,63 +150,6 @@ bool RefactoredTraverserCache::doAppendEdge(
   return res;
 }
 
-bool RefactoredTraverserCache::appendEdgeString(
-    EdgeDocumentToken const& idToken, std::string& result) {
-  return doAppendEdge(
-      idToken, [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
-        // If we want to expose the ID, we need to translate the
-        // custom type Unfortunately we cannot do this in slice only
-        // manner, as there is no complete slice with the _id.
-        result = transaction::helpers::extractIdString(_trx->resolver(), edge,
-                                                       VPackSlice::noneSlice());
-        return true;
-      });
-}
-
-bool RefactoredTraverserCache::appendEdgeOnlyId(
-    EdgeDocumentToken const& idToken, velocypack::Builder& result) {
-  return doAppendEdge(
-      idToken,
-
-      [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
-        result.add(edge.get(StaticStrings::IdString).translate());
-        return true;
-      });
-}
-
-bool RefactoredTraverserCache::appendEdgeDocument(
-    EdgeDocumentToken const& idToken, velocypack::Builder& result) {
-  return doAppendEdge(
-      idToken, [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
-        if (!_edgeProjections.empty()) {
-          VPackObjectBuilder guard(&result);
-          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
-        } else {
-          result.add(edge);
-        }
-        return true;
-      });
-}
-
-bool RefactoredTraverserCache::appendEdgeIdDocument(
-    EdgeDocumentToken const& idToken, velocypack::Builder& result) {
-  return doAppendEdge(
-      idToken, [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
-        TRI_ASSERT(result.isOpenObject());
-        TRI_ASSERT(edge.isObject());
-        // Extract and Translate the _key value
-        result.add(VPackValue(transaction::helpers::extractIdString(
-            _trx->resolver(), edge, VPackSlice::noneSlice())));
-        if (!_edgeProjections.empty()) {
-          VPackObjectBuilder guard(&result);
-          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
-        } else {
-          result.add(edge);
-        }
-        return true;
-      });
-}
-
 bool RefactoredTraverserCache::appendVertex(
     aql::TraversalStats& stats, velocypack::HashedStringRef const& id,
     velocypack::Builder& result) {
@@ -299,22 +242,51 @@ bool RefactoredTraverserCache::appendVertex(
 }
 
 void RefactoredTraverserCache::insertEdgeIntoResult(
-    EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdgeDocument(idToken, builder)) {
-    builder.add(VPackSlice::nullSlice());
+    EdgeDocumentToken const& idToken, VPackBuilder& result) {
+  if (!doAppendEdge(idToken, [&](LocalDocumentId, aql::DocumentData&& data,
+                                 VPackSlice edge) {
+        if (!_edgeProjections.empty()) {
+          VPackObjectBuilder guard(&result);
+          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
+        } else {
+          result.add(edge);
+        }
+        return true;
+      })) {
+    result.add(VPackSlice::nullSlice());
   }
 }
 
 void RefactoredTraverserCache::insertEdgeIdIntoResult(
-    EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdgeOnlyId(idToken, builder)) {
-    builder.add(VPackSlice::nullSlice());
+    EdgeDocumentToken const& idToken, VPackBuilder& result) {
+  if (!doAppendEdge(
+          idToken,
+
+          [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice edge) {
+            result.add(edge.get(StaticStrings::IdString).translate());
+            return true;
+          })) {
+    result.add(VPackSlice::nullSlice());
   }
 }
 
 void RefactoredTraverserCache::insertEdgeIntoLookupMap(
-    EdgeDocumentToken const& idToken, VPackBuilder& builder) {
-  if (!appendEdgeIdDocument(idToken, builder)) {
+    EdgeDocumentToken const& idToken, VPackBuilder& result) {
+  if (!doAppendEdge(idToken, [&](LocalDocumentId, aql::DocumentData&& data,
+                                 VPackSlice edge) {
+        TRI_ASSERT(result.isOpenObject());
+        TRI_ASSERT(edge.isObject());
+        // Extract and Translate the _key value
+        result.add(VPackValue(transaction::helpers::extractIdString(
+            _trx->resolver(), edge, VPackSlice::noneSlice())));
+        if (!_edgeProjections.empty()) {
+          VPackObjectBuilder guard(&result);
+          _edgeProjections.toVelocyPackFromDocument(result, edge, _trx);
+        } else {
+          result.add(edge);
+        }
+        return true;
+      })) {
     // The IDToken has been expanded by an index used on for the edges.
     // The invariant is that an index only delivers existing edges so this
     // case should never happen in production. If it shows up we have
@@ -329,11 +301,19 @@ void RefactoredTraverserCache::insertEdgeIntoLookupMap(
 
 std::string RefactoredTraverserCache::getEdgeId(
     EdgeDocumentToken const& idToken) {
-  std::string res;
-  if (!appendEdgeString(idToken, res)) {
-    res = "null";
+  std::string result;
+  if (!doAppendEdge(idToken, [&](LocalDocumentId, aql::DocumentData&& data,
+                                 VPackSlice edge) {
+        // If we want to expose the ID, we need to translate the
+        // custom type Unfortunately we cannot do this in slice only
+        // manner, as there is no complete slice with the _id.
+        result = transaction::helpers::extractIdString(_trx->resolver(), edge,
+                                                       VPackSlice::noneSlice());
+        return true;
+      })) {
+    result = "null";
   }
-  return res;
+  return result;
 }
 
 void RefactoredTraverserCache::insertVertexIntoResult(

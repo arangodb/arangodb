@@ -134,13 +134,6 @@ class RefactoredTraverserCache {
 
   bool doAppendEdge(EdgeDocumentToken const& idToken,
                     IndexIterator::DocumentCallback const& cb);
-  bool appendEdgeString(EdgeDocumentToken const& idToken, std::string& result);
-  bool appendEdgeOnlyId(EdgeDocumentToken const& idToken,
-                        velocypack::Builder& result);
-  bool appendEdgeIdDocument(EdgeDocumentToken const& idToken,
-                            velocypack::Builder& result);
-  bool appendEdgeDocument(EdgeDocumentToken const& idToken,
-                          velocypack::Builder& result);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
