@@ -51,20 +51,24 @@
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Concept defining requirements for a vector index stored values strategy
+/// @brief Concept defining requirements for a vector index stored values
+/// strategy
 ////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 concept VectorIndexStoredValuesStrategy = requires {
   // Must have a compile-time constant indicating if stored values are present
   { T::hasStoredValues } -> std::convertible_to<bool>;
-} && requires(rocksdb::Slice const& key, rocksdb::Slice const& value, 
-              size_t codeSize, std::vector<uint8_t> const& encodedValue,
-              velocypack::Slice storedValues) {
+}
+&&requires(rocksdb::Slice const& key, rocksdb::Slice const& value,
+           size_t codeSize, std::vector<uint8_t> const& encodedValue,
+           velocypack::Slice storedValues) {
   // Must be able to extract entry from RocksDB key/value
-  { T::extractVectorIndexEntry(key, value, codeSize) };
-  
+  {T::extractVectorIndexEntry(key, value, codeSize)};
+
   // Must be able to build RocksDB value for insertion
-  { T::buildVectorIndexValue(encodedValue, storedValues) } -> std::same_as<RocksDBValue>;
+  {
+    T::buildVectorIndexValue(encodedValue, storedValues)
+    } -> std::same_as<RocksDBValue>;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -75,25 +79,25 @@ concept VectorIndexStoredValuesStrategy = requires {
 ////////////////////////////////////////////////////////////////////////////////
 struct NoStoredValuesStrategy {
   static constexpr bool hasStoredValues = false;
-  
+
   // Extract encoded vector from raw bytes
   // Returns document ID and the encoded vector (moved)
   // Caller manages the vector lifetime and can extract pointer as needed
-  static std::pair<LocalDocumentId, std::vector<uint8_t>> 
-  extractVectorIndexEntry(rocksdb::Slice const& key, rocksdb::Slice const& value,
-                          size_t codeSize) {
+  static std::pair<LocalDocumentId, std::vector<uint8_t>>
+  extractVectorIndexEntry(rocksdb::Slice const& key,
+                          rocksdb::Slice const& value, size_t codeSize) {
     auto const docId = RocksDBKey::indexDocumentId(key);
     std::vector<uint8_t> encodedValue(
         reinterpret_cast<uint8_t const*>(value.data()),
         reinterpret_cast<uint8_t const*>(value.data()) + codeSize);
     return {docId, std::move(encodedValue)};
   }
-  
+
   // Build RocksDB value containing only encoded vector data
   static RocksDBValue buildVectorIndexValue(
       std::vector<uint8_t> const& encodedValue,
       velocypack::Slice /*storedValues*/) {
-    return RocksDBValue::VectorIndexValue(encodedValue.data(), 
+    return RocksDBValue::VectorIndexValue(encodedValue.data(),
                                           encodedValue.size());
   }
 };
@@ -102,22 +106,23 @@ struct NoStoredValuesStrategy {
 /// @brief Strategy for vector indexes WITH stored values
 ///
 /// When stored values are present, the RocksDB value contains a serialized
-/// RocksDBVectorIndexEntryValue with both encoded vector data and stored values.
+/// RocksDBVectorIndexEntryValue with both encoded vector data and stored
+/// values.
 ////////////////////////////////////////////////////////////////////////////////
 struct WithStoredValuesStrategy {
   static constexpr bool hasStoredValues = true;
-  
+
   // Extract full entry containing both encoded vector and stored values
   // Returns document ID and the complete entry (moved)
   // Caller can access entry.encodedValue and entry.storedValues as needed
-  static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue> 
-  extractVectorIndexEntry(rocksdb::Slice const& key, rocksdb::Slice const& value,
-                          size_t /*codeSize*/) {
+  static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
+  extractVectorIndexEntry(rocksdb::Slice const& key,
+                          rocksdb::Slice const& value, size_t /*codeSize*/) {
     auto const docId = RocksDBKey::indexDocumentId(key);
     auto entry = RocksDBValue::vectorIndexEntryValue(value);
     return {docId, std::move(entry)};
   }
-  
+
   // Build RocksDB value containing encoded vector data + stored values
   static RocksDBValue buildVectorIndexValue(
       std::vector<uint8_t> const& encodedValue,
@@ -133,4 +138,3 @@ struct WithStoredValuesStrategy {
 };
 
 }  // namespace arangodb
-
