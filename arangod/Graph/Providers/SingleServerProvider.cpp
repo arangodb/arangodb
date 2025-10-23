@@ -228,8 +228,13 @@ auto SingleServerProvider<Step>::addNextBatch(
   LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding (new batch) " << vertex.getID();
 
+  // create neighbour provider without using cache because:
+  // 1. cache does not make sense when we create a new provider and with it a
+  // new cache for each vertex (what we do here)
+  // 2. cache results currently in a resource manager crash when used with this
+  // stack
   _neighboursStack.emplace_back(_opts, _trx.get(), _monitor,
-                                aql::ExecutionBlock::DefaultBatchSize);
+                                aql::ExecutionBlock::DefaultBatchSize, false);
   auto& last = _neighboursStack.back();
   last.rearm(step, _stats);
   callback();
