@@ -23,7 +23,7 @@ struct VertexLookup {
         _collectionToShardMap(collectionToShardMap),
         _stats(stats),
         _allowImplicitVertexCollections(allowImplicitVertexCollections),
-        _produceVertices(produceVertices) {};
+        _produceVertices(produceVertices){};
   VertexLookup(VertexLookup const&) = delete;
   VertexLookup(VertexLookup&&) = default;
 
