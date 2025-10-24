@@ -1,6 +1,5 @@
 name: arangodb_api_recording_call_time
 type: histogram
-category: Statistics
 help: |
   API recording runtime histogram.
 description: |
@@ -11,7 +10,7 @@ description: |
   with 9 buckets.
 unit: nanoseconds
 introducedIn: "3.12.5"
-category: Agency
+category: Statistics
 complexity: high
 exposedBy:
   - agent

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,8 +24,6 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.hostname': 'delorean',
@@ -33,61 +31,60 @@ if (getOptions === true) {
     'log.ids': 'false',
     'log.role': 'true',
     'log.thread': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
     'log.level': 'debug',
     'log.escape-control-chars': 'false',
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function EscapeControlFalseSuite() {
   'use strict';
 
   return {
     testEscapeControlFalse: function() {
-      const escapeCharsLength = 31;
-      const res = arango.POST("/_admin/execute", `
-        require('console').log("testmann: start");
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
+        const escapeCharsLength = 31;
+        logServer("testmann: start");
         for (let i = 1; i <= 31; ++i) {
-          require('console').log("testmann: testi" + String.fromCharCode(i) + " abc123");
+          logServer("testmann: testi" + String.fromCharCode(i) + " abc123");
         }
-        require('console').log("testmann: done");
-        return require('internal').options()["log.output"];
-     `);
+        logServer("testmann: done", "error"); // error flushes
 
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'ascii');
+          let lines = content.split('\n');
 
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
 
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
+          if (filtered.length === escapeCharsLength + 2) {
+            break;
+          }
 
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === escapeCharsLength + 2) {
-          break;
+          require("internal").sleep(0.5);
         }
+        assertEqual(escapeCharsLength + 2, filtered.length);
 
-        require("internal").sleep(0.5);
-      }
-      assertEqual(escapeCharsLength + 2, filtered.length);
-
-      assertMatch(/testmann: start/, filtered[0]);
-      for (let i = 1; i < escapeCharsLength + 1; ++i) {
-        const msg = filtered[i];
-        assertTrue(msg.endsWith("testmann: testi  abc123"));
-      }
-      assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
-
+        assertMatch(/testmann: start/, filtered[0]);
+        for (let i = 1; i < escapeCharsLength + 1; ++i) {
+          const msg = filtered[i];
+          assertTrue(msg.endsWith("testmann: testi  abc123"));
+        }
+        assertMatch(/testmann: done/, filtered[escapeCharsLength + 1]);
+      });
+      IM.reconnectMe();
     },
 
   };

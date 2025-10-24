@@ -25,6 +25,7 @@
 #include "ClusterMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManagerImpl.h"
 #include "Basics/Exceptions.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/ScopeGuard.h"
@@ -40,8 +41,8 @@
 #include "Cluster/ClusterTrxMethods.h"
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Utilities.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Graph/ClusterGraphDatalake.h"
-#include "Graph/ClusterTraverserCache.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Types.h"
 #include "Network/ClusterUtils.h"
@@ -49,6 +50,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/Version.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/HotBackupCommon.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -100,12 +102,6 @@ using namespace arangodb::futures;
 using namespace arangodb::rest;
 
 using Helper = arangodb::basics::VelocyPackHelper;
-
-namespace {
-std::string const edgeUrl = "/_internal/traverser/edge/";
-std::string const vertexUrl = "/_internal/traverser/vertex/";
-
-}  // namespace
 
 // Timeout for write operations, note that these are used for communication
 // with a shard leader and we always have to assume that some follower has
@@ -1265,7 +1261,16 @@ futures::Future<OperationResult> countOnCoordinator(
     };
     return handleResponsesFromAllShards(options, results, handler, pre, post);
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  auto fut = futures::collectAll(std::move(futures));
+  if (api == transaction::MethodsApi::Synchronous) {
+    // Wait here if the caller is synchronous, because in this case,
+    // skipScheduler is set and we must not execute arbitrary code on the
+    // network thread. Waiting here will ensure that the current thread
+    // continues execution after the following co_await, and not the network
+    // thread resolving the promise.
+    fut.wait();
+  }
+  return std::move(fut).thenValue(std::move(cb));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1642,13 +1647,29 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
                                             res.response().stealPayload(),
                                             std::move(options), {});
       };
+      if (api == transaction::MethodsApi::Synchronous) {
+        // Wait here if the caller is synchronous, because in this case,
+        // skipScheduler is set and we must not execute arbitrary code on the
+        // network thread. Waiting here will ensure that the current thread
+        // continues execution after the following co_await, and not the network
+        // thread resolving the promise.
+        futures[0].wait();
+      }
       return std::move(futures[0]).thenValue(cb);
     }
 
-    return futures::collectAll(std::move(futures))
-        .thenValue([opCtx(std::move(opCtx))](
-                       std::vector<Try<network::Response>>&& results)
-                       -> OperationResult {
+    auto fut = futures::collectAll(std::move(futures));
+    if (api == transaction::MethodsApi::Synchronous) {
+      // Wait here if the caller is synchronous, because in this case,
+      // skipScheduler is set and we must not execute arbitrary code on the
+      // network thread. Waiting here will ensure that the current thread
+      // continues execution after the following co_await, and not the network
+      // thread resolving the promise.
+      fut.wait();
+    }
+    return std::move(fut).thenValue(
+        [opCtx(std::move(opCtx))](
+            std::vector<Try<network::Response>>&& results) -> OperationResult {
           return handleCRUDShardResponsesFast(network::clusterResultInsert,
                                               opCtx, results);
         });
@@ -1781,13 +1802,30 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                                                   res.response().stealPayload(),
                                                   std::move(options), {});
             };
+            if (api == transaction::MethodsApi::Synchronous) {
+              // Wait here if the caller is synchronous, because in this case,
+              // skipScheduler is set and we must not execute arbitrary code on
+              // the network thread. Waiting here will ensure that the current
+              // thread continues execution after the following co_await, and
+              // not the network thread resolving the promise.
+              futures[0].wait();
+            }
             return std::move(futures[0]).thenValue(cb);
           }
 
-          return futures::collectAll(std::move(futures))
-              .thenValue([opCtx = std::move(opCtx)](
-                             std::vector<Try<network::Response>>&& results)
-                             -> OperationResult {
+          auto fut = futures::collectAll(std::move(futures));
+          if (api == transaction::MethodsApi::Synchronous) {
+            // Wait here if the caller is synchronous, because in this case,
+            // skipScheduler is set and we must not execute arbitrary code on
+            // the network thread. Waiting here will ensure that the current
+            // thread continues execution after the following co_await, and not
+            // the network thread resolving the promise.
+            fut.wait();
+          }
+          return std::move(fut).thenValue(
+              [opCtx = std::move(opCtx)](
+                  std::vector<Try<network::Response>>&& results)
+                  -> OperationResult {
                 return handleCRUDShardResponsesFast(
                     network::clusterResultRemove, opCtx, results);
               });
@@ -1839,14 +1877,22 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
               /*cannot move*/ buffer, reqOpts, std::move(headers)));
         }
 
-        return futures::collectAll(std::move(futures))
-            .thenValue(
-                [=](std::vector<Try<network::Response>>&& responses) mutable
-                -> OperationResult {
-                  return ::handleCRUDShardResponsesSlow(
-                      network::clusterResultRemove, expectedLen,
-                      std::move(options), responses);
-                });
+        auto fut = futures::collectAll(std::move(futures));
+        if (api == transaction::MethodsApi::Synchronous) {
+          // Wait here if the caller is synchronous, because in this case,
+          // skipScheduler is set and we must not execute arbitrary code on the
+          // network thread. Waiting here will ensure that the current thread
+          // continues execution after the following co_await, and not the
+          // network thread resolving the promise.
+          fut.wait();
+        }
+        return std::move(fut).thenValue(
+            [=](std::vector<Try<network::Response>>&& responses) mutable
+            -> OperationResult {
+              return ::handleCRUDShardResponsesSlow(
+                  network::clusterResultRemove, expectedLen, std::move(options),
+                  responses);
+            });
       });
 }
 
@@ -1924,7 +1970,16 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
         options, results,
         [](Result&, VPackBuilder&, ShardID const&, VPackSlice) -> void {});
   };
-  return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
+  auto fut = futures::collectAll(std::move(futures));
+  if (api == transaction::MethodsApi::Synchronous) {
+    // Wait here if the caller is synchronous, because in this case,
+    // skipScheduler is set and we must not execute arbitrary code on the
+    // network thread. Waiting here will ensure that the current thread
+    // continues execution after the following co_await, and not the network
+    // thread resolving the promise.
+    fut.wait();
+  }
+  return std::move(fut).thenValue(std::move(cb));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2062,6 +2117,14 @@ Future<OperationResult> getDocumentOnCoordinator(
       // Now compute the result
       if (!useMultiple) {  // single-shard fast track
         TRI_ASSERT(futures.size() == 1);
+        if (api == transaction::MethodsApi::Synchronous) {
+          // Wait here if the caller is synchronous, because in this case,
+          // skipScheduler is set and we must not execute arbitrary code on the
+          // network thread. Waiting here will ensure that the current thread
+          // continues execution after the following co_await, and not the
+          // network thread resolving the promise.
+          futures[0].wait();
+        }
         return std::move(futures[0])
             .thenValue([options](network::Response res) -> OperationResult {
               if (res.error != fuerte::Error::NoError) {
@@ -2074,9 +2137,18 @@ Future<OperationResult> getDocumentOnCoordinator(
             });
       }
 
-      return futures::collectAll(std::move(futures))
-          .thenValue([opCtx = std::move(opCtx)](
-                         std::vector<Try<network::Response>>&& results) {
+      auto fut = futures::collectAll(std::move(futures));
+      if (api == transaction::MethodsApi::Synchronous) {
+        // Wait here if the caller is synchronous, because in this case,
+        // skipScheduler is set and we must not execute arbitrary code on the
+        // network thread. Waiting here will ensure that the current thread
+        // continues execution after the following co_await, and not the network
+        // thread resolving the promise.
+        fut.wait();
+      }
+      return std::move(fut).thenValue(
+          [opCtx = std::move(opCtx)](
+              std::vector<Try<network::Response>>&& results) {
             return handleCRUDShardResponsesFast(network::clusterResultDocument,
                                                 opCtx, results);
           });
@@ -2163,297 +2235,6 @@ Future<OperationResult> getDocumentOnCoordinator(
                                               expectedLen, std::move(options),
                                               responses);
       });
-}
-
-/// @brief fetch edges from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        All non-empty and non-cached results
-///        of DBServers will be inserted in the
-///        datalake. Slices used in the result
-///        point to content inside of this lake
-///        only and do not run out of scope unless
-///        the lake is cleared.
-
-Result fetchEdgesFromEngines(
-    transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
-    arangodb::aql::FixedVarExpressionContext const& expressionContext,
-    std::string_view vertexId, size_t depth, std::vector<VPackSlice>& result) {
-  auto const* engines = travCache.engines();
-  auto& cache = travCache.cache();
-  uint64_t& filtered = travCache.filteredDocuments();
-  uint64_t& read = travCache.insertedDocuments();
-
-  // TODO map id => ServerID if possible
-  // And go fast-path
-  transaction::BuilderLeaser leased(&trx);
-  leased->openObject(true);
-  leased->add("depth", VPackValue(depth));
-  leased->add("keys", VPackValuePair(vertexId.data(), vertexId.length(),
-                                     VPackValueType::String));
-  leased->add(VPackValue("variables"));
-  {
-    leased->openArray();
-    expressionContext.serializeAllVariables(trx.vpackOptions(),
-                                            *(leased.get()));
-    leased->close();
-  }
-  leased->close();
-
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
-
-  std::vector<Future<network::Response>> futures;
-  futures.reserve(engines->size());
-
-  for (auto const& engine : *engines) {
-    futures.emplace_back(network::sendRequestRetry(
-        pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
-  }
-
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.waitAndGet();
-
-    auto res = r.combinedResult();
-    if (res.fail()) {
-      return res;
-    }
-
-    auto payload = r.response().stealPayload();
-    VPackSlice resSlice(payload->data());
-    if (!resSlice.isObject()) {
-      // Response has invalid format
-      return {TRI_ERROR_HTTP_CORRUPTED_JSON,
-              "unexpected response structure for edges response"};
-    }
-
-    filtered += Helper::getNumericValue<size_t>(resSlice, "filtered", 0);
-    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-
-    VPackSlice edges = resSlice.get("edges");
-    bool allCached = true;
-    VPackArrayIterator allEdges(edges);
-    // Reserve additional space for allEdges, they will
-    // all be added within this function, the continue case
-    // is only triggered on invalid network requests (unlikely)
-    result.reserve(allEdges.size() + result.size());
-
-    for (VPackSlice e : allEdges) {
-      VPackSlice id = e.get(StaticStrings::IdString);
-      if (!id.isString()) {
-        // invalid id type
-        LOG_TOPIC("a23b5", ERR, Logger::GRAPHS)
-            << "got invalid edge id type: " << id.typeName();
-        continue;
-      }
-
-      arangodb::velocypack::HashedStringRef idRef(id);
-      auto resE = cache.try_emplace(idRef, e);
-      if (resE.second) {
-        // This edge is not yet cached.
-        allCached = false;
-        result.emplace_back(e);
-      } else {
-        result.emplace_back(resE.first->second);
-      }
-    }
-    if (!allCached) {
-      travCache.datalake().add(std::move(payload));
-    }
-  }
-  return {};
-}
-
-/// @brief fetch edges from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        All non-empty and non-cached results
-///        of DBServers will be inserted in the
-///        datalake. Slices used in the result
-///        point to content inside of this lake
-///        only and do not run out of scope unless
-///        the lake is cleared.
-
-Result fetchEdgesFromEngines(transaction::Methods& trx,
-                             graph::ClusterTraverserCache& travCache,
-                             VPackSlice vertexId, bool backward,
-                             std::vector<VPackSlice>& result, uint64_t& read) {
-  auto const* engines = travCache.engines();
-  auto& cache = travCache.cache();
-  // TODO map id => ServerID if possible
-  // And go fast-path
-
-  // This function works for one specific vertex
-  // or for a list of vertices.
-  TRI_ASSERT(vertexId.isString() || vertexId.isArray());
-  transaction::BuilderLeaser leased(&trx);
-  leased->openObject(true);
-  leased->add("backward", VPackValue(backward));
-  leased->add("keys", vertexId);
-  leased->close();
-
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
-
-  std::vector<Future<network::Response>> futures;
-  futures.reserve(engines->size());
-
-  for (auto const& engine : *engines) {
-    futures.emplace_back(network::sendRequestRetry(
-        pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
-  }
-
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.waitAndGet();
-
-    auto res = r.combinedResult();
-    if (res.fail()) {
-      return res;
-    }
-
-    auto payload = r.response().stealPayload();
-    VPackSlice resSlice(payload->data());
-    if (!resSlice.isObject()) {
-      // Response has invalid format
-      return {TRI_ERROR_HTTP_CORRUPTED_JSON,
-              "invalid response structure for edges response"};
-    }
-    read += Helper::getNumericValue<size_t>(resSlice, "readIndex", 0);
-
-    bool allCached = true;
-    VPackSlice edges = resSlice.get("edges");
-    for (VPackSlice e : VPackArrayIterator(edges)) {
-      VPackSlice id = e.get(StaticStrings::IdString);
-      if (!id.isString()) {
-        // invalid id type
-        LOG_TOPIC("da49d", ERR, Logger::GRAPHS)
-            << "got invalid edge id type: " << id.typeName();
-        continue;
-      }
-
-      if (result.capacity() == 0) {
-        result.reserve(16);
-      }
-
-      arangodb::velocypack::HashedStringRef idRef(id);
-      auto resE = cache.try_emplace(idRef, e);
-      if (resE.second) {
-        // This edge is not yet cached.
-        allCached = false;
-        result.emplace_back(e);
-      } else {
-        result.emplace_back(resE.first->second);
-      }
-    }
-    if (!allCached) {
-      travCache.datalake().add(std::move(payload));
-    }
-  }
-  return {};
-}
-
-/// @brief fetch vertices from TraverserEngines
-///        Contacts all TraverserEngines placed
-///        on the DBServers for the given list
-///        of vertex _id's.
-///        If any server responds with a document
-///        it will be inserted into the result.
-///        If no server responds with a document
-///        a 'null' will be inserted into the result.
-
-void fetchVerticesFromEngines(
-    transaction::Methods& trx, graph::ClusterTraverserCache& travCache,
-    std::unordered_set<arangodb::velocypack::HashedStringRef>& vertexIds,
-    std::unordered_map<arangodb::velocypack::HashedStringRef, VPackSlice>&
-        result,
-    bool forShortestPath) {
-  auto const* engines = travCache.engines();
-
-  // TODO map id => ServerID if possible
-  // And go fast-path
-
-  // slow path, sharding not deducable from _id
-  transaction::BuilderLeaser leased(&trx);
-  leased->openObject();
-  leased->add("keys", VPackValue(VPackValueType::Array));
-  for (auto const& v : vertexIds) {
-    leased->add(VPackValuePair(v.data(), v.length(), VPackValueType::String));
-  }
-  leased->close();  // 'keys' Array
-  leased->close();  // base object
-
-  auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-
-  network::RequestOptions reqOpts;
-  reqOpts.database = trx.vocbase().name();
-  reqOpts.skipScheduler = true;  // hack to avoid scheduler queue
-
-  std::vector<Future<network::Response>> futures;
-  futures.reserve(engines->size());
-
-  for (auto const& engine : *engines) {
-    futures.emplace_back(network::sendRequestRetry(
-        pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        absl::StrCat(::vertexUrl, engine.second), leased->bufferRef(),
-        reqOpts));
-  }
-
-  for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.waitAndGet();
-
-    auto res = r.combinedResult();
-    if (res.fail()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    auto payload = r.response().stealPayload();
-    VPackSlice resSlice(payload->data());
-    if (!resSlice.isObject()) {
-      // Response has invalid format
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_CORRUPTED_JSON,
-          "invalid response structure for vertices response");
-    }
-    bool cached = false;
-    for (auto pair : VPackObjectIterator(resSlice, /*sequential*/ true)) {
-      arangodb::velocypack::HashedStringRef key(pair.key);
-      if (ADB_UNLIKELY(vertexIds.erase(key) == 0)) {
-        // This case is unlikely and can only happen for
-        // Satellite Vertex collections. There it is expected.
-        // If we fix above todo (fast-path) this case should
-        // be impossible.
-        TRI_ASSERT(result.find(key) != result.end());
-        TRI_ASSERT(VelocyPackHelper::equal(result.find(key)->second, pair.value,
-                                           true));
-      } else {
-        TRI_ASSERT(result.find(key) == result.end());
-        if (!cached) {
-          travCache.datalake().add(std::move(payload));
-          cached = true;
-        }
-        // Protected by datalake
-        result.try_emplace(key, pair.value);
-      }
-    }
-  }
-
-  if (!forShortestPath) {
-    // Fill everything we did not find with NULL
-    for (auto const& v : vertexIds) {
-      result.try_emplace(v, VPackSlice::nullSlice());
-    }
-    vertexIds.clear();
-  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2647,13 +2428,30 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
                                               res.response().stealPayload(),
                                               std::move(options), {});
         };
+        if (api == transaction::MethodsApi::Synchronous) {
+          // Wait here if the caller is synchronous, because in this case,
+          // skipScheduler is set and we must not execute arbitrary code on the
+          // network thread. Waiting here will ensure that the current thread
+          // continues execution after the following co_await, and not the
+          // network thread resolving the promise.
+          futures[0].wait();
+        }
         return std::move(futures[0]).thenValue(cb);
       }
 
-      return futures::collectAll(std::move(futures))
-          .thenValue([opCtx = std::move(opCtx)](
-                         std::vector<Try<network::Response>>&& results)
-                         -> OperationResult {
+      auto fut = futures::collectAll(std::move(futures));
+      if (api == transaction::MethodsApi::Synchronous) {
+        // Wait here if the caller is synchronous, because in this case,
+        // skipScheduler is set and we must not execute arbitrary code on the
+        // network thread. Waiting here will ensure that the current thread
+        // continues execution after the following co_await, and not the network
+        // thread resolving the promise.
+        fut.wait();
+      }
+      return std::move(fut).thenValue(
+          [opCtx =
+               std::move(opCtx)](std::vector<Try<network::Response>>&& results)
+              -> OperationResult {
             return handleCRUDShardResponsesFast(network::clusterResultModify,
                                                 opCtx, results);
           });
@@ -2668,48 +2466,58 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     f = ::beginTransactionOnAllLeaders(trx, *shardIds, api);
   }
 
-  return std::move(f).thenValue([=, &trx](Result&&) mutable
-                                -> Future<OperationResult> {
-    auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
-    std::vector<Future<network::Response>> futures;
-    futures.reserve(shardIds->size());
+  return std::move(f).thenValue(
+      [=, &trx](Result&&) mutable -> Future<OperationResult> {
+        auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
+        std::vector<Future<network::Response>> futures;
+        futures.reserve(shardIds->size());
 
-    size_t expectedLen = useMultiple ? slice.length() : 0;
-    VPackBuffer<uint8_t> buffer;
-    buffer.append(slice.begin(), slice.byteSize());
+        size_t expectedLen = useMultiple ? slice.length() : 0;
+        VPackBuffer<uint8_t> buffer;
+        buffer.append(slice.begin(), slice.byteSize());
 
-    for (auto const& shardServers : *shardIds) {
-      ShardID const& shard = shardServers.first;
-      network::Headers headers;
-      // Just make sure that no dirty read flag makes it here, since we
-      // are writing and then `addTransactionHeaderForShard` might
-      // misbehave!
-      TRI_ASSERT(!trx.state()->options().allowDirtyReads);
-      addTransactionHeaderForShard(trx, *shardIds, shard, headers);
+        for (auto const& shardServers : *shardIds) {
+          ShardID const& shard = shardServers.first;
+          network::Headers headers;
+          // Just make sure that no dirty read flag makes it here, since we
+          // are writing and then `addTransactionHeaderForShard` might
+          // misbehave!
+          TRI_ASSERT(!trx.state()->options().allowDirtyReads);
+          addTransactionHeaderForShard(trx, *shardIds, shard, headers);
 
-      std::string url;
-      if (!useMultiple) {
-        // send to single document API
-        std::string_view key(slice.get(StaticStrings::KeyString).stringView());
-        url = absl::StrCat("/_api/document/", std::string{shard}, "/",
-                           StringUtils::urlEncode(key.data(), key.size()));
-      } else {
-        // send to batch API
-        url = absl::StrCat("/_api/document/", std::string{shard});
-      }
-      futures.emplace_back(network::sendRequestRetry(
-          pool, "shard:" + shard, restVerb, std::move(url),
-          /*cannot move*/ buffer, reqOpts, std::move(headers)));
-    }
+          std::string url;
+          if (!useMultiple) {
+            // send to single document API
+            std::string_view key(
+                slice.get(StaticStrings::KeyString).stringView());
+            url = absl::StrCat("/_api/document/", std::string{shard}, "/",
+                               StringUtils::urlEncode(key.data(), key.size()));
+          } else {
+            // send to batch API
+            url = absl::StrCat("/_api/document/", std::string{shard});
+          }
+          futures.emplace_back(network::sendRequestRetry(
+              pool, "shard:" + shard, restVerb, std::move(url),
+              /*cannot move*/ buffer, reqOpts, std::move(headers)));
+        }
 
-    return futures::collectAll(std::move(futures))
-        .thenValue([=](std::vector<Try<network::Response>>&& responses) mutable
-                   -> OperationResult {
-          return ::handleCRUDShardResponsesSlow(network::clusterResultModify,
-                                                expectedLen, std::move(options),
-                                                responses);
-        });
-  });
+        auto fut = futures::collectAll(std::move(futures));
+        if (api == transaction::MethodsApi::Synchronous) {
+          // Wait here if the caller is synchronous, because in this case,
+          // skipScheduler is set and we must not execute arbitrary code on the
+          // network thread. Waiting here will ensure that the current thread
+          // continues execution after the following co_await, and not the
+          // network thread resolving the promise.
+          fut.wait();
+        }
+        return std::move(fut).thenValue(
+            [=](std::vector<Try<network::Response>>&& responses) mutable
+            -> OperationResult {
+              return ::handleCRUDShardResponsesSlow(
+                  network::clusterResultModify, expectedLen, std::move(options),
+                  responses);
+            });
+      });
 }
 
 /// @brief flush WAL on all DBservers
@@ -3534,6 +3342,17 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
 
   // and Wait for Shards to decide on a leader
   ci.syncWaitForAllShardsToEstablishALeader();
+
+  // After we restored the _users collection we want to trigger a global reload
+  // to trigger a cache reload in the whole Cluster.
+  auto* authFeature = AuthenticationFeature::instance();
+  if (authFeature != nullptr && authFeature->userManager() != nullptr) {
+    authFeature->userManager()->triggerCacheRevalidation();
+  } else {
+    // We apparently do not have Authentication on this server, but we still
+    // should increase the UserVersion to be consistent.
+    auth::UserManagerImpl::triggerGlobalReload(authFeature->server());
+  }
 
   {
     VPackObjectBuilder o(&report);

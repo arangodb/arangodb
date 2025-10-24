@@ -27,7 +27,6 @@
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
@@ -127,7 +126,7 @@ bool ExecContext::canUseDatabase(std::string const& db,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to find userManager instance");
     }
-    auth::Level allowed = um->databaseAuthLevel(_user, db);
+    auth::Level allowed = um->databaseAuthLevel(_user, db, false);
     return requested <= allowed;
   }
   return true;
@@ -172,7 +171,7 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "unable to find userManager instance");
   }
-  return um->collectionAuthLevel(_user, dbname, coll);
+  return um->collectionAuthLevel(_user, dbname, coll, false);
 }
 
 ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)

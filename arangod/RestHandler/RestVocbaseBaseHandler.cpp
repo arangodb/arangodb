@@ -140,28 +140,19 @@ std::string const RestVocbaseBaseHandler::VIEW_PATH = "/_api/view";
 std::string const RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH =
     "/_internal/traverser";
 
+std::string const RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/edge/";
+
+std::string const RestVocbaseBaseHandler::TRAVERSER_PATH_VERTEX =
+    RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH + "/vertex/";
+
 RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response),
       _context(static_cast<VocbaseContext&>(*request->requestContext())),
-      _vocbase(_context.vocbase()),
-      _scopeVocbaseValues(
-          LogContext::makeValue()
-              .with<structuredParams::DatabaseName>(_vocbase.name())
-              .share()) {
+      _vocbase(_context.vocbase()) {
   TRI_ASSERT(request->requestContext());
-}
-
-void RestVocbaseBaseHandler::prepareExecute(bool isContinue) {
-  RestHandler::prepareExecute(isContinue);
-  _logContextVocbaseEntry =
-      LogContext::Current::pushValues(_scopeVocbaseValues);
-}
-
-void RestVocbaseBaseHandler::shutdownExecute(bool isFinalized) noexcept {
-  LogContext::Current::popEntry(_logContextVocbaseEntry);
-  RestHandler::shutdownExecute(isFinalized);
 }
 
 RestVocbaseBaseHandler::~RestVocbaseBaseHandler() = default;

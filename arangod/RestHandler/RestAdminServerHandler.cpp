@@ -318,7 +318,7 @@ void RestAdminServerHandler::handleApiCalls() {
   // Check if recording API is enabled
   if (!apiRecordingFeature.isAPIEnabled()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "recording API is disabled");
+                  "The recording API has been disabled");
     return;
   }
 
@@ -326,13 +326,13 @@ void RestAdminServerHandler::handleApiCalls() {
   if (apiRecordingFeature.onlySuperUser()) {
     if (!ExecContext::current().isSuperuser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need super user rights for recording API operations");
+                    "You need super user rights for recording API operations");
       return;
     }
   } else {
     if (!ExecContext::current().isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                    "you need admin rights for recording API operations");
+                    "You need admin rights for recording API operations");
       return;
     }
   }
@@ -364,7 +364,7 @@ void RestAdminServerHandler::handleAqlRecordedQueries() {
       !ServerState::instance()->isSingleServer()) {
     generateError(
         Result(TRI_ERROR_NOT_IMPLEMENTED,
-               "API only available on coordinators and single servers"));
+               "API only available on Coordinators and single servers"));
     return;
   }
 

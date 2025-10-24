@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango, assertEqual, assertMatch */
+/* global GLOBAL, print, getOptions, assertTrue, arango, assertEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -24,17 +24,9 @@
 /// @author Julia Puget
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-const db = require('internal').db;
-const getCoordinatorEndpoints = require('@arangodb/test-helper').getCoordinatorEndpoints;
-const cn = "testCollection";
-const dbName = "maçã";
-const originalEndpoint = arango.getEndpoint();
-
 if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.prefix': 'PREFIX',
     'log.thread': 'true',
     'log.thread-name': 'true',
@@ -52,7 +44,14 @@ if (getOptions === true) {
 }
 
 
+const fs = require('fs');
+const db = require('internal').db;
 const jsunity = require('jsunity');
+const inst = require('@arangodb/testutils/instance');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
+const cn = "testCollection";
+const dbName = "maçã";
 
 function LoggerSuite() {
   'use strict';
@@ -60,6 +59,7 @@ function LoggerSuite() {
   return {
 
     setUp: function() {
+      IM.rememberConnection();
       db._useDatabase("_system");
       db._createDatabase(dbName);
       db._useDatabase(dbName);
@@ -69,34 +69,28 @@ function LoggerSuite() {
     },
 
     tearDown: function() {
+      IM.reconnectMe();
       db._useDatabase("_system");
       db._dropDatabase(dbName);
-      arango.reconnect(originalEndpoint, db._name(), "root", "");
     },
 
     testLogClusterInfoInFile: function() {
-      let coordinatorEndpoint = getCoordinatorEndpoints()[0];
-      arango.reconnect(coordinatorEndpoint, db._name(), "root", "");
+      let coordinator = IM.arangods.filter(arangod => {return arangod.isFrontend();})[0];
 
-      let res1 = arango.GET("/_api/cluster/cluster-info?returnBodyAsJSON=true");
+      coordinator.connect();
+      db._useDatabase(dbName);
 
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-        require('console').log("testmann: start"); 
-        require('console').log("testmann: testi" + '${JSON.stringify(res1)}');
-        require('console').log("testmann: done"); 
-        return require('internal').options()["log.output"];
-    `);
+      let res1 = arango.GET("/_api/cluster/cluster-info");
 
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
-
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
+      logServer("testmann: start"); 
+      logServer("testmann: testi" + `${JSON.stringify(res1)}`);
+      logServer("testmann: done", "error");
 
       // log is buffered, so give it a few tries until the log messages appear
       let tries = 0;
       let filtered = [];
       while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
+        let content = fs.readFileSync(coordinator.logFile, 'ascii');
         let lines = content.split('\n');
 
         filtered = lines.filter((line) => {
@@ -110,7 +104,6 @@ function LoggerSuite() {
         require("internal").sleep(0.5);
       }
       assertEqual(3, filtered.length);
-
       assertMatch(/testmann: start/, filtered[0]);
       const parsedRes = JSON.parse(filtered[1]);
       const parsedMsg = JSON.parse(parsedRes.message.substring(parsedRes.message.indexOf("{")));

@@ -44,19 +44,6 @@ SmartContext::SmartContext(TRI_vocbase_t& vocbase, TransactionId globalId,
 
 SmartContext::~SmartContext() = default;
 
-/// @brief order a custom type handler for the collection
-velocypack::CustomTypeHandler*
-transaction::SmartContext::orderCustomTypeHandler() {
-  if (_customTypeHandler == nullptr) {
-    _customTypeHandler =
-        transaction::Context::createCustomTypeHandler(_vocbase, resolver());
-    _options.customTypeHandler = _customTypeHandler.get();
-  }
-
-  TRI_ASSERT(_customTypeHandler != nullptr);
-  return _customTypeHandler.get();
-}
-
 TransactionId transaction::SmartContext::generateId() const {
   return _globalId;
 }

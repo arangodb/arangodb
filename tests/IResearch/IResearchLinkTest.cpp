@@ -2269,19 +2269,22 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     return metric != nullptr;
   }
 
-  void setLink() {
-    auto temp =
-        fmt::format(R"({{
+  void setLink(bool withSegmentsMin1 = false) {
+    auto temp = fmt::format(
+        R"({{
       "id": 42,
       "name": "testView",
       "cleanupIntervalStep": {},
       "commitIntervalMsec": {},
       "consolidationIntervalMsec": {},
-      "type": "arangosearch"
+      "type": "arangosearch" {}
     }})",
-                    static_cast<long long unsigned>(_cleanupIntervalStep),
-                    static_cast<long long unsigned>(_commitIntervalMs),
-                    static_cast<long long unsigned>(_consolidationIntervalMs));
+        static_cast<long long unsigned>(_cleanupIntervalStep),
+        static_cast<long long unsigned>(_commitIntervalMs),
+        static_cast<long long unsigned>(_consolidationIntervalMs),
+        withSegmentsMin1
+            ? R"(, "consolidationPolicy": {"type":"tier","segmentsMin":1})"
+            : "");
     auto viewJson = arangodb::velocypack::Parser::fromJson(temp);
 
     _view = std::dynamic_pointer_cast<arangodb::iresearch::IResearchView>(
@@ -2455,7 +2458,7 @@ TEST_F(IResearchLinkMetricsTest, TimeCommit) {
 TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
   _cleanupIntervalStep = 1;
   _consolidationIntervalMs = 300;
-  setLink();
+  setLink(true);
   auto* l = getLink();
   {
     insert(1, 100000, 0);

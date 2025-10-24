@@ -177,7 +177,9 @@ You can adjust the parameter settings at runtime using the
       ->addOption("--log.output,-o",
                   "Log destination(s), e.g. "
                   "file:///path/to/file"
-                  " (any occurrence of $PID is replaced with the process ID).",
+                  " (any literal occurrence of $PID and @PID@ is replaced with "
+                  "the process ID, and @TEMP_BASE_DIR@ with the path of the "
+                  "current temporary directory).",
                   new VectorParameter<StringParameter>(&_output))
       .setLongDescription(R"(This option allows you to direct the global or
 per-topic log messages to different outputs. The output definition can be one
@@ -205,13 +207,27 @@ for different log topics:
 The above example logs all query-related messages to the file `queries.log`
 and HTTP requests with a level of `info` or higher to the file `requests.log`.
 
-Any occurrence of `$PID` in the log output value is replaced at runtime with
-the actual process ID. This enables logging to process-specific files:
+For file-based logging, the folders of the destination path need to exist
+already. They are not created implicitly.
+
+Any occurrence of `$PID` and `@PID` in the log output value is replaced at
+runtime with the actual process ID. This enables logging to process-specific
+files:
 
 `--log.output 'file://arangod.log.$PID'`
 
-Note that dollar sign may need extra escaping when specified on a
-command-line such as Bash.
+Note that the dollar sign may need extra escaping when specified on a
+command-line such as Bash. You can typically wrap the entire value in single
+quote marks to prevent variable substitution.
+
+Any occurrence of `@TEMP_BASE_DIR@` in the log output value is replaced at
+runtime with the current temporary directory, e.g. `/tmp/arangodb_i37Xxh`
+(automatically created on startup with a randomly generated suffix).
+
+Keep in mind that `@NAME@` is also the syntax for using the value of an
+environment variable `NAME`. If there is an environment variable called `PID` or
+`TEMP_BASE_DIR`, then `@PID@` or `@TEMP_BASE_DIR@` is substituted with the
+value of the respective environment variable.
 
 If you specify `--log.file-mode <octalvalue>`, then any newly created log
 file uses `octalvalue` as file mode. Please note that the `umask` value is
@@ -394,7 +410,7 @@ contains a single character with the server's role. The roles are:
     options
         ->addOption("--log.api-enabled",
                     "Whether the log API is enabled (true) or not (false), or "
-                    "only enabled for superuser JWT (jwt).",
+                    "only enabled for the superuser (jwt).",
                     new StringParameter(&_apiSwitch))
         .setLongDescription(R"(Credentials are not written to log files.
 Nevertheless, some logged data might be sensitive depending on the context of
@@ -404,14 +420,12 @@ with log files is recommended.
 
 Since the database server offers an API to control logging and query logging
 data, this API has to be secured properly. By default, the API is accessible
-for admin users (administrative access to the `_system` database). However,
-you can lock this down further.
-
-The possible values for this option are:
+for admin users (administrative access to the `_system` database).
+However, you can restrict it further to the superuser or disable it altogether:
 
  - `true`: The `/_admin/log` API is accessible for admin users.
  - `jwt`: The `/_admin/log` API is accessible for the superuser only
-   (authentication with JWT token and empty username).
+   (authentication with JWT superuser token and empty username).
  - `false`: The `/_admin/log` API is not accessible at all.)");
   }
 

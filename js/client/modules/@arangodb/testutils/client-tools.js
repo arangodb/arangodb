@@ -316,10 +316,14 @@ function makeArgsArangosh (options) {
     'configuration': fs.join(pu.CONFIG_DIR, 'arangosh.conf'),
     'javascript.startup-directory': pu.JS_DIR,
     'javascript.module-directory': pu.JS_ENTERPRISE_DIR,
-    'server.username': options.username,
-    'server.password': options.password,
     'flatCommands': ['--console.colors', 'false', '--quiet']
   };
+  if (options.hasOwnProperty('username')) {
+    args['server.username'] = options.username;
+  }
+  if (options.hasOwnProperty('password')) {
+    args['server.password'] = options.password;
+  }
 
   if (options.forceNoCompress) {
     args['compress-transfer'] = false;
@@ -620,7 +624,7 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
   }
 
   let ret = pu.executeAndWait(config.getExe(), config.toArgv(), options, pu.ARANGORESTORE_BIN, rootDir, coreCheck);
-  ret.message += `\nContents of log file ${config['log.file']}:\n` + config.getLogFile();
+  ret.message += `\nContents of log file ${config.config['log.file']}:\n` + config.getLogFile();
   return ret;
 }
 

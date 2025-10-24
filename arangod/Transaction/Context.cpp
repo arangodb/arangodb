@@ -68,9 +68,12 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 transaction::Context::Context(TRI_vocbase_t& vocbase,
                               OperationOrigin operationOrigin)
     : _vocbase(vocbase),
-      _customTypeHandler(),
+      _resolver(std::make_unique<CollectionNameResolver>(_vocbase)),
+      _customTypeHandler(createCustomTypeHandler(_vocbase, *_resolver)),
       _options(velocypack::Options::Defaults),
-      _operationOrigin(operationOrigin) {}
+      _operationOrigin(operationOrigin) {
+  _options.customTypeHandler = _customTypeHandler.get();
+}
 
 /// @brief destroy the context
 transaction::Context::~Context() {
@@ -162,20 +165,19 @@ void transaction::Context::returnBuilder(VPackBuilder* builder) noexcept {
 }
 
 /// @brief get velocypack options with a custom type handler
-VPackOptions* transaction::Context::getVPackOptions() {
-  if (_customTypeHandler == nullptr) {
-    // this modifies options!
-    orderCustomTypeHandler();
-  }
-
+VPackOptions const* transaction::Context::getVPackOptions() const noexcept {
   return &_options;
 }
 
+velocypack::CustomTypeHandler* transaction::Context::getCustomTypeHandler()
+    const noexcept {
+  TRI_ASSERT(_customTypeHandler != nullptr);
+  return _customTypeHandler.get();
+}
+
 /// @brief create a resolver
-CollectionNameResolver const& transaction::Context::resolver() {
-  if (_resolver == nullptr) {
-    _resolver = std::make_unique<CollectionNameResolver>(_vocbase);
-  }
+CollectionNameResolver const& transaction::Context::resolver() const noexcept {
+  TRI_ASSERT(_resolver != nullptr);
   return *_resolver;
 }
 

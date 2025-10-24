@@ -26,7 +26,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlExecuteResult.h"
-#include "Aql/BlocksWithClients.h"
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
@@ -34,6 +33,7 @@
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
+#include "Async/async.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -41,7 +41,6 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "GeneralServer/RestHandler.h"
@@ -66,12 +65,6 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
       _queryRegistry(qr),
       _engine(nullptr) {
   TRI_ASSERT(_queryRegistry != nullptr);
-}
-
-RestAqlHandler::~RestAqlHandler() {
-  if (_logContextQueryIdEntry) {
-    LogContext::Current::popEntry(_logContextQueryIdEntry);
-  }
 }
 
 // POST method for /_api/aql/setup (internal)
@@ -154,13 +147,10 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     TRI_ASSERT(clusterQueryId > 0);
   }
 
-  TRI_ASSERT(_logContextQueryIdValue == nullptr);
-  _logContextQueryIdValue = LogContext::makeValue()
-                                .with<structuredParams::QueryId>(clusterQueryId)
-                                .share();
-  TRI_ASSERT(_logContextQueryIdEntry == nullptr);
-  _logContextQueryIdEntry =
-      LogContext::Current::pushValues(_logContextQueryIdValue);
+  auto queryIdValue = LogContext::makeValue()
+                          .with<structuredParams::QueryId>(clusterQueryId)
+                          .share();
+  auto const logContextScopeGuard = ScopedValue{std::move(queryIdValue)};
 
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
 
@@ -361,10 +351,10 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     generateError(revisionRes);
     co_return;
   }
-  q->prepareFromVelocyPack(querySlice, collectionBuilder.slice(),
-                           variablesSlice, snippetsSlice, traverserSlice,
-                           _request->value(StaticStrings::UserString),
-                           answerBuilder, analyzersRevision, fastPath);
+  co_await q->prepareFromVelocyPack(
+      querySlice, collectionBuilder.slice(), variablesSlice, snippetsSlice,
+      traverserSlice, _request->value(StaticStrings::UserString), answerBuilder,
+      analyzersRevision, fastPath);
 
   answerBuilder.close();  // result
   answerBuilder.close();
@@ -405,38 +395,29 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
 
 // PUT method for /_api/aql/<operation>/<queryId>, (internal)
 // see comment in header for details
-RestStatus RestAqlHandler::useQuery(std::string const& operation,
-                                    std::string const& idString) {
+auto RestAqlHandler::useQuery(std::string const& operation,
+                              std::string const& idString) -> async<void> {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
-    return RestStatus::DONE;
+    co_return;
   }
 
-  if (_logContextQueryIdValue == nullptr) {
-    _logContextQueryIdValue = LogContext::makeValue()
-                                  .with<structuredParams::QueryId>(idString)
-                                  .share();
-    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
-    _logContextQueryIdEntry =
-        LogContext::Current::pushValues(_logContextQueryIdValue);
-  }
+  auto queryIdValue =
+      LogContext::makeValue().with<structuredParams::QueryId>(idString).share();
+  auto const logContextScopeGuard = ScopedValue{std::move(queryIdValue)};
 
   if (!_engine) {  // the PUT verb
     TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE ||
                this->state() == RestHandler::HandlerState::CONTINUED);
 
-    auto res = findEngine(idString);
+    auto res = co_await findEngine(idString);
+    TRI_ASSERT(!res.is(TRI_ERROR_LOCKED));
     if (res.fail()) {
-      if (res.is(TRI_ERROR_LOCKED)) {
-        // engine is still in use, but we have enqueued a callback to be woken
-        // up once it is free again
-        return RestStatus::WAITING;
-      }
       TRI_ASSERT(res.is(TRI_ERROR_QUERY_NOT_FOUND));
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
                     absl::StrCat("query ID ", idString, " not found"));
-      return RestStatus::DONE;
+      co_return;
     }
     std::shared_ptr<SharedQueryState> ss = _engine->sharedState();
     ss->setWakeupHandler(withLogContext(
@@ -445,7 +426,6 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
   TRI_ASSERT(_engine != nullptr);
   TRI_ASSERT(std::to_string(_engine->engineId()) == idString);
-  auto guard = _engine->getQuery().acquireLockGuard();
 
   if (_engine->getQuery().queryOptions().profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("1bf67", INFO, Logger::QUERIES)
@@ -455,7 +435,7 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   }
 
   try {
-    return handleUseQuery(operation, querySlice);
+    co_await handleUseQuery(operation, querySlice);
   } catch (arangodb::basics::Exception const& ex) {
     generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), ex.what());
   } catch (std::exception const& ex) {
@@ -471,26 +451,15 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR,
                   "an unknown exception occurred");
   }
-
-  return RestStatus::DONE;
-}
-
-void RestAqlHandler::prepareExecute(bool isContinue) {
-  RestVocbaseBaseHandler::prepareExecute(isContinue);
-  if (_logContextQueryIdValue != nullptr) {
-    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
-    _logContextQueryIdEntry =
-        LogContext::Current::pushValues(_logContextQueryIdValue);
-  }
 }
 
 // executes the handler
-RestStatus RestAqlHandler::execute() {
+auto RestAqlHandler::executeAsync() -> futures::Future<futures::Unit> {
   if (ServerState::instance()->isSingleServer()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_HTTP_NOT_IMPLEMENTED,
                   "this endpoint is only available in clusters");
-    return RestStatus::DONE;
+    co_return;
   }
 
   std::vector<std::string> const& suffixes = _request->suffixes();
@@ -504,7 +473,8 @@ RestStatus RestAqlHandler::execute() {
       if (suffixes.size() != 1) {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       } else if (suffixes[0] == "setup") {
-        return waitForFuture(setupClusterQuery());
+        co_await setupClusterQuery();
+        co_return;
       } else {
         auto msg = absl::StrCat("Unknown POST API: ",
                                 basics::StringUtils::join(suffixes, '/'));
@@ -522,10 +492,7 @@ RestStatus RestAqlHandler::execute() {
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
       } else {
-        auto status = useQuery(suffixes[0], suffixes[1]);
-        if (status == RestStatus::WAITING) {
-          return status;
-        }
+        co_await useQuery(suffixes[0], suffixes[1]);
       }
       break;
     }
@@ -536,10 +503,10 @@ RestStatus RestAqlHandler::execute() {
         LOG_TOPIC("f1993", ERR, arangodb::Logger::AQL) << msg;
         generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND,
                       std::move(msg));
-        return RestStatus::DONE;
+        co_return;
       }
       if (suffixes[0] == "finish") {
-        return handleFinishQuery(suffixes[1]);
+        co_return co_await handleFinishQuery(suffixes[1]);
       }
 
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND,
@@ -554,39 +521,7 @@ RestStatus RestAqlHandler::execute() {
     }
   }
 
-  return RestStatus::DONE;
-}
-
-RestStatus RestAqlHandler::continueExecute() {
-  std::vector<std::string> const& suffixes = _request->suffixes();
-
-  // extract the sub-request type
-  rest::RequestType type = _request->requestType();
-
-  if (type == rest::RequestType::POST) {
-    // we can get here when the future produced in setupClusterQuery()
-    // completes. in this case we can simply declare success
-    TRI_ASSERT(suffixes.size() == 1 && suffixes[0] == "setup");
-    return RestStatus::DONE;
-  }
-  if (type == rest::RequestType::PUT) {
-    TRI_ASSERT(suffixes.size() == 2);
-    return useQuery(suffixes[0], suffixes[1]);
-  }
-  if (type == rest::RequestType::DELETE_REQ) {
-    // we can get here when the future produced in handleFinishQuery()
-    // completes. in this case we can simply declare success
-    TRI_ASSERT(suffixes.size() == 2 && suffixes[0] == "finish");
-    return RestStatus::DONE;
-  }
-
-  generateError(
-      rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-      absl::StrCat("continued non-continuable method for ",
-                   GeneralRequest::translateMethod(type), " /_api/aql/",
-                   basics::StringUtils::join(suffixes, "/")));
-
-  return RestStatus::DONE;
+  co_return;
 }
 
 void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
@@ -607,14 +542,11 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
         << "Ignoring exception during rest handler shutdown: " << ex.what();
   }
 
-  if (_logContextQueryIdEntry) {
-    LogContext::Current::popEntry(_logContextQueryIdEntry);
-  }
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
 // dig out the query from ID, handle errors
-Result RestAqlHandler::findEngine(std::string const& idString) {
+auto RestAqlHandler::findEngine(std::string const& idString) -> async<Result> {
   TRI_ASSERT(_engine == nullptr);
   uint64_t qId = arangodb::basics::StringUtils::uint64(idString);
 
@@ -670,16 +602,26 @@ Result RestAqlHandler::findEngine(std::string const& idString) {
       // Here Engine could be gone
     }
   }
-  auto res = _queryRegistry->openExecutionEngine(
-      qId, [self = shared_from_this()]() { self->wakeupHandler(); });
+
+  auto res = co_await waitingFunToCoro([&] {
+    auto res = _queryRegistry->openExecutionEngine(
+        qId, [self = shared_from_this()]() { self->wakeupHandler(); });
+    if (res.is(TRI_ERROR_LOCKED)) {
+      // engine is still in use, but we have enqueued a callback to be woken
+      // up once it is free again
+      return std::optional<decltype(res)>{std::nullopt};
+    }
+    return std::optional{std::move(res)};
+  });
+
   if (res.fail()) {
-    return std::move(res).result();
+    co_return std::move(res).result();
   }
 
   _engine = res.get();
   TRI_ASSERT(_engine != nullptr || _engine->engineId() == qId);
 
-  return Result{};
+  co_return Result{};
 }
 
 class AqlExecuteCall {
@@ -760,8 +702,8 @@ auto AqlExecuteCall::fromVelocyPack(VPackSlice const slice)
 }
 
 // handle for useQuery
-RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
-                                          VPackSlice querySlice) {
+auto RestAqlHandler::handleUseQuery(std::string const& operation,
+                                    VPackSlice querySlice) -> async<void> {
   VPackOptions const* opts = &VPackOptions::Defaults;
   if (_engine) {  // might be destroyed on shutdown
     opts = &_engine->getQuery().vpackOptions();
@@ -775,41 +717,31 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     auto maybeExecuteCall = AqlExecuteCall::fromVelocyPack(querySlice);
     if (maybeExecuteCall.fail()) {
       generateError(std::move(maybeExecuteCall).result());
-      return RestStatus::DONE;
+      co_return;
     }
     TRI_IF_FAILURE("RestAqlHandler::getSome") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
     auto& executeCall = maybeExecuteCall.get();
 
-    auto items = SharedAqlItemBlockPtr{};
-    auto skipped = SkipResult{};
-    auto state = ExecutionState::HASMORE;
-
     std::string const& shardId =
         _request->header(StaticStrings::AqlShardIdHeader);
 
-    auto const rootNodeType = _engine->root()->getPlanNode()->getType();
+    auto [state, skipped, items] = co_await waitingFunToCoro(
+        [&]() -> std::optional<std::tuple<ExecutionState, SkipResult,
+                                          SharedAqlItemBlockPtr>> {
+          auto res =
+              _engine->executeRemoteCall(executeCall.callStack(), shardId);
+          if (std::get<0>(res) == ExecutionState::WAITING) {
+            TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
+              _queryRegistry->destroyQuery(_engine->engineId(),
+                                           TRI_ERROR_QUERY_KILLED);
+            }
+            return std::nullopt;
+          }
+          return res;
+        });
 
-    // shardId is set IFF the root node is scatter or distribute
-    TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
-                                   rootNodeType == ExecutionNode::DISTRIBUTE));
-
-    if (shardId.empty()) {
-      std::tie(state, skipped, items) =
-          _engine->execute(executeCall.callStack());
-    } else {
-      std::tie(state, skipped, items) =
-          _engine->executeForClient(executeCall.callStack(), shardId);
-    }
-
-    if (state == ExecutionState::WAITING) {
-      TRI_IF_FAILURE("RestAqlHandler::killWhileWaiting") {
-        _queryRegistry->destroyQuery(_engine->engineId(),
-                                     TRI_ERROR_QUERY_KILLED);
-      }
-      return RestStatus::WAITING;
-    }
     TRI_IF_FAILURE("RestAqlHandler::killWhileWritingResult") {
       _queryRegistry->destroyQuery(_engine->engineId(), TRI_ERROR_QUERY_KILLED);
     }
@@ -821,27 +753,31 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
   } else if (operation == "initializeCursor") {
     auto items = _engine->itemBlockManager().requestAndInitBlock(
         querySlice.get("items"));
-    auto tmpRes = _engine->initializeCursor(std::move(items), /*pos*/ 0);
-    if (tmpRes.first == ExecutionState::WAITING) {
-      return RestStatus::WAITING;
-    }
-    answerBuilder.add(StaticStrings::Error, VPackValue(tmpRes.second.fail()));
-    answerBuilder.add(StaticStrings::Code,
-                      VPackValue(tmpRes.second.errorNumber()));
+    auto const res = co_await waitingFunToCoro([&]() -> std::optional<Result> {
+      auto tmpRes = _engine->initializeCursor(std::move(items), /*pos*/ 0);
+      if (tmpRes.first == ExecutionState::WAITING) {
+        return std::nullopt;
+      } else {
+        return std::move(tmpRes.second);
+      }
+    });
+    answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+    answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
   } else {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   answerBuilder.close();
 
   generateResult(rest::ResponseCode::OK, std::move(answerBuffer), opts);
 
-  return RestStatus::DONE;
+  co_return;
 }
 
 // handle query finalization for all engines
-RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
+auto RestAqlHandler::handleFinishQuery(std::string const& idString)
+    -> async<void> {
   TRI_IF_FAILURE("Query::finishTimeout") {
     // intentionally delay the request
     std::this_thread::sleep_for(
@@ -852,7 +788,7 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
   if (!success) {
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto errorCode =
@@ -860,49 +796,36 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                                                 ErrorCode::ValueType>(
           querySlice, StaticStrings::Code, TRI_ERROR_INTERNAL);
 
-  auto f =
-      _queryRegistry->finishQuery(qid, errorCode)
-          .thenValue([self = shared_from_this(), this,
-                      errorCode](std::shared_ptr<ClusterQuery> query) mutable
-                     -> futures::Future<futures::Unit> {
-            if (query == nullptr) {
-              // this may be a race between query garbage collection and
-              // the client  shutting down the query. it is debatable
-              // whether this is an actual error if we only want to abort
-              // the query...
-              generateError(rest::ResponseCode::NOT_FOUND,
-                            TRI_ERROR_HTTP_NOT_FOUND);
-              return futures::Unit{};
-            }
-            // we must be the only user of this query
-            TRI_ASSERT(query.use_count() == 1)
-                << "Finalizing query with use_count " << query.use_count();
-            return query->finalizeClusterQuery(errorCode).thenValue(
-                [self = std::move(self), this,
-                 q = std::move(query)](Result res) {
-                  VPackBufferUInt8 buffer;
-                  VPackBuilder answerBuilder(buffer);
-                  answerBuilder.openObject(/*unindexed*/ true);
-                  answerBuilder.add(VPackValue("stats"));
+  auto query = co_await _queryRegistry->finishQuery(qid, errorCode);
 
-                  q->executionStatsGuard().doUnderLock(
-                      [&](auto& executionStats) {
-                        executionStats.toVelocyPack(
-                            answerBuilder, q->queryOptions().fullCount);
-                      });
+  if (query == nullptr) {
+    // this may be a race between query garbage collection and
+    // the client shutting down the query. it is debatable
+    // whether this is an actual error if we only want to abort
+    // the query...
+    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+    co_return;
+  }
+  // we must be the only user of this query
+  TRI_ASSERT(query.use_count() == 1)
+      << "Finalizing query with use_count " << query.use_count();
+  auto res = co_await query->finalizeClusterQuery(errorCode);
 
-                  q->warnings().toVelocyPack(answerBuilder);
-                  answerBuilder.add(StaticStrings::Error,
-                                    VPackValue(res.fail()));
-                  answerBuilder.add(StaticStrings::Code,
-                                    VPackValue(res.errorNumber()));
-                  answerBuilder.close();
+  VPackBufferUInt8 buffer;
+  VPackBuilder answerBuilder(buffer);
+  answerBuilder.openObject(/*unindexed*/ true);
+  answerBuilder.add(VPackValue("stats"));
 
-                  generateResult(rest::ResponseCode::OK, std::move(buffer));
-                });
-          });
+  query->executionStatsGuard().doUnderLock([&](auto& executionStats) {
+    executionStats.toVelocyPack(answerBuilder, query->queryOptions().fullCount);
+  });
 
-  return waitForFuture(std::move(f));
+  query->warnings().toVelocyPack(answerBuilder);
+  answerBuilder.add(StaticStrings::Error, VPackValue(res.fail()));
+  answerBuilder.add(StaticStrings::Code, VPackValue(res.errorNumber()));
+  answerBuilder.close();
+
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 RequestLane RestAqlHandler::lane() const {

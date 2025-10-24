@@ -45,7 +45,7 @@ RestSimpleHandler::RestSimpleHandler(
     : RestCursorHandler(server, request, response, queryRegistry),
       _silent(true) {}
 
-RestStatus RestSimpleHandler::execute() {
+auto RestSimpleHandler::executeAsync() -> futures::Future<futures::Unit> {
   // extract the request type
   auto const type = _request->requestType();
 
@@ -53,36 +53,37 @@ RestStatus RestSimpleHandler::execute() {
     bool parsingSuccess = false;
     VPackSlice body = this->parseVPackBody(parsingSuccess);
     if (!parsingSuccess) {
-      return RestStatus::DONE;
+      co_return;
     }
 
     if (!body.isObject()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting JSON object body");
-      return RestStatus::DONE;
+      co_return;
     }
 
     std::string const& prefix = _request->requestPath();
 
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      return waitForFuture(removeByKeys(body));
+      co_await removeByKeys(body);
+      co_return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      return waitForFuture(lookupByKeys(body));
+      co_await lookupByKeys(body);
+      co_return;
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
     }
 
-    return RestStatus::DONE;
+    co_return;
   }
 
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return RestStatus::DONE;
+  co_return;
 }
 
-futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
-    VPackSlice const& slice) {
+async<void> RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
   {
@@ -91,7 +92,7 @@ futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
     if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
-      co_return RestStatus::DONE;
+      co_return;
     }
 
     collectionName = value.copyString();
@@ -110,7 +111,7 @@ futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting array for <keys>");
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   bool waitForSync = false;
@@ -162,7 +163,7 @@ futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
       transaction::OperationOriginREST{"removing documents by keys"});
 }
 
-RestStatus RestSimpleHandler::handleQueryResult() {
+async<void> RestSimpleHandler::handleQueryResult() {
   if (_queryResult.result.fail()) {
     if (_queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||
         (_queryResult.result.is(TRI_ERROR_QUERY_KILLED) && wasCanceled())) {
@@ -171,7 +172,7 @@ RestStatus RestSimpleHandler::handleQueryResult() {
     } else {
       generateError(_queryResult.result);
     }
-    return RestStatus::DONE;
+    co_return;
   }
 
   // extract the request type
@@ -181,10 +182,10 @@ RestStatus RestSimpleHandler::handleQueryResult() {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
       handleQueryResultRemoveByKeys();
-      return RestStatus::DONE;
+      co_return;
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
       handleQueryResultLookupByKeys();
-      return RestStatus::DONE;
+      co_return;
     }
   }
 
@@ -193,7 +194,7 @@ RestStatus RestSimpleHandler::handleQueryResult() {
   TRI_ASSERT(false);
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-  return RestStatus::DONE;
+  co_return;
 }
 
 void RestSimpleHandler::handleQueryResultRemoveByKeys() {
@@ -248,8 +249,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                  _queryResult.context);
 }
 
-futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
-    VPackSlice const& slice) {
+async<void> RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
@@ -261,7 +261,7 @@ futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
     if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
-      co_return RestStatus::DONE;
+      co_return;
     }
 
     collectionName = value.copyString();
@@ -282,7 +282,7 @@ futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting array for <keys>");
-    co_return RestStatus::DONE;
+    co_return;
   }
 
   std::string const aql(

@@ -35,12 +35,10 @@ const wait = require("internal").wait;
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const {
-  arangoClusterInfoFlush, 
   getDBServers,
-  arangoClusterInfoGetCollectionInfo,
-  arangoClusterInfoGetCollectionInfoCurrent,
   getEndpointById
 } = require("@arangodb/test-helper");
+const CI = require('@arangodb/cluster-info');
 
 const tasksCompleted = () => {
   return 0 === tasks.get().filter((task) => {
@@ -78,7 +76,7 @@ function ClusterTransactionSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   function findCollectionServers(database, collection) {
-    var cinfo = arangoClusterInfoGetCollectionInfo(database, collection);
+    var cinfo = CI.getCollectionInfo(database, collection);
     var shard = Object.keys(cinfo.shards)[0];
     return cinfo.shards[shard];
   }
@@ -89,14 +87,14 @@ function ClusterTransactionSuite() {
 
   function waitForSynchronousReplication(database) {
     console.info("Waiting for synchronous replication to settle...");
-    arangoClusterInfoFlush();
-    cinfo = arangoClusterInfoGetCollectionInfo(database, cn);
+    CI.flush();
+    cinfo = CI.getCollectionInfo(database, cn);
     shards = Object.keys(cinfo.shards);
     var count = 0;
     var replicas;
     while (++count <= 300) {
       ccinfo = shards.map(
-        s => arangoClusterInfoGetCollectionInfoCurrent(database, cn, s)
+        s => CI.getCollectionInfoCurrent(database, cn, s)
       );
       console.info("Plan:", cinfo.shards, "Current:", ccinfo.map(s => s.servers));
       replicas = ccinfo.map(s => s.servers.length);
@@ -105,7 +103,7 @@ function ClusterTransactionSuite() {
         return true;
       }
       wait(0.5);
-      arangoClusterInfoFlush();
+      CI.flush();
     }
     console.error("Replication did not finish");
     return false;

@@ -23,19 +23,22 @@
 
 #pragma once
 
+#include "Async/SuspensionCounter.h"
+#include "Async/async.h"
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
 #include "Logger/LogContext.h"
+#include "Logger/LogStructuredParamsAllowList.h"
 #include "Metrics/GaugeCounterGuard.h"
 #include "Rest/GeneralResponse.h"
 #include "Statistics/RequestStatistics.h"
 
 #include <atomic>
+#include <concepts>
 #include <memory>
 #include <mutex>
 #include <string_view>
-#include <thread>
 
 namespace arangodb {
 namespace application_features {
@@ -57,7 +60,7 @@ class GeneralRequest;
 class RequestStatistics;
 class Result;
 
-enum class RestStatus { DONE, WAITING, FAIL };
+enum class RestStatus { DONE, WAITING };
 
 namespace rest {
 class RestHandler : public std::enable_shared_from_this<RestHandler> {
@@ -107,9 +110,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// Execute the rest handler state machine
   void runHandler(std::function<void(rest::RestHandler*)> responseCallback);
 
-  /// Execute the rest handler state machine. Retry the wakeup,
-  /// returns true if _state == PAUSED, false otherwise
-  bool wakeupHandler();
+  /// Continue execution of a suspended (via WAITING) rest handler state machine
+  [[deprecated]] bool wakeupHandler();
 
   /// @brief forwards the request to the appropriate server
   futures::Future<Result> forwardRequest(bool& forwarded);
@@ -125,13 +127,14 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
   RequestLane determineRequestLane();
 
-  virtual void prepareExecute(bool isContinue);
+  // TODO execute() should be changed to return void, as it must not return
+  //      WAITING anymore.
   virtual RestStatus execute();
   virtual futures::Future<futures::Unit> executeAsync();
-  virtual RestStatus continueExecute() { return RestStatus::DONE; }
+
   virtual void shutdownExecute(bool isFinalized) noexcept;
 
-  // you might need to implment this in your handler
+  // you might need to implement this in your handler
   // if it will be executed in an async job
   virtual void cancel() { _canceled.store(true); }
 
@@ -162,9 +165,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
-  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
-
   enum class HandlerState : uint8_t {
     PREPARE = 0,
     EXECUTE,
@@ -178,16 +178,29 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   /// handler state machine
   HandlerState state() const { return _state; }
 
- private:
-  void runHandlerStateMachine();
+  auto runHandlerStateMachine() -> futures::Future<futures::Unit>;
 
   void prepareEngine();
   /// @brief Executes the RestHandler
-  ///        May set the state to PAUSED, FINALIZE or FAILED
-  ///        If isContinue == true it will call continueExecute()
-  ///        otherwise execute() will be called
-  void executeEngine(bool isContinue);
+  auto executeEngine() -> async<void>;
   void compressResponse();
+
+  // The ValueBuilder, as it is, is unsuitable for composition. By composition,
+  // I mean, for example, creating a builder in the base class with certain
+  // values, and reusing that and adding additional values in a subclass.
+  // This is because all temporary builders, as returned by .with<>() calls,
+  // must still live when .share() is called - the value returned by share is,
+  // however, no longer mutable or extensible.
+  // So when overriding this method, all values added here must also be added in
+  // the overridden method. And when changing this method, all derived methods
+  // have to be manually changed, too!
+  [[nodiscard]] virtual auto makeSharedLogContextValue() const
+      -> std::shared_ptr<LogContext::Values> {
+    return LogContext::makeValue()
+        .with<structuredParams::UrlName>(_request->fullUrl())
+        .with<structuredParams::UserName>(_request->user())
+        .share();
+  }
 
  protected:
   // This alias allows the RestHandler and derived classes to add values to the
@@ -205,9 +218,41 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
 
  private:
   mutable std::mutex _executionMutex;
-  mutable std::atomic_uint8_t _executionCounter{0};
-  mutable RestStatus _followupRestStatus;
 
+ protected:
+  // TODO Move this in a separate header, side-by-side with SuspensionCounter?
+  // Note: _suspensionCounter.notify() must be called for this to resume.
+  // RestHandler::wakeupHandler() does that, and can be called e.g. by the
+  // SharedQueryState's wakeup handler (for AQL-related code).
+  template<typename F>
+  requires requires(F f) {
+    { f() } -> std::same_as<RestStatus>;
+  }
+  [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<void> {
+    co_await arangodb::waitingFunToCoro(_suspensionCounter,
+                                        [&]() -> std::optional<std::monostate> {
+                                          auto state = fun();
+                                          if (state == RestStatus::WAITING) {
+                                            return std::nullopt;
+                                          }
+                                          return std::monostate{};
+                                        });
+    co_return;
+  }
+
+  template<typename F, typename T = std::invoke_result_t<F>::value_type>
+  requires requires(F f) {
+    { f() } -> std::same_as<std::optional<T>>;
+  }
+  [[nodiscard]] auto waitingFunToCoro(F&& fun) -> async<T> {
+    co_return co_await arangodb::waitingFunToCoro(_suspensionCounter,
+                                                  std::forward<F>(fun));
+  }
+
+ protected:
+  SuspensionCounter _suspensionCounter;
+
+ private:
   std::function<void(rest::RestHandler*)> _sendResponseCallback;
 
   uint64_t _handlerId;
@@ -223,9 +268,6 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   bool _isAsyncRequest = false;
 
   RequestLane _lane;
-
-  std::shared_ptr<LogContext::Values> _logContextScopeValues;
-  LogContext::EntryPtr _logContextEntry;
 
  protected:
   metrics::GaugeCounterGuard<std::uint64_t> _currentRequestsSizeTracker;

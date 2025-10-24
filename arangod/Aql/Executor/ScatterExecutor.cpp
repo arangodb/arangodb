@@ -123,6 +123,25 @@ auto ScatterExecutor::ClientBlockData::execute(AqlCallStack const& callStack,
   return {state, std::move(skipped), std::move(result)};
 }
 
+auto ScatterExecutor::ClientBlockData::remainingRows() const -> uint64_t {
+  return std::accumulate(_queue.begin(), _queue.end(), 0,
+                         [](uint64_t sum, auto const& item) {
+                           return sum + std::get<0>(item)->numRows();
+                         });
+}
+
+auto ScatterExecutor::ClientBlockData::gotHardLimit() const -> bool {
+  return _gotHardLimit;
+}
+
+auto ScatterExecutor::ClientBlockData::resetHardLimit() -> void {
+  _gotHardLimit = false;
+}
+
+auto ScatterExecutor::ClientBlockData::setSeenHardLimit() -> void {
+  _gotHardLimit = true;
+}
+
 ScatterExecutor::ScatterExecutor(Infos const&) {}
 
 auto ScatterExecutor::distributeBlock(

@@ -103,6 +103,10 @@ class GeneralConnection : public fuerte::Connection {
     return _state.load(std::memory_order_acquire);
   }
 
+  virtual std::string localEndpoint() override final {
+    return _proto.getConnectionName();
+  }
+
   /// The following public methods can be called from any thread:
 
   // Start an asynchronous request.
@@ -349,7 +353,7 @@ class GeneralConnection : public fuerte::Connection {
       if (me._failConnectAttempts > 0) {
         --me._failConnectAttempts;
       }
-#endif      
+#endif
 
       FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
       if (retries > 1 && ec != asio_ns::error::operation_aborted) {
@@ -377,7 +381,7 @@ class GeneralConnection : public fuerte::Connection {
         me.shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
-  
+
     // only if we are still in the connect phase, we want to schedule a timer
     // for the connect timeout. if the connect already failed and scheduled a
     // timer for the reconnect timeout, we do not want to mess with the timer here.
@@ -394,7 +398,7 @@ class GeneralConnection : public fuerte::Connection {
           if (me._proto.connectTimerRole == ConnectTimerRole::kConnect) {
             FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get() << "\n";
             me._proto.cancel();
-          } 
+          }
         }
       });
     }
@@ -502,7 +506,6 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
     const bool wasReading = this->_reading;
     const bool wasWriting = this->_writing;
     if (wasReading || wasWriting) {
-      FUERTE_ASSERT(_lastIO + kIOTimeout > now);
       tp = std::min(tp, _lastIO + kIOTimeout);
     }
 

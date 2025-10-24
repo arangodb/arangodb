@@ -37,11 +37,17 @@ const {
     randomNumberGeneratorFloat,
     randomInteger,
 } = require("@arangodb/testutils/seededRandom");
-const { versionHas } = require("@arangodb/test-helper");
+const {
+    createVectorGenerator,
+    DistanceFunctions,
+} = require("@arangodb/testutils/vector-generator");
+
+const {
+    versionHas
+} = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const dbName = "vectorDb";
 const collName = "vectorColl";
-const indexName = "vectorIndex";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -53,6 +59,17 @@ function VectorIndexL2TestSuite() {
     const dimension = 500;
     const numberOfDocs = 500;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+    // Create vector generator with L2 distance function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.l2Distance
+    });
 
     return {
         setUpAll: function() {
@@ -64,22 +81,11 @@ function VectorIndexL2TestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < numberOfDocs; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === (numberOfDocs / 2)) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_l2",
@@ -419,7 +425,7 @@ function VectorIndexL2TestSuite() {
             // Check that skip results are contained within without skip results
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
-            
+
             assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
 
@@ -506,8 +512,8 @@ function VectorIndexL2TestSuite() {
                 const skipNeighbourKeys = new Set(skipNeighbours.map(n => n.key));
                 const nonSkipNeighbourKeys = new Set(nonSkipNeighbours.map(n => n.key));
                 const expectedNeighbourKeys = new Set(nonSkipNeighbours.slice(3).map(n => n.key));
-                
-                assertTrue([...skipNeighbourKeys].every(key => nonSkipNeighbourKeys.has(key)));
+
+                assertTrue([...skipNeighbourKeys].every(key => nonSkipNeighbourKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
                 assertEqual(skipNeighbourKeys.size, expectedNeighbourKeys.size);
                 assertTrue([...skipNeighbourKeys].every(key => expectedNeighbourKeys.has(key)));
             }
@@ -515,12 +521,25 @@ function VectorIndexL2TestSuite() {
     };
 }
 
+
 function VectorIndexCosineTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
     const numberOfDocs = 1000;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+    // Create vector generator with cosine distance function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.cosineDistance
+    });
+
 
     return {
         setUpAll: function() {
@@ -532,22 +551,11 @@ function VectorIndexCosineTestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < numberOfDocs; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === (numberOfDocs / 2)) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_cosine",
@@ -556,7 +564,7 @@ function VectorIndexCosineTestSuite() {
                 params: {
                     metric: "cosine",
                     dimension: dimension,
-                    nLists: 2
+                    nLists: 10
                 },
             });
         },
@@ -635,7 +643,7 @@ function VectorIndexCosineTestSuite() {
                 }
                 // Assert that distances are in [-1, 1] range
                 for (let j = 0; j < results.length; ++j) {
-                  assertTrue(Math.abs(results[j].sim) <= 1.01, "Cosine similarity is not in [-1, 1] range: " + JSON.stringify(results));
+                    assertTrue(Math.abs(results[j].sim) <= 1.01, "Cosine similarity is not in [-1, 1] range: " + JSON.stringify(results));
                 }
             }
         },
@@ -666,11 +674,13 @@ function VectorIndexCosineTestSuite() {
             const queryWithSkip =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_COSINE(@qp, d.vector) DESC LIMIT 3, 5 RETURN {k: d._key}";
+                " LET sim = APPROX_NEAR_COSINE(@qp, d.vector) " +
+                " SORT sim DESC LIMIT 3, 5 RETURN {k: d._key, sim}";
             const queryWithoutSkip =
                 "FOR d IN " +
                 collection.name() +
-                " SORT APPROX_NEAR_COSINE(d.vector, @qp) DESC LIMIT 8 RETURN {k: d._key}";
+                " LET sim = APPROX_NEAR_COSINE(d.vector, @qp)" +
+                " SORT sim DESC LIMIT 8 RETURN {k: d._key, sim}";
 
             const bindVars = {
                 qp: randomPoint
@@ -678,12 +688,14 @@ function VectorIndexCosineTestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            
-            // Check that skip results are contained within without skip results
+
+            assertTrue(resultsWithSkip.length === 5);
+            assertTrue(resultsWithoutSkip.length === 8);
+
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
-            
-            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)));
+
+            assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skipping not deterministic with not skipping: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
     };
 }
@@ -692,7 +704,20 @@ function VectorIndexInnerProductTestSuite() {
     let collection;
     let randomPoint;
     const dimension = 500;
+    const numberOfDocs = 1000;
     const seed = randomInteger();
+    // ~1.19 × 10^−7
+    const floatEpsilon = 0.0000001;
+
+
+    // Create vector generator with dot product function
+    const vectorGenerator = createVectorGenerator({
+        dimension: dimension,
+        numberOfDocs: numberOfDocs,
+        seed: seed,
+        floatEpsilon: floatEpsilon,
+        distanceFunction: DistanceFunctions.dotProduct
+    });
 
     return {
         setUpAll: function() {
@@ -704,22 +729,11 @@ function VectorIndexInnerProductTestSuite() {
                 numberOfShards: 3
             });
 
-            let docs = [];
-            let gen = randomNumberGeneratorFloat(seed);
-            for (let i = 0; i < 1000; ++i) {
-                const vector = Array.from({
-                    length: dimension
-                }, () => gen());
-                if (i === 250) {
-                    randomPoint = vector;
-                }
-                docs.push({
-                    vector,
-                    nonVector: i,
-                    unIndexedVector: vector
-                });
-            }
-            collection.insert(docs);
+            // Generate vectors with minimum distance separation using the utility
+            const vectorData = vectorGenerator.generateAllVectors();
+            randomPoint = vectorData.randomPoint;
+
+            collection.insert(vectorData.docs);
 
             collection.ensureIndex({
                 name: "vector_inner_product",
@@ -830,11 +844,11 @@ function VectorIndexInnerProductTestSuite() {
 
             const resultsWithSkip = db._query(queryWithSkip, bindVars).toArray();
             const resultsWithoutSkip = db._query(queryWithoutSkip, bindVars).toArray();
-            
+
             // Check that skip results are contained within without skip results
             const skipKeys = new Set(resultsWithSkip.map(r => r.k));
             const withoutSkipKeys = new Set(resultsWithoutSkip.map(r => r.k));
-            
+
             assertTrue([...skipKeys].every(key => withoutSkipKeys.has(key)), "Skip results are not contained within without skip results: " + JSON.stringify(resultsWithSkip) + " " + JSON.stringify(resultsWithoutSkip));
         },
     };
@@ -1047,4 +1061,3 @@ jsunity.run(VectorIndexInnerProductTestSuite);
 jsunity.run(MultipleVectorIndexesOnField);
 
 return jsunity.done();
-

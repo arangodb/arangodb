@@ -116,6 +116,15 @@ function checkBodyForJsonToParse (request) {
 }
 
 function authenticationParameters (options) {
+  if (options.skipServerJS) {
+    return {
+      authentication: {
+        status: true,
+        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
+      },
+      status: true
+    };
+  }
   if (options.cluster) {
     print('skipping Authentication with parameters tests on cluster!');
     return {

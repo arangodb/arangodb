@@ -238,7 +238,7 @@ async<void> RestDocumentHandler::insertDocument() {
 
   bool const isMultiple = body.isArray();
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+  trxOpts.avoidSnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
   auto trx = co_await createTransaction(
@@ -588,7 +588,7 @@ async<void> RestDocumentHandler::modifyDocument(bool isPatch) {
 
   bool const isMultiple = body.isArray();
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+  trxOpts.avoidSnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
   // find collection given by name or identifier
@@ -748,7 +748,7 @@ async<void> RestDocumentHandler::removeDocument() {
 
   bool const isMultiple = search.isArray();
   transaction::Options trxOpts;
-  trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
+  trxOpts.avoidSnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
   auto trx = co_await createTransaction(

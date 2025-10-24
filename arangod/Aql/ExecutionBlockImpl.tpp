@@ -376,10 +376,24 @@ void ExecutionBlockImpl<Executor>::stopAsyncTasks() {
         CrashHandler::logBacktrace();
       }
     });
-    if (!_prefetchTask->isConsumed() && !_prefetchTask->tryClaim()) {
-      // some thread is still working on our prefetch task
-      // -> we need to wait for that task to finish first!
-      _prefetchTask->waitFor();
+    if (!_prefetchTask->isConsumed()) {
+      if (!_prefetchTask->tryClaim()) {
+        // some thread is still working on our prefetch task
+        // -> we need to wait for that task to finish first!
+        _prefetchTask->waitFor();
+      }
+      // We either claimed the task, or it is finished. Now we have to discard
+      // it, for two reasons:
+      // 1) The state must not stay InProgress (if we claimed the task), so a
+      //    second call to `stopAsyncTasks()`, which is currently done, will not
+      //    wait forever.
+      // 2) We must destroy the result (if the task finished), so a possible
+      //    SharedAqlItemBlockPtr will return the AqlItemBlock to the
+      //    AqlItemBlockManager. Note that the callback executed by the
+      //    scheduler queue will release its shared_ptr to the prefetch task
+      //    after it has finished; so it is possible that the task outlives the
+      //    query, and thus the AqlItemBlockManager.
+      _prefetchTask->discard(/*isFinished*/ false);
     }
   }
 }
@@ -1093,6 +1107,19 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
         bool const queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
             [block = this, task = _prefetchTask]() mutable {
+              TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
+                // We need to simulate that we are not picking up this task.
+                // So we simply continue sleeping until the failure point is
+                // erased.
+                bool needSleep = true;
+                while (needSleep) {
+                  needSleep = false;
+                  TRI_IF_FAILURE("AsyncPrefetch::delayClaimOfPrefetchTask") {
+                    needSleep = true;
+                  }
+                  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+              }
               if (!task->tryClaimOrAbandon()) {
                 return;
               }
@@ -1122,6 +1149,16 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
                      absl::StrCat(ex.what(), " [node #",
                                   block->getPlanNode()->id().id(), ": ",
                                   block->getPlanNode()->getTypeString(), "]")});
+              }
+
+              TRI_IF_FAILURE("AsyncPrefetch::delayDestructor") {
+                // Delay the destruction of `task` to make it likely that the
+                // Query, and with it the AqlItemBlockManager, is destructed
+                // before the PrefetchTask. That way we can assert that the
+                // result, and possible SharedAqlItemBlockPtrs in it, will be
+                // destroyed before the AqlItemBlockManager.
+                using namespace std::chrono_literals;
+                std::this_thread::sleep_for(1ms);
               }
             });
 

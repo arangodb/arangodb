@@ -27,7 +27,54 @@
 const jsunity = require('jsunity');
 const internal = require('internal');
 const arangodb = require('@arangodb');
-const db = arangodb.db;
+const {errors, db} = arangodb;
+const queries = require('@arangodb/aql/queries');
+
+// e.g. pass body={query} or {query, bindVars};
+// returns the async job id (not the query id), throws if something went wrong.
+const runQueryAsAsyncJob = function(body) {
+  let result = arango.POST_RAW('/_api/cursor', body,
+    {'x-arango-async': 'store'});
+
+  if (result.code !== 202) {
+    throw "invalid query return code: " + result.code;
+  }
+  let jobId = result.headers["x-arango-async-id"];
+  if (!jobId > 0) {
+    throw "invalid job id: " + JSON.stringify(jobId);
+  }
+  return jobId;
+};
+
+// Matches running queries against the given query string. If one is found,
+// returns its id; loops for a while otherwise.
+// Throws on error (e.g. api errors, multiple queries found, or timeout).
+const waitForQueryAndGet = function (queryString) {
+  const maxWait = 10 * 1000; // 10s in ms
+  const sleepTime = 0.001; // 1ms in s (-_-)
+  for (let start = Date.now(); Date.now() < start + maxWait; internal.sleep(sleepTime)) {
+    const matches = queries.current().filter(q => q.query === queryString);
+    if (matches.length === 1) {
+      return matches[0];
+    } else if (matches.length > 1) {
+      throw `Multiple matching queries for query string '${queryString}': ${JSON.stringify(matches)}`;
+    }
+  }
+  throw `timeout while waiting for query ${queryString}`;
+};
+
+const waitForJobAndGet = function (jobId) {
+  const maxWait = 10 * 1000; // 10s in ms
+  const sleepTime = 0.001; // 1ms in s (-_-)
+
+  for (let start = Date.now(); Date.now() < start + maxWait; internal.sleep(sleepTime)) {
+    const result = arango.PUT_RAW("/_api/job/" + encodeURIComponent(jobId), {});
+    if (result.code !== 204) {
+      return result;
+    }
+  }
+  throw `timeout while waiting for job ${jobId} to finish`;
+};
 
 function GenericQueryKillSuite() { // can be either default or stream
   'use strict';
@@ -263,6 +310,98 @@ function GenericQueryKillSuite() { // can be either default or stream
   testSuite["test_positiveDefaultQueryExecution"] = function () {
     let localQuery = db._query(exclusiveWriteQueryString);
     assertTrue(localQuery);
+  };
+
+  testSuite["test_streamingAsyncPrefetchUnderKill"] = function () {
+    const failurePointName = "AsyncPrefetch::delayClaimOfPrefetchTask";
+    // Create a collection with 4000 empty documents
+    const testCollectionName = "TestCollection" + require("@arangodb/crypto").md5(internal.genRandomAlphaNumbers(32));
+    try {
+      global.instanceManager.debugSetFailAt(failurePointName);
+    } catch (e) {
+      // Let the Test fail
+      throw `Failed to initialize failurepoint ${failurePointName}`;
+    }
+    db._create(testCollectionName);
+    try {
+      // Insert 4000 empty documents
+      const docs = [];
+      for (let i = 0; i < 4000; i++) {
+        docs.push({});
+      }
+      db[testCollectionName].insert(docs);
+      
+      // Execute streaming AQL query that iterates over collection and calculates something
+      const streamingQuery = `FOR doc IN ${testCollectionName} 
+                            LET calculated = doc.nonExistentAttr1 + doc.nonExistentAttr2
+                            FILTER calculated < 10
+                            RETURN { calculated }`;
+      let cursor = db._query(streamingQuery, null, {batchSize: 1000}, {stream: true});
+      
+      // Read one batch from the streaming cursor
+      let batch = cursor.next();
+      
+      // Kill the query
+      cursor.dispose();
+
+      // NOTE: We do not need to assert anything here.
+      // The purpose of this test is to get async prefetch into a 
+      // race condition. Which would lock up the thread.
+      // If this test does not trigger assertions or get the
+      // stuck it is a success.
+    } finally {
+      // Clean up the test collection
+      try {
+        db._drop(testCollectionName);
+      } catch (e) {
+        // If this does not work we cannot do much about it test would be red.
+        // Important here is that the failurePoint is removed. Otherwise we
+        // actively deactivated async prefetch and would block LOW prio lane
+        // for all following tests.
+      }
+      try {
+        global.instanceManager.debugRemoveFailAt(failurePointName);
+      } catch (e) {
+        console.error(`Failed to erase debug point ${failurePointName}. Test may be unreliable. Expect sever issues after this test as effectively the Low priority lane is potentially starting blocked threads.`);
+      }
+    }
+  };
+
+  // Regression test for https://arangodb.atlassian.net/browse/BTS-2216
+  // Send a kill while a (suspended and then resumed) prepareQuery is ongoing,
+  // to trigger a race after which the query was possibly destroyed while the
+  // prepare was still using it.
+  testSuite["test_killDuringSuspendedPrepare"] = function () {
+    const failurePointName = "Query::killDuringSuspendedPrepare";
+    try {
+      global.instanceManager.debugSetFailAt(failurePointName);
+
+      // use the failure point name to make the string distinct to match later.
+      // Note that it's necessary that the query has DBServer parts, otherwise
+      // the cleanup following the kill will not trigger a wakeup.
+      const queryString = `
+        FOR d IN ${collectionName}
+          LIMIT 1
+          RETURN ${JSON.stringify(failurePointName)}
+      `;
+
+      const jobId = runQueryAsAsyncJob({query: queryString});
+
+      const queryStatus = waitForQueryAndGet(queryString);
+
+      const result = queries.kill(queryStatus);
+      console.warn({killResult: result});
+
+      const jobResult = waitForJobAndGet(jobId);
+      assertEqual(jobResult.code, 410);
+      assertEqual(jobResult.errorNum, errors.ERROR_HTTP_GONE.code);
+      const queryResult = jobResult.parsedBody;
+      assertEqual(queryResult.code, 410);
+      assertEqual(queryResult.errorNum, errors.ERROR_QUERY_KILLED.code);
+
+    } finally {
+      global.instanceManager.debugRemoveFailAt(failurePointName);
+    }
   };
 
   return testSuite;

@@ -106,7 +106,22 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     this.restoreOptions = restoreOptions;
     this.allDatabases = [];
     this.allDumps = [];
+    if (this.firstRunOptions.skipServerJS) {
+      // TODO: what about 550,900,960 - QA-703?
+      if (rtaArgs.length === 2) {
+        rtaArgs[1] += ",070,071,801,550,900,960";
+      } else {
+        rtaArgs = ['--skip', "070,071,801,550,900,960"].concat(rtaArgs);
+      }
+      rtaArgs = [
+        '--testFoxx', 'false'
+      ].concat(rtaArgs);
+    }
     this.rtaArgs = [ 'DUMPDB', '--numberOfDBs', '1'].concat(rtaArgs);
+    this.rtaSkiplist = "";
+    this.rtaDisabledTests = [];
+    this.rtaDisabledTestsFull = [];
+    this.rtaNegFilter = "";
     this.which = which;
     this.results = {failed: 0};
     this.dumpConfig = false;
@@ -162,7 +177,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
         this.results.failed += this.results[key].failed;
       }
     });
-    this.doCleanup = this.options.cleanup && (this.results.failed === 0) && cleanup;
+    this.doCleanup = this.serverOptions.cleanup && (this.results.failed === 0) && cleanup;
     if (this.doCleanup) {
       if (this.im1 !== null) {
         this.im1.destructor(this.results.failed === 0);
@@ -283,6 +298,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   startFirstInstance() {
     let rootDir = fs.join(fs.getTempPath(), '1');
     this.instanceManager = this.im1 = new im.instanceManager('tcp', this.firstRunOptions, this.serverOptions, this.which, rootDir);
+    this.instanceManager.options['rtaNegFilter'] = this.rtaNegFilter;
     this.instanceManager.prepareInstance();
     this.instanceManager.launchTcpDump("");
     if (!this.instanceManager.launchInstance()) {
@@ -310,6 +326,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       print(CYAN + 'done.' + RESET);
       this.which = this.which + "_2";
       this.instanceManager = this.im2 = new im.instanceManager('tcp', this.secondRunOptions, this.serverOptions, this.which, rootDir);
+      this.instanceManager.options['rtaNegFilter'] = this.rtaNegFilter;
       this.instanceManager.prepareInstance();
       this.instanceManager.launchTcpDump("");
       if (!this.instanceManager.launchInstance()) {
@@ -495,87 +512,108 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   }
 
   restoreFoxxComplete(database) {
-    this.print('Foxx Apps with full restore to ' + database);
-    this.restoreConfig.setDatabase(database);
-    this.restoreConfig.setIncludeSystem(true);
-    this.restoreConfig.setInputDirectory('UnitTestsDumpSrc', true);
-    this.results.restoreFoxxComplete = this.arangorestore();
-    return this.validate(this.results.restoreFoxxComplete);
+    if (!this.firstRunOptions.skipServerJS) {
+      this.print('Foxx Apps with full restore to ' + database);
+      this.restoreConfig.setDatabase(database);
+      this.restoreConfig.setIncludeSystem(true);
+      this.restoreConfig.setInputDirectory('UnitTestsDumpSrc', true);
+      this.results.restoreFoxxComplete = this.arangorestore();
+      return this.validate(this.results.restoreFoxxComplete);
+    }
+    return true;
   }
 
   testFoxxRoutingReady() {
-    for (let i = 0; i < 20; i++) {
-      try {
-        let reply = arango.GET_RAW('/this_route_is_not_here', true);
-        if (reply.code === 404) {
-          print("selfHeal was already executed - Foxx is ready!");
-          return 0;
+    if (!this.firstRunOptions.skipServerJS) {
+      for (let i = 0; i < 20; i++) {
+        try {
+          let reply = arango.GET_RAW('/this_route_is_not_here', true);
+          if (reply.code === 404) {
+            print("selfHeal was already executed - Foxx is ready!");
+            return 0;
+          }
+          print(" Not yet ready, retrying: " + reply.parsedBody);
+        } catch (e) {
+          print(" Caught - need to retry. " + JSON.stringify(e));
         }
-        print(" Not yet ready, retrying: " + reply.parsedBody);
-      } catch (e) {
-        print(" Caught - need to retry. " + JSON.stringify(e));
+        sleep(3);
       }
-      sleep(3);
+      throw new Error("020: foxx routeing not ready on time!");
     }
-    throw new Error("020: foxx routeing not ready on time!");
-  };
+    return 0;
+  }
 
   testFoxxComplete(file, database) {
-    this.print('Test Foxx Apps after full restore - ' + file);
-    db._useDatabase(database);
-    this.testFoxxRoutingReady();
-    this.addArgs = {'server.database': database};
-    this.results.testFoxxComplete = this.runOneTest(file);
-    this.addArgs = undefined;
-    return this.validate(this.results.testFoxxComplete);
+    if (!this.firstRunOptions.skipServerJS) {
+      this.print('Test Foxx Apps after full restore - ' + file);
+      db._useDatabase(database);
+      this.testFoxxRoutingReady();
+      this.addArgs = {'server.database': database};
+      this.results.testFoxxComplete = this.runOneTest(file);
+      this.addArgs = undefined;
+      return this.validate(this.results.testFoxxComplete);
+    }
+    return true;
   }
 
   restoreFoxxAppsBundle(database) {
-    this.print('Foxx Apps restore _apps then _appbundles');
-    db._useDatabase('_system');
-    this.restoreConfig.setDatabase(database);
-    this.restoreConfig.restrictToCollection('_apps');
-    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
-    if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
-      return false;
+    if (!this.firstRunOptions.skipServerJS) {
+      this.print('Foxx Apps restore _apps then _appbundles');
+      db._useDatabase('_system');
+      this.restoreConfig.setDatabase(database);
+      this.restoreConfig.restrictToCollection('_apps');
+      this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
+      if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
+        return false;
+      }
+      this.restoreConfig.restrictToCollection('_appbundles');
+      // TODO if cluster, switch coordinator!
+      this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
+      return this.validate(this.results.restoreFoxxAppBundlesStep2);
     }
-    this.restoreConfig.restrictToCollection('_appbundles');
-    // TODO if cluster, switch coordinator!
-    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
-    return this.validate(this.results.restoreFoxxAppBundlesStep2);
+    return true;
   }
 
   testFoxxAppsBundle(file, database) {
-    this.print('Test Foxx Apps after _apps then _appbundles restore - ' + file);
-    db._useDatabase(database);
-    this.addArgs = {'server.database': database};
-    this.results.testFoxxAppBundles = this.runOneTest(file);
-    this.addArgs = undefined;
-    return this.validate(this.results.testFoxxAppBundles);
+    if (!this.firstRunOptions.skipServerJS) {
+      this.print('Test Foxx Apps after _apps then _appbundles restore - ' + file);
+      db._useDatabase(database);
+      this.addArgs = {'server.database': database};
+      this.results.testFoxxAppBundles = this.runOneTest(file);
+      this.addArgs = undefined;
+      return this.validate(this.results.testFoxxAppBundles);
+    }
+    return true;
   }
 
   restoreFoxxBundleApps(database) {
-    this.print('Foxx Apps restore _appbundles then _apps');
-    db._useDatabase(database);
-    this.restoreConfig.setDatabase(database);
-    this.restoreConfig.restrictToCollection('_appbundles');
-    this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
-    if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
-      return false;
+    if (!this.firstRunOptions.skipServerJS) {
+      this.print('Foxx Apps restore _appbundles then _apps');
+      db._useDatabase(database);
+      this.restoreConfig.setDatabase(database);
+      this.restoreConfig.restrictToCollection('_appbundles');
+      this.results.restoreFoxxAppBundlesStep1 = this.arangorestore();
+      if (!this.validate(this.results.restoreFoxxAppBundlesStep1)) {
+        return false;
+      }
+      this.restoreConfig.restrictToCollection('_apps');
+      // TODO if cluster, switch coordinator!
+      this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
+      return this.validate(this.results.restoreFoxxAppBundlesStep2);
     }
-    this.restoreConfig.restrictToCollection('_apps');
-    // TODO if cluster, switch coordinator!
-    this.results.restoreFoxxAppBundlesStep2 = this.arangorestore();
-    return this.validate(this.results.restoreFoxxAppBundlesStep2);
+    return true;
   }
 
   testFoxxBundleApps(file, database) {
-    this.print('Test Foxx Apps after _appbundles then _apps restore - ' + file);
-    db._useDatabase(database);
-    this.addArgs = {'server.database': database};
-    this.results.testFoxxFoxxAppBundles = this.runOneTest(file);
-    this.addArgs = undefined;
-    return this.validate(this.results.testFoxxAppBundles);
+    if (!this.firstRunOptions.skipServerJS) {
+      this.print('Test Foxx Apps after _appbundles then _apps restore - ' + file);
+      db._useDatabase(database);
+      this.addArgs = {'server.database': database};
+      this.results.testFoxxFoxxAppBundles = this.runOneTest(file);
+      this.addArgs = undefined;
+      return this.validate(this.results.testFoxxAppBundles);
+    }
+    return true;
   }
 
   createHotBackup() {
@@ -590,7 +628,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
 
   restoreHotBackup() {
     let first = true;
-    while (first || this.options.loopEternal) {
+    while (first || this.serverOptions.loopEternal) {
       this.print("restoring backup - start");
       first = false;
       db._useDatabase('_system');
@@ -631,7 +669,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   runRtaMakedata() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
-    let rc = ct.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
+    let rc = ct.run.rtaMakedata(this.instanceManager.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaMakedata = {
@@ -895,9 +933,8 @@ function dumpMixedClusterSingle (options) {
   return dump_backend_two_instances(clusterOptions, singleOptions, {}, {},
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
-                                      //'--testFoxx', 'false',
                                       // BTS-1617: disable 404 for now
-                                      '--skip', '404,550,900,960'], true);
+                                      '--skip', '404,550,900,960' ], true);
 }
 
 function dumpMixedSingleCluster (options) {
@@ -921,7 +958,6 @@ function dumpMixedSingleCluster (options) {
   return dump_backend_two_instances(singleOptions, clusterOptions, {}, {},
                                     options, options, 'dump_mixed_single_cluster',
                                     tstFiles, function(){}, [
-                                      // '--testFoxx', 'false',
                                       '--skip', '550,900,960'], true);
 }
 
@@ -960,7 +996,7 @@ function dumpMultipleSame (options) {
   _.defaults(dumpOptions, options);
   let c = getClusterStrings(dumpOptions);
   let tstFiles = {
-    dumpSetup: 'dump-setup' + c.cluster + '.js',
+    dumpSetup: 'dump-setup' + c.cluster +'.js',
     dumpCheckDumpFiles: 'dump-check-dump-files-uncompressed.js',
     dumpCleanup: 'cleanup-multiple.js',
     dumpAgain: 'dump' + c.cluster + '.js',
@@ -1268,7 +1304,7 @@ function hotBackup (options) {
       }
     }
 
-    if (tstFiles.hasOwnProperty("foxxTest")) {
+    if (tstFiles.hasOwnProperty("foxxTest") && !options.skipServerJS) {
       const foxxTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.foxxTest));
       if (!helper.restoreFoxxComplete('UnitTestsDumpFoxxComplete') ||
           !helper.testFoxxComplete(foxxTestFile, 'UnitTestsDumpFoxxComplete') ||

@@ -51,6 +51,7 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
   static std::string const CancelJob;
   static std::string const Health;
   static std::string const NumberOfServers;
+  static std::string const UniqId;
   static std::string const Maintenance;
   static std::string const NodeVersion;
   static std::string const NodeStatistics;
@@ -88,6 +89,9 @@ class RestAdminClusterHandler : public RestVocbaseBaseHandler {
 
   async<void> handleGetNumberOfServers();
   async<void> handlePutNumberOfServers();
+
+  async<void> handleUniqId();
+  async<void> handlePutUniqId();
 
   async<void> handleNodeVersion();
   async<void> handleNodeStatistics();

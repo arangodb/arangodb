@@ -124,6 +124,10 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   // Internal Traverser path
   static std::string const INTERNAL_TRAVERSER_PATH;
 
+  static std::string const TRAVERSER_PATH_EDGE;
+
+  static std::string const TRAVERSER_PATH_VERTEX;
+
   RestVocbaseBaseHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestVocbaseBaseHandler();
 
@@ -131,10 +135,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
     RestBaseHandler::cancel();
     _context.cancel();
   }
-
-  void prepareExecute(bool isContinue) override;
-
-  void shutdownExecute(bool isFinalized) noexcept override;
 
  protected:
   // returns the short id of the server which should handle this request
@@ -200,15 +200,23 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
                            transaction::OperationOrigin operationOrigin) const;
 
  protected:
+  // Please see the comment in RestHandler::makeSharedLogContextValue() for
+  // some comments.
+  [[nodiscard]] auto makeSharedLogContextValue() const
+      -> std::shared_ptr<LogContext::Values> override {
+    return LogContext::makeValue()
+        .with<structuredParams::UrlName>(_request->fullUrl())
+        .with<structuredParams::UserName>(_request->user())
+        .with<structuredParams::DatabaseName>(_vocbase.name())
+        .share();
+  }
+
+ protected:
   // request context
   VocbaseContext& _context;
 
   // the vocbase, managed by VocbaseContext
   TRI_vocbase_t& _vocbase;
-
- private:
-  std::shared_ptr<LogContext::Values> _scopeVocbaseValues;
-  LogContext::EntryPtr _logContextVocbaseEntry;
 };
 
 }  // namespace arangodb

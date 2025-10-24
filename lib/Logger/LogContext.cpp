@@ -29,7 +29,7 @@ using namespace arangodb;
 
 thread_local LogContext::ThreadControlBlock LogContext::_threadControlBlock;
 
-void LogContext::clear(EntryCache& cache) {
+void LogContext::clear(EntryCache& cache) noexcept {
   while (_tail) {
     auto prev = _tail->_prev;
     if (_tail->decRefCnt() == 1) {
@@ -41,6 +41,18 @@ void LogContext::clear(EntryCache& cache) {
     _tail = prev;
   }
   TRI_ASSERT(_tail == nullptr);
+
+  // Note (tobias): In a similar implementation of clear() in ~LogContext,
+  // there were two optimizations:
+  // - _tail was assigned to a local variable, and this used instead.
+  //   we could do that here as well, if we assign the result to _tail at the
+  //   end.
+  // - instead of doing `_tail->decRefCnt() == 1`, it did
+  //   `t->_refCount.load(std::memory_order_relaxed) == 1
+  //    || t->decRefCnt() == 1`. This could probably even be moved to
+  //   decRefCnt().
+  // I decided to drop them, as I don't think they're worth the complication,
+  // but still leave this note here instead.
 }
 
 LogContext::ScopedContext::ScopedContext(LogContext ctx) noexcept {

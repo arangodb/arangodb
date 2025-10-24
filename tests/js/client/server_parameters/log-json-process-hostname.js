@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, assertFalse, arango, assertEqual */
+/* global GLOBAL, print, getOptions, assertTrue, assertFalse, arango, assertEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -25,8 +25,6 @@
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-const fs = require('fs');
-
 if (getOptions === true) {
   return {
     'log.use-json-format': 'true',
@@ -35,12 +33,14 @@ if (getOptions === true) {
     'log.ids': 'false',
     'log.role': 'true',
     'log.thread': 'true',
-    'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
   };
 }
 
+const fs = require('fs');
 const jsunity = require('jsunity');
+const { logServer } = require('@arangodb/test-helper');
+const IM = GLOBAL.instanceManager;
 
 function LoggerSuite() {
   'use strict';
@@ -59,56 +59,54 @@ function LoggerSuite() {
     },
 
     testLogEntries: function() {
-      let res = arango.POST("/_admin/execute?returnBodyAsJSON=true", `
-require('console').log("testmann: start"); 
-for (let i = 0; i < 50; ++i) {
-  require('console').log("testmann: testi" + i);
-}
-require('console').log("testmann: done"); 
-return require('internal').options()["log.output"];
-`);
-
-      assertTrue(Array.isArray(res));
-      assertTrue(res.length > 0);
-
-      let logfile = res[res.length - 1].replace(/^file:\/\//, '');
-
-      // log is buffered, so give it a few tries until the log messages appear
-      let tries = 0;
-      let filtered = [];
-      while (++tries < 60) {
-        let content = fs.readFileSync(logfile, 'ascii');
-        let lines = content.split('\n');
-
-        filtered = lines.filter((line) => {
-          return line.match(/testmann: /);
-        });
-
-        if (filtered.length === 52) {
-          break;
+      IM.rememberConnection();
+      IM.arangods.forEach(arangod => {
+        print(`testing ${arangod.name}`);
+        arangod.connect();
+        logServer("testmann: start");
+        for (let i = 0; i < 50; ++i) {
+          logServer("testmann: testi" + i);
         }
+        logServer("testmann: done", "error");
 
-        require("internal").sleep(0.5);
-      }
-      assertEqual(52, filtered.length);
-          
-      assertTrue(filtered[0].match(/testmann: start/));
-      for (let i = 1; i < 51; ++i) {
-        assertTrue(filtered[i].match(/testmann: testi\d+/));
-        let msg = JSON.parse(filtered[i]);
-        assertTrue(msg.hasOwnProperty("time"), msg);
-        assertFalse(msg.hasOwnProperty("pid"), msg);
-        assertTrue(msg.hasOwnProperty("level"), msg);
-        assertTrue(msg.hasOwnProperty("topic"), msg);
-        assertFalse(msg.hasOwnProperty("id"), msg);
-        assertTrue(msg.hasOwnProperty("hostname"), msg);
-        assertEqual("delorean", msg.hostname, msg);
-        assertTrue(msg.hasOwnProperty("role"), msg);
-        assertTrue(msg.hasOwnProperty("tid"), msg);
-        assertTrue(msg.hasOwnProperty("message"), msg);
-        assertEqual("testmann: testi" + (i - 1), msg.message, msg);
-      }
-      assertTrue(filtered[51].match(/testmann: done/));
+        // log is buffered, so give it a few tries until the log messages appear
+        let tries = 0;
+        let filtered = [];
+        while (++tries < 60) {
+          let content = fs.readFileSync(arangod.logFile, 'ascii');
+          let lines = content.split('\n');
+
+          filtered = lines.filter((line) => {
+            return line.match(/testmann: /);
+          });
+
+          if (filtered.length === 52) {
+            break;
+          }
+
+          require("internal").sleep(0.5);
+        }
+        assertEqual(52, filtered.length);
+
+        assertTrue(filtered[0].match(/testmann: start/));
+        for (let i = 1; i < 51; ++i) {
+          assertTrue(filtered[i].match(/testmann: testi\d+/));
+          let msg = JSON.parse(filtered[i]);
+          assertTrue(msg.hasOwnProperty("time"), msg);
+          assertFalse(msg.hasOwnProperty("pid"), msg);
+          assertTrue(msg.hasOwnProperty("level"), msg);
+          assertTrue(msg.hasOwnProperty("topic"), msg);
+          assertFalse(msg.hasOwnProperty("id"), msg);
+          assertTrue(msg.hasOwnProperty("hostname"), msg);
+          assertEqual("delorean", msg.hostname, msg);
+          assertTrue(msg.hasOwnProperty("role"), msg);
+          assertTrue(msg.hasOwnProperty("tid"), msg);
+          assertTrue(msg.hasOwnProperty("message"), msg);
+          assertEqual("testmann: testi" + (i - 1), msg.message, msg);
+        }
+        assertTrue(filtered[51].match(/testmann: done/));
+      });
+      IM.reconnectMe();
     },
 
   };

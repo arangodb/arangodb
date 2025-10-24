@@ -72,9 +72,15 @@ class AuthenticationFeature final : public ArangodFeature {
 #endif
 
   double sessionTimeout() const { return _sessionTimeout; }
+  double minimalJwtExpiryTime() const { return _minimalJwtExpiryTime; }
+  double maximalJwtExpiryTime() const { return _maximalJwtExpiryTime; }
 
   // load secrets from file(s)
   [[nodiscard]] Result loadJwtSecretsFromFile();
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void setUserManager(std::unique_ptr<auth::UserManager>);
+#endif  // ARANGODB_USE_GOOGLE_TESTS
 
  private:
   /// load JWT secret from file specified at startup
@@ -92,6 +98,8 @@ class AuthenticationFeature final : public ArangodFeature {
   bool _active;
   double _authenticationTimeout;
   double _sessionTimeout;
+  double _minimalJwtExpiryTime;
+  double _maximalJwtExpiryTime;
 
   mutable std::mutex _jwtSecretsLock;
 

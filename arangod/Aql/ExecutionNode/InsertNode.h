@@ -82,7 +82,15 @@ class InsertNode : public ModificationNode {
 
   Variable const* inVariable() const { return _inVariable; }
 
+  Variable const* oldSmartGraphVariable() const noexcept {
+    return _oldSmartGraphVariable;
+  }
+
   void setInVariable(Variable const* var) { _inVariable = var; }
+
+  void setOldSmartGraphVariable(Variable const* var) noexcept {
+    _oldSmartGraphVariable = var;
+  }
 
  protected:
   /// @brief export to VelocyPack
@@ -92,6 +100,10 @@ class InsertNode : public ModificationNode {
  private:
   /// @brief input variable
   Variable const* _inVariable;
+
+  /// @brief variable used when we refer to alternative
+  /// input variable
+  Variable const* _oldSmartGraphVariable{nullptr};
 };
 
 }  // namespace arangodb::aql

@@ -77,6 +77,7 @@ class StaticStrings {
   static std::string const Compact;
   static std::string const DontWaitForCommit;
   static std::string const UserString;
+  static std::string const UseOldSmartGraphVariable;
 
   // dump headers
   static std::string const DumpAuthUser;

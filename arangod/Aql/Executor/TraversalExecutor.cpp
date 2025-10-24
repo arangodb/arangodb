@@ -35,7 +35,6 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Steps/ClusterProviderStep.h"
-#include "Graph/TraverserCache.h"
 #include "Graph/TraverserOptions.h"
 #include "Transaction/Helpers.h"
 

@@ -210,7 +210,7 @@ struct ConnectionConfiguration {
         _maxConnectRetries(3),
 #ifdef ARANGODB_USE_GOOGLE_TESTS
         _failConnectAttempts(0),
-#endif         
+#endif
         _useIdleTimeout(true),
         _authenticationType(AuthenticationType::None),
         _user(""),
@@ -232,7 +232,7 @@ struct ConnectionConfiguration {
   unsigned _maxConnectRetries;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   unsigned _failConnectAttempts;
-#endif    
+#endif
   bool _useIdleTimeout;
 
   AuthenticationType _authenticationType;

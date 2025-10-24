@@ -153,14 +153,14 @@ void raceForClusterBootstrap(BootstrapFeature& feature) {
     LOG_TOPIC("784e2", DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: race won, we do the bootstrap";
 
-    // let's see whether a DBserver is there:
+    // let's see whether a DBServer is there:
     ci.loadCurrentDBServers();
 
     auto dbservers = ci.getCurrentDBServers();
 
     if (dbservers.size() == 0) {
       LOG_TOPIC("0ad1c", TRACE, Logger::STARTUP)
-          << "raceForClusterBootstrap: no DBservers, waiting";
+          << "raceForClusterBootstrap: no DBServers, waiting";
       agency.removeValues(::bootstrapKey, false);
       std::this_thread::sleep_for(std::chrono::seconds(1));
       continue;
@@ -274,13 +274,13 @@ void BootstrapFeature::start() {
           ? server().getFeature<arangodb::SystemDatabaseFeature>().use()
           : nullptr;
 #ifdef USE_V8
-  bool v8Enabled = server().hasFeature<V8DealerFeature>() &&
-                   server().isEnabled<V8DealerFeature>() &&
-                   server().getFeature<V8DealerFeature>().isEnabled();
+  bool const v8Enabled = server().hasFeature<V8DealerFeature>() &&
+                         server().isEnabled<V8DealerFeature>() &&
+                         server().getFeature<V8DealerFeature>().isEnabled();
 #endif
   TRI_ASSERT(vocbase.get() != nullptr);
 
-  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  ServerState::RoleEnum const role = ServerState::instance()->getRole();
 
   if (ServerState::isRunningInCluster(role)) {
     // the coordinators will race to perform the cluster initialization.
@@ -348,6 +348,13 @@ void BootstrapFeature::start() {
 
   // Start service properly:
   ServerState::setServerMode(ServerState::Mode::DEFAULT);
+
+  if (ServerState::isSingleServerOrCoordinator(role)) {
+    auth::UserManager* um = AuthenticationFeature::instance()->userManager();
+    if (um != nullptr) {
+      um->loadUserCacheAndStartUpdateThread();
+    }
+  }
 
   if (!databaseFeature.upgrade()) {
     LOG_TOPIC("cf3f4", INFO, arangodb::Logger::FIXME)

@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango, assertEqual, assertTrue, assertFalse */
+/* global print, arango, assertEqual, assertTrue, assertFalse, GLOBAL */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -27,6 +27,7 @@
 
 var internal = require("internal");
 var jsunity = require("jsunity");
+const IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -396,20 +397,22 @@ function dumpTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionCommit: function() { // todo
-      if (arango.getRole() === "COORDINATOR") {
-        // Only executed on single server tests.
-        return;
-      }
-      var c = db._collection("UnitTestsDumpTransactionCommit");
+      if (!IM.options.skipServerJS) {
+        if (arango.getRole() === "COORDINATOR") {
+          // Only executed on single server tests.
+          return;
+        }
+        var c = db._collection("UnitTestsDumpTransactionCommit");
 
-      assertEqual(1000, c.count());
+        assertEqual(1000, c.count());
 
-      for (var i = 0; i < 1000; ++i) {
-        var doc = c.document("test" + i);
+        for (var i = 0; i < 1000; ++i) {
+          var doc = c.document("test" + i);
 
-        assertEqual(i, doc.value1);
-        assertEqual("this is a test", doc.value2);
-        assertEqual("test" + i, doc.value3);
+          assertEqual(i, doc.value1);
+          assertEqual("this is a test", doc.value2);
+          assertEqual("test" + i, doc.value3);
+        }
       }
     },
 
@@ -418,23 +421,25 @@ function dumpTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionUpdate: function() {
-      if (arango.getRole() === "COORDINATOR") {
-        // Only executed on single server tests.
-        return;
-      }
-      var c = db._collection("UnitTestsDumpTransactionUpdate");
+      if (!IM.options.skipServerJS) {
+        if (arango.getRole() === "COORDINATOR") {
+          // Only executed on single server tests.
+          return;
+        }
+        var c = db._collection("UnitTestsDumpTransactionUpdate");
 
-      assertEqual(1000, c.count());
+        assertEqual(1000, c.count());
 
-      for (var i = 0; i < 1000; ++i) {
-        var doc = c.document("test" + i);
+        for (var i = 0; i < 1000; ++i) {
+          var doc = c.document("test" + i);
 
-        assertEqual(i, doc.value1);
-        assertEqual("this is a test", doc.value2);
-        if (i % 2 === 0) {
-          assertEqual(i, doc.value3);
-        } else {
-          assertEqual("test" + i, doc.value3);
+          assertEqual(i, doc.value1);
+          assertEqual("this is a test", doc.value2);
+          if (i % 2 === 0) {
+            assertEqual(i, doc.value3);
+          } else {
+            assertEqual("test" + i, doc.value3);
+          }
         }
       }
     },
@@ -444,15 +449,17 @@ function dumpTestSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTransactionAbort: function() { // todo
-      if (arango.getRole() === "COORDINATOR") {
-        // Only executed on single server tests.
-        return;
+      if (!IM.options.skipServerJS) {
+        if (arango.getRole() === "COORDINATOR") {
+          // Only executed on single server tests.
+          return;
+        }
+        var c = db._collection("UnitTestsDumpTransactionAbort");
+
+        assertEqual(1, c.count());
+
+        assertTrue(c.exists("foo"));
       }
-      var c = db._collection("UnitTestsDumpTransactionAbort");
-
-      assertEqual(1, c.count());
-
-      assertTrue(c.exists("foo"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -500,9 +507,10 @@ function dumpTestSuite() {
         // `tests/js/server/dump/dump-test.js`) that the lower number
         // has been stored in the hotbackup and restored in the restore
         // process.
-        let next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        const IM = GLOBAL.instanceManager;
+        let next = IM.agencyMgr.uniqId(100000000);
         assertTrue(next < 100000000, "expected next uniqid in agency to be less than 100000000, not " + next);
-        next = JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoAgency.uniqid(100000000)"));
+        next = IM.agencyMgr.uniqId(100000000);
         assertTrue(next > 100000000, "expected next uniqid in agency to be greater than 100000000, not " + next);
       }
     }

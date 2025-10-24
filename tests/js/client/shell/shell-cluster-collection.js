@@ -34,15 +34,11 @@ const isServer = typeof internal.arango === 'undefined';
 const console = require('console');
 const request = require('@arangodb/request');
 const ArangoError = require("@arangodb").ArangoError;
-let {
-  getMaxNumberOfShards,
-  getMaxReplicationFactor,
-  getMinReplicationFactor
-} = require("@arangodb/test-helper");
+const CI = require('@arangodb/cluster-info');
 
-const maxNumberOfShards    = getMaxNumberOfShards();
-const maxReplicationFactor = getMaxReplicationFactor();
-const minReplicationFactor = getMinReplicationFactor();
+const maxNumberOfShards    = CI.getMaxNumberOfShards();
+const maxReplicationFactor = CI.getMaxReplicationFactor();
+const minReplicationFactor = CI.getMinReplicationFactor();
 let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////

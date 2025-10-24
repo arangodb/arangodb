@@ -1,2 +1,3 @@
 target_sources(arango_graph PRIVATE
-  RefactoredSingleServerEdgeCursor.cpp)
+  DBServerIndexCursor.cpp
+  SingleServerEdgeCursor.cpp)
