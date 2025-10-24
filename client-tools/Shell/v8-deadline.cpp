@@ -100,7 +100,7 @@ bool isExecutionDeadlineReached(v8::Isolate* isolate) {
       TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorState, true);
     } else {
       std::string errorMsg = errorState;
-      errorMsg += offending_PID._pid;
+      errorMsg += std::to_string(static_cast<uint32_t>(offending_PID._pid));
       TRI_CreateErrorObject(isolate, TRI_ERROR_DISABLED, errorMsg, true);
     }
     return true;
@@ -275,7 +275,7 @@ static void JS_GetDeadlineString(
     TRI_V8_RETURN_STRING(errorState);
   } else {
     std::string errorMsg = errorState;
-    errorMsg += offending_PID._pid;
+    errorMsg += std::to_string(static_cast<uint32_t>(offending_PID._pid));
     TRI_V8_RETURN_STD_STRING(errorMsg);
   }
   TRI_V8_TRY_CATCH_END
