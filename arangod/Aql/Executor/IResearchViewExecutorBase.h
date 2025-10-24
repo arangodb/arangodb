@@ -667,7 +667,7 @@ class IResearchViewExecutorBase {
       return documentOutReg;
     }
 
-    void moveInto(aql::DocumentData data) noexcept;
+    void moveInto(aql::DocumentData data);
 
    private:
     RegisterId documentOutReg;
