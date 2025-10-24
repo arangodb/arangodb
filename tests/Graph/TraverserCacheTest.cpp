@@ -64,6 +64,7 @@ class TraverserCacheTest : public ::testing::Test {
       {resourceMonitor};
   MonitoredCollectionToShardMap collectionToShardMap{
       alloc};  // can be empty, only used in standalone mode
+
   arangodb::ResourceMonitor* _monitor;
   arangodb::aql::Projections _vertexProjections{};
   arangodb::aql::Projections _edgeProjections{};
@@ -74,8 +75,8 @@ class TraverserCacheTest : public ::testing::Test {
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
     _monitor = &query->resourceMonitor();
     vertexLookup = std::make_unique<VertexLookup>(
-        trx.get(), query.get(), _vertexProjections, collectionToShardMap, true,
-        true);
+        trx.get(), query.get(), _vertexProjections, collectionToShardMap, stats,
+        true, true);
     edgeLookup = std::make_unique<EdgeLookup>(trx.get(), _edgeProjections);
     traverserCache =
         std::make_unique<RefactoredTraverserCache>(query->resourceMonitor());
@@ -101,7 +102,7 @@ TEST_F(TraverserCacheTest,
 
   // NOTE: we do not have the data, so we get null for any vertex
   vertexLookup->insertVertexIntoResult(
-      stats, arangodb::velocypack::HashedStringRef(id), builder, false);
+      arangodb::velocypack::HashedStringRef(id), builder, false);
   ASSERT_TRUE(builder.slice().isNull());
   auto all = query->warnings().all();
   ASSERT_EQ(all.size(), 1U);
@@ -131,7 +132,7 @@ TEST_F(TraverserCacheTest,
 
   // NOTE: we do not have the data, so we get null for any vertex
   vertexLookup->insertVertexIntoResult(
-      stats, arangodb::velocypack::HashedStringRef(id), builder, true);
+      arangodb::velocypack::HashedStringRef(id), builder, true);
   ASSERT_FALSE(builder.slice().isNull());
   ASSERT_TRUE(builder.slice().isString());
   ASSERT_EQ(builder.slice().copyString(), "v/Vertex");
@@ -279,7 +280,7 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   VPackBuilder builder;
 
   vertexLookup->insertVertexIntoResult(
-      stats, arangodb::velocypack::HashedStringRef(id), builder, false);
+      arangodb::velocypack::HashedStringRef(id), builder, false);
   EXPECT_TRUE(builder.slice().get("_key").isString());
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 
