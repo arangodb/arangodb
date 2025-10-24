@@ -1,6 +1,12 @@
 devel
 -----
 
+* Improved performance of INSERT operations in smart graph edge collections by
+  optimizing data distribution. The MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION
+  function now has a new option `projectOnlyId` which, when enabled, only sends
+  necessary identifiers (_key, _from, _to) to dbservers instead of sending full
+  documents, reducing network overhead during distributed operations.
+
 
 3.12.6 (2025-10-22)
 -------------------
