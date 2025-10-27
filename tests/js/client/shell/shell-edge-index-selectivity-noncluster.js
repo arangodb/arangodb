@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false */
-/* global assertEqual, assertTrue, assertFalse, assertNotNull, fail, arango */
+/* global assertEqual, assertTrue, assertFalse, assertNotNull, fail, arango, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -168,40 +168,41 @@ function EdgeIndexSuite () {
     },
 
     testIndexSelectivityAfterAbortion: function () {
-      let docs = [];
-      for (let i = 0; i < 1000; ++i) {
-        docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
-      }
-      edge.save(docs);
-      waitForEstimatorSync();  // make sure estimates are consistent
-      let idx = edge.indexes()[1];
-      let estimateBefore = idx.selectivityEstimate;
-      try {
-        internal.db._executeTransaction({
-          collections: {write: en},
-          action: function () {
-            const vn = 'UnitTestsCollectionVertex';
-            const en = 'UnitTestsCollectionEdge';
-            let docs = [];
-            for (let i = 0; i < 1000; ++i) {
-              docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
-            }
-            // This should significantly modify the estimate
-            // if successful
-            require('@arangodb').db[en].save(docs);
-            throw "banana";
-          }
-        });
-        fail();
-      } catch (e) {
-        assertEqual(e.errorMessage, "banana");
-        // Insert failed.
-        // Validate that estimate is non modified
+      if (SYS_IS_V8_BUILD) {
+        let docs = [];
+        for (let i = 0; i < 1000; ++i) {
+          docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+        }
+        edge.save(docs);
         waitForEstimatorSync();  // make sure estimates are consistent
-        idx = edge.indexes()[1];
-        assertEqual(idx.selectivityEstimate, estimateBefore);
+        let idx = edge.indexes()[1];
+        let estimateBefore = idx.selectivityEstimate;
+        try {
+          internal.db._executeTransaction({
+            collections: {write: en},
+            action: function () {
+              const vn = 'UnitTestsCollectionVertex';
+              const en = 'UnitTestsCollectionEdge';
+              let docs = [];
+              for (let i = 0; i < 1000; ++i) {
+                docs.push({_from: `${vn}/from${i % 32}`, _to: `${vn}/to${i % 47}`});
+              }
+              // This should significantly modify the estimate
+              // if successful
+              require('@arangodb').db[en].save(docs);
+              throw "banana";
+            }
+          });
+          fail();
+        } catch (e) {
+          assertEqual(e.errorMessage, "banana");
+          // Insert failed.
+          // Validate that estimate is non modified
+          waitForEstimatorSync();  // make sure estimates are consistent
+          idx = edge.indexes()[1];
+          assertEqual(idx.selectivityEstimate, estimateBefore);
+        }
       }
-
     },
   };
 }

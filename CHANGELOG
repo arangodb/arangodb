@@ -1,6 +1,16 @@
 devel
 -----
 
+
+3.12.6 (2025-10-22)
+-------------------
+
+* Added automatic authentication via /_open/auth to client tools as well as
+  automatic JWT token renewals. Made the expiry time of the generated JWT token
+  configurable (within the boundaries of the new options
+  --auth.minimal-jwt-expiry-time and --auth.maximal-jwt-expiry-time).
+  This is needed for SSO on the platform to work with client tools.
+
 * FE-825: add new logo, update colors based on new branding.
 
 * FE-835: Escape HTML in notifications.
@@ -10,60 +20,58 @@ devel
 
 * Fix BTS-2226: Fix INSERT with overwriteMode: "ignore" failing when run
   multiple times on smart graph edge collections in cluster mode. The issue
-  occurred when inserting edges that already existed, causing the operation
-  to fail instead of silently ignoring duplicates as expected.
+  occurred when inserting edges that already existed, causing the operation to
+  fail instead of silently ignoring duplicates as expected.
 
 * Add option --server.jwt-token to arangosh and all other client tools.
   This allows you to login with a JWT token that is valid for the system.
-  You can get this token from the _open/auth endpoint. You need to either
-  pick username and password, or the JWT token when starting
-  a client tool. Please note: You can write "--server.jwt-token -"
-  to get prompted for the token, so it is not visible in the
-  process list.
+  You can get this token from the _open/auth endpoint. You need to either pick
+  username and password, or the JWT token when starting a client tool. Please
+  note: You can write "--server.jwt-token -" to get prompted for the token, so
+  it is not visible in the process list.
 
-* Fix defaults for inverted indexes and views. Consolidations 5 times
-  less frequently, with minimum of 50(1 before) segments and 24M bytes
-  (2M before), maximum 200 (10 before) segments and 8G bytes (800M
-  before).
+* Fix defaults for inverted indexes and views. Consolidations 5 times less
+  frequently, with minimum of 50(1 before) segments and 24M bytes (2M before),
+  maximum 200 (10 before) segments and 8G bytes (800M before).
 
-* Fix BTS-2231: Fix a divide-by-zero crash in case a smart edge collection is used in a
-  collect query with a custom index.
+* Fix BTS-2231: Fix a divide-by-zero crash in case a smart edge collection is
+  used in a collect query with a custom index.
 
-* Add API for deployment ID: /_admin/deployment/id .
+* Add API for deployment ID: /_admin/deployment/id.
 
 * Rename the `--experimental-vector-index` startup option to `--vector-index`
   and remove the experimental flag. The old name can still be used to enable the
   vector index feature.
 
-* Add vertex collections for graph queries using edge collection syntax
-  from named graphs. This means that if a query uses edge collection syntax
-  and a named graph defines the from and to vertex collections for that edge
+* Add vertex collections for graph queries using edge collection syntax from
+  named graphs. This means that if a query uses edge collection syntax and a
+  named graph defines the from and to vertex collections for that edge
   collection, the WITH statement is no longer required.
 
 * Add filtering support for vector index queries. Filter conditions can now be
-  pushed down into vector similarity searches, enabling filtering with vector index by
-  evaluating filters during the index scan rather than as a post-processing step.
+  pushed down into vector similarity searches, enabling filtering with vector
+  index by evaluating filters during the index scan rather than as a
+  post-processing step.
 
 * Upgraded OpenSSL to 3.5.4.
 
-* Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT 
+* Fix BTS-2203: Fix part of it by introducing memory supervision to COLLECT.
 
 * Fix BTS-2203: Fix part of it by introducing memory supervision to MERGE
   instructions in query runtime.
 
-* Fix BTS-2130: Fix the endless wait in Coordinators during
-  CreateDatabase and CreateCollection.
+* Fix BTS-2130: Fix the endless wait in Coordinators during CreateDatabase and
+  CreateCollection.
 
 * Fix ES-2678: In the upgrade scenario, we disable the ClusterFeature.
-  We should therefore check before accessing clusterInfo() whether we're
-  in an upgrade scenario. Added those checks in iresearch.
+  We should therefore check before accessing clusterInfo() whether we are in an
+  upgrade scenario. Added those checks in iresearch.
 
-* Reverted RocksDB defaults for maximum wal size, number of sub
-  compactions and compaction read ahead to stay close to established
-  behaviour.
+* Reverted RocksDB defaults for maximum wal size, number of sub compactions and
+  compaction read ahead to stay close to established behaviour.
 
-* Fix BTS-2214: In a rare hash collision situation it can happen that a
-  valid edge in an enterprise graph fails to validate and is rejected.
+* Fix BTS-2214: In a rare hash collision situation it can happen that a valid
+  edge in an enterprise graph fails to validate and is rejected.
 
 * Fix BTS-2216: Fix a possible use-after-free. It can occur when a query is
   killed at the end of being prepared. Only non-streaming cursors in a cluster
@@ -71,35 +79,35 @@ devel
 
 * Fix BTS-2211: AQL queries using the async-prefetch rule, which result in a
   failure due to a runtime exception or possibly a kill, had a possible race
-  during query destruction that could result in undefined behavior (e.g.
-  memory leaks or crashes).
+  during query destruction that could result in undefined behavior (e.g. memory
+  leaks or crashes).
 
-* Fix BTS-2213: Adds a retry logic to the UserManager::updateUser to retry in certain situations 
-  (e.g. DB/Col create) until it succeeds instead of giving up after some _rev conflicts.
+* Fix BTS-2213: Adds a retry logic to the UserManager::updateUser to retry in
+  certain situations (e.g. DB/Col create) until it succeeds instead of giving up
+  after some _rev conflicts.
 
-* Fix fuzzer tests. Actually look at `Connection: Close` HTTP header and
-  do not expect the connection to stay open if we see this. This fixes
-  BTS-2185.
+* Fix fuzzer tests. Actually look at `Connection: Close` HTTP header and do not
+  expect the connection to stay open if we see this. This fixes BTS-2185.
 
 * Fix BTS-2220: Fix failing autoupgrade of databases in cluster mode.
-  This was caused by key generation now using the cluster key
-  generator on dbservers, which fails during upgrade with a message that
-  the database was shutting down.
+  This was caused by key generation now using the cluster key generator on
+  dbservers, which fails during upgrade with a message that the database was
+  shutting down.
 
 * Fix BTS-2219: Fix possible crashes with the log id [80e0e] and corresponding
-  message
-  "thread '<thread name>' is not stopped but created. shutting down hard".
+  message "thread '<thread name>' is not stopped but created. shutting down
+  hard".
 
-* Fix BTS-2217: If an error happens during startup, a disabled feature can
-  lead to a crash. Additionally signal that the server is stopping during
-  the unexpected shutdown so that in particular the RocksDBSyncThread does
-  not crash with an assertion failure.
+* Fix BTS-2217: If an error happens during startup, a disabled feature can lead
+  to a crash. Additionally signal that the server is stopping during the
+  unexpected shutdown so that in particular the RocksDBSyncThread does not crash
+  with an assertion failure.
 
-* Fix BTS-2212: Fix a hang on singleserver upgrades. Some of the Upgrade tasks needed 
-  the UserManager to function properly.
+* Fix BTS-2212: Fix a hang on singleserver upgrades. Some of the Upgrade tasks
+  needed the UserManager to function properly.
 
-* Fix BTS-2178: If the URL in an HTTP request is bad, the server will
-  now not simply close the connection but give a proper response.
+* Fix BTS-2178: If the URL in an HTTP request is bad, the server will now not
+  simply close the connection but give a proper response.
 
 * Fix unique _key generation in two cases: AQL INSERT operations in a loop
   without user specified _key in collections with exactly one shard or with
@@ -108,12 +116,15 @@ devel
 * Fix BTS-1732 and BTS-2177: Possible crashes during shutdown, and maintainer
   mode (i.e. non-production) assertions during tests.
 
-* Add a separate thread to the UserManager to handle the load of the user-cache asynchronously.
-  This pre-loads the user-cache as fast as possible (as soon as the global version changes)
-  Also, compared to the old version, this allows the read-only operation to work on the user-cache 
-  for longer and not block each other while trying to load a new version. On a high load environment this also 
-  means a more responsive UserManager and to prevent the thread responsible for the HTTP server to not getting blocked
-  because of user-cache updates.
+* Add a separate thread to the UserManager to handle the load of the user-cache
+  asynchronously.
+  This pre-loads the user-cache as fast as possible (as soon as the global
+  version changes).
+  Also, compared to the old version, this allows the read-only operation to work
+  on the user-cache for longer and not block each other while trying to load a
+  new version. On a high load environment this also means a more responsive
+  UserManager and to prevent the thread responsible for the HTTP server to not
+  getting blocked because of user-cache updates.
 
 * During AQL setup, the Coordinator will no longer block threads while waiting
   for DBServers to finish the query instantiation.
@@ -128,19 +139,20 @@ devel
 
 * Delete the Coordinator-V8 wrappers for the agency.
 
-* Deprecate rocksdb.transaction-lock-timeout option since we would
-  internally change this to a different value.
+* Deprecate rocksdb.transaction-lock-timeout option since we would internally
+  change this to a different value.
 
 * Rebuilt included rclone v1.65.2 with go1.23.12 and non-vulnerable
   dependencies.
 
 * Fix error message to use proper terminology order instead of mode.
 
-* FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is no longer included)
+* FE-636: bump jest from 27.5.1 to 30.0.5 (latest version) (form-data package is
+  no longer included)
 
 * FE-636: bump http-proxy-middleware from 2.0.6 to 2.0.9 (latest 2.X version).
 
-* FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version)
+* FE-636: bump @babel/traverse from 7.14.8 to 7.30.0 (latest version).
 
 * Fix BTS-2201: Make aggreate collect queries work again on an empty collection
 	that has an	index used in the query.
@@ -151,84 +163,84 @@ devel
 * IResearch: Fix for address_table memory over-allocation.
 
 * Fix miscounting bug for number of SynchronizeShard jobs scheduled.
-  This fixes BTS-2202. The bug could show up as a dbserver not syncing
-  its follower shards with the leader.
+  This fixes BTS-2202. The bug could show up as a dbserver not syncing its
+  follower shards with the leader.
 
 * Fix BTS-2051: Fix error message when creating vector index without data.
 
 * Fix BTS-2167: Add validation of geoJSON Position in GEO_MULTIPOINT,
-  GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions
-  with two or three components.
+  GEO_LINESTRING and GEO_MULTILINESTRING. Now they only accept positions with
+  two or three components.
 
-* Fix BTS-2182: When a filter with inequality operator was used with
-  traversals, the Filter node was not pushed into the Traversal node. This
-  fixes that problem in the optimization rule
-  remove-filter-covered-by-traversal.
+* Fix BTS-2182: When a filter with inequality operator was used with traversals,
+  the Filter node was not pushed into the Traversal node. This fixes that
+  problem in the optimization rule remove-filter-covered-by-traversal.
 
- * Fix BTS-2184: Sparse vector index creation fails when with  on documents which don't have
-  and embedding field defined.
+* Fix BTS-2184: Sparse vector index creation fails when with on documents which
+  don't have and embedding field defined.
 
 * Fix for null access for smallest range when no files on level (RocksDB).
 
 * Internal change: The common entry point for rest handlers is now a coroutine,
   simplifying asynchronous rest handlers.
 
-* Fix BTS-2174: When a more complex query get's killed and the server
-  (or DBServer in the cluster) is under high query load, there was a
-  race condition in the asynchrounous query execution which would cause
-  the kill process of the query to get stuck. This race was one
-  of the root causes for a stall which was fixed in BTS-2135 previously.
-  This situation could only be reached if the async-prefetch optimizer rule
-  is active, which can only be applied on read-only queries.
+* Fix BTS-2174: When a more complex query get's killed and the server (or
+  DBServer in the cluster) is under high query load, there was a race condition
+  in the asynchrounous query execution which would cause the kill process of the
+  query to get stuck. This race was one of the root causes for a stall which was
+  fixed in BTS-2135 previously.
+  This situation could only be reached if the async-prefetch optimizer rule is
+  active, which can only be applied on read-only queries.
 
 * Add option --database.auto-upgrade-full-compaction to run a full RocksDB
   compaction on database upgrade.
 
 * Fix logging of the request body when compression is present.
 
-* Move crash handling to a separate thread, this is cleaner and does not
-  violate rules for signal and termination handlers.
+* Move crash handling to a separate thread, this is cleaner and does not violate
+  rules for signal and termination handlers.
 
 * Fix an integer underflow with gauge arangodb_aql_current_query.
 
-* Improved the endpoint used by the Graph visulaizer tool to run
-  a better performing query. This should help on larger graphs
-  having more, not displayed data.
+* Improved the endpoint used by the Graph visulaizer tool to run a better
+  performing query. This should help on larger graphs having more, not displayed
+  data.
 
 * Fix BTS-2152 Overfetch input on prallel Traversals. For queries like this:
-  
+
   FOR x IN largeCollection
     FOR v IN 1 OUTBOUND x edges {parallelism: 4}
       LIMIT 10
       RETURN v
-  
-  Before this bugfix we would always enumerate largeCollection in full,
-  even though a small portion of the collection would have sufficed.
-  This is now handled better. We now enumerate only the necessary amount
-  of batches required to fulfill the limit.
-  This also improves cluster queries (replace the traversal with another FOR loop)
-  which had the same behaviour and are now enumerating less unused
+
+  Before this bugfix we would always enumerate largeCollection in full, even
+  though a small portion of the collection would have sufficed.
+  This is now handled better. We now enumerate only the necessary amount of
+  batches required to fulfill the limit.
+  This also improves cluster queries (replace the traversal with another FOR
+  loop) which had the same behaviour and are now enumerating less unused
   intermediate results.
 
-* Fix a bug in the PERCENTILE function in AQL, which gave the incorrect
-  result null for small percentiles. This fixes BTS-2169.
+* Fix a bug in the PERCENTILE function in AQL, which gave the incorrect result
+  null for small percentiles. This fixes BTS-2169.
 
-* FE-636: remove axios (unused dependency)
+* FE-636: remove axios (unused dependency).
 
-* FE-636: bump moment from 2.18.1 to 2.30.1 (latest version)
+* FE-636: bump moment from 2.18.1 to 2.30.1 (latest version).
 
 * Handle corrupt headers for HTTP/1.1 more gracefully in HttpCommTask.
 
-* FE-664: Add support for the new innerProduct metric in the vector index creation form in the collection Indexes view.
+* FE-664: Add support for the new innerProduct metric in the vector index
+  creation form in the collection Indexes view.
 
 * Fix BTS-2166: Fix a race during startup, where the async registry's metrics
   might be created before the scheduler starts its first thread. This is
   currently not known to cause any issues.
 
-* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and 3D
-  coordinates for Point geometries.
+* Fix BTS-2139: GeoJSON coordinate validation now properly accepts both 2D and
+  3D coordinates for Point geometries.
 
-* FE-636: bump crypto-js from 3.3.0 to 4.2.0
+* FE-636: bump crypto-js from 3.3.0 to 4.2.0.
 
 * Add new API /_admin/server/aql-queries to show recently executed AQL queries.
   This is per server and only available on coordinators and single servers.
@@ -238,19 +250,21 @@ devel
 
 * Fixes BTS-2155: Add startup options to control the grace periods after the
   DiskUsage limit is reached.
-  - `--server.license-disk-usage-grace-period-readonly` (in seconds) defines
-    the warning duration until the server enters read-only mode. The default
-    and maximum value is 2 days.
-  - `--server.license-disk-usage-grace-period-shutdown` (in seconds) defines
-    the read-only grade period until the server shuts down. The default
-    and the maximum value is 2 days.
+  - `--server.license-disk-usage-grace-period-readonly` (in seconds) defines the
+    warning duration until the server enters read-only mode. The default and
+    maximum value is 2 days.
+  - `--server.license-disk-usage-grace-period-shutdown` (in seconds) defines the
+    read-only grade period until the server shuts down. The default and the
+    maximum value is 2 days.
 
-* FE-611: Add support for experimental vector index to the collection Indexes view with "beta" label, shown only if --experimental-vector-index flag is enabled.
+* FE-611: Add support for experimental vector index to the collection Indexes
+  view with "beta" label, shown only if --experimental-vector-index flag is
+  enabled.
 
-* Add inner product metric for vector index and APPROX_NEAR_INNER_PRODUCT()
-  AQL function. The inner product metric is similar to cosine metric except
-  vectors are not normalized.
-  
+* Add inner product metric for vector index and APPROX_NEAR_INNER_PRODUCT() AQL
+  function. The inner product metric is similar to cosine metric except vectors
+  are not normalized.
+
   Example of creating a vector index with inner product:
   ```
     db.<collection>.ensureIndex({
@@ -262,8 +276,8 @@ devel
         "nLists": 100
       }
     });
-  ```
-  
+  ``
+
   Example of using the APPROX_NEAR_INNER_PRODUCT() function:
   ```
     FOR doc IN collection
@@ -272,9 +286,9 @@ devel
     RETURN doc
   ```
 
-* Fix BTS-2151: Fix cosine similarity score in vector index returns score
-  bigger then one due to not being normalized. It is recommended to drop
-  all vector indexes that use cosine metric and create them again.
+* Fix BTS-2151: Fix cosine similarity score in vector index returns score bigger
+  then one due to not being normalized. It is recommended to drop all vector
+  indexes that use cosine metric and create them again.
 
 * Fix BTS-2150: Make dropDatabase API work even if there are leftover entries in
   /arango/Current/Databases/<dbname>.
@@ -282,11 +296,11 @@ devel
 * Fix telemetry response, `n_vector` would be returned inconsistently. This
   always returns the value, regardless if the vector index feature is enabled.
 
-* Improved performance of document-search query in graph settings UI (BTS-2149)
+* Improved performance of document-search query in graph settings UI (BTS-2149).
 
 * Upgraded bundled version of RocksDB to 9.5.
 
-  The default values for the following RocksDB-related startup options were 
+  The default values for the following RocksDB-related startup options were
   adjusted as well:
 
   - `--rocksdb.compaction-read-ahead-size` was changed from 2MB to 8MB.
@@ -294,7 +308,8 @@ devel
   - `--rocksdb.max-total-wal-size` was changed from 80MB to 256MB.
   - `--rocksdb.throttle-slots` was changed from 120 to 128.
   - `--rocksdb.throttle-scaling-factor` was changed from 17 to 192.
-  - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to 1GB.
+  - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to
+    1GB.
   - `--rocksdb.pending-compactions-stop-trigger` was changed from 16GB to 32GB.
   - `--rocksdb.partition-files-for-documents` was changed from false to true.
 

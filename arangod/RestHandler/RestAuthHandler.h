@@ -38,7 +38,8 @@ class RestAuthHandler : public RestVocbaseBaseHandler {
   RestStatus execute() override;
 
  private:
-  std::string generateJwt(std::string const& username) const;
+  std::string generateJwt(std::string const& username,
+                          std::chrono::seconds expiryTime) const;
   RestStatus badRequest();
 };
 }  // namespace arangodb
