@@ -388,6 +388,12 @@ function launchInShellBG  (file) {
   return result;
 };
 
+function launchPlainSnippetInBG (snippet, key) {
+  let file = fs.getTempFile() + "-" + key;
+  fs.write(file, snippet);
+  return launchInShellBG(file);
+}
+
 function launchSnippetInBG (options, snippet, key, cn, single=false) {
   let file = fs.getTempFile() + "-" + key;
   if (single) {
@@ -718,6 +724,7 @@ exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
   arangoshCmd: runArangoshCmd,
   launchInShellBG: launchInShellBG,
+  launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
   joinBGShells: joinBGShells,
   cleanupBGShells: cleanupBGShells,
