@@ -1052,7 +1052,44 @@ if(STATIC_EXECUTABLES)
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
+ 
+  # Setting this is necessary because we want to bind to gcc library
+  # since the LLVM OpenMP implementation fails in our CI
+  # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
+  # Dynamically find libgomp.so without hardcoding version
+  # First, try to get GCC's library directory
+  execute_process(
+    COMMAND gcc -print-file-name=libgomp.so
+    OUTPUT_VARIABLE LIBGOMP_PATH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+  )
+  
+  if(EXISTS "${LIBGOMP_PATH}")
+    message(STATUS "Found libgomp: ${LIBGOMP_PATH}")
+    set(OpenMP_gomp_LIBRARY "${LIBGOMP_PATH}")
+  else()
+    # Fallback to find_library if gcc command didn't work
+    find_library(LIBGOMP_LIBRARY NAMES gomp REQUIRED)
+    message(STATUS "Found libgomp via find_library: ${LIBGOMP_LIBRARY}")
+    set(OpenMP_gomp_LIBRARY "${LIBGOMP_LIBRARY}")
+  endif()
+  
+  set(OpenMP_C_FLAGS "-fopenmp=libgomp")
+  set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
+  set(OpenMP_C_LIB_NAMES "gomp;pthread")
+  set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
+  set(OpenMP_pthread_LIBRARY "pthread")
+  
   find_package(OpenMP REQUIRED)
+  
+  message(STATUS "OpenMP_CXX_VERSION: ${OpenMP_CXX_VERSION}")
+  message(STATUS "OpenMP_CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
+  message(STATUS "OpenMP_CXX_LIB_NAMES: ${OpenMP_CXX_LIB_NAMES}")
+  message(STATUS "OpenMP_gomp_LIBRARY: ${OpenMP_gomp_LIBRARY}")
+  message(STATUS "OpenMP_omp_LIBRARY: ${OpenMP_omp_LIBRARY}")
+  message(STATUS "OpenMP_pthread_LIBRARY: ${OpenMP_pthread_LIBRARY}")
+  message(STATUS "OpenMP_CXX_LIBRARIES: ${OpenMP_CXX_LIBRARIES}")
+  
   add_definitions(-DARANGODB_OPENMP_VERSION=${OpenMP_CXX_VERSION})
 
   find_package(LAPACK)
