@@ -21,6 +21,7 @@
 /// @author Heiko Kernbach
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Graph/Cursors/SingleServerEdgeCursor.h"
 #include "Graph/Providers/SingleServer/EdgeLookup.h"
 #include "Graph/Providers/SingleServer/VertexLookup.h"
 #include "gtest/gtest.h"
@@ -38,6 +39,7 @@
 
 #include <Aql/TraversalStats.h>
 #include <velocypack/Slice.h>
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -51,7 +53,7 @@ class TraverserCacheTest : public ::testing::Test {
  protected:
   graph::GraphTestSetup s{};
   graph::MockGraphDatabase gdb;
-  arangodb::aql::TraversalStats stats{};
+  std::shared_ptr<arangodb::aql::TraversalStats> stats{nullptr};
   std::shared_ptr<arangodb::aql::Query> query{nullptr};
   std::unique_ptr<VertexLookup> vertexLookup{nullptr};
   std::unique_ptr<EdgeLookup> edgeLookup{nullptr};
@@ -70,6 +72,7 @@ class TraverserCacheTest : public ::testing::Test {
   arangodb::aql::Projections _edgeProjections{};
 
   TraverserCacheTest() : gdb(s.server, "testVocbase") {
+    stats = std::make_shared<arangodb::aql::TraversalStats>();
     query = gdb.getQuery("RETURN 1", std::vector<std::string>{});
     queryContext = query.get()->newTrxContext();
     trx = std::make_unique<arangodb::transaction::Methods>(queryContext);
@@ -110,9 +113,9 @@ TEST_F(TraverserCacheTest,
   ASSERT_TRUE(all[0].second == expectedMessage);
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 0U);
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 0U);
 }
 
 TEST_F(TraverserCacheTest,
@@ -142,9 +145,9 @@ TEST_F(TraverserCacheTest,
   ASSERT_TRUE(all[0].second == expectedMessage);
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 0U);
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 0U);
 }
 
 TEST_F(TraverserCacheTest,
@@ -285,9 +288,9 @@ TEST_F(TraverserCacheTest, it_should_insert_a_vertex_into_a_result_builder) {
   EXPECT_EQ(builder.slice().get("_key").toString(), "0");
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 1U);
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 1U);
 }
 
 TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
@@ -329,9 +332,9 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
   EXPECT_EQ(builder.slice().get("_to").toString(), "v/1");
 
   // check stats
-  EXPECT_EQ(stats.getHttpRequests(), 0U);
-  EXPECT_EQ(stats.getFiltered(), 0U);
-  EXPECT_EQ(stats.getScannedIndex(), 0U);  // <- see note in method: appendEdge
+  EXPECT_EQ(stats->getHttpRequests(), 0U);
+  EXPECT_EQ(stats->getFiltered(), 0U);
+  EXPECT_EQ(stats->getScannedIndex(), 0U);  // <- see note in method: appendEdge
 }
 
 }  // namespace traverser_cache_test

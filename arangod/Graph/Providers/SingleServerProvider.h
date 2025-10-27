@@ -145,7 +145,7 @@ class SingleServerProvider {
 
   SingleServerBaseProviderOptions _opts;
 
-  aql::TraversalStats _stats;
+  std::shared_ptr<aql::TraversalStats> _stats;
 
   RefactoredTraverserCache _cache;
   VertexLookup _vertexLookup;

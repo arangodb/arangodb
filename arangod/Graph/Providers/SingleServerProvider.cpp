@@ -26,6 +26,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/QueryContext.h"
+#include "Aql/TraversalStats.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
@@ -85,7 +86,7 @@ SingleServerProvider<Step>::SingleServerProvider(
       _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
-      _stats{},
+      _stats(std::make_unique<aql::TraversalStats>()),
       _cache(resourceMonitor),
       _vertexLookup(_trx.get(), &queryContext, _opts.getVertexProjections(),
                     _opts.collectionToShardMap(), _stats,
@@ -262,8 +263,8 @@ TRI_vocbase_t const& SingleServerProvider<Step>::vocbase() const {
 
 template<class Step>
 arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
-  auto t = _stats;
-  _stats.clear();
+  auto t = *_stats;
+  _stats->clear();
   return t;
 }
 

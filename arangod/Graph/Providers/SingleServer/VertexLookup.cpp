@@ -67,7 +67,7 @@ auto VertexLookup::findDocumentInCollection(velocypack::HashedStringRef shardId,
         _trx->documentFastPathLocal(
                 shardId.stringView(), key.stringView(),  //
                 [&](LocalDocumentId, aql::DocumentData&& data, VPackSlice doc) {
-                  _stats.incrScannedIndex(1);
+                  _stats->incrScannedIndex(1);
 
                   // copying...
                   _projections.toVelocyPackFromDocumentFull(result, doc, _trx);

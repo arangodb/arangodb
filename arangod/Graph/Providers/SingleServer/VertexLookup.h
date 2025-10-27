@@ -15,15 +15,15 @@ struct VertexLookup {
       transaction::Methods* trx, aql::QueryContext* queryCtx,
       aql::Projections const& projections,
       MonitoredCollectionToShardMap const& collectionToShardMap,
-      aql::TraversalStats& stats, bool allowImplicitVertexCollections,
-      bool produceVertices)
+      std::shared_ptr<aql::TraversalStats> stats,
+      bool allowImplicitVertexCollections, bool produceVertices)
       : _trx(std::move(trx)),
         _queryCtx(queryCtx),
         _projections(projections),
         _collectionToShardMap(collectionToShardMap),
-        _stats(stats),
+        _stats(std::move(stats)),
         _allowImplicitVertexCollections(allowImplicitVertexCollections),
-        _produceVertices(produceVertices){};
+        _produceVertices(produceVertices) {}
   VertexLookup(VertexLookup const&) = delete;
   VertexLookup(VertexLookup&&) = default;
 
@@ -50,7 +50,7 @@ struct VertexLookup {
   aql::QueryContext* _queryCtx;
   aql::Projections const& _projections;
   MonitoredCollectionToShardMap const& _collectionToShardMap;
-  aql::TraversalStats _stats;
+  std::shared_ptr<aql::TraversalStats> _stats;
   bool _allowImplicitVertexCollections;
   bool _produceVertices;
 };
