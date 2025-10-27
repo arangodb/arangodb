@@ -29,30 +29,22 @@ const internal = require("internal");
 const errors = internal.errors;
 const db = internal.db;
 const isEnterprise = require("internal").isEnterprise();
+const {
+  launchPlainSnippetInBG,
+  joinBGShells,
+  cleanupBGShells
+} = require('@arangodb/testutils/client-tools').run;
+let IM = global.instanceManager;
+const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
 
 function ParallelIndexLinkCreateDropSuite() {
   'use strict';
   const cn = "UnitTestsCollectionIdx";
   const vn = "UnitTestsViewIdx";
-  const tasks = require("@arangodb/tasks");
-  const tasksCompleted = () => {
-    return 0 === tasks.get().filter((task) => {
-      return (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/));
-    }).length;
-  };
-  const waitForTasks = () => {
-    const time = internal.time;
-    const start = time();
-    while (!tasksCompleted()) {
-      if (time() - start > 300) { // wait for 5 minutes maximum
-        fail("Timeout after 5 minutes");
-      }
-      internal.sleep(0.5);
-    }
-  };
-      
+  let clients = [];
   return {
     setUpAll : function () {
+      clients = [];
       db._drop(cn);
       db._dropView(vn);
       db._createView(vn, "arangosearch", {});
@@ -71,14 +63,6 @@ function ParallelIndexLinkCreateDropSuite() {
     },
 
     tearDownAll : function () {
-      tasks.get().forEach(function(task) {
-        if (task.id.match(/^UnitTest/) || task.name.match(/^UnitTest/)) {
-          try {
-            tasks.unregister(task);
-          } catch (err) {
-          }
-        }
-      });
       db._drop(cn);
       db._dropView(vn);
     },
@@ -92,7 +76,7 @@ function ParallelIndexLinkCreateDropSuite() {
       let viewMeta = {};
       let indexMeta = {};
       if (isEnterprise) {
-        viewMeta = `{ links : { cn : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }`;
+        viewMeta = `{ links : { ${cn} : { includeAllFields: true, "value": { "nested": { "nested_1": {"nested": {"nested_2": {}}}}}} } }`;
         indexMeta = `{ type: 'inverted', name: 'inverted', fields: [
           {name: 'value1', analyzer: 'identity'},
           {name: 'value2', analyzer: 'identity'},
@@ -100,7 +84,7 @@ function ParallelIndexLinkCreateDropSuite() {
           {"name": "value_nested", "nested": [{"name": "nested_1", "nested": [{"name": "nested_2"}]}]}
         ]}`;
       } else {
-        viewMeta = `{ links : { cn : { includeAllFields: true} } }`;
+        viewMeta = `{ links : { ${cn} : { includeAllFields: true} } }`;
         indexMeta = `{ type: 'inverted', name: 'inverted', fields: [
           {name: 'value1', analyzer: 'identity'},
           {name: 'value2', analyzer: 'identity'},
@@ -143,11 +127,14 @@ for (let iteration = 0; iteration < ${iterations}; ++iteration) {
         command += `
 c.insert({ _key: "done${i}", value: true });
 `;
-        tasks.register({ name: "UnitTestsIndexCreateDrop" + i, command });
+        clients.push({client: launchPlainSnippetInBG(
+          command, 
+          `testCreateDropInParallel${i}`)});
       }
 
-      // wait for tasks to complete
-      waitForTasks();
+      // wait for the shells to complete
+      joinBGShells(IM.options, clients, waitFor, cn);
+
       
       // check that all indexes except primary are gone
       assertEqual(1, c.indexes().length);
