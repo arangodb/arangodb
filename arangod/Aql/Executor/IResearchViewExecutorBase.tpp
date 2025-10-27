@@ -403,7 +403,7 @@ IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::ReadContext(
 
 template<typename Impl, typename ExecutionTraits>
 void IResearchViewExecutorBase<Impl, ExecutionTraits>::ReadContext::moveInto(
-    aql::DocumentData data) noexcept {
+    aql::DocumentData data) {
   static_assert(isMaterialized);
   outputRow.moveValueInto(documentOutReg, inputRow, &data);
 }
