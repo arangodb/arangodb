@@ -83,9 +83,6 @@ class PathStore {
                         std::function<bool(Step const&)> const& visitor) const
       -> bool;
 
-  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor)
-      -> bool;
-
   template<class PathResultType>
   auto buildPath(Step const& vertex, PathResultType& path) const -> void;
 
