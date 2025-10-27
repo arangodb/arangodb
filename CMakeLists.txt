@@ -1019,6 +1019,8 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 
 find_package(ZLIB REQUIRED) # TODO should be removed, see ZLIB above
 
+# This is hardcoded since we know exactly with which OpenMP version we want to build
+add_definitions(-DARANGODB_OPENMP_VERSION="5.1")
 if(STATIC_EXECUTABLES)
   # These variables are used when linking BIN_ARANGOD
   # and are specific for how we build our docker build
@@ -1044,8 +1046,6 @@ if(STATIC_EXECUTABLES)
   set(OpenMP_C_LIB_NAMES "gomp;pthread")
   set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
   set(OpenMP_pthread_LIBRARY "pthread")
-  # This is hardcoded since we know exactly with which OpenMP version we want to build
-  add_definitions(-DARANGODB_OPENMP_VERSION="5.1")
 
   set(FAISS_EXE_LINKER_FLAGS "-fopenmp=libgomp -llapack -lgfortran")
   message(STATUS "OpenMP version: " ${OpenMP_CXX_VERSION})
@@ -1090,7 +1090,6 @@ else()
   message(STATUS "OpenMP_pthread_LIBRARY: ${OpenMP_pthread_LIBRARY}")
   message(STATUS "OpenMP_CXX_LIBRARIES: ${OpenMP_CXX_LIBRARIES}")
   
-  add_definitions(-DARANGODB_OPENMP_VERSION=${OpenMP_CXX_VERSION})
 
   find_package(LAPACK)
   find_package(BLAS)
