@@ -44,9 +44,7 @@ class BatchedLifoQueue {
   // -> loose ends to the end
 
   explicit BatchedLifoQueue(arangodb::ResourceMonitor& resourceMonitor)
-      : _resourceMonitor{resourceMonitor} {
-    LOG_DEVEL << "Batched Lifo Queue";
-  }
+      : _resourceMonitor{resourceMonitor} {}
   ~BatchedLifoQueue() { this->clear(); }
 
   bool isBatched() { return true; }
@@ -145,11 +143,11 @@ class BatchedLifoQueue {
   QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
     auto first = std::move(_queue.front());
-    // LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
-    LOG_DEVEL << "<BatchedLifoQueue> Pop: "
-              << (std::holds_alternative<Step>(first)
-                      ? std::get<Step>(first).toString()
-                      : "next batch");
+    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
+        // LOG_DEVEL << "<BatchedLifoQueue> Pop: "
+        << (std::holds_alternative<Step>(first)
+                ? std::get<Step>(first).toString()
+                : "next batch");
     if (std::holds_alternative<Step>(first)) {
       _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     } else {
