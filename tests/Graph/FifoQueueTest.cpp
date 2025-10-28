@@ -86,17 +86,17 @@ TEST_F(FifoQueueTest, it_should_be_empty_if_new_queue_initialized) {
 TEST_F(FifoQueueTest, it_should_contain_element_after_insertion) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
   auto step = Step{1, 1, false};
-  queue.append(step);
+  queue.append({step});
   ASSERT_EQ(queue.size(), 1U);
   ASSERT_FALSE(queue.isEmpty());
 }
 
 TEST_F(FifoQueueTest, it_should_contain_zero_elements_after_clear) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
-  queue.append(Step{1, 1, false});
-  queue.append(Step{2, 1, false});
-  queue.append(Step{3, 1, false});
-  queue.append(Step{4, 1, true});
+  queue.append({Step{1, 1, false}});
+  queue.append({Step{2, 1, false}});
+  queue.append({Step{3, 1, false}});
+  queue.append({Step{4, 1, true}});
   ASSERT_EQ(queue.size(), 4U);
   queue.clear();
   ASSERT_TRUE(queue.isEmpty());
@@ -104,30 +104,30 @@ TEST_F(FifoQueueTest, it_should_contain_zero_elements_after_clear) {
 
 TEST_F(FifoQueueTest, it_should_contain_processable_elements) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
-  queue.append(Step{1, 1, false});
-  queue.append(Step{2, 1, false});
-  queue.append(Step{3, 1, false});
-  queue.append(Step{4, 1, true});
+  queue.append({Step{1, 1, false}});
+  queue.append({Step{2, 1, false}});
+  queue.append({Step{3, 1, false}});
+  queue.append({Step{4, 1, true}});
   ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
 }
 
 TEST_F(FifoQueueTest, it_should_not_contain_processable_elements) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
-  queue.append(Step{1, 1, true});
-  queue.append(Step{2, 1, true});
-  queue.append(Step{3, 1, true});
-  queue.append(Step{4, 1, true});
+  queue.append({Step{1, 1, true}});
+  queue.append({Step{2, 1, true}});
+  queue.append({Step{3, 1, true}});
+  queue.append({Step{4, 1, true}});
   ASSERT_EQ(queue.size(), 4U);
   ASSERT_FALSE(queue.hasProcessableElement());
 }
 
 TEST_F(FifoQueueTest, it_should_pop_first_element_if_processable) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
-  queue.append(Step{1, 1, false});
-  queue.append(Step{2, 1, false});
-  queue.append(Step{3, 1, true});
-  queue.append(Step{4, 1, true});
+  queue.append({Step{1, 1, false}});
+  queue.append({Step{2, 1, false}});
+  queue.append({Step{3, 1, true}});
+  queue.append({Step{4, 1, true}});
   ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
   while (queue.hasProcessableElement()) {
@@ -139,16 +139,17 @@ TEST_F(FifoQueueTest, it_should_pop_first_element_if_processable) {
 
 TEST_F(FifoQueueTest, it_should_pop_in_correct_order) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
-  queue.append(Step{1, 1, false});
-  queue.append(Step{2, 1, false});
-  queue.append(Step{3, 1, false});
-  queue.append(Step{4, 1, false});
+  queue.append({Step{1, 1, false}});
+  queue.append({Step{2, 1, false}});
+  queue.append({Step{3, 1, false}});
+  queue.append({Step{4, 1, false}});
   ASSERT_EQ(queue.size(), 4U);
   ASSERT_TRUE(queue.hasProcessableElement());
   size_t id = 1;
   while (queue.hasProcessableElement()) {
-    Step myStep = queue.pop();
-    ASSERT_EQ(id, myStep.id());
+    auto myStep = queue.pop();
+    ASSERT_TRUE(std::holds_alternative<Step>(myStep));
+    ASSERT_EQ(id, std::get<Step>(myStep).id());
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -157,10 +158,10 @@ TEST_F(FifoQueueTest, it_should_pop_in_correct_order) {
 
 TEST_F(FifoQueueTest, it_should_pop_all_loose_ends) {
   auto queue = FifoQueue<Step>(_resourceMonitor);
-  queue.append(Step{1, 1, true});
-  queue.append(Step{2, 1, true});
-  queue.append(Step{3, 1, true});
-  queue.append(Step{4, 1, true});
+  queue.append({Step{1, 1, true}});
+  queue.append({Step{2, 1, true}});
+  queue.append({Step{3, 1, true}});
+  queue.append({Step{4, 1, true}});
   ASSERT_EQ(queue.size(), 4U);
   ASSERT_FALSE(queue.hasProcessableElement());
 
@@ -194,7 +195,8 @@ TEST_F(FifoQueueTest, it_should_allow_to_inject_many_start_vertices) {
   size_t id = 1;
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(std::holds_alternative<Step>(step));
+    ASSERT_EQ(std::get<Step>(step).id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
@@ -221,25 +223,28 @@ TEST_F(FifoQueueTest,
   {
     // Pop First entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(std::holds_alternative<Step>(step));
+    ASSERT_EQ(std::get<Step>(step).id(), id);
     id++;
-    queue.append(Step{5, 1, false});
-    queue.append(Step{6, 1, false});
+    queue.append({Step{5, 1, false}});
+    queue.append({Step{6, 1, false}});
   }
   {
     // Pop Second entry, add two more new ones
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(std::holds_alternative<Step>(step));
+    ASSERT_EQ(std::get<Step>(step).id(), id);
     id++;
-    queue.append(Step{7, 1, false});
-    queue.append(Step{8, 1, false});
+    queue.append({Step{7, 1, false}});
+    queue.append({Step{8, 1, false}});
   }
   // Ids are increasing in order of FIFO sorting.
   // so lets now pull everything from queue in expected order
   ASSERT_EQ(queue.size(), 6U);
   while (!queue.isEmpty()) {
     auto step = queue.pop();
-    ASSERT_EQ(step.id(), id);
+    ASSERT_TRUE(std::holds_alternative<Step>(step));
+    ASSERT_EQ(std::get<Step>(step).id(), id);
     id++;
   }
   ASSERT_EQ(queue.size(), 0U);
