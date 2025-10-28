@@ -47,7 +47,7 @@ struct EdgeDocumentToken {
   }
 #endif
 
-  EdgeDocumentToken(EdgeDocumentToken && edtkn) noexcept : _data(edtkn._data) {
+  EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept : _data(edtkn._data) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = edtkn._type;
 #endif
