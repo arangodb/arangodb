@@ -79,9 +79,6 @@ class PathStoreTracer {
                         std::function<bool(Step const&)> const& visitor) const
       -> bool;
 
-  auto modifyReversePath(Step& step, std::function<bool(Step&)> const& visitor)
-      -> bool;
-
  private:
   PathStoreImpl _impl;
 
