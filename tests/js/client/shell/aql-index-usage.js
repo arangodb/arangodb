@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue */
+/*global assertEqual, assertNotEqual, assertTrue, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -114,15 +114,6 @@ function IndexUsageSuite () {
         ++success;
       } while (time() - start < 10.0);
 
-      while (true) {
-        try {
-          tasks.get(task);
-          require("internal").wait(0.25, false);
-        } catch (err) {
-          // "task not found" means the task is finished
-          break;
-        }
-      }
 
       assertEqual(2, comm.count());
       let doc = comm.document("runner1");
