@@ -134,16 +134,6 @@ auto PathStoreTracer<PathStoreImpl>::visitReversePath(
   return _impl.visitReversePath(step, visitor);
 }
 
-template<class PathStoreImpl>
-auto PathStoreTracer<PathStoreImpl>::modifyReversePath(
-    Step& step, const std::function<bool(Step&)>& visitor) -> bool {
-  double start = TRI_microtime();
-  auto sg = arangodb::scopeGuard([&]() noexcept {
-    _stats["modifyReversePath"].addTiming(TRI_microtime() - start);
-  });
-  return _impl.modifyReversePath(step, visitor);
-}
-
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 
