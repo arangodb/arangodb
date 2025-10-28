@@ -578,7 +578,6 @@ function testing_the_query_cache_in_transcationSuite() {
             }
           });
         } catch (err) {
-          print(err)
           assertEqual(errors.ERROR_TRANSACTION_ABORTED.code, err.errorNum);
           res = db._query(`FOR doc IN ${cn} FILTER doc._key == "a" RETURN doc`, {}, {"cache": true}).data;
           assertEqual(res.code, 201);
