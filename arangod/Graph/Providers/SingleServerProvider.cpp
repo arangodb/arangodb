@@ -215,7 +215,6 @@ auto SingleServerProvider<Step>::expandToNextBatch(
     // probability we do not need it anymore after refactoring is complete.
   }
   if (count == 0) {
-    last.clear();
     _neighboursStack.pop_back();
     return false;
   }

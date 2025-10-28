@@ -134,9 +134,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
         step, posPrevious, [&](Step n) -> void { _queue.append({n}); });
     if (not stepsAdded) {  // means that NextBatch iterator is exhausted
       _queue.pop();        // now we can pop NextBatch item savely
-      return;
     }
-    tmp = popFromQueue();  // get next item in queue (which is by sure a Step)
+    return;
   }
   TRI_ASSERT(std::holds_alternative<Step>(tmp));
   auto posPrevious = _interior.append(std::move(std::get<Step>(tmp)));
