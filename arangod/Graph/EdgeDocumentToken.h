@@ -40,14 +40,14 @@ struct EdgeDocumentToken {
   EdgeDocumentToken() noexcept
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       : _data(DataSourceId::none(), LocalDocumentId::none()),
-        _type(TokenType::NONE) {
-  }
+        _type(TokenType::NONE){}
 #else
       : _data(DataSourceId::none(), LocalDocumentId::none()) {
   }
 #endif
 
-  EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept : _data(edtkn._data) {
+        EdgeDocumentToken(EdgeDocumentToken && edtkn) noexcept
+      : _data(edtkn._data) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = edtkn._type;
 #endif
@@ -70,6 +70,7 @@ struct EdgeDocumentToken {
 
   explicit EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept
       : _data(edge) {
+    ADB_PROD_CRASH() << "oh mein gott";
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::COORDINATOR;
 #endif
