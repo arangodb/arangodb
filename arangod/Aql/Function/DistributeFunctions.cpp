@@ -121,6 +121,7 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
   bool allowSpecifiedKeys = opts["allowSpecifiedKeys"].getBool();
   bool ignoreErrors = opts["ignoreErrors"].getBool();
   std::string const collectionName = opts["collection"].copyString();
+  bool projectOnlyId = opts["projectOnlyId"].getBool();
 
   // if empty, check alternative input register
   if (value.isNull(true)) {
@@ -179,6 +180,24 @@ AqlValue functions::MakeDistributeInputWithKeyCreation(
     // if we only have a single shard, we let the DB server generate the
     // keys
     buildNewObject = false;
+  }
+
+  // We can project only on the second call of
+  // MAKE_DISTRIBUTE_INPUT_WITH_KEY_CREATION
+  // But we must project _from and _to as well
+  if (projectOnlyId && !buildNewObject) {
+    transaction::BuilderLeaser builder(&trx);
+    {
+      VPackObjectBuilder objectGuard(builder.get());
+      objectGuard->add(StaticStrings::KeyString,
+                       input.get(StaticStrings::KeyString));
+      objectGuard->add(StaticStrings::FromString,
+                       input.get(StaticStrings::FromString));
+      objectGuard->add(StaticStrings::ToString,
+                       input.get(StaticStrings::ToString));
+    }
+
+    return AqlValue{builder->slice()};
   }
 
   if (buildNewObject) {

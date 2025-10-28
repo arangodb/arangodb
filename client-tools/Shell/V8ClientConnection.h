@@ -197,12 +197,30 @@ class V8ClientConnection {
     _lastErrorMessage = msg;
   }
 
+  // Helper function to authenticate via /_open/auth endpoint
+  ResultT<std::string> authenticateViaOpenAuth();
+
+  // Helper function to extract expiration time from JWT token
+  std::optional<double> extractJwtExpiration(std::string const& jwt);
+
+  // Helper function to check if JWT token needs renewal
+  bool needsTokenRenewal();
+
+  // Helper function to renew JWT token
+  void renewJwtToken();
+
  private:
   ArangoshServer& _server;
   ClientFeature& _client;
 
   std::string _databaseName;
   std::chrono::duration<double> _requestTimeout;
+
+  // Store credentials for JWT token renewal
+  std::string _storedUsername;
+  std::string _storedPassword;
+  std::string _currentJwtToken;
+  double _jwtTokenExpiry;  // expiration time in seconds since epoch
 
   mutable std::recursive_mutex _lock;
   unsigned _lastHttpReturnCode;
