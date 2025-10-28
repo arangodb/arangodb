@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, SYS_IS_V8_BUILD */
+/*global assertEqual, assertNotEqual, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -155,16 +155,6 @@ function IndexUsageSuite () {
         do {
           assertTrue(comm.exists("runner1"));
         } while (time() - start < 10.0);
-
-        while (true) {
-          try {
-            tasks.get(task);
-            require("internal").wait(0.25, false);
-          } catch (err) {
-            // "task not found" means the task is finished
-            break;
-          }
-        }
       }
     },
   };
