@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, fail*/
+/*global assertUndefined, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNotUndefined, fail, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
