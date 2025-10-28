@@ -143,7 +143,7 @@ class BatchedLifoQueue {
   QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
     auto first = std::move(_queue.front());
-    LOG_TOPIC("9cd64", TRACE, Logger::GRAPHS)
+    LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
         // LOG_DEVEL << "<BatchedLifoQueue> Pop: "
         << (std::holds_alternative<Step>(first)
                 ? std::get<Step>(first).toString()

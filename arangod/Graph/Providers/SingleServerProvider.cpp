@@ -178,7 +178,7 @@ auto SingleServerProvider<Step>::expandToNextBatch(
   TRI_ASSERT(not _neighboursStack.empty());
   auto& last = _neighboursStack.back();
 
-  LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
+  LOG_TOPIC("c9179", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding (next batch) " << vertex.getID();
 
   if (not last.hasMore(step.getDepth())) {
@@ -202,7 +202,7 @@ auto SingleServerProvider<Step>::expandToNextBatch(
         return other;
       }
     })());
-    LOG_TOPIC("c9168", TRACE, Logger::GRAPHS)
+    LOG_TOPIC("c916e", TRACE, Logger::GRAPHS)
         << "<SingleServerProvider> Neighbor of " << vertex.getID() << " -> "
         << id;
 
@@ -228,7 +228,7 @@ auto SingleServerProvider<Step>::addExpansionIterator(
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
-  LOG_TOPIC("c9169", TRACE, Logger::GRAPHS)
+  LOG_TOPIC("c9189", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Add expansion iterator " << vertex.getID();
 
   // create neighbour provider without using cache because:

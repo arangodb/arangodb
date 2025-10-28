@@ -43,9 +43,7 @@ class LifoQueue {
   // -> loose ends to the end
 
   explicit LifoQueue(arangodb::ResourceMonitor& resourceMonitor)
-      : _resourceMonitor{resourceMonitor} {
-    LOG_DEVEL << "Lifo Queue";
-  }
+      : _resourceMonitor{resourceMonitor} {}
   ~LifoQueue() { this->clear(); }
 
   bool isBatched() { return false; }

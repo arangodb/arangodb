@@ -26,15 +26,14 @@
 
 namespace arangodb::graph {
 
-  /**
-     Marker struct for queues to do an expansion when such a type is popped.
-   **/
+/**
+   Marker struct for queues to do an expansion when such a type is popped.
+ **/
 struct Expansion {
   std::size_t from;
 };
 
 template<typename Step>
-struct QueueEntry : std::variant<Step, Expansion> {
-};
+struct QueueEntry : std::variant<Step, Expansion> {};
 
 }  // namespace arangodb::graph
