@@ -91,10 +91,10 @@ SingleServerProvider<Step>::SingleServerProvider(
       _vertexLookup(_trx.get(), &queryContext, _opts.getVertexProjections(),
                     _opts.collectionToShardMap(), _stats,
                     ServerState::instance()->isSingleServer() &&
-                        queryContext.vocbase()
-                            .server()
-                            .getFeature<QueryRegistryFeature>()
-                            .requireWith(),
+                        !queryContext.vocbase()
+                             .server()
+                             .getFeature<QueryRegistryFeature>()
+                             .requireWith(),
                     _opts.produceVertices()),
       _edgeLookup(_trx.get(), _opts.getEdgeProjections()),
       _neighbours{_opts, _trx.get(), _monitor,
