@@ -329,8 +329,6 @@ class instance {
     this.args = _.defaults(this.args, {
       'configuration': fs.join(pu.CONFIG_DIR, config),
       'define': 'TOP_DIR=' + pu.TOP_DIR,
-      'javascript.app-path': this.appDir,
-      'javascript.copy-installation': false,
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
@@ -338,6 +336,12 @@ class instance {
       'temp.intermediate-results-path': this.tmpRocksdbDir,
       'log.file': this.logFile
     });
+
+    if (!this.options.skipServerJS) {
+      // the argparser barely ignores them and breaks others...
+      this.args['javascript.app-path'] = this.appDir;
+      this.args['javascript.copy-installation'] = false;
+    }
     if (this.options.extremeVerbosity) {
       this.args['dump-env'] = true;
     }
