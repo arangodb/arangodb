@@ -1,4 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global SYS_IS_V8_BUILD */
+
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /

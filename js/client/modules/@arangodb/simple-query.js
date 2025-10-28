@@ -1,4 +1,5 @@
 /* jshint strict: false */
+/* global SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -269,7 +270,7 @@ if (SYS_IS_V8_BUILD) {
       query += limitString(this._skip, this._limit) + ' RETURN doc';
       this._execution = require('internal').db._query({ query, bindVars});
     }
-  }
+  };
 }
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief executes a near query

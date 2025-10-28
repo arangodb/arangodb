@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, fail, arango */
+/*global assertEqual, assertTrue, fail, arango, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
