@@ -106,7 +106,7 @@ class MockGraphProvider {
 
     class Vertex {
      public:
-      explicit Vertex(VertexType v) : _vertex(v) {};
+      explicit Vertex(VertexType v) : _vertex(v){};
 
       VertexType getID() const { return _vertex; }
 
@@ -290,7 +290,7 @@ class MockGraphProvider {
   MockGraphProvider& operator=(MockGraphProvider const&) = delete;
   MockGraphProvider& operator=(MockGraphProvider&&) = default;
 
-  void destroyEngines() {};
+  void destroyEngines(){};
   auto startVertex(VertexType vertex, size_t depth = 0, double weight = 0.0)
       -> Step;
   auto fetchVertices(std::vector<Step*> const& looseEnds)
