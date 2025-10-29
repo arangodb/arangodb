@@ -345,11 +345,10 @@ arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
 
 template<class StepType>
 auto SingleServerProvider<StepType>::fetchVertices(
-    const std::vector<Step*>& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
+    const std::vector<Step*>& looseEnds) -> std::vector<Step*> {
   // We will never need to fetch anything
   TRI_ASSERT(false);
-  return fetch(looseEnds);
+  return std::vector<Step*>{};
 }
 
 template<class StepType>

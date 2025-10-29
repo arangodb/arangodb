@@ -132,8 +132,8 @@ auto MockGraphProvider::startVertex(VertexType v, size_t depth, double weight)
 }
 
 auto MockGraphProvider::fetchVertices(const std::vector<Step*>& looseEnds)
-    -> futures::Future<std::vector<Step*>> {
-  return fetch(looseEnds);
+    -> std::vector<Step*> {
+  return fetch(looseEnds).waitAndGet();
 }
 
 auto MockGraphProvider::fetchEdges(const std::vector<Step*>& fetchedVertices)
