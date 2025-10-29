@@ -1,9 +1,0 @@
-# {"container_suffix": "-java:", "second_repo": "git@github.com:arangodb/arangodb-java-driver.git", "branch": "main", "init_command": ""}
-# test_suite [flags ...] -- [additional-params...]
-# for possible flags and params see
-# https://github.com/arangodb/oskar#testing
-
-
-# Single Server Replication Tests
-java_driver priority=500 single -- --extremeVerbosity true
-java_driver priority=500 cluster -- --extremeVerbosity true

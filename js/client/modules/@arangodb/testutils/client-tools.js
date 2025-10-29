@@ -388,6 +388,12 @@ function launchInShellBG  (file) {
   return result;
 };
 
+function launchPlainSnippetInBG (snippet, key) {
+  let file = fs.getTempFile() + "-" + key;
+  fs.write(file, snippet);
+  return launchInShellBG(file);
+}
+
 function launchSnippetInBG (options, snippet, key, cn, single=false) {
   let file = fs.getTempFile() + "-" + key;
   if (single) {
@@ -500,6 +506,36 @@ function joinBGShells (options, clients, waitFor, cn) {
     options.cleanup = false;
     throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}`);
   }
+}
+
+function joinFinishedBGShells(options, clients) {
+  let IM = global.instanceManager;
+  let tries = 0;
+  let done = clients.length;
+  clients.forEach(function (client) {
+    if (client.done) {
+      done -= 1;
+    } else {
+      client.status = internal.statusExternal(client.client.pid);
+      if (client.status.status !== 'RUNNING') { 
+        let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+        IM.serverCrashedLocal |= failed;
+        client.failed = failed;
+        client.done = true;
+      }
+      if (client.status === 'TERMINATED') {
+        done -= 1;
+        if (client.exit === 0) {
+          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          client.failed = false;
+        } else {
+          IM.options.cleanup = false;
+          client.failed = true;
+        }
+      }
+    }
+  });
+  return done;
 }
 
 function cleanupBGShells (clients, cn) {
@@ -718,8 +754,10 @@ exports.createBaseConfig = createBaseConfigBuilder;
 exports.run = {
   arangoshCmd: runArangoshCmd,
   launchInShellBG: launchInShellBG,
+  launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
   joinBGShells: joinBGShells,
+  joinFinishedBGShells: joinFinishedBGShells,
   cleanupBGShells: cleanupBGShells,
   arangoImport: runArangoImportCfg,
   arangoDumpRestore: runArangoDumpRestore,

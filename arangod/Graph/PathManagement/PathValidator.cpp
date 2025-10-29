@@ -33,6 +33,7 @@
 #include "Graph/PathManagement/SingleProviderPathResult.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
+#include "Transaction/Helpers.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
@@ -281,7 +282,8 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
   }
 
-  VPackBuilder vertexBuilder, edgeBuilder;
+  auto vertexBuilder = transaction::BuilderLeaser(_provider.trx());
+  auto edgeBuilder = transaction::BuilderLeaser(_provider.trx());
 
   // evaluate if vertex needs to be pruned
   ValidationResult res{ValidationResult::Type::TAKE};
@@ -291,12 +293,12 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     auto& evaluator = _options.getPruneEvaluator();
 
     if (evaluator->needsVertex()) {
-      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
-      evaluator->injectVertex(vertexBuilder.slice());
+      _provider.addVertexToBuilder(step.getVertex(), *vertexBuilder);
+      evaluator->injectVertex(vertexBuilder->slice());
     }
     if (evaluator->needsEdge()) {
-      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
-      evaluator->injectEdge(edgeBuilder.slice());
+      _provider.addEdgeToBuilder(step.getEdge(), *edgeBuilder);
+      evaluator->injectEdge(edgeBuilder->slice());
     }
     if (evaluator->needsPath()) {
       using ResultPathType =
@@ -318,13 +320,13 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   // Evaluate depth-based vertex expressions
   auto vertexExpr = _options.getVertexExpression(step.getDepth());
   if (vertexExpr != nullptr) {
-    if (vertexBuilder.isEmpty()) {
-      _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+    if (vertexBuilder->isEmpty()) {
+      _provider.addVertexToBuilder(step.getVertex(), *vertexBuilder);
     }
 
     // evaluate expression
     bool satifiesCondition =
-        evaluateExpression(vertexExpr, vertexBuilder.slice());
+        evaluateExpression(vertexExpr, vertexBuilder->slice());
     if (!satifiesCondition) {
       if (_options.bfsResultHasToIncludeFirstVertex() && step.isFirst()) {
         res.combine(ValidationResult::Type::PRUNE);
@@ -335,19 +337,22 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
   }
 
   auto edgeExpr = _options.getEdgeExpression();
-  if (edgeExpr != nullptr) {
-    if (step.getEdge().isValid()) {
-      edgeBuilder.clear();
-
-      _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
-      bool satisfiesCondition =
-          evaluateExpression(edgeExpr, edgeBuilder.slice());
-      if (!satisfiesCondition) {
-        return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
-      }
-    } else {
-      // TODO: at the moment we smile and wave...
+  // TODO: what is it about step.getEdge().isValid()? Leaving this out
+  // breaks precisely one test.
+  // testSameResultEdges_K_SHORTEST_PATHS *when the optimizer rule
+  // optimize-enumerate-path-filters is not on*
+  if (edgeExpr != nullptr and step.getEdge().isValid()) {
+    if (edgeBuilder->isEmpty()) {
+      _provider.addEdgeToBuilder(step.getEdge(), *edgeBuilder);
     }
+
+    bool satisfiesCondition =
+        evaluateExpression(edgeExpr, edgeBuilder->slice());
+    if (!satisfiesCondition) {
+      return ValidationResult{ValidationResult::Type::FILTER_AND_PRUNE};
+    }
+  } else {
+    // TODO: at the moment we smile and wave...
   }
 
   if (res.isPruned() && res.isFiltered()) {
@@ -358,18 +363,18 @@ auto PathValidator<ProviderType, PathStore, vertexUniqueness, edgeUniqueness>::
     auto& evaluator = _options.getPostFilterEvaluator();
 
     if (evaluator->needsVertex()) {
-      if (vertexBuilder.isEmpty()) {  // already added a vertex in case
-                                      // _options.usesPrune() == true
-        _provider.addVertexToBuilder(step.getVertex(), vertexBuilder);
+      if (vertexBuilder->isEmpty()) {  // already added a vertex in case
+                                       // _options.usesPrune() == true
+        _provider.addVertexToBuilder(step.getVertex(), *vertexBuilder);
       }
-      evaluator->injectVertex(vertexBuilder.slice());
+      evaluator->injectVertex(vertexBuilder->slice());
     }
     if (evaluator->needsEdge()) {
-      if (edgeBuilder.isEmpty()) {  // already added an edge in case
-                                    // _options.usesPrune() == true
-        _provider.addEdgeToBuilder(step.getEdge(), edgeBuilder);
+      if (edgeBuilder->isEmpty()) {  // already added an edge in case
+                                     // _options.usesPrune() == true
+        _provider.addEdgeToBuilder(step.getEdge(), *edgeBuilder);
       }
-      evaluator->injectEdge(edgeBuilder.slice());
+      evaluator->injectEdge(edgeBuilder->slice());
     }
 
     TRI_ASSERT(!evaluator->needsPath());

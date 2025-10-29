@@ -1,9 +1,0 @@
-# {"container_suffix": "-js:", "second_repo": "git@github.com:arangodb/arangojs.git", "branch": "main", "init_command": "yarn"}
-# test_suite [flags ...] -- [additional-params...]
-# for possible flags and params see
-# https://github.com/arangodb/oskar#testing
-
-
-# Single Server Replication Tests
-js_driver priority=500 single
-js_driver priority=500 cluster size=large

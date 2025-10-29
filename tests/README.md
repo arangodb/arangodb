@@ -190,3 +190,39 @@ tests/js/client/agency
 tests/js/client/replication2
 tests/js/client/shell
 tests/js/client/server_permissions
+
+
+# test definitions yml format
+To get the tests represented into the CI yaml files in tests/ are used. As you learned above, suites may be ran against different deployments - hence more configurations can be created. 
+Every toplevel definition will become one branch in the circle-ci representation. To keep that list as compact as possible, and to reduce the efforts of provisioning the testbed with files, 
+tests can be grouped. 
+
+The format to achieve this composes the following way:
+- jobProperties - options to the suites on circle-ci in this file - used for driver tests
+  - container_suffix: instead of the default container this suffix will be appended to choose a different container of the same revision
+  - second_repo: a secondary (driver) repo is cloned next to the arangodb repo
+  - branch: the branch of that secondary repo
+  - init_command: an optional command to build this driver
+- add-yaml - used to create new types of jobs in circle-ci - used for driver tests
+  - derives: original job to load from base_config.yml
+  - derives-to: the name of the new job type, also used below
+  This mechanic can be used to start more docker containers with services the drivers talk to
+- tests: if the above commands are used, followed by the list of tests. If neither add-yaml and jobProperties are used, tests can be skipped.
+- toplevel is the testsuite or name to representet in the circle-ci UI
+  - options - contains a list of test system properties
+    - type of deployment - [single/mixed/cluster]
+    - size of the testrunner if the defaults for single/cluster don't fit [small/medium/medium+/large]
+    - parallelity - for oskar based runs how many slots on a machine to allocate
+    - priority - higher priority will be launched first on oskar runs; long running suites should go first to allways have the machine fully loaded
+    - buckets
+      - number: the testsuite is executed in parallel buckets with partitions of the tests
+      - 'auto': several suites are represented into the circle-ci buckets suite.
+  - arangosh_args: optional arguments to the testing.js arangosh; can be i.e. used to enable logging of http or javascript in debug
+  - args: arguments to testing.js
+  - suites: when more than one testsuite should be executed in sequence or in buckets. Can have sub-properties:
+    - options - only feasible with `buckets: auto`. Oskar launches can have different options.
+    - args: joined together to `optionsJson` of the runs in sequence
+      - auto buckets: testing.js will choose the matching one of `optionsJson`
+      - testing.js runs suites in chains, and per iteration the matching args set is chosen from `optionsJson`
+    - arangosh_args: individul args to the testing.js arangosh
+  
