@@ -107,12 +107,12 @@ function optimizerRuleTestSuite () {
       ];
 
       if (SYS_IS_V8_BUILD) {
-        queries += [
+        queries = queries.concat([
           // usage of V8
           [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
           [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
           [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ]
-        ];
+        ]);
       }
       
       queries.forEach(function(query) {
