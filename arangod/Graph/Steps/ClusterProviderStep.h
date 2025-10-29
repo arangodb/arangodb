@@ -36,8 +36,7 @@ namespace arangodb::graph {
 template<class StepImpl>
 class ClusterProvider;
 
-class ClusterProviderStep
-    : public arangodb::graph::BaseStep<ClusterProviderStep> {
+class ClusterProviderStep : public arangodb::graph::BaseStep {
  public:
   using EdgeType = ::arangodb::graph::EdgeType;
   using VertexType = arangodb::velocypack::HashedStringRef;

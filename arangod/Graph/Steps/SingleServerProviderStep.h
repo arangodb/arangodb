@@ -35,8 +35,7 @@ namespace graph {
 template<class EdgeType>
 class SingleServerProvider;
 
-class SingleServerProviderStep
-    : public arangodb::graph::BaseStep<SingleServerProviderStep> {
+class SingleServerProviderStep : public arangodb::graph::BaseStep {
  public:
   using EdgeType = EdgeDocumentToken;
   using VertexType = arangodb::velocypack::HashedStringRef;
