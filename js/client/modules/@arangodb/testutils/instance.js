@@ -326,7 +326,7 @@ class instance {
     if (this.options.arangodConfig !== undefined) {
       config = this.options.arangodConfig;
     }
-    this.args = _.defaults(this.args, {
+    let default_args = {
       'configuration': fs.join(pu.CONFIG_DIR, config),
       'define': 'TOP_DIR=' + pu.TOP_DIR,
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
@@ -335,13 +335,13 @@ class instance {
       'database.directory': this.dataDir,
       'temp.intermediate-results-path': this.tmpRocksdbDir,
       'log.file': this.logFile
-    });
-
+    };
     if (!this.options.skipServerJS) {
       // the argparser barely ignores them and breaks others...
-      this.args['javascript.app-path'] = this.appDir;
-      this.args['javascript.copy-installation'] = false;
+      default_args['javascript.app-path'] = this.appDir;
+      default_args['javascript.copy-installation'] = false;
     }
+    this.args = _.defaults(this.args, default_args);
     if (this.options.extremeVerbosity) {
       this.args['dump-env'] = true;
     }
