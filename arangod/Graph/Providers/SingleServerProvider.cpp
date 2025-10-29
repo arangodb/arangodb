@@ -26,11 +26,15 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/QueryContext.h"
+#include "Aql/TraversalStats.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/vocbase.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "RestServer/QueryRegistryFeature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Graph/Steps/SmartGraphStep.h"
@@ -69,7 +73,7 @@ template<class Step>
 void SingleServerProvider<Step>::addEdgeToLookupMap(
     typename Step::Edge const& edge, arangodb::velocypack::Builder& builder) {
   if (edge.isValid()) {
-    _cache.insertEdgeIntoLookupMap(edge.getID(), builder);
+    _edgeLookup.insertEdgeIntoLookupMap(edge.getID(), builder);
   }
 }
 
@@ -82,10 +86,17 @@ SingleServerProvider<Step>::SingleServerProvider(
       _trx(std::make_unique<arangodb::transaction::Methods>(
           queryContext.newTrxContext())),
       _opts(std::move(opts)),
-      _cache(_trx.get(), &queryContext, resourceMonitor,
-             _opts.collectionToShardMap(), _opts.getVertexProjections(),
-             _opts.getEdgeProjections(), _opts.produceVertices()),
-      _stats{},
+      _stats(std::make_unique<aql::TraversalStats>()),
+      _cache(resourceMonitor),
+      _vertexLookup(_trx.get(), &queryContext, _opts.getVertexProjections(),
+                    _opts.collectionToShardMap(), _stats,
+                    ServerState::instance()->isSingleServer() &&
+                        !queryContext.vocbase()
+                             .server()
+                             .getFeature<QueryRegistryFeature>()
+                             .requireWith(),
+                    _opts.produceVertices()),
+      _edgeLookup(_trx.get(), _opts.getEdgeProjections()),
       _neighbours{_opts, _trx.get(), _monitor,
                   aql::ExecutionBlock::DefaultBatchSize} {}
 
@@ -161,8 +172,12 @@ template<class Step>
 void SingleServerProvider<Step>::addVertexToBuilder(
     typename Step::Vertex const& vertex, arangodb::velocypack::Builder& builder,
     bool writeIdIfNotFound) {
-  _cache.insertVertexIntoResult(_stats, vertex.getID(), builder,
-                                writeIdIfNotFound);
+  if (_opts.produceVertices()) {
+    _vertexLookup.insertVertexIntoResult(vertex.getID(), builder,
+                                         writeIdIfNotFound);
+  } else {
+    builder.add(VPackSlice::nullSlice());
+  }
 }
 
 template<class Step>
@@ -176,19 +191,19 @@ auto SingleServerProvider<Step>::clear() -> void {
 template<class Step>
 void SingleServerProvider<Step>::insertEdgeIntoResult(
     EdgeDocumentToken edge, arangodb::velocypack::Builder& builder) {
-  _cache.insertEdgeIntoResult(edge, builder);
+  _edgeLookup.insertEdgeIntoResult(edge, builder);
 }
 
 template<class Step>
 void SingleServerProvider<Step>::insertEdgeIdIntoResult(
     EdgeDocumentToken edge, arangodb::velocypack::Builder& builder) {
-  _cache.insertEdgeIdIntoResult(edge, builder);
+  _edgeLookup.insertEdgeIdIntoResult(edge, builder);
 }
 
 template<class Step>
 std::string SingleServerProvider<Step>::getEdgeId(
     typename Step::Edge const& edge) {
-  return _cache.getEdgeId(edge.getID());
+  return _edgeLookup.getEdgeId(edge.getID());
 }
 
 template<class Step>
@@ -248,8 +263,8 @@ TRI_vocbase_t const& SingleServerProvider<Step>::vocbase() const {
 
 template<class Step>
 arangodb::aql::TraversalStats SingleServerProvider<Step>::stealStats() {
-  auto t = _stats;
-  _stats.clear();
+  auto t = *_stats;
+  _stats->clear();
   return t;
 }
 
