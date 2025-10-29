@@ -234,9 +234,8 @@ def read_yaml_suite(name, suite, definition, testfile_definitions, yaml_struct):
         flags.append("coverage" if params["coverage"] else "!coverage")
     if 'sniff' in params:
         flags.append("sniff" if params["sniff"] else "!sniff")
-    if yaml_struct != {}:
-        run_job = yaml_struct['add-yaml']['derives-to']
-    else:
+    run_job = definition['job']
+    if run_job == None:
         run_job = 'run-linux-tests'
     return {
         "name": name if not "name" in params else params['name'],
@@ -306,7 +305,8 @@ def read_yaml_multi_bucket_suite(name, definition, testfile_definitions, yaml_st
                                'options': definition['options'],
                                'name': name,
                                'args': args,
-                               'suites': definition['suites']
+                               'suites': definition['suites'],
+                               'job': definition['job']
                            },
                            testfile_definitions,
                            yaml_struct)
@@ -489,7 +489,10 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
             ':', test['testfile_definitions']['container_suffix'])
         job['driver-git-repo'] = test['testfile_definitions']['second_repo']
         job['driver-git-branch'] = test['testfile_definitions']['branch']
-        job['init_driver_repo_command'] = test['testfile_definitions']['init_command']
+        if 'init_command' in test['testfile_definitions']:
+            job['init_driver_repo_command'] = test['testfile_definitions']['init_command']
+        else:
+            job['init_driver_repo_command'] = ""
     else:
         job['docker_image'] = args.default_container
         job['driver-git-repo'] = ""
