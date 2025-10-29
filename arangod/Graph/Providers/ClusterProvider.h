@@ -33,8 +33,8 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/StringHeap.h"
 #include "Containers/FlatHashMap.h"
-
 #include "Graph/Steps/ClusterProviderStep.h"
+#include "Network/Methods.h"
 
 #include <vector>
 
@@ -92,13 +92,9 @@ class ClusterProvider {
               std::function<void(Step)> const& callback) -> void;
   using CursorId = size_t;
   auto addExpansionIterator(CursorId id, Step const& from,
-                            std::function<void()> const& callback) -> void {
-    return;
-  }
+                            std::function<void()> const& callback) -> void;
   auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
-                         std::function<void(Step)> const& callback) -> bool {
-    return true;
-  }
+                         std::function<void(Step)> const& callback) -> bool;
 
   void addVertexToBuilder(typename Step::Vertex const& vertex,
                           arangodb::velocypack::Builder& builder);
@@ -157,6 +153,9 @@ class ClusterProvider {
   containers::FlatHashMap<VertexType,
                           std::vector<std::pair<EdgeType, VertexType>>>
       _vertexConnectedEdges;
+
+  using EngineRequest = std::pair<ServerID, futures::Future<network::Response>>;
+  std::vector<std::vector<EngineRequest>> _edgeRequestsStack;
 };
 }  // namespace graph
 }  // namespace arangodb
