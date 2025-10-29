@@ -132,7 +132,6 @@ struct RocksDBInvertedListsFilteringIterator : faiss::InvertedListsIterator {
   std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
       _filteredIdsIt{_filteredIds.end()};
   std::size_t _listNumber;
-  std::size_t _codeSize;
 };
 
 struct RocksDBInvertedLists : faiss::InvertedLists {
