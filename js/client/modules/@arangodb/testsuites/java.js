@@ -371,10 +371,10 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     // strip i.e. http:// from the URL to conform with what the driver expects:
     let rx = /.*:\/\//gi;
     let args = [
-      'integration-test',
+      'test',
+      '-Pscala-2.12',
+      '-Pspark-3.5',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
-      '-Dgpg.skip',
-      '-Dmaven.javadoc.skip',
       `-Dallure.results.directory=${testResultsDir}`,
     ];
 
