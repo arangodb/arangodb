@@ -23,7 +23,7 @@ tests:
     options:
       priority: 500
       type: single
-      size: medium
+      size: large
       suffix: v2
     args:
       goDriverVersion: '2'
@@ -32,5 +32,6 @@ tests:
       priority: 500
       type: cluster
       suffix: v2
+      size: large
     args:
       goDriverVersion: '2'
