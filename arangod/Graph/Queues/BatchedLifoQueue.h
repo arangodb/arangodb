@@ -98,7 +98,7 @@ class BatchedLifoQueue {
       if (std::holds_alternative<Step>(first)) {
         return std::get<Step>(first).vertexFetched();
       } else {
-        return true;  // vertex was already fetched before
+        return false;  // next batch needs to be fetched
       }
     }
     return false;
@@ -161,7 +161,7 @@ class BatchedLifoQueue {
     std::vector<Step*> steps{};
     for (auto& item : _queue) {
       if (std::holds_alternative<Step>(item)) {
-        auto step = std::get<Step>(item);
+        auto& step = std::get<Step>(item);
         if (!step.vertexFetched()) {
           steps.emplace_back(&step);
         }

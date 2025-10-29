@@ -27,6 +27,7 @@
 
 #include "Basics/debugging.h"
 #include "Basics/system-compiler.h"
+#include "Cluster/ServerState.h"
 #include "Futures/Future.h"
 #include "Graph/Options/OneSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidator.h"
@@ -110,7 +111,8 @@ void OneSidedEnumerator<Configuration>::clearProvider() {
 template<class Configuration>
 auto OneSidedEnumerator<Configuration>::popFromQueue() -> QueueEntry<Step> {
   TRI_ASSERT(!_queue.isEmpty());
-  if (!_queue.firstIsVertexFetched()) {
+  if (!ServerState::instance()->isSingleServer() &&
+      !_queue.firstIsVertexFetched()) {
     std::vector<Step*> looseEnds = _queue.getStepsWithoutFetchedVertex();
     auto preparedEnds = _provider.fetchVertices(looseEnds);
     TRI_ASSERT(preparedEnds.size() != 0);
@@ -166,21 +168,22 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _results.emplace_back(step);
     }
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
-      if (!step.edgeFetched()) {
-        // NOTE: The step we have should be the first, s.t. we are guaranteed
-        // to work on it, as the ordering here gives the priority to the
-        // Provider in how important it is to get responses for a particular
-        // step.
-        std::vector<Step*> stepsToFetch{&step};
-        _queue.getStepsWithoutFetchedEdges(stepsToFetch);
-        TRI_ASSERT(!stepsToFetch.empty());
-        _provider.fetchEdges(stepsToFetch);
-        TRI_ASSERT(step.edgeFetched());
-      }
-      if (_queue.isBatched()) {
+      // currently batching only works with cluster case
+      if (_queue.isBatched() && ServerState::instance()->isSingleServer()) {
         _provider.addExpansionIterator(
             step, [&]() -> void { _queue.append({Expansion{posPrevious}}); });
       } else {
+        if (!step.edgeFetched()) {
+          // NOTE: The step we have should be the first, s.t. we are guaranteed
+          // to work on it, as the ordering here gives the priority to the
+          // Provider in how important it is to get responses for a particular
+          // step.
+          std::vector<Step*> stepsToFetch{&step};
+          _queue.getStepsWithoutFetchedEdges(stepsToFetch);
+          TRI_ASSERT(!stepsToFetch.empty());
+          _provider.fetchEdges(stepsToFetch);  // TODO
+          TRI_ASSERT(step.edgeFetched());
+        }
         _provider.expand(step, posPrevious,
                          [&](Step n) -> void { _queue.append({n}); });
       }
