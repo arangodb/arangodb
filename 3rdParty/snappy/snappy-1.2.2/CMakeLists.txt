@@ -26,7 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.21)
 project(Snappy VERSION 1.2.2 LANGUAGES C CXX)
 
 # C++ standard can be overridden when this is used as a sub-project.
@@ -53,8 +53,8 @@ if(MSVC)
   add_definitions(-D_HAS_EXCEPTIONS=0)
 
   # Disable RTTI.
-  string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
+  #string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
 else(MSVC)
   # Use -Wall for clang and gcc.
   if(NOT CMAKE_CXX_FLAGS MATCHES "-Wall")
@@ -83,8 +83,8 @@ else(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 
   # Disable RTTI.
-  string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+  #string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 endif(MSVC)
 
 # BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to make
@@ -173,6 +173,8 @@ int main() {
   return zero();
 }" HAVE_ATTRIBUTE_ALWAYS_INLINE)
 
+
+if (NOT WINDOWS)
 check_cxx_source_compiles("
 #include <tmmintrin.h>
 
@@ -184,6 +186,7 @@ int main() {
   _mm_storeu_si128(&dest, pattern);
   return 0;
 }" SNAPPY_HAVE_SSSE3)
+endif()
 
 check_cxx_source_compiles("
 #include <immintrin.h>
