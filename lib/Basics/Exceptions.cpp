@@ -78,7 +78,7 @@ void Exception::appendLocation() noexcept try {
     _errorMessage += std::string(" (exception location: ") +
                      _location.file_name() + ":" +
                      std::to_string(_location.line()) +
-                     "). Please report this error to arangodb.com";
+                     "). Please report this error to arango.ai";
   } else if (_code == TRI_ERROR_OUT_OF_MEMORY ||
              _code == TRI_ERROR_NOT_IMPLEMENTED) {
     _errorMessage += std::string(" (exception location: ") +

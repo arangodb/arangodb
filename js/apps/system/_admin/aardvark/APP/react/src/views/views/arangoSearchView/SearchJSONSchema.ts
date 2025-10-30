@@ -7,7 +7,7 @@ const extendedNames = window.frontendConfig.extendedNames;
 
 export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewPropertiesType> =
   {
-    $id: "https://arangodb.com/schemas/views/views.json",
+    $id: "https://arango.ai/schemas/views/views.json",
     type: "object",
     properties: {
       id: {
@@ -34,7 +34,7 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
           "^[a-zA-Z0-9-_]+$": {
             type: "object",
             nullable: true,
-            $id: "https://arangodb.com/schemas/views/linkProperties.json",
+            $id: "https://arango.ai/schemas/views/linkProperties.json",
             properties: {
               analyzers: {
                 type: "array",

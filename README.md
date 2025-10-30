@@ -14,7 +14,7 @@ single query language. ArangoDB runs on-prem, in the cloud – anywhere.
 ArangoDB Cloud Service
 ----------------------
 
-The [ArangoGraph Insights Platform](https://cloud.arangodb.com/home) is the
+The [ArangoGraph Insights Platform](https://dashboard.arangodb.cloud/home) is the
 simplest way to run ArangoDB. You can create deployments on all major cloud
 providers in many regions with ease.
 
@@ -23,14 +23,13 @@ Getting Started
 
 - [ArangoDB University](https://university.arangodb.com/)
 - [Free Udemy Course](https://www.udemy.com/course/getting-started-with-arangodb)
-- [Training Center](https://www.arangodb.com/learn/)
-- [Documentation](https://docs.arangodb.com/)
+- [Documentation](https://docs.arango.ai/)
 
 For the impatient:
 
-- Test ArangoDB in the cloud with [ArangoGraph](https://cloud.arangodb.com/home) for free.
+- Test ArangoDB in the cloud with [ArangoGraph](https://dashboard.arangodb.cloud/home) for free.
 
-- Alternatively, [download](https://www.arangodb.com/download) and install ArangoDB.
+- Alternatively, [download](https://arango.ai/downloads/) and install ArangoDB.
   Start the server `arangod` if the installer did not do it for you.
 
   Or start ArangoDB in a Docker container:
@@ -100,10 +99,10 @@ Latest Release
 --------------
 
 Packages for all supported platforms can be downloaded from
-<https://www.arangodb.com/download/>.
+<https://arango.ai/downloads/>.
 
 For what's new in ArangoDB, see the Release Notes in the
-[Documentation](https://docs.arangodb.com/).
+[Documentation](https://docs.arango.ai/).
 
 Stay in Contact
 ---------------

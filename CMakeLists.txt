@@ -202,12 +202,12 @@ option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 # for the packages
 set(ARANGODB_PACKAGE_VENDOR  "ArangoDB GmbH")
-set(ARANGODB_PACKAGE_CONTACT "info@arangodb.com")
+set(ARANGODB_PACKAGE_CONTACT "info@arango.ai")
 set(ARANGODB_DISPLAY_NAME    "ArangoDB")
-set(ARANGODB_URL_INFO_ABOUT  "https://www.arangodb.com")
-set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
-set(ARANGODB_CONTACT         "hackers@arangodb.com")
-set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
+set(ARANGODB_URL_INFO_ABOUT  "https://arango.ai")
+set(ARANGODB_HELP_LINK       "https://docs.arango.ai/arangodb/${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR}/")
+set(ARANGODB_CONTACT         "hackers@arango.ai")
+set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model graph database")
 
 
 # binaries

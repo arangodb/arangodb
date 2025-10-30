@@ -1337,10 +1337,10 @@ arangodb directory.
 
 # Additional Resources
 
-- [ArangoDB website](https://www.arangodb.com/)
+- [Arango website](https://arango.ai/)
 
 - [ArangoDB on Twitter](https://twitter.com/arangodb)
 
 - [General GitHub documentation](https://help.github.com/)
 
-- [GitHub pull request documentation](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork/)
+- [GitHub pull request documentation](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)

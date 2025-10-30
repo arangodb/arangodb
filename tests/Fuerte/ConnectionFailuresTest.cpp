@@ -127,7 +127,7 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
 TEST(ConnectionFailureTest, CannotResolveHttp) {
   f::EventLoopService loop;
   tryToConnectExpectFailure(
-      loop, "http://thishostmustnotexist.arangodb.com:8529", false);
+      loop, "http://thishostmustnotexist.arango.ai:8529", false);
 }
 
 // CannotConnect tests try to make a connection to a host with a valid name

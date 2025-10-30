@@ -46,7 +46,7 @@ function AuthSuite() {
 
   // hardcoded in testsuite
   const jwtSecret = 'haxxmann';
-  const user = 'hackers@arangodb.com';
+  const user = 'hackers@arango.ai';
 
   return {
 
