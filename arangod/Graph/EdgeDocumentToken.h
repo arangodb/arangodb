@@ -68,14 +68,6 @@ struct EdgeDocumentToken {
 #endif
   }
 
-  explicit EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept
-      : _data(edge) {
-    ADB_PROD_CRASH() << "oh mein gott";
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    _type = EdgeDocumentToken::TokenType::COORDINATOR;
-#endif
-  }
-
   EdgeDocumentToken& operator=(EdgeDocumentToken const& edtkn) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = edtkn._type;
@@ -109,22 +101,6 @@ struct EdgeDocumentToken {
     return _data.document.localDocumentId;
   }
 
-  uint8_t const* vpack() const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::COORDINATOR);
-#endif
-    TRI_ASSERT(_data.vpack);
-    return _data.vpack;
-  }
-
-  bool equalsCoordinator(EdgeDocumentToken const& other) const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::COORDINATOR);
-#endif
-    return velocypack::Slice(_data.vpack)
-        .binaryEquals(velocypack::Slice(other._data.vpack));
-  }
-
   bool equalsLocal(EdgeDocumentToken const& other) const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // For local the cid and localDocumentId have illegal values on NONE
@@ -136,19 +112,7 @@ struct EdgeDocumentToken {
   }
 
   bool equals(EdgeDocumentToken const& other) const {
-    if (ServerState::instance()->isCoordinator()) {
-      return equalsCoordinator(other);
-    }
     return equalsLocal(other);
-  }
-
-  int compareCoordinator(EdgeDocumentToken const& other) const {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_type == TokenType::COORDINATOR);
-#endif
-    VPackSlice s = velocypack::Slice(_data.vpack);
-    VPackSlice o = velocypack::Slice(other._data.vpack);
-    return arangodb::basics::VelocyPackHelper::compare(s, o, false);
   }
 
   int compareLocal(EdgeDocumentToken const& other) const {
@@ -173,33 +137,20 @@ struct EdgeDocumentToken {
   }
 
   int compare(EdgeDocumentToken const& other) const {
-    if (ServerState::instance()->isCoordinator()) {
-      return compareCoordinator(other);
-    }
     return compareLocal(other);
   }
 
   bool isValid() const {
-    if (ServerState::instance()->isCoordinator()) {
-      return _data.vpack != nullptr;
-    }
     return _data.document.cid != DataSourceId::none() &&
            _data.document.localDocumentId != LocalDocumentId::none();
   }
 
   size_t hash() const {
-    if (ServerState::instance()->isCoordinator()) {
-      auto vslice = arangodb::velocypack::Slice(vpack());
-      return vslice.hash();
-    }
     return std::hash<LocalDocumentId>{}(_data.document.localDocumentId) ^
            (_data.document.cid.id() << 1);
   }
 
   std::string toString() const {
-    if (ServerState::instance()->isCoordinator()) {
-      return arangodb::velocypack::Slice(vpack()).toString();
-    }
     return std::to_string(_data.document.cid.id()) + ":" +
            std::to_string(_data.document.localDocumentId.id());
   }
@@ -242,7 +193,7 @@ struct EdgeDocumentToken {
   TokenData _data;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  enum TokenType : uint8_t { NONE, LOCAL, COORDINATOR };
+  enum TokenType : uint8_t { NONE, LOCAL };
   TokenType _type;
 #endif
 };

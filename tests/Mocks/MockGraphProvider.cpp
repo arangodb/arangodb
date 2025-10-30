@@ -196,16 +196,6 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
   builder.close();
 }
 
-auto MockGraphProvider::getEdgeDocumentToken(const Step::Edge& edge)
-    -> arangodb::graph::EdgeDocumentToken {
-  VPackBuilder builder;
-  addEdgeToBuilder(edge, builder);
-
-  // Might require datalake as well, as soon as we really use this method in our
-  // cpp tests.
-  return arangodb::graph::EdgeDocumentToken{builder.slice()};
-}
-
 auto MockGraphProvider::addEdgeIDToBuilder(
     const Step::Edge& edge, arangodb::velocypack::Builder& builder) -> void {
   std::string fromId = edge.getEdge()._from;
