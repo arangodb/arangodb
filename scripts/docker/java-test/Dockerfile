@@ -4,7 +4,7 @@ MAINTAINER hackers@arangodb.com
 ARG arch
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y openjdk-21-jdk-headless git maven && \
+    apt-get install -y openjdk-21-jdk-headless git maven netcat-traditional && \
     apt-get update && \
     apt-get upgrade -y && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists 

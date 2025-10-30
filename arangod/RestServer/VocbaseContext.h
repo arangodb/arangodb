@@ -39,7 +39,7 @@ class VocbaseContext final : public arangodb::ExecContext {
 
   static std::shared_ptr<VocbaseContext> create(GeneralRequest& req,
                                                 TRI_vocbase_t& vocbase);
-  TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }
+  TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief upgrade to internal superuser
   void forceSuperuser();
