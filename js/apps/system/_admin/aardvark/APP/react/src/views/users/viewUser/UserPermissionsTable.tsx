@@ -40,8 +40,8 @@ const UserPermissionsTableInner = () => {
         <Alert status="error">
           <AlertIcon />
           <AlertDescription>
-            This user's permissions are managed by ArangoGraph and cannot be
-            modified in this deployment.
+            This user's permissions are managed by the Arango Managed Platform
+            (AMP) and cannot be modified in this deployment.
           </AlertDescription>
         </Alert>
       ) : null}
