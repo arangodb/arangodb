@@ -22,4 +22,4 @@ troubleshoot: |
   and waiting is a good measure at first. However, if the situation
   persists, something is wrong, potentially some constant server crash
   (maybe out of memory crashes?) or another situation preventing shards
-  to get in sync. Contact ArangoDB customer support in this case.
+  to get in sync. Contact the Arango customer support in this case.

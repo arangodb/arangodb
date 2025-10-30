@@ -22,4 +22,4 @@ description: |
 troubleshoot: |
   This number is always `0` from version 3.9.3 onwards. If it is
   non-zero in previous versions, then something is wrong, please 
-  contact ArangoDB customer support in this case.
+  contact the Arango customer support in this case.
