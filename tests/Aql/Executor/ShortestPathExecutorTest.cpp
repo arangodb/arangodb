@@ -193,7 +193,7 @@ class FakePathFinder {
         _tmpPathBuilder.add(VPackValue(StaticStrings::GraphQueryEdges));
         _tmpPathBuilder.openArray();
         for (size_t i = 0; i < p.size() - 1; ++i) {
-          _translator.makeEdge(_tmpPathBuilder, p[i], p[i+1]);
+          _translator.makeEdge(_tmpPathBuilder, p[i], p[i + 1]);
         }
         _tmpPathBuilder.close();  // edges
 
