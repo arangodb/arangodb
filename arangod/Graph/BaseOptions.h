@@ -60,7 +60,6 @@ class Slice;
 namespace graph {
 
 class EdgeCursor;
-class TraverserCache;
 
 /**
  * @brief Base class for Graph Operation options in AQL
@@ -188,14 +187,6 @@ struct BaseOptions {
   }
 
   arangodb::ResourceMonitor& resourceMonitor() const;
-
-  TraverserCache* cache();
-
-  TraverserCache* cache() const;
-  void ensureCache();
-
-  void activateCache(
-      std::unordered_map<ServerID, aql::EngineId> const* engines);
 
   std::shared_ptr<aql::TraversalStats> stats() { return _stats; };
 
