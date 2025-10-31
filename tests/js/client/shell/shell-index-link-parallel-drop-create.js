@@ -35,7 +35,7 @@ const {
   cleanupBGShells
 } = require('@arangodb/testutils/client-tools').run;
 let IM = global.instanceManager;
-const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
+const waitFor = IM.options.isInstrumented ? 80 * 10 : 80;
 
 function ParallelIndexLinkCreateDropSuite() {
   'use strict';
