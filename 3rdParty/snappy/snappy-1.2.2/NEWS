@@ -1,3 +1,24 @@
+Snappy v1.2.2, Mar 26th 2025:
+
+  * We added a new compression level in v1.2.1 which compresses a bit
+    denser but slower. Decompression speed should be even faster with it.
+
+  * We fixed a very old issue of data corruption when compressed size
+    exceeds 4GB. This can happen when you compress data close to 4GB
+    and it's incompressible, for example, random data.
+
+  * Started to use minimum CMake 3.10 because older ones are not
+    planned to be supported.
+
+  * Various other small fixes and performance improvements (especially
+    for clang).
+
+Snappy v1.1.10, Mar 8th 2023:
+
+  * Performance improvements
+
+  * Compilation fixes for various environments
+
 Snappy v1.1.9, May 4th 2021:
 
   * Performance improvements.
