@@ -1015,9 +1015,6 @@ void RestImportHandler::parseVelocyPackLine(VPackBuilder& builder,
   try {
     success = true;
     VPackParser parser(builder);
-    auto dist = std::distance(start, end);
-    LOG_DEVEL << ADB_HERE << " distance: " << dist << " start: " << start
-              << ", end: " << end;
     parser.parse(start, std::distance(start, end));
   } catch (std::exception const&) {
     // The line is invalid and could not be transformed into a string
