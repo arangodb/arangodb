@@ -34,7 +34,7 @@ For the impatient:
 
   Or start ArangoDB in a Docker container:
 
-      docker run -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 -d arangodb
+      docker run -d -e ARANGO_ROOT_PASSWORD=test123 -p 8529:8529 arangodb
 
   Then point your browser to `http://127.0.0.1:8529/`.
 
@@ -68,8 +68,6 @@ as an **Enterprise Edition** for commercial use and without a dataset size limit
   graphs, and ranked full-text search.
 - **Transactions**: Run queries on multiple documents or collections with
   optional transactional consistency and isolation.
-- **Data-centric microservices**: Unify your data storage logic, reduce network
-  overhead, and secure sensitive data with the _ArangoDB Foxx_ JavaScript framework.
 - **Fast access to your data**: Fine-tune your queries with a variety of index
   types for optimal performance. ArangoDB is written in C++ and can handle even
   very large datasets efficiently.
@@ -87,8 +85,7 @@ and security, as well as advanced query capabilities.
   query execution.
 - Combine the performance of a single server with the resilience of a cluster
   setup using **OneShard** deployments.
-- Increase fault tolerance with **Datacenter-to-Datacenter Replication** and
-  and create incremental **Hot Backups** without downtime.
+- Create incremental **Hot Backups** without downtime.
 - Enable highly secure work with **Encryption 360**, enhanced **Data Masking**, 
   and detailed **Auditing**.
 - Perform **parallel graph traversals**.
@@ -121,5 +118,3 @@ Stay in Contact
 
 - Follow us on Twitter to stay up to date:
   [https://twitter.com/arangodb](https://twitter.com/arangodb)
-
-- Find out more about our community: [https://www.arangodb.com/community](https://www.arangodb.com/community/)
