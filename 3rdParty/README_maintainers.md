@@ -211,38 +211,36 @@ We need the following modification to snappy's cmake config to ensure that on
 Windows the compiler does not use instructions which are not supported by our
 target architecture:
 ```
-diff --git a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
-index 672561e62fc..d6341fd1d7a 100644
---- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
-+++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+diff --git a/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt b/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt
+index cd71a472739..7016f9c2e5a 100644
+--- a/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt
++++ b/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt
 @@ -26,7 +26,7 @@
  # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  
--cmake_minimum_required(VERSION 3.1)
+-cmake_minimum_required(VERSION 3.10)
 +cmake_minimum_required(VERSION 3.21)
- project(Snappy VERSION 1.1.9 LANGUAGES C CXX)
+ project(Snappy VERSION 1.2.2 LANGUAGES C CXX)
  
  # C++ standard can be overridden when this is used as a sub-project.
---- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
-+++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
-@@ -160,6 +160,7 @@ int main() {
+@@ -173,6 +173,7 @@ int main() {
    return zero();
  }" HAVE_ATTRIBUTE_ALWAYS_INLINE)
-
+ 
 +if (NOT WINDOWS)
  check_cxx_source_compiles("
  #include <tmmintrin.h>
-
-@@ -177,6 +178,7 @@ check_cxx_source_compiles("
- int main() {
-   return _bzhi_u32(0, 1);
- }" SNAPPY_HAVE_BMI2)
+ 
+@@ -184,6 +185,7 @@ int main() {
+   _mm_storeu_si128(&dest, pattern);
+   return 0;
+ }" SNAPPY_HAVE_SSSE3)
 +endif()
-
- include(CheckSymbolExists)
- check_symbol_exists("mmap" "sys/mman.h" HAVE_FUNC_MMAP)
- ```
+ 
+ check_cxx_source_compiles("
+ #include <immintrin.h>
+```
 
 and the following patch to enable building with RTTI, because mixing RTTI and non-RTTI code
 leads to unpredictable problems.
