@@ -173,7 +173,6 @@ int main() {
   return zero();
 }" HAVE_ATTRIBUTE_ALWAYS_INLINE)
 
-
 if (NOT WINDOWS)
 check_cxx_source_compiles("
 #include <tmmintrin.h>
