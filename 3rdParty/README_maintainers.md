@@ -246,29 +246,29 @@ and the following patch to enable building with RTTI, because mixing RTTI and no
 leads to unpredictable problems.
 
 ``` 
-diff --git a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
-index 55c7bc88a10..5c3cf68f879 100644
---- a/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
-+++ b/3rdParty/snappy/snappy-1.1.9/CMakeLists.txt
+diff --git a/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt b/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt
+index 7016f9c2e5a..803f7b85ac8 100644
+--- a/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt
++++ b/3rdParty/snappy/snappy-1.2.2/CMakeLists.txt
 @@ -53,8 +53,8 @@ if(MSVC)
    add_definitions(-D_HAS_EXCEPTIONS=0)
  
    # Disable RTTI.
 -  string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 -  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
-+  #string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
++  # string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
++  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
  else(MSVC)
    # Use -Wall for clang and gcc.
    if(NOT CMAKE_CXX_FLAGS MATCHES "-Wall")
-@@ -78,8 +78,8 @@ else(MSVC)
+@@ -83,8 +83,8 @@ else(MSVC)
    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
  
    # Disable RTTI.
 -  string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 -  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
-+  #string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-+  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
++ # string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
++ # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
  endif(MSVC)
  
  # BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to make
