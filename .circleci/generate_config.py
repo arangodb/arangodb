@@ -234,9 +234,7 @@ def read_yaml_suite(name, suite, definition, testfile_definitions):
         flags.append("coverage" if params["coverage"] else "!coverage")
     if 'sniff' in params:
         flags.append("sniff" if params["sniff"] else "!sniff")
-    run_job = definition['job']
-    if run_job == None:
-        run_job = 'run-linux-tests'
+    run_job = definition.get('job', 'run-linux-tests')
     return {
         "name": name if not "name" in params else params['name'],
         "suites": suite,
