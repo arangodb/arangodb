@@ -183,7 +183,7 @@ def validate_flags(flags):
     if "full" in flags and "!full" in flags:
         raise Exception("`full` and `!full` specified for the same test")
 
-def read_yaml_suite(name, suite, definition, testfile_definitions, yaml_struct):
+def read_yaml_suite(name, suite, definition, testfile_definitions):
     """ convert yaml representation into the internal one """
     # pylint: disable=too-many-branches
     if not 'options' in definition:
@@ -268,7 +268,7 @@ def get_args(args):
             sub_args[key] = value
     return sub_args
 
-def read_yaml_multi_bucket_suite(name, definition, testfile_definitions, yaml_struct, cli_args):
+def read_yaml_multi_bucket_suite(name, definition, testfile_definitions, cli_args):
     """ convert yaml representation into the internal one """
     args = {}
     if 'args' in definition:
@@ -308,20 +308,16 @@ def read_yaml_multi_bucket_suite(name, definition, testfile_definitions, yaml_st
                                'suites': definition['suites'],
                                'job': definition['job']
                            },
-                           testfile_definitions,
-                           yaml_struct)
+                           testfile_definitions)
 
 def read_definitions(filename, override_branch, cli_args):
     """read test definitions txt"""
     tests = []
-    add_yaml = {}
     if filename.endswith(".yml"):
         with open(filename, "r", encoding="utf-8") as filep:
             testfile_definitions = {}
             config = yaml.safe_load(filep)
             if isinstance(config, dict):
-                if "add-yaml" in config:
-                    add_yaml = {"add-yaml": copy.deepcopy(config["add-yaml"])}
                 if "jobProperties" in config:
                     testfile_definitions = copy.deepcopy(config["jobProperties"])
                     if override_branch is not None:
@@ -335,20 +331,18 @@ def read_definitions(filename, override_branch, cli_args):
                         tests.append(read_yaml_multi_bucket_suite(suite_name,
                                                                   suite,
                                                                   testfile_definitions,
-                                                                  add_yaml,
                                                                   cli_args))
                     else:
                         tests.append(read_yaml_suite(suite_name,
                                                      suite_name,
                                                      suite,
-                                                     testfile_definitions,
-                                                     add_yaml))
+                                                     testfile_definitions))
                 except Exception as ex:
                     print(f"while parsing {suite_name} {testcase}")
                     raise ex
     else:
         raise Exception("only .yml file format supported")
-    return tests, add_yaml
+    return tests
 
 
 def filter_tests(args, tests, nightly):
@@ -464,8 +458,6 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
     if suite_name == "shell_client_aql" and build_config.isNightly and not cluster:
         # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size
         job["size"] = get_test_size("medium+", build_config, cluster)
-    if 'more_yaml' in test:
-        job ['foo'] = test['more_yaml']
     sub_extra_args = test["args"].copy()
     if depl_variant == DeploymentVariant.CLUSTER:
         sub_extra_args += ["--replicationVersion", f"{replication_version}"]
@@ -800,7 +792,6 @@ def main():
         if args.ui_testsuites is None:
             args.ui_testsuites = ""
         tests = []
-        parsed_yamls = []
         for one_definition in args.definitions:
             override_branch = None
             if args.test_branches is not None and args.test_branches != "":
@@ -811,27 +802,14 @@ def main():
                             override_branch = branch
                 except Exception as ex:
                     raise Exception(f"Syntax error in --test-branches: {branch_name_pair} must be 'name=branch:name2=branch2'") from ex
-            (new_tests, new_parsed_yaml) = read_definitions(one_definition, override_branch, args)
+            new_tests = read_definitions(one_definition, override_branch, args)
             tests += new_tests
-            parsed_yamls.append(new_parsed_yaml)
         # if args.validate_only:
         #    return  # nothing left to do
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
                 generate_jobs(config, args, tests)
-                for one_yaml in parsed_yamls:
-                    if one_yaml != {}:
-                        original_job = one_yaml['add-yaml']['derives']
-                        new_job = one_yaml['add-yaml']['derives-to']
-                        del one_yaml['add-yaml']['derives-to']
-                        del one_yaml['add-yaml']['derives']
-                        orig_test_job = copy.deepcopy(config['jobs'][original_job])
-                        new_job_definition = {
-                            **orig_test_job,
-                            **one_yaml['add-yaml']
-                        }
-                        config['jobs'][new_job] = new_job_definition
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)
