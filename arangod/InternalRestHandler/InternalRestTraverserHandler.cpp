@@ -316,16 +316,14 @@ void InternalRestTraverserHandler::queryEngine() {
             generateResult(ResponseCode::OK, result.slice(), engine->context());
             return;
           }
-
         } else if (std::holds_alternative<Continue>(startQuery)) {
           auto q = std::get<Continue>(startQuery);
           if (not eng->_cursor.has_value() ||
               q.cursorId != eng->_cursor->_cursorId) {
-            generateError(
-                ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                fmt::format(
-                    "cursor id {} does not exist in traverser engine {}",
-                    q.cursorId, engineId));
+            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                          "cursor id " + std::to_string(q.cursorId) +
+                              " does not exist in traverser engine " +
+                              std::to_string(engineId));
             return;
           }
         }
