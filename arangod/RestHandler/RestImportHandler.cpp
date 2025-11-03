@@ -35,7 +35,6 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
-#include "Logger/LogMacros.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
