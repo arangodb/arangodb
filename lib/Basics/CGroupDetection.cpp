@@ -31,12 +31,10 @@ namespace {
 
 /// @brief detect which cgroup version is in use on the system
 CGroupVersion detectCGroupVersionImpl() {
-  // Check for cgroup v2
   if (TRI_ExistsFile("/sys/fs/cgroup/cgroup.controllers")) {
     return CGroupVersion::V2;
   }
 
-  // Check for cgroup v1
   if (TRI_ExistsFile("/sys/fs/cgroup/cpu") ||
       TRI_ExistsFile("/sys/fs/cgroup/memory")) {
     return CGroupVersion::V1;
@@ -46,9 +44,9 @@ CGroupVersion detectCGroupVersionImpl() {
 }
 
 struct CGroupVersionCache {
-  CGroupVersionCache() : cachedValue(detectCGroupVersionImpl()) {}
+  CGroupVersionCache() : cachedCGroupVersion(detectCGroupVersionImpl()) {}
 
-  CGroupVersion cachedValue;
+  CGroupVersion cachedCGroupVersion;
 };
 
 CGroupVersionCache const cache;
@@ -56,7 +54,7 @@ CGroupVersionCache const cache;
 }  // namespace
 
 /// @brief return cached cgroup version
-CGroupVersion getVersion() { return cache.cachedValue; }
+CGroupVersion getVersion() { return cache.cachedCGroupVersion; }
 
 }  // namespace CGroupDetection
 }  // namespace arangodb
