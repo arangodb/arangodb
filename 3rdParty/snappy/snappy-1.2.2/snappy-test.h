@@ -31,25 +31,25 @@
 #ifndef THIRD_PARTY_SNAPPY_OPENSOURCE_SNAPPY_TEST_H_
 #define THIRD_PARTY_SNAPPY_OPENSOURCE_SNAPPY_TEST_H_
 
-#ifdef HAVE_CONFIG_H
+#if HAVE_CONFIG_H
 #include "config.h"
 #endif
 
 #include "snappy-stubs-internal.h"
 
-#ifdef HAVE_SYS_MMAN_H
+#if HAVE_SYS_MMAN_H
 #include <sys/mman.h>
 #endif
 
-#ifdef HAVE_SYS_RESOURCE_H
+#if HAVE_SYS_RESOURCE_H
 #include <sys/resource.h>
 #endif
 
-#ifdef HAVE_SYS_TIME_H
+#if HAVE_SYS_TIME_H
 #include <sys/time.h>
 #endif
 
-#ifdef HAVE_WINDOWS_H
+#if HAVE_WINDOWS_H
 // Needed to be able to use std::max without workarounds in the source code.
 // https://support.microsoft.com/en-us/help/143208/prb-using-stl-in-windows-program-can-cause-min-max-conflicts
 #define NOMINMAX
@@ -58,15 +58,15 @@
 
 #define InitGoogle(argv0, argc, argv, remove_flags) ((void)(0))
 
-#ifdef HAVE_LIBZ
+#if HAVE_LIBZ
 #include "zlib.h"
 #endif
 
-#ifdef HAVE_LIBLZO2
+#if HAVE_LIBLZO2
 #include "lzo/lzo1x.h"
 #endif
 
-#ifdef HAVE_LIBLZ4
+#if HAVE_LIBLZ4
 #include "lz4.h"
 #endif
 
@@ -216,7 +216,7 @@ class LogMessageVoidify {
 #define CHECK_GT(a, b) CRASH_UNLESS((a) > (b))
 #define CHECK_OK(cond) (cond).ok()
 
-#ifdef HAVE_LIBZ
+#if HAVE_LIBZ
 
 // Object-oriented wrapper around zlib.
 class ZLib {

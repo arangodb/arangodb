@@ -14,7 +14,7 @@
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_C_FLAGS": "-fno-stack-protector",
         "CMAKE_CXX_FLAGS": "-fno-stack-protector",
-        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -fuse-ld=lld",
         "USE_IPO": "Off",
         "USE_STRICT_OPENSSL_VERSION": "On",
         "STATIC_EXECUTABLES": "On"
@@ -93,6 +93,7 @@
         "STATIC_EXECUTABLES": "Off",
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
         "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1 -rtlib=compiler-rt -fuse-ld=lld",
         "USE_MINIMAL_DEBUGINFO": "On"
       }
     },
