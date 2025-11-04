@@ -1,0 +1,807 @@
+"""
+Shared library for parsing and processing ArangoDB test configuration files.
+
+This module provides type-safe data models and utilities for working with YAML
+test definition files used by both CircleCI and Jenkins test systems.
+
+Architecture:
+- Data models defined as dataclasses with validation
+- Parsing functions to convert YAML dicts to typed objects
+- Validation logic in __post_init__ methods
+- Merging logic for option inheritance
+"""
+
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional, Any, Union
+import yaml
+
+
+# ============================================================================
+# Enumerations
+# ============================================================================
+
+
+class DeploymentType(Enum):
+    """Test deployment type: single server, cluster, or mixed."""
+
+    SINGLE = "single"
+    CLUSTER = "cluster"
+    MIXED = "mixed"
+
+    @classmethod
+    def from_string(cls, value: str) -> "DeploymentType":
+        """Parse deployment type from string, case-insensitive."""
+        normalized = value.lower()
+        for member in cls:
+            if member.value == normalized:
+                return member
+        raise ValueError(
+            f"Invalid deployment type: {value}. Must be one of: single, cluster, mixed"
+        )
+
+
+class ResourceSize(Enum):
+    """Resource allocation size for test execution."""
+
+    SMALL = "small"
+    MEDIUM = "medium"
+    MEDIUM_PLUS = "medium+"
+    LARGE = "large"
+    XLARGE = "xlarge"
+    XXLARGE = "2xlarge"
+
+    @classmethod
+    def from_string(cls, value: str) -> "ResourceSize":
+        """Parse resource size from string, case-insensitive."""
+        normalized = value.lower()
+        for member in cls:
+            if member.value == normalized:
+                return member
+        raise ValueError(
+            f"Invalid resource size: {value}. Must be one of: small, medium, medium+, large, xlarge"
+        )
+
+
+# ============================================================================
+# Data Models
+# ============================================================================
+
+
+@dataclass
+class TestOptions:
+    """
+    Test execution options that can be specified at job or suite level.
+
+    Suite-level options override job-level options. All fields are optional
+    to support partial overrides.
+    """
+
+    deployment_type: Optional[DeploymentType] = None
+    size: Optional[ResourceSize] = None
+    priority: Optional[int] = None
+    parallelity: Optional[int] = None
+    buckets: Optional[Union[int, str]] = None  # int or "auto"
+    storage_engine: Optional[str] = None
+    min_replication_factor: Optional[int] = None
+    max_replication_factor: Optional[int] = None
+    replication_version: Optional[str] = None
+    test_data_dir: Optional[str] = None
+
+
+    def __post_init__(self):
+        """Validate option values."""
+        # Validate priority
+        if self.priority is not None and self.priority < 0:
+            raise ValueError(f"priority must be non-negative, got: {self.priority}")
+
+        # Validate parallelity
+        if self.parallelity is not None and self.parallelity < 1:
+            raise ValueError(f"parallelity must be at least 1, got: {self.parallelity}")
+
+        # Validate buckets
+        if self.buckets is not None:
+            if isinstance(self.buckets, str):
+                if self.buckets != "auto":
+                    raise ValueError(
+                        f"buckets string must be 'auto', got: {self.buckets}"
+                    )
+            elif isinstance(self.buckets, int):
+                if self.buckets < 1:
+                    raise ValueError(f"buckets must be at least 1, got: {self.buckets}")
+            else:
+                raise ValueError(
+                    f"buckets must be int or 'auto', got: {type(self.buckets)}"
+                )
+
+        # Validate replication factors
+        if self.min_replication_factor is not None and self.min_replication_factor < 1:
+            raise ValueError(
+                f"min_replication_factor must be at least 1, got: {self.min_replication_factor}"
+            )
+
+        if self.max_replication_factor is not None and self.max_replication_factor < 1:
+            raise ValueError(
+                f"max_replication_factor must be at least 1, got: {self.max_replication_factor}"
+            )
+
+        if (
+            self.min_replication_factor is not None
+            and self.max_replication_factor is not None
+            and self.min_replication_factor > self.max_replication_factor
+        ):
+            raise ValueError(
+                f"min_replication_factor ({self.min_replication_factor}) cannot be greater than "
+                f"max_replication_factor ({self.max_replication_factor})"
+            )
+
+    @classmethod
+    def from_dict(cls, data: Optional[Dict[str, Any]]) -> "TestOptions":
+        """
+        Create TestOptions from a dictionary, handling type conversions.
+
+        Args:
+            data: Dictionary from YAML, or None
+
+        Returns:
+            TestOptions instance with all None fields if data is None
+        """
+        if data is None:
+            return cls()
+
+        # Handle type conversions and field name mapping
+        kwargs = {}
+
+        # Map YAML field names to our field names
+        if "type" in data and data["type"] is not None:
+            kwargs["deployment_type"] = DeploymentType.from_string(data["type"])
+        elif "deployment_type" in data and data["deployment_type"] is not None:
+            kwargs["deployment_type"] = DeploymentType.from_string(
+                data["deployment_type"]
+            )
+
+        if "size" in data and data["size"] is not None:
+            kwargs["size"] = ResourceSize.from_string(data["size"])
+
+        # Direct field mappings (only actual TestOptions fields)
+        field_mappings = {
+            "priority": "priority",
+            "parallelity": "parallelity",
+            "buckets": "buckets",
+            "storage_engine": "storage_engine",
+            "min_replication_factor": "min_replication_factor",
+            "max_replication_factor": "max_replication_factor",
+            "replication_version": "replication_version",
+            "test_data_dir": "test_data_dir",
+        }
+
+        for yaml_field, our_field in field_mappings.items():
+            if yaml_field in data:
+                kwargs[our_field] = data[yaml_field]
+
+        # Note: Other YAML fields like 'coverage', 'full', 'suffix' are intentionally
+        # ignored as they are not part of our TestOptions model. They may be used
+        # by the original scripts but are not needed for the core data model.
+
+        return cls(**kwargs)
+
+    def merge_with(self, override: Optional["TestOptions"]) -> "TestOptions":
+        """
+        Create a new TestOptions with values from override taking precedence.
+
+        Args:
+            override: TestOptions that should override self's values
+
+        Returns:
+            New TestOptions with merged values
+        """
+        if override is None:
+            return TestOptions(
+                deployment_type=self.deployment_type,
+                size=self.size,
+                priority=self.priority,
+                parallelity=self.parallelity,
+                buckets=self.buckets,
+                storage_engine=self.storage_engine,
+                min_replication_factor=self.min_replication_factor,
+                max_replication_factor=self.max_replication_factor,
+                replication_version=self.replication_version,
+                test_data_dir=self.test_data_dir,
+            )
+
+        return TestOptions(
+            deployment_type=(
+                override.deployment_type
+                if override.deployment_type is not None
+                else self.deployment_type
+            ),
+            size=override.size if override.size is not None else self.size,
+            priority=(
+                override.priority if override.priority is not None else self.priority
+            ),
+            parallelity=(
+                override.parallelity
+                if override.parallelity is not None
+                else self.parallelity
+            ),
+            buckets=override.buckets if override.buckets is not None else self.buckets,
+            storage_engine=(
+                override.storage_engine
+                if override.storage_engine is not None
+                else self.storage_engine
+            ),
+            min_replication_factor=(
+                override.min_replication_factor
+                if override.min_replication_factor is not None
+                else self.min_replication_factor
+            ),
+            max_replication_factor=(
+                override.max_replication_factor
+                if override.max_replication_factor is not None
+                else self.max_replication_factor
+            ),
+            replication_version=(
+                override.replication_version
+                if override.replication_version is not None
+                else self.replication_version
+            ),
+            test_data_dir=(
+                override.test_data_dir
+                if override.test_data_dir is not None
+                else self.test_data_dir
+            ),
+        )
+
+
+@dataclass
+class TestArguments:
+    """Additional command-line arguments for test execution."""
+
+    extra_args: List[str] = field(default_factory=list)
+    arangosh_args: List[str] = field(default_factory=list)
+
+
+    @classmethod
+    def from_dict(cls, data: Optional[Dict[str, Any]]) -> "TestArguments":
+        """Create TestArguments from a dictionary."""
+        if data is None:
+            return cls()
+
+        # Data can be:
+        # 1. A dict with extraArgs:key format (from YAML args section)
+        # 2. A dict with 'extra_args' and 'arangosh_args' lists
+        # 3. A dict with nested 'args' key
+
+        extra_args = []
+        arangosh_args = []
+
+        # Check if we have direct 'extra_args' field
+        if "extra_args" in data:
+            extra_args = data["extra_args"]
+        # Otherwise parse the dict directly for argument patterns
+        else:
+            for key, value in data.items():
+                if key == "arangosh_args":
+                    # Handle arangosh_args separately
+                    continue
+                elif key.startswith("extraArgs:"):
+                    # Handle "extraArgs:log.level: replication=trace" format
+                    arg_name = key[len("extraArgs:") :]
+                    extra_args.append(f"--{arg_name}")
+                    extra_args.append(str(value))
+                elif isinstance(value, bool) and value:
+                    # Handle boolean flags like "dumpAgencyOnError: true"
+                    extra_args.append(f"--{key}")
+                elif isinstance(value, str):
+                    # Handle string arguments
+                    extra_args.append(f"--{key}")
+                    extra_args.append(value)
+
+        # Handle arangosh_args
+        arangosh_args = data.get("arangosh_args", [])
+
+        # Ensure they are lists
+        if isinstance(extra_args, str):
+            extra_args = [extra_args]
+        if isinstance(arangosh_args, str):
+            arangosh_args = [arangosh_args]
+        if isinstance(arangosh_args, dict):
+            # Handle arangosh_args as dict (like in YAML: "javascript.v8-max-heap: 32768")
+            arangosh_list = []
+            for key, value in arangosh_args.items():
+                arangosh_list.append(f"--{key}")
+                arangosh_list.append(str(value))
+            arangosh_args = arangosh_list
+
+        return cls(
+            extra_args=list(extra_args) if extra_args else [],
+            arangosh_args=list(arangosh_args) if arangosh_args else [],
+        )
+
+    def merge_with(self, override: Optional["TestArguments"]) -> "TestArguments":
+        """
+        Create a new TestArguments with combined argument lists.
+
+        Args:
+            override: TestArguments to append to self's arguments
+
+        Returns:
+            New TestArguments with combined lists
+        """
+        if override is None:
+            return TestArguments(
+                extra_args=list(self.extra_args), arangosh_args=list(self.arangosh_args)
+            )
+
+        return TestArguments(
+            extra_args=self.extra_args + override.extra_args,
+            arangosh_args=self.arangosh_args + override.arangosh_args,
+        )
+
+
+@dataclass
+class SuiteConfig:
+    """
+    Configuration for a single test suite within a job.
+
+    For single-suite jobs, this contains the suite name and any overrides.
+    For multi-suite jobs, this represents one suite in the list.
+    """
+
+    name: str
+    options: TestOptions = field(default_factory=TestOptions)
+    arguments: TestArguments = field(default_factory=TestArguments)
+
+    def __post_init__(self):
+        """Validate suite configuration."""
+        if not self.name or not isinstance(self.name, str):
+            raise ValueError(f"Suite name must be a non-empty string, got: {self.name}")
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SuiteConfig":
+        """Create SuiteConfig from a dictionary."""
+        if not isinstance(data, dict):
+            raise ValueError(f"SuiteConfig data must be a dict, got: {type(data)}")
+
+        if "name" not in data:
+            raise ValueError("SuiteConfig must have 'name' field")
+
+        return cls(
+            name=data["name"],
+            options=TestOptions.from_dict(data.get("options")),
+            arguments=TestArguments.from_dict(data.get("arguments")),
+        )
+
+    def with_merged_options(
+        self, job_options: TestOptions, job_arguments: TestArguments
+    ) -> "SuiteConfig":
+        """
+        Create a new SuiteConfig with job-level options as defaults.
+
+        Args:
+            job_options: TestJob-level options to use as defaults
+            job_arguments: TestJob-level arguments to prepend
+
+        Returns:
+            New SuiteConfig with merged options
+        """
+        return SuiteConfig(
+            name=self.name,
+            options=job_options.merge_with(self.options),
+            arguments=job_arguments.merge_with(self.arguments),
+        )
+
+
+@dataclass
+class RepositoryConfig:
+    """Git repository configuration for driver tests."""
+
+    git_repo: str
+    git_branch: Optional[str] = None
+    git_sha: Optional[str] = None
+
+    def __post_init__(self):
+        """Validate repository configuration."""
+        if not self.git_repo or not isinstance(self.git_repo, str):
+            raise ValueError(
+                f"git_repo must be a non-empty string, got: {self.git_repo}"
+            )
+
+    @classmethod
+    def from_dict(cls, data: Optional[Dict[str, Any]]) -> Optional["RepositoryConfig"]:
+        """Create RepositoryConfig from a dictionary."""
+        if data is None:
+            return None
+
+        if "git_repo" not in data:
+            raise ValueError("RepositoryConfig must have 'git_repo' field")
+
+        return cls(
+            git_repo=data["git_repo"],
+            git_branch=data.get("git_branch"),
+            git_sha=data.get("git_sha"),
+        )
+
+
+@dataclass
+class TestJob:
+    """
+    Complete specification for a test job.
+
+    This is a unified representation that handles both single-suite and
+    multi-suite jobs. Every job has a list of suites (even if length 1).
+    """
+
+    name: str
+    suites: List[SuiteConfig]
+    options: TestOptions = field(default_factory=TestOptions)
+    arguments: TestArguments = field(default_factory=TestArguments)
+    repository: Optional[RepositoryConfig] = None
+
+
+    def __post_init__(self):
+        """Validate test job configuration."""
+        if not self.name or not isinstance(self.name, str):
+            raise ValueError(f"TestJob name must be a non-empty string, got: {self.name}")
+
+        if not self.suites:
+            raise ValueError(f"TestJob '{self.name}' must have at least one suite")
+
+        # Validate deployment type constraints
+        self._validate_deployment_type_constraints()
+
+        # Validate buckets constraints
+        self._validate_buckets_constraints()
+
+    def _validate_deployment_type_constraints(self):
+        """Validate deployment type usage rules."""
+        job_type = self.options.deployment_type
+
+        if job_type == DeploymentType.MIXED:
+            # MIXED is only allowed for multi-suite jobs
+            if len(self.suites) == 1:
+                raise ValueError(
+                    f"TestJob '{self.name}': deployment_type 'mixed' is only valid for multi-suite jobs"
+                )
+        elif job_type in (DeploymentType.SINGLE, DeploymentType.CLUSTER):
+            # Single/Cluster jobs cannot have suite-level deployment_type overrides
+            for suite in self.suites:
+                if suite.options.deployment_type is not None:
+                    raise ValueError(
+                        f"TestJob '{self.name}', suite '{suite.name}': Cannot override deployment_type "
+                        f"when job deployment_type is {job_type.value}"
+                    )
+
+        # For MIXED jobs, ensure all suites have a deployment type (either explicit or None to inherit)
+        # NOTE: In practice, MIXED jobs may infer deployment type from args (e.g., cluster: true)
+        # rather than explicit options. We allow None for now and leave inference to output generators.
+        if job_type == DeploymentType.MIXED:
+            for suite in self.suites:
+                if suite.options.deployment_type == DeploymentType.MIXED:
+                    raise ValueError(
+                        f"TestJob '{self.name}', suite '{suite.name}': Suite deployment_type cannot be 'mixed'"
+                    )
+
+    def _validate_buckets_constraints(self):
+        """Validate buckets usage rules."""
+        job_buckets = self.options.buckets
+
+        # Multi-suite jobs with explicit buckets must use "auto"
+        if len(self.suites) > 1 and job_buckets is not None:
+            if job_buckets != "auto":
+                raise ValueError(
+                    f"TestJob '{self.name}': Multi-suite jobs with buckets must use buckets='auto', "
+                    f"got: {job_buckets}"
+                )
+
+        # Single-suite jobs cannot use "auto"
+        if len(self.suites) == 1:
+            if job_buckets == "auto":
+                raise ValueError(
+                    f"TestJob '{self.name}': Single-suite jobs cannot use buckets='auto'"
+                )
+            for suite in self.suites:
+                if suite.options.buckets == "auto":
+                    raise ValueError(
+                        f"TestJob '{self.name}', suite '{suite.name}': Cannot use buckets='auto' "
+                        f"in single-suite job"
+                    )
+
+    @classmethod
+    def from_dict(cls, name: str, data: Dict[str, Any]) -> "TestJob":
+        """
+        Create TestJob from a dictionary.
+
+        Handles both single-suite jobs (with 'suite' field) and multi-suite
+        jobs (with 'suites' field).
+
+        Args:
+            name: TestJob name
+            data: Dictionary from YAML
+
+        Returns:
+            TestJob instance
+        """
+        if not isinstance(data, dict):
+            raise ValueError(f"TestJob '{name}' data must be a dict, got: {type(data)}")
+
+        # Parse suites - handle both 'suite' (single) and 'suites' (multi)
+        # If neither is specified, use the job name as the suite name
+        suites = []
+        if "suite" in data:
+            # Single-suite job with explicit suite name
+            suite_name = data["suite"]
+            if not isinstance(suite_name, str):
+                raise ValueError(
+                    f"TestJob '{name}': 'suite' must be a string, got: {type(suite_name)}"
+                )
+            suites = [SuiteConfig(name=suite_name)]
+        elif "suites" in data:
+            # Multi-suite job
+            suite_list = data["suites"]
+            if not isinstance(suite_list, list):
+                raise ValueError(
+                    f"TestJob '{name}': 'suites' must be a list, got: {type(suite_list)}"
+                )
+
+            for suite_data in suite_list:
+                if isinstance(suite_data, str):
+                    # Simple string form
+                    suites.append(SuiteConfig(name=suite_data))
+                elif isinstance(suite_data, dict):
+                    # Dict form - check if suite name is a key or a field
+                    if "name" in suite_data:
+                        # Format: {name: 'suite_name', options: {...}, ...}
+                        suites.append(SuiteConfig.from_dict(suite_data))
+                    elif len(suite_data) == 1:
+                        # Format: {suite_name: {options: {...}, args: {...}}}
+                        suite_name, suite_config = next(iter(suite_data.items()))
+                        # Merge the name into the config
+                        full_config = {"name": suite_name}
+                        if isinstance(suite_config, dict):
+                            full_config.update(suite_config)
+                        suites.append(SuiteConfig.from_dict(full_config))
+                    else:
+                        raise ValueError(
+                            f"TestJob '{name}': Dict suite must have 'name' field or be single-key dict, got: {suite_data}"
+                        )
+                else:
+                    raise ValueError(
+                        f"TestJob '{name}': Suite must be string or dict, got: {type(suite_data)}"
+                    )
+        else:
+            # No suite/suites specified - use job name as suite name
+            suites = [SuiteConfig(name=name)]
+
+        return cls(
+            name=name,
+            suites=suites,
+            options=TestOptions.from_dict(data.get("options")),
+            arguments=TestArguments.from_dict(data.get("args") or data.get("arguments")),
+            repository=RepositoryConfig.from_dict(data.get("repository")),
+        )
+
+    def is_multi_suite(self) -> bool:
+        """Check if this is a multi-suite job."""
+        return len(self.suites) > 1
+
+    def get_resolved_suites(self) -> List[SuiteConfig]:
+        """
+        Get suites with job-level options merged in.
+
+        Returns:
+            List of SuiteConfig with merged options
+        """
+        return [
+            suite.with_merged_options(self.options, self.arguments)
+            for suite in self.suites
+        ]
+
+    def get_bucket_count(self) -> Optional[int]:
+        """
+        Calculate the number of buckets for this job.
+
+        Returns:
+            Number of buckets, or None if not using buckets
+        """
+        if self.options.buckets is None:
+            return None
+
+        if self.options.buckets == "auto":
+            return len(self.suites)
+
+        return self.options.buckets
+
+
+@dataclass
+class TestDefinitionFile:
+    """Complete representation of a test definition YAML file."""
+
+    jobs: Dict[str, TestJob]
+
+
+    def __post_init__(self):
+        """Validate test definition file."""
+        if not self.jobs:
+            raise ValueError("Test definition file must contain at least one job")
+
+    @classmethod
+    def from_yaml_file(cls, filepath: str) -> "TestDefinitionFile":
+        """
+        Load and parse a test definition YAML file.
+
+        Args:
+            filepath: Path to YAML file
+
+        Returns:
+            TestDefinitionFile instance
+        """
+        with open(filepath, "r") as f:
+            data = yaml.safe_load(f)
+
+        return cls.from_dict(data)
+
+    @classmethod
+    def from_dict(
+        cls, data: Union[Dict[str, Any], List[Dict[str, Any]]]
+    ) -> "TestDefinitionFile":
+        """
+        Create TestDefinitionFile from a dictionary or list.
+
+        Handles two YAML formats:
+        1. Flat list of jobs: [{'job_name': job_data}, ...]
+        2. Driver test format: {jobProperties: {...}, tests: [...]}
+
+        Args:
+            data: Dictionary or list loaded from YAML
+
+        Returns:
+            TestDefinitionFile instance
+        """
+        jobs = {}
+        repo_config = None
+
+        # Check if this is the driver test format with 'jobProperties' and 'tests'
+        if isinstance(data, dict) and "tests" in data:
+            # Extract jobProperties for repository configuration
+            job_properties = data.get("jobProperties", {})
+
+            # Convert jobProperties to repository config if present
+            if job_properties and "second_repo" in job_properties:
+                repo_config = {
+                    "git_repo": job_properties["second_repo"],
+                    "git_branch": job_properties.get("branch"),
+                }
+
+            # Parse the tests list
+            tests_data = data["tests"]
+            if not isinstance(tests_data, list):
+                raise ValueError(
+                    f"'tests' key must contain a list, got: {type(tests_data)}"
+                )
+
+            for item in tests_data:
+                if not isinstance(item, dict):
+                    raise ValueError(
+                        f"Each item in 'tests' list must be a dict, got: {type(item)}"
+                    )
+                if len(item) != 1:
+                    raise ValueError(
+                        f"Each item in 'tests' list must have exactly one key-value pair, got: {len(item)}"
+                    )
+
+                job_name, job_data = next(iter(item.items()))
+
+                # Add repository config to job data if not already present
+                if repo_config:
+                    if not isinstance(job_data, dict):
+                        job_data = {}
+                    if "repository" not in job_data:
+                        job_data["repository"] = repo_config
+
+                jobs[job_name] = TestJob.from_dict(job_name, job_data)
+
+        elif isinstance(data, list):
+            # Handle flat list format: [{'job_name': job_data}, ...]
+            for item in data:
+                if not isinstance(item, dict):
+                    raise ValueError(
+                        f"Each item in test definition list must be a dict, got: {type(item)}"
+                    )
+                if len(item) != 1:
+                    raise ValueError(
+                        f"Each item in test definition list must have exactly one key-value pair, got: {len(item)}"
+                    )
+
+                job_name, job_data = next(iter(item.items()))
+                jobs[job_name] = TestJob.from_dict(job_name, job_data)
+
+        elif isinstance(data, dict):
+            # Handle dict format: {'job_name': job_data, ...}
+            # Skip special metadata keys
+            for job_name, job_data in data.items():
+                if job_name in ("jobProperties", "add-yaml"):
+                    # Skip metadata keys (add-yaml is ignored per requirements)
+                    continue
+                jobs[job_name] = TestJob.from_dict(job_name, job_data)
+
+        else:
+            raise ValueError(
+                f"Test definition data must be a dict or list, got: {type(data)}"
+            )
+
+        return cls(jobs=jobs)
+
+    def get_job_names(self) -> List[str]:
+        """Get sorted list of all job names."""
+        return sorted(self.jobs.keys())
+
+    def filter_jobs(self, **criteria) -> Dict[str, TestJob]:
+        """
+        Filter jobs based on criteria.
+
+        Supported criteria:
+        - deployment_type: Filter by deployment type
+        - size: Filter by resource size
+        - has_repository: Filter jobs with/without repository config
+        - suite_name: Filter jobs containing specific suite
+
+        Returns:
+            Dict of job_name -> TestJob matching criteria
+        """
+        filtered = {}
+
+        for job_name, job in self.jobs.items():
+            match = True
+
+            # Filter by deployment type
+            if "deployment_type" in criteria:
+                expected = criteria["deployment_type"]
+                if job.options.deployment_type != expected:
+                    match = False
+
+            # Filter by size
+            if "size" in criteria:
+                expected = criteria["size"]
+                if job.options.size != expected:
+                    match = False
+
+            # Filter by repository presence
+            if "has_repository" in criteria:
+                expected = criteria["has_repository"]
+                has_repo = job.repository is not None
+                if has_repo != expected:
+                    match = False
+
+            # Filter by suite name
+            if "suite_name" in criteria:
+                expected = criteria["suite_name"]
+                suite_names = [s.name for s in job.suites]
+                if expected not in suite_names:
+                    match = False
+
+            if match:
+                filtered[job_name] = job
+
+        return filtered
+
+
+@dataclass
+class BuildConfig:
+    """Build context information for test execution."""
+
+    architecture: str  # e.g., "amd64", "arm64"
+    enterprise: bool
+    sanitizer: Optional[str] = None  # e.g., "asan", "tsan", "ubsan"
+    nightly: bool = False
+
+    def __post_init__(self):
+        """Validate build configuration."""
+        if not self.architecture:
+            raise ValueError("architecture must be specified")
+
+        valid_sanitizers = {None, "asan", "tsan", "ubsan"}
+        if self.sanitizer not in valid_sanitizers:
+            raise ValueError(
+                f"Invalid sanitizer: {self.sanitizer}. Must be one of: {valid_sanitizers}"
+            )
