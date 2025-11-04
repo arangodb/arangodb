@@ -104,6 +104,6 @@ class OutputGenerator(ABC):
         Returns:
             Filtered list of jobs
         """
-        from filters import filter_jobs
+        from ..filters import filter_jobs
 
         return filter_jobs(test_def, self.config.filter_criteria)

@@ -5,7 +5,8 @@ Generates CircleCI workflow YAML from test definitions and build configuration.
 """
 
 import json
-from typing import List, Dict, Any, Optional
+import os
+from typing import List, Dict, Any, Optional, Callable
 from datetime import date
 import re
 import yaml
@@ -24,16 +25,29 @@ from .sizing import ResourceSizer
 class CircleCIGenerator(OutputGenerator):
     """Generate CircleCI workflow configuration from test definitions."""
 
-    def __init__(self, config: GeneratorConfig, base_config_path: str):
+    def __init__(
+        self,
+        config: GeneratorConfig,
+        base_config_path: Optional[str] = None,
+        base_config: Optional[Dict[str, Any]] = None,
+        env_getter: Optional[Callable[[str, str], str]] = None,
+        date_provider: Optional[Callable[[], date]] = None,
+    ):
         """
         Initialize CircleCI generator.
 
         Args:
             config: Generator configuration
-            base_config_path: Path to base CircleCI config YAML
+            base_config_path: Path to base CircleCI config YAML (optional if base_config provided)
+            base_config: Pre-loaded base config dict (for testing)
+            env_getter: Function to get environment variables (defaults to os.environ.get)
+            date_provider: Function to get current date (defaults to date.today)
         """
         super().__init__(config)
         self.base_config_path = base_config_path
+        self._base_config = base_config
+        self.env_getter = env_getter or os.environ.get
+        self.date_provider = date_provider or date.today
         self.sizer = ResourceSizer()
 
     def generate(self, test_defs: List[TestDefinitionFile], **kwargs) -> Dict[str, Any]:
@@ -47,9 +61,14 @@ class CircleCIGenerator(OutputGenerator):
         Returns:
             Complete CircleCI configuration dict
         """
-        # Load base configuration
-        with open(self.base_config_path, "r", encoding="utf-8") as f:
-            circleci_config = yaml.safe_load(f)
+        # Load or use base configuration
+        if self._base_config is not None:
+            circleci_config = self._base_config.copy()
+        elif self.base_config_path:
+            with open(self.base_config_path, "r", encoding="utf-8") as f:
+                circleci_config = yaml.safe_load(f)
+        else:
+            raise ValueError("Either base_config or base_config_path must be provided")
 
         # Collect all jobs from all test definition files
         all_jobs = []
@@ -65,7 +84,8 @@ class CircleCIGenerator(OutputGenerator):
         build_config = BuildConfig(
             architecture="x64",
             enterprise=True,
-            sanitizer=self.config.filter_criteria.full or "",  # Sanitizer from criteria
+            sanitizer=self.config.filter_criteria.full
+            or None,  # Sanitizer from criteria
             nightly=self.config.filter_criteria.nightly,
         )
         self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
@@ -75,7 +95,7 @@ class CircleCIGenerator(OutputGenerator):
             build_config = BuildConfig(
                 architecture="aarch64",
                 enterprise=True,
-                sanitizer="",
+                sanitizer=None,
                 nightly=self.config.filter_criteria.nightly,
             )
             self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
@@ -174,7 +194,7 @@ class CircleCIGenerator(OutputGenerator):
         params = {
             "context": ["sccache-aws-bucket"],
             "resource-class": self.sizer.get_resource_class(
-                "2xlarge", build_config.architecture
+                ResourceSize.XXLARGE, build_config.architecture
             ),
             "name": name,
             "preset": preset,
@@ -238,20 +258,20 @@ class CircleCIGenerator(OutputGenerator):
             else "public.ecr.aws/b0b8h2r4/arangodb-preview"
         )
 
-        branch = os.environ.get("CIRCLE_BRANCH", "unknown-branch")
+        branch = self.env_getter("CIRCLE_BRANCH", "unknown-branch")
         match = re.fullmatch(r"(.+\/)?(.+)", branch)
         if match:
             branch = match.group(2)
 
-        sha1 = os.environ.get("CIRCLE_SHA1", "unknown-sha1")[:7]
-        tag = f"{date.today()}-{branch}-{sha1}-{arch}"
+        sha1 = self.env_getter("CIRCLE_SHA1", "unknown-sha1")[:7]
+        tag = f"{self.date_provider()}-{branch}-{sha1}-{arch}"
 
         workflow["jobs"].append(
             {
                 "create-docker-image": {
                     "name": f"create-{edition}-{build_config.architecture}-docker-image",
                     "resource-class": self.sizer.get_resource_class(
-                        "large", build_config.architecture
+                        ResourceSize.LARGE, build_config.architecture
                     ),
                     "arch": arch,
                     "tag": f"{image}:{tag}",
@@ -268,7 +288,9 @@ class CircleCIGenerator(OutputGenerator):
             {
                 "run-hotbackup-tests": {
                     "name": f"run-hotbackup-tests-{build_config.architecture}",
-                    "size": self.sizer.get_test_size("medium", build_config, True),
+                    "size": self.sizer.get_test_size(
+                        ResourceSize.MEDIUM, build_config, True
+                    ),
                     "requires": build_jobs,
                 }
             }
@@ -442,9 +464,7 @@ class CircleCIGenerator(OutputGenerator):
 
         # Get size
         size = job.options.size or ResourceSize.SMALL
-        resource_class = self._get_job_size(
-            job.name, size.value, build_config, is_cluster
-        )
+        resource_class = self._get_job_size(job.name, size, build_config, is_cluster)
 
         # Build job dict
         job_dict = {
@@ -494,19 +514,32 @@ class CircleCIGenerator(OutputGenerator):
             return "mixed"
 
     def _get_job_size(
-        self, job_name: str, base_size: str, build_config: BuildConfig, is_cluster: bool
+        self,
+        job_name: str,
+        base_size: ResourceSize,
+        build_config: BuildConfig,
+        is_cluster: bool,
     ) -> str:
         """
         Get job size with special cases applied.
 
         Some jobs have special sizing requirements that override the base size.
+
+        Args:
+            job_name: Name of the job
+            base_size: Base resource size enum
+            build_config: Build configuration
+            is_cluster: Whether this is a cluster test
+
+        Returns:
+            CircleCI resource class string
         """
         size = base_size
 
         # Special case: nightly chaos tests need more time (not size)
         # Special case: nightly single shell_client_aql needs more memory
         if job_name == "shell_client_aql" and build_config.nightly and not is_cluster:
-            size = "medium+"
+            size = ResourceSize.MEDIUM_PLUS
 
         return self.sizer.get_test_size(size, build_config, is_cluster)
 
