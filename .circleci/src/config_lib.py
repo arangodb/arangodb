@@ -88,7 +88,6 @@ class TestOptions:
     replication_version: Optional[str] = None
     test_data_dir: Optional[str] = None
 
-
     def __post_init__(self):
         """Validate option values."""
         # Validate priority
@@ -259,7 +258,6 @@ class TestArguments:
 
     extra_args: List[str] = field(default_factory=list)
     arangosh_args: List[str] = field(default_factory=list)
-
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "TestArguments":
@@ -438,11 +436,12 @@ class TestJob:
     arguments: TestArguments = field(default_factory=TestArguments)
     repository: Optional[RepositoryConfig] = None
 
-
     def __post_init__(self):
         """Validate test job configuration."""
         if not self.name or not isinstance(self.name, str):
-            raise ValueError(f"TestJob name must be a non-empty string, got: {self.name}")
+            raise ValueError(
+                f"TestJob name must be a non-empty string, got: {self.name}"
+            )
 
         if not self.suites:
             raise ValueError(f"TestJob '{self.name}' must have at least one suite")
@@ -577,7 +576,9 @@ class TestJob:
             name=name,
             suites=suites,
             options=TestOptions.from_dict(data.get("options")),
-            arguments=TestArguments.from_dict(data.get("args") or data.get("arguments")),
+            arguments=TestArguments.from_dict(
+                data.get("args") or data.get("arguments")
+            ),
             repository=RepositoryConfig.from_dict(data.get("repository")),
         )
 
@@ -618,7 +619,6 @@ class TestDefinitionFile:
     """Complete representation of a test definition YAML file."""
 
     jobs: Dict[str, TestJob]
-
 
     def __post_init__(self):
         """Validate test definition file."""

@@ -6,154 +6,104 @@ such as deployment type, full/nightly runs, platform exclusions, etc.
 """
 
 from typing import List, Dict, Any, Optional
-import os
-from config_lib import TestJob, TestDefinitionFile, DeploymentType
+from dataclasses import dataclass
+from .config_lib import TestJob, TestDefinitionFile, DeploymentType
 
 
-# Environment flags
-IS_WINDOWS = os.name == 'nt'
-IS_MAC = os.uname().sysname == 'Darwin' if hasattr(os, 'uname') else False
-IS_ARM = os.uname().machine in ('aarch64', 'arm64') if hasattr(os, 'uname') else False
-IS_COVERAGE = os.environ.get("COVERAGE") == "On"
+@dataclass
+class PlatformFlags:
+    """Platform-specific flags for filtering tests."""
+
+    is_windows: bool = False
+    is_mac: bool = False
+    is_arm: bool = False
+    is_coverage: bool = False
 
 
-def should_include_job(job: TestJob,
-                       full: bool = False,
-                       cluster: bool = False,
-                       single: bool = False,
-                       all_tests: bool = False,
-                       gtest: bool = False,
-                       enterprise: bool = True) -> bool:
+@dataclass
+class FilterCriteria:
+    """Criteria for filtering test jobs."""
+
+    # Deployment type filters
+    cluster: bool = False
+    single: bool = False
+    all_tests: bool = False
+
+    # Test type filters
+    full: bool = False
+    nightly: bool = False
+    gtest: bool = False
+
+    # Feature flags
+    enterprise: bool = True
+
+    # Platform exclusions
+    platform: PlatformFlags = None
+
+    def __post_init__(self):
+        """Initialize platform flags if not provided."""
+        if self.platform is None:
+            self.platform = PlatformFlags()
+
+    @property
+    def is_full_run(self) -> bool:
+        """Check if this is a full or nightly run."""
+        return self.full or self.nightly
+
+
+def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     """
-    Determine if a job should be included based on CLI arguments.
+    Determine if a job should be included based on filter criteria.
 
     Args:
         job: TestJob to check
-        full: Whether this is a full test run
-        cluster: Whether to include cluster tests
-        single: Whether to include single server tests
-        all_tests: Whether to include all tests (ignore other filters)
-        gtest: Whether to only include gtest suites
-        enterprise: Whether enterprise tests are enabled
+        criteria: FilterCriteria to apply
 
     Returns:
         True if job should be included, False otherwise
     """
-    if all_tests:
+    if criteria.all_tests:
         return True
 
     # Check deployment type filters
     deployment_type = job.options.deployment_type
 
     # If specific deployment type requested
-    if cluster and not single:
+    if criteria.cluster and not criteria.single:
         if deployment_type not in (DeploymentType.CLUSTER, DeploymentType.MIXED, None):
             return False
-    elif single and not cluster:
+    elif criteria.single and not criteria.cluster:
         if deployment_type not in (DeploymentType.SINGLE, None):
             return False
 
-    # Check full flag (this will be moved to per-suite filtering)
-    # For now, jobs don't have flags directly - we'll handle at suite level
-
     # Check gtest filter
-    if gtest:
-        # Check if any suite name starts with 'gtest'
-        if not any(suite.name.startswith('gtest') for suite in job.suites):
+    if criteria.gtest:
+        if not any(suite.name.startswith("gtest") for suite in job.suites):
             return False
 
-    # Check enterprise filter
-    if not enterprise:
-        # Jobs don't have an 'enterprise' flag in the current model
-        # This would need to be added to TestOptions if needed
-        pass
-
-    # Check platform exclusions (handled at suite level in original code)
-    # We'll implement this at the suite filtering level
+    # Platform exclusions would be checked at suite level in the original code
+    # For now, we accept all jobs at the job level
+    # Suite-level filtering would happen during job execution
 
     return True
 
 
-def filter_jobs(test_def: TestDefinitionFile,
-                full: bool = False,
-                nightly: bool = False,
-                cluster: bool = False,
-                single: bool = False,
-                all_tests: bool = False,
-                gtest: bool = False,
-                enterprise: bool = True,
-                exclude_windows: bool = IS_WINDOWS,
-                exclude_mac: bool = IS_MAC,
-                exclude_arm: bool = IS_ARM,
-                exclude_coverage: bool = IS_COVERAGE) -> List[TestJob]:
+def filter_jobs(
+    test_def: TestDefinitionFile, criteria: FilterCriteria
+) -> List[TestJob]:
     """
     Filter jobs from a test definition file based on criteria.
 
     Args:
         test_def: TestDefinitionFile containing jobs to filter
-        full: Whether this is a full test run (or nightly)
-        nightly: Whether this is a nightly build
-        cluster: Include only cluster tests
-        single: Include only single server tests
-        all_tests: Include all tests (ignore filters)
-        gtest: Include only gtest suites
-        enterprise: Include enterprise tests
-        exclude_windows: Exclude tests marked as !windows
-        exclude_mac: Exclude tests marked as !mac
-        exclude_arm: Exclude tests marked as !arm
-        exclude_coverage: Exclude tests marked as !coverage
+        criteria: FilterCriteria to apply
 
     Returns:
         Filtered list of TestJob objects
     """
-    # Combine full and nightly flags
-    is_full = full or nightly
-
     filtered = []
     for job_name, job in test_def.jobs.items():
-        if should_include_job(job, is_full, cluster, single, all_tests, gtest, enterprise):
+        if should_include_job(job, criteria):
             filtered.append(job)
 
     return filtered
-
-
-def add_deployment_prefixes(jobs: List[TestJob], single_cluster: bool = False) -> List[TestJob]:
-    """
-    Add sg_/cl_ prefixes to job names when running both single and cluster.
-
-    This is used in Jenkins/Oskar to differentiate between single and cluster
-    runs of the same test suite.
-
-    Args:
-        jobs: List of TestJob objects
-        single_cluster: Whether to add prefixes for both single and cluster
-
-    Returns:
-        List of TestJob objects with updated names
-    """
-    if not single_cluster:
-        return jobs
-
-    # Split jobs by deployment type
-    single_jobs = []
-    cluster_jobs = []
-
-    for job in jobs:
-        deployment_type = job.options.deployment_type
-
-        if deployment_type == DeploymentType.SINGLE:
-            # Clone the job with sg_ prefix
-            single_jobs.append(job)
-        elif deployment_type == DeploymentType.CLUSTER:
-            # Clone the job with cl_ prefix
-            cluster_jobs.append(job)
-        elif deployment_type == DeploymentType.MIXED or deployment_type is None:
-            # For mixed or unspecified, create both variants
-            single_jobs.append(job)
-            cluster_jobs.append(job)
-
-    # Note: The actual prefix addition would need to be handled by the output
-    # generator since TestJob is immutable. We return the categorized jobs
-    # and let the caller decide how to handle the prefixes.
-
-    return single_jobs + cluster_jobs

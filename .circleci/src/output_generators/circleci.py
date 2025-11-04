@@ -5,34 +5,36 @@ Generates CircleCI workflow YAML from test definitions and build configuration.
 """
 
 import json
-import sys
-import os
 from typing import List, Dict, Any, Optional
-from enum import Enum
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-from config_lib import (
-    TestJob, TestDefinitionFile, BuildConfig, DeploymentType, ResourceSize
-)
-from output_generators.base import OutputGenerator, GeneratorArgs
+from datetime import date
+import re
 import yaml
+
+from ..config_lib import (
+    TestJob,
+    TestDefinitionFile,
+    BuildConfig,
+    DeploymentType,
+    ResourceSize,
+)
+from .base import OutputGenerator, GeneratorConfig
+from .sizing import ResourceSizer
 
 
 class CircleCIGenerator(OutputGenerator):
     """Generate CircleCI workflow configuration from test definitions."""
 
-    def __init__(self, args: GeneratorArgs, base_config_path: str):
+    def __init__(self, config: GeneratorConfig, base_config_path: str):
         """
         Initialize CircleCI generator.
 
         Args:
-            args: Generator arguments
+            config: Generator configuration
             base_config_path: Path to base CircleCI config YAML
         """
-        super().__init__(args)
+        super().__init__(config)
         self.base_config_path = base_config_path
+        self.sizer = ResourceSizer()
 
     def generate(self, test_defs: List[TestDefinitionFile], **kwargs) -> Dict[str, Any]:
         """
@@ -46,8 +48,8 @@ class CircleCIGenerator(OutputGenerator):
             Complete CircleCI configuration dict
         """
         # Load base configuration
-        with open(self.base_config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
+        with open(self.base_config_path, "r", encoding="utf-8") as f:
+            circleci_config = yaml.safe_load(f)
 
         # Collect all jobs from all test definition files
         all_jobs = []
@@ -56,29 +58,29 @@ class CircleCIGenerator(OutputGenerator):
             all_jobs.extend(filtered)
 
         # Generate workflows for different build configurations
-        if 'workflows' not in config:
-            config['workflows'] = {}
+        if "workflows" not in circleci_config:
+            circleci_config["workflows"] = {}
 
         # X64 Enterprise (always included)
         build_config = BuildConfig(
             architecture="x64",
             enterprise=True,
-            sanitizer=self.args.sanitizer,
-            nightly=self.args.nightly
+            sanitizer=self.config.filter_criteria.full or "",  # Sanitizer from criteria
+            nightly=self.config.filter_criteria.nightly,
         )
-        self._add_workflow(config['workflows'], all_jobs, build_config)
+        self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
         # ARM64 Enterprise (only without sanitizer)
-        if self.args.sanitizer == "":
+        if not self.config.filter_criteria.full:  # No sanitizer
             build_config = BuildConfig(
                 architecture="aarch64",
                 enterprise=True,
                 sanitizer="",
-                nightly=self.args.nightly
+                nightly=self.config.filter_criteria.nightly,
             )
-            self._add_workflow(config['workflows'], all_jobs, build_config)
+            self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
-        return config
+        return circleci_config
 
     def write_output(self, output: Dict[str, Any], destination: str) -> None:
         """
@@ -88,11 +90,12 @@ class CircleCIGenerator(OutputGenerator):
             output: Generated config dict
             destination: Output file path
         """
-        with open(destination, 'w', encoding='utf-8') as f:
+        with open(destination, "w", encoding="utf-8") as f:
             yaml.dump(output, f)
 
-    def _add_workflow(self, workflows: Dict[str, Any], jobs: List[TestJob],
-                     build_config: BuildConfig) -> None:
+    def _add_workflow(
+        self, workflows: Dict[str, Any], jobs: List[TestJob], build_config: BuildConfig
+    ) -> None:
         """
         Add a workflow for a specific build configuration.
 
@@ -101,70 +104,78 @@ class CircleCIGenerator(OutputGenerator):
             jobs: List of test jobs
             build_config: Build configuration
         """
-        # Generate workflow name
-        suffix = "nightly" if build_config.nightly else "pr"
-
-        if build_config.architecture == "x64" and self.args.ui != "" and self.args.ui != "off":
-            if self.args.ui == "only":
-                suffix = "only_ui_tests-" + suffix
-            else:
-                suffix = "with_ui_tests-" + suffix
-        else:
-            suffix = "no_ui_tests-" + suffix
-
-        if build_config.sanitizer != "":
-            suffix += "-" + build_config.sanitizer
-
-        if self.args.replication_two:
-            suffix += "-repl2"
-
-        edition = "enterprise" if build_config.enterprise else "community"
-        workflow_name = f"{build_config.architecture}-{edition}-{suffix}"
-
+        workflow_name = self._generate_workflow_name(build_config)
         workflow = {"jobs": []}
         workflows[workflow_name] = workflow
 
         # Add build jobs
-        build_job_name = self._add_build_job(workflow, build_config)
-        frontend_job_name = self._add_frontend_build_job(workflow, build_config)
-        build_jobs = [build_job_name, frontend_job_name]
+        build_jobs = self._add_build_jobs(workflow, build_config)
 
-        # Add cppcheck for x64 non-UI
-        if build_config.architecture == "x64" and (not self.args.ui or self.args.ui == "off"):
-            self._add_cppcheck_job(workflow, build_job_name)
-
-        # Add docker image creation
-        if self.args.create_docker_images:
-            self._add_create_docker_image_job(workflow, build_config, build_jobs)
-
-        # Add UI tests if requested
-        if build_config.architecture == "x64" and self.args.ui != "" and self.args.ui != "off":
-            self._add_rta_ui_test_jobs(workflow, build_config, build_jobs)
-
-        if self.args.ui == "only":
-            return  # Skip regular tests
-
-        # Add hotbackup tests for enterprise
-        if build_config.enterprise and self.args.arangod_without_v8 != 'true':
-            self._add_hotbackup_job(workflow, build_config, build_jobs)
+        # Add optional jobs
+        self._add_optional_jobs(workflow, build_config, build_jobs)
 
         # Add test jobs
-        self._add_test_jobs(workflow, jobs, build_config, build_jobs)
+        if self.config.circleci.ui != "only":
+            self._add_test_jobs(workflow, jobs, build_config, build_jobs)
 
-    def _add_build_job(self, workflow: Dict[str, Any], build_config: BuildConfig) -> str:
-        """Add compilation job to workflow."""
+    def _generate_workflow_name(self, build_config: BuildConfig) -> str:
+        """Generate workflow name from build configuration."""
+        suffix = "nightly" if build_config.nightly else "pr"
+
+        if build_config.architecture == "x64" and self.config.circleci.ui not in (
+            "",
+            "off",
+        ):
+            suffix = f"{'only_' if self.config.circleci.ui == 'only' else ''}ui_tests-{suffix}"
+        else:
+            suffix = f"no_ui_tests-{suffix}"
+
+        if build_config.sanitizer:
+            suffix += f"-{build_config.sanitizer}"
+
+        if self.config.test_execution.replication_two:
+            suffix += "-repl2"
+
+        edition = "enterprise" if build_config.enterprise else "community"
+        return f"{build_config.architecture}-{edition}-{suffix}"
+
+    def _add_build_jobs(
+        self, workflow: Dict[str, Any], build_config: BuildConfig
+    ) -> List[str]:
+        """
+        Add compilation and frontend build jobs.
+
+        Returns:
+            List of build job names that tests depend on
+        """
+        build_job = self._create_build_job(build_config)
+        frontend_job = self._create_frontend_build_job(build_config)
+
+        workflow["jobs"].append(build_job)
+        workflow["jobs"].append(frontend_job)
+
+        # Extract job names from the dicts
+        build_job_name = build_job["compile-linux"]["name"]
+        frontend_job_name = frontend_job["build-frontend"]["name"]
+
+        return [build_job_name, frontend_job_name]
+
+    def _create_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
+        """Create compilation job definition."""
         edition = "ee" if build_config.enterprise else "ce"
-        preset = "enterprise-pr" if build_config.enterprise else "community-pr"
+        preset = f"{'enterprise' if build_config.enterprise else 'community'}-pr"
 
-        if build_config.sanitizer != "":
+        if build_config.sanitizer:
             preset += f"-{build_config.sanitizer}"
 
-        suffix = "" if build_config.sanitizer == "" else f"-{build_config.sanitizer}"
+        suffix = f"-{build_config.sanitizer}" if build_config.sanitizer else ""
         name = f"build-{edition}-{build_config.architecture}{suffix}"
 
         params = {
             "context": ["sccache-aws-bucket"],
-            "resource-class": self._get_size("2xlarge", build_config.architecture),
+            "resource-class": self.sizer.get_resource_class(
+                "2xlarge", build_config.architecture
+            ),
             "name": name,
             "preset": preset,
             "enterprise": build_config.enterprise,
@@ -174,34 +185,51 @@ class CircleCIGenerator(OutputGenerator):
         if build_config.architecture == "aarch64":
             params["s3-prefix"] = "aarch64"
 
-        workflow["jobs"].append({"compile-linux": params})
-        return name
+        return {"compile-linux": params}
 
-    def _add_frontend_build_job(self, workflow: Dict[str, Any], build_config: BuildConfig) -> str:
-        """Add frontend build job to workflow."""
+    def _create_frontend_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
+        """Create frontend build job definition."""
         edition = "ee" if build_config.enterprise else "ce"
-        suffix = "" if build_config.sanitizer == "" else f"-{build_config.sanitizer}"
+        suffix = f"-{build_config.sanitizer}" if build_config.sanitizer else ""
         name = f"build-{edition}-{build_config.architecture}{suffix}-frontend"
 
-        workflow["jobs"].append({"build-frontend": {"name": name}})
-        return name
+        return {"build-frontend": {"name": name}}
 
-    def _add_cppcheck_job(self, workflow: Dict[str, Any], build_job: str) -> None:
-        """Add cppcheck job to workflow."""
-        workflow["jobs"].append({
-            "run-cppcheck": {
-                "name": "cppcheck",
-                "requires": [build_job],
-            }
-        })
+    def _add_optional_jobs(
+        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
+    ) -> None:
+        """Add optional jobs (cppcheck, docker, hotbackup, UI tests)."""
+        # Cppcheck for x64 non-UI
+        if build_config.architecture == "x64" and self.config.circleci.ui in (
+            "",
+            "off",
+        ):
+            workflow["jobs"].append(
+                {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
+            )
 
-    def _add_create_docker_image_job(self, workflow: Dict[str, Any],
-                                     build_config: BuildConfig,
-                                     build_jobs: List[str]) -> None:
+        # Docker image creation
+        if self.config.circleci.create_docker_images:
+            self._add_docker_image_job(workflow, build_config, build_jobs)
+
+        # UI tests
+        if build_config.architecture == "x64" and self.config.circleci.ui not in (
+            "",
+            "off",
+        ):
+            self._add_ui_test_jobs(workflow, build_config, build_jobs)
+
+        # Hotbackup tests
+        if (
+            build_config.enterprise
+            and not self.config.test_execution.arangod_without_v8
+        ):
+            self._add_hotbackup_job(workflow, build_config, build_jobs)
+
+    def _add_docker_image_job(
+        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
+    ) -> None:
         """Add docker image creation job."""
-        from datetime import date
-        import re
-
         edition = "ee" if build_config.enterprise else "ce"
         arch = "amd64" if build_config.architecture == "x64" else "arm64"
         image = (
@@ -218,111 +246,176 @@ class CircleCIGenerator(OutputGenerator):
         sha1 = os.environ.get("CIRCLE_SHA1", "unknown-sha1")[:7]
         tag = f"{date.today()}-{branch}-{sha1}-{arch}"
 
-        workflow["jobs"].append({
-            "create-docker-image": {
-                "name": f"create-{edition}-{build_config.architecture}-docker-image",
-                "resource-class": self._get_size("large", build_config.architecture),
-                "arch": arch,
-                "tag": f"{image}:{tag}",
-                "requires": build_jobs,
+        workflow["jobs"].append(
+            {
+                "create-docker-image": {
+                    "name": f"create-{edition}-{build_config.architecture}-docker-image",
+                    "resource-class": self.sizer.get_resource_class(
+                        "large", build_config.architecture
+                    ),
+                    "arch": arch,
+                    "tag": f"{image}:{tag}",
+                    "requires": build_jobs,
+                }
             }
-        })
+        )
 
-    def _add_hotbackup_job(self, workflow: Dict[str, Any],
-                           build_config: BuildConfig,
-                           build_jobs: List[str]) -> None:
+    def _add_hotbackup_job(
+        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
+    ) -> None:
         """Add hotbackup test job."""
-        workflow["jobs"].append({
-            "run-hotbackup-tests": {
-                "name": f"run-hotbackup-tests-{build_config.architecture}",
-                "size": self._get_test_size("medium", build_config, True),
-                "requires": build_jobs,
+        workflow["jobs"].append(
+            {
+                "run-hotbackup-tests": {
+                    "name": f"run-hotbackup-tests-{build_config.architecture}",
+                    "size": self.sizer.get_test_size("medium", build_config, True),
+                    "requires": build_jobs,
+                }
             }
-        })
+        )
 
-    def _add_rta_ui_test_jobs(self, workflow: Dict[str, Any],
-                             build_config: BuildConfig,
-                             build_jobs: List[str]) -> None:
+    def _add_ui_test_jobs(
+        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
+    ) -> None:
         """Add RTA UI test jobs."""
-        ui_testsuites = [
-            "UserPageTestSuite",
-            "CollectionsTestSuite",
-            "ViewsTestSuite",
-            "GraphTestSuite",
-            "QueryTestSuite",
-            "AnalyzersTestSuite",
-            "AnalyzersTestSuite2",
-            "DatabaseTestSuite",
-            "LogInTestSuite",
-            "DashboardTestSuite",
-            "SupportTestSuite",
-            "ServiceTestSuite",
-        ]
+        ui_testsuites = (
+            self.config.circleci.ui_testsuites.split(",")
+            if self.config.circleci.ui_testsuites
+            else [
+                "UserPageTestSuite",
+                "CollectionsTestSuite",
+                "ViewsTestSuite",
+                "GraphTestSuite",
+                "QueryTestSuite",
+                "AnalyzersTestSuite",
+                "AnalyzersTestSuite2",
+                "DatabaseTestSuite",
+                "LogInTestSuite",
+                "DashboardTestSuite",
+                "SupportTestSuite",
+                "ServiceTestSuite",
+            ]
+        )
 
-        if self.args.ui_testsuites:
-            ui_testsuites = self.args.ui_testsuites.split(",")
+        deployments = (
+            self.config.circleci.ui_deployments.split(",")
+            if self.config.circleci.ui_deployments
+            else ["SG", "CL"]
+        )
 
-        deployments = ["SG", "CL"]
-        if self.args.ui_deployments:
-            deployments = self.args.ui_deployments.split(",")
-
-        ui_filter = ""
-        for suite in ui_testsuites:
-            ui_filter += f"--ui-include-test-suite {suite} "
+        ui_filter = " ".join(
+            f"--ui-include-test-suite {suite}" for suite in ui_testsuites
+        )
 
         for deployment in deployments:
-            job = {
-                "name": f"test-{deployment}-UI",
-                "suiteName": ui_filter,
-                "arangosh_args": "",
-                "deployment": deployment,
-                "browser": "Remote_CHROME",
-                "enterprise": "EP" if build_config.enterprise else "C",
-                "filterStatement": ui_filter,
-                "requires": build_jobs,
-                "rta-branch": self.args.rta_branch,
-                "buckets": len(ui_testsuites),
-            }
-            workflow["jobs"].append({"run-rta-tests": job})
+            workflow["jobs"].append(
+                {
+                    "run-rta-tests": {
+                        "name": f"test-{deployment}-UI",
+                        "suiteName": ui_filter,
+                        "arangosh_args": "",
+                        "deployment": deployment,
+                        "browser": "Remote_CHROME",
+                        "enterprise": "EP" if build_config.enterprise else "C",
+                        "filterStatement": ui_filter,
+                        "requires": build_jobs,
+                        "rta-branch": self.config.circleci.rta_branch,
+                        "buckets": len(ui_testsuites),
+                    }
+                }
+            )
 
-    def _add_test_jobs(self, workflow: Dict[str, Any], jobs: List[TestJob],
-                      build_config: BuildConfig, build_jobs: List[str]) -> None:
+    def _add_test_jobs(
+        self,
+        workflow: Dict[str, Any],
+        jobs: List[TestJob],
+        build_config: BuildConfig,
+        build_jobs: List[str],
+    ) -> None:
         """Add all test jobs to workflow."""
         for job in jobs:
-            deployment_type = job.options.deployment_type
+            test_jobs = self._create_test_jobs_for_deployment(
+                job, build_config, build_jobs
+            )
+            workflow["jobs"].extend(test_jobs)
 
-            if deployment_type == DeploymentType.CLUSTER:
-                workflow["jobs"].append(
-                    self._create_test_job(job, DeploymentType.CLUSTER, build_config, build_jobs)
-                )
-                if self.args.replication_two:
-                    workflow["jobs"].append(
-                        self._create_test_job(job, DeploymentType.CLUSTER, build_config, build_jobs, replication_version=2)
-                    )
-            elif deployment_type == DeploymentType.SINGLE:
-                workflow["jobs"].append(
-                    self._create_test_job(job, DeploymentType.SINGLE, build_config, build_jobs)
-                )
-            elif deployment_type == DeploymentType.MIXED:
-                workflow["jobs"].append(
-                    self._create_test_job(job, DeploymentType.MIXED, build_config, build_jobs)
-                )
-            else:
-                # No deployment type specified - run both
-                workflow["jobs"].append(
-                    self._create_test_job(job, DeploymentType.CLUSTER, build_config, build_jobs)
-                )
-                if self.args.replication_two:
-                    workflow["jobs"].append(
-                        self._create_test_job(job, DeploymentType.CLUSTER, build_config, build_jobs, replication_version=2)
-                    )
-                workflow["jobs"].append(
-                    self._create_test_job(job, DeploymentType.SINGLE, build_config, build_jobs)
-                )
+    def _create_test_jobs_for_deployment(
+        self, job: TestJob, build_config: BuildConfig, build_jobs: List[str]
+    ) -> List[Dict[str, Any]]:
+        """
+        Create test job(s) based on deployment type.
 
-    def _create_test_job(self, job: TestJob, deployment_type: DeploymentType,
-                        build_config: BuildConfig, build_jobs: List[str],
-                        replication_version: int = 1) -> Dict[str, Any]:
+        A single TestJob may result in multiple CircleCI jobs if:
+        - Deployment type is None (both single and cluster)
+        - Replication version 2 is enabled (additional cluster job)
+
+        Returns:
+            List of job definitions
+        """
+        result = []
+        deployment_type = job.options.deployment_type
+
+        if deployment_type == DeploymentType.CLUSTER:
+            result.append(
+                self._create_test_job(
+                    job, DeploymentType.CLUSTER, build_config, build_jobs
+                )
+            )
+            if self.config.test_execution.replication_two:
+                result.append(
+                    self._create_test_job(
+                        job,
+                        DeploymentType.CLUSTER,
+                        build_config,
+                        build_jobs,
+                        replication_version=2,
+                    )
+                )
+        elif deployment_type == DeploymentType.SINGLE:
+            result.append(
+                self._create_test_job(
+                    job, DeploymentType.SINGLE, build_config, build_jobs
+                )
+            )
+        elif deployment_type == DeploymentType.MIXED:
+            result.append(
+                self._create_test_job(
+                    job, DeploymentType.MIXED, build_config, build_jobs
+                )
+            )
+        else:
+            # No deployment type - run both
+            result.append(
+                self._create_test_job(
+                    job, DeploymentType.CLUSTER, build_config, build_jobs
+                )
+            )
+            if self.config.test_execution.replication_two:
+                result.append(
+                    self._create_test_job(
+                        job,
+                        DeploymentType.CLUSTER,
+                        build_config,
+                        build_jobs,
+                        replication_version=2,
+                    )
+                )
+            result.append(
+                self._create_test_job(
+                    job, DeploymentType.SINGLE, build_config, build_jobs
+                )
+            )
+
+        return result
+
+    def _create_test_job(
+        self,
+        job: TestJob,
+        deployment_type: DeploymentType,
+        build_config: BuildConfig,
+        build_jobs: List[str],
+        replication_version: int = 1,
+    ) -> Dict[str, Any]:
         """
         Create a single test job definition.
 
@@ -336,111 +429,120 @@ class CircleCIGenerator(OutputGenerator):
         Returns:
             Job definition dict for CircleCI
         """
-        # Determine suite name
-        suite_names = [suite.name for suite in job.suites]
-        suite_str = ','.join(suite_names)
+        is_cluster = deployment_type == DeploymentType.CLUSTER
+
+        # Build job name
+        deployment_str = self._get_deployment_string(
+            deployment_type, replication_version
+        )
+        job_name = f"test-{deployment_str}-{job.name}-{build_config.architecture}"
+
+        # Build suite string
+        suite_str = ",".join(suite.name for suite in job.suites)
 
         # Get size
         size = job.options.size or ResourceSize.SMALL
-        size_str = size.value
-
-        # Build deployment string
-        is_cluster = deployment_type == DeploymentType.CLUSTER
-        if is_cluster:
-            deployment_str = f"cluster{'-repl2' if replication_version == 2 else ''}"
-        elif deployment_type == DeploymentType.SINGLE:
-            deployment_str = "single"
-        else:
-            deployment_str = "mixed"
+        resource_class = self._get_job_size(
+            job.name, size.value, build_config, is_cluster
+        )
 
         # Build job dict
         job_dict = {
-            "name": f"test-{deployment_str}-{job.name}-{build_config.architecture}",
+            "name": job_name,
             "suiteName": job.name,
             "suites": suite_str,
-            "size": self._get_test_size(size_str, build_config, is_cluster),
+            "size": resource_class,
             "cluster": is_cluster,
             "requires": build_jobs,
-            "arangosh_args": "A " + json.dumps(job.arguments.arangosh_args + self.args.arangosh_args),
+            "arangosh_args": "A "
+            + json.dumps(
+                job.arguments.arangosh_args + self.config.test_execution.arangosh_args
+            ),
         }
 
-        # Special cases for specific suites
-        if job.name == "chaos" and build_config.nightly:
-            job_dict["timeLimit"] = 32 * 5 * 60
-
-        if job.name == "shell_client_aql" and build_config.nightly and not is_cluster:
-            job_dict["size"] = self._get_test_size("medium+", build_config, is_cluster)
-
         # Add extra args
-        extra_args = job.arguments.extra_args.copy()
+        extra_args = list(job.arguments.extra_args)
         if is_cluster:
             extra_args.extend(["--replicationVersion", str(replication_version)])
         if build_config.nightly:
             extra_args.extend(["--skipNightly", "false"])
-        if extra_args or self.args.extra_args:
-            job_dict["extraArgs"] = " ".join(extra_args + self.args.extra_args)
+
+        if extra_args or self.config.test_execution.extra_args:
+            job_dict["extraArgs"] = " ".join(
+                extra_args + self.config.test_execution.extra_args
+            )
 
         # Add buckets
-        bucket_count = job.get_bucket_count()
-        if job.name == "replication_sync":
-            # Special case: override bucket count for CircleCI
-            bucket_count = 5
+        bucket_count = self._get_bucket_count(job)
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
 
         # Add repository info if present
-        if job.repository:
-            job_dict["docker_image"] = self.args.default_container.replace(
-                ':', job.repository.git_branch + ':'
-            )
-            job_dict["driver-git-repo"] = job.repository.git_repo
-            job_dict["driver-git-branch"] = job.repository.git_branch or "main"
-            job_dict["init_driver_repo_command"] = ""  # TODO: Get from repository config
-        else:
-            job_dict["docker_image"] = self.args.default_container
-            job_dict["driver-git-repo"] = ""
-            job_dict["driver-git-branch"] = ""
-            job_dict["init_driver_repo_command"] = ""
+        self._add_repository_config(job_dict, job)
 
         return {"run-linux-tests": job_dict}
 
-    def _get_size(self, size: str, arch: str) -> str:
-        """Get CircleCI resource class for size and architecture."""
-        aarch64_sizes = {
-            "small": "arm.medium",
-            "medium": "arm.medium",
-            "medium+": "arm.large",
-            "large": "arm.large",
-            "xlarge": "arm.xlarge",
-            "2xlarge": "arm.2xlarge",
-        }
-        x86_sizes = {
-            "small": "small",
-            "medium": "medium",
-            "medium+": "medium+",
-            "large": "large",
-            "xlarge": "xlarge",
-            "2xlarge": "2xlarge",
-        }
-        return aarch64_sizes[size] if arch == "aarch64" else x86_sizes[size]
+    def _get_deployment_string(
+        self, deployment_type: DeploymentType, replication_version: int
+    ) -> str:
+        """Get deployment string for job name."""
+        if deployment_type == DeploymentType.CLUSTER:
+            return f"cluster{'-repl2' if replication_version == 2 else ''}"
+        elif deployment_type == DeploymentType.SINGLE:
+            return "single"
+        else:
+            return "mixed"
 
-    def _get_test_size(self, size: str, build_config: BuildConfig, is_cluster: bool) -> str:
+    def _get_job_size(
+        self, job_name: str, base_size: str, build_config: BuildConfig, is_cluster: bool
+    ) -> str:
         """
-        Get test resource size considering sanitizer overhead.
+        Get job size with special cases applied.
 
-        Args:
-            size: Base size string
-            build_config: Build configuration
-            is_cluster: Whether this is a cluster test
-
-        Returns:
-            Adjusted size string for CircleCI
+        Some jobs have special sizing requirements that override the base size.
         """
-        if build_config.sanitizer != "":
-            # Sanitizer builds need more resources
-            if size == "small":
-                size = "xlarge" if build_config.sanitizer == "tsan" and is_cluster else "large"
-            elif size in ["medium", "medium+", "large"]:
-                size = "xlarge"
+        size = base_size
 
-        return self._get_size(size, build_config.architecture)
+        # Special case: nightly chaos tests need more time (not size)
+        # Special case: nightly single shell_client_aql needs more memory
+        if job_name == "shell_client_aql" and build_config.nightly and not is_cluster:
+            size = "medium+"
+
+        return self.sizer.get_test_size(size, build_config, is_cluster)
+
+    def _get_bucket_count(self, job: TestJob) -> Optional[int]:
+        """
+        Get bucket count for a job.
+
+        Special case: replication_sync uses 5 buckets in CircleCI
+        (vs 2 in the YAML for Jenkins compatibility).
+        """
+        bucket_count = job.get_bucket_count()
+
+        # Special override for replication_sync
+        if job.name == "replication_sync":
+            bucket_count = 5
+
+        return bucket_count
+
+    def _add_repository_config(self, job_dict: Dict[str, Any], job: TestJob) -> None:
+        """Add repository configuration to job dict if job has external repo."""
+        if job.repository:
+            # Use container suffix from repository config
+            container = self.config.circleci.default_container
+            if ":" in container:
+                base, tag = container.rsplit(":", 1)
+                job_dict["docker_image"] = (
+                    f"{base}:{job.repository.git_branch or 'main'}"
+                )
+            else:
+                job_dict["docker_image"] = container
+
+            job_dict["driver-git-repo"] = job.repository.git_repo
+            job_dict["driver-git-branch"] = job.repository.git_branch or "main"
+            job_dict["driver-git-sha"] = job.repository.git_sha or ""
+        else:
+            job_dict["docker_image"] = self.config.circleci.default_container
+            job_dict["driver-git-repo"] = ""
+            job_dict["driver-git-branch"] = ""
+            job_dict["driver-git-sha"] = ""

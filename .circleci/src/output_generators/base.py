@@ -7,65 +7,48 @@ then produce output in a specific format (CircleCI YAML, Jenkins launcher format
 
 from abc import ABC, abstractmethod
 from typing import Any, List, Dict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
-import sys
-import os
-
-# Add parent directory to path for imports
-sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
-
-from config_lib import TestJob, TestDefinitionFile, BuildConfig
+from ..config_lib import TestJob, TestDefinitionFile, BuildConfig
+from ..filters import FilterCriteria, PlatformFlags
 
 
 @dataclass
-class GeneratorArgs:
-    """
-    Common arguments passed to all output generators.
+class TestExecutionConfig:
+    """Configuration for test execution."""
 
-    This consolidates CLI arguments and other configuration that generators need.
-    """
-    # Test filtering
-    full: bool = False
-    nightly: bool = False
-    cluster: bool = False
-    single: bool = False
-    all_tests: bool = False
-    gtest: bool = False
-    single_cluster: bool = False  # Run both single and cluster (Jenkins)
-
-    # Build configuration
-    enterprise: bool = True
-    sanitizer: str = ""
-
-    # Test execution options
-    arangosh_args: List[str] = None
-    extra_args: List[str] = None
-    arangod_without_v8: str = "false"
-
-    # Replication
+    arangosh_args: List[str] = field(default_factory=list)
+    extra_args: List[str] = field(default_factory=list)
+    arangod_without_v8: bool = False
+    create_report: bool = True
     replication_two: bool = False
 
-    # UI tests (CircleCI specific)
+
+@dataclass
+class CircleCIConfig:
+    """CircleCI-specific configuration."""
+
     ui: str = ""  # off, on, only, community
     ui_testsuites: str = ""
     ui_deployments: str = ""
     rta_branch: str = ""
-
-    # Docker images
     create_docker_images: bool = False
     default_container: str = ""
 
-    # Output control
-    validate_only: bool = False
-    create_report: bool = True
 
-    def __post_init__(self):
-        """Initialize mutable default values."""
-        if self.arangosh_args is None:
-            self.arangosh_args = []
-        if self.extra_args is None:
-            self.extra_args = []
+@dataclass
+class GeneratorConfig:
+    """
+    Configuration for output generators.
+
+    This consolidates all configuration that generators need, organized
+    by concern.
+    """
+
+    filter_criteria: FilterCriteria
+    test_execution: TestExecutionConfig = field(default_factory=TestExecutionConfig)
+    circleci: CircleCIConfig = field(default_factory=CircleCIConfig)
+    validate_only: bool = False
 
 
 class OutputGenerator(ABC):
@@ -75,14 +58,14 @@ class OutputGenerator(ABC):
     Subclasses implement specific output formats (CircleCI, Jenkins, etc.)
     """
 
-    def __init__(self, args: GeneratorArgs):
+    def __init__(self, config: GeneratorConfig):
         """
-        Initialize the generator with arguments.
+        Initialize the generator with configuration.
 
         Args:
-            args: Generator arguments and configuration
+            config: Generator configuration
         """
-        self.args = args
+        self.config = config
 
     @abstractmethod
     def generate(self, test_defs: List[TestDefinitionFile], **kwargs) -> Any:
@@ -111,7 +94,7 @@ class OutputGenerator(ABC):
 
     def filter_jobs(self, test_def: TestDefinitionFile) -> List[TestJob]:
         """
-        Apply filtering to jobs based on args.
+        Apply filtering to jobs based on configuration.
 
         This is a convenience method that subclasses can override or use.
 
@@ -123,13 +106,4 @@ class OutputGenerator(ABC):
         """
         from filters import filter_jobs
 
-        return filter_jobs(
-            test_def,
-            full=self.args.full,
-            nightly=self.args.nightly,
-            cluster=self.args.cluster,
-            single=self.args.single,
-            all_tests=self.args.all_tests,
-            gtest=self.args.gtest,
-            enterprise=self.args.enterprise,
-        )
+        return filter_jobs(test_def, self.config.filter_criteria)

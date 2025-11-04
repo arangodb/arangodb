@@ -2,4 +2,4 @@
 
 from .base import OutputGenerator
 
-__all__ = ['OutputGenerator']
+__all__ = ["OutputGenerator"]
