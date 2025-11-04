@@ -31,6 +31,7 @@
 #include "Aql/Collections.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Graph/EdgeDocumentToken.h"
+#include "Graph/Cursors/EdgeCursor.h"
 
 struct TRI_vocbase_t;
 
@@ -51,7 +52,6 @@ class VariableGenerator;
 
 namespace graph {
 struct BaseOptions;
-class EdgeCursor;
 struct ShortestPathOptions;
 }  // namespace graph
 
@@ -68,19 +68,22 @@ struct EdgeCursorForMultipleVertices {
   size_t _depth;
   uint64_t _batchSize;
   std::vector<std::string> _vertices;
-  std::vector<std::string>::iterator _nextVertex;
-  graph::EdgeCursor* _cursor;
+  size_t _nextVertex;
+  std::unique_ptr<graph::EdgeCursor> _cursor;
   size_t _nextBatch = 0;
+  VPackBuilder _variables;
   EdgeCursorForMultipleVertices(size_t cursorId, size_t depth,
                                 uint64_t batchSize,
                                 std::vector<std::string> vertices,
-                                graph::EdgeCursor* cursor)
+                                std::unique_ptr<graph::EdgeCursor> cursor,
+                                VPackBuilder variables)
       : _cursorId{cursorId},
         _depth{depth},
         _batchSize{batchSize},
         _vertices{std::move(vertices)},
-        _nextVertex{_vertices.begin()},
-        _cursor{cursor} {
+        _nextVertex{0},
+        _cursor{std::move(cursor)},
+        _variables{std::move(variables)} {
     TRI_ASSERT(_cursor != nullptr);
     rearm();
   }
@@ -143,12 +146,13 @@ class BaseTraverserEngine : public BaseEngine {
 
   // old behaviour
   void allEdges(std::vector<std::string> const& vertices, size_t depth,
-                VPackBuilder& builder);
+                VPackSlice variables, VPackBuilder& builder);
 
   // new behaviour
-  void rearm(size_t depth, uint64_t batchSize,
-             std::vector<std::string> vertices, VPackSlice variables);
-  Result nextEdgeBatch(size_t batchId, VPackBuilder& builder);
+  size_t createNewCursor(size_t depth, uint64_t batchSize,
+                         std::vector<std::string> vertices,
+                         VPackSlice variables);
+  Result nextEdgeBatch(size_t cursorId, size_t batchId, VPackBuilder& builder);
   void addAndClearStatistics(VPackBuilder& builder);
 
   virtual void smartSearch(arangodb::velocypack::Slice,
@@ -167,16 +171,13 @@ class BaseTraverserEngine : public BaseEngine {
   aql::VariableGenerator const* variables() const;
 
   graph::BaseOptions const& options() const override;
-  std::optional<EdgeCursorForMultipleVertices> _cursor;
+  std::vector<EdgeCursorForMultipleVertices> _cursors;
   size_t _nextCursorId = 0;
 
  protected:
-  graph::EdgeCursor* getCursor(uint64_t currentDepth);
+  std::unique_ptr<graph::EdgeCursor> getCursor(uint64_t currentDepth);
 
   std::unique_ptr<traverser::TraverserOptions> _opts;
-  std::unordered_map<uint64_t, std::unique_ptr<graph::EdgeCursor>>
-      _depthSpecificCursors;
-  std::unique_ptr<graph::EdgeCursor> _generalCursor;
   aql::VariableGenerator const* _variables;
 };
 

@@ -304,32 +304,26 @@ void InternalRestTraverserHandler::queryEngine() {
         }
 
         auto startQuery = query.get().query;
+        size_t cursorId;
         if (std::holds_alternative<StartEdgeQuery>(startQuery)) {
           auto q = std::get<StartEdgeQuery>(startQuery);
           if (q.batchSize.has_value()) {
-            eng->rearm(q.depth, q.batchSize.value(), std::move(q.vertexKeys),
-                       q.variables);
+            cursorId =
+                eng->createNewCursor(q.depth, q.batchSize.value(),
+                                     std::move(q.vertexKeys), q.variables);
           } else {
             // old behaviour
-            eng->injectVariables(q.variables);
-            eng->allEdges(q.vertexKeys, q.depth, result);
+            eng->allEdges(q.vertexKeys, q.depth, q.variables, result);
             generateResult(ResponseCode::OK, result.slice(), engine->context());
             return;
           }
-        } else if (std::holds_alternative<Continue>(startQuery)) {
+        } else {
           auto q = std::get<Continue>(startQuery);
-          if (not eng->_cursor.has_value() ||
-              q.cursorId != eng->_cursor->_cursorId) {
-            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "cursor id " + std::to_string(q.cursorId) +
-                              " does not exist in traverser engine " +
-                              std::to_string(engineId));
-            return;
-          }
+          cursorId = q.cursorId;
         }
 
         result.openObject();
-        auto res = eng->nextEdgeBatch(query.get().batchId, result);
+        auto res = eng->nextEdgeBatch(cursorId, query.get().batchId, result);
         if (res.fail()) {
           generateError(ResponseCode::BAD, res.errorNumber(),
                         res.errorMessage());

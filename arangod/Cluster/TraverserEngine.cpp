@@ -82,15 +82,15 @@ static const std::string TYPE = "type";
 #endif
 
 auto EdgeCursorForMultipleVertices::rearm() -> bool {
-  if (_nextVertex == _vertices.end()) {
+  if (_nextVertex == _vertices.size()) {
     return false;
   }
-  _cursor->rearm(*_nextVertex, _depth);
+  _cursor->rearm(_vertices[_nextVertex], _depth);
   _nextVertex++;
   return true;
 }
 auto EdgeCursorForMultipleVertices::hasMore() -> bool {
-  return _cursor->hasMore() || rearm();
+  return _cursor->hasMore() || _nextVertex != _vertices.size();
 }
 
 BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
@@ -315,41 +315,29 @@ BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t& vocbase,
 
 BaseTraverserEngine::~BaseTraverserEngine() = default;
 
-void BaseTraverserEngine::rearm(size_t depth, uint64_t batchSize,
-                                std::vector<std::string> vertices,
-                                VPackSlice variables) {
+size_t BaseTraverserEngine::createNewCursor(size_t depth, uint64_t batchSize,
+                                            std::vector<std::string> vertices,
+                                            VPackSlice variables) {
   injectVariables(variables);
-  _cursor = EdgeCursorForMultipleVertices{
-      _nextCursorId, depth, batchSize, std::move(vertices), getCursor(depth)};
+  _cursors.emplace_back(EdgeCursorForMultipleVertices{
+      _nextCursorId, depth, batchSize, std::move(vertices), getCursor(depth),
+      VPackBuilder{variables}});
+  auto id = _nextCursorId;
   _nextCursorId++;
+  return id;
 }
 
-graph::EdgeCursor* BaseTraverserEngine::getCursor(uint64_t currentDepth) {
-  graph::EdgeCursor* cursor = nullptr;
-  if (_opts->hasSpecificCursorForDepth(currentDepth)) {
-    auto it = _depthSpecificCursors.find(currentDepth);
-    if (it == _depthSpecificCursors.end()) {
-      it = _depthSpecificCursors
-               .emplace(currentDepth, _opts->buildCursor(currentDepth))
-               .first;
-    }
-    TRI_ASSERT(it != _depthSpecificCursors.end());
-    cursor = it->second.get();
-  } else {
-    if (_generalCursor == nullptr) {
-      _generalCursor = _opts->buildCursor(currentDepth);
-    }
-    TRI_ASSERT(_generalCursor != nullptr);
-    cursor = _generalCursor.get();
-  }
-  return cursor;
+std::unique_ptr<graph::EdgeCursor> BaseTraverserEngine::getCursor(
+    uint64_t currentDepth) {
+  return _opts->buildCursor(currentDepth);
 }
 
 void BaseTraverserEngine::allEdges(std::vector<std::string> const& vertices,
-                                   size_t depth, VPackBuilder& builder) {
+                                   size_t depth, VPackSlice variables,
+                                   VPackBuilder& builder) {
   auto outputVertex = [this](VPackBuilder& builder, std::string_view vertex,
                              size_t depth) {
-    graph::EdgeCursor* cursor = getCursor(depth);
+    auto cursor = getCursor(depth);
     cursor->rearm(vertex, depth);
     _nextCursorId++;
 
@@ -373,6 +361,7 @@ void BaseTraverserEngine::allEdges(std::vector<std::string> const& vertices,
         });
   };
 
+  injectVariables(variables);
   builder.openObject();
   builder.add(VPackValue(StaticStrings::GraphQueryEdges));
   builder.openArray(true);
@@ -385,22 +374,43 @@ void BaseTraverserEngine::allEdges(std::vector<std::string> const& vertices,
   builder.close();
 }
 
-Result BaseTraverserEngine::nextEdgeBatch(size_t batchId,
+Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
                                           VPackBuilder& builder) {
-  TRI_ASSERT(_cursor.has_value());
-  if (_cursor->_nextBatch != batchId) {
-    return Result{TRI_ERROR_HTTP_BAD_PARAMETER, ""};
+  if (_cursors.empty()) {
+    return Result{
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        fmt::format("cursor id {} does not exist in traverser engine {}",
+                    cursorId, engineId())};
+  }
+  auto& cursor = _cursors.back();
+  if (cursorId != cursor._cursorId) {
+    return Result{
+        TRI_ERROR_HTTP_BAD_PARAMETER,
+        fmt::format(
+            "cursor id {} is not on top of cursor stack in traverser engine {}",
+            cursorId, engineId())};
+  }
+  if (cursor._nextBatch != batchId) {
+    return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
+                  fmt::format("batch id {} is not next batch for cursor id {} "
+                              "in traverser engine {}",
+                              batchId, cursorId, engineId())};
   }
   uint64_t count = 0;
-  auto batchSize = _cursor->_batchSize;
+  auto batchSize = cursor._batchSize;
+
+  // TODO not sure if this is necessary here or if it suffices if
+  // variables are injected on cursor creation (in
+  // BaseTraverserEngine::createNewCursor)
+  injectVariables(cursor._variables.slice());
 
   builder.add(VPackValue(StaticStrings::GraphQueryEdges));
   builder.openArray(true);
-  while (count != batchSize && _cursor->hasMore()) {
-    auto vertex = _cursor->_cursor->currentVertex();
-    auto depth = _cursor->_cursor->currentDepth();
+  while (count != batchSize && cursor.hasMore()) {
+    auto vertex = cursor._cursor->currentVertex();
+    auto depth = cursor._cursor->currentDepth();
 
-    _cursor->_cursor->nextBatch(
+    cursor._cursor->nextBatch(
         [&](EdgeDocumentToken&& eid, VPackSlice edge, size_t cursorId) {
           if (edge.isString()) {
             edge = lookupToken(eid);
@@ -420,14 +430,20 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t batchId,
           count++;
         },
         batchSize);
+    if (!cursor._cursor->hasMore()) {
+      cursor.rearm();
+    }
   }
   builder.close();
-  builder.add("done", VPackValue(not _cursor->hasMore()));
-  builder.add("cursorId", VPackValue(_cursor->_cursorId));
-  builder.add("batchId", VPackValue(_cursor->_nextBatch));
+  builder.add("done", VPackValue(not cursor.hasMore()));
+  builder.add("cursorId", VPackValue(cursor._cursorId));
+  builder.add("batchId", VPackValue(cursor._nextBatch));
 
   if (count > 0) {
-    _cursor->_nextBatch++;
+    cursor._nextBatch++;
+  }
+  if (not cursor.hasMore()) {
+    _cursors.pop_back();
   }
   return {};
 }
