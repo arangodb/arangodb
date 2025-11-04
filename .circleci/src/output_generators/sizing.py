@@ -5,71 +5,113 @@ Handles mapping of logical sizes to CircleCI resource classes,
 accounting for architecture and sanitizer overhead.
 """
 
-from ..config_lib import BuildConfig
+from typing import Dict
+from ..config_lib import BuildConfig, ResourceSize
 
 
 class ResourceSizer:
     """Maps logical sizes to CircleCI resource classes."""
 
     # Resource class mappings by architecture
-    AARCH64_SIZES = {
-        "small": "arm.medium",
-        "medium": "arm.medium",
-        "medium+": "arm.large",
-        "large": "arm.large",
-        "xlarge": "arm.xlarge",
-        "2xlarge": "arm.2xlarge",
+    AARCH64_SIZES: Dict[ResourceSize, str] = {
+        ResourceSize.SMALL: "arm.medium",
+        ResourceSize.MEDIUM: "arm.medium",
+        ResourceSize.MEDIUM_PLUS: "arm.large",
+        ResourceSize.LARGE: "arm.large",
+        ResourceSize.XLARGE: "arm.xlarge",
+        ResourceSize.XXLARGE: "arm.2xlarge",
     }
 
-    X86_SIZES = {
-        "small": "small",
-        "medium": "medium",
-        "medium+": "medium+",
-        "large": "large",
-        "xlarge": "xlarge",
-        "2xlarge": "2xlarge",
+    X86_SIZES: Dict[ResourceSize, str] = {
+        ResourceSize.SMALL: "small",
+        ResourceSize.MEDIUM: "medium",
+        ResourceSize.MEDIUM_PLUS: "medium+",
+        ResourceSize.LARGE: "large",
+        ResourceSize.XLARGE: "xlarge",
+        ResourceSize.XXLARGE: "2xlarge",
+    }
+
+    # Architecture aliases for compatibility
+    ARCH_ALIASES = {
+        "x86_64": "x64",
+        "amd64": "x64",
+        "arm64": "aarch64",
     }
 
     @classmethod
-    def get_resource_class(cls, size: str, arch: str) -> str:
+    def _normalize_arch(cls, arch: str) -> str:
+        """Normalize architecture string to canonical form."""
+        return cls.ARCH_ALIASES.get(arch, arch)
+
+    @classmethod
+    def get_resource_class(cls, size: ResourceSize, arch: str) -> str:
         """
         Get CircleCI resource class for a size and architecture.
 
         Args:
-            size: Logical size (small, medium, large, etc.)
-            arch: Architecture (x64 or aarch64)
+            size: Logical size enum
+            arch: Architecture (x64, aarch64, or aliases)
 
         Returns:
             CircleCI resource class string
 
         Raises:
-            ValueError: If size or architecture is invalid
+            ValueError: If architecture is invalid
         """
+        arch = cls._normalize_arch(arch)
+
         if arch == "aarch64":
-            size_map = cls.AARCH64_SIZES
+            return cls.AARCH64_SIZES[size]
         elif arch == "x64":
-            size_map = cls.X86_SIZES
+            return cls.X86_SIZES[size]
         else:
-            raise ValueError(f"Unknown architecture: {arch}")
+            raise ValueError(
+                f"Unknown architecture: {arch}. "
+                f"Valid options: x64, aarch64 (or aliases: amd64, x86_64, arm64)"
+            )
 
-        if size not in size_map:
-            raise ValueError(f"Unknown size: {size}")
+    @classmethod
+    def _apply_sanitizer_overhead(
+        cls, size: ResourceSize, sanitizer: str, is_cluster: bool
+    ) -> ResourceSize:
+        """
+        Apply sanitizer overhead to a base size.
 
-        return size_map[size]
+        Sanitizer builds require significantly more resources due to:
+        - Memory overhead from tracking/instrumentation
+        - Slower execution requiring more CPU time
+
+        Args:
+            size: Base size before overhead
+            sanitizer: Sanitizer type (tsan, asan, ubsan)
+            is_cluster: Whether this is a cluster test
+
+        Returns:
+            Adjusted size accounting for sanitizer overhead
+        """
+        # TSAN cluster small tests need the most resources
+        if size == ResourceSize.SMALL:
+            if sanitizer == "tsan" and is_cluster:
+                return ResourceSize.XLARGE
+            else:
+                return ResourceSize.LARGE
+
+        # Medium/large tests get bumped to xlarge for all sanitizers
+        if size in (ResourceSize.MEDIUM, ResourceSize.MEDIUM_PLUS, ResourceSize.LARGE):
+            return ResourceSize.XLARGE
+
+        # xlarge and 2xlarge stay unchanged
+        return size
 
     @classmethod
     def get_test_size(
-        cls, size: str, build_config: BuildConfig, is_cluster: bool
+        cls, size: ResourceSize, build_config: BuildConfig, is_cluster: bool
     ) -> str:
         """
         Get test resource size accounting for sanitizer overhead.
 
-        Sanitizer builds require significantly more resources:
-        - TSAN on cluster needs the most (xlarge for small tests)
-        - Other sanitizers need large for small tests, xlarge for medium+
-
         Args:
-            size: Base logical size
+            size: Base logical size enum
             build_config: Build configuration (includes sanitizer info)
             is_cluster: Whether this is a cluster test
 
@@ -79,16 +121,8 @@ class ResourceSizer:
         adjusted_size = size
 
         if build_config.sanitizer:
-            # Sanitizer builds need more resources
-            if size == "small":
-                # TSAN cluster tests need xlarge, others need large
-                adjusted_size = (
-                    "xlarge"
-                    if build_config.sanitizer == "tsan" and is_cluster
-                    else "large"
-                )
-            elif size in ["medium", "medium+", "large"]:
-                # All sanitizers need xlarge for medium+ tests
-                adjusted_size = "xlarge"
+            adjusted_size = cls._apply_sanitizer_overhead(
+                size, build_config.sanitizer, is_cluster
+            )
 
         return cls.get_resource_class(adjusted_size, build_config.architecture)

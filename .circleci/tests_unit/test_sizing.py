@@ -6,7 +6,7 @@ accounting for architecture and sanitizer overhead.
 """
 
 import pytest
-from src.config_lib import BuildConfig
+from src.config_lib import BuildConfig, ResourceSize
 from src.output_generators.sizing import ResourceSizer
 
 
@@ -15,37 +15,68 @@ class TestGetResourceClass:
 
     def test_x64_sizes(self):
         """Test x64 architecture resource class mappings."""
-        assert ResourceSizer.get_resource_class("small", "x64") == "small"
-        assert ResourceSizer.get_resource_class("medium", "x64") == "medium"
-        assert ResourceSizer.get_resource_class("medium+", "x64") == "medium+"
-        assert ResourceSizer.get_resource_class("large", "x64") == "large"
-        assert ResourceSizer.get_resource_class("xlarge", "x64") == "xlarge"
-        assert ResourceSizer.get_resource_class("2xlarge", "x64") == "2xlarge"
+        assert ResourceSizer.get_resource_class(ResourceSize.SMALL, "x64") == "small"
+        assert ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "x64") == "medium"
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM_PLUS, "x64")
+            == "medium+"
+        )
+        assert ResourceSizer.get_resource_class(ResourceSize.LARGE, "x64") == "large"
+        assert ResourceSizer.get_resource_class(ResourceSize.XLARGE, "x64") == "xlarge"
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, "x64") == "2xlarge"
+        )
 
     def test_aarch64_sizes(self):
         """Test aarch64 architecture resource class mappings."""
-        assert ResourceSizer.get_resource_class("small", "aarch64") == "arm.medium"
-        assert ResourceSizer.get_resource_class("medium", "aarch64") == "arm.medium"
-        assert ResourceSizer.get_resource_class("medium+", "aarch64") == "arm.large"
-        assert ResourceSizer.get_resource_class("large", "aarch64") == "arm.large"
-        assert ResourceSizer.get_resource_class("xlarge", "aarch64") == "arm.xlarge"
-        assert ResourceSizer.get_resource_class("2xlarge", "aarch64") == "arm.2xlarge"
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.SMALL, "aarch64")
+            == "arm.medium"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "aarch64")
+            == "arm.medium"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM_PLUS, "aarch64")
+            == "arm.large"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.LARGE, "aarch64")
+            == "arm.large"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.XLARGE, "aarch64")
+            == "arm.xlarge"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, "aarch64")
+            == "arm.2xlarge"
+        )
 
     def test_invalid_architecture(self):
         """Test error handling for invalid architecture."""
         with pytest.raises(ValueError, match="Unknown architecture: foo"):
-            ResourceSizer.get_resource_class("medium", "foo")
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "foo")
 
         with pytest.raises(ValueError, match="Unknown architecture: ARM"):
-            ResourceSizer.get_resource_class("medium", "ARM")
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "ARM")
 
-    def test_invalid_size(self):
-        """Test error handling for invalid size."""
-        with pytest.raises(ValueError, match="Unknown size: tiny"):
-            ResourceSizer.get_resource_class("tiny", "x64")
+    def test_architecture_aliases(self):
+        """Test that architecture aliases work correctly."""
+        # Test x64 aliases
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "amd64") == "medium"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "x86_64") == "medium"
+        )
 
-        with pytest.raises(ValueError, match="Unknown size: huge"):
-            ResourceSizer.get_resource_class("huge", "aarch64")
+        # Test aarch64 aliases
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "arm64")
+            == "arm.medium"
+        )
 
 
 class TestGetTestSize:
@@ -55,27 +86,39 @@ class TestGetTestSize:
         """Test that sizes are not adjusted without sanitizers."""
         config = BuildConfig(architecture="x64", enterprise=True)
 
-        assert ResourceSizer.get_test_size("small", config, is_cluster=False) == "small"
         assert (
-            ResourceSizer.get_test_size("medium", config, is_cluster=False) == "medium"
+            ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=False)
+            == "small"
         )
-        assert ResourceSizer.get_test_size("large", config, is_cluster=False) == "large"
         assert (
-            ResourceSizer.get_test_size("xlarge", config, is_cluster=False) == "xlarge"
+            ResourceSizer.get_test_size(ResourceSize.MEDIUM, config, is_cluster=False)
+            == "medium"
+        )
+        assert (
+            ResourceSizer.get_test_size(ResourceSize.LARGE, config, is_cluster=False)
+            == "large"
+        )
+        assert (
+            ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=False)
+            == "xlarge"
         )
 
     def test_tsan_cluster_small_to_xlarge(self):
         """Test TSAN cluster small tests need xlarge."""
         config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
 
-        result = ResourceSizer.get_test_size("small", config, is_cluster=True)
+        result = ResourceSizer.get_test_size(
+            ResourceSize.SMALL, config, is_cluster=True
+        )
         assert result == "xlarge"
 
     def test_tsan_single_small_to_large(self):
         """Test TSAN single small tests need large (not xlarge)."""
         config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
 
-        result = ResourceSizer.get_test_size("small", config, is_cluster=False)
+        result = ResourceSizer.get_test_size(
+            ResourceSize.SMALL, config, is_cluster=False
+        )
         assert result == "large"
 
     def test_asan_small_to_large(self):
@@ -83,8 +126,14 @@ class TestGetTestSize:
         config = BuildConfig(architecture="x64", enterprise=True, sanitizer="asan")
 
         # Both cluster and single get large for asan
-        assert ResourceSizer.get_test_size("small", config, is_cluster=True) == "large"
-        assert ResourceSizer.get_test_size("small", config, is_cluster=False) == "large"
+        assert (
+            ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=True)
+            == "large"
+        )
+        assert (
+            ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=False)
+            == "large"
+        )
 
     def test_sanitizer_medium_to_xlarge(self):
         """Test sanitizers bump medium/medium+/large to xlarge."""
@@ -93,7 +142,11 @@ class TestGetTestSize:
                 architecture="x64", enterprise=True, sanitizer=sanitizer
             )
 
-            for size in ["medium", "medium+", "large"]:
+            for size in [
+                ResourceSize.MEDIUM,
+                ResourceSize.MEDIUM_PLUS,
+                ResourceSize.LARGE,
+            ]:
                 result_cluster = ResourceSizer.get_test_size(
                     size, config, is_cluster=True
                 )
@@ -102,11 +155,11 @@ class TestGetTestSize:
                 )
 
                 assert result_cluster == "xlarge", (
-                    f"Expected xlarge for {sanitizer} {size} cluster, "
+                    f"Expected xlarge for {sanitizer} {size.value} cluster, "
                     f"got {result_cluster}"
                 )
                 assert result_single == "xlarge", (
-                    f"Expected xlarge for {sanitizer} {size} single, "
+                    f"Expected xlarge for {sanitizer} {size.value} single, "
                     f"got {result_single}"
                 )
 
@@ -115,10 +168,12 @@ class TestGetTestSize:
         config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
 
         assert (
-            ResourceSizer.get_test_size("xlarge", config, is_cluster=True) == "xlarge"
+            ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=True)
+            == "xlarge"
         )
         assert (
-            ResourceSizer.get_test_size("xlarge", config, is_cluster=False) == "xlarge"
+            ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=False)
+            == "xlarge"
         )
 
     def test_sanitizer_2xlarge_unchanged(self):
@@ -126,10 +181,11 @@ class TestGetTestSize:
         config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
 
         assert (
-            ResourceSizer.get_test_size("2xlarge", config, is_cluster=True) == "2xlarge"
+            ResourceSizer.get_test_size(ResourceSize.XXLARGE, config, is_cluster=True)
+            == "2xlarge"
         )
         assert (
-            ResourceSizer.get_test_size("2xlarge", config, is_cluster=False)
+            ResourceSizer.get_test_size(ResourceSize.XXLARGE, config, is_cluster=False)
             == "2xlarge"
         )
 
@@ -139,19 +195,19 @@ class TestGetTestSize:
 
         # Small on TSAN cluster -> xlarge -> arm.xlarge
         assert (
-            ResourceSizer.get_test_size("small", config, is_cluster=True)
+            ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=True)
             == "arm.xlarge"
         )
 
         # Small on TSAN single -> large -> arm.large
         assert (
-            ResourceSizer.get_test_size("small", config, is_cluster=False)
+            ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=False)
             == "arm.large"
         )
 
         # Medium on TSAN -> xlarge -> arm.xlarge
         assert (
-            ResourceSizer.get_test_size("medium", config, is_cluster=True)
+            ResourceSizer.get_test_size(ResourceSize.MEDIUM, config, is_cluster=True)
             == "arm.xlarge"
         )
 
@@ -167,19 +223,25 @@ class TestGetTestSize:
             # Small TSAN cluster is special case
             if sanitizer == "tsan":
                 assert (
-                    ResourceSizer.get_test_size("small", config, is_cluster=True)
+                    ResourceSizer.get_test_size(
+                        ResourceSize.SMALL, config, is_cluster=True
+                    )
                     == "xlarge"
                 )
             else:
                 # Other sanitizers: small -> large
-                result = ResourceSizer.get_test_size("small", config, is_cluster=True)
+                result = ResourceSizer.get_test_size(
+                    ResourceSize.SMALL, config, is_cluster=True
+                )
                 assert result == "large", (
                     f"Expected large for {sanitizer} small cluster, " f"got {result}"
                 )
 
             # All sanitizers: medium -> xlarge
             assert (
-                ResourceSizer.get_test_size("medium", config, is_cluster=False)
+                ResourceSizer.get_test_size(
+                    ResourceSize.MEDIUM, config, is_cluster=False
+                )
                 == "xlarge"
             )
 
@@ -192,12 +254,16 @@ class TestGetTestSize:
 
         # Should give same results
         assert ResourceSizer.get_test_size(
-            "small", config_ent, is_cluster=True
-        ) == ResourceSizer.get_test_size("small", config_comm, is_cluster=True)
+            ResourceSize.SMALL, config_ent, is_cluster=True
+        ) == ResourceSizer.get_test_size(
+            ResourceSize.SMALL, config_comm, is_cluster=True
+        )
 
         assert ResourceSizer.get_test_size(
-            "medium", config_ent, is_cluster=False
-        ) == ResourceSizer.get_test_size("medium", config_comm, is_cluster=False)
+            ResourceSize.MEDIUM, config_ent, is_cluster=False
+        ) == ResourceSizer.get_test_size(
+            ResourceSize.MEDIUM, config_comm, is_cluster=False
+        )
 
 
 class TestSanitizerOverhead:
@@ -208,24 +274,24 @@ class TestSanitizerOverhead:
         config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
 
         expected = {
-            ("small", True): "xlarge",  # Special case: TSAN cluster small
-            ("small", False): "large",
-            ("medium", True): "xlarge",
-            ("medium", False): "xlarge",
-            ("medium+", True): "xlarge",
-            ("medium+", False): "xlarge",
-            ("large", True): "xlarge",
-            ("large", False): "xlarge",
-            ("xlarge", True): "xlarge",
-            ("xlarge", False): "xlarge",
-            ("2xlarge", True): "2xlarge",
-            ("2xlarge", False): "2xlarge",
+            (ResourceSize.SMALL, True): "xlarge",  # Special case: TSAN cluster small
+            (ResourceSize.SMALL, False): "large",
+            (ResourceSize.MEDIUM, True): "xlarge",
+            (ResourceSize.MEDIUM, False): "xlarge",
+            (ResourceSize.MEDIUM_PLUS, True): "xlarge",
+            (ResourceSize.MEDIUM_PLUS, False): "xlarge",
+            (ResourceSize.LARGE, True): "xlarge",
+            (ResourceSize.LARGE, False): "xlarge",
+            (ResourceSize.XLARGE, True): "xlarge",
+            (ResourceSize.XLARGE, False): "xlarge",
+            (ResourceSize.XXLARGE, True): "2xlarge",
+            (ResourceSize.XXLARGE, False): "2xlarge",
         }
 
         for (size, is_cluster), expected_result in expected.items():
             result = ResourceSizer.get_test_size(size, config, is_cluster)
             assert result == expected_result, (
-                f"TSAN {size} cluster={is_cluster}: "
+                f"TSAN {size.value} cluster={is_cluster}: "
                 f"expected {expected_result}, got {result}"
             )
 
@@ -234,23 +300,23 @@ class TestSanitizerOverhead:
         config = BuildConfig(architecture="x64", enterprise=True, sanitizer="asan")
 
         expected = {
-            ("small", True): "large",
-            ("small", False): "large",
-            ("medium", True): "xlarge",
-            ("medium", False): "xlarge",
-            ("medium+", True): "xlarge",
-            ("medium+", False): "xlarge",
-            ("large", True): "xlarge",
-            ("large", False): "xlarge",
-            ("xlarge", True): "xlarge",
-            ("xlarge", False): "xlarge",
-            ("2xlarge", True): "2xlarge",
-            ("2xlarge", False): "2xlarge",
+            (ResourceSize.SMALL, True): "large",
+            (ResourceSize.SMALL, False): "large",
+            (ResourceSize.MEDIUM, True): "xlarge",
+            (ResourceSize.MEDIUM, False): "xlarge",
+            (ResourceSize.MEDIUM_PLUS, True): "xlarge",
+            (ResourceSize.MEDIUM_PLUS, False): "xlarge",
+            (ResourceSize.LARGE, True): "xlarge",
+            (ResourceSize.LARGE, False): "xlarge",
+            (ResourceSize.XLARGE, True): "xlarge",
+            (ResourceSize.XLARGE, False): "xlarge",
+            (ResourceSize.XXLARGE, True): "2xlarge",
+            (ResourceSize.XXLARGE, False): "2xlarge",
         }
 
         for (size, is_cluster), expected_result in expected.items():
             result = ResourceSizer.get_test_size(size, config, is_cluster)
             assert result == expected_result, (
-                f"ASAN {size} cluster={is_cluster}: "
+                f"ASAN {size.value} cluster={is_cluster}: "
                 f"expected {expected_result}, got {result}"
             )

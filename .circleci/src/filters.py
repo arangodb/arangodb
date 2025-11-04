@@ -5,9 +5,13 @@ This module provides functions to filter test jobs based on various criteria
 such as deployment type, full/nightly runs, platform exclusions, etc.
 """
 
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
-from .config_lib import TestJob, TestDefinitionFile, DeploymentType
+from typing import List
+from dataclasses import dataclass, field
+from .config_lib import TestJob, TestDefinitionFile, DeploymentType, SuiteConfig
+
+
+# Prefix for gtest suite names
+GTEST_PREFIX = "gtest"
 
 
 @dataclass
@@ -38,17 +42,53 @@ class FilterCriteria:
     enterprise: bool = True
 
     # Platform exclusions
-    platform: PlatformFlags = None
-
-    def __post_init__(self):
-        """Initialize platform flags if not provided."""
-        if self.platform is None:
-            self.platform = PlatformFlags()
+    platform: PlatformFlags = field(default_factory=PlatformFlags)
 
     @property
     def is_full_run(self) -> bool:
         """Check if this is a full or nightly run."""
         return self.full or self.nightly
+
+
+def is_gtest_suite(suite: SuiteConfig) -> bool:
+    """
+    Check if a suite is a gtest suite.
+
+    Args:
+        suite: Suite configuration to check
+
+    Returns:
+        True if suite name starts with 'gtest'
+    """
+    return suite.name.startswith(GTEST_PREFIX)
+
+
+def matches_deployment_filter(
+    deployment_type: DeploymentType | None, criteria: FilterCriteria
+) -> bool:
+    """
+    Check if a deployment type matches the filter criteria.
+
+    Args:
+        deployment_type: Deployment type from job options (or None)
+        criteria: Filter criteria to check against
+
+    Returns:
+        True if deployment type matches the filter
+    """
+    # If both cluster and single are requested (or neither), accept all
+    if criteria.cluster == criteria.single:
+        return True
+
+    # Cluster-only filter
+    if criteria.cluster:
+        return deployment_type in (DeploymentType.CLUSTER, DeploymentType.MIXED, None)
+
+    # Single-only filter
+    if criteria.single:
+        return deployment_type in (DeploymentType.SINGLE, None)
+
+    return True
 
 
 def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
@@ -65,21 +105,13 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     if criteria.all_tests:
         return True
 
-    # Check deployment type filters
-    deployment_type = job.options.deployment_type
-
-    # If specific deployment type requested
-    if criteria.cluster and not criteria.single:
-        if deployment_type not in (DeploymentType.CLUSTER, DeploymentType.MIXED, None):
-            return False
-    elif criteria.single and not criteria.cluster:
-        if deployment_type not in (DeploymentType.SINGLE, None):
-            return False
+    # Check deployment type filter
+    if not matches_deployment_filter(job.options.deployment_type, criteria):
+        return False
 
     # Check gtest filter
-    if criteria.gtest:
-        if not any(suite.name.startswith("gtest") for suite in job.suites):
-            return False
+    if criteria.gtest and not any(is_gtest_suite(suite) for suite in job.suites):
+        return False
 
     # Platform exclusions would be checked at suite level in the original code
     # For now, we accept all jobs at the job level
