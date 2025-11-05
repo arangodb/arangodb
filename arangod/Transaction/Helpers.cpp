@@ -959,12 +959,12 @@ ResultT<transaction::BuilderLeaser> extractAttributeValues(
     velocypack::Slice doc, bool nullAllowed) {
   transaction::BuilderLeaser leased(&trx);
 
-  auto res =
-      extractAttributeValues(storedValues, doc, nullAllowed, *leased.builder());
-  if (!res.ok()) {
+  if (auto const res = extractAttributeValues(storedValues, doc, nullAllowed,
+                                              *leased.builder());
+      res.fail()) {
     return res;
   }
-  return {std::move(leased)};
+  return leased;
 }
 
 ResultT<velocypack::Builder> extractAttributeValues(
@@ -972,7 +972,12 @@ ResultT<velocypack::Builder> extractAttributeValues(
     velocypack::Slice doc, bool nullAllowed) {
   velocypack::Builder builder;
 
-  return extractAttributeValues(storedValues, doc, nullAllowed, builder);
+  if (auto const res =
+          extractAttributeValues(storedValues, doc, nullAllowed, builder);
+      res.fail()) {
+    return res;
+  }
+  return builder;
 }
 
 }  // namespace arangodb::transaction
