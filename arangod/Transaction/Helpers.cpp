@@ -931,7 +931,7 @@ ResultT<transaction::BuilderLeaser> extractAttributeValues(
       s = doc;
       for (auto const& part : it) {
         if (!s.isObject()) {
-          s = VPackSlice ::noneSlice();
+          s = VPackSlice::noneSlice();
           break;
         }
         s = s.get(part.name);
@@ -971,7 +971,7 @@ ResultT<velocypack::Builder> extractAttributeValues(
       s = doc;
       for (auto const& part : it) {
         if (!s.isObject()) {
-          s = VPackSlice ::noneSlice();
+          s = VPackSlice::noneSlice();
           break;
         }
         s = s.get(part.name);

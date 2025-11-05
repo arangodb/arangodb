@@ -1441,7 +1441,7 @@ function processQuery(query, explain, planIndex) {
         let filter = '';
         if (node.hasOwnProperty("filterExpression") && JSON.stringify(node.filterExpression) !== "") {
           filter = keyword(' FILTER ') + buildExpression(node.filterExpression) + '   ' + annotation('/* early pruning */');
-          if(node.hasOwnProperty("isCoveredByStoredValues") && node.isCoveredByStoredValues) {
+          if (node.hasOwnProperty("isCoveredByStoredValues") && node.isCoveredByStoredValues) {
             filter += annotation(" /* covered by storedValues */");
           }
         }

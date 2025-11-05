@@ -34,6 +34,7 @@
 
 #include <faiss/MetricType.h>
 #include <faiss/invlists/InvertedLists.h>
+#include <rocksdb/slice.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb::vector {
@@ -178,10 +179,8 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
           // Use strategy to extract only the encoded part used by faiss
-          auto [docId, entry] = Strategy::extractVectorIndexEntry(
-              rocksdb::Slice(
-                  reinterpret_cast<const char*>(idsToValue[id].data()),
-                  idsToValue[id].size()),
+          auto [_, entry] = Strategy::extractVectorIndexEntry(
+              rocksdb::Slice(doc.stringView()),
               rocksdb::Slice(
                   reinterpret_cast<const char*>(idsToValue[id].data()),
                   idsToValue[id].size()),
