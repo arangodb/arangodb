@@ -811,7 +811,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   endif()
 elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
-  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  # -Wno-error=unused-command-line-argument is needed otherwise snappy configure step
+  # might fails when we use additional compiler flags like fcoverage...
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=unused-command-line-argument ${BASE_FLAGS}")
   set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
   
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
