@@ -927,7 +927,7 @@ Result IndexFactory::enhanceJsonIndexVector(
         !res.ok()) {
       return Result(
           TRI_ERROR_BAD_PARAMETER,
-          fmt::format("error: {}, path: {}", res.error(), res.path()));
+          std::format("error: {}, path: {}", res.error(), res.path()));
     }
 
     if (definition.get("unique").isTrue()) {
