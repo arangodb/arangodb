@@ -49,15 +49,13 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/SupervisedBuffer.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
-
 #define LOG_RULE_ENABLED false
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
-namespace {
+namespace arangodb::aql {
+
+using EN = arangodb::aql::ExecutionNode;
 
 bool checkFunctionNameMatchesIndexMetric(
     std::string_view const functionName,
@@ -245,7 +243,6 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 
   return vectorIndexes;
 }
-}  // namespace
 
 // Vector Index Optimization Rule
 //
@@ -263,13 +260,11 @@ std::vector<std::shared_ptr<Index>> getVectorIndexes(
 // result size.
 //
 // Filter Pushdown:
-// When a filter expression is detected, the rule pushes it down to the
-// EnumerateNearVectorNode for early evaluation during index traversal. This
-// optimization removes the FILTER node.  This transformation is safe because
-// previous optimization rules have already eliminated trivial filters.
-void arangodb::aql::useVectorIndexRule(Optimizer* opt,
-                                       std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const& rule) {
+// When a filter expression is detected, the rule triggers
+// pushFilterIntoEnumerateNear which will handle the filter expressing usage
+// along with vector index.
+void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const& rule) {
   bool modified{false};
   bool triggerFilterOptimization{false};
 
@@ -396,3 +391,4 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+}  // namespace arangodb::aql

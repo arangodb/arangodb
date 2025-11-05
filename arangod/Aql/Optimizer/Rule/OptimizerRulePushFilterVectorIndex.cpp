@@ -39,11 +39,9 @@
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
+namespace arangodb::aql {
 
-namespace {
+using EN = ExecutionNode;
 
 #define LOG_RULE_ENABLED false
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
@@ -123,7 +121,6 @@ bool areAllAttributesCovered(
 
   return true;
 }
-}  // namespace
 
 // This rule check if EnumerateNearVectorNode has a FilterNode and if so tries
 // to remove it and apply early pruning in EnumerateNearVectorNode.
@@ -132,9 +129,9 @@ bool areAllAttributesCovered(
 // If we have found both EnumerateNearVectorNode and Filter node we must
 // be able to push filter expression into EnumerateNearVectorNode if we cannot
 // then we throw since we do not support post filtering with vector index
-void arangodb::aql::pushFilterIntoEnumerateNear(
-    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
-    OptimizerRule const& rule) {
+void pushFilterIntoEnumerateNear(Optimizer* opt,
+                                 std::unique_ptr<ExecutionPlan> plan,
+                                 OptimizerRule const& rule) {
   bool modified{false};
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
@@ -199,3 +196,4 @@ void arangodb::aql::pushFilterIntoEnumerateNear(
 
   opt->addPlan(std::move(plan), rule, modified);
 }
+}  // namespace arangodb::aql

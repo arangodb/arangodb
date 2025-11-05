@@ -128,7 +128,6 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
     filterVarsToRegs = extractFilterVarsToRegs();
   }
 
-  // TODO Change filterVarsToRegs into ref to avoid copy
   auto executorInfos = EnumerateNearVectorsExecutorInfos(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
       engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
@@ -153,7 +152,8 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, nullptr, _isCoveredByStoredValues);
+      collection(), _index, std::move(filterExpression),
+      _isCoveredByStoredValues);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
