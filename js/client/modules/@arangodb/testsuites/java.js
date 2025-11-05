@@ -234,7 +234,8 @@ arangodb.acquireHostList=true
       '-Dssl=false',
       '-Dmaven.test.skip=false',
       '-DskipStatefulTests',
-      '-Dallure.results.directory=' + testResultsDir
+      '-Dallure.results.directory=' + testResultsDir,
+      '-Dmaven.wagon.http.retryHandler.count=10',
       // TODO? '-Dnative=<<parameters.native>>'
     ];
 
@@ -305,6 +306,7 @@ class runInKafkaTest extends runWithAllureReport {
       `-Dallure.results.directory=${testResultsDir}`,
       `-Dconnect.schema.registry.url=${this.options.kafkaSchemaHost}`,
       `-Dclient.schema.registry.url=${this.options.kafkaSchemaHost}`,
+      '-Dmaven.wagon.http.retryHandler.count=10',
     ];
     if (this.options.protocol === 'ssl') {
       args.push('-Dit.test=com.arangodb.kafka.SslIT');
@@ -376,6 +378,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
       '-Pspark-3.5',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
+      '-Dmaven.wagon.http.retryHandler.count=10',
     ];
 
     if (this.options.testCase) {
