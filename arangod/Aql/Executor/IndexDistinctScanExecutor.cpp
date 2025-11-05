@@ -73,7 +73,7 @@ auto IndexDistinctScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
 IndexDistinctScanExecutor::IndexDistinctScanExecutor(Fetcher& fetcher,
                                                      Infos& infos)
-    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
+    : _infos(infos), _trx{_infos.query->newTrxContext()} {
   constructIterator();
   _groupValues.resize(_infos.groupRegisters.size());
 }

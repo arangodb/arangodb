@@ -84,7 +84,6 @@ RocksDBInvertedListsIterator<Strategy>::get_id_and_codes() {
   // Use strategy to extract entry from RocksDB
   auto [docId, entry] =
       Strategy::extractVectorIndexEntry(_it->key(), _it->value(), _codeSize);
-
   _currentEntry = std::move(entry);
 
   // Return pointer to encoded data (location differs based on strategy)

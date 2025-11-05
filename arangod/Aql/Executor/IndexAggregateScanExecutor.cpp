@@ -250,7 +250,7 @@ auto IndexAggregateScanExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 
 IndexAggregateScanExecutor::IndexAggregateScanExecutor(Fetcher& fetcher,
                                                        Infos& infos)
-    : _fetcher(fetcher), _infos(infos), _trx{_infos.query->newTrxContext()} {
+    : _infos(infos), _trx{_infos.query->newTrxContext()} {
   _currentGroupKeySlices.resize(_infos.groups.size());
   _keySlices.resize(_infos.groups.size());
 

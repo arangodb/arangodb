@@ -38,7 +38,7 @@ parameters:
     default: "arangodb/ubuntubuildarangodb-devel:18"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4b7ae2aa
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4c8e1373
   nightly:
     type: boolean
     default: false
@@ -68,7 +68,7 @@ parameters:
     default: "main"
   config-definitions:
     type: string
-    default: tests/test-definitions.txt
+    default: tests/test-definitions.yml
   config-definitions-branches:
     type: string
     default: ""
@@ -171,7 +171,7 @@ jobs:
           command: |
             git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb
             cd arangodb
-            git sparse-checkout set --no-cone tests/*txt .circleci
+            git sparse-checkout set --no-cone tests/*txt tests/*.yml .circleci
             git checkout $CIRCLE_SHA1
             mv tests ..
             mv .circleci ..
@@ -244,8 +244,5 @@ workflows:
       - generate-config:
           definitions: << pipeline.parameters.config-definitions >>
           config-definitions-branches: << pipeline.parameters.config-definitions-branches >>
-            #"tests/test-definitions.txt tests/go-test-definitions.txt tests/arangojs-test-definitions.txt"
-            # tests/java-test-definitions.txt"
-            # TODO: make go driver tests work and add " tests/go-test-definitions.txt"
           requires:
             - cancel-redundant-pipelines
