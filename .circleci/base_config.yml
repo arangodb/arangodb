@@ -91,7 +91,7 @@ parameters:
 
 
 
-.test-job-parameters: &test-job-parameters
+.shared-test-job-parameters: &shared-test-job-parameters
   suiteName:
     type: string
   suites:
@@ -112,15 +112,6 @@ parameters:
   timeLimit:
     type: integer
     default: 1800
-  driver-git-repo:
-    type: string
-    default: ""
-  driver-git-branch:
-    type: string
-    default: ""
-  init_driver_repo_command:
-    type: string
-    default: ""
   docker_image:
     type: string
     default: "<< pipeline.parameters.test-docker-image >>"
@@ -174,6 +165,20 @@ commands:
             git clone git@github.com:arangodb/enterprise.git .
             git reset --hard << pipeline.parameters.enterprise-commit >>
 
+  clone-driver-repo:
+    parameters:
+      driver-git-repo:
+        type: string
+      driver-git-branch:
+        type: string
+    steps:
+      - run:
+          name: Clone driver repository
+          command: |
+            cd ..
+            export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+            git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
+
   run-test:
     parameters:
       suiteName:
@@ -183,12 +188,6 @@ commands:
       cluster:
         type: boolean
       arangosh_args:
-        type: string
-      driver-git-repo:
-        type: string
-      driver-git-branch:
-        type: string
-      init_driver_repo_command:
         type: string
       timeLimit:
         type: integer
@@ -224,19 +223,6 @@ commands:
                 name: Symbolizer server
                 command: ./utils/llvm-symbolizer-server.py
                 background: true
-      - when:
-          condition:
-            not:
-              equal: [ << parameters.driver-git-repo >>, ""]
-          steps:
-            - run:
-                name: Clone driver repository
-                command: |
-                  cd ..
-                  export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
-                  git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>; \
-                  cd $(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
-                    << parameters.init_driver_repo_command >>
       - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
@@ -641,7 +627,7 @@ jobs:
 
   run-linux-tests:
     parameters:
-      <<: *test-job-parameters
+      <<: *shared-test-job-parameters
     docker:
       - image: << parameters.docker_image >>
     resource_class: << parameters.size >>
@@ -652,15 +638,46 @@ jobs:
           suites: << parameters.suites >>
           cluster: << parameters.cluster >>
           arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          extraArgs: << parameters.extraArgs >>
+
+  run-driver-tests:
+    parameters:
+      <<: *shared-test-job-parameters
+      driver-git-repo:
+        type: string
+      driver-git-branch:
+        type: string
+      init_command:
+        type: string
+    docker:
+      - image: << parameters.docker_image >>
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    steps:
+      - clone-driver-repo:
           driver-git-repo: << parameters.driver-git-repo >>
           driver-git-branch: << parameters.driver-git-branch >>
-          init_driver_repo_command: << parameters.init_driver_repo_command >>
+      - run:
+          name: Initialize driver tests
+          command: |
+            cd $(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" )
+            << parameters.init_command >>
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
           timeLimit: << parameters.timeLimit >>
           extraArgs: << parameters.extraArgs >>
 
   kafka-driver-tests:
     parameters:
-      <<: *test-job-parameters
+      <<: *shared-test-job-parameters
+      driver-git-repo:
+        type: string
+      driver-git-branch:
+        type: string
     docker:
       - image: << parameters.docker_image >>
       - image: docker.io/bitnamilegacy/kafka:3.9
@@ -716,14 +733,27 @@ jobs:
       - KAFKA_HOST_LIST=kafka-1:19092,kafka-2:29092,kafka-3:39092
       - KAFKA_SCHEMA_HOST=http://kafka-schema-registry:8081
     steps:
+      - clone-driver-repo:
+          driver-git-repo: << parameters.driver-git-repo >>
+          driver-git-branch: << parameters.driver-git-branch >>
+      - run:
+          name: Wait for Kafka brokers to be ready
+          command: |
+            wait_server() {
+                # shellcheck disable=SC2091
+                until $(/usr/bin/nc -z $1 $2); do
+                    printf '.'
+                    sleep 1
+                done
+            }
+            wait_server kafka-1 9092
+            wait_server kafka-2 9092
+            wait_server kafka-3 9092
       - run-test:
           suiteName: << parameters.suiteName >>
           suites: << parameters.suites >>
           cluster: << parameters.cluster >>
           arangosh_args: << parameters.arangosh_args >>
-          driver-git-repo: << parameters.driver-git-repo >>
-          driver-git-branch: << parameters.driver-git-branch >>
-          init_driver_repo_command: ./docker/wait_server.sh kafka-1 9092 kafka-2 9092 kafka-3 9092
           timeLimit: << parameters.timeLimit >>
           extraArgs: << parameters.extraArgs >>
 

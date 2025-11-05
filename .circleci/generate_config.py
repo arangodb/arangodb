@@ -480,14 +480,9 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
         job['driver-git-repo'] = test['testfile_definitions']['second_repo']
         job['driver-git-branch'] = test['testfile_definitions']['branch']
         if 'init_command' in test['testfile_definitions']:
-            job['init_driver_repo_command'] = test['testfile_definitions']['init_command']
-        else:
-            job['init_driver_repo_command'] = ""
+            job['init_command'] = test['testfile_definitions']['init_command']
     else:
         job['docker_image'] = args.default_container
-        job['driver-git-repo'] = ""
-        job['driver-git-branch'] = ""
-        job['init_driver_repo_command'] = ""
     return {test['run_job']: job}
 
 def create_rta_test_job(build_config, build_jobs, deployment_mode, filter_statement, buckets, rta_branch):
