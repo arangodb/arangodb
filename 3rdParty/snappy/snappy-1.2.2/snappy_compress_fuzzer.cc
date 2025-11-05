@@ -39,22 +39,26 @@
 // Entry point for LibFuzzer.
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string input(reinterpret_cast<const char*>(data), size);
+  for (int level = snappy::CompressionOptions::MinCompressionLevel();
+       level <= snappy::CompressionOptions::MaxCompressionLevel(); ++level) {
+    std::string compressed;
+    size_t compressed_size =
+        snappy::Compress(input.data(), input.size(), &compressed,
+                         snappy::CompressionOptions{/*level=*/level});
 
-  std::string compressed;
-  size_t compressed_size =
-      snappy::Compress(input.data(), input.size(), &compressed);
+    (void)compressed_size;  // Variable only used in debug builds.
+    assert(compressed_size == compressed.size());
+    assert(compressed.size() <= snappy::MaxCompressedLength(input.size()));
+    assert(
+        snappy::IsValidCompressedBuffer(compressed.data(), compressed.size()));
 
-  (void)compressed_size;  // Variable only used in debug builds.
-  assert(compressed_size == compressed.size());
-  assert(compressed.size() <= snappy::MaxCompressedLength(input.size()));
-  assert(snappy::IsValidCompressedBuffer(compressed.data(), compressed.size()));
+    std::string uncompressed_after_compress;
+    bool uncompress_succeeded = snappy::Uncompress(
+        compressed.data(), compressed.size(), &uncompressed_after_compress);
 
-  std::string uncompressed_after_compress;
-  bool uncompress_succeeded = snappy::Uncompress(
-      compressed.data(), compressed.size(), &uncompressed_after_compress);
-
-  (void)uncompress_succeeded;  // Variable only used in debug builds.
-  assert(uncompress_succeeded);
-  assert(input == uncompressed_after_compress);
+    (void)uncompress_succeeded;  // Variable only used in debug builds.
+    assert(uncompress_succeeded);
+    assert(input == uncompressed_after_compress);
+  }
   return 0;
 }

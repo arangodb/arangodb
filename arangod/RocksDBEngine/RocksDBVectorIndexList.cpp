@@ -77,8 +77,7 @@ RocksDBInvertedListsFilteringIterator::RocksDBInvertedListsFilteringIterator(
       _index(index),
       _collection(collection),
       _searchParametersContext(searchParametersContext),
-      _listNumber(listNumber),
-      _codeSize(codeSize) {
+      _listNumber(listNumber) {
   TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
   RocksDBTransactionMethods* mthds = RocksDBTransactionState::toMethods(
       searchParametersContext.trx, collection->id());

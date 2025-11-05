@@ -344,7 +344,6 @@ jobs:
             cmake --preset << parameters.preset >> \
               -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
               -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
-              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
               -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
               -DCMAKE_C_COMPILER_LAUNCHER=sccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \

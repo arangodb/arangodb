@@ -428,10 +428,12 @@ futures::Future<futures::Unit> RestImportHandler::createFromJson(
       if (pos != nullptr) {
         // non-empty line
         *(const_cast<char*>(pos)) = '\0';
+        TRI_ASSERT(ptr < pos);
         parseVelocyPackLine(tmpBuilder, ptr, pos, success);
         ptr = pos + 1;
       } else {
         // last-line, non-empty
+        TRI_ASSERT(ptr < end);
         parseVelocyPackLine(tmpBuilder, ptr, end, success);
         ptr = end;
       }
@@ -719,6 +721,12 @@ futures::Future<futures::Unit> RestImportHandler::createFromKeyValueList() {
     --lineEnd;
   }
 
+  if (lineStart >= lineEnd) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "no JSON string array found in first line");
+    co_return;
+  }
+
   *(const_cast<char*>(lineEnd)) = '\0';
   bool success = false;
   VPackBuilder parsedKeys;
@@ -824,7 +832,7 @@ futures::Future<futures::Unit> RestImportHandler::createFromKeyValueList() {
       --lineEnd;
     }
 
-    if (lineStart == lineEnd) {
+    if (lineStart >= lineEnd) {
       ++result._numEmpty;
       continue;
     }

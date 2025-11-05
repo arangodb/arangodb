@@ -90,7 +90,7 @@ std::array<std::byte, 8> uint64_to_big_endian_byte_array(uint64_t const v) {
 #endif  // USE_FAST_DOUBLE_MEMCMP_ENCODING
 }  // anonymous namespace
 
-zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
+zkd::byte_string zkd::operator""_bs(const char* const str, std::size_t len) {
   using namespace std::string_literals;
 
   std::string normalizedInput{};
@@ -145,7 +145,7 @@ zkd::byte_string zkd::operator"" _bs(const char* const str, std::size_t len) {
   return result;
 }
 
-zkd::byte_string zkd::operator"" _bss(const char* str, std::size_t len) {
+zkd::byte_string zkd::operator""_bss(const char* str, std::size_t len) {
   return byte_string{reinterpret_cast<const std::byte*>(str), len};
 }
 

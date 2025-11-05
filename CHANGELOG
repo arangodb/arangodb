@@ -1,6 +1,9 @@
 devel
 -----
 
+* Updated bundled version of Snappy library to 1.2.2. It fixes an ALUBSAN
+  issue found in ARM64.
+
 * Fix ES-2722 and COR-1: If an AQL query using ArangoSearch goes out of memory
   due to the search node materializing a document, the server would crash.
 

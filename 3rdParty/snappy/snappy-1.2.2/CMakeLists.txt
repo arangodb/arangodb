@@ -27,7 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 cmake_minimum_required(VERSION 3.21)
-project(Snappy VERSION 1.1.9 LANGUAGES C CXX)
+project(Snappy VERSION 1.2.2 LANGUAGES C CXX)
 
 # C++ standard can be overridden when this is used as a sub-project.
 if(NOT CMAKE_CXX_STANDARD)
@@ -52,12 +52,9 @@ if(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHs-c-")
   add_definitions(-D_HAS_EXCEPTIONS=0)
 
-  # Mixing -fno-rtti with -frtti (the default for C++) leads to unwanted
-  # consequences, in particular with exception handling. Since the snappy
-  # developers will not allow fixes in their repository, we fix it here.
   # Disable RTTI.
-  #string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
+  # string(REGEX REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+  # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /GR-")
 else(MSVC)
   # Use -Wall for clang and gcc.
   if(NOT CMAKE_CXX_FLAGS MATCHES "-Wall")
@@ -76,16 +73,18 @@ else(MSVC)
     endif(NOT CMAKE_CXX_FLAGS MATCHES "-Werror")
   endif(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
+  # Disable sign comparison warnings. Matches upcoming Bazel setup.
+  if(NOT CMAKE_CXX_FLAGS MATCHES "-Wno-sign-compare")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-sign-compare")
+  endif(NOT CMAKE_CXX_FLAGS MATCHES "-Wno-sign-compare")
+
   # Disable C++ exceptions.
   string(REGEX REPLACE "-fexceptions" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions")
 
-  # Mixing -fno-rtti with -frtti (the default for C++) leads to unwanted
-  # consequences, in particular with exception handling. Since the snappy
-  # developers will not allow fixes in their repository, we fix it here.
   # Disable RTTI.
-  #string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-  #set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
+ # string(REGEX REPLACE "-frtti" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+ # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti")
 endif(MSVC)
 
 # BUILD_SHARED_LIBS is a standard CMake variable, but we declare it here to make
@@ -147,6 +146,8 @@ endif(SNAPPY_REQUIRE_AVX2)
 # Used by googletest.
 check_cxx_compiler_flag(-Wno-missing-field-initializers
                         SNAPPY_HAVE_NO_MISSING_FIELD_INITIALIZERS)
+check_cxx_compiler_flag(-Wno-implicit-int-float-conversion
+                        SNAPPY_HAVE_NO_IMPLICIT_INT_FLOAT_CONVERSION)
 
 include(CheckCXXSourceCompiles)
 check_cxx_source_compiles("
@@ -158,6 +159,12 @@ check_cxx_source_compiles("
 int main() {
   return __builtin_ctzll(0);
 }" HAVE_BUILTIN_CTZ)
+
+check_cxx_source_compiles("
+int main() {
+  __builtin_prefetch(0, 0, 3);
+  return 0;
+}" HAVE_BUILTIN_PREFETCH)
 
 check_cxx_source_compiles("
 __attribute__((always_inline)) int zero() { return 0; }
@@ -178,13 +185,38 @@ int main() {
   _mm_storeu_si128(&dest, pattern);
   return 0;
 }" SNAPPY_HAVE_SSSE3)
+endif()
+
+check_cxx_source_compiles("
+#include <immintrin.h>
+int main() {
+  return _mm_crc32_u32(0, 1);
+}" SNAPPY_HAVE_X86_CRC32)
+
+check_cxx_source_compiles("
+#include <arm_neon.h>
+#include <arm_acle.h>
+int main() {
+  return __crc32cw(0, 1);
+}" SNAPPY_HAVE_NEON_CRC32)
 
 check_cxx_source_compiles("
 #include <immintrin.h>
 int main() {
   return _bzhi_u32(0, 1);
 }" SNAPPY_HAVE_BMI2)
-endif()
+
+check_cxx_source_compiles("
+#include <arm_neon.h>
+#include <stdint.h>
+int main() {
+  uint8_t val = 3, dup[8];
+  uint8x16_t v1 = vld1q_dup_u8(&val);
+  uint8x16_t v2 = vqtbl1q_u8(v1, v1);
+  vst1q_u8(dup, v1);
+  vst1q_u8(dup, v2);
+  return 0;
+}" SNAPPY_HAVE_NEON)
 
 include(CheckSymbolExists)
 check_symbol_exists("mmap" "sys/mman.h" HAVE_FUNC_MMAP)
@@ -231,9 +263,7 @@ target_sources(snappy
     "snappy-stubs-internal.cc"
     "snappy.cc"
     "${PROJECT_BINARY_DIR}/config.h"
-
-  # Only CMake 3.3+ supports PUBLIC sources in targets exported by "install".
-  $<$<VERSION_GREATER:CMAKE_VERSION,3.2>:PUBLIC>
+  PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/snappy-c.h>
     $<INSTALL_INTERFACE:include/snappy-c.h>
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/snappy-sinksource.h>
@@ -270,6 +300,9 @@ if(SNAPPY_BUILD_TESTS OR SNAPPY_BUILD_BENCHMARKS)
 
   # Test files include snappy-test.h, HAVE_CONFIG_H must be defined.
   target_compile_definitions(snappy_test_support PUBLIC -DHAVE_CONFIG_H)
+  if(BUILD_SHARED_LIBS)
+    set_target_properties(snappy_test_support PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+  endif(BUILD_SHARED_LIBS)
 
   target_link_libraries(snappy_test_support snappy)
 
@@ -308,6 +341,11 @@ if(SNAPPY_BUILD_TESTS)
     set_property(TARGET gmock
         APPEND PROPERTY COMPILE_OPTIONS -Wno-missing-field-initializers)
   endif(SNAPPY_HAVE_NO_MISSING_FIELD_INITIALIZERS)
+
+  if(SNAPPY_HAVE_NO_IMPLICIT_INT_FLOAT_CONVERSION)
+    set_property(TARGET gtest
+        APPEND PROPERTY COMPILE_OPTIONS -Wno-implicit-int-float-conversion)
+  endif(SNAPPY_HAVE_NO_IMPLICIT_INT_FLOAT_CONVERSION)
 
   add_executable(snappy_unittest "")
   target_sources(snappy_unittest

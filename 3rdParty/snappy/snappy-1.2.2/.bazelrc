@@ -1,0 +1,4 @@
+# googletest requires C++14 or above
+build --cxxopt='-std=c++17'
+# Enable Bzlmod for every Bazel command
+common --enable_bzlmod
