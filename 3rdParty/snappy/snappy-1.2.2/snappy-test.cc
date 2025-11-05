@@ -151,7 +151,7 @@ LogMessageCrash::~LogMessageCrash() {
 #pragma warning(pop)
 #endif
 
-#ifdef HAVE_LIBZ
+#if HAVE_LIBZ
 
 ZLib::ZLib()
     : comp_init_(false),

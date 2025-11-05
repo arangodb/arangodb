@@ -1,7 +1,6 @@
 Snappy, a fast compressor/decompressor.
 
-[![Build Status](https://travis-ci.org/google/snappy.svg?branch=master)](https://travis-ci.org/google/snappy)
-[![Build status](https://ci.appveyor.com/api/projects/status/t9nubcqkwo8rw8yn/branch/master?svg=true)](https://ci.appveyor.com/project/pwnall/leveldb)
+[![Build Status](https://github.com/google/snappy/actions/workflows/build.yml/badge.svg)](https://github.com/google/snappy/actions/workflows/build.yml)
 
 Introduction
 ============
@@ -132,6 +131,32 @@ should provide a reasonably balanced starting point for benchmarking. (Note that
 baddata[1-3].snappy are not intended as benchmarks; they are used to verify
 correctness in the presence of corrupted data in the unit test.)
 
+Contributing to the Snappy Project
+==================================
+
+In addition to the aims listed at the top of the [README](README.md) Snappy
+explicitly supports the following:
+
+1. C++11
+2. Clang (gcc and MSVC are best-effort).
+3. Low level optimizations (e.g. assembly or equivalent intrinsics) for:
+     - [x86](https://en.wikipedia.org/wiki/X86)
+     - [x86-64](https://en.wikipedia.org/wiki/X86-64)
+     - ARMv7 (32-bit)
+     - ARMv8 (AArch64)
+4. Supports only the Snappy compression scheme as described in
+  [format_description.txt](format_description.txt).
+5. CMake for building
+
+Changes adding features or dependencies outside of the core area of focus listed
+above might not be accepted. If in doubt post a message to the
+[Snappy discussion mailing list](https://groups.google.com/g/snappy-compression).
+
+We are unlikely to accept contributions to the build configuration files, such
+as `CMakeLists.txt`. We are focused on maintaining a build configuration that
+allows us to test that the project works in a few supported configurations
+inside Google. We are not currently interested in supporting other requirements,
+such as different operating systems, compilers, or build systems.
 
 Contact
 =======

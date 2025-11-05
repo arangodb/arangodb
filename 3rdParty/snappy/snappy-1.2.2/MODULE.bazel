@@ -1,0 +1,23 @@
+module(
+    name = "snappy",
+    version = "1.2.2",
+    compatibility_level = 1,
+)
+
+bazel_dep(
+    name = "googletest",
+    version = "1.14.0.bcr.1",
+    dev_dependency = True,
+    repo_name = "com_google_googletest",
+)
+bazel_dep(
+    name = "google_benchmark",
+    version = "1.9.0",
+    dev_dependency = True,
+    repo_name = "com_google_benchmark",
+)
+
+bazel_dep(
+    name = "platforms",
+    version = "0.0.9",
+)

@@ -35,7 +35,7 @@ function (add_snappy)
   # snappy
   add_c_flags_if_supported(CMAKE_C_FLAGS -Wno-suggest-override -Wno-sign-compare)
   add_cxx_flags_if_supported(CMAKE_CXX_FLAGS -Wno-suggest-override -Wno-sign-compare)
-  set(SNAPPY_VERSION "1.1.9")
+  set(SNAPPY_VERSION "1.2.2")
   set(SNAPPY_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/snappy/snappy-${SNAPPY_VERSION}")
   set(SNAPPY_SOURCE_DIR "${SNAPPY_SOURCE_DIR}" PARENT_SCOPE)
   set(SNAPPY_BUILD_DIR "${CMAKE_CURRENT_BINARY_DIR}/snappy/snappy-${SNAPPY_VERSION}" PARENT_SCOPE)

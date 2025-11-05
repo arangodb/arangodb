@@ -291,8 +291,8 @@
       priority: 1000
       size: medium+
     arangosh_args:
-      javascript.v8-max-heap: 32768
-      javascript.gc-interval: 25
+      javascript.v8-max-heap: "32768"
+      javascript.gc-interval: "25"
     args:
       dumpAgencyOnError: true
 
@@ -710,7 +710,7 @@
       priority: 1000
       size: medium+
     arangosh_args:
-      javascript.v8-max-heap: 16384
+      javascript.v8-max-heap: "16384"
     args:
       dumpAgencyOnError: true
 - resilience_failover_failure:

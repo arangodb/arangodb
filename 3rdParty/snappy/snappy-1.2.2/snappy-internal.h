@@ -31,10 +31,87 @@
 #ifndef THIRD_PARTY_SNAPPY_SNAPPY_INTERNAL_H_
 #define THIRD_PARTY_SNAPPY_SNAPPY_INTERNAL_H_
 
+#include <utility>
+
 #include "snappy-stubs-internal.h"
+
+#if SNAPPY_HAVE_SSSE3
+// Please do not replace with <x86intrin.h> or with headers that assume more
+// advanced SSE versions without checking with all the OWNERS.
+#include <emmintrin.h>
+#include <tmmintrin.h>
+#endif
+
+#if SNAPPY_HAVE_NEON
+#include <arm_neon.h>
+#endif
+
+#if SNAPPY_HAVE_SSSE3 || SNAPPY_HAVE_NEON
+#define SNAPPY_HAVE_VECTOR_BYTE_SHUFFLE 1
+#else
+#define SNAPPY_HAVE_VECTOR_BYTE_SHUFFLE 0
+#endif
 
 namespace snappy {
 namespace internal {
+
+#if SNAPPY_HAVE_VECTOR_BYTE_SHUFFLE
+#if SNAPPY_HAVE_SSSE3
+using V128 = __m128i;
+#elif SNAPPY_HAVE_NEON
+using V128 = uint8x16_t;
+#endif
+
+// Load 128 bits of integer data. `src` must be 16-byte aligned.
+inline V128 V128_Load(const V128* src);
+
+// Load 128 bits of integer data. `src` does not need to be aligned.
+inline V128 V128_LoadU(const V128* src);
+
+// Store 128 bits of integer data. `dst` does not need to be aligned.
+inline void V128_StoreU(V128* dst, V128 val);
+
+// Shuffle packed 8-bit integers using a shuffle mask.
+// Each packed integer in the shuffle mask must be in [0,16).
+inline V128 V128_Shuffle(V128 input, V128 shuffle_mask);
+
+// Constructs V128 with 16 chars |c|.
+inline V128 V128_DupChar(char c);
+
+#if SNAPPY_HAVE_SSSE3
+inline V128 V128_Load(const V128* src) { return _mm_load_si128(src); }
+
+inline V128 V128_LoadU(const V128* src) { return _mm_loadu_si128(src); }
+
+inline void V128_StoreU(V128* dst, V128 val) { _mm_storeu_si128(dst, val); }
+
+inline V128 V128_Shuffle(V128 input, V128 shuffle_mask) {
+  return _mm_shuffle_epi8(input, shuffle_mask);
+}
+
+inline V128 V128_DupChar(char c) { return _mm_set1_epi8(c); }
+
+#elif SNAPPY_HAVE_NEON
+inline V128 V128_Load(const V128* src) {
+  return vld1q_u8(reinterpret_cast<const uint8_t*>(src));
+}
+
+inline V128 V128_LoadU(const V128* src) {
+  return vld1q_u8(reinterpret_cast<const uint8_t*>(src));
+}
+
+inline void V128_StoreU(V128* dst, V128 val) {
+  vst1q_u8(reinterpret_cast<uint8_t*>(dst), val);
+}
+
+inline V128 V128_Shuffle(V128 input, V128 shuffle_mask) {
+  assert(vminvq_u8(shuffle_mask) >= 0 && vmaxvq_u8(shuffle_mask) <= 15);
+  return vqtbl1q_u8(input, shuffle_mask);
+}
+
+inline V128 V128_DupChar(char c) { return vdupq_n_u8(c); }
+#endif
+#endif  // SNAPPY_HAVE_VECTOR_BYTE_SHUFFLE
 
 // Working memory performs a single allocation to hold all scratch space
 // required for compression.
@@ -95,8 +172,9 @@ char* CompressFragment(const char* input,
 // loading from s2 + n.
 //
 // Separate implementation for 64-bit, little-endian cpus.
-#if !defined(SNAPPY_IS_BIG_ENDIAN) && \
-    (defined(__x86_64__) || defined(_M_X64) || defined(ARCH_PPC) || defined(ARCH_ARM))
+#if !SNAPPY_IS_BIG_ENDIAN && \
+    (defined(__x86_64__) || defined(_M_X64) || defined(ARCH_PPC) || \
+     defined(ARCH_ARM))
 static inline std::pair<size_t, bool> FindMatchLength(const char* s1,
                                                       const char* s2,
                                                       const char* s2_limit,
@@ -154,8 +232,9 @@ static inline std::pair<size_t, bool> FindMatchLength(const char* s1,
       uint64_t xorval = a1 ^ a2;
       int shift = Bits::FindLSBSetNonZero64(xorval);
       size_t matched_bytes = shift >> 3;
+      uint64_t a3 = UNALIGNED_LOAD64(s2 + 4);
 #ifndef __x86_64__
-      *data = UNALIGNED_LOAD64(s2 + matched_bytes);
+      a2 = static_cast<uint32_t>(xorval) == 0 ? a3 : a2;
 #else
       // Ideally this would just be
       //
@@ -166,19 +245,21 @@ static inline std::pair<size_t, bool> FindMatchLength(const char* s1,
       // use a conditional move (it's tuned to cut data dependencies). In this
       // case there is a longer parallel chain anyway AND this will be fairly
       // unpredictable.
-      uint64_t a3 = UNALIGNED_LOAD64(s2 + 4);
       asm("testl %k2, %k2\n\t"
           "cmovzq %1, %0\n\t"
           : "+r"(a2)
-          : "r"(a3), "r"(xorval));
-      *data = a2 >> (shift & (3 * 8));
+          : "r"(a3), "r"(xorval)
+          : "cc");
 #endif
+      *data = a2 >> (shift & (3 * 8));
       return std::pair<size_t, bool>(matched_bytes, true);
     } else {
       matched = 8;
       s2 += 8;
     }
   }
+  SNAPPY_PREFETCH(s1 + 64);
+  SNAPPY_PREFETCH(s2 + 64);
 
   // Find out how long the match is. We loop over the data 64 bits at a
   // time until we find a 64-bit block that doesn't match; then we find
@@ -194,16 +275,17 @@ static inline std::pair<size_t, bool> FindMatchLength(const char* s1,
       uint64_t xorval = a1 ^ a2;
       int shift = Bits::FindLSBSetNonZero64(xorval);
       size_t matched_bytes = shift >> 3;
-#ifndef __x86_64__
-      *data = UNALIGNED_LOAD64(s2 + matched_bytes);
-#else
       uint64_t a3 = UNALIGNED_LOAD64(s2 + 4);
+#ifndef __x86_64__
+      a2 = static_cast<uint32_t>(xorval) == 0 ? a3 : a2;
+#else
       asm("testl %k2, %k2\n\t"
           "cmovzq %1, %0\n\t"
           : "+r"(a2)
-          : "r"(a3), "r"(xorval));
-      *data = a2 >> (shift & (3 * 8));
+          : "r"(a3), "r"(xorval)
+          : "cc");
 #endif
+      *data = a2 >> (shift & (3 * 8));
       matched += matched_bytes;
       assert(matched >= 8);
       return std::pair<size_t, bool>(matched, false);
@@ -251,6 +333,31 @@ static inline std::pair<size_t, bool> FindMatchLength(const char* s1,
   return std::pair<size_t, bool>(matched, matched < 8);
 }
 #endif
+
+static inline size_t FindMatchLengthPlain(const char* s1, const char* s2,
+                                          const char* s2_limit) {
+  // Implementation based on the x86-64 version, above.
+  assert(s2_limit >= s2);
+  int matched = 0;
+
+  while (s2 <= s2_limit - 8 &&
+         UNALIGNED_LOAD64(s2) == UNALIGNED_LOAD64(s1 + matched)) {
+    s2 += 8;
+    matched += 8;
+  }
+  if (LittleEndian::IsLittleEndian() && s2 <= s2_limit - 8) {
+    uint64_t x = UNALIGNED_LOAD64(s2) ^ UNALIGNED_LOAD64(s1 + matched);
+    int matching_bits = Bits::FindLSBSetNonZero64(x);
+    matched += matching_bits >> 3;
+    s2 += matching_bits >> 3;
+  } else {
+    while ((s2 < s2_limit) && (s1[matched] == *s2)) {
+      ++s2;
+      ++matched;
+    }
+  }
+  return matched;
+}
 
 // Lookup tables for decompression code.  Give --snappy_dump_decompression_table
 // to the unit test to recompute char_table.
