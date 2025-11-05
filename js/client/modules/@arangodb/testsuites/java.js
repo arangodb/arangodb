@@ -392,7 +392,7 @@ class runInSparkDatasourceTest extends runWithAllureReport {
     }
     let start = Date();
     let status = true;
-    const cwd = fs.normalize(fs.makeAbsolute(this.options.kafkasource));
+    const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
       status = false;
