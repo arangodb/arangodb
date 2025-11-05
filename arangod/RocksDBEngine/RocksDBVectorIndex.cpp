@@ -707,18 +707,17 @@ Result RocksDBVectorIndex::ingestVectors(
                                         item->docIds[k]);
 
           auto const value = std::invoke([&]() {
+            auto* ptr = item->codes.get() + k * _faissIndex->code_size;
             if (hasStoredValues()) {
               RocksDBVectorIndexEntryValue rocksdbEntryValue;
-              rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
-                  item->codes.get() + k * _faissIndex->code_size,
-                  item->codes.get() + (k + 1) * _faissIndex->code_size);
+              rocksdbEntryValue.encodedValue =
+                  std::vector<uint8_t>(ptr, ptr + _faissIndex->code_size);
               rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
               return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
             } else {
               // Store raw encoded values directly for better performance
-              return RocksDBValue::VectorIndexValue(
-                  item->codes.get() + k * _faissIndex->code_size,
-                  _faissIndex->code_size);
+              return RocksDBValue::VectorIndexValue(ptr,
+                                                    _faissIndex->code_size);
             }
           });
 

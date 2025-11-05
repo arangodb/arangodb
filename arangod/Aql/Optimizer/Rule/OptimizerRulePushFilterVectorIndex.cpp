@@ -47,7 +47,7 @@ using EN = ExecutionNode;
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
-std::unique_ptr<Expression> removeFilterNode(
+std::unique_ptr<Expression> tryRemoveFilterNode(
     auto* maybeFilterNode, auto& plan,
     auto const* enumerateNearVectorOutputDocument) {
   auto const* filterNode =
@@ -160,7 +160,7 @@ void pushFilterIntoEnumerateNear(Optimizer* opt,
 
     // If there is a FilterNode it comes with CalculationNode, we remove it
     // and handle it in EnumerateNearVectorNode
-    std::unique_ptr<Expression> filterExpression = removeFilterNode(
+    std::unique_ptr<Expression> filterExpression = tryRemoveFilterNode(
         filterNode, plan, enumerateNearVectorNode->documentOutVariable());
     if (!filterExpression) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
