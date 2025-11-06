@@ -27,6 +27,7 @@ tests:
       suffix: v2
     args:
       goDriverVersion: '2'
+      extremeVerbosity: true
 - go_driver:
     options:
       priority: 500
@@ -35,3 +36,4 @@ tests:
       size: large
     args:
       goDriverVersion: '2'
+      extremeVerbosity: true
