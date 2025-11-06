@@ -178,8 +178,7 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
         auto const filterExpressionResult = a.toBoolean();
         if (filterExpressionResult) {
           // Use strategy to extract only the encoded part used by faiss
-          auto [_, entry] = Strategy::extractVectorIndexEntry(
-              rocksdb::Slice(doc.stringView()),
+          auto entry = Strategy::extractVectorIndexValue(
               rocksdb::Slice(
                   reinterpret_cast<const char*>(idsToValue[id].data()),
                   idsToValue[id].size()),

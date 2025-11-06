@@ -64,14 +64,22 @@ inline faiss::MetricType metricToFaissMetric(
 // TODO(jbajic) could be used during insertion with a bit refactoring
 template<typename T>
 concept VectorIndexStoredValuesStrategy = requires {
-  // Must have a compile-time constant indicating if stored values are present
+  // Must have a compile-time constant indicating if stored values are
+  // present
   { T::hasStoredValues } -> std::convertible_to<bool>;
 }
 &&requires(rocksdb::Slice const& key, rocksdb::Slice const& value,
            size_t codeSize, std::vector<uint8_t> const& encodedValue,
            velocypack::Slice storedValues) {
-  // Must be able to extract entry from RocksDB key/value
+  // Extract encoded vector from raw bytes
+  // Returns document ID and the encoded vector
+  // Caller manages the vector lifetime and can extract pointer as needed
   {T::extractVectorIndexEntry(key, value, codeSize)};
+
+  // Extract encoded vector from raw bytes
+  // Returns the encoded vector
+  // Caller manages the vector lifetime and can extract pointer as needed
+  {T::extractVectorIndexValue(value, codeSize)};
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,9 +91,6 @@ concept VectorIndexStoredValuesStrategy = requires {
 struct NoStoredValuesStrategy {
   static constexpr bool hasStoredValues = false;
 
-  // Extract encoded vector from raw bytes
-  // Returns document ID and the encoded vector (moved)
-  // Caller manages the vector lifetime and can extract pointer as needed
   static std::pair<LocalDocumentId, std::vector<uint8_t>>
   extractVectorIndexEntry(rocksdb::Slice const& key,
                           rocksdb::Slice const& value, size_t codeSize) {
@@ -94,6 +99,14 @@ struct NoStoredValuesStrategy {
         reinterpret_cast<uint8_t const*>(value.data()),
         reinterpret_cast<uint8_t const*>(value.data()) + codeSize);
     return {docId, std::move(encodedValue)};
+  }
+
+  static std::vector<uint8_t> extractVectorIndexValue(
+      rocksdb::Slice const& value, size_t codeSize) {
+    std::vector<uint8_t> encodedValue(
+        reinterpret_cast<uint8_t const*>(value.data()),
+        reinterpret_cast<uint8_t const*>(value.data()) + codeSize);
+    return encodedValue;
   }
 };
 
@@ -107,15 +120,18 @@ struct NoStoredValuesStrategy {
 struct WithStoredValuesStrategy {
   static constexpr bool hasStoredValues = true;
 
-  // Extract full entry containing both encoded vector and stored values
-  // Returns document ID and the complete entry (moved)
-  // Caller can access entry.encodedValue and entry.storedValues as needed
   static std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>
   extractVectorIndexEntry(rocksdb::Slice const& key,
                           rocksdb::Slice const& value, size_t /*codeSize*/) {
     auto const docId = RocksDBKey::indexDocumentId(key);
     auto entry = RocksDBValue::vectorIndexEntryValue(value);
     return {docId, std::move(entry)};
+  }
+
+  static RocksDBVectorIndexEntryValue extractVectorIndexValue(
+      rocksdb::Slice const& value, size_t codeSize) {
+    auto entry = RocksDBValue::vectorIndexEntryValue(value);
+    return entry;
   }
 };
 
