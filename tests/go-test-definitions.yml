@@ -1,7 +1,7 @@
 jobProperties:
     container_suffix: '-go:'
     second_repo: git@github.com:arangodb/go-driver.git
-    branch: master
+    branch: bug-fix/stretch-timeouts
     init_command: ''
 tests:
 - go_driver:
