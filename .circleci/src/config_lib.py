@@ -162,8 +162,17 @@ class TestOptions:
                 data["deployment_type"]
             )
 
+        # Handle size with deployment type-based defaults (matching old generator logic)
         if "size" in data and data["size"] is not None:
             kwargs["size"] = ResourceSize.from_string(data["size"])
+        else:
+            # Default size based on deployment type (old generator compatibility)
+            # cluster and mixed default to medium, single defaults to small
+            deployment_type = kwargs.get("deployment_type")
+            if deployment_type in (DeploymentType.CLUSTER, DeploymentType.MIXED):
+                kwargs["size"] = ResourceSize.MEDIUM
+            else:
+                kwargs["size"] = ResourceSize.SMALL
 
         # Direct field mappings (only actual TestOptions fields)
         field_mappings = {

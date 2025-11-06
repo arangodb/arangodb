@@ -144,6 +144,41 @@ class TestTestOptions:
         assert merged.buckets == 3  # from base
         assert merged.size == ResourceSize.LARGE  # from override
 
+    def test_from_dict_default_size_cluster(self):
+        """Test that cluster deployment defaults to medium size."""
+        data = {"type": "cluster"}
+        opts = TestOptions.from_dict(data)
+        assert opts.deployment_type == DeploymentType.CLUSTER
+        assert opts.size == ResourceSize.MEDIUM
+
+    def test_from_dict_default_size_mixed(self):
+        """Test that mixed deployment defaults to medium size."""
+        data = {"type": "mixed"}
+        opts = TestOptions.from_dict(data)
+        assert opts.deployment_type == DeploymentType.MIXED
+        assert opts.size == ResourceSize.MEDIUM
+
+    def test_from_dict_default_size_single(self):
+        """Test that single deployment defaults to small size."""
+        data = {"type": "single"}
+        opts = TestOptions.from_dict(data)
+        assert opts.deployment_type == DeploymentType.SINGLE
+        assert opts.size == ResourceSize.SMALL
+
+    def test_from_dict_default_size_no_type(self):
+        """Test that no deployment type defaults to small size."""
+        data = {}
+        opts = TestOptions.from_dict(data)
+        assert opts.deployment_type is None
+        assert opts.size == ResourceSize.SMALL
+
+    def test_from_dict_explicit_size_overrides_default(self):
+        """Test that explicit size overrides deployment-based default."""
+        data = {"type": "cluster", "size": "xlarge"}
+        opts = TestOptions.from_dict(data)
+        assert opts.deployment_type == DeploymentType.CLUSTER
+        assert opts.size == ResourceSize.XLARGE
+
 
 class TestTestArguments:
     """Test TestArguments dataclass."""
