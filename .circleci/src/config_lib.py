@@ -419,6 +419,7 @@ class RepositoryConfig:
 
     git_repo: str
     git_branch: Optional[str] = None
+    init_command: Optional[str] = None
 
     def __post_init__(self):
         """Validate repository configuration."""

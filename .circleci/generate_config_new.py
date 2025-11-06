@@ -314,12 +314,17 @@ def main():
         # Parse arguments
         args = parse_arguments()
 
-        # Validate sanitizer
+        # Validate and normalize sanitizer
         sanitizer = args.sanitizer or None
-        if sanitizer and sanitizer not in ["tsan", "asan", "ubsan"]:
-            raise ValueError(
-                f"Invalid sanitizer '{sanitizer}'. " "Must be one of: tsan, asan, ubsan"
-            )
+        if sanitizer:
+            # Support 'alubsan' as an alias for asan+ubsan
+            if sanitizer == "alubsan":
+                sanitizer = "asan"
+            elif sanitizer not in ["tsan", "asan", "ubsan"]:
+                raise ValueError(
+                    f"Invalid sanitizer '{sanitizer}'. "
+                    "Must be one of: tsan, asan, ubsan, alubsan"
+                )
 
         # Parse test branches
         test_branches = parse_test_branches(args.test_branches or "")
