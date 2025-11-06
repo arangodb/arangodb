@@ -261,7 +261,6 @@ class TestRepositoryConfigClass:
         repo = RepositoryConfig(git_repo="https://github.com/example/repo")
         assert repo.git_repo == "https://github.com/example/repo"
         assert repo.git_branch is None
-        assert repo.git_sha is None
 
     def test_repo_with_branch(self):
         repo = RepositoryConfig(
@@ -281,12 +280,10 @@ class TestRepositoryConfigClass:
         data = {
             "git_repo": "https://github.com/example/repo",
             "git_branch": "develop",
-            "git_sha": "abc123",
         }
         repo = RepositoryConfig.from_dict(data)
         assert repo.git_repo == "https://github.com/example/repo"
         assert repo.git_branch == "develop"
-        assert repo.git_sha == "abc123"
 
 
 class TestTestJob:

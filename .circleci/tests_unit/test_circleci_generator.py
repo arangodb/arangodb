@@ -114,7 +114,7 @@ class TestGenerateWorkflowName:
         build_config = BuildConfig(architecture="x64", enterprise=True)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-enterprise-ui_tests-pr"
+        assert name == "x64-enterprise-with_ui_tests-pr"
 
     def test_workflow_name_with_ui_only(self):
         """Test workflow name with UI tests only."""

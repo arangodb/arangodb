@@ -146,7 +146,10 @@ class CircleCIGenerator(OutputGenerator):
             "",
             "off",
         ):
-            suffix = f"{'only_' if self.config.circleci.ui == 'only' else ''}ui_tests-{suffix}"
+            if self.config.circleci.ui == "only":
+                suffix = f"only_ui_tests-{suffix}"
+            else:
+                suffix = f"with_ui_tests-{suffix}"
         else:
             suffix = f"no_ui_tests-{suffix}"
 
@@ -173,6 +176,16 @@ class CircleCIGenerator(OutputGenerator):
 
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
+
+        # Add non-maintainer build for x64 enterprise (no sanitizer, not ui-only)
+        if (
+            build_config.architecture == "x64"
+            and build_config.enterprise
+            and not build_config.sanitizer
+            and self.config.circleci.ui != "only"
+        ):
+            non_maintainer_job = self._create_non_maintainer_build_job(build_config)
+            workflow["jobs"].append(non_maintainer_job)
 
         # Extract job names from the dicts
         build_job_name = build_job["compile-linux"]["name"]
@@ -214,6 +227,25 @@ class CircleCIGenerator(OutputGenerator):
         name = f"build-{edition}-{build_config.architecture}{suffix}-frontend"
 
         return {"build-frontend": {"name": name}}
+
+    def _create_non_maintainer_build_job(
+        self, build_config: BuildConfig
+    ) -> Dict[str, Any]:
+        """Create non-maintainer build job for faster CI feedback."""
+        return {
+            "compile-linux": {
+                "context": ["sccache-aws-bucket"],
+                "resource-class": self.sizer.get_resource_class(
+                    ResourceSize.XXLARGE, build_config.architecture
+                ),
+                "name": "build-ee-non-maintainer-x64",
+                "preset": "enterprise-pr-non-maintainer",
+                "enterprise": True,
+                "arch": "x64",
+                "publish-artifacts": False,
+                "build-tests": False,
+            }
+        }
 
     def _add_optional_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
@@ -453,14 +485,27 @@ class CircleCIGenerator(OutputGenerator):
         """
         is_cluster = deployment_type == DeploymentType.CLUSTER
 
-        # Build job name
+        # Build job name and suite name
         deployment_str = self._get_deployment_string(
             deployment_type, replication_version
         )
-        job_name = f"test-{deployment_str}-{job.name}-{build_config.architecture}"
+
+        # Add suffix to job/suite name if present
+        suite_name = job.name
+        if job.options.suffix:
+            suite_name = f"{job.name}-{job.options.suffix}"
+
+        job_name = f"test-{deployment_str}-{suite_name}-{build_config.architecture}"
+
+        # Filter suites based on full flag (suite-level filtering)
+        filtered_suites = [
+            suite
+            for suite in job.suites
+            if not (suite.options.full and not build_config.nightly)
+        ]
 
         # Build suite string
-        suite_str = ",".join(suite.name for suite in job.suites)
+        suite_str = ",".join(suite.name for suite in filtered_suites)
 
         # Get size
         size = job.options.size or ResourceSize.SMALL
@@ -469,7 +514,7 @@ class CircleCIGenerator(OutputGenerator):
         # Build job dict
         job_dict = {
             "name": job_name,
-            "suiteName": job.name,
+            "suiteName": suite_name,
             "suites": suite_str,
             "size": resource_class,
             "cluster": is_cluster,
@@ -487,13 +532,76 @@ class CircleCIGenerator(OutputGenerator):
         if build_config.nightly:
             extra_args.extend(["--skipNightly", "false"])
 
+        # For multi-suite jobs, add optionsJson
+        # Use filtered_suites to match what will actually run
+        if len(filtered_suites) > 1:
+            options_json = []
+            for suite in filtered_suites:
+                # Convert suite arguments to dict format for optionsJson
+                # Uses same logic as old generator's get_args() function
+                suite_args = {}
+                if suite.arguments and suite.arguments.extra_args:
+                    # Parse extra_args back into dict format
+                    i = 0
+                    while i < len(suite.arguments.extra_args):
+                        arg = suite.arguments.extra_args[i]
+                        if arg.startswith("--"):
+                            key = arg[2:]  # Remove -- prefix
+
+                            # Get the value
+                            value = None
+                            if i + 1 < len(suite.arguments.extra_args):
+                                next_arg = suite.arguments.extra_args[i + 1]
+                                if not next_arg.startswith("--"):
+                                    # Convert string booleans back to bool
+                                    if next_arg == "true":
+                                        value = True
+                                    elif next_arg == "false":
+                                        value = False
+                                    else:
+                                        value = next_arg
+                                    i += 2
+                                else:
+                                    # Boolean flag without explicit value
+                                    value = True
+                                    i += 1
+                            else:
+                                # Boolean flag at end
+                                value = True
+                                i += 1
+
+                            # Handle colon-separated keys (nest them)
+                            if ":" in key:
+                                keyparts = key.split(":", 1)
+                                parent_key, child_key = keyparts[0], keyparts[1]
+                                if parent_key not in suite_args:
+                                    suite_args[parent_key] = {}
+                                suite_args[parent_key][child_key] = value
+                            else:
+                                suite_args[key] = value
+                        else:
+                            i += 1
+
+                options_json.append(suite_args)
+
+            # Add optionsJson as a command-line argument
+            extra_args.extend(
+                ["--optionsJson", json.dumps(options_json, separators=(",", ":"))]
+            )
+
         if extra_args or self.config.test_execution.extra_args:
             job_dict["extraArgs"] = " ".join(
                 extra_args + self.config.test_execution.extra_args
             )
 
-        # Add buckets
+        # Add buckets - use filtered suite count for auto buckets
         bucket_count = self._get_bucket_count(job)
+        # Override bucket count if using auto buckets and suites were filtered
+        if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
+            bucket_count = len(filtered_suites)
+        # Special override for replication_sync
+        if job.name == "replication_sync":
+            bucket_count = 5
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
 
@@ -573,9 +681,9 @@ class CircleCIGenerator(OutputGenerator):
 
             job_dict["driver-git-repo"] = job.repository.git_repo
             job_dict["driver-git-branch"] = job.repository.git_branch or "main"
-            job_dict["driver-git-sha"] = job.repository.git_sha or ""
+            job_dict["init_driver_repo_command"] = job.repository.init_command or ""
         else:
             job_dict["docker_image"] = self.config.circleci.default_container
             job_dict["driver-git-repo"] = ""
             job_dict["driver-git-branch"] = ""
-            job_dict["driver-git-sha"] = ""
+            job_dict["init_driver_repo_command"] = ""

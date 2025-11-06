@@ -22,22 +22,22 @@ class TestParseRealYAMLFiles:
         yaml_file = TESTS_DIR / "test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
-        # Should have many jobs
-        assert len(test_def.jobs) == 58
+        # Should have many jobs (73 because duplicates with different deployment types are kept)
+        assert len(test_def.jobs) == 73
 
-        # Verify some known jobs exist
-        assert "single_server_only" in test_def.jobs
-        assert "recovery_cluster" in test_def.jobs
-        assert "dump_cluster_large" in test_def.jobs
+        # Verify some known jobs exist (with deployment type suffix for disambiguation)
+        assert "single_server_only_single" in test_def.jobs
+        assert "recovery_cluster_cluster" in test_def.jobs
+        assert "dump_cluster_large_cluster" in test_def.jobs
 
         # Check a specific single-server job
-        single_job = test_def.jobs["single_server_only"]
+        single_job = test_def.jobs["single_server_only_single"]
         assert single_job.options.deployment_type == DeploymentType.SINGLE
         assert len(single_job.suites) == 4
         assert single_job.suites[0].name == "BackupAuthNoSysTests"
 
         # Check a multi-suite job with auto buckets
-        dump_job = test_def.jobs["dump_cluster_large"]
+        dump_job = test_def.jobs["dump_cluster_large_cluster"]
         assert dump_job.options.buckets == "auto"
         assert dump_job.options.deployment_type == DeploymentType.CLUSTER
         assert dump_job.is_multi_suite()
@@ -123,7 +123,7 @@ class TestJobStructures:
         yaml_file = TESTS_DIR / "test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
-        job = test_def.jobs["replication_fuzz"]
+        job = test_def.jobs["replication_fuzz_single"]
         assert not job.is_multi_suite()
         assert len(job.suites) == 1
         assert job.suites[0].name == "replication_fuzz"
@@ -134,7 +134,7 @@ class TestJobStructures:
         yaml_file = TESTS_DIR / "test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
-        job = test_def.jobs["dump_single"]
+        job = test_def.jobs["dump_single_single"]
         assert job.is_multi_suite()
         assert job.options.buckets == "auto"
         assert job.get_bucket_count() == len(job.suites)
@@ -145,7 +145,7 @@ class TestJobStructures:
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # replication_fuzz has args at job level
-        job = test_def.jobs["replication_fuzz"]
+        job = test_def.jobs["replication_fuzz_single"]
         # Check job-level arguments were parsed
         assert len(job.arguments.extra_args) > 0
         # Verify it contains log level argument
@@ -156,7 +156,7 @@ class TestJobStructures:
         yaml_file = TESTS_DIR / "test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
-        job = test_def.jobs["replication_sync"]
+        job = test_def.jobs["replication_sync_single"]
         assert job.options.priority == 8000
 
     def test_jobs_with_size(self):
@@ -164,7 +164,7 @@ class TestJobStructures:
         yaml_file = TESTS_DIR / "test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
-        job = test_def.jobs["replication_sync"]
+        job = test_def.jobs["replication_sync_single"]
         assert job.options.size == ResourceSize.MEDIUM
 
     def test_cluster_jobs(self):
@@ -172,7 +172,7 @@ class TestJobStructures:
         yaml_file = TESTS_DIR / "test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
-        job = test_def.jobs["recovery_cluster"]
+        job = test_def.jobs["recovery_cluster_cluster"]
         assert job.options.deployment_type == DeploymentType.CLUSTER
 
     def test_mixed_deployment_jobs(self):
@@ -180,7 +180,7 @@ class TestJobStructures:
         yaml_file = TESTS_DIR / "test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
-        job = test_def.jobs["rta_makedata"]
+        job = test_def.jobs["rta_makedata_mixed"]
         assert job.options.deployment_type == DeploymentType.MIXED
         assert job.is_multi_suite()
         # Mixed jobs have multiple suites, each potentially with different deployment
@@ -237,7 +237,7 @@ class TestEdgeCases:
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Jobs without explicit suite field use job name as suite name
-        job = test_def.jobs["replication_fuzz"]
+        job = test_def.jobs["replication_fuzz_single"]
         assert len(job.suites) == 1
         assert job.suites[0].name == "replication_fuzz"
 
@@ -247,7 +247,7 @@ class TestEdgeCases:
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Find a job with suite-level overrides
-        job = test_def.jobs["dump_single"]
+        job = test_def.jobs["dump_single_single"]
         resolved = job.get_resolved_suites()
 
         # At least one suite should have some configuration
@@ -259,13 +259,13 @@ class TestEdgeCases:
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Job with explicit buckets
-        explicit_job = test_def.jobs["replication_sync"]
+        explicit_job = test_def.jobs["replication_sync_single"]
         assert explicit_job.get_bucket_count() == 9
 
         # Job with auto buckets
-        auto_job = test_def.jobs["dump_single"]
+        auto_job = test_def.jobs["dump_single_single"]
         assert auto_job.get_bucket_count() == len(auto_job.suites)
 
         # Job without buckets
-        no_bucket_job = test_def.jobs["single_server_only"]
+        no_bucket_job = test_def.jobs["single_server_only_single"]
         assert no_bucket_job.get_bucket_count() is None

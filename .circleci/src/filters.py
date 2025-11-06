@@ -105,6 +105,10 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     if criteria.all_tests:
         return True
 
+    # Check if job requires full/nightly build
+    if job.options.full and not criteria.is_full_run:
+        return False
+
     # Check deployment type filter
     if not matches_deployment_filter(job.options.deployment_type, criteria):
         return False

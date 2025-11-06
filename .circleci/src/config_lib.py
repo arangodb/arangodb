@@ -87,6 +87,9 @@ class TestOptions:
     max_replication_factor: Optional[int] = None
     replication_version: Optional[str] = None
     test_data_dir: Optional[str] = None
+    suffix: Optional[str] = None  # Job name suffix for disambiguation
+    full: Optional[bool] = None  # Only run in full/nightly builds if True
+    coverage: Optional[bool] = None  # Run coverage analysis
 
     def __post_init__(self):
         """Validate option values."""
@@ -172,15 +175,14 @@ class TestOptions:
             "max_replication_factor": "max_replication_factor",
             "replication_version": "replication_version",
             "test_data_dir": "test_data_dir",
+            "suffix": "suffix",
+            "full": "full",
+            "coverage": "coverage",
         }
 
         for yaml_field, our_field in field_mappings.items():
             if yaml_field in data:
                 kwargs[our_field] = data[yaml_field]
-
-        # Note: Other YAML fields like 'coverage', 'full', 'suffix' are intentionally
-        # ignored as they are not part of our TestOptions model. They may be used
-        # by the original scripts but are not needed for the core data model.
 
         return cls(**kwargs)
 
@@ -282,18 +284,30 @@ class TestArguments:
                 if key == "arangosh_args":
                     # Handle arangosh_args separately
                     continue
+                elif key == "moreArgv":
+                    # Special case: moreArgv value is appended directly without --moreArgv prefix
+                    extra_args.append(str(value))
                 elif key.startswith("extraArgs:"):
                     # Handle "extraArgs:log.level: replication=trace" format
-                    arg_name = key[len("extraArgs:") :]
-                    extra_args.append(f"--{arg_name}")
-                    extra_args.append(str(value))
-                elif isinstance(value, bool) and value:
-                    # Handle boolean flags like "dumpAgencyOnError: true"
+                    # Keep the full key including "extraArgs:" prefix
                     extra_args.append(f"--{key}")
+                    # Format boolean values as lowercase strings
+                    if isinstance(value, bool):
+                        extra_args.append("true" if value else "false")
+                    else:
+                        extra_args.append(str(value))
+                elif isinstance(value, bool):
+                    # Handle boolean flags/values
+                    extra_args.append(f"--{key}")
+                    extra_args.append("true" if value else "false")
                 elif isinstance(value, str):
                     # Handle string arguments
                     extra_args.append(f"--{key}")
                     extra_args.append(value)
+                elif value is not None:
+                    # Handle other types (int, float, etc.)
+                    extra_args.append(f"--{key}")
+                    extra_args.append(str(value))
 
         # Handle arangosh_args
         arangosh_args = data.get("arangosh_args", [])
@@ -396,7 +410,6 @@ class RepositoryConfig:
 
     git_repo: str
     git_branch: Optional[str] = None
-    git_sha: Optional[str] = None
 
     def __post_init__(self):
         """Validate repository configuration."""
@@ -417,7 +430,6 @@ class RepositoryConfig:
         return cls(
             git_repo=data["git_repo"],
             git_branch=data.get("git_branch"),
-            git_sha=data.get("git_sha"),
         )
 
 
@@ -558,7 +570,12 @@ class TestJob:
                         # Merge the name into the config
                         full_config = {"name": suite_name}
                         if isinstance(suite_config, dict):
-                            full_config.update(suite_config)
+                            # Convert 'args' to 'arguments' if present
+                            for key, value in suite_config.items():
+                                if key == "args":
+                                    full_config["arguments"] = value
+                                else:
+                                    full_config[key] = value
                         suites.append(SuiteConfig.from_dict(full_config))
                     else:
                         raise ValueError(
@@ -714,7 +731,26 @@ class TestDefinitionFile:
                     )
 
                 job_name, job_data = next(iter(item.items()))
-                jobs[job_name] = TestJob.from_dict(job_name, job_data)
+
+                # Handle duplicate job names by creating unique keys
+                # Parse job to get deployment type
+                temp_job = TestJob.from_dict(job_name, job_data)
+
+                # Create unique key based on job name + deployment type + suffix
+                unique_key = job_name
+                if temp_job.options.deployment_type:
+                    unique_key = f"{job_name}_{temp_job.options.deployment_type.value}"
+                if temp_job.options.suffix:
+                    unique_key = f"{unique_key}_{temp_job.options.suffix}"
+
+                # If key still conflicts, append a counter
+                if unique_key in jobs:
+                    counter = 2
+                    while f"{unique_key}_{counter}" in jobs:
+                        counter += 1
+                    unique_key = f"{unique_key}_{counter}"
+
+                jobs[unique_key] = temp_job
 
         elif isinstance(data, dict):
             # Handle dict format: {'job_name': job_data, ...}
