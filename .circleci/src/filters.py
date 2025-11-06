@@ -5,9 +5,15 @@ This module provides functions to filter test jobs based on various criteria
 such as deployment type, full/nightly runs, platform exclusions, etc.
 """
 
-from typing import List
+from typing import List, Optional
 from dataclasses import dataclass, field
-from .config_lib import TestJob, TestDefinitionFile, DeploymentType, SuiteConfig
+from .config_lib import (
+    TestJob,
+    TestDefinitionFile,
+    DeploymentType,
+    SuiteConfig,
+    Sanitizer,
+)
 
 
 # Prefix for gtest suite names
@@ -34,7 +40,7 @@ class FilterCriteria:
     all_tests: bool = False
 
     # Test type filters
-    full: bool = False
+    full: Optional[Sanitizer] = None  # Sanitizer for full builds
     nightly: bool = False
     gtest: bool = False
 
@@ -47,7 +53,7 @@ class FilterCriteria:
     @property
     def is_full_run(self) -> bool:
         """Check if this is a full or nightly run."""
-        return self.full or self.nightly
+        return self.full is not None or self.nightly
 
 
 def is_gtest_suite(suite: SuiteConfig) -> bool:

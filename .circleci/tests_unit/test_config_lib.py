@@ -591,10 +591,6 @@ class TestBuildConfigClass:
         assert build.sanitizer == "asan"
         assert build.nightly is True
 
-    def test_invalid_sanitizer(self):
-        with pytest.raises(ValueError, match="Invalid sanitizer"):
-            BuildConfig(architecture="amd64", enterprise=True, sanitizer="invalid")
-
     def test_empty_architecture(self):
         with pytest.raises(ValueError, match="architecture must be specified"):
             BuildConfig(architecture="", enterprise=True)

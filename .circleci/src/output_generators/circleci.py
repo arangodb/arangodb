@@ -154,7 +154,7 @@ class CircleCIGenerator(OutputGenerator):
             suffix = f"no_ui_tests-{suffix}"
 
         if build_config.sanitizer:
-            suffix += f"-{build_config.sanitizer}"
+            suffix += f"-{build_config.sanitizer.value}"
 
         if self.config.test_execution.replication_two:
             suffix += "-repl2"
@@ -199,9 +199,9 @@ class CircleCIGenerator(OutputGenerator):
         preset = f"{'enterprise' if build_config.enterprise else 'community'}-pr"
 
         if build_config.sanitizer:
-            preset += f"-{build_config.sanitizer}"
+            preset += f"-{build_config.sanitizer.value}"
 
-        suffix = f"-{build_config.sanitizer}" if build_config.sanitizer else ""
+        suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
         name = f"build-{edition}-{build_config.architecture}{suffix}"
 
         params = {
@@ -223,7 +223,7 @@ class CircleCIGenerator(OutputGenerator):
     def _create_frontend_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create frontend build job definition."""
         edition = "ee" if build_config.enterprise else "ce"
-        suffix = f"-{build_config.sanitizer}" if build_config.sanitizer else ""
+        suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
         name = f"build-{edition}-{build_config.architecture}{suffix}-frontend"
 
         return {"build-frontend": {"name": name}}

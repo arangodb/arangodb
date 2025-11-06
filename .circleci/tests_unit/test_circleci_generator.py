@@ -15,6 +15,7 @@ from src.config_lib import (
     BuildConfig,
     DeploymentType,
     ResourceSize,
+    Sanitizer,
 )
 from src.filters import FilterCriteria, PlatformFlags
 from src.output_generators.base import (
@@ -102,7 +103,7 @@ class TestGenerateWorkflowName:
         """Test workflow name includes sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer="tsan"
+            architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN
         )
 
         name = gen._generate_workflow_name(build_config)
@@ -192,7 +193,7 @@ class TestCreateBuildJob:
         """Test creating build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer="tsan"
+            architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN
         )
 
         job = gen._create_build_job(build_config)
@@ -215,12 +216,12 @@ class TestCreateBuildJob:
         """Test creating frontend build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer="asan"
+            architecture="x64", enterprise=True, sanitizer=Sanitizer.ALUBSAN
         )
 
         job = gen._create_frontend_build_job(build_config)
 
-        assert job["build-frontend"]["name"] == "build-ee-x64-asan-frontend"
+        assert job["build-frontend"]["name"] == "build-ee-x64-alubsan-frontend"
 
 
 class TestDockerImageJob:
@@ -380,7 +381,7 @@ class TestHotbackupJob:
         config = GeneratorConfig(filter_criteria=FilterCriteria())
         gen = CircleCIGenerator(config, base_config={})
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer="tsan"
+            architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN
         )
 
         workflow = {"jobs": []}

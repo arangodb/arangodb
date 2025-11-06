@@ -13,7 +13,7 @@ import traceback
 from pathlib import Path
 from typing import List
 
-from src.config_lib import TestDefinitionFile, BuildConfig
+from src.config_lib import TestDefinitionFile, BuildConfig, Sanitizer
 from src.filters import FilterCriteria, filter_jobs
 from src.output_generators.base import (
     GeneratorConfig,
@@ -256,12 +256,13 @@ def load_test_definitions(
     return test_defs
 
 
-def create_generator_config(args) -> GeneratorConfig:
+def create_generator_config(args, sanitizer: Sanitizer = None) -> GeneratorConfig:
     """
     Create GeneratorConfig from command line arguments.
 
     Args:
         args: Parsed command line arguments
+        sanitizer: Parsed sanitizer enum value
 
     Returns:
         GeneratorConfig object
@@ -271,7 +272,7 @@ def create_generator_config(args) -> GeneratorConfig:
         single=args.single,
         cluster=args.cluster,
         gtest=args.gtest,
-        full=args.sanitizer if args.full else None,
+        full=sanitizer,
         all_tests=args.all,
         nightly=args.nightly,
     )
@@ -314,18 +315,10 @@ def main():
         # Parse arguments
         args = parse_arguments()
 
-        # Validate and normalize sanitizer
-        # Only tsan and alubsan are used in production
-        # alubsan = asan + lsan + ubsan combined
-        sanitizer = args.sanitizer or None
-        if sanitizer:
-            # Normalize alubsan to asan for internal use (sizing treats them the same)
-            if sanitizer == "alubsan":
-                sanitizer = "asan"
-            elif sanitizer not in ["tsan"]:
-                raise ValueError(
-                    f"Invalid sanitizer '{sanitizer}'. Must be one of: tsan, alubsan"
-                )
+        # Parse and validate sanitizer
+        sanitizer = None
+        if args.sanitizer:
+            sanitizer = Sanitizer.from_string(args.sanitizer)
 
         # Parse test branches
         test_branches = parse_test_branches(args.test_branches or "")
@@ -335,7 +328,7 @@ def main():
         test_defs = load_test_definitions(args.definitions, test_branches)
 
         # Create generator config
-        config = create_generator_config(args)
+        config = create_generator_config(args, sanitizer)
 
         # If validate-only, we're done
         if args.validate_only:

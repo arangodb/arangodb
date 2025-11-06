@@ -51,7 +51,7 @@ class TestFilterCriteria:
         assert criteria.cluster is False
         assert criteria.single is False
         assert criteria.all_tests is False
-        assert criteria.full is False
+        assert criteria.full is None
         assert criteria.nightly is False
         assert criteria.gtest is False
         assert criteria.enterprise is True
@@ -60,25 +60,29 @@ class TestFilterCriteria:
 
     def test_custom_values(self):
         """Test setting custom criteria values."""
+        from src.config_lib import Sanitizer
+
         platform = PlatformFlags(is_windows=True)
         criteria = FilterCriteria(
             cluster=True,
-            full=True,
+            full=Sanitizer.TSAN,
             enterprise=False,
             platform=platform,
         )
         assert criteria.cluster is True
         assert criteria.single is False
-        assert criteria.full is True
+        assert criteria.full == Sanitizer.TSAN
         assert criteria.enterprise is False
         assert criteria.platform.is_windows is True
 
     def test_is_full_run(self):
         """Test is_full_run property."""
+        from src.config_lib import Sanitizer
+
         assert FilterCriteria().is_full_run is False
-        assert FilterCriteria(full=True).is_full_run is True
+        assert FilterCriteria(full=Sanitizer.TSAN).is_full_run is True
         assert FilterCriteria(nightly=True).is_full_run is True
-        assert FilterCriteria(full=True, nightly=True).is_full_run is True
+        assert FilterCriteria(full=Sanitizer.ALUBSAN, nightly=True).is_full_run is True
 
 
 class TestShouldIncludeJob:

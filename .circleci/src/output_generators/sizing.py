@@ -5,9 +5,8 @@ Handles mapping of logical sizes to CircleCI resource classes,
 accounting for architecture and sanitizer overhead.
 """
 
-from typing import Dict
-from ..config_lib import BuildConfig, ResourceSize
-
+from typing import Dict, Optional
+from ..config_lib import BuildConfig, ResourceSize, Sanitizer
 
 class ResourceSizer:
     """Maps logical sizes to CircleCI resource classes."""
@@ -72,7 +71,7 @@ class ResourceSizer:
 
     @classmethod
     def _apply_sanitizer_overhead(
-        cls, size: ResourceSize, sanitizer: str, is_cluster: bool
+        cls, size: ResourceSize, sanitizer: Optional[Sanitizer], is_cluster: bool
     ) -> ResourceSize:
         """
         Apply sanitizer overhead to a base size.
@@ -89,9 +88,9 @@ class ResourceSizer:
         Returns:
             Adjusted size accounting for sanitizer overhead
         """
-        # TSAN cluster small tests need the most resources
+        # TSAN cluster tests need the most resources - even small tests get bumped to xlarge
         if size == ResourceSize.SMALL:
-            if sanitizer == "tsan" and is_cluster:
+            if sanitizer == Sanitizer.TSAN and is_cluster:
                 return ResourceSize.XLARGE
             else:
                 return ResourceSize.LARGE

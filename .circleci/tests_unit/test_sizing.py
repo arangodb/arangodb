@@ -6,7 +6,7 @@ accounting for architecture and sanitizer overhead.
 """
 
 import pytest
-from src.config_lib import BuildConfig, ResourceSize
+from src.config_lib import BuildConfig, ResourceSize, Sanitizer
 from src.output_generators.sizing import ResourceSizer
 
 
@@ -105,7 +105,7 @@ class TestGetTestSize:
 
     def test_tsan_cluster_small_to_xlarge(self):
         """Test TSAN cluster small tests need xlarge."""
-        config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
+        config = BuildConfig(architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN)
 
         result = ResourceSizer.get_test_size(
             ResourceSize.SMALL, config, is_cluster=True
@@ -114,7 +114,7 @@ class TestGetTestSize:
 
     def test_tsan_single_small_to_large(self):
         """Test TSAN single small tests need large (not xlarge)."""
-        config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
+        config = BuildConfig(architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN)
 
         result = ResourceSizer.get_test_size(
             ResourceSize.SMALL, config, is_cluster=False
@@ -137,7 +137,7 @@ class TestGetTestSize:
 
     def test_sanitizer_medium_to_xlarge(self):
         """Test sanitizers bump medium/medium+/large to xlarge."""
-        for sanitizer in ["tsan", "asan", "ubsan"]:
+        for sanitizer in [Sanitizer.TSAN, Sanitizer.ALUBSAN]:
             config = BuildConfig(
                 architecture="x64", enterprise=True, sanitizer=sanitizer
             )
@@ -165,7 +165,7 @@ class TestGetTestSize:
 
     def test_sanitizer_xlarge_unchanged(self):
         """Test that xlarge stays xlarge even with sanitizers."""
-        config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
+        config = BuildConfig(architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN)
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=True)
@@ -178,7 +178,7 @@ class TestGetTestSize:
 
     def test_sanitizer_2xlarge_unchanged(self):
         """Test that 2xlarge stays 2xlarge even with sanitizers."""
-        config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
+        config = BuildConfig(architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN)
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.XXLARGE, config, is_cluster=True)
@@ -191,7 +191,7 @@ class TestGetTestSize:
 
     def test_aarch64_with_sanitizer(self):
         """Test ARM architecture with sanitizer adjustments."""
-        config = BuildConfig(architecture="aarch64", enterprise=True, sanitizer="tsan")
+        config = BuildConfig(architecture="aarch64", enterprise=True, sanitizer=Sanitizer.TSAN)
 
         # Small on TSAN cluster -> xlarge -> arm.xlarge
         assert (
@@ -213,7 +213,7 @@ class TestGetTestSize:
 
     def test_all_sanitizers_apply_same_logic(self):
         """Test that all sanitizer types follow the same sizing logic."""
-        sanitizers = ["tsan", "asan", "ubsan"]
+        sanitizers = [Sanitizer.TSAN, Sanitizer.ALUBSAN]
 
         for sanitizer in sanitizers:
             config = BuildConfig(
@@ -221,7 +221,7 @@ class TestGetTestSize:
             )
 
             # Small TSAN cluster is special case
-            if sanitizer == "tsan":
+            if sanitizer == Sanitizer.TSAN:
                 assert (
                     ResourceSizer.get_test_size(
                         ResourceSize.SMALL, config, is_cluster=True
@@ -247,9 +247,9 @@ class TestGetTestSize:
 
     def test_enterprise_and_community_same_sizing(self):
         """Test that enterprise flag doesn't affect sizing."""
-        config_ent = BuildConfig(architecture="x64", sanitizer="tsan", enterprise=True)
+        config_ent = BuildConfig(architecture="x64", sanitizer=Sanitizer.TSAN, enterprise=True)
         config_comm = BuildConfig(
-            architecture="x64", sanitizer="tsan", enterprise=False
+            architecture="x64", sanitizer=Sanitizer.TSAN, enterprise=False
         )
 
         # Should give same results
@@ -271,7 +271,7 @@ class TestSanitizerOverhead:
 
     def test_tsan_overhead_matrix(self):
         """Test TSAN overhead across all size/cluster combinations."""
-        config = BuildConfig(architecture="x64", enterprise=True, sanitizer="tsan")
+        config = BuildConfig(architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN)
 
         expected = {
             (ResourceSize.SMALL, True): "xlarge",  # Special case: TSAN cluster small

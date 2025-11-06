@@ -63,6 +63,30 @@ class ResourceSize(Enum):
         )
 
 
+class Sanitizer(Enum):
+    """
+    Sanitizer types used in production builds.
+
+    TSAN = Thread Sanitizer
+    ALUBSAN = Address + Leak + UndefinedBehavior Sanitizer combined
+    """
+
+    TSAN = "tsan"
+    ALUBSAN = "alubsan"
+
+    @classmethod
+    def from_string(cls, value: str) -> "Sanitizer":
+        normalized = value.lower()
+        if normalized == "tsan":
+            return cls.TSAN
+        elif normalized == "alubsan":
+            return cls.ALUBSAN
+        else:
+            raise ValueError(
+                f"Invalid sanitizer: {value}. Must be one of: tsan, alubsan"
+            )
+
+
 # ============================================================================
 # Data Models
 # ============================================================================
@@ -838,7 +862,7 @@ class BuildConfig:
 
     architecture: str  # e.g., "amd64", "arm64"
     enterprise: bool
-    sanitizer: Optional[str] = None  # e.g., "asan", "tsan", "ubsan"
+    sanitizer: Optional[Sanitizer] = None
     nightly: bool = False
 
     def __post_init__(self):
@@ -846,8 +870,4 @@ class BuildConfig:
         if not self.architecture:
             raise ValueError("architecture must be specified")
 
-        valid_sanitizers = {None, "asan", "tsan", "ubsan"}
-        if self.sanitizer not in valid_sanitizers:
-            raise ValueError(
-                f"Invalid sanitizer: {self.sanitizer}. Must be one of: {valid_sanitizers}"
-            )
+        # Sanitizer validation is handled by the Sanitizer enum
