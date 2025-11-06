@@ -16,6 +16,7 @@ from src.config_lib import (
     DeploymentType,
     ResourceSize,
     Sanitizer,
+    Architecture,
 )
 from src.filters import FilterCriteria, PlatformFlags
 from src.output_generators.base import (
@@ -86,7 +87,7 @@ class TestGenerateWorkflowName:
     def test_workflow_name_x64_enterprise_pr(self):
         """Test workflow name for x64 enterprise PR build."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture="x64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
 
         name = gen._generate_workflow_name(build_config)
         assert name == "x64-enterprise-no_ui_tests-pr"
@@ -94,7 +95,9 @@ class TestGenerateWorkflowName:
     def test_workflow_name_x64_enterprise_nightly(self):
         """Test workflow name for x64 enterprise nightly build."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture="x64", enterprise=True, nightly=True)
+        build_config = BuildConfig(
+            architecture=Architecture.X64, enterprise=True, nightly=True
+        )
 
         name = gen._generate_workflow_name(build_config)
         assert name == "x64-enterprise-no_ui_tests-nightly"
@@ -103,7 +106,7 @@ class TestGenerateWorkflowName:
         """Test workflow name includes sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
         )
 
         name = gen._generate_workflow_name(build_config)
@@ -112,7 +115,7 @@ class TestGenerateWorkflowName:
     def test_workflow_name_with_ui_tests(self):
         """Test workflow name with UI tests enabled."""
         gen = self.create_generator(ui="on")
-        build_config = BuildConfig(architecture="x64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
 
         name = gen._generate_workflow_name(build_config)
         assert name == "x64-enterprise-with_ui_tests-pr"
@@ -120,7 +123,7 @@ class TestGenerateWorkflowName:
     def test_workflow_name_with_ui_only(self):
         """Test workflow name with UI tests only."""
         gen = self.create_generator(ui="only")
-        build_config = BuildConfig(architecture="x64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
 
         name = gen._generate_workflow_name(build_config)
         assert name == "x64-enterprise-only_ui_tests-pr"
@@ -128,7 +131,7 @@ class TestGenerateWorkflowName:
     def test_workflow_name_aarch64(self):
         """Test workflow name for ARM architecture."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture="aarch64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.AARCH64, enterprise=True)
 
         name = gen._generate_workflow_name(build_config)
         assert name == "aarch64-enterprise-no_ui_tests-pr"
@@ -136,7 +139,7 @@ class TestGenerateWorkflowName:
     def test_workflow_name_community(self):
         """Test workflow name for community edition."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture="x64", enterprise=False)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=False)
 
         name = gen._generate_workflow_name(build_config)
         assert name == "x64-community-no_ui_tests-pr"
@@ -144,7 +147,7 @@ class TestGenerateWorkflowName:
     def test_workflow_name_with_replication_two(self):
         """Test workflow name with replication version 2."""
         gen = self.create_generator(replication_two=True)
-        build_config = BuildConfig(architecture="x64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
 
         name = gen._generate_workflow_name(build_config)
         assert name == "x64-enterprise-no_ui_tests-pr-repl2"
@@ -161,7 +164,7 @@ class TestCreateBuildJob:
     def test_create_build_job_x64_enterprise(self):
         """Test creating x64 enterprise build job."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture="x64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
 
         job = gen._create_build_job(build_config)
 
@@ -177,7 +180,7 @@ class TestCreateBuildJob:
     def test_create_build_job_aarch64_community(self):
         """Test creating ARM64 community build job."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture="aarch64", enterprise=False)
+        build_config = BuildConfig(architecture=Architecture.AARCH64, enterprise=False)
 
         job = gen._create_build_job(build_config)
 
@@ -193,7 +196,7 @@ class TestCreateBuildJob:
         """Test creating build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
         )
 
         job = gen._create_build_job(build_config)
@@ -205,7 +208,7 @@ class TestCreateBuildJob:
     def test_create_frontend_build_job(self):
         """Test creating frontend build job."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture="x64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
 
         job = gen._create_frontend_build_job(build_config)
 
@@ -216,7 +219,7 @@ class TestCreateBuildJob:
         """Test creating frontend build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer=Sanitizer.ALUBSAN
+            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.ALUBSAN
         )
 
         job = gen._create_frontend_build_job(build_config)
@@ -249,7 +252,7 @@ class TestDockerImageJob:
         }
         test_date = date(2025, 1, 15)
         gen = self.create_generator(env_vars, test_date)
-        build_config = BuildConfig(architecture="x64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
 
         workflow = {"jobs": []}
         gen._add_docker_image_job(workflow, build_config, ["build-job"])
@@ -266,7 +269,7 @@ class TestDockerImageJob:
         }
         test_date = date(2025, 1, 15)
         gen = self.create_generator(env_vars, test_date)
-        build_config = BuildConfig(architecture="x64", enterprise=False)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=False)
 
         workflow = {"jobs": []}
         gen._add_docker_image_job(workflow, build_config, ["build-job"])
@@ -283,7 +286,7 @@ class TestDockerImageJob:
             "CIRCLE_SHA1": "abc1234",
         }
         gen = self.create_generator(env_vars, date(2025, 1, 15))
-        build_config = BuildConfig(architecture="x64", enterprise=False)
+        build_config = BuildConfig(architecture=Architecture.X64, enterprise=False)
 
         workflow = {"jobs": []}
         gen._add_docker_image_job(workflow, build_config, ["build-job"])
@@ -298,7 +301,7 @@ class TestDockerImageJob:
             "CIRCLE_SHA1": "abc1234",
         }
         gen = self.create_generator(env_vars, date(2025, 1, 15))
-        build_config = BuildConfig(architecture="aarch64", enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.AARCH64, enterprise=True)
 
         workflow = {"jobs": []}
         gen._add_docker_image_job(workflow, build_config, ["build-job"])
@@ -381,7 +384,7 @@ class TestHotbackupJob:
         config = GeneratorConfig(filter_criteria=FilterCriteria())
         gen = CircleCIGenerator(config, base_config={})
         build_config = BuildConfig(
-            architecture="x64", enterprise=True, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
         )
 
         workflow = {"jobs": []}

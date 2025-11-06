@@ -87,6 +87,38 @@ class Sanitizer(Enum):
             )
 
 
+class Architecture(Enum):
+    """
+    CPU architecture for builds.
+
+    X64 = x86-64 / AMD64 architecture
+    AARCH64 = ARM64 architecture
+    """
+
+    X64 = "x64"
+    AARCH64 = "aarch64"
+
+    @classmethod
+    def from_string(cls, value: str) -> "Architecture":
+        """Parse architecture from string, supporting common aliases."""
+        normalized = value.lower()
+        # Map aliases to canonical values
+        aliases = {
+            "x64": cls.X64,
+            "x86_64": cls.X64,
+            "amd64": cls.X64,
+            "aarch64": cls.AARCH64,
+            "arm64": cls.AARCH64,
+        }
+        if normalized in aliases:
+            return aliases[normalized]
+        else:
+            raise ValueError(
+                f"Invalid architecture: {value}. "
+                f"Valid options: x64, aarch64 (or aliases: amd64, x86_64, arm64)"
+            )
+
+
 # ============================================================================
 # Data Models
 # ============================================================================
@@ -860,14 +892,12 @@ class TestDefinitionFile:
 class BuildConfig:
     """Build context information for test execution."""
 
-    architecture: str  # e.g., "amd64", "arm64"
+    architecture: Architecture
     enterprise: bool
     sanitizer: Optional[Sanitizer] = None
     nightly: bool = False
 
     def __post_init__(self):
         """Validate build configuration."""
-        if not self.architecture:
-            raise ValueError("architecture must be specified")
-
-        # Sanitizer validation is handled by the Sanitizer enum
+        # Validation is handled by Architecture and Sanitizer enums
+        pass

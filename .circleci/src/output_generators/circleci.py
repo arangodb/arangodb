@@ -17,6 +17,7 @@ from ..config_lib import (
     BuildConfig,
     DeploymentType,
     ResourceSize,
+    Architecture,
 )
 from .base import OutputGenerator, GeneratorConfig
 from .sizing import ResourceSizer
@@ -82,7 +83,7 @@ class CircleCIGenerator(OutputGenerator):
 
         # X64 Enterprise (always included)
         build_config = BuildConfig(
-            architecture="x64",
+            architecture=Architecture.X64,
             enterprise=True,
             sanitizer=self.config.filter_criteria.full
             or None,  # Sanitizer from criteria
@@ -93,7 +94,7 @@ class CircleCIGenerator(OutputGenerator):
         # ARM64 Enterprise (only without sanitizer)
         if not self.config.filter_criteria.full:  # No sanitizer
             build_config = BuildConfig(
-                architecture="aarch64",
+                architecture=Architecture.AARCH64,
                 enterprise=True,
                 sanitizer=None,
                 nightly=self.config.filter_criteria.nightly,
@@ -142,9 +143,13 @@ class CircleCIGenerator(OutputGenerator):
         """Generate workflow name from build configuration."""
         suffix = "nightly" if build_config.nightly else "pr"
 
-        if build_config.architecture == "x64" and self.config.circleci.ui not in (
-            "",
-            "off",
+        if (
+            build_config.architecture == Architecture.X64
+            and self.config.circleci.ui
+            not in (
+                "",
+                "off",
+            )
         ):
             if self.config.circleci.ui == "only":
                 suffix = f"only_ui_tests-{suffix}"
@@ -160,7 +165,7 @@ class CircleCIGenerator(OutputGenerator):
             suffix += "-repl2"
 
         edition = "enterprise" if build_config.enterprise else "community"
-        return f"{build_config.architecture}-{edition}-{suffix}"
+        return f"{build_config.architecture.value}-{edition}-{suffix}"
 
     def _add_build_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig
@@ -179,7 +184,7 @@ class CircleCIGenerator(OutputGenerator):
 
         # Add non-maintainer build for x64 enterprise (no sanitizer, not ui-only)
         if (
-            build_config.architecture == "x64"
+            build_config.architecture == Architecture.X64
             and build_config.enterprise
             and not build_config.sanitizer
             and self.config.circleci.ui != "only"
@@ -202,7 +207,7 @@ class CircleCIGenerator(OutputGenerator):
             preset += f"-{build_config.sanitizer.value}"
 
         suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
-        name = f"build-{edition}-{build_config.architecture}{suffix}"
+        name = f"build-{edition}-{build_config.architecture.value}{suffix}"
 
         params = {
             "context": ["sccache-aws-bucket"],
@@ -212,10 +217,10 @@ class CircleCIGenerator(OutputGenerator):
             "name": name,
             "preset": preset,
             "enterprise": build_config.enterprise,
-            "arch": build_config.architecture,
+            "arch": build_config.architecture.value,
         }
 
-        if build_config.architecture == "aarch64":
+        if build_config.architecture == Architecture.AARCH64:
             params["s3-prefix"] = "aarch64"
 
         return {"compile-linux": params}
@@ -224,7 +229,7 @@ class CircleCIGenerator(OutputGenerator):
         """Create frontend build job definition."""
         edition = "ee" if build_config.enterprise else "ce"
         suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
-        name = f"build-{edition}-{build_config.architecture}{suffix}-frontend"
+        name = f"build-{edition}-{build_config.architecture.value}{suffix}-frontend"
 
         return {"build-frontend": {"name": name}}
 
@@ -252,9 +257,13 @@ class CircleCIGenerator(OutputGenerator):
     ) -> None:
         """Add optional jobs (cppcheck, docker, hotbackup, UI tests)."""
         # Cppcheck for x64 non-UI
-        if build_config.architecture == "x64" and self.config.circleci.ui in (
-            "",
-            "off",
+        if (
+            build_config.architecture == Architecture.X64
+            and self.config.circleci.ui
+            in (
+                "",
+                "off",
+            )
         ):
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
@@ -265,9 +274,13 @@ class CircleCIGenerator(OutputGenerator):
             self._add_docker_image_job(workflow, build_config, build_jobs)
 
         # UI tests
-        if build_config.architecture == "x64" and self.config.circleci.ui not in (
-            "",
-            "off",
+        if (
+            build_config.architecture == Architecture.X64
+            and self.config.circleci.ui
+            not in (
+                "",
+                "off",
+            )
         ):
             self._add_ui_test_jobs(workflow, build_config, build_jobs)
 
@@ -283,7 +296,7 @@ class CircleCIGenerator(OutputGenerator):
     ) -> None:
         """Add docker image creation job."""
         edition = "ee" if build_config.enterprise else "ce"
-        arch = "amd64" if build_config.architecture == "x64" else "arm64"
+        arch = "amd64" if build_config.architecture == Architecture.X64 else "arm64"
         image = (
             "public.ecr.aws/b0b8h2r4/enterprise-preview"
             if build_config.enterprise
@@ -301,7 +314,7 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(
             {
                 "create-docker-image": {
-                    "name": f"create-{edition}-{build_config.architecture}-docker-image",
+                    "name": f"create-{edition}-{build_config.architecture.value}-docker-image",
                     "resource-class": self.sizer.get_resource_class(
                         ResourceSize.LARGE, build_config.architecture
                     ),
@@ -319,7 +332,7 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(
             {
                 "run-hotbackup-tests": {
-                    "name": f"run-hotbackup-tests-{build_config.architecture}",
+                    "name": f"run-hotbackup-tests-{build_config.architecture.value}",
                     "size": self.sizer.get_test_size(
                         ResourceSize.MEDIUM, build_config, True
                     ),
@@ -495,7 +508,9 @@ class CircleCIGenerator(OutputGenerator):
         if job.options.suffix:
             suite_name = f"{job.name}-{job.options.suffix}"
 
-        job_name = f"test-{deployment_str}-{suite_name}-{build_config.architecture}"
+        job_name = (
+            f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}"
+        )
 
         # Filter suites based on full flag (suite-level filtering)
         filtered_suites = [

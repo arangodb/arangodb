@@ -578,19 +578,22 @@ class TestBuildConfigClass:
     """Test BuildConfig dataclass."""
 
     def test_basic_build(self):
-        build = BuildConfig(architecture="amd64", enterprise=True)
-        assert build.architecture == "amd64"
+        from src.config_lib import Architecture
+
+        build = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        assert build.architecture == Architecture.X64
         assert build.enterprise is True
         assert build.sanitizer is None
         assert build.nightly is False
 
     def test_with_sanitizer(self):
-        build = BuildConfig(
-            architecture="amd64", enterprise=True, sanitizer="asan", nightly=True
-        )
-        assert build.sanitizer == "asan"
-        assert build.nightly is True
+        from src.config_lib import Architecture, Sanitizer
 
-    def test_empty_architecture(self):
-        with pytest.raises(ValueError, match="architecture must be specified"):
-            BuildConfig(architecture="", enterprise=True)
+        build = BuildConfig(
+            architecture=Architecture.X64,
+            enterprise=True,
+            sanitizer=Sanitizer.ALUBSAN,
+            nightly=True,
+        )
+        assert build.sanitizer == Sanitizer.ALUBSAN
+        assert build.nightly is True

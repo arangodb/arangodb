@@ -6,7 +6,8 @@ accounting for architecture and sanitizer overhead.
 """
 
 from typing import Dict, Optional
-from ..config_lib import BuildConfig, ResourceSize, Sanitizer
+from ..config_lib import BuildConfig, ResourceSize, Sanitizer, Architecture
+
 
 class ResourceSizer:
     """Maps logical sizes to CircleCI resource classes."""
@@ -43,13 +44,13 @@ class ResourceSizer:
         return cls.ARCH_ALIASES.get(arch, arch)
 
     @classmethod
-    def get_resource_class(cls, size: ResourceSize, arch: str) -> str:
+    def get_resource_class(cls, size: ResourceSize, arch: Architecture | str) -> str:
         """
         Get CircleCI resource class for a size and architecture.
 
         Args:
             size: Logical size enum
-            arch: Architecture (x64, aarch64, or aliases)
+            arch: Architecture enum or string (x64, aarch64, or aliases)
 
         Returns:
             CircleCI resource class string
@@ -57,7 +58,11 @@ class ResourceSizer:
         Raises:
             ValueError: If architecture is invalid
         """
-        arch = cls._normalize_arch(arch)
+        # Convert Architecture enum to string if needed
+        if isinstance(arch, Architecture):
+            arch = arch.value
+        else:
+            arch = cls._normalize_arch(arch)
 
         if arch == "aarch64":
             return cls.AARCH64_SIZES[size]
