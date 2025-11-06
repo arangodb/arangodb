@@ -315,15 +315,16 @@ def main():
         args = parse_arguments()
 
         # Validate and normalize sanitizer
+        # Only tsan and alubsan are used in production
+        # alubsan = asan + lsan + ubsan combined
         sanitizer = args.sanitizer or None
         if sanitizer:
-            # Support 'alubsan' as an alias for asan+ubsan
+            # Normalize alubsan to asan for internal use (sizing treats them the same)
             if sanitizer == "alubsan":
                 sanitizer = "asan"
-            elif sanitizer not in ["tsan", "asan", "ubsan"]:
+            elif sanitizer not in ["tsan"]:
                 raise ValueError(
-                    f"Invalid sanitizer '{sanitizer}'. "
-                    "Must be one of: tsan, asan, ubsan, alubsan"
+                    f"Invalid sanitizer '{sanitizer}'. Must be one of: tsan, alubsan"
                 )
 
         # Parse test branches
