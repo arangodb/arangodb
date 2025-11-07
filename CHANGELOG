@@ -1,6 +1,10 @@
 devel
 -----
 
+* Ignore flag --cluster.upgrade on DBservers, since it only concerns coordinators.
+  This fixes a clash with --database.auto-upgrade which can lead to problems during
+  an upgrade on DBservers.
+
 * Rebuilt included rclone v1.65.2 with go1.24.9 and non-vulnerable
   dependencies.
 
