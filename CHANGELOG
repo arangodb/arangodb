@@ -1,3 +1,11 @@
+3.12.6.1 (2025-XX-XX)
+---------------------
+
+* Ignore flag --cluster.upgrade on DBservers, since it only concerns 
+  coordinators. This fixes a clash with --database.auto-upgrade which 
+  can lead to problems during an upgrade on DBservers.
+
+
 3.12.6 (2025-10-22)
 -------------------
 
