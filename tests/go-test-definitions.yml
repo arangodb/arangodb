@@ -5,6 +5,7 @@ jobProperties:
     init_command: ''
 tests:
 - go_driver:
+    job: run-driver-tests
     options:
       priority: 500
       type: single
@@ -13,6 +14,7 @@ tests:
     args:
       goDriverVersion: '1'
 - go_driver:
+    job: run-driver-tests
     options:
       priority: 500
       type: cluster
@@ -20,6 +22,7 @@ tests:
     args:
       goDriverVersion: '1'
 - go_driver:
+    job: run-driver-tests
     options:
       priority: 500
       type: single
@@ -28,6 +31,7 @@ tests:
     args:
       goDriverVersion: '2'
 - go_driver:
+    job: run-driver-tests
     options:
       priority: 500
       type: cluster

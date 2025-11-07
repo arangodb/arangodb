@@ -297,15 +297,17 @@ def read_yaml_multi_bucket_suite(name, definition, testfile_definitions, cli_arg
         definition['options']['buckets'] = len(suite_names)
     definition['options']['args'] = args
 
+    job_def = {
+        'options': definition['options'],
+        'name': name,
+        'args': args,
+        'suites': definition['suites'],
+    }
+    if 'job' in definition:
+        job_def['job'] = definition['job']
     return read_yaml_suite(name,
                            joint_suite_name,
-                           {
-                               'options': definition['options'],
-                               'name': name,
-                               'args': args,
-                               'suites': definition['suites'],
-                               'job': definition['job']
-                           },
+                           job_def,
                            testfile_definitions)
 
 def read_definitions(filename, override_branch, cli_args):
@@ -339,7 +341,7 @@ def read_definitions(filename, override_branch, cli_args):
                     print(f"while parsing {suite_name} {testcase}")
                     raise ex
     else:
-        raise Exception("only .yml file format supported")
+        raise Exception(f"Cannot handle {filename} - only .yml file format supported")
     return tests
 
 
