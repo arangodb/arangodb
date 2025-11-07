@@ -85,14 +85,13 @@ class CircleCIGenerator(OutputGenerator):
         build_config = BuildConfig(
             architecture=Architecture.X64,
             enterprise=True,
-            sanitizer=self.config.filter_criteria.full
-            or None,  # Sanitizer from criteria
+            sanitizer=self.config.filter_criteria.sanitizer,
             nightly=self.config.filter_criteria.nightly,
         )
         self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
         # ARM64 Enterprise (only without sanitizer)
-        if not self.config.filter_criteria.full:  # No sanitizer
+        if not self.config.filter_criteria.sanitizer:  # No sanitizer
             build_config = BuildConfig(
                 architecture=Architecture.AARCH64,
                 enterprise=True,
@@ -620,6 +619,11 @@ class CircleCIGenerator(OutputGenerator):
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
 
+        # Special time limit for nightly chaos tests
+        # Nightly chaos runs 32 combinations, each taking ~5 min
+        if job.name == "chaos" and build_config.nightly:
+            job_dict["timeLimit"] = 32 * 5 * 60  # 9600 seconds
+
         # Add repository info if present
         self._add_repository_config(job_dict, job)
 
@@ -684,13 +688,16 @@ class CircleCIGenerator(OutputGenerator):
     def _add_repository_config(self, job_dict: Dict[str, Any], job: TestJob) -> None:
         """Add repository configuration to job dict if job has external repo."""
         if job.repository:
-            # Use container suffix from repository config
+            # Build docker image name with container_suffix if present
             container = self.config.circleci.default_container
             if ":" in container:
                 base, tag = container.rsplit(":", 1)
-                job_dict["docker_image"] = (
-                    f"{base}:{job.repository.git_branch or 'main'}"
-                )
+                # Apply container_suffix if present (e.g., test-ubuntu -> test-ubuntu-js)
+                if job.repository.container_suffix:
+                    # Remove trailing colon from suffix if present
+                    suffix = job.repository.container_suffix.rstrip(":")
+                    base = base + suffix
+                job_dict["docker_image"] = f"{base}:{tag}"
             else:
                 job_dict["docker_image"] = container
 

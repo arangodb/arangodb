@@ -476,6 +476,7 @@ class RepositoryConfig:
     git_repo: str
     git_branch: Optional[str] = None
     init_command: Optional[str] = None
+    container_suffix: Optional[str] = None  # Docker image suffix (e.g., '-js:')
 
     def __post_init__(self):
         """Validate repository configuration."""
@@ -496,6 +497,8 @@ class RepositoryConfig:
         return cls(
             git_repo=data["git_repo"],
             git_branch=data.get("git_branch"),
+            init_command=data.get("init_command"),
+            container_suffix=data.get("container_suffix"),
         )
 
 
@@ -655,13 +658,18 @@ class TestJob:
             # No suite/suites specified - use job name as suite name
             suites = [SuiteConfig(name=name)]
 
+        # Parse arguments - handle both 'args'/'arguments' dict and top-level fields
+        args_data = data.get("args") or data.get("arguments") or {}
+
+        # If arangosh_args exists at job level (not in args dict), merge it in
+        if "arangosh_args" in data and "arangosh_args" not in args_data:
+            args_data = {**args_data, "arangosh_args": data["arangosh_args"]}
+
         return cls(
             name=name,
             suites=suites,
             options=TestOptions.from_dict(data.get("options")),
-            arguments=TestArguments.from_dict(
-                data.get("args") or data.get("arguments")
-            ),
+            arguments=TestArguments.from_dict(args_data),
             repository=RepositoryConfig.from_dict(data.get("repository")),
         )
 
@@ -724,6 +732,41 @@ class TestDefinitionFile:
 
         return cls.from_dict(data)
 
+    @staticmethod
+    def _generate_unique_key(job: TestJob, existing_keys) -> str:
+        """
+        Generate a unique key for a job based on its properties.
+
+        Jobs with the same name but different deployment types or suffixes
+        get unique keys. If conflicts still occur, append a counter.
+
+        Args:
+            job: TestJob to generate key for
+            existing_keys: Set of already-used keys
+
+        Returns:
+            Unique key string
+        """
+        # Start with job name
+        unique_key = job.name
+
+        # Add deployment type if specified
+        if job.options.deployment_type:
+            unique_key = f"{job.name}_{job.options.deployment_type.value}"
+
+        # Add suffix if specified
+        if job.options.suffix:
+            unique_key = f"{unique_key}_{job.options.suffix}"
+
+        # If still conflicts, append counter
+        if unique_key in existing_keys:
+            counter = 2
+            while f"{unique_key}_{counter}" in existing_keys:
+                counter += 1
+            unique_key = f"{unique_key}_{counter}"
+
+        return unique_key
+
     @classmethod
     def from_dict(
         cls, data: Union[Dict[str, Any], List[Dict[str, Any]]]
@@ -754,6 +797,8 @@ class TestDefinitionFile:
                 repo_config = {
                     "git_repo": job_properties["second_repo"],
                     "git_branch": job_properties.get("branch"),
+                    "init_command": job_properties.get("init_command"),
+                    "container_suffix": job_properties.get("container_suffix"),
                 }
 
             # Parse the tests list
@@ -782,7 +827,10 @@ class TestDefinitionFile:
                     if "repository" not in job_data:
                         job_data["repository"] = repo_config
 
-                jobs[job_name] = TestJob.from_dict(job_name, job_data)
+                # Parse job and generate unique key
+                job = TestJob.from_dict(job_name, job_data)
+                unique_key = cls._generate_unique_key(job, jobs.keys())
+                jobs[unique_key] = job
 
         elif isinstance(data, list):
             # Handle flat list format: [{'job_name': job_data}, ...]
@@ -798,25 +846,10 @@ class TestDefinitionFile:
 
                 job_name, job_data = next(iter(item.items()))
 
-                # Handle duplicate job names by creating unique keys
-                # Parse job to get deployment type
-                temp_job = TestJob.from_dict(job_name, job_data)
-
-                # Create unique key based on job name + deployment type + suffix
-                unique_key = job_name
-                if temp_job.options.deployment_type:
-                    unique_key = f"{job_name}_{temp_job.options.deployment_type.value}"
-                if temp_job.options.suffix:
-                    unique_key = f"{unique_key}_{temp_job.options.suffix}"
-
-                # If key still conflicts, append a counter
-                if unique_key in jobs:
-                    counter = 2
-                    while f"{unique_key}_{counter}" in jobs:
-                        counter += 1
-                    unique_key = f"{unique_key}_{counter}"
-
-                jobs[unique_key] = temp_job
+                # Parse job and generate unique key
+                job = TestJob.from_dict(job_name, job_data)
+                unique_key = cls._generate_unique_key(job, jobs.keys())
+                jobs[unique_key] = job
 
         elif isinstance(data, dict):
             # Handle dict format: {'job_name': job_data, ...}

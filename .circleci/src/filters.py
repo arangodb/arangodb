@@ -40,9 +40,12 @@ class FilterCriteria:
     all_tests: bool = False
 
     # Test type filters
-    full: Optional[Sanitizer] = None  # Sanitizer for full builds
+    full: bool = False  # Include full test set (not just PR subset)
     nightly: bool = False
     gtest: bool = False
+
+    # Build configuration
+    sanitizer: Optional[Sanitizer] = None  # Sanitizer type for this build
 
     # Feature flags
     enterprise: bool = True
@@ -53,7 +56,7 @@ class FilterCriteria:
     @property
     def is_full_run(self) -> bool:
         """Check if this is a full or nightly run."""
-        return self.full is not None or self.nightly
+        return self.full or self.nightly
 
 
 def is_gtest_suite(suite: SuiteConfig) -> bool:
@@ -111,8 +114,15 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     if criteria.all_tests:
         return True
 
-    # Check if job requires full/nightly build
-    if job.options.full and not criteria.is_full_run:
+    # Check full flag compatibility with build type
+    # - full=True: Only for nightly/full builds
+    # - full=False: Only for PR builds
+    # - full=None (unspecified): Include in both
+    if job.options.full is True and not criteria.is_full_run:
+        # Job requires full run, but we're in PR mode - exclude
+        return False
+    if job.options.full is False and criteria.is_full_run:
+        # Job is PR-only, but we're in full/nightly mode - exclude
         return False
 
     # Check deployment type filter

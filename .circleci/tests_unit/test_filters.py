@@ -51,9 +51,10 @@ class TestFilterCriteria:
         assert criteria.cluster is False
         assert criteria.single is False
         assert criteria.all_tests is False
-        assert criteria.full is None
+        assert criteria.full is False
         assert criteria.nightly is False
         assert criteria.gtest is False
+        assert criteria.sanitizer is None
         assert criteria.enterprise is True
         assert criteria.platform is not None
         assert isinstance(criteria.platform, PlatformFlags)
@@ -65,24 +66,24 @@ class TestFilterCriteria:
         platform = PlatformFlags(is_windows=True)
         criteria = FilterCriteria(
             cluster=True,
-            full=Sanitizer.TSAN,
+            full=True,
+            sanitizer=Sanitizer.TSAN,
             enterprise=False,
             platform=platform,
         )
         assert criteria.cluster is True
         assert criteria.single is False
-        assert criteria.full == Sanitizer.TSAN
+        assert criteria.full is True
+        assert criteria.sanitizer == Sanitizer.TSAN
         assert criteria.enterprise is False
         assert criteria.platform.is_windows is True
 
     def test_is_full_run(self):
         """Test is_full_run property."""
-        from src.config_lib import Sanitizer
-
         assert FilterCriteria().is_full_run is False
-        assert FilterCriteria(full=Sanitizer.TSAN).is_full_run is True
+        assert FilterCriteria(full=True).is_full_run is True
         assert FilterCriteria(nightly=True).is_full_run is True
-        assert FilterCriteria(full=Sanitizer.ALUBSAN, nightly=True).is_full_run is True
+        assert FilterCriteria(full=True, nightly=True).is_full_run is True
 
 
 class TestShouldIncludeJob:

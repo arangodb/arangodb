@@ -49,11 +49,13 @@ class TestParseRealYAMLFiles:
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Should have jobs from the 'tests' section
+        # Jobs with same name but different deployment types get unique keys
         assert len(test_def.jobs) >= 1
-        assert "js_driver" in test_def.jobs
+        js_jobs = [job for key, job in test_def.jobs.items() if job.name == "js_driver"]
+        assert len(js_jobs) >= 1
 
         # Verify repository config is set from jobProperties
-        job = test_def.jobs["js_driver"]
+        job = js_jobs[0]
         assert job.repository is not None
         assert "arangojs" in job.repository.git_repo
         assert job.repository.git_branch == "main"
@@ -63,10 +65,12 @@ class TestParseRealYAMLFiles:
         yaml_file = TESTS_DIR / "go-test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
+        # Jobs with same name but different deployment types/suffixes get unique keys
         assert len(test_def.jobs) >= 1
-        assert "go_driver" in test_def.jobs
+        go_jobs = [job for key, job in test_def.jobs.items() if job.name == "go_driver"]
+        assert len(go_jobs) >= 1
 
-        job = test_def.jobs["go_driver"]
+        job = go_jobs[0]
         assert job.repository is not None
         assert "go-driver" in job.repository.git_repo
         assert job.repository.git_branch == "master"
@@ -76,10 +80,14 @@ class TestParseRealYAMLFiles:
         yaml_file = TESTS_DIR / "java-test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
+        # Jobs with same name but different deployment types get unique keys
         assert len(test_def.jobs) >= 1
-        assert "java_driver" in test_def.jobs
+        java_jobs = [
+            job for key, job in test_def.jobs.items() if job.name == "java_driver"
+        ]
+        assert len(java_jobs) >= 1
 
-        job = test_def.jobs["java_driver"]
+        job = java_jobs[0]
         assert job.repository is not None
         assert "java-driver" in job.repository.git_repo
 
@@ -88,10 +96,14 @@ class TestParseRealYAMLFiles:
         yaml_file = TESTS_DIR / "kafka-test-definitions.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
+        # Kafka test has unique deployment type (MIXED) so gets a unique key
         assert len(test_def.jobs) >= 1
-        assert "kafka_driver" in test_def.jobs
+        kafka_jobs = [
+            job for key, job in test_def.jobs.items() if job.name == "kafka_driver"
+        ]
+        assert len(kafka_jobs) >= 1
 
-        job = test_def.jobs["kafka_driver"]
+        job = kafka_jobs[0]
         assert job.repository is not None
         assert "kafka-connect" in job.repository.git_repo
         # Kafka test is MIXED type with multiple suites
