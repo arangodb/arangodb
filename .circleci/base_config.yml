@@ -650,6 +650,7 @@ jobs:
         type: string
       init_command:
         type: string
+        default: ""
     docker:
       - image: << parameters.docker_image >>
     resource_class: << parameters.size >>
