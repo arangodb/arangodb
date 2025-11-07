@@ -326,18 +326,22 @@ class instance {
     if (this.options.arangodConfig !== undefined) {
       config = this.options.arangodConfig;
     }
-    this.args = _.defaults(this.args, {
+    let default_args = {
       'configuration': fs.join(pu.CONFIG_DIR, config),
       'define': 'TOP_DIR=' + pu.TOP_DIR,
-      'javascript.app-path': this.appDir,
-      'javascript.copy-installation': false,
       'http.trusted-origin': this.options.httpTrustedOrigin || 'all',
       'temp.path': this.tmpDir,
       'server.endpoint': bindEndpoint,
       'database.directory': this.dataDir,
       'temp.intermediate-results-path': this.tmpRocksdbDir,
       'log.file': this.logFile
-    });
+    };
+    if (!this.options.skipServerJS) {
+      // the argparser barely ignores them and breaks others...
+      default_args['javascript.app-path'] = this.appDir;
+      default_args['javascript.copy-installation'] = false;
+    }
+    this.args = _.defaults(this.args, default_args);
     if (this.options.extremeVerbosity) {
       this.args['dump-env'] = true;
     }

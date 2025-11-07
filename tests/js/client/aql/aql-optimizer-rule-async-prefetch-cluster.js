@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual */
+/*global assertEqual, assertNotEqual, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -68,14 +68,20 @@ function optimizerRuleTestSuite () {
         [ "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["UpdateNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["ReplaceNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' RETURN doc", [ ["SingletonNode", false], ["SingleRemoteOperationNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["IndexNode", true], ["RemoteNode", false], ["GatherNode", false], ["ScatterNode", false], ["RemoteNode", false], ["IndexNode", true], ["CalculationNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
       ];
 
+      if (SYS_IS_V8_BUILD) {
+        queries = queries.concat([
+          [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
+          [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
+          [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ]
+        ]);
+      }
+
+      
       if (isEnterprise) {
         // CE does not have "local" graph nodes
         queries = queries.concat([
@@ -149,11 +155,8 @@ function oneShardTestSuite () {
         [ "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["UpdateNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["ReplaceNode", false], ["RemoteNode", false], ["GatherNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc.a == '123' RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' RETURN doc", [ ["SingletonNode", false], ["SingleRemoteOperationNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc IN " + cn + " FILTER doc._key == '123' LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
         [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["JoinNode", true], ["CalculationNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         // traversal
         [ "FOR v, e, p IN 1..3 OUTBOUND '" + cn + "/test' " + en + " FILTER v.value == 1 RETURN p", [ ["SingletonNode", false], ["TraversalNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
@@ -163,6 +166,14 @@ function oneShardTestSuite () {
         [ "FOR r IN OUTBOUND K_SHORTEST_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
         [ "FOR r IN 1..3 OUTBOUND K_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
       ];
+
+      if (SYS_IS_V8_BUILD) {
+        queries = queries.concat([
+          [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
+          [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["RemoteNode", false], ["GatherNode", false], ["ReturnNode", false] ] ],
+          [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["RemoteNode", false], ["GatherNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ]
+        ]);
+      }
 
       queries.forEach(function(query) {
         let [qs, expectedNodes] = query;
