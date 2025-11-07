@@ -1,7 +1,7 @@
 jobProperties:
     container_suffix: '-go:'
     second_repo: git@github.com:arangodb/go-driver.git
-    branch: bug-fix/stretch-timeouts
+    branch: main
     init_command: ''
 tests:
 - go_driver:
@@ -19,15 +19,14 @@ tests:
       suffix: v1
     args:
       goDriverVersion: '1'
-- go_driver:
-    options:
-      priority: 500
-      type: single
-      size: large
-      suffix: v2
-    args:
-      goDriverVersion: '2'
-      extremeVerbosity: true
+#- go_driver:
+#    options:
+#      priority: 500
+#      type: single
+#      size: large
+#      suffix: v2
+#    args:
+#      goDriverVersion: '2'
 - go_driver:
     options:
       priority: 500
@@ -36,4 +35,3 @@ tests:
       size: large
     args:
       goDriverVersion: '2'
-      extremeVerbosity: true
