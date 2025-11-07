@@ -38,7 +38,7 @@ parameters:
     default: "arangodb/ubuntubuildarangodb-devel:18"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-4c8e1373
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-b4e2dcb0
   nightly:
     type: boolean
     default: false
