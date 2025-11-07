@@ -228,6 +228,8 @@ DECLARE_GAUGE(arangodb_server_statistics_physical_memory, double,
               "Physical memory in bytes");
 DECLARE_GAUGE(arangodb_server_statistics_cpu_cores, double,
               "Number of CPU cores visible to the arangod process");
+DECLARE_GAUGE(arangodb_server_statistics_effective_cpu_cores, double,
+              "Number of effective CPU cores set for the arangod process");
 DECLARE_GAUGE(
     arangodb_server_statistics_user_percent, double,
     "Percentage of time that the system CPUs have spent in user mode");
@@ -431,6 +433,9 @@ auto const statStrings = std::map<std::string_view,
     {"v8ContextMin",
      {"arangodb_v8_context_min", "gauge",
       "Minimum number of concurrent V8 contexts"}},
+    {"effectiveCores",
+     {"arangodb_server_statistics_effective_cpu_cores", "gauge",
+      "Number of effective CPU cores set for the arangod process"}},
 };
 
 // Connect legacy statistics with metrics definitions for automatic checks
@@ -512,6 +517,7 @@ auto const statBuilder = makeStatBuilder({
     {"uptime", new arangodb_server_statistics_server_uptime_total()},
     {"physicalSize", new arangodb_server_statistics_physical_memory()},
     {"cores", new arangodb_server_statistics_cpu_cores()},
+    {"effectiveCores", new arangodb_server_statistics_effective_cpu_cores()},
     {"userPercent", new arangodb_server_statistics_user_percent()},
     {"systemPercent", new arangodb_server_statistics_system_percent()},
     {"idlePercent", new arangodb_server_statistics_idle_percent()},
@@ -937,6 +943,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);
+  appendMetric(result, std::to_string(NumberOfCores::getEffectiveValue()),
+               "effectiveCores", globals, ensureWhitespace);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {

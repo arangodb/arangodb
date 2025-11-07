@@ -25,6 +25,11 @@
 #include "Basics/StringUtils.h"
 #include "Basics/operating-system.h"
 #include "Basics/files.h"
+#include "Basics/FileUtils.h"
+#include "Basics/CGroupDetection.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -33,6 +38,7 @@
 #include <cstdint>
 #include <string>
 #include <thread>
+#include <sstream>
 
 using namespace arangodb;
 
@@ -54,21 +60,98 @@ std::size_t numberOfCoresImpl() {
   return static_cast<std::size_t>(std::thread::hardware_concurrency());
 }
 
+bool readFileValue(const std::string& path, int64_t& value) {
+  try {
+    std::string content = arangodb::basics::FileUtils::slurp(path);
+
+    // Get first line only
+    std::istringstream stream(content);
+    std::string line;
+    if (!std::getline(stream, line)) {
+      return false;
+    }
+
+    if (line == "max") {
+      value = -1;  // Unlimited
+      return true;
+    }
+
+    value = std::stoll(line);
+    return true;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("a3c21", TRACE, arangodb::Logger::FIXME)
+        << "failed to read cgroup file '" << path << "': " << ex.what();
+    return false;
+  } catch (...) {
+    LOG_TOPIC("a3c22", TRACE, arangodb::Logger::FIXME)
+        << "failed to read cgroup file '" << path << "': unknown error";
+    return false;
+  }
+}
+
+std::size_t numberOfEffectiveCoresImpl() {
+  auto const cgroup = CGroupDetection::getVersion();
+  int64_t quota = -1;
+  int64_t period = -1;
+
+  switch (cgroup) {
+    case CGroupVersion::NONE:
+    case CGroupVersion::V1: {
+      // Try cgroup v1
+      if (readFileValue("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", quota) &&
+          readFileValue("/sys/fs/cgroup/cpu/cpu.cfs_period_us", period)) {
+        if (quota > 0 && period > 0) {
+          return quota / period;
+        }
+        // TODO Handle errors
+      }
+    }
+    case CGroupVersion::V2: {
+      // Try cgroup v2 first
+      try {
+        std::string content =
+            arangodb::basics::FileUtils::slurp("/sys/fs/cgroup/cpu.max");
+        std::istringstream stream(content);
+        std::string quotaStr, periodStr;
+        stream >> quotaStr >> periodStr;
+        if (quotaStr != "max" && !quotaStr.empty() && !periodStr.empty()) {
+          quota = std::stoll(quotaStr);
+          period = std::stoll(periodStr);
+          return quota / period;
+        }
+        // Handler errors
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("a3c23", TRACE, arangodb::Logger::FIXME)
+            << "failed to read cgroup v2 cpu.max file: " << ex.what();
+      } catch (...) {
+        LOG_TOPIC("a3c24", TRACE, arangodb::Logger::FIXME)
+            << "failed to read cgroup v2 cpu.max file: unknown error";
+      }
+    } break;
+  }
+
+  return numberOfCoresImpl();
+}
+
 struct NumberOfCoresCache {
-  NumberOfCoresCache() : cachedValue(numberOfCoresImpl()), overridden(false) {
+  NumberOfCoresCache()
+      : cpuCores(numberOfCoresImpl()),
+        effectiveCpuCores(numberOfEffectiveCoresImpl()),
+        overridden(false) {
     std::string value;
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES", value)) {
       if (!value.empty()) {
         uint64_t v = arangodb::basics::StringUtils::uint64(value);
         if (v != 0) {
-          cachedValue = static_cast<std::size_t>(v);
+          cpuCores = static_cast<std::size_t>(v);
           overridden = true;
         }
       }
     }
   }
 
-  std::size_t cachedValue;
+  std::size_t cpuCores;
+  std::size_t effectiveCpuCores;
   bool overridden;
 };
 
@@ -77,7 +160,11 @@ NumberOfCoresCache const cache;
 }  // namespace
 
 /// @brief return number of cores from cache
-std::size_t arangodb::NumberOfCores::getValue() { return ::cache.cachedValue; }
+std::size_t arangodb::NumberOfCores::getValue() { return ::cache.cpuCores; }
+
+std::size_t arangodb::NumberOfCores::getEffectiveValue() {
+  return ::cache.effectiveCpuCores;
+}
 
 /// @brief return if number of cores was overridden
 bool arangodb::NumberOfCores::overridden() { return ::cache.overridden; }
