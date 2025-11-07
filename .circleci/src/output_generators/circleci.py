@@ -627,7 +627,8 @@ class CircleCIGenerator(OutputGenerator):
         # Add repository info if present
         self._add_repository_config(job_dict, job)
 
-        return {"run-linux-tests": job_dict}
+        # Use job_type from job definition (defaults to 'run-linux-tests')
+        return {job.job_type: job_dict}
 
     def _get_deployment_string(
         self, deployment_type: DeploymentType, replication_version: int

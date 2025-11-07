@@ -45,7 +45,7 @@ class TestParseRealYAMLFiles:
 
     def test_parse_arangojs_test_definitions(self):
         """Test parsing arangojs driver test definitions."""
-        yaml_file = TESTS_DIR / "arangojs-test-definitions.yml"
+        yaml_file = TESTS_DIR / "arangojs.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Should have jobs from the 'tests' section
@@ -62,7 +62,7 @@ class TestParseRealYAMLFiles:
 
     def test_parse_go_test_definitions(self):
         """Test parsing Go driver test definitions."""
-        yaml_file = TESTS_DIR / "go-test-definitions.yml"
+        yaml_file = TESTS_DIR / "go.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Jobs with same name but different deployment types/suffixes get unique keys
@@ -77,7 +77,7 @@ class TestParseRealYAMLFiles:
 
     def test_parse_java_test_definitions(self):
         """Test parsing Java driver test definitions."""
-        yaml_file = TESTS_DIR / "java-test-definitions.yml"
+        yaml_file = TESTS_DIR / "java.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Jobs with same name but different deployment types get unique keys
@@ -93,7 +93,7 @@ class TestParseRealYAMLFiles:
 
     def test_parse_kafka_test_definitions(self):
         """Test parsing Kafka connector test definitions."""
-        yaml_file = TESTS_DIR / "kafka-test-definitions.yml"
+        yaml_file = TESTS_DIR / "kafka.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Kafka test has unique deployment type (MIXED) so gets a unique key
@@ -114,10 +114,11 @@ class TestParseRealYAMLFiles:
         """Verify all YAML files can be parsed without exceptions."""
         yaml_files = [
             "test-definitions.yml",
-            "arangojs-test-definitions.yml",
-            "go-test-definitions.yml",
-            "java-test-definitions.yml",
-            "kafka-test-definitions.yml",
+            "arangojs.yml",
+            "go.yml",
+            "java.yml",
+            "kafka.yml",
+            "spark-datasource.yml",
         ]
 
         for filename in yaml_files:
@@ -230,7 +231,7 @@ class TestFiltering:
 
     def test_filter_by_repository(self):
         """Test filtering jobs with repository configuration."""
-        yaml_file = TESTS_DIR / "arangojs-test-definitions.yml"
+        yaml_file = TESTS_DIR / "arangojs.yml"
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         repo_jobs = test_def.filter_jobs(has_repository=True)

@@ -272,9 +272,10 @@ def create_generator_config(args, sanitizer: Sanitizer = None) -> GeneratorConfi
         single=args.single,
         cluster=args.cluster,
         gtest=args.gtest,
-        full=sanitizer,
+        full=args.full,
         all_tests=args.all,
         nightly=args.nightly,
+        sanitizer=sanitizer,
     )
 
     # Create test execution config

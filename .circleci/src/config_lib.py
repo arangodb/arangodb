@@ -516,6 +516,7 @@ class TestJob:
     options: TestOptions = field(default_factory=TestOptions)
     arguments: TestArguments = field(default_factory=TestArguments)
     repository: Optional[RepositoryConfig] = None
+    job_type: str = "run-linux-tests"  # CircleCI job template to use
 
     def __post_init__(self):
         """Validate test job configuration."""
@@ -665,12 +666,16 @@ class TestJob:
         if "arangosh_args" in data and "arangosh_args" not in args_data:
             args_data = {**args_data, "arangosh_args": data["arangosh_args"]}
 
+        # Get job type (defaults to 'run-linux-tests')
+        job_type = data.get("job", "run-linux-tests")
+
         return cls(
             name=name,
             suites=suites,
             options=TestOptions.from_dict(data.get("options")),
             arguments=TestArguments.from_dict(args_data),
             repository=RepositoryConfig.from_dict(data.get("repository")),
+            job_type=job_type,
         )
 
     def is_multi_suite(self) -> bool:
