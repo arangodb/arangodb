@@ -661,7 +661,7 @@ jobs:
       - run:
           name: Initialize driver tests
           command: |
-            cd $(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" )
+            cd ../$(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" )
             << parameters.init_command >>
       - run-test:
           suiteName: << parameters.suiteName >>
