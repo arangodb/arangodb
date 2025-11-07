@@ -425,14 +425,14 @@ class runInSpringDataTest extends runWithAllureReport {
     opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
     super(opts, testname, ...optionalArgs);
-    this.info = "runInSparkTest";
+    this.info = "runInSpringDataTest";
   }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
     print(this.instanceManager.setPassvoid());
     let topology;
-    let testResultsDir = fs.join(this.instanceManager.rootDir, 'sparkresults');
+    let testResultsDir = fs.join(this.instanceManager.rootDir, 'springdataresults');
     let results = {
       'message': ''
     };
@@ -442,7 +442,6 @@ class runInSpringDataTest extends runWithAllureReport {
     let args = [
       'test',
       '-Pscala-2.12',
-      '-Pspark-3.5',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
@@ -462,7 +461,7 @@ class runInSpringDataTest extends runWithAllureReport {
     }
     let start = Date();
     let status = true;
-    const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
+    const cwd = fs.normalize(fs.makeAbsolute(this.options.springdatasource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
       status = false;
@@ -494,14 +493,14 @@ class runInTinkerpopProvider extends runWithAllureReport {
     opts['arangodConfig'] = 'arangod-auth.conf';
     _.defaults(opts, options);
     super(opts, testname, ...optionalArgs);
-    this.info = "runInSparkTest";
+    this.info = "runInTinkerpopTest";
   }
   checkSutCleannessBefore() {}
   checkSutCleannessAfter() { return true; }
   runOneTest(file) {
     print(this.instanceManager.setPassvoid());
     let topology;
-    let testResultsDir = fs.join(this.instanceManager.rootDir, 'sparkresults');
+    let testResultsDir = fs.join(this.instanceManager.rootDir, 'tinkerpopresults');
     let results = {
       'message': ''
     };
@@ -511,7 +510,6 @@ class runInTinkerpopProvider extends runWithAllureReport {
     let args = [
       'test',
       '-Pscala-2.12',
-      '-Pspark-3.5',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
@@ -531,7 +529,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
     }
     let start = Date();
     let status = true;
-    const cwd = fs.normalize(fs.makeAbsolute(this.options.sparksource));
+    const cwd = fs.normalize(fs.makeAbsolute(this.options.tinkerpopsource));
     const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
     if (rc.exit !== 0) {
       status = false;
