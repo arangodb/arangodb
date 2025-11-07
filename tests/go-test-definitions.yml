@@ -19,6 +19,7 @@ tests:
       suffix: v1
     args:
       goDriverVersion: '1'
+# TODO: BTS-2245
 #- go_driver:
 #    options:
 #      priority: 500
