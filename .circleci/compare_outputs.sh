@@ -128,8 +128,11 @@ test_config "nightly" \
     --test-branches "" \
     ${BASE_CONFIG} \
     ../tests/test-definitions.yml \
-    ../tests/arangojs-test-definitions.yml \
-    ../tests/java-test-definitions.yml || true
+    ../tests/arangojs.yml \
+    ../tests/go.yml \
+    ../tests/java.yml \
+    ../tests/kafka.yml \
+    ../tests/spark-datasource.yml || true
 
 # Test 3: Nightly TSAN build
 test_config "nightly_tsan" \
@@ -145,8 +148,11 @@ test_config "nightly_tsan" \
     --test-branches "" \
     ${BASE_CONFIG} \
     ../tests/test-definitions.yml \
-    ../tests/arangojs-test-definitions.yml \
-    ../tests/java-test-definitions.yml || true
+    ../tests/arangojs.yml \
+    ../tests/go.yml \
+    ../tests/java.yml \
+    ../tests/kafka.yml \
+    ../tests/spark-datasource.yml || true
 
 # Test 4: Nightly ASAN/UBSAN build
 test_config "nightly_alubsan" \
@@ -162,8 +168,11 @@ test_config "nightly_alubsan" \
     --test-branches "" \
     ${BASE_CONFIG} \
     ../tests/test-definitions.yml \
-    ../tests/arangojs-test-definitions.yml \
-    ../tests/java-test-definitions.yml || true
+    ../tests/arangojs.yml \
+    ../tests/go.yml \
+    ../tests/java.yml \
+    ../tests/kafka.yml \
+    ../tests/spark-datasource.yml || true
 
 # Test 5: Weekly no-v8 build
 test_config "weekly_no_v8" \
@@ -179,8 +188,11 @@ test_config "weekly_no_v8" \
     --test-branches "" \
     ${BASE_CONFIG} \
     ../tests/test-definitions.yml \
-    ../tests/arangojs-test-definitions.yml \
-    ../tests/java-test-definitions.yml || true
+    ../tests/arangojs.yml \
+    ../tests/go.yml \
+    ../tests/java.yml \
+    ../tests/kafka.yml \
+    ../tests/spark-datasource.yml || true
 
 # Print summary
 echo ""

@@ -90,15 +90,14 @@ class CircleCIGenerator(OutputGenerator):
         )
         self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
-        # ARM64 Enterprise (only without sanitizer)
-        if not self.config.filter_criteria.sanitizer:  # No sanitizer
-            build_config = BuildConfig(
-                architecture=Architecture.AARCH64,
-                enterprise=True,
-                sanitizer=None,
-                nightly=self.config.filter_criteria.nightly,
-            )
-            self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
+        # ARM64 Enterprise (with or without sanitizer - changed in merge ec7f7ef91ade)
+        build_config = BuildConfig(
+            architecture=Architecture.AARCH64,
+            enterprise=True,
+            sanitizer=self.config.filter_criteria.sanitizer,
+            nightly=self.config.filter_criteria.nightly,
+        )
+        self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
         return circleci_config
 
@@ -369,8 +368,9 @@ class CircleCIGenerator(OutputGenerator):
             else ["SG", "CL"]
         )
 
-        ui_filter = " ".join(
-            f"--ui-include-test-suite {suite}" for suite in ui_testsuites
+        # Build filter string with trailing space (matches old generator behavior)
+        ui_filter = "".join(
+            f"--ui-include-test-suite {suite} " for suite in ui_testsuites
         )
 
         for deployment in deployments:
@@ -539,14 +539,15 @@ class CircleCIGenerator(OutputGenerator):
             ),
         }
 
-        # Add extra args
+        # Add extra args - must match old generator's order:
+        # 1. job.arguments.extra_args (base args)
+        # 2. optionsJson (for multi-suite jobs)
+        # 3. replicationVersion (for cluster)
+        # 4. skipNightly (for nightly builds)
+        # 5. CLI extra_args
         extra_args = list(job.arguments.extra_args)
-        if is_cluster:
-            extra_args.extend(["--replicationVersion", str(replication_version)])
-        if build_config.nightly:
-            extra_args.extend(["--skipNightly", "false"])
 
-        # For multi-suite jobs, add optionsJson
+        # For multi-suite jobs, add optionsJson BEFORE replicationVersion/skipNightly
         # Use filtered_suites to match what will actually run
         if len(filtered_suites) > 1:
             options_json = []
@@ -602,6 +603,12 @@ class CircleCIGenerator(OutputGenerator):
             extra_args.extend(
                 ["--optionsJson", json.dumps(options_json, separators=(",", ":"))]
             )
+
+        # Add replicationVersion and skipNightly AFTER optionsJson
+        if is_cluster:
+            extra_args.extend(["--replicationVersion", str(replication_version)])
+        if build_config.nightly:
+            extra_args.extend(["--skipNightly", "false"])
 
         if extra_args or self.config.test_execution.extra_args:
             job_dict["extraArgs"] = " ".join(
@@ -704,9 +711,8 @@ class CircleCIGenerator(OutputGenerator):
 
             job_dict["driver-git-repo"] = job.repository.git_repo
             job_dict["driver-git-branch"] = job.repository.git_branch or "main"
-            job_dict["init_driver_repo_command"] = job.repository.init_command or ""
+            # Add init_command if the field exists (even if empty string)
+            if job.repository.init_command is not None:
+                job_dict["init_command"] = job.repository.init_command
         else:
             job_dict["docker_image"] = self.config.circleci.default_container
-            job_dict["driver-git-repo"] = ""
-            job_dict["driver-git-branch"] = ""
-            job_dict["init_driver_repo_command"] = ""

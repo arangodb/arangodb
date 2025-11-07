@@ -297,7 +297,7 @@ def create_generator_config(args, sanitizer: Sanitizer = None) -> GeneratorConfi
         ui=args.ui or "",
         ui_testsuites=args.ui_testsuites or "",
         ui_deployments=args.ui_deployments or "",
-        rta_branch=args.rta_branch or "",
+        rta_branch=args.rta_branch,  # Keep None as None for YAML serialization
         create_docker_images=args.create_docker_images,
         default_container=args.default_container,
     )
