@@ -441,7 +441,6 @@ class runInSpringDataTest extends runWithAllureReport {
     let rx = /.*:\/\//gi;
     let args = [
       'test',
-      '-Pscala-2.12',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
@@ -509,7 +508,6 @@ class runInTinkerpopProvider extends runWithAllureReport {
     let rx = /.*:\/\//gi;
     let args = [
       'test',
-      '-Pscala-2.12',
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
