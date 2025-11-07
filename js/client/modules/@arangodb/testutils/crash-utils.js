@@ -371,7 +371,7 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   ) || stats.virtualSize === 0);
   if (options.coreAbort || options.test !== undefined) {
     print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
-    instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
+    instanceInfo.exitStatus = killExternal(instanceInfo.pid, abortSignal);
   } else {
     instanceInfo.debuggerInfo = generateCoreDumpGDB(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};

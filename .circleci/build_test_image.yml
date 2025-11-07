@@ -129,6 +129,18 @@ jobs:
             cat  << parameters.arch >>-tag-java.txt
             docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-java.txt)-<< parameters.arch >>
             docker push $image:$(cat << parameters.arch >>-tag-java.txt)-<< parameters.arch >>
+      - run:
+          name: Build spark Docker Image
+          command: |
+            set -x
+            cd /home/circleci/project/scripts/docker
+            echo  << parameters.image >>
+            image=<< parameters.image >>-spark
+            /bin/sh build-image.sh $image << parameters.arch >> spark-test
+            /bin/sh determine-tag.sh $image << parameters.arch >> | tee << parameters.arch >>-tag-spark.txt
+            cat  << parameters.arch >>-tag-spark.txt
+            docker tag $image:latest-<< parameters.arch >> $image:$(cat << parameters.arch >>-tag-spark.txt)-<< parameters.arch >>
+            docker push $image:$(cat << parameters.arch >>-tag-spark.txt)-<< parameters.arch >>
       - persist_to_workspace:
           root: .
           paths:
@@ -183,6 +195,11 @@ jobs:
           command: |
             cd scripts/docker
             ./build-manifest.sh << parameters.image >>-java $(cat amd64-tag-java.txt)
+      - run:
+          name: Build spark test container manifest
+          command: |
+            cd scripts/docker
+            ./build-manifest.sh << parameters.image >>-spark $(cat amd64-tag-spark.txt)
       # TODO - commit the tag file to the repository
       # - run:
       #     name: Update TagFile

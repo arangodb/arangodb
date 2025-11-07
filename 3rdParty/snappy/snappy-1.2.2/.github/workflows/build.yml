@@ -1,0 +1,135 @@
+# Copyright 2021 Google Inc. All Rights Reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are
+# met:
+#
+#     * Redistributions of source code must retain the above copyright
+# notice, this list of conditions and the following disclaimer.
+#     * Redistributions in binary form must reproduce the above
+# copyright notice, this list of conditions and the following disclaimer
+# in the documentation and/or other materials provided with the
+# distribution.
+#     * Neither the name of Google Inc. nor the names of its
+# contributors may be used to endorse or promote products derived from
+# this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+# "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+# LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+# A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+# OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+# SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+# LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+# DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+# THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+name: ci
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name:  >-
+      CI
+      ${{ matrix.os }}
+      ${{ matrix.cpu_level }}
+      ${{ matrix.compiler }}
+      ${{ matrix.optimized && 'release' || 'debug' }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [clang, gcc, msvc]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        cpu_level: [baseline, avx, avx2]
+        optimized: [true, false]
+        exclude:
+        # MSVC only works on Windows.
+        - os: ubuntu-latest
+          compiler: msvc
+        - os: macos-latest
+          compiler: msvc
+        # GitHub servers seem to run on pre-Haswell CPUs. Attempting to use AVX2
+        # results in crashes.
+        - os: macos-latest
+          cpu_level: avx2
+        # Not testing with GCC on macOS.
+        - os: macos-latest
+          compiler: gcc
+        # Only testing with MSVC on Windows.
+        - os: windows-latest
+          compiler: clang
+        - os: windows-latest
+          compiler: gcc
+        include:
+        - compiler: clang
+          CC: clang
+          CXX: clang++
+        - compiler: gcc
+          CC: gcc
+          CXX: g++
+        - compiler: msvc
+          CC:
+          CXX:
+
+    env:
+      CMAKE_BUILD_DIR: ${{ github.workspace }}/build
+      CMAKE_BUILD_TYPE: ${{ matrix.optimized && 'RelWithDebInfo' || 'Debug' }}
+      CC: ${{ matrix.CC }}
+      CXX: ${{ matrix.CXX }}
+      SNAPPY_REQUIRE_AVX: ${{ matrix.cpu_level == 'baseline' && '0' || '1' }}
+      SNAPPY_REQUIRE_AVX2: ${{ matrix.cpu_level == 'avx2' && '1' || '0' }}
+      SNAPPY_FUZZING_BUILD: >-
+        ${{ (startsWith(matrix.os, 'ubuntu') && matrix.compiler == 'clang' &&
+        !matrix.optimized) && '1' || '0' }}
+      BINARY_SUFFIX: ${{ startsWith(matrix.os, 'windows') && '.exe' || '' }}
+      BINARY_PATH: >-
+        ${{ format(
+        startsWith(matrix.os, 'windows') && '{0}\build\{1}\' || '{0}/build/',
+        github.workspace,
+        matrix.optimized && 'RelWithDebInfo' || 'Debug') }}
+
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: true
+
+    - name: Generate build config
+      run: >-
+        cmake -S "${{ github.workspace }}" -B "${{ env.CMAKE_BUILD_DIR }}"
+        -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }}
+        -DCMAKE_INSTALL_PREFIX=${{ runner.temp }}/install_test/
+        -DSNAPPY_FUZZING_BUILD=${{ env.SNAPPY_FUZZING_BUILD }}
+        -DSNAPPY_REQUIRE_AVX=${{ env.SNAPPY_REQUIRE_AVX }}
+        -DSNAPPY_REQUIRE_AVX2=${{ env.SNAPPY_REQUIRE_AVX2 }}
+
+    - name: Build
+      run: >-
+        cmake --build "${{ env.CMAKE_BUILD_DIR }}"
+        --config "${{ env.CMAKE_BUILD_TYPE }}"
+
+    - name: Run C++ API Tests
+      run: ${{ env.BINARY_PATH }}snappy_unittest${{ env.BINARY_SUFFIX }}
+
+    - name: Run Compression Fuzzer
+      if: ${{ env.SNAPPY_FUZZING_BUILD == '1' }}
+      run: >-
+        ${{ env.BINARY_PATH }}snappy_compress_fuzzer${{ env.BINARY_SUFFIX }}
+        -runs=1000 -close_fd_mask=3
+
+    - name: Run Decompression Fuzzer
+      if: ${{ env.SNAPPY_FUZZING_BUILD == '1' }}
+      run: >-
+        ${{ env.BINARY_PATH }}snappy_uncompress_fuzzer${{ env.BINARY_SUFFIX }}
+        -runs=1000 -close_fd_mask=3
+
+    - name: Run Benchmarks
+      run: ${{ env.BINARY_PATH }}snappy_benchmark${{ env.BINARY_SUFFIX }}
+
+    - name: Test CMake installation
+      run: cmake --build "${{ env.CMAKE_BUILD_DIR }}" --target install

@@ -1,0 +1,48 @@
+jobProperties:
+    container_suffix: '-java:'
+    second_repo: git@github.com:arangodb/kafka-connect-arangodb.git
+    branch: main
+
+tests:
+- kafka_driver:
+    job: kafka-driver-tests
+    options:
+      priority: 500
+      type: mixed
+      size: large
+    suites:
+      - kafka_driver:
+          args:
+            extremeVerbosity: true
+            kafkaHost: "${KAFKA_HOST_LIST}"
+            kafkaSchemaHost: "${KAFKA_SCHEMA_HOST}"
+      - kafka_driver:
+          args:
+            cluster: true
+            extremeVerbosity: true
+            kafkaHost: "${KAFKA_HOST_LIST}"
+            kafkaSchemaHost: "${KAFKA_SCHEMA_HOST}"
+
+# for the moment SSL has issues with the certificates to match the test arangod and kafka certificates.
+# - kafka_driver:
+#     options:
+#       priority: 500
+#       type: single
+#       size: large
+#       suffix: ssl
+#     args:
+#       protocol: ssl
+#       extremeVerbosity: true
+#       kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
+#       kafkaSchemaHost: http://kafka-schema-registry:8081
+# - kafka_driver:
+#     options:
+#       priority: 500
+#       type: cluster
+#       size: large
+#       suffix: ssl
+#     args:
+#       protocol: ssl
+#       extremeVerbosity: true
+#       kafkaHost: kafka-1:19092,kafka-2:29092,kafka-3:39092
+#       kafkaSchemaHost: http://kafka-schema-registry:8081

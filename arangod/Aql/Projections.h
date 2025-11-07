@@ -171,6 +171,12 @@ class Projections {
   void toVelocyPackFromDocument(velocypack::Builder& b, velocypack::Slice slice,
                                 transaction::Methods const* trxPtr) const;
 
+  /// @brief extract projections from a full document, or copy the whole
+  /// document if _projections is empty.
+  void toVelocyPackFromDocumentFull(velocypack::Builder& b,
+                                    velocypack::Slice slice,
+                                    transaction::Methods const* trxPtr) const;
+
   /// @brief extract projections from a covering index
   void toVelocyPackFromIndex(velocypack::Builder& b,
                              IndexIteratorCoveringData& covering,
