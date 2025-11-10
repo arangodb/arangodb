@@ -27,6 +27,7 @@ tests:
       priority: 500
       type: single
       size: medium
+      suffix: complex
     args:
       extremeVerbosity: true
       tinkerpopGraphType: complex
@@ -36,6 +37,7 @@ tests:
       priority: 500
       type: cluster
       size: large
+      suffix: complex
     args:
       extremeVerbosity: true
       tinkerpopGraphType: complex
