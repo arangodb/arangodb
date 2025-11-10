@@ -118,6 +118,10 @@ struct InspectorBase : detail::ContextContainer<Context> {
   explicit InspectorBase(Context const& ctx)
       : detail::ContextContainer<Context>(ctx) {}
 
+  [[nodiscard]] Status apply(detail::Blob const& x) {
+    return process(self(), const_cast<detail::Blob&>(x));
+  }
+
   template<class T>
   [[nodiscard]] Status apply(T& x) {
     return process(self(), x);
