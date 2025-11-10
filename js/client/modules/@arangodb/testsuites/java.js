@@ -511,6 +511,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
+      `-Dtest.graph.type=${options.tinkerpopGraphType}`,
     ];
 
     if (this.options.testCase) {
@@ -567,5 +568,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
     'sparksource': '../arangodb-spark-datasource',
     'springsource': '../spring-data',
     'tinkerpopsource': '../arangodb-tinkerpop-provider',
+    'tinkerpopGraphType': 'simple',
   });
 };

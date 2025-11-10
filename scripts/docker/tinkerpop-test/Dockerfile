@@ -13,5 +13,5 @@ RUN git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb-
   cd arangodb-tinkerpop-provider && \
   git checkout && \
   find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed && \
-  mvn test-compile -am -pl test-functional && \
+  mvn dependency:go-offline -Dtest.graph.type=simple && \
   cd ..; rm -rf arangodb-tinkerpop-provider  
