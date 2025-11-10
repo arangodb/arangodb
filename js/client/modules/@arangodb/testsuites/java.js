@@ -511,7 +511,7 @@ class runInTinkerpopProvider extends runWithAllureReport {
       `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
       `-Dallure.results.directory=${testResultsDir}`,
       '-Dmaven.wagon.http.retryHandler.count=10',
-      `-Dtest.graph.type=${options.tinkerpopGraphType}`,
+      `-Dtest.graph.type=${this.options.tinkerpopGraphType}`,
     ];
 
     if (this.options.testCase) {
