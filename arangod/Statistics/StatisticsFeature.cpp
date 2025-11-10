@@ -227,6 +227,8 @@ DECLARE_COUNTER(arangodb_server_statistics_server_uptime_total,
                 "Number of seconds elapsed since server start");
 DECLARE_GAUGE(arangodb_server_statistics_physical_memory, double,
               "Physical memory in bytes");
+DECLARE_GAUGE(arangodb_server_statistics_effective_physical_memory, double,
+              "Effective physical memory in bytes");
 DECLARE_GAUGE(arangodb_server_statistics_cpu_cores, double,
               "Number of CPU cores visible to the arangod process");
 DECLARE_GAUGE(arangodb_server_statistics_effective_cpu_cores, double,
@@ -403,6 +405,9 @@ auto const statStrings = std::map<std::string_view,
     {"physicalSize",
      {"arangodb_server_statistics_physical_memory", "gauge",
       "Physical memory in bytes"}},
+    {"effectivePhysicalSize",
+     {"arangodb_server_statistics_effective_physical_memory", "gauge",
+      "Effective physical memory in bytes"}},
     {"cores",
      {"arangodb_server_statistics_cpu_cores", "gauge",
       "Number of CPU cores visible to the arangod process"}},
@@ -522,6 +527,8 @@ auto const statBuilder = makeStatBuilder({
      new arangodb_http_request_statistics_other_http_requests_total()},
     {"uptime", new arangodb_server_statistics_server_uptime_total()},
     {"physicalSize", new arangodb_server_statistics_physical_memory()},
+    {"effectivePhysicalSize",
+     new arangodb_server_statistics_effective_physical_memory()},
     {"cores", new arangodb_server_statistics_cpu_cores()},
     {"effectiveCores", new arangodb_server_statistics_effective_cpu_cores()},
     {"userPercent", new arangodb_server_statistics_user_percent()},
@@ -945,6 +952,8 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                "physicalSize", globals, ensureWhitespace);
+  appendMetric(result, std::to_string(PhysicalMemory::getEffectiveValue()),
+               "effectivePhysicalSize", globals, ensureWhitespace);
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", globals,
                ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
