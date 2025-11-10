@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
+#include "Basics/CGroupDetection.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/PhysicalMemory.h"
 #include "Basics/StaticStrings.h"
@@ -230,6 +231,8 @@ DECLARE_GAUGE(arangodb_server_statistics_cpu_cores, double,
               "Number of CPU cores visible to the arangod process");
 DECLARE_GAUGE(arangodb_server_statistics_effective_cpu_cores, double,
               "Number of effective CPU cores set for the arangod process");
+DECLARE_GAUGE(arangodb_server_statistics_cpu_cgroup_version, double,
+              "CGroup version detected (0=none, 1=v1, 2=v2)");
 DECLARE_GAUGE(
     arangodb_server_statistics_user_percent, double,
     "Percentage of time that the system CPUs have spent in user mode");
@@ -403,6 +406,9 @@ auto const statStrings = std::map<std::string_view,
     {"cores",
      {"arangodb_server_statistics_cpu_cores", "gauge",
       "Number of CPU cores visible to the arangod process"}},
+    {"cgroupVersion",
+     {"arangodb_server_statistics_cpu_cgroup_version", "gauge",
+      "CGroup version detected (0=none, 1=v1, 2=v2)"}},
     {"userPercent",
      {"arangodb_server_statistics_user_percent", "gauge",
       "Percentage of time that the system CPUs have spent in user mode"}},
@@ -945,6 +951,11 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getEffectiveValue()),
                "effectiveCores", globals, ensureWhitespace);
+  appendMetric(
+      result,
+      std::to_string(static_cast<std::underlying_type_t<CGroupVersion>>(
+          CGroupDetection::getVersion())),
+      "CGroupVersion", globals, ensureWhitespace);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
