@@ -439,7 +439,7 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
         # Yaml workaround: prepend an A to stop bad things from happening.
         if test["arangosh_args"] != "":
             sub_arangosh_args = test["arangosh_args"] + args.arangosh_args
-        del test["arangosh_args"]
+        # Note: Don't delete test["arangosh_args"] - it's needed for aarch64 workflow
     job = {
         # "name": f"test-{edition}-{deployment_v_str}-{suite_name}-{build_config.arch}",
         "name": f"test-{deployment_v_str}-{suite_name}-{build_config.arch}",
