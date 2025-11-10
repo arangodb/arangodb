@@ -439,9 +439,7 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
   builder.add("cursorId", VPackValue(cursor._cursorId));
   builder.add("batchId", VPackValue(cursor._nextBatch));
 
-  if (count > 0) {
-    cursor._nextBatch++;
-  }
+  cursor._nextBatch++;
   if (not cursor.hasMore()) {
     _cursors.pop_back();
   }
