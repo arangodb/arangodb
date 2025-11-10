@@ -4,11 +4,19 @@ MAINTAINER hackers@arangodb.com
 ARG arch
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y openjdk-17-jdk-headless git maven netcat-traditional && \
+    apt-get install -y openjdk-17-jdk-headless git netcat-traditional && \
     apt-get update && \
     apt-get upgrade -y && \
-    rm -rf /var/cache/apt/archives /var/lib/apt/lists 
-    
+    cd /tmp/ && \
+    wget https://dlcdn.apache.org/maven/maven-3/3.9.11/binaries/apache-maven-3.9.11-bin.tar.gz && \
+    tar xf apache-maven-3.9.11-bin.tar.gz -C /opt && \
+    echo 'export M3_HOME=/opt/apache-maven-3.9.11\nexport MAVEN_HOME=/opt/apache-maven-3.9.11\nexport PATH=${M3_HOME}/bin:${PATH}\n' > /etc/profile.d/maven.sh && \
+    chmod +x /etc/profile.d/maven.sh && \
+    ln -s /opt/apache-maven-3.9.11/bin/mvn /usr/bin/ && \
+    rm -rf /var/cache/apt/archives /var/lib/apt/lists /tmp/*gz
+
+
+
 RUN git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb-spark-datasource && \
   cd arangodb-spark-datasource && \
   git checkout && \
