@@ -13,7 +13,7 @@ import traceback
 from pathlib import Path
 from typing import List
 
-from src.config_lib import TestDefinitionFile, BuildConfig, Sanitizer
+from src.config_lib import TestDefinitionFile, BuildConfig, Sanitizer, TestArguments
 from src.filters import FilterCriteria, filter_jobs
 from src.output_generators.base import (
     GeneratorConfig,
@@ -200,31 +200,6 @@ def parse_test_branches(test_branches_arg: str) -> dict:
     return result
 
 
-def parse_extra_args(args_str: str, add_skip_server_js: bool = False) -> List[str]:
-    """
-    Parse extra arguments string into list.
-
-    Args:
-        args_str: Space-separated argument string, or "A" for empty
-        add_skip_server_js: Whether to add --skipServerJS flag
-
-    Returns:
-        List of argument strings
-    """
-    if not args_str or args_str == "A":
-        args = []
-    else:
-        # Remove leading character if present (legacy format)
-        if args_str[0] in [" ", "A"]:
-            args_str = args_str[1:]
-        args = args_str.split(" ") if args_str else []
-
-    if add_skip_server_js:
-        args.extend(["--skipServerJS", "true"])
-
-    return args
-
-
 def load_test_definitions(
     definition_files: List[str], test_branches: dict
 ) -> List[TestDefinitionFile]:
@@ -279,8 +254,8 @@ def create_generator_config(args, sanitizer: Sanitizer = None) -> GeneratorConfi
     )
 
     # Create test execution config
-    arangosh_args = parse_extra_args(args.arangosh_args or "")
-    extra_args = parse_extra_args(
+    arangosh_args = TestArguments.parse_args_string(args.arangosh_args or "")
+    extra_args = TestArguments.parse_args_string(
         args.extra_args or "",
         add_skip_server_js=(args.arangod_without_v8 == "true"),
     )

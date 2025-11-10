@@ -28,7 +28,7 @@ class TestDeploymentType:
         assert DeploymentType.from_string("mixed") == DeploymentType.MIXED
 
     def test_from_string_invalid(self):
-        with pytest.raises(ValueError, match="Invalid deployment type"):
+        with pytest.raises(ValueError, match="Invalid DeploymentType"):
             DeploymentType.from_string("invalid")
 
 
@@ -44,7 +44,7 @@ class TestResourceSize:
         assert ResourceSize.from_string("2xlarge") == ResourceSize.XXLARGE
 
     def test_from_string_invalid(self):
-        with pytest.raises(ValueError, match="Invalid resource size"):
+        with pytest.raises(ValueError, match="Invalid ResourceSize"):
             ResourceSize.from_string("tiny")
 
 

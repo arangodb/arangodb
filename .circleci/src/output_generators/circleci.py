@@ -26,6 +26,43 @@ from .sizing import ResourceSizer
 class CircleCIGenerator(OutputGenerator):
     """Generate CircleCI workflow configuration from test definitions."""
 
+    # ========================================================================
+    # Special Case Overrides
+    #
+    # These jobs require CircleCI-specific overrides that differ from their
+    # YAML definitions or need runtime-dependent adjustments.
+    # ========================================================================
+
+    # Job-specific bucket overrides
+    # replication_sync: YAML specifies 2 buckets (for Jenkins compatibility),
+    # but CircleCI needs 5 for better parallelization. See tests/test-definitions.yml:74
+    BUCKET_OVERRIDES = {
+        "replication_sync": 5,
+    }
+
+    # Job-specific size overrides (applied conditionally)
+    # shell_client_aql: Nightly single-server runs need more memory due to
+    # extended test coverage and data volume
+    def _get_size_override(
+        self, job_name: str, build_config: BuildConfig, is_cluster: bool
+    ) -> Optional[ResourceSize]:
+        """Get size override for specific jobs based on runtime conditions."""
+        if job_name == "shell_client_aql" and build_config.nightly and not is_cluster:
+            return ResourceSize.MEDIUM_PLUS
+        return None
+
+    # Job-specific time limit overrides
+    # chaos: Nightly runs execute 32 test combinations, each taking ~5 minutes
+    def _get_time_limit_override(
+        self, job_name: str, build_config: BuildConfig
+    ) -> Optional[int]:
+        """Get time limit override (in seconds) for specific jobs."""
+        if job_name == "chaos" and build_config.nightly:
+            return 32 * 5 * 60  # 32 combinations × 5 min each = 9600 seconds
+        return None
+
+    # ========================================================================
+
     def __init__(
         self,
         config: GeneratorConfig,
@@ -521,9 +558,10 @@ class CircleCIGenerator(OutputGenerator):
         # Build suite string
         suite_str = ",".join(suite.name for suite in filtered_suites)
 
-        # Get size
-        size = job.options.size or ResourceSize.SMALL
-        resource_class = self._get_job_size(job.name, size, build_config, is_cluster)
+        # Get size (with special case overrides)
+        size_override = self._get_size_override(job.name, build_config, is_cluster)
+        size = size_override or job.options.size or ResourceSize.SMALL
+        resource_class = self.sizer.get_test_size(size, build_config, is_cluster)
 
         # Build job dict
         job_dict = {
@@ -615,21 +653,21 @@ class CircleCIGenerator(OutputGenerator):
                 extra_args + self.config.test_execution.extra_args
             )
 
-        # Add buckets - use filtered suite count for auto buckets
+        # Add buckets (with special case overrides)
         bucket_count = self._get_bucket_count(job)
         # Override bucket count if using auto buckets and suites were filtered
         if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
             bucket_count = len(filtered_suites)
-        # Special override for replication_sync
-        if job.name == "replication_sync":
-            bucket_count = 5
+        # Apply CircleCI-specific bucket overrides
+        if job.name in self.BUCKET_OVERRIDES:
+            bucket_count = self.BUCKET_OVERRIDES[job.name]
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
 
-        # Special time limit for nightly chaos tests
-        # Nightly chaos runs 32 combinations, each taking ~5 min
-        if job.name == "chaos" and build_config.nightly:
-            job_dict["timeLimit"] = 32 * 5 * 60  # 9600 seconds
+        # Apply time limit overrides
+        time_limit = self._get_time_limit_override(job.name, build_config)
+        if time_limit:
+            job_dict["timeLimit"] = time_limit
 
         # Add repository info if present
         self._add_repository_config(job_dict, job)
@@ -648,50 +686,9 @@ class CircleCIGenerator(OutputGenerator):
         else:
             return "mixed"
 
-    def _get_job_size(
-        self,
-        job_name: str,
-        base_size: ResourceSize,
-        build_config: BuildConfig,
-        is_cluster: bool,
-    ) -> str:
-        """
-        Get job size with special cases applied.
-
-        Some jobs have special sizing requirements that override the base size.
-
-        Args:
-            job_name: Name of the job
-            base_size: Base resource size enum
-            build_config: Build configuration
-            is_cluster: Whether this is a cluster test
-
-        Returns:
-            CircleCI resource class string
-        """
-        size = base_size
-
-        # Special case: nightly chaos tests need more time (not size)
-        # Special case: nightly single shell_client_aql needs more memory
-        if job_name == "shell_client_aql" and build_config.nightly and not is_cluster:
-            size = ResourceSize.MEDIUM_PLUS
-
-        return self.sizer.get_test_size(size, build_config, is_cluster)
-
     def _get_bucket_count(self, job: TestJob) -> Optional[int]:
-        """
-        Get bucket count for a job.
-
-        Special case: replication_sync uses 5 buckets in CircleCI
-        (vs 2 in the YAML for Jenkins compatibility).
-        """
-        bucket_count = job.get_bucket_count()
-
-        # Special override for replication_sync
-        if job.name == "replication_sync":
-            bucket_count = 5
-
-        return bucket_count
+        """Get bucket count from job definition (before applying overrides)."""
+        return job.get_bucket_count()
 
     def _add_repository_config(self, job_dict: Dict[str, Any], job: TestJob) -> None:
         """Add repository configuration to job dict if job has external repo."""

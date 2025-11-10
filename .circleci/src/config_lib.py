@@ -22,6 +22,44 @@ import yaml
 # ============================================================================
 
 
+def _enum_from_string(
+    enum_class: type[Enum], value: str, aliases: Dict[str, Enum] = None
+) -> Enum:
+    """
+    Generic helper to parse enum from string, case-insensitive.
+
+    Args:
+        enum_class: The enum class to parse into
+        value: String value to parse
+        aliases: Optional dict mapping alias strings to enum values
+
+    Returns:
+        Enum member
+
+    Raises:
+        ValueError: If value doesn't match any enum member or alias
+    """
+    normalized = value.lower()
+
+    # Check aliases first if provided
+    if aliases and normalized in aliases:
+        return aliases[normalized]
+
+    # Check enum members
+    for member in enum_class:
+        if member.value == normalized:
+            return member
+
+    # Build error message
+    valid_values = [m.value for m in enum_class]
+    if aliases:
+        valid_values.extend(f"{alias} (alias)" for alias in aliases.keys())
+
+    raise ValueError(
+        f"Invalid {enum_class.__name__}: {value}. Valid options: {', '.join(valid_values)}"
+    )
+
+
 class DeploymentType(Enum):
     """Test deployment type: single server, cluster, or mixed."""
 
@@ -32,13 +70,7 @@ class DeploymentType(Enum):
     @classmethod
     def from_string(cls, value: str) -> "DeploymentType":
         """Parse deployment type from string, case-insensitive."""
-        normalized = value.lower()
-        for member in cls:
-            if member.value == normalized:
-                return member
-        raise ValueError(
-            f"Invalid deployment type: {value}. Must be one of: single, cluster, mixed"
-        )
+        return _enum_from_string(cls, value)
 
 
 class ResourceSize(Enum):
@@ -54,13 +86,7 @@ class ResourceSize(Enum):
     @classmethod
     def from_string(cls, value: str) -> "ResourceSize":
         """Parse resource size from string, case-insensitive."""
-        normalized = value.lower()
-        for member in cls:
-            if member.value == normalized:
-                return member
-        raise ValueError(
-            f"Invalid resource size: {value}. Must be one of: small, medium, medium+, large, xlarge"
-        )
+        return _enum_from_string(cls, value)
 
 
 class Sanitizer(Enum):
@@ -76,15 +102,8 @@ class Sanitizer(Enum):
 
     @classmethod
     def from_string(cls, value: str) -> "Sanitizer":
-        normalized = value.lower()
-        if normalized == "tsan":
-            return cls.TSAN
-        elif normalized == "alubsan":
-            return cls.ALUBSAN
-        else:
-            raise ValueError(
-                f"Invalid sanitizer: {value}. Must be one of: tsan, alubsan"
-            )
+        """Parse sanitizer from string, case-insensitive."""
+        return _enum_from_string(cls, value)
 
 
 class Architecture(Enum):
@@ -101,22 +120,12 @@ class Architecture(Enum):
     @classmethod
     def from_string(cls, value: str) -> "Architecture":
         """Parse architecture from string, supporting common aliases."""
-        normalized = value.lower()
-        # Map aliases to canonical values
         aliases = {
-            "x64": cls.X64,
             "x86_64": cls.X64,
             "amd64": cls.X64,
-            "aarch64": cls.AARCH64,
             "arm64": cls.AARCH64,
         }
-        if normalized in aliases:
-            return aliases[normalized]
-        else:
-            raise ValueError(
-                f"Invalid architecture: {value}. "
-                f"Valid options: x64, aarch64 (or aliases: amd64, x86_64, arm64)"
-            )
+        return _enum_from_string(cls, value, aliases)
 
 
 # ============================================================================
@@ -262,6 +271,7 @@ class TestOptions:
             New TestOptions with merged values
         """
         if override is None:
+            # Create a copy of self
             return TestOptions(
                 deployment_type=self.deployment_type,
                 size=self.size,
@@ -273,49 +283,35 @@ class TestOptions:
                 max_replication_factor=self.max_replication_factor,
                 replication_version=self.replication_version,
                 test_data_dir=self.test_data_dir,
+                suffix=self.suffix,
+                full=self.full,
+                coverage=self.coverage,
             )
 
+        # Helper to merge a single field
+        def merge_field(override_val, self_val):
+            return override_val if override_val is not None else self_val
+
         return TestOptions(
-            deployment_type=(
-                override.deployment_type
-                if override.deployment_type is not None
-                else self.deployment_type
+            deployment_type=merge_field(override.deployment_type, self.deployment_type),
+            size=merge_field(override.size, self.size),
+            priority=merge_field(override.priority, self.priority),
+            parallelity=merge_field(override.parallelity, self.parallelity),
+            buckets=merge_field(override.buckets, self.buckets),
+            storage_engine=merge_field(override.storage_engine, self.storage_engine),
+            min_replication_factor=merge_field(
+                override.min_replication_factor, self.min_replication_factor
             ),
-            size=override.size if override.size is not None else self.size,
-            priority=(
-                override.priority if override.priority is not None else self.priority
+            max_replication_factor=merge_field(
+                override.max_replication_factor, self.max_replication_factor
             ),
-            parallelity=(
-                override.parallelity
-                if override.parallelity is not None
-                else self.parallelity
+            replication_version=merge_field(
+                override.replication_version, self.replication_version
             ),
-            buckets=override.buckets if override.buckets is not None else self.buckets,
-            storage_engine=(
-                override.storage_engine
-                if override.storage_engine is not None
-                else self.storage_engine
-            ),
-            min_replication_factor=(
-                override.min_replication_factor
-                if override.min_replication_factor is not None
-                else self.min_replication_factor
-            ),
-            max_replication_factor=(
-                override.max_replication_factor
-                if override.max_replication_factor is not None
-                else self.max_replication_factor
-            ),
-            replication_version=(
-                override.replication_version
-                if override.replication_version is not None
-                else self.replication_version
-            ),
-            test_data_dir=(
-                override.test_data_dir
-                if override.test_data_dir is not None
-                else self.test_data_dir
-            ),
+            test_data_dir=merge_field(override.test_data_dir, self.test_data_dir),
+            suffix=merge_field(override.suffix, self.suffix),
+            full=merge_field(override.full, self.full),
+            coverage=merge_field(override.coverage, self.coverage),
         )
 
 
@@ -325,6 +321,35 @@ class TestArguments:
 
     extra_args: List[str] = field(default_factory=list)
     arangosh_args: List[str] = field(default_factory=list)
+
+    @staticmethod
+    def parse_args_string(args_str: str, add_skip_server_js: bool = False) -> List[str]:
+        """
+        Parse extra arguments string into list.
+
+        This handles the legacy format used by the old generator where arguments
+        can be space-separated strings, with "A" representing an empty argument list.
+        The legacy format may have a leading character (space or "A") that needs to be stripped.
+
+        Args:
+            args_str: Space-separated argument string, or "A" for empty
+            add_skip_server_js: Whether to add --skipServerJS flag
+
+        Returns:
+            List of argument strings
+        """
+        if not args_str or args_str == "A":
+            args = []
+        else:
+            # Remove leading character if present (legacy format: " arg1 arg2" or "Aarg1 arg2")
+            if args_str[0] in [" ", "A"]:
+                args_str = args_str[1:]
+            args = args_str.split(" ") if args_str else []
+
+        if add_skip_server_js:
+            args.extend(["--skipServerJS", "true"])
+
+        return args
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "TestArguments":
