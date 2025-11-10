@@ -787,17 +787,9 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
   // 4. push continuations
   _edgeRequestsStack.emplace_back(std::move(continuation_requests));
 
-  // TODO add batch to cache
-  // std::uint64_t memoryPerItem =
-  //     costPerVertexOrEdgeType +
-  //     (connectedEdges.size() * (costPerVertexOrEdgeType * 2));
-  // ResourceUsageScope guard(*_resourceMonitor, memoryPerItem);
-
-  // auto [it, inserted] = _vertexConnectedEdges.emplace(
-  //     step->getVertex().getID(), std::move(connectedEdges));
-  // if (inserted) {
-  //   guard.steal();
-  // }
+  // TODO check if we need to add connectedEdges to cache
+  // (_vertexConnectedEdges) as well (is done in non-batched version, see
+  // fetchEdgesFromEngines fn)
 
   // 5. callback
   auto stepsAdded = false;
