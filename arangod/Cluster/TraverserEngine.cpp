@@ -406,7 +406,7 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
 
   builder.add(VPackValue(StaticStrings::GraphQueryEdges));
   builder.openArray(true);
-  while (count != batchSize && cursor.hasMore()) {
+  while (count < batchSize && cursor.hasMore()) {
     auto vertex = cursor._cursor->currentVertex();
     auto depth = cursor._cursor->currentDepth();
 
