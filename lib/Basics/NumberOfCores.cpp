@@ -60,46 +60,21 @@ std::size_t numberOfCoresImpl() {
   return static_cast<std::size_t>(std::thread::hardware_concurrency());
 }
 
-bool readFileValue(const std::string& path, int64_t& value) {
-  try {
-    std::string content = arangodb::basics::FileUtils::slurp(path);
-
-    // Get first line only
-    std::istringstream stream(content);
-    std::string line;
-    if (!std::getline(stream, line)) {
-      return false;
-    }
-
-    if (line == "max") {
-      value = -1;  // Unlimited
-      return true;
-    }
-
-    value = std::stoll(line);
-    return true;
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("a3c21", TRACE, arangodb::Logger::FIXME)
-        << "failed to read cgroup file '" << path << "': " << ex.what();
-    return false;
-  } catch (...) {
-    LOG_TOPIC("a3c22", TRACE, arangodb::Logger::FIXME)
-        << "failed to read cgroup file '" << path << "': unknown error";
-    return false;
-  }
-}
-
 std::size_t numberOfEffectiveCoresImpl() {
   auto const cgroup = CGroupDetection::getVersion();
   int64_t quota = -1;
   int64_t period = -1;
 
   switch (cgroup) {
-    case CGroupVersion::NONE:
+    case CGroupVersion::NONE: {
+      break;
+    }
     case CGroupVersion::V1: {
       // Try cgroup v1
-      if (readFileValue("/sys/fs/cgroup/cpu/cpu.cfs_quota_us", quota) &&
-          readFileValue("/sys/fs/cgroup/cpu/cpu.cfs_period_us", period)) {
+      if (arangodb::basics::FileUtils::readFileValue(
+              "/sys/fs/cgroup/cpu/cpu.cfs_quota_us", quota) &&
+          arangodb::basics::FileUtils::readFileValue(
+              "/sys/fs/cgroup/cpu/cpu.cfs_period_us", period)) {
         if (quota > 0 && period > 0) {
           return quota / period;
         }

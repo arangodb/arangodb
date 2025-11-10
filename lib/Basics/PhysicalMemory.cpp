@@ -21,6 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/CGroupDetection.h"
+#include "Basics/FileUtils.h"
 #include "Basics/operating-system.h"
 
 #include "Basics/PhysicalMemory.h"
@@ -82,8 +84,42 @@ uint64_t physicalMemoryImpl() {
 #endif
 #endif
 
+uint64_t effectivePhysicalMemoryImpl() {
+  int64_t limit = std::numeric_limits<int64_t>::max();
+  auto const cgroup = CGroupDetection::getVersion();
+
+  switch (cgroup) {
+    case CGroupVersion::NONE: {
+      break;
+    }
+    case CGroupVersion::V1: {
+      if (arangodb::basics::FileUtils::readFileValue(
+              "/sys/fs/cgroup/memory/memory.limit_in_bytes", limit)) {
+        // Check if it's not the "unlimited" value (very large number)
+        const unsigned long long MAX_LIMIT = 0x7FFFFFFFFFFFF000ULL;
+        if (limit > 0 && static_cast<unsigned long long>(limit) < MAX_LIMIT) {
+          return static_cast<uint64_t>(limit);
+        }
+      }
+    }
+    case CGroupVersion::V2: {
+      if (arangodb::basics::FileUtils::readFileValue(
+              "/sys/fs/cgroup/memory.max", limit)) {
+        if (limit > 0) {
+          return static_cast<uint64_t>(limit);
+        }
+      }
+    } break;
+  }
+
+  return physicalMemoryImpl();
+}
+
 struct PhysicalMemoryCache {
-  PhysicalMemoryCache() : cachedValue(physicalMemoryImpl()), overridden(false) {
+  PhysicalMemoryCache()
+      : memory(physicalMemoryImpl()),
+        effectiveMemory(effectivePhysicalMemoryImpl()),
+        overridden(false) {
     std::string value;
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
       if (!value.empty()) {
@@ -91,7 +127,7 @@ struct PhysicalMemoryCache {
           uint64_t v = arangodb::options::fromString<uint64_t>(value);
           if (v != 0) {
             // value in environment variable must always be > 0
-            cachedValue = v;
+            memory = v;
             overridden = true;
           }
         } catch (...) {
@@ -103,7 +139,8 @@ struct PhysicalMemoryCache {
       }
     }
   }
-  uint64_t cachedValue;
+  uint64_t memory;
+  uint64_t effectiveMemory;
   bool overridden;
 };
 
@@ -112,7 +149,11 @@ PhysicalMemoryCache const cache;
 }  // namespace
 
 /// @brief return physical memory size from cache
-uint64_t arangodb::PhysicalMemory::getValue() { return ::cache.cachedValue; }
+uint64_t arangodb::PhysicalMemory::getValue() { return ::cache.memory; }
+
+std::size_t arangodb::PhysicalMemory::getEffectiveValue() {
+  return ::cache.effectiveMemory;
+}
 
 /// @brief return if physical memory size was overridden
 bool arangodb::PhysicalMemory::overridden() { return ::cache.overridden; }

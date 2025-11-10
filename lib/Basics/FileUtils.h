@@ -174,4 +174,6 @@ std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept;
 void initGroups(std::string const& userName, gid_t groupId) noexcept;
 #endif
 
+bool readFileValue(const std::string& path, int64_t& value);
+
 }  // namespace arangodb::basics::FileUtils
