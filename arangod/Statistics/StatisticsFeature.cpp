@@ -900,6 +900,26 @@ void StatisticsFeature::appendMetric(std::string& result,
   absl::StrAppend(&result, ensureWhitespace ? " " : "", val, "\n");
 }
 
+void StatisticsFeature::appendMetricWithMachineId(std::string& result,
+                                                  std::string const& val,
+                                                  std::string const& label,
+                                                  std::string_view machineId,
+                                                  std::string_view globals,
+                                                  bool ensureWhitespace) {
+  auto const& stat = statStrings.at(label);
+  auto const name = stat[0];
+  auto const type = stat[1];
+  auto const help = stat[2];
+
+  metrics::Metric::addInfo(result, name, help, type);
+  std::string labels = absl::StrCat("machine_id=\"", machineId, "\"");
+  if (!globals.empty()) {
+    labels = absl::StrCat(labels, ",", globals);
+  }
+  absl::StrAppend(&result, name, "{", labels, "}",
+                  (ensureWhitespace ? " " : ""), val, "\n");
+}
+
 void StatisticsFeature::toPrometheus(std::string& result, double now,
                                      std::string_view globals,
                                      bool ensureWhitespace) {
@@ -952,14 +972,27 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
                globals, ensureWhitespace);
   appendMetric(result, std::to_string(PhysicalMemory::getValue()),
                "physicalSize", globals, ensureWhitespace);
-  appendMetric(result, std::to_string(PhysicalMemory::getEffectiveValue()),
-               "effectivePhysicalSize", globals, ensureWhitespace);
   appendMetric(result, std::to_string(serverInfo.uptime()), "uptime", globals,
                ensureWhitespace);
   appendMetric(result, std::to_string(NumberOfCores::getValue()), "cores",
                globals, ensureWhitespace);
-  appendMetric(result, std::to_string(NumberOfCores::getEffectiveValue()),
-               "effectiveCores", globals, ensureWhitespace);
+
+  // Add effectiveCores and effectivePhysicalSize with machine_id label
+  {
+    auto instance = ServerState::instance();
+    std::string machineId;
+    if (instance) {
+      machineId = instance->getHost();
+    }
+
+    appendMetricWithMachineId(
+        result, std::to_string(NumberOfCores::getEffectiveValue()),
+        "effectiveCores", machineId, globals, ensureWhitespace);
+
+    appendMetricWithMachineId(
+        result, std::to_string(PhysicalMemory::getEffectiveValue()),
+        "effectivePhysicalSize", machineId, globals, ensureWhitespace);
+  }
   appendMetric(
       result,
       std::to_string(static_cast<std::underlying_type_t<CGroupVersion>>(
