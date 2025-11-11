@@ -314,7 +314,7 @@ def read_definitions(filename, override_branch, cli_args):
     """read test definitions txt"""
     tests = []
     if filename.endswith(".yml"):
-        if filename.find("/") < 0:
+        if filename.find("/") > 0:
             filename = "tests/" + filename
         with open(filename, "r", encoding="utf-8") as filep:
             testfile_definitions = {}
