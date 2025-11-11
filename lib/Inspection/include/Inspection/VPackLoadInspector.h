@@ -116,6 +116,17 @@ struct VPackLoadInspectorImpl
     return {};
   }
 
+  [[nodiscard]] Status value(detail::Blob& v) {
+    if (!_slice.isBinary()) {
+      return {"Expecting type Binary"};
+    }
+    velocypack::ValueLength len;
+    auto* ptr = _slice.getBinary(len);
+    v.data.resize(len);
+    std::memcpy(v.data.data(), ptr, len);
+    return {};
+  }
+
   [[nodiscard]] Status value(velocypack::HashedStringRef& v) {
     static_assert(AllowUnsafeTypes);
     if (!_slice.isString()) {
