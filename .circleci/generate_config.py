@@ -452,7 +452,7 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
 
     }
     if 'timeLimit' in params:
-        job['timeLimit'] = params['timelimit']
+        job['timeLimit'] = params['timeLimit']
 
     if suite_name == "shell_client_aql" and build_config.isNightly and not cluster:
         # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size
