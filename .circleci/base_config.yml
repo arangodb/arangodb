@@ -3,7 +3,7 @@ version: 2.1
 orbs:
   aws-cli: circleci/aws-cli@4.1.1
   aws-ecr: circleci/aws-ecr@9.0.1
-  
+
 parameters:
   enterprise-commit:
     type: string
@@ -84,6 +84,38 @@ parameters:
   config-definitions-branches: #dummy. we don't need this here but are required to.
     type: string
     default: ""
+  # only used by the kafka driver tests
+  kafkaHostList:
+    type: string
+    default: "kafka-1:19092,kafka-2:29092,kafka-3:39092"
+
+
+
+.shared-test-job-parameters: &shared-test-job-parameters
+  suiteName:
+    type: string
+  suites:
+    type: string
+  arangosh_args:
+    type: string
+    default: ""
+  size:
+    type: string
+  extraArgs:
+    type: string
+    default: ""
+  buckets:
+    type: integer
+    default: 1
+  cluster:
+    type: boolean
+  timeLimit:
+    type: integer
+    default: 1800
+  docker_image:
+    type: string
+    default: "<< pipeline.parameters.test-docker-image >>"
+
 
 commands:
   checkout-arangodb:
@@ -132,6 +164,117 @@ commands:
             cd << parameters.destination >>
             git clone git@github.com:arangodb/enterprise.git .
             git reset --hard << pipeline.parameters.enterprise-commit >>
+
+  clone-driver-repo:
+    parameters:
+      driver-git-repo:
+        type: string
+      driver-git-branch:
+        type: string
+    steps:
+      - run:
+          name: Clone driver repository
+          command: |
+            cd ..
+            export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
+            git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
+
+  run-test:
+    parameters:
+      suiteName:
+        type: string
+      suites:
+        type: string
+      cluster:
+        type: boolean
+      arangosh_args:
+        type: string
+      timeLimit:
+        type: integer
+      extraArgs:
+        type: string
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - attach_workspace:
+          at: .
+      - run:
+          name: Enabled coredumps
+          command: ulimit -c unlimited
+      - run:
+          name: Log processes
+          command: |
+            export PS_FORMAT="pid,%cpu,%mem,rss,thcount,oom,oomadj,args"
+            ps | head -n 1
+            echo "======"
+            while true; do
+              sleep 3
+              ps -a | grep "[a]rangod " || true | while read line ; do echo "$(date +"%T") > $line" ; done ;
+              echo "======"
+            done
+          background: true
+      - when:
+          condition:
+            not:
+              equal: [ << pipeline.parameters.sanitizer >>, ""]
+          steps:
+            - run:
+                name: Symbolizer server
+                command: ./utils/llvm-symbolizer-server.py
+                background: true
+      - run:
+          name: Run << parameters.suiteName >> tests
+          # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
+          no_output_timeout: 20m
+          command: |
+            set -x
+            mkdir work
+            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
+              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
+              export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
+              export SAN_MODE=alubsan
+            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
+              # Needed to ignore TSAN errors from OpenMP
+              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-19/lib/libarcher.so
+              export ARCHER_OPTIONS="verbose=1"
+              if ! [ -f ${OMP_TOOL_LIBRARIES} ]; then
+                echo "File ${OMP_TOOL_LIBRARIES} does not exist."
+                exit 1
+              fi
+              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
+              export SAN_MODE=tsan
+            fi
+
+            # check if promtool is available and if so set the environment variable to enable the according tests
+            if command -v promtool &> /dev/null; then
+              export PROMTOOL_PATH=`command -v promtool`
+            fi
+            export TIMELIMIT=<< parameters.timeLimit >>
+            # Note: extraArgs can have references to env variables but also contain double quotes.
+            # So we need to escape any double quotes, and then pass it through eval to resolve the env variables.
+            RAW_EXTRA_ARGS='<< parameters.extraArgs >>'
+            ESCAPED_RAW=${RAW_EXTRA_ARGS//\"/\\\"}
+            eval "EXTRA_ARGS=\"$ESCAPED_RAW\""
+            python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
+              --suiteName '<< parameters.suiteName >>' \
+              --arangosh_args '<< parameters.arangosh_args >>' \
+              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
+              --cluster << parameters.cluster >> \
+              --extraArgs "${EXTRA_ARGS}"
+      - run:
+          name: Copy test results
+          when: always
+          command: |
+            ls -la ./work/
+            mkdir test-results
+            find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/
+      - store_test_results:
+          path: ./test-results/
 
 jobs:
   minimal-checkout:
@@ -255,7 +398,7 @@ jobs:
             ## Cancel any currently running/on_hold workflow with the same name
             if [ -s WF_to_cancel.txt ]; then
               echo "Cancelling the following workflow(s):"
-              cat WF_to_cancel.txt 
+              cat WF_to_cancel.txt
               while read WF_ID;
                 do
                   curl --header "Circle-Token: $CIRCLECI_TOKEN" --request POST https://circleci.com/api/v2/workflow/$WF_ID/cancel
@@ -350,7 +493,7 @@ jobs:
               -DOPENSSL_ROOT_DIR=/opt \
               -DUSE_V8=$BUILD_V8_ARANGOD \
               -DUSE_MINIMAL_DEBUGINFO=$MINIMAL_DEBUGINFO \
-              -DCMAKE_INSTALL_PREFIX=/ 
+              -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
           command: |
@@ -484,129 +627,135 @@ jobs:
 
   run-linux-tests:
     parameters:
-      suiteName:
-        type: string
-      suites:
-        type: string
-      arangosh_args:
-        type: string
-        default: ""
-      size:
-        type: string
-      extraArgs:
-        type: string
-        default: ""
-      buckets:
-        type: integer
-        default: 1
-      cluster:
-        type: boolean
-      timeLimit:
-        type: integer
-        default: 1800
-      driver-git-repo:
-        type: string
-        default: ""
-      driver-git-branch:
-        type: string
-        default: ""
-      init_driver_repo_command:
-        type: string
-        default: ""
-      docker_image:
-        type: string
-        default: "<< pipeline.parameters.test-docker-image >>"
+      <<: *shared-test-job-parameters
     docker:
       - image: << parameters.docker_image >>
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
-      - add_ssh_keys:
-          fingerprints:
-            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
-      - attach_workspace:
-          at: .
-      - run:
-          name: Enabled coredumps
-          command: ulimit -c unlimited
-      - run:
-          name: Log processes
-          command: |
-            export PS_FORMAT="pid,%cpu,%mem,rss,thcount,oom,oomadj,args"
-            ps | head -n 1
-            echo "======"
-            while true; do
-              sleep 3
-              ps -a | grep "[a]rangod " || true | while read line ; do echo "$(date +"%T") > $line" ; done ;
-              echo "======"
-            done
-          background: true
-      - when:
-          condition:
-            not:
-              equal: [ << pipeline.parameters.sanitizer >>, ""]
-          steps:
-            - run:
-                name: Symbolizer server
-                command: ./utils/llvm-symbolizer-server.py
-                background: true
-      - run:
-          name: Run << parameters.suiteName >> tests
-          # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
-          no_output_timeout: 20m
-          command: |
-            set -x
-            mkdir work
-            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
-              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
-              export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
-              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
-              export SAN_MODE=alubsan
-            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
-              # Needed to ignore TSAN errors from OpenMP
-              export OMP_TOOL_LIBRARIES=/usr/lib/llvm-19/lib/libarcher.so
-              export ARCHER_OPTIONS="verbose=1"
-              if ! [ -f ${OMP_TOOL_LIBRARIES} ]; then
-                echo "File ${OMP_TOOL_LIBRARIES} does not exist."
-                exit 1
-              fi
-              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py:ignore_noninstrumented_modules=1"
-              export SAN_MODE=tsan
-            fi
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          extraArgs: << parameters.extraArgs >>
 
-            # check if promtool is available and if so set the environment variable to enable the according tests
-            if command -v promtool &> /dev/null; then
-              export PROMTOOL_PATH=`command -v promtool`
-            fi
-            if test -n "<< parameters.driver-git-repo >>"; then
-              export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
-              ( \
-                cd .. ; \
-                git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>; \
-                cd $(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" ); \
-                 << parameters.init_driver_repo_command >>
-              )
-            fi
-            export TIMELIMIT=<< parameters.timeLimit >>
-            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
-            python3 -u scripts/test/test_launch_controller.py '<< parameters.suites >>' \
-              --suiteName '<< parameters.suiteName >>' \
-              --arangosh_args '<< parameters.arangosh_args >>' \
-              --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
-              --cluster << parameters.cluster >> \
-              --extraArgs '<< parameters.extraArgs >>'
+  run-driver-tests:
+    parameters:
+      <<: *shared-test-job-parameters
+      driver-git-repo:
+        type: string
+      driver-git-branch:
+        type: string
+      init_command:
+        type: string
+    docker:
+      - image: << parameters.docker_image >>
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    steps:
+      - clone-driver-repo:
+          driver-git-repo: << parameters.driver-git-repo >>
+          driver-git-branch: << parameters.driver-git-branch >>
       - run:
-          name: Copy test results
-          when: always
+          name: Initialize driver tests
           command: |
-            ls -la ./work/
-            mkdir test-results
-            find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
-      - store_artifacts:
-          destination: << parameters.suiteName >>
-          path: ./work/
-      - store_test_results:
-          path: ./test-results/
+            cd ../$(echo << parameters.driver-git-repo >>|sed -e "s;.*/;;" -e "s;.git;;" )
+            << parameters.init_command >>
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          extraArgs: << parameters.extraArgs >>
+
+  kafka-driver-tests:
+    parameters:
+      <<: *shared-test-job-parameters
+      driver-git-repo:
+        type: string
+      driver-git-branch:
+        type: string
+    docker:
+      - image: << parameters.docker_image >>
+      - image: docker.io/bitnamilegacy/kafka:3.9
+        name: kafka-1
+        environment:
+          - BITNAMI_DEBUG: true
+          - ALLOW_PLAINTEXT_LISTENER: "yes"
+          - KAFKA_CFG_NODE_ID: 1
+          - KAFKA_CFG_PROCESS_ROLES: controller,broker
+          - KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://0.0.0.0:19092,CONTROLLER://:9093
+          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+          - KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
+          - KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-1:9092,PLAINTEXT_HOST://kafka-1:19092"
+          - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+          - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - image: docker.io/bitnamilegacy/kafka:3.9
+        name: kafka-2
+        environment:
+          - BITNAMI_DEBUG: true
+          - ALLOW_PLAINTEXT_LISTENER: "yes"
+          - KAFKA_CFG_NODE_ID: 2
+          - KAFKA_CFG_PROCESS_ROLES: controller,broker
+          - KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://0.0.0.0:29092,CONTROLLER://:9093
+          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+          - KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
+          - KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-2:9092,PLAINTEXT_HOST://kafka-2:29092"
+          - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+          - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - image: docker.io/bitnamilegacy/kafka:3.9
+        name: kafka-3
+        environment:
+          - BITNAMI_DEBUG: true
+          - ALLOW_PLAINTEXT_LISTENER: "yes"
+          - KAFKA_CFG_NODE_ID: 3
+          - KAFKA_CFG_PROCESS_ROLES: controller,broker
+          - KAFKA_CFG_LISTENERS: PLAINTEXT://:9092,PLAINTEXT_HOST://0.0.0.0:39092,CONTROLLER://:9093
+          - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093"
+          - KAFKA_KRAFT_CLUSTER_ID: abcdefghijklmnopqrstuv
+          - KAFKA_CFG_CONTROLLER_LISTENER_NAMES: CONTROLLER
+          - KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://kafka-3:9092,PLAINTEXT_HOST://kafka-3:39092"
+          - KAFKA_CFG_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+          - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - image: docker.io/confluentinc/cp-schema-registry:7.5.2
+        name: kafka-schema-registry
+        environment:
+          - SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=PLAINTEXT://kafka-1:19092,PLAINTEXT://kafka-2:29092,PLAINTEXT://kafka-3:39092
+          - SCHEMA_REGISTRY_HOST_NAME=kafka-schema-registry
+    resource_class: << parameters.size >>
+    parallelism: << parameters.buckets >>
+    environment:
+      - KAFKA_HOST_LIST=kafka-1:19092,kafka-2:29092,kafka-3:39092
+      - KAFKA_SCHEMA_HOST=http://kafka-schema-registry:8081
+    steps:
+      - clone-driver-repo:
+          driver-git-repo: << parameters.driver-git-repo >>
+          driver-git-branch: << parameters.driver-git-branch >>
+      - run:
+          name: Wait for Kafka brokers to be ready
+          command: |
+            wait_server() {
+                # shellcheck disable=SC2091
+                until $(/usr/bin/nc -z $1 $2); do
+                    printf '.'
+                    sleep 1
+                done
+            }
+            wait_server kafka-1 9092
+            wait_server kafka-2 9092
+            wait_server kafka-3 9092
+      - run-test:
+          suiteName: << parameters.suiteName >>
+          suites: << parameters.suites >>
+          cluster: << parameters.cluster >>
+          arangosh_args: << parameters.arangosh_args >>
+          timeLimit: << parameters.timeLimit >>
+          extraArgs: << parameters.extraArgs >>
 
   run-hotbackup-tests:
     docker:
@@ -740,7 +889,7 @@ jobs:
       - run:
           name: Prepare container
           command: |
-            mkdir -p /root/workspace/ 
+            mkdir -p /root/workspace/
             mkdir -p /root/project/
       - attach_workspace:
           at: "/root/workspace/"
@@ -761,13 +910,13 @@ jobs:
           name: Run cppcheck
           command: |
             ln -s /root/workspace/build/ /root/project/
-            cd /root/project/ 
+            cd /root/project/
             utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json
       - run:
           name: Format result
           when: always
           command: |
-            cd /root/project/ 
+            cd /root/project/
             sed -i 's/\/root\/project\/\/root\/project\///g' cppcheck.xml
             sed -i 's/\/root\/project\///g' cppcheck.xml
             cppcheck_junit cppcheck.xml cppcheck-junit.xml

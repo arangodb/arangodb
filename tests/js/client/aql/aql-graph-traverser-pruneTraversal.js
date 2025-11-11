@@ -1,5 +1,5 @@
 /* jshint esnext: true */
-/* global fail */
+/* global fail, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -279,51 +279,53 @@ function pruneTraversalSuite() {
       }
     };
 
-    testObj[`testPruningWithV8Function${name}`] = () => {
-      const q = `
+    if (SYS_IS_V8_BUILD) {
+      testObj[`testPruningWithV8Function${name}`] = () => {
+        const q = `
                 WITH ${vn}, ${en}
                 FOR v IN 1 OUTBOUND {"_id": "${vn}/1"} ${en}
                 PRUNE V8(LENGTH("ServerShouldDenyThis"))
                 RETURN v
               `;
 
-      try {
-        db._query(q);
-        fail();
-      } catch (err) {
-        // It is forbidden to execute V8 inside PRUNE statements
-        assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
-      }
-    };
+        try {
+          db._query(q);
+          fail();
+        } catch (err) {
+          // It is forbidden to execute V8 inside PRUNE statements
+          assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
+        }
+      };
 
-    testObj[`testPostFilterWithV8Function${name}`] = () => {
-      const q = `
+      testObj[`testPostFilterWithV8Function${name}`] = () => {
+        const q = `
                 WITH ${vn}, ${en}
                 FOR v IN 1 OUTBOUND {"_id": "${vn}/1"} ${en}
                 FILTER V8(LENGTH(v._key))
                 RETURN v
               `;
 
-      // Query planning phase:
-      const debug = explainer.debug({
-        query: q,
-        bindVars: {},
-        options: {}
-      });
-      const nodes = planNodes(debug.explain);
-      // Make sure we still have the FilterNode and CalculationNode
-      assertTrue(nodes.includes('FilterNode'));
-      assertTrue(nodes.includes('CalculationNode'));
+        // Query planning phase:
+        const debug = explainer.debug({
+          query: q,
+          bindVars: {},
+          options: {}
+        });
+        const nodes = planNodes(debug.explain);
+        // Make sure we still have the FilterNode and CalculationNode
+        assertTrue(nodes.includes('FilterNode'));
+        assertTrue(nodes.includes('CalculationNode'));
 
-      // Query execution phase:
-      // While in the "testPruningWithV8..." tests, we need to fail hard and abort
-      // execution, in this case we're allowed to proceed with our query. The difference
-      // is that we will not optimize the filter into the TraversalNode.
-      const res = db._query(q, {}, {count: true});
+        // Query execution phase:
+        // While in the "testPruningWithV8..." tests, we need to fail hard and abort
+        // execution, in this case we're allowed to proceed with our query. The difference
+        // is that we will not optimize the filter into the TraversalNode.
+        const res = db._query(q, {}, {count: true});
 
-      // We do not care about the result, will be 0 anyway.
-      assertEqual(res.count(), 0);
-    };
+        // We do not care about the result, will be 0 anyway.
+        assertEqual(res.count(), 0);
+      };
+    }
   };
 
   const testObj = {
