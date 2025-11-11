@@ -51,16 +51,6 @@ class CircleCIGenerator(OutputGenerator):
             return ResourceSize.MEDIUM_PLUS
         return None
 
-    # Job-specific time limit overrides
-    # chaos: Nightly runs execute 32 test combinations, each taking ~5 minutes
-    def _get_time_limit_override(
-        self, job_name: str, build_config: BuildConfig
-    ) -> Optional[int]:
-        """Get time limit override (in seconds) for specific jobs."""
-        if job_name == "chaos" and build_config.nightly:
-            return 32 * 5 * 60  # 32 combinations × 5 min each = 9600 seconds
-        return None
-
     # ========================================================================
 
     def __init__(
@@ -664,10 +654,9 @@ class CircleCIGenerator(OutputGenerator):
         if bucket_count and bucket_count != 1:
             job_dict["buckets"] = bucket_count
 
-        # Apply time limit overrides
-        time_limit = self._get_time_limit_override(job.name, build_config)
-        if time_limit:
-            job_dict["timeLimit"] = time_limit
+        # Apply time limit from options
+        if job.options.time_limit:
+            job_dict["timeLimit"] = job.options.time_limit
 
         # Add repository info if present
         self._add_repository_config(job_dict, job)

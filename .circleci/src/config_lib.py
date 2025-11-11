@@ -155,6 +155,7 @@ class TestOptions:
     suffix: Optional[str] = None  # Job name suffix for disambiguation
     full: Optional[bool] = None  # Only run in full/nightly builds if True
     coverage: Optional[bool] = None  # Run coverage analysis
+    time_limit: Optional[int] = None  # Time limit in seconds
 
     def __post_init__(self):
         """Validate option values."""
@@ -240,6 +241,7 @@ class TestOptions:
                 kwargs["size"] = ResourceSize.SMALL
 
         # Direct field mappings (only actual TestOptions fields)
+        # YAML uses camelCase for timeLimit
         field_mappings = {
             "priority": "priority",
             "parallelity": "parallelity",
@@ -252,6 +254,7 @@ class TestOptions:
             "suffix": "suffix",
             "full": "full",
             "coverage": "coverage",
+            "timeLimit": "time_limit",  # YAML uses camelCase
         }
 
         for yaml_field, our_field in field_mappings.items():
@@ -286,6 +289,7 @@ class TestOptions:
                 suffix=self.suffix,
                 full=self.full,
                 coverage=self.coverage,
+                time_limit=self.time_limit,
             )
 
         # Helper to merge a single field
@@ -312,6 +316,7 @@ class TestOptions:
             suffix=merge_field(override.suffix, self.suffix),
             full=merge_field(override.full, self.full),
             coverage=merge_field(override.coverage, self.coverage),
+            time_limit=merge_field(override.time_limit, self.time_limit),
         )
 
 
