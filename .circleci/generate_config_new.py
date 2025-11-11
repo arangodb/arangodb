@@ -224,6 +224,10 @@ def load_test_definitions(
     test_defs = []
 
     for filepath in definition_files:
+        # Add "tests/" prefix if path doesn't contain a directory separator
+        if "/" not in filepath:
+            filepath = f"tests/{filepath}"
+
         # Load the test definition file
         test_def = TestDefinitionFile.from_yaml_file(filepath)
 
