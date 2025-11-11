@@ -318,6 +318,7 @@ def read_definitions(filename, override_branch, cli_args):
         print(filename)
         if filename.find("/") < 0:
             filename = "tests/" + filename
+        print(filename)
         with open(filename, "r", encoding="utf-8") as filep:
             testfile_definitions = {}
             config = yaml.safe_load(filep)
