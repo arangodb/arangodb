@@ -125,11 +125,11 @@ class TestGetTestSize:
         )
         assert result == "large"
 
-    def test_asan_small_to_large(self):
+    def test_alubsan_small_to_large(self):
         """Test non-TSAN sanitizers bump small to large."""
-        config = BuildConfig(architecture="x64", enterprise=True, sanitizer="asan")
+        config = BuildConfig(architecture="x64", enterprise=True, sanitizer=Sanitizer.ALUBSAN)
 
-        # Both cluster and single get large for asan
+        # Both cluster and single get large for alubsan
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=True)
             == "large"
@@ -309,9 +309,9 @@ class TestSanitizerOverhead:
                 f"expected {expected_result}, got {result}"
             )
 
-    def test_asan_overhead_matrix(self):
-        """Test ASAN overhead across all size/cluster combinations."""
-        config = BuildConfig(architecture="x64", enterprise=True, sanitizer="asan")
+    def test_alubsan_overhead_matrix(self):
+        """Test ALUBSAN overhead across all size/cluster combinations."""
+        config = BuildConfig(architecture="x64", enterprise=True, sanitizer=Sanitizer.ALUBSAN)
 
         expected = {
             (ResourceSize.SMALL, True): "large",
@@ -331,6 +331,6 @@ class TestSanitizerOverhead:
         for (size, is_cluster), expected_result in expected.items():
             result = ResourceSizer.get_test_size(size, config, is_cluster)
             assert result == expected_result, (
-                f"ASAN {size.value} cluster={is_cluster}: "
+                f"ALUBSAN {size.value} cluster={is_cluster}: "
                 f"expected {expected_result}, got {result}"
             )
