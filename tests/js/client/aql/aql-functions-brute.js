@@ -1,4 +1,6 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
+/* global SYS_IS_V8_BUILD */
+
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -104,8 +106,6 @@ function ahuacatlFunctionsBruteTestSuite () {
     "LAST",
     "NTH",
     "POSITION",
-    "CALL",
-    "APPLY",
     "PUSH",
     "APPEND",
     "POP",
@@ -159,7 +159,11 @@ function ahuacatlFunctionsBruteTestSuite () {
     "PARSE_IDENTIFIER",
     "IS_SAME_COLLECTION"
   ];
-    
+  if (SYS_IS_V8_BUILD) {
+    all.push("CALL");
+    all.push("APPLY");
+  }
+
   // find all functions that have parameters
   var funcs = [];
   all.forEach(function(func) {

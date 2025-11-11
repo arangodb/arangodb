@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertNotEqual */
+/*global assertEqual, assertNotEqual, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -93,10 +93,6 @@ function optimizerRuleTestSuite () {
         [ "FOR doc IN " + cn + " REMOVE doc IN " + cn, [ ["SingletonNode", false], ["IndexNode", false], ["RemoveNode", false] ] ],
         [ "FOR doc IN " + cn + " UPDATE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["UpdateNode", false] ] ],
         [ "FOR doc IN " + cn + " REPLACE doc WITH {} IN " + cn, [ ["SingletonNode", false], ["CalculationNode", false], ["IndexNode", false], ["ReplaceNode", false] ] ],
-        // usage of V8
-        [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
-        [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
         // join
         [ "FOR doc1 IN " + cn + " SORT doc1.indexed FOR doc2 IN " + cn + " FILTER doc2.indexed == doc1.indexed RETURN [doc1, doc2]", [ ["SingletonNode", false], ["JoinNode", true], ["CalculationNode", true], ["ReturnNode", false] ] ],
         // subquery
@@ -110,6 +106,15 @@ function optimizerRuleTestSuite () {
         [ "FOR r IN 1..3 OUTBOUND K_PATHS '" + cn + "/test1' TO '" + cn + "/test2' " + en + " FILTER LENGTH(r) > 10 RETURN r", [ ["SingletonNode", false], ["EnumeratePathsNode", true], ["CalculationNode", true], ["FilterNode", true], ["ReturnNode", false] ] ],
       ];
 
+      if (SYS_IS_V8_BUILD) {
+        queries = queries.concat([
+          // usage of V8
+          [ "FOR doc IN " + cn + " FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["EnumerateCollectionNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ],
+          [ "FOR doc IN " + cn + " FILTER doc._key == V8('123') LIMIT 3 RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["LimitNode", false], ["ReturnNode", false] ] ],
+          [ "FOR doc IN " + cn + " FILTER doc._key == 'fuchs' FILTER doc.a == V8('123') RETURN doc", [ ["SingletonNode", false], ["IndexNode", false], ["CalculationNode", false], ["FilterNode", false], ["ReturnNode", false] ] ]
+        ]);
+      }
+      
       queries.forEach(function(query) {
         let [qs, expectedNodes] = query;
 

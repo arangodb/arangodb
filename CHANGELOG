@@ -1,6 +1,19 @@
 devel
 -----
 
+* Fix Swagger UI missing generated data.
+
+* Updated ArangoDB Starter to v0.19.14.
+
+* Ignore flag --cluster.upgrade on DBservers, since it only concerns coordinators.
+  This fixes a clash with --database.auto-upgrade which can lead to problems during
+  an upgrade on DBservers.
+
+* Rebuilt included rclone v1.65.2 with go1.24.9 and non-vulnerable
+  dependencies.
+
+* Update tzdata as of 05.11.2025.
+
 * Updated bundled version of Snappy library to 1.2.2. It fixes an ALUBSAN
   issue found in ARM64.
 
