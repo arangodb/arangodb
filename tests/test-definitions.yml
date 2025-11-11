@@ -699,6 +699,8 @@
       type: cluster
       priority: 9600
       size: large
+      # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
+      timeLimit: 9600
     args:
       dumpAgencyOnError: true
       skipNightly: false

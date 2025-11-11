@@ -17,6 +17,7 @@ tests:
     options:
       priority: 500
       type: cluster
+      timeLimit: 19200
     args:
       extremeVerbosity: true
       tinkerpopGraphType: simple
@@ -28,6 +29,7 @@ tests:
       type: single
       size: medium
       suffix: complex
+      timeLimit: 19200
     args:
       extremeVerbosity: true
       tinkerpopGraphType: complex
@@ -38,6 +40,7 @@ tests:
       type: cluster
       size: large
       suffix: complex
+      timeLimit: 19200
     args:
       extremeVerbosity: true
       tinkerpopGraphType: complex
