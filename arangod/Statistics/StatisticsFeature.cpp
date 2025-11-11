@@ -531,6 +531,7 @@ auto const statBuilder = makeStatBuilder({
      new arangodb_server_statistics_effective_physical_memory()},
     {"cores", new arangodb_server_statistics_cpu_cores()},
     {"effectiveCores", new arangodb_server_statistics_effective_cpu_cores()},
+    {"cgroupVersion", new arangodb_server_statistics_cpu_cgroup_version()},
     {"userPercent", new arangodb_server_statistics_user_percent()},
     {"systemPercent", new arangodb_server_statistics_system_percent()},
     {"idlePercent", new arangodb_server_statistics_idle_percent()},
@@ -997,7 +998,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
       result,
       std::to_string(static_cast<std::underlying_type_t<CGroupVersion>>(
           CGroupDetection::getVersion())),
-      "CGroupVersion", globals, ensureWhitespace);
+      "cgroupVersion", globals, ensureWhitespace);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
   if (cpuUsage.isEnabled()) {
