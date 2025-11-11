@@ -68,7 +68,7 @@ parameters:
     default: "main"
   config-definitions:
     type: string
-    default: tests/test-definitions.yml
+    default: test-definitions.yml
   config-definitions-branches:
     type: string
     default: ""
