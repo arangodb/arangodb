@@ -25,7 +25,6 @@ class PlatformFlags:
     """Platform-specific flags for filtering tests."""
 
     is_windows: bool = False
-    is_mac: bool = False
     is_arm: bool = False
     is_coverage: bool = False
 
