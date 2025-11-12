@@ -713,6 +713,7 @@ Result RocksDBVectorIndex::ingestVectors(
               rocksdbEntryValue.encodedValue =
                   std::vector<uint8_t>(ptr, ptr + _faissIndex->code_size);
               rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
+
               return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
             } else {
               // Store raw encoded values directly for better performance

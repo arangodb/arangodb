@@ -273,6 +273,7 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
     auto storedValuesSlice = value.storedValues.slice();
 
     // This should not happen...
+    TRI_ASSERT(!storedValuesSlice.isNone());
     if (storedValuesSlice.isNone()) {
       LOG_TOPIC("c42a1", ERR, Logger::ENGINES)
           << "Document " << id

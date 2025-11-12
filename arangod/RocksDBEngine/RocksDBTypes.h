@@ -30,6 +30,7 @@
 #include "Inspection/Blob.h"
 
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 namespace arangodb {
@@ -137,16 +138,8 @@ struct RocksDBVectorIndexEntryValue {
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
-    if constexpr (Inspector::isLoading) {
-      auto encodedBlob = inspection::blob(x.encodedValue);
-      return f.object(x).fields(
-          f.field("encodedValue", encodedBlob),
-          f.field("storedValues", x.storedValues));
-    } else {
-      return f.object(x).fields(
-          f.field("encodedValue", inspection::blob(x.encodedValue)),
-          f.field("storedValues", x.storedValues));
-    }
+    auto pair = std::make_pair(inspection::blob(x.encodedValue), x.storedValues);
+    return f.apply(pair);
   }
 };
 
