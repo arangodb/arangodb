@@ -670,10 +670,9 @@ class CircleCIGenerator(OutputGenerator):
         """Get deployment string for job name."""
         if deployment_type == DeploymentType.CLUSTER:
             return f"cluster{'-repl2' if replication_version == 2 else ''}"
-        elif deployment_type == DeploymentType.SINGLE:
+        if deployment_type == DeploymentType.SINGLE:
             return "single"
-        else:
-            return "mixed"
+        return "mixed"
 
     def _get_bucket_count(self, job: TestJob) -> Optional[int]:
         """Get bucket count from job definition (before applying overrides)."""

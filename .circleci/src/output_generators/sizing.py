@@ -66,13 +66,12 @@ class ResourceSizer:
 
         if arch == "aarch64":
             return cls.AARCH64_SIZES[size]
-        elif arch == "x64":
+        if arch == "x64":
             return cls.X86_SIZES[size]
-        else:
-            raise ValueError(
-                f"Unknown architecture: {arch}. "
-                f"Valid options: x64, aarch64 (or aliases: amd64, x86_64, arm64)"
-            )
+        raise ValueError(
+            f"Unknown architecture: {arch}. "
+            f"Valid options: x64, aarch64 (or aliases: amd64, x86_64, arm64)"
+        )
 
     @classmethod
     def _apply_sanitizer_overhead(
@@ -97,8 +96,7 @@ class ResourceSizer:
         if size == ResourceSize.SMALL:
             if sanitizer == Sanitizer.TSAN and is_cluster:
                 return ResourceSize.XLARGE
-            else:
-                return ResourceSize.LARGE
+            return ResourceSize.LARGE
 
         # Medium/large tests get bumped to xlarge for all sanitizers
         if size in (ResourceSize.MEDIUM, ResourceSize.MEDIUM_PLUS, ResourceSize.LARGE):

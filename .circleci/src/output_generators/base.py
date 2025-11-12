@@ -6,11 +6,11 @@ then produce output in a specific format (CircleCI YAML, Jenkins launcher format
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Dict, Optional
+from typing import Any, List, Optional
 from dataclasses import dataclass, field
 
-from ..config_lib import TestJob, TestDefinitionFile, BuildConfig
-from ..filters import FilterCriteria, PlatformFlags
+from ..config_lib import TestJob, TestDefinitionFile
+from ..filters import FilterCriteria, filter_jobs
 
 
 @dataclass
@@ -79,7 +79,6 @@ class OutputGenerator(ABC):
         Returns:
             Generated output in the appropriate format
         """
-        pass
 
     @abstractmethod
     def write_output(self, output: Any, destination: str) -> None:
@@ -90,7 +89,6 @@ class OutputGenerator(ABC):
             output: Output from generate()
             destination: Where to write (filename or special value like '-' for stdout)
         """
-        pass
 
     def filter_jobs(self, test_def: TestDefinitionFile) -> List[TestJob]:
         """
@@ -104,6 +102,4 @@ class OutputGenerator(ABC):
         Returns:
             Filtered list of jobs
         """
-        from ..filters import filter_jobs
-
         return filter_jobs(test_def, self.config.filter_criteria)

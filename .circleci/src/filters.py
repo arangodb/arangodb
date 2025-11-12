@@ -154,7 +154,7 @@ def filter_jobs(
         Filtered list of TestJob objects
     """
     filtered = []
-    for job_name, job in test_def.jobs.items():
+    for job in test_def.jobs.values():
         if should_include_job(job, criteria):
             filtered.append(job)
 

@@ -379,7 +379,7 @@ class TestArguments:
                 if key == "arangosh_args":
                     # Handle arangosh_args separately
                     continue
-                elif key == "moreArgv":
+                if key == "moreArgv":
                     # Special case: moreArgv value is appended directly without --moreArgv prefix
                     extra_args.append(str(value))
                 elif key.startswith("extraArgs:"):
@@ -762,7 +762,7 @@ class TestDefinitionFile:
         Returns:
             TestDefinitionFile instance
         """
-        with open(filepath, "r") as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
 
         return cls.from_dict(data)
@@ -968,4 +968,3 @@ class BuildConfig:
     def __post_init__(self):
         """Validate build configuration."""
         # Validation is handled by Architecture and Sanitizer enums
-        pass
