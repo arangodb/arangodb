@@ -107,11 +107,13 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     this.allDatabases = [];
     this.allDumps = [];
     if (this.firstRunOptions.skipServerJS) {
+      print('asnoteuh')
       // TODO: what about 550,900,960 - QA-703?
       if (rtaArgs.length === 2) {
-        rtaArgs[1] += ",070,071,801,550,900,960";
+        rtaArgs[1] += ",070,071,801";//,550,900,960";
       } else {
-        rtaArgs = ['--skip', "070,071,801,550,900,960"].concat(rtaArgs);
+        rtaArgs = ['--skip', "070,071,801"//,550,900,960"
+                  ].concat(rtaArgs);
       }
       rtaArgs = [
         '--testFoxx', 'false'
@@ -934,7 +936,8 @@ function dumpMixedClusterSingle (options) {
                                     options, options, 'dump_mixed_cluster_single',
                                     tstFiles, function(){}, [
                                       // BTS-1617: disable 404 for now
-                                      '--skip', '404,550,900,960' ], true);
+                                      '--skip', '404'//,550,900,960'
+                                    ], true);
 }
 
 function dumpMixedSingleCluster (options) {
