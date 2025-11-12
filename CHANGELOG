@@ -1,6 +1,9 @@
 devel
 -----
 
+* COR-5: Added resource metrics effective CPU cores, effective physical
+  memory, and cgroup version detection.
+
 * Fix Swagger UI missing generated data.
 
 * Updated ArangoDB Starter to v0.19.14.
