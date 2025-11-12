@@ -156,6 +156,7 @@ class SingleServerProvider {
 
   SingleServerNeighbourProvider<Step> _neighbours;
   std::vector<SingleServerNeighbourProvider<Step>> _neighboursStack;
+  aql::Ast* _ast = nullptr;  // ast from TraversalExecutor
 };
 }  // namespace graph
 }  // namespace arangodb

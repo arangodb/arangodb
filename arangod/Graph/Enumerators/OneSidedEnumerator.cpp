@@ -130,7 +130,8 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     auto& step = _interior.getStepReference(posPrevious);
     auto stepsAdded = _provider.expandToNextBatch(
         step, posPrevious, [&](Step n) -> void { _queue.append({n}); });
-    if (not stepsAdded) {  // means that NextBatch iterator is exhausted
+    if (not stepsAdded) {  // means that nothing was added to the queue in
+                           // expandToNextBatch
       _queue.pop();        // now we can pop NextBatch item savely
     }
     return;

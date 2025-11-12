@@ -239,6 +239,9 @@ auto SingleServerProvider<Step>::addExpansionIterator(
                                 aql::ExecutionBlock::DefaultBatchSize, false);
   auto& last = _neighboursStack.back();
   last.rearm(step, _stats);
+  if (_ast != nullptr) {
+    last.prepareIndexExpressions(_ast);
+  }
   callback();
 }
 
@@ -293,6 +296,7 @@ EdgeType SingleServerProvider<Step>::getEdgeIdRef(
 template<class Step>
 void SingleServerProvider<Step>::prepareIndexExpressions(aql::Ast* ast) {
   _neighbours.prepareIndexExpressions(ast);
+  _ast = ast;
 }
 
 template<class Step>
