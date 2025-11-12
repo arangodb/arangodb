@@ -442,7 +442,6 @@ DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
 DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
               "Global number of databases");
 
-
 ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
@@ -1961,6 +1960,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _planProt.isValid = true;
   }
 
+  updateMetadataMetrics();
+
   _clusterFeature.addDirty(changeSet.dbs);
 
   {
@@ -2778,6 +2779,39 @@ Result ClusterInfo::getShardStatisticsGlobalByServer(
   builder.close();
 
   return {};
+}
+
+/// @brief update metadata metrics (number of databases, collections, shards)
+/// This should only be called on coordinators, and should be called while
+/// holding the _planProt write lock (or after data has been swapped in
+/// loadPlan)
+void ClusterInfo::updateMetadataMetrics() {
+  // Only update on coordinators
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+
+  uint64_t numDatabases = _currentDatabases.size();
+
+  uint64_t numCollections = 0;
+  uint64_t numShards = 0;
+  for (auto const& [dbName, collections] : _currentCollections) {
+    if (collections) {
+      numCollections += collections->size();
+    }
+  }
+
+  for (auto const& [collId, shardList] : _shards) {
+    if (shardList) {
+      numShards += shardList->size();
+    }
+  }
+
+  _metadataMetrics->numberOfDatabases.store(numDatabases,
+                                            std::memory_order_relaxed);
+  _metadataMetrics->numberOfCollections.store(numCollections,
+                                              std::memory_order_relaxed);
+  _metadataMetrics->numberOfShards.store(numShards, std::memory_order_relaxed);
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry
@@ -6274,7 +6308,8 @@ auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
 
 ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
     : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
-      numberOfCollections(metrics.add(arangodb_metadata_number_of_collections{})),
+      numberOfCollections(
+          metrics.add(arangodb_metadata_number_of_collections{})),
       numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
   // TODO We should expose these on a single server as well, but that can't
   //      happen in the ClusterInfo.

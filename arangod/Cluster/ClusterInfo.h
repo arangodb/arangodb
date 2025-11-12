@@ -521,6 +521,11 @@ class ClusterInfo final {
   /// @brief get shard statistics for all databases, split by servers.
   Result getShardStatisticsGlobalByServer(VPackBuilder& builder) const;
 
+  /// @brief update metadata metrics (number of databases, collections, shards)
+  /// This should only be called on coordinators while holding _planProt write
+  /// lock
+  void updateMetadataMetrics();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ask about a collection in current. This returns information about
   /// all shards in the collection.
