@@ -137,7 +137,8 @@ struct RocksDBVectorIndexEntryValue {
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
-    auto pair = std::make_pair(inspection::blob((x.encodedValue)), std::ref(x.storedValues));
+    auto pair = std::make_pair(inspection::blob((x.encodedValue)),
+                               std::ref(x.storedValues));
     return f.apply(pair);
   }
 };
