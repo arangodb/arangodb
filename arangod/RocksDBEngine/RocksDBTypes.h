@@ -27,7 +27,7 @@
 #include <rocksdb/slice.h>
 #include <velocypack/Builder.h>
 #include <velocypack/SharedSlice.h>
-#include "Inspection/Status.h"
+#include "Inspection/Blob.h"
 
 #include <string_view>
 #include <vector>
@@ -135,42 +135,17 @@ struct RocksDBVectorIndexEntryValue {
     encodedValue.clear();
   }
 
-  void toVelocyPack(velocypack::Builder& builder) const {
-    velocypack::ObjectBuilder ob(&builder);
-    builder.add("encodedValue",
-                velocypack::ValuePair(
-                    reinterpret_cast<uint8_t const*>(encodedValue.data()),
-                    encodedValue.size(), velocypack::ValueType::Binary));
-    builder.add("storedValues", storedValues.slice());
-  }
-
-  void fromVelocyPack(velocypack::Slice slice) {
-    if (slice.hasKey("encodedValue")) {
-      auto encodedSlice = slice.get("encodedValue");
-      if (encodedSlice.isBinary()) {
-        encodedValue = encodedSlice.copyBinary();
-      }
-    }
-
-    if (slice.hasKey("storedValues")) {
-      velocypack::Builder builder;
-      builder.add(slice.get("storedValues"));
-      storedValues = std::move(builder).sharedSlice();
-    } else {
-      storedValues = velocypack::SharedSlice{};
-    }
-  }
-
   template<class Inspector>
   friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
     if constexpr (Inspector::isLoading) {
-      // During load, read directly from the slice
-      x.fromVelocyPack(f.slice());
-      return arangodb::inspection::Status{};
+      auto encodedBlob = inspection::blob(x.encodedValue);
+      return f.object(x).fields(
+          f.field("encodedValue", encodedBlob),
+          f.field("storedValues", x.storedValues));
     } else {
-      // During save, build directly
-      x.toVelocyPack(f.builder());
-      return arangodb::inspection::Status{};
+      return f.object(x).fields(
+          f.field("encodedValue", inspection::blob(x.encodedValue)),
+          f.field("storedValues", x.storedValues));
     }
   }
 };
