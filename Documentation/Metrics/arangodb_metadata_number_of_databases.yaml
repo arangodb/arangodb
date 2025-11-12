@@ -1,7 +1,7 @@
 name: arangodb_metadata_number_of_databases
 introducedIn: "3.12.7"
 help: |
-  Global number of databases
+  Global number of databases.
 unit: number
 type: gauge
 category: Metadata
