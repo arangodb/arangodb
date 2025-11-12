@@ -214,7 +214,7 @@ auto SingleServerProvider<Step>::expandToNextBatch(
     // Note: There is one implementation that used, it, but there is a high
     // probability we do not need it anymore after refactoring is complete.
   }
-  if (count == 0) {
+  if (count == 0 && not last.hasMore(step.getDepth())) {
     _neighboursStack.pop_back();
     return false;
   }
