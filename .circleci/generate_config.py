@@ -314,6 +314,8 @@ def read_definitions(filename, override_branch, cli_args):
     """read test definitions txt"""
     tests = []
     if filename.endswith(".yml"):
+        if filename.find("/") < 0:
+            filename = "tests/" + filename
         with open(filename, "r", encoding="utf-8") as filep:
             testfile_definitions = {}
             config = yaml.safe_load(filep)
@@ -451,9 +453,8 @@ def create_test_job(test, depl_variant, build_config, build_jobs, args, replicat
         "arangosh_args": "A " + json.dumps(sub_arangosh_args),
 
     }
-    if suite_name == "chaos" and build_config.isNightly:
-        # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
-        job["timeLimit"] = 32 * 5 * 60
+    if 'timeLimit' in params:
+        job['timeLimit'] = params['timeLimit']
 
     if suite_name == "shell_client_aql" and build_config.isNightly and not cluster:
         # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size

@@ -15,12 +15,9 @@ RUN apt-get update --fix-missing && \
     ln -s /opt/apache-maven-3.9.11/bin/mvn /usr/bin/ && \
     rm -rf /var/cache/apt/archives /var/lib/apt/lists /tmp/*gz
 
-
-
-RUN git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/arangodb-spark-datasource && \
-  cd arangodb-spark-datasource && \
+RUN git clone -n --depth=1 --filter=tree:0 https://github.com/arangodb/spring-data && \
+  cd spring-data && \
   git checkout && \
   find . -name 'pom.xml' | sort | xargs cat > /tmp/maven_cache_seed && \
   mvn dependency:go-offline  -am -pl && \
-  cd ..; rm -rf arangodb-spark-datasource
-  
+  cd ..; rm -rf spring-data
