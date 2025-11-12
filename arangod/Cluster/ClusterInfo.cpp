@@ -435,6 +435,14 @@ DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
 DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
               "Total memory used by internal cluster info data structures");
 
+DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
+              "Global number of shards");
+DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
+              "Global number of collections");
+DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
+              "Global number of databases");
+
+
 ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
@@ -449,6 +457,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _memoryUsage(metrics.add(arangodb_internal_cluster_info_memory_usage{})),
       _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
       _lcTimer(metrics.add(arangodb_load_current_runtime{})),
+      _metadataMetrics(std::nullopt),
       _resourceMonitor(_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
@@ -505,6 +514,10 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
 #else
   TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #endif
+
+  if (ServerState::instance()->isCoordinator()) {
+    _metadataMetrics.emplace(metrics);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6257,6 +6270,16 @@ auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
 
   TRI_ASSERT(it->second != nullptr);
   return it->second;
+}
+
+ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
+    : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
+      numberOfCollections(metrics.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+  // TODO We should expose these on a single server as well, but that can't
+  //      happen in the ClusterInfo.
+  TRI_ASSERT(ServerState::instance()->isCoordinator())
+      << "ClusterInfo::MetadataMetrics should be exposed only on a coordinator";
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(

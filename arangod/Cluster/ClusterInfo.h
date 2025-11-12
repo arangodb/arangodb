@@ -1115,6 +1115,16 @@ class ClusterInfo final {
   /// @brief histogram for loadCurrent runtime
   metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
 
+  struct MetadataMetrics {
+    metrics::Gauge<std::uint64_t>& numberOfShards;
+    metrics::Gauge<std::uint64_t>& numberOfCollections;
+    metrics::Gauge<std::uint64_t>& numberOfDatabases;
+
+    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+  };
+  // Report these only on Coordinators.
+  std::optional<MetadataMetrics> _metadataMetrics;
+
   ClusterInfoResourceMonitor _resourceMonitor;
 
   // The servers, first all, we only need Current here:

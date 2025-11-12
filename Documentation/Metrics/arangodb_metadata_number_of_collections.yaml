@@ -1,0 +1,14 @@
+name: arangodb_metadata_number_of_collections
+introducedIn: "3.12.7"
+help: |
+  Global number of collections
+unit: number
+type: gauge
+category: Metadata
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Total number of collections in the cluster. This includes system collections.
+troubleshoot: |
+  TODO

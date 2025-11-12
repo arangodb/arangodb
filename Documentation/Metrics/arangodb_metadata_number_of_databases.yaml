@@ -1,0 +1,14 @@
+name: arangodb_metadata_number_of_databases
+introducedIn: "3.12.7"
+help: |
+  Global number of databases
+unit: number
+type: gauge
+category: Metadata
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Total number of databases in the cluster.
+troubleshoot: |
+  TODO

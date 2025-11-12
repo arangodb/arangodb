@@ -1,0 +1,17 @@
+name: arangodb_metadata_number_of_shards
+introducedIn: "3.12.7"
+help: |
+  Global number of shards
+unit: number
+type: gauge
+category: Metadata
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Total number of shards in the cluster.
+troubleshoot: |
+  TODO
+
+
+  TODO should we also report a global number of out-of-sync shards, by comparing Plan+Current?
