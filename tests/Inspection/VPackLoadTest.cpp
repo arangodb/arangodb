@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include <velocypack/Builder.h>
+#include <velocypack/Value.h>
 
 #include "Inspection/VPack.h"
 #include "Inspection/VPackLoadInspector.h"
@@ -85,6 +86,18 @@ TEST_F(VPackLoadInspectorTest, load_string) {
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ("foobar", x);
+}
+
+TEST_F(VPackLoadInspectorTest, store_blob) {
+  const std::vector<uint8_t> data = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+
+  builder.add(VPackValuePair(data.data(), data.size()));
+  VPackLoadInspector inspector{builder};
+
+  std::vector<uint8_t> x;
+  auto result = inspector.apply(inspection::blob(x));
+  EXPECT_TRUE(result.ok());
+  EXPECT_EQ(data, x);
 }
 
 TEST_F(VPackLoadInspectorTest, load_object) {
