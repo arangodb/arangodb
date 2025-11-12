@@ -70,7 +70,6 @@ std::size_t numberOfEffectiveCoresImpl() {
       break;
     }
     case CGroupVersion::V1: {
-      // Try cgroup v1
       if (arangodb::basics::FileUtils::readFileValue(
               "/sys/fs/cgroup/cpu/cpu.cfs_quota_us", quota) &&
           arangodb::basics::FileUtils::readFileValue(
@@ -80,9 +79,9 @@ std::size_t numberOfEffectiveCoresImpl() {
         }
         // TODO Handle errors
       }
+      break;
     }
     case CGroupVersion::V2: {
-      // Try cgroup v2 first
       try {
         std::string content =
             arangodb::basics::FileUtils::slurp("/sys/fs/cgroup/cpu.max");
@@ -96,13 +95,14 @@ std::size_t numberOfEffectiveCoresImpl() {
         }
         // Handler errors
       } catch (std::exception const& ex) {
-        LOG_TOPIC("a3c23", TRACE, arangodb::Logger::FIXME)
+        LOG_TOPIC("a3c23", ERR, arangodb::Logger::FIXME)
             << "failed to read cgroup v2 cpu.max file: " << ex.what();
       } catch (...) {
-        LOG_TOPIC("a3c24", TRACE, arangodb::Logger::FIXME)
+        LOG_TOPIC("a3c24", ERR, arangodb::Logger::FIXME)
             << "failed to read cgroup v2 cpu.max file: unknown error";
       }
-    } break;
+      break;
+    }
   }
 
   return numberOfCoresImpl();

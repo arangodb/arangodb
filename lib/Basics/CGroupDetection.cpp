@@ -43,18 +43,14 @@ CGroupVersion detectCGroupVersionImpl() {
   return CGroupVersion::NONE;
 }
 
-struct CGroupVersionCache {
-  CGroupVersionCache() : cachedCGroupVersion(detectCGroupVersionImpl()) {}
-
-  CGroupVersion cachedCGroupVersion;
-};
-
-CGroupVersionCache const cache;
-
 }  // namespace
 
-/// @brief return cached cgroup version
-CGroupVersion getVersion() { return cache.cachedCGroupVersion; }
+/// @brief return cached cgroup version using Meyer's Singleton pattern
+/// to avoid static initialization order fiasco
+CGroupVersion getVersion() {
+  static CGroupVersion cachedVersion = detectCGroupVersionImpl();
+  return cachedVersion;
+}
 
 }  // namespace CGroupDetection
 }  // namespace arangodb
