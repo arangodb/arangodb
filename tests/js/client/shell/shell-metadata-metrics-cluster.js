@@ -82,8 +82,6 @@ function metadataMetricsSuite() {
         endpoints.forEach((ep) => {
             let numDatabases = getMetric(ep, 'arangodb_metadata_number_of_databases');
             db._useDatabase("_system");
-            db._databases();
-            print(db._databases());
             assertEqual(1, numDatabases, "Should have 1 database (_system)");
 
             let numCollections = getMetric(ep, 'arangodb_metadata_number_of_collections');
