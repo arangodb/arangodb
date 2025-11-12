@@ -784,17 +784,16 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
     }
   }
 
-  // 4. push continuations
-  _edgeRequestsStack.emplace_back(std::move(continuation_requests));
+  // only in this case the callback is not executed and we are sure that no more
+  // edges are coming from a continuation request: this means that no additional
+  // steps are added to the queue. only then can we pop the expansion iterator
+  // from the queue by returning false here
+  if (continuation_requests.size() == 0 && connectedEdges.size() == 0) {
+    return false;
+  }
 
-  // TODO check if we need to add connectedEdges to cache
-  // (_vertexConnectedEdges) as well (is done in non-batched version, see
-  // fetchEdgesFromEngines fn)
-
-  // 5. callback
-  auto stepsAdded = false;
+  // 4. callback
   for (auto const& [edge, to] : connectedEdges) {
-    stepsAdded = true;
     bool vertexCached = _opts.getCache()->isVertexCached(to);
     bool edgesCached = _vertexConnectedEdges.contains(to);
     typename Step::FetchedType fetchedType =
@@ -803,7 +802,14 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
                   _opts.weightEdge(step.getWeight(), readEdge(edge))});
   }
 
-  return stepsAdded;
+  // 5. push continuations
+  _edgeRequestsStack.emplace_back(std::move(continuation_requests));
+
+  // TODO check if we need to add connectedEdges to cache
+  // (_vertexConnectedEdges) as well (is done in non-batched version, see
+  // fetchEdgesFromEngines fn)
+
+  return true;
 }
 
 template<class StepImpl>
