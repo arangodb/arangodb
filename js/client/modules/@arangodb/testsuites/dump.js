@@ -424,7 +424,7 @@ function dumpEncrypted (options) {
   };
 
   let dumpOptions = _.clone(options);
-  dumpAuthOpts.extraArgs['experimental-vector-index'] = true;
+  dumpOptions.extraArgs['experimental-vector-index'] = true;
   dumpOptions.encrypted = true;
   dumpOptions.compressed = true; // Should be overruled by 'encrypted'
   dumpOptions.dbServers = 3;
@@ -449,7 +449,7 @@ function dumpNonParallel (options) {
   dumpOptions.useParallelDump = false;
   dumpOptions.splitFiles = false;
   dumpOptions.dbServers = 3;
-  dumpAuthOpts.extraArgs['experimental-vector-index'] = true;
+  dumpOptions.extraArgs['experimental-vector-index'] = true;
 
   let tstFiles = {
     dumpSetup: 'dump-setup' + c.cluster + '.js',
