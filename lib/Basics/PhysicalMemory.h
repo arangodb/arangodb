@@ -31,7 +31,7 @@ namespace PhysicalMemory {
 /// @brief return system's physical memory
 uint64_t getValue();
 
-/// @brief return number of effective CPU cores
+/// @brief return effective available memory
 /// value will be affected by limitations of docker,
 /// cGroupV1 and cGroupV2
 std::size_t getEffectiveValue();

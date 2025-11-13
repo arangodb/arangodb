@@ -803,7 +803,7 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
 }
 #endif
 
-bool readFileValue(const std::string& path, int64_t& value) {
+std::optional<int64_t> readFileValue(const std::string& path) {
   try {
     std::string content = arangodb::basics::FileUtils::slurp(path);
 
@@ -815,20 +815,18 @@ bool readFileValue(const std::string& path, int64_t& value) {
     }
 
     if (line == "max") {
-      value = -1;  // Unlimited
-      return true;
+      return std::numeric_limits<int64_t>::max();
     }
 
-    value = std::stoll(line);
-    return true;
+    return std::stoll(line);
   } catch (std::exception const& ex) {
     LOG_TOPIC("a3c21", TRACE, arangodb::Logger::FIXME)
         << "failed to read cgroup file '" << path << "': " << ex.what();
-    return false;
+    return {};
   } catch (...) {
     LOG_TOPIC("a3c22", TRACE, arangodb::Logger::FIXME)
         << "failed to read cgroup file '" << path << "': unknown error";
-    return false;
+    return {};
   }
 }
 }  // namespace arangodb::basics::FileUtils

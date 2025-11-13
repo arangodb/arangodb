@@ -85,7 +85,6 @@ uint64_t physicalMemoryImpl() {
 #endif
 
 uint64_t effectivePhysicalMemoryImpl() {
-  int64_t limit = std::numeric_limits<int64_t>::max();
   auto const cgroup = CGroupDetection::getVersion();
 
   switch (cgroup) {
@@ -93,20 +92,21 @@ uint64_t effectivePhysicalMemoryImpl() {
       break;
     }
     case CGroupVersion::V1: {
-      if (arangodb::basics::FileUtils::readFileValue(
-              "/sys/fs/cgroup/memory/memory.limit_in_bytes", limit)) {
+      if (auto const limit = arangodb::basics::FileUtils::readFileValue(
+              "/sys/fs/cgroup/memory/memory.limit_in_bytes");
+          limit) {
         // Check if it's not the "unlimited" value (very large number)
-        const unsigned long long MAX_LIMIT = 0x7FFFFFFFFFFFF000ULL;
-        if (limit > 0 && static_cast<unsigned long long>(limit) < MAX_LIMIT) {
-          return static_cast<uint64_t>(limit);
+        if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+          return *limit;
         }
       }
     }
     case CGroupVersion::V2: {
-      if (arangodb::basics::FileUtils::readFileValue(
-              "/sys/fs/cgroup/memory.max", limit)) {
-        if (limit > 0) {
-          return static_cast<uint64_t>(limit);
+      if (auto const limit = arangodb::basics::FileUtils::readFileValue(
+              "/sys/fs/cgroup/memory.max");
+          limit) {
+        if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+          return *limit;
         }
       }
     } break;
