@@ -445,61 +445,61 @@ class CircleCIGenerator(OutputGenerator):
         - Replication version 2 is enabled (additional cluster job)
 
         Returns:
-            List of job definitions
+            List of job definitions (excludes jobs with no suites after filtering)
         """
         result = []
         deployment_type = job.options.deployment_type
 
         if deployment_type == DeploymentType.CLUSTER:
-            result.append(
-                self._create_test_job(
-                    job, DeploymentType.CLUSTER, build_config, build_jobs
-                )
+            job_def = self._create_test_job(
+                job, DeploymentType.CLUSTER, build_config, build_jobs
             )
+            if job_def:
+                result.append(job_def)
             if self.config.test_execution.replication_two:
-                result.append(
-                    self._create_test_job(
-                        job,
-                        DeploymentType.CLUSTER,
-                        build_config,
-                        build_jobs,
-                        replication_version=2,
-                    )
+                job_def = self._create_test_job(
+                    job,
+                    DeploymentType.CLUSTER,
+                    build_config,
+                    build_jobs,
+                    replication_version=2,
                 )
+                if job_def:
+                    result.append(job_def)
         elif deployment_type == DeploymentType.SINGLE:
-            result.append(
-                self._create_test_job(
-                    job, DeploymentType.SINGLE, build_config, build_jobs
-                )
+            job_def = self._create_test_job(
+                job, DeploymentType.SINGLE, build_config, build_jobs
             )
+            if job_def:
+                result.append(job_def)
         elif deployment_type == DeploymentType.MIXED:
-            result.append(
-                self._create_test_job(
-                    job, DeploymentType.MIXED, build_config, build_jobs
-                )
+            job_def = self._create_test_job(
+                job, DeploymentType.MIXED, build_config, build_jobs
             )
+            if job_def:
+                result.append(job_def)
         else:
             # No deployment type - run both
-            result.append(
-                self._create_test_job(
-                    job, DeploymentType.CLUSTER, build_config, build_jobs
-                )
+            job_def = self._create_test_job(
+                job, DeploymentType.CLUSTER, build_config, build_jobs
             )
+            if job_def:
+                result.append(job_def)
             if self.config.test_execution.replication_two:
-                result.append(
-                    self._create_test_job(
-                        job,
-                        DeploymentType.CLUSTER,
-                        build_config,
-                        build_jobs,
-                        replication_version=2,
-                    )
+                job_def = self._create_test_job(
+                    job,
+                    DeploymentType.CLUSTER,
+                    build_config,
+                    build_jobs,
+                    replication_version=2,
                 )
-            result.append(
-                self._create_test_job(
-                    job, DeploymentType.SINGLE, build_config, build_jobs
-                )
+                if job_def:
+                    result.append(job_def)
+            job_def = self._create_test_job(
+                job, DeploymentType.SINGLE, build_config, build_jobs
             )
+            if job_def:
+                result.append(job_def)
 
         return result
 
@@ -544,21 +544,18 @@ class CircleCIGenerator(OutputGenerator):
 
     @staticmethod
     def _dict_to_options_json(args_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert args dict to optionsJson format (handles colon-separated keys)."""
+        """Convert args dict to optionsJson format (strips extraArgs: prefix)."""
         result: Dict[str, Any] = {}
         for key, value in args_dict.items():
             if key == "moreArgv":
                 # moreArgv is not included in optionsJson
                 continue
-            # Handle colon-separated keys (nest them)
-            if ":" in key:
-                keyparts = key.split(":", 1)
-                parent_key, child_key = keyparts[0], keyparts[1]
-                if parent_key not in result:
-                    result[parent_key] = {}
-                result[parent_key][child_key] = value
-            else:
-                result[key] = value
+
+            # Strip "extraArgs:" prefix if present
+            if key.startswith("extraArgs:"):
+                key = key[len("extraArgs:") :]
+
+            result[key] = value
         return result
 
     def _build_options_json(self, suites: List[SuiteConfig]) -> List[Dict[str, Any]]:
@@ -633,8 +630,13 @@ class CircleCIGenerator(OutputGenerator):
         build_config: BuildConfig,
         build_jobs: List[str],
         replication_version: int = 1,
-    ) -> Dict[str, Any]:
-        """Create CircleCI test job definition."""
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Create CircleCI test job definition.
+
+        Returns:
+            Job definition dict, or None if all suites were filtered out.
+        """
         is_cluster = deployment_type == DeploymentType.CLUSTER
 
         job_name, suite_name = self._build_job_names(
@@ -642,6 +644,11 @@ class CircleCIGenerator(OutputGenerator):
         )
 
         filtered_suites = filter_suites(job, self.config.filter_criteria)
+
+        # Skip job creation if no suites remain after filtering
+        if not filtered_suites:
+            return None
+
         suite_str = ",".join(suite.name for suite in filtered_suites)
 
         size_override = self._get_size_override(job.name, build_config, is_cluster)
