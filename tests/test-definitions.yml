@@ -531,9 +531,6 @@
       buckets: auto
       type: single
       size: medium
-    args:
-      dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
     suites:
       - dump_jwt
       - dump_multiple_same
@@ -564,7 +561,6 @@
       parallelity: 5
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
     suites:
       - dump
       - dump:
@@ -610,7 +606,6 @@
     args:
       extremeVerbosity: true
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
     suites:
       - dump_multiple_two
       - dump_mixed_single_cluster

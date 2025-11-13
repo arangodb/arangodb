@@ -26,7 +26,18 @@
 // / @author Wilfried Goesgens
 // / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
+const tu = require('@arangodb/testutils/test-utils');
+const fs = require('fs');
+const hb = require("@arangodb/hotbackup");
+
 const { DumpRestoreHelper, getClusterStrings } = require('@arangodb/testutils/dump');
+
+// const BLUE = require('internal').COLORS.COLOR_BLUE;
+const CYAN = require('internal').COLORS.COLOR_CYAN;
+// const GREEN = require('internal').COLORS.COLOR_GREEN;
+// const RED = require('internal').COLORS.COLOR_RED;
+const RESET = require('internal').COLORS.COLOR_RESET;
+// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const functionsDocumentation = {
   'hot_backup': 'hotbackup tests'
@@ -36,22 +47,11 @@ const testPaths = {
   'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
-
-const tu = require('@arangodb/testutils/test-utils');
-const fs = require('fs');
-const hb = require("@arangodb/hotbackup");
-
-// const BLUE = require('internal').COLORS.COLOR_BLUE;
-const CYAN = require('internal').COLORS.COLOR_CYAN;
-// const GREEN = require('internal').COLORS.COLOR_GREEN;
-// const RED = require('internal').COLORS.COLOR_RED;
-const RESET = require('internal').COLORS.COLOR_RESET;
-// const YELLOW = require('internal').COLORS.COLOR_YELLOW;
-
 function hotBackup (options) {
   const encryptionKey = '01234567890123456789012345678901';
   let c = getClusterStrings(options);
   console.warn(options);
+  options.extraArgs['experimental-vector-index'] = true;
   if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
     options.dbServers = 3;
   }
