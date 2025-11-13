@@ -148,7 +148,7 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
 
   virtual ~RocksDBInvertedListsIteratorBase() = default;
 
-  [[nodiscard]] bool is_available() const override;
+  [[nodiscard]] virtual bool is_available() const override;
 
  protected:
   RocksDBKey _rocksdbKey;
@@ -196,27 +196,19 @@ struct SearchParametersContext {
 using RocksDBFaissSearchContext =
     std::variant<SearchParametersContext, transaction::Methods*>;
 
-// Materializes document for every record
-// Template parameter allows compile-time selection of stored values strategy
-template<VectorIndexStoredValuesStrategy Strategy>
-struct RocksDBInvertedListsFilteringIterator final
-    : RocksDBInvertedListsIteratorBase {
-  RocksDBInvertedListsFilteringIterator(
+/// Base iterator for filtering iterators
+struct RocksDBInvertedListsFilteringIteratorBase
+    : public RocksDBInvertedListsIteratorBase {
+  RocksDBInvertedListsFilteringIteratorBase(
       RocksDBVectorIndex* index, LogicalCollection* collection,
       SearchParametersContext& searchParametersContext, std::size_t listNumber,
       std::size_t codeSize);
+
   [[nodiscard]] bool is_available() const override;
-
-  [[nodiscard]] bool searchFilteredIds();
-  // This should be only called when we have filterExpression
-
-  void next() override;
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
- private:
-  void skipOverFilteredDocuments();
-
+ protected:
   // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
   constexpr static auto kBatchSize{1000};
 
@@ -231,37 +223,41 @@ struct RocksDBInvertedListsFilteringIterator final
       _filteredIdsIt{_filteredIds.end()};
 };
 
-// This iterator is similar as RocksDBInvertedListsFilteringIterator
-// except it does not needs to materialize documents, since it contains
-// values that will be used during expression evaluation.
-// It can be used iff storedValues fully cover the filterExpression
-struct RocksDBInvertedListsFilteringStoredValuesIterator final
-    : RocksDBInvertedListsIteratorBase {
-  RocksDBInvertedListsFilteringStoredValuesIterator(
+// Materializes document for every record
+// Template parameter allows compile-time selection of stored values strategy
+template<VectorIndexStoredValuesStrategy Strategy>
+struct RocksDBInvertedListsFilteringIterator final
+    : public RocksDBInvertedListsFilteringIteratorBase {
+  RocksDBInvertedListsFilteringIterator(
       RocksDBVectorIndex* index, LogicalCollection* collection,
       SearchParametersContext& searchParametersContext, std::size_t listNumber,
       std::size_t codeSize);
-
-  [[nodiscard]] bool is_available() const override;
 
   [[nodiscard]] bool searchFilteredIds();
 
   void next() override;
 
-  std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
+ private:
+  void skipOverFilteredDocuments();
+};
+
+// This iterator is similar as RocksDBInvertedListsFilteringIterator
+// except it does not needs to materialize documents, since it contains
+// values that will be used during expression evaluation.
+// It can be used iff storedValues fully cover the filterExpression
+struct RocksDBInvertedListsFilteringStoredValuesIterator final
+    : public RocksDBInvertedListsFilteringIteratorBase {
+  RocksDBInvertedListsFilteringStoredValuesIterator(
+      RocksDBVectorIndex* index, LogicalCollection* collection,
+      SearchParametersContext& searchParametersContext, std::size_t listNumber,
+      std::size_t codeSize);
+
+  [[nodiscard]] bool searchFilteredIds();
+
+  void next() override;
 
  private:
   void skipOverFilteredDocuments();
-
-  // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
-  constexpr static auto kBatchSize{1000};
-
-  SearchParametersContext& _searchParametersContext;
-  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-
-  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>> _filteredIds;
-  std::vector<std::pair<LocalDocumentId, std::vector<uint8_t>>>::iterator
-      _filteredIdsIt;
 };
 
 struct RocksDBInvertedLists : faiss::InvertedLists {
