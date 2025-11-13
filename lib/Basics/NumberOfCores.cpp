@@ -61,15 +61,15 @@ std::size_t numberOfCoresImpl() {
 }
 
 std::size_t numberOfEffectiveCoresImpl() {
-  auto const cgroup = CGroupDetection::getVersion();
+  auto const cgroup = cgroup::getVersion();
   int64_t quota = -1;
   int64_t period = -1;
 
   switch (cgroup) {
-    case CGroupVersion::NONE: {
+    case cgroup::Version::NONE: {
       break;
     }
-    case CGroupVersion::V1: {
+    case cgroup::Version::V1: {
       auto quota = arangodb::basics::FileUtils::readFileValue(
           "/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
       auto period = arangodb::basics::FileUtils::readFileValue(
@@ -78,11 +78,10 @@ std::size_t numberOfEffectiveCoresImpl() {
         if (*quota > 0 && *period > 0) {
           return *quota / *period;
         }
-        // TODO Handle errors
       }
       break;
     }
-    case CGroupVersion::V2: {
+    case cgroup::Version::V2: {
       try {
         std::string content =
             arangodb::basics::FileUtils::slurp("/sys/fs/cgroup/cpu.max");
@@ -94,7 +93,6 @@ std::size_t numberOfEffectiveCoresImpl() {
           period = std::stoll(periodStr);
           return quota / period;
         }
-        // Handler errors
       } catch (std::exception const& ex) {
         LOG_TOPIC("a3c23", ERR, arangodb::Logger::FIXME)
             << "failed to read cgroup v2 cpu.max file: " << ex.what();

@@ -20,22 +20,20 @@
 ///
 /// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-namespace arangodb {
+#include <cstdint>
+
+namespace arangodb::cgroup {
 
 /// @brief cgroup version detected on the system
-enum class CGroupVersion {
+enum class Version : uint8_t {
   NONE = 0,  // No cgroup support detected
   V1 = 1,    // cgroup v1 (legacy)
   V2 = 2     // cgroup v2 (unified hierarchy)
 };
 
-namespace CGroupDetection {
-
 /// @brief get cached cgroup version detected at startup
-CGroupVersion getVersion();
+Version getVersion();
 
-}  // namespace CGroupDetection
-}  // namespace arangodb
+}  // namespace arangodb::cgroup

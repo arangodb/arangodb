@@ -24,33 +24,31 @@
 #include "Basics/CGroupDetection.h"
 #include "Basics/files.h"
 
-namespace arangodb {
-namespace CGroupDetection {
+namespace arangodb::cgroup {
 
 namespace {
 
 /// @brief detect which cgroup version is in use on the system
-CGroupVersion detectCGroupVersionImpl() {
+Version detectCGroupVersionImpl() {
   if (TRI_ExistsFile("/sys/fs/cgroup/cgroup.controllers")) {
-    return CGroupVersion::V2;
+    return Version::V2;
   }
 
   if (TRI_ExistsFile("/sys/fs/cgroup/cpu") ||
       TRI_ExistsFile("/sys/fs/cgroup/memory")) {
-    return CGroupVersion::V1;
+    return Version::V1;
   }
 
-  return CGroupVersion::NONE;
+  return Version::NONE;
 }
 
 }  // namespace
 
 /// @brief return cached cgroup version using Meyer's Singleton pattern
 /// to avoid static initialization order fiasco
-CGroupVersion getVersion() {
-  static CGroupVersion cachedVersion = detectCGroupVersionImpl();
+Version getVersion() {
+  static Version cachedVersion = detectCGroupVersionImpl();
   return cachedVersion;
 }
 
-}  // namespace CGroupDetection
-}  // namespace arangodb
+}  // namespace arangodb::cgroup

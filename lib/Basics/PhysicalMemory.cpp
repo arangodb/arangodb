@@ -85,13 +85,13 @@ uint64_t physicalMemoryImpl() {
 #endif
 
 uint64_t effectivePhysicalMemoryImpl() {
-  auto const cgroup = CGroupDetection::getVersion();
+  auto const cgroup = cgroup::getVersion();
 
   switch (cgroup) {
-    case CGroupVersion::NONE: {
+    case cgroup::Version::NONE: {
       break;
     }
-    case CGroupVersion::V1: {
+    case cgroup::Version::V1: {
       if (auto const limit = arangodb::basics::FileUtils::readFileValue(
               "/sys/fs/cgroup/memory/memory.limit_in_bytes");
           limit) {
@@ -101,7 +101,7 @@ uint64_t effectivePhysicalMemoryImpl() {
         }
       }
     }
-    case CGroupVersion::V2: {
+    case cgroup::Version::V2: {
       if (auto const limit = arangodb::basics::FileUtils::readFileValue(
               "/sys/fs/cgroup/memory.max");
           limit) {

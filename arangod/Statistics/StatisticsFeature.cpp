@@ -997,7 +997,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
   appendMetric(
       result,
       std::to_string(static_cast<std::underlying_type_t<CGroupVersion>>(
-          CGroupDetection::getVersion())),
+          cgroup::getVersion())),
       "cgroupVersion", globals, ensureWhitespace);
 
   CpuUsageFeature& cpuUsage = server().getFeature<CpuUsageFeature>();
