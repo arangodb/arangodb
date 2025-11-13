@@ -245,6 +245,7 @@ function VectorIndexTestCreationWithVectors() {
                         trainingIterations: 10,
                     },
                 });
+              fail();
             } catch (e) {
                 assertEqual(errors.ERROR_BAD_PARAMETER.code,
                     e.errorNum);
@@ -311,6 +312,7 @@ function VectorIndexTestCreationWithVectors() {
                         trainingIterations: 10,
                     },
                 });
+              fail();
             } catch (e) {
                 // This is for some reason handled differently...
                 assertNotEqual(e, undefined);
@@ -347,6 +349,7 @@ function VectorIndexTestCreationWithVectors() {
                         trainingIterations: 10,
                     },
                 });
+              fail();
             } catch (e) {
                 assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
             }
@@ -424,6 +427,7 @@ function VectorIndexTestCreationWithVectors() {
                         trainingIterations: 10,
                     },
                 });
+                fail();
             } catch (e) {
                 assertEqual(errors.ERROR_BAD_PARAMETER.code, e.errorNum);
             }
