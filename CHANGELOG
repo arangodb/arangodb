@@ -1,6 +1,9 @@
 devel
 -----
 
+* Ensure the js/node/package.json and js/node/package-lock.json have correct
+  versions of the included node packages.
+
 * Fix Swagger UI missing generated data.
 
 * Updated ArangoDB Starter to v0.19.14.
