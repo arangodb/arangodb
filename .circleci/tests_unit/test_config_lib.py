@@ -95,20 +95,6 @@ class TestTestOptions:
         with pytest.raises(ValueError, match="buckets must be int or 'auto'"):
             TestOptions(buckets=3.5)
 
-    def test_replication_factor_validation(self):
-        # Valid range
-        opts = TestOptions(min_replication_factor=2, max_replication_factor=3)
-        assert opts.min_replication_factor == 2
-        assert opts.max_replication_factor == 3
-
-        # Min > Max should fail
-        with pytest.raises(ValueError, match="cannot be greater than"):
-            TestOptions(min_replication_factor=5, max_replication_factor=3)
-
-        # Negative should fail
-        with pytest.raises(ValueError, match="must be at least 1"):
-            TestOptions(min_replication_factor=0)
-
     def test_from_dict_empty(self):
         opts = TestOptions.from_dict(None)
         assert opts.deployment_type is None
@@ -120,14 +106,12 @@ class TestTestOptions:
             "size": "large",
             "priority": 10,
             "buckets": 5,
-            "storage_engine": "rocksdb",
         }
         opts = TestOptions.from_dict(data)
         assert opts.deployment_type == DeploymentType.CLUSTER
         assert opts.size == ResourceSize.LARGE
         assert opts.priority == 10
         assert opts.buckets == 5
-        assert opts.storage_engine == "rocksdb"
 
     def test_merge_with_none(self):
         base = TestOptions(priority=5, buckets=3)

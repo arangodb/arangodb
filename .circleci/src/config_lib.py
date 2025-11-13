@@ -147,11 +147,7 @@ class TestOptions:
     priority: Optional[int] = None
     parallelity: Optional[int] = None
     buckets: Optional[Union[int, str]] = None  # int or "auto"
-    storage_engine: Optional[str] = None
-    min_replication_factor: Optional[int] = None
-    max_replication_factor: Optional[int] = None
     replication_version: Optional[str] = None
-    test_data_dir: Optional[str] = None
     suffix: Optional[str] = None  # Job name suffix for disambiguation
     full: Optional[bool] = None  # Only run in full/nightly builds if True
     coverage: Optional[bool] = None  # Run coverage analysis
@@ -181,27 +177,6 @@ class TestOptions:
                 raise ValueError(
                     f"buckets must be int or 'auto', got: {type(self.buckets)}"
                 )
-
-        # Validate replication factors
-        if self.min_replication_factor is not None and self.min_replication_factor < 1:
-            raise ValueError(
-                f"min_replication_factor must be at least 1, got: {self.min_replication_factor}"
-            )
-
-        if self.max_replication_factor is not None and self.max_replication_factor < 1:
-            raise ValueError(
-                f"max_replication_factor must be at least 1, got: {self.max_replication_factor}"
-            )
-
-        if (
-            self.min_replication_factor is not None
-            and self.max_replication_factor is not None
-            and self.min_replication_factor > self.max_replication_factor
-        ):
-            raise ValueError(
-                f"min_replication_factor ({self.min_replication_factor}) cannot be greater than "
-                f"max_replication_factor ({self.max_replication_factor})"
-            )
 
     @classmethod
     def from_dict(cls, data: Optional[Dict[str, Any]]) -> "TestOptions":
@@ -241,20 +216,15 @@ class TestOptions:
                 kwargs["size"] = ResourceSize.SMALL
 
         # Direct field mappings (only actual TestOptions fields)
-        # YAML uses camelCase for timeLimit
         field_mappings = {
             "priority": "priority",
             "parallelity": "parallelity",
             "buckets": "buckets",
-            "storage_engine": "storage_engine",
-            "min_replication_factor": "min_replication_factor",
-            "max_replication_factor": "max_replication_factor",
             "replication_version": "replication_version",
-            "test_data_dir": "test_data_dir",
             "suffix": "suffix",
             "full": "full",
             "coverage": "coverage",
-            "timeLimit": "time_limit",  # YAML uses camelCase
+            "timeLimit": "time_limit",
         }
 
         for yaml_field, our_field in field_mappings.items():
@@ -281,11 +251,7 @@ class TestOptions:
                 priority=self.priority,
                 parallelity=self.parallelity,
                 buckets=self.buckets,
-                storage_engine=self.storage_engine,
-                min_replication_factor=self.min_replication_factor,
-                max_replication_factor=self.max_replication_factor,
                 replication_version=self.replication_version,
-                test_data_dir=self.test_data_dir,
                 suffix=self.suffix,
                 full=self.full,
                 coverage=self.coverage,
@@ -302,17 +268,9 @@ class TestOptions:
             priority=merge_field(override.priority, self.priority),
             parallelity=merge_field(override.parallelity, self.parallelity),
             buckets=merge_field(override.buckets, self.buckets),
-            storage_engine=merge_field(override.storage_engine, self.storage_engine),
-            min_replication_factor=merge_field(
-                override.min_replication_factor, self.min_replication_factor
-            ),
-            max_replication_factor=merge_field(
-                override.max_replication_factor, self.max_replication_factor
-            ),
             replication_version=merge_field(
                 override.replication_version, self.replication_version
             ),
-            test_data_dir=merge_field(override.test_data_dir, self.test_data_dir),
             suffix=merge_field(override.suffix, self.suffix),
             full=merge_field(override.full, self.full),
             coverage=merge_field(override.coverage, self.coverage),
