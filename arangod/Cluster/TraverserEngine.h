@@ -64,7 +64,6 @@ namespace traverser {
 struct TraverserOptions;
 
 struct EdgeCursorForMultipleVertices {
-  size_t _cursorId;
   size_t _depth;
   uint64_t _batchSize;
   std::vector<std::string> _vertices;
@@ -72,13 +71,11 @@ struct EdgeCursorForMultipleVertices {
   std::unique_ptr<graph::EdgeCursor> _cursor;
   size_t _nextBatch = 0;
   VPackBuilder _variables;
-  EdgeCursorForMultipleVertices(size_t cursorId, size_t depth,
-                                uint64_t batchSize,
+  EdgeCursorForMultipleVertices(size_t depth, uint64_t batchSize,
                                 std::vector<std::string> vertices,
                                 std::unique_ptr<graph::EdgeCursor> cursor,
                                 VPackBuilder variables)
-      : _cursorId{cursorId},
-        _depth{depth},
+      : _depth{depth},
         _batchSize{batchSize},
         _vertices{std::move(vertices)},
         _nextVertex{0},
@@ -90,6 +87,11 @@ struct EdgeCursorForMultipleVertices {
   auto rearm() -> bool;
   auto hasMore() -> bool;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, EdgeCursorForMultipleVertices& x) {
+  return f.object(x).fields(f.field("depth", x._depth),
+                            f.field("vertices", x._vertices));
+}
 
 class BaseEngine {
  public:
@@ -171,8 +173,10 @@ class BaseTraverserEngine : public BaseEngine {
   aql::VariableGenerator const* variables() const;
 
   graph::BaseOptions const& options() const override;
-  std::vector<EdgeCursorForMultipleVertices> _cursors;
-  size_t _nextCursorId = 0;
+
+  using CursorId = size_t;
+  std::unordered_map<CursorId, EdgeCursorForMultipleVertices> _cursors;
+  CursorId _nextCursorId = 0;
 
  protected:
   std::unique_ptr<graph::EdgeCursor> getCursor(uint64_t currentDepth);

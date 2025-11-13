@@ -319,9 +319,10 @@ size_t BaseTraverserEngine::createNewCursor(size_t depth, uint64_t batchSize,
                                             std::vector<std::string> vertices,
                                             VPackSlice variables) {
   injectVariables(variables);
-  _cursors.emplace_back(EdgeCursorForMultipleVertices{
-      _nextCursorId, depth, batchSize, std::move(vertices), getCursor(depth),
-      VPackBuilder{variables}});
+  _cursors.emplace(
+      _nextCursorId,
+      EdgeCursorForMultipleVertices{depth, batchSize, std::move(vertices),
+                                    getCursor(depth), VPackBuilder{variables}});
   auto id = _nextCursorId;
   _nextCursorId++;
   return id;
@@ -376,20 +377,14 @@ void BaseTraverserEngine::allEdges(std::vector<std::string> const& vertices,
 
 Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
                                           VPackBuilder& builder) {
-  if (_cursors.empty()) {
+  auto cursorIt = _cursors.find(cursorId);
+  if (cursorIt == _cursors.end()) {
     return Result{
         TRI_ERROR_HTTP_BAD_PARAMETER,
         fmt::format("cursor id {} does not exist in traverser engine {}",
                     cursorId, engineId())};
   }
-  auto& cursor = _cursors.back();
-  if (cursorId != cursor._cursorId) {
-    return Result{
-        TRI_ERROR_HTTP_BAD_PARAMETER,
-        fmt::format(
-            "cursor id {} is not on top of cursor stack in traverser engine {}",
-            cursorId, engineId())};
-  }
+  auto& cursor = cursorIt->second;
   if (cursor._nextBatch != batchId) {
     return Result{TRI_ERROR_HTTP_BAD_PARAMETER,
                   fmt::format("batch id {} is not next batch for cursor id {} "
@@ -436,12 +431,12 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
   }
   builder.close();
   builder.add("done", VPackValue(not cursor.hasMore()));
-  builder.add("cursorId", VPackValue(cursor._cursorId));
+  builder.add("cursorId", VPackValue(cursorId));
   builder.add("batchId", VPackValue(cursor._nextBatch));
 
   cursor._nextBatch++;
   if (not cursor.hasMore()) {
-    _cursors.pop_back();
+    _cursors.erase(cursorIt);
   }
   return {};
 }
