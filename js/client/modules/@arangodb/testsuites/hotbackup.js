@@ -44,6 +44,7 @@ const functionsDocumentation = {
 };
 
 const testPaths = {
+  'dump': [tu.pathForTesting('client/dump')],
   'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
