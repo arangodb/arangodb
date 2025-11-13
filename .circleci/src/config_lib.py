@@ -13,7 +13,7 @@ Architecture:
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, TypeVar, Mapping
 import yaml
 
 
@@ -21,10 +21,12 @@ import yaml
 # Enumerations
 # ============================================================================
 
+E = TypeVar("E", bound=Enum)
+
 
 def _enum_from_string(
-    enum_class: type[Enum], value: str, aliases: Dict[str, Enum] = None
-) -> Enum:
+    enum_class: type[E], value: str, aliases: Optional[Mapping[str, E]] = None
+) -> E:
     """
     Generic helper to parse enum from string, case-insensitive.
 
@@ -193,7 +195,7 @@ class TestOptions:
             return cls()
 
         # Handle type conversions and field name mapping
-        kwargs = {}
+        kwargs: Dict[str, Any] = {}
 
         # Map YAML field names to our field names
         if "type" in data and data["type"] is not None:
@@ -679,6 +681,8 @@ class TestJob:
         if self.options.buckets == "auto":
             return len(self.suites)
 
+        # At this point we know buckets is an int (not None, not "auto")
+        assert isinstance(self.options.buckets, int)
         return self.options.buckets
 
 
@@ -761,7 +765,7 @@ class TestDefinitionFile:
         Returns:
             TestDefinitionFile instance
         """
-        jobs = {}
+        jobs: Dict[str, TestJob] = {}
         repo_config = None
 
         # Check if this is the driver test format with 'jobProperties' and 'tests'

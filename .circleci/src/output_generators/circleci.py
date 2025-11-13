@@ -153,7 +153,7 @@ class CircleCIGenerator(OutputGenerator):
             build_config: Build configuration
         """
         workflow_name = self._generate_workflow_name(build_config)
-        workflow = {"jobs": []}
+        workflow: Dict[str, Any] = {"jobs": []}
         workflows[workflow_name] = workflow
 
         # Add build jobs
@@ -504,16 +504,24 @@ class CircleCIGenerator(OutputGenerator):
         return result
 
     def _build_job_names(
-        self, job: TestJob, deployment_type: DeploymentType, build_config: BuildConfig, replication_version: int
+        self,
+        job: TestJob,
+        deployment_type: DeploymentType,
+        build_config: BuildConfig,
+        replication_version: int,
     ) -> tuple[str, str]:
         """Build job and suite names (applying suffix if present)."""
-        deployment_str = self._get_deployment_string(deployment_type, replication_version)
+        deployment_str = self._get_deployment_string(
+            deployment_type, replication_version
+        )
 
         suite_name = job.name
         if job.options.suffix:
             suite_name = f"{job.name}-{job.options.suffix}"
 
-        job_name = f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}"
+        job_name = (
+            f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}"
+        )
 
         return job_name, suite_name
 
@@ -537,7 +545,7 @@ class CircleCIGenerator(OutputGenerator):
     @staticmethod
     def _dict_to_options_json(args_dict: Dict[str, Any]) -> Dict[str, Any]:
         """Convert args dict to optionsJson format (handles colon-separated keys)."""
-        result = {}
+        result: Dict[str, Any] = {}
         for key, value in args_dict.items():
             if key == "moreArgv":
                 # moreArgv is not included in optionsJson
@@ -556,9 +564,11 @@ class CircleCIGenerator(OutputGenerator):
     def _build_options_json(self, suites: List[SuiteConfig]) -> List[Dict[str, Any]]:
         """Convert suite arguments to optionsJson format."""
         return [
-            self._dict_to_options_json(suite.arguments.extra_args)
-            if suite.arguments and suite.arguments.extra_args
-            else {}
+            (
+                self._dict_to_options_json(suite.arguments.extra_args)
+                if suite.arguments and suite.arguments.extra_args
+                else {}
+            )
             for suite in suites
         ]
 
@@ -584,7 +594,9 @@ class CircleCIGenerator(OutputGenerator):
         # Add optionsJson for multi-suite jobs
         if len(filtered_suites) > 1:
             options_json = self._build_options_json(filtered_suites)
-            parts.append(f"--optionsJson {json.dumps(options_json, separators=(',', ':'))}")
+            parts.append(
+                f"--optionsJson {json.dumps(options_json, separators=(',', ':'))}"
+            )
 
         # Add replicationVersion for cluster tests
         if is_cluster:
