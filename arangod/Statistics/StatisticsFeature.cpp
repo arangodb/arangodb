@@ -996,7 +996,7 @@ void StatisticsFeature::toPrometheus(std::string& result, double now,
   }
   appendMetric(
       result,
-      std::to_string(static_cast<std::underlying_type_t<CGroupVersion>>(
+      std::to_string(static_cast<std::underlying_type_t<cgroup::Version>>(
           cgroup::getVersion())),
       "cgroupVersion", globals, ensureWhitespace);
 
