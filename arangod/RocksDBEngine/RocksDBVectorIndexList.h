@@ -208,7 +208,13 @@ struct RocksDBInvertedListsFilteringIteratorBase
 
   std::pair<faiss::idx_t, uint8_t const*> get_id_and_codes() override;
 
+  [[nodiscard]] virtual bool searchFilteredIds() = 0;
+
+  void next() override;
+
  protected:
+  void skipOverFilteredDocuments();
+
   // batch size to reduce random RocksDB accesses. Chosen arbitrarily.
   constexpr static auto kBatchSize{1000};
 
@@ -233,12 +239,7 @@ struct RocksDBInvertedListsFilteringIterator final
       SearchParametersContext& searchParametersContext, std::size_t listNumber,
       std::size_t codeSize);
 
-  [[nodiscard]] bool searchFilteredIds();
-
-  void next() override;
-
- private:
-  void skipOverFilteredDocuments();
+  [[nodiscard]] bool searchFilteredIds() override;
 };
 
 // This iterator is similar as RocksDBInvertedListsFilteringIterator
@@ -252,12 +253,7 @@ struct RocksDBInvertedListsFilteringStoredValuesIterator final
       SearchParametersContext& searchParametersContext, std::size_t listNumber,
       std::size_t codeSize);
 
-  [[nodiscard]] bool searchFilteredIds();
-
-  void next() override;
-
- private:
-  void skipOverFilteredDocuments();
+  [[nodiscard]] bool searchFilteredIds() override;
 };
 
 struct RocksDBInvertedLists : faiss::InvertedLists {

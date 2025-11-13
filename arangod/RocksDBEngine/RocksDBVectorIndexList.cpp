@@ -127,6 +127,23 @@ RocksDBInvertedListsFilteringIteratorBase::get_id_and_codes() {
           _filteredIdsIt->second.data()};
 }
 
+void RocksDBInvertedListsFilteringIteratorBase::skipOverFilteredDocuments() {
+  while (_filteredIdsIt == _filteredIds.end()) {
+    if (!searchFilteredIds()) {
+      // If we enter here we could not produce any documents
+      return;
+    }
+  }
+}
+
+void RocksDBInvertedListsFilteringIteratorBase::next() {
+  skipOverFilteredDocuments();
+  ++_filteredIdsIt;
+  if (_filteredIdsIt == _filteredIds.end()) {
+    skipOverFilteredDocuments();
+  }
+}
+
 /// RocksDBInvertedListsFilteringIterator
 template<VectorIndexStoredValuesStrategy Strategy>
 RocksDBInvertedListsFilteringIterator<Strategy>::
@@ -210,26 +227,6 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
   _filteredIdsIt = _filteredIds.begin();
 
   return true;
-}
-
-template<VectorIndexStoredValuesStrategy Strategy>
-void RocksDBInvertedListsFilteringIterator<
-    Strategy>::skipOverFilteredDocuments() {
-  while (_filteredIdsIt == _filteredIds.end()) {
-    if (!searchFilteredIds()) {
-      // If we enter here we could not produce any documents
-      return;
-    }
-  }
-}
-
-template<VectorIndexStoredValuesStrategy Strategy>
-void RocksDBInvertedListsFilteringIterator<Strategy>::next() {
-  skipOverFilteredDocuments();
-  ++_filteredIdsIt;
-  if (_filteredIdsIt == _filteredIds.end()) {
-    skipOverFilteredDocuments();
-  }
 }
 
 // Explicit instantiations
@@ -320,22 +317,6 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
   _filteredIdsIt = _filteredIds.begin();
 
   return true;
-}
-
-void RocksDBInvertedListsFilteringStoredValuesIterator::
-    skipOverFilteredDocuments() {
-  while (_filteredIdsIt == _filteredIds.end()) {
-    if (!searchFilteredIds()) {
-      // If we enter here we could not produce any documents
-      return;
-    }
-  }
-}
-
-void RocksDBInvertedListsFilteringStoredValuesIterator::next() {
-  skipOverFilteredDocuments();
-  ++_filteredIdsIt;
-  skipOverFilteredDocuments();
 }
 
 /// RocksDBInvertedLists
