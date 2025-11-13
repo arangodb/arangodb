@@ -148,6 +148,8 @@ struct RocksDBInvertedListsIteratorBase : faiss::InvertedListsIterator {
 
   virtual ~RocksDBInvertedListsIteratorBase() = default;
 
+  [[nodiscard]] bool is_available() const override;
+
  protected:
   RocksDBKey _rocksdbKey;
   arangodb::RocksDBVectorIndex* _index{nullptr};
@@ -166,8 +168,6 @@ struct RocksDBInvertedListsIterator final : RocksDBInvertedListsIteratorBase {
                                LogicalCollection* collection,
                                transaction::Methods* trx,
                                std::size_t listNumber, std::size_t codeSize);
-
-  [[nodiscard]] bool is_available() const override;
 
   void next() override;
 

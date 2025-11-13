@@ -59,6 +59,10 @@ RocksDBInvertedListsIteratorBase::RocksDBInvertedListsIteratorBase(
   _it->Seek(_rocksdbKey.string());
 }
 
+[[nodiscard]] bool RocksDBInvertedListsIteratorBase::is_available() const {
+  return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
+}
+
 /// RocksDBInvertedListsIterator
 template<VectorIndexStoredValuesStrategy Strategy>
 RocksDBInvertedListsIterator<Strategy>::RocksDBInvertedListsIterator(
@@ -66,12 +70,6 @@ RocksDBInvertedListsIterator<Strategy>::RocksDBInvertedListsIterator(
     transaction::Methods* trx, std::size_t listNumber, std::size_t codeSize)
     : RocksDBInvertedListsIteratorBase(index, collection, trx, listNumber,
                                        codeSize) {}
-
-template<VectorIndexStoredValuesStrategy Strategy>
-[[nodiscard]] bool RocksDBInvertedListsIterator<Strategy>::is_available()
-    const {
-  return _it->Valid() && _it->key().starts_with(_rocksdbKey.string());
-}
 
 template<VectorIndexStoredValuesStrategy Strategy>
 void RocksDBInvertedListsIterator<Strategy>::next() {
@@ -123,7 +121,7 @@ template<VectorIndexStoredValuesStrategy Strategy>
 [[nodiscard]] bool
 RocksDBInvertedListsFilteringIterator<Strategy>::is_available() const {
   return _filteredIdsIt != _filteredIds.end() ||
-         (_it->Valid() && _it->key().starts_with(_rocksdbKey.string()));
+         RocksDBInvertedListsIteratorBase::is_available();
 }
 
 template<VectorIndexStoredValuesStrategy Strategy>
@@ -135,7 +133,7 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
   ids.reserve(kBatchSize);
 
   for (size_t i{0}; i < kBatchSize && _it->Valid() &&
-                    _it->key().starts_with(_rocksdbKey.string());
+                    RocksDBInvertedListsIteratorBase::is_available();
        ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
     ids.emplace_back(id);
@@ -247,7 +245,7 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
 [[nodiscard]] bool
 RocksDBInvertedListsFilteringStoredValuesIterator::is_available() const {
   return _filteredIdsIt != _filteredIds.end() ||
-         (_it->Valid() && _it->key().starts_with(_rocksdbKey.string()));
+         RocksDBInvertedListsIteratorBase::is_available();
 }
 
 bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
@@ -255,8 +253,8 @@ bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
   std::vector<std::pair<LocalDocumentId, RocksDBVectorIndexEntryValue>> items;
   items.reserve(kBatchSize);
 
-  for (size_t i{0}; i < kBatchSize && _it->Valid() &&
-                    _it->key().starts_with(_rocksdbKey.string());
+  for (size_t i{0};
+       i < kBatchSize && RocksDBInvertedListsIteratorBase::is_available();
        ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
     auto entryValue = RocksDBValue::vectorIndexEntryValue(_it->value());
