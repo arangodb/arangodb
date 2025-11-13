@@ -751,6 +751,7 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
                 docs.push({
                     vector,
                     val: i,
+                    nonStoredValue: i * 2,
                     stringField: i % 3 === 0 ? "type_A" : (i % 3 === 1 ? "type_B" : "type_C"),
                     boolField: i % 2 === 0,
                     arrayField: [i % 5, i % 7],
@@ -805,6 +806,29 @@ function VectorIndexL2FilterStoredValuesTestSuite() {
             
             verifyResultsMatchFilter(results, r => r.val < 5, "Val filter not applied correctly");
             verifyResultsMatchFilter(results, r => r.stringField === "type_A", "String filter not applied correctly");
+            verifyDistancesAscending(results);
+        },
+
+        testApproxL2WithFilterCannotUseStoredValues: function() {
+            const query = `
+                FOR d IN ${collection.name()}
+                FILTER d.nonStoredValue < 50
+                LET dist = APPROX_NEAR_L2(@qp, d.vector)
+                SORT dist LIMIT 5
+                RETURN {key: d._key, nonStoredValue: d.nonStoredValue, dist}`;
+
+            const bindVars = {
+                qp: randomPoint
+            };
+            
+            const plan = verifyPlan(query, bindVars);
+            const indexNodes = plan.nodes.filter(n => n.type === "EnumerateNearVectorNode");
+            assertFalse(indexNodes[0].isCoveredByStoredValues);
+
+            const results = db._query(query, bindVars).toArray();
+            assertTrue(results.length <= 5, "Results should be limited to 5");
+            
+            verifyResultsMatchFilter(results, r => r.nonStoredValue < 50, "Val filter not applied correctly");
             verifyDistancesAscending(results);
         },
 
