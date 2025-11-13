@@ -233,7 +233,7 @@ DECLARE_GAUGE(arangodb_server_statistics_cpu_cores, double,
               "Number of CPU cores visible to the arangod process");
 DECLARE_GAUGE(arangodb_server_statistics_effective_cpu_cores, double,
               "Number of effective CPU cores set for the arangod process");
-DECLARE_GAUGE(arangodb_server_statistics_cpu_cgroup_version, double,
+DECLARE_GAUGE(arangodb_server_statistics_cpu_cgroup_version, uint64_t,
               "CGroup version detected (0=none, 1=v1, 2=v2)");
 DECLARE_GAUGE(
     arangodb_server_statistics_user_percent, double,
