@@ -185,51 +185,56 @@ class TestTestArguments:
 
     def test_default_arguments(self):
         args = TestArguments()
-        assert args.extra_args == []
+        assert args.extra_args == {}
         assert args.arangosh_args == []
 
     def test_with_values(self):
         args = TestArguments(
-            extra_args=["--arg1", "--arg2"], arangosh_args=["--js.arg"]
+            extra_args={"arg1": "value1", "arg2": "value2"}, arangosh_args=["--js.arg"]
         )
-        assert args.extra_args == ["--arg1", "--arg2"]
+        assert args.extra_args == {"arg1": "value1", "arg2": "value2"}
         assert args.arangosh_args == ["--js.arg"]
 
     def test_from_dict_empty(self):
         args = TestArguments.from_dict(None)
-        assert args.extra_args == []
+        assert args.extra_args == {}
         assert args.arangosh_args == []
 
-    def test_from_dict_with_lists(self):
+    def test_from_dict_with_dict(self):
         data = {
-            "extra_args": ["--verbose", "--debug"],
-            "arangosh_args": ["--javascript.execute"],
+            "extra_args": {"verbose": True, "debug": True},
+            "arangosh_args": {"javascript.execute": "script.js"},
         }
         args = TestArguments.from_dict(data)
-        assert args.extra_args == ["--verbose", "--debug"]
-        assert args.arangosh_args == ["--javascript.execute"]
+        assert args.extra_args == {"verbose": True, "debug": True}
+        assert args.arangosh_args == ["--javascript.execute", "script.js"]
 
-    def test_from_dict_with_string(self):
-        # Single string should be converted to list
-        data = {"extra_args": "--single-arg", "arangosh_args": "--js-arg"}
+    def test_from_dict_with_direct_args(self):
+        # Arguments can be specified directly at the top level
+        data = {"verbosity": "extreme", "moreArgv": "additional"}
         args = TestArguments.from_dict(data)
-        assert args.extra_args == ["--single-arg"]
-        assert args.arangosh_args == ["--js-arg"]
+        assert args.extra_args == {"verbosity": "extreme", "moreArgv": "additional"}
 
     def test_merge_with_none(self):
-        base = TestArguments(extra_args=["--base"])
+        base = TestArguments(extra_args={"base": "value"})
         merged = base.merge_with(None)
-        assert merged.extra_args == ["--base"]
+        assert merged.extra_args == {"base": "value"}
 
     def test_merge_with_override(self):
         base = TestArguments(
-            extra_args=["--base1", "--base2"], arangosh_args=["--js-base"]
+            extra_args={"base1": "value1", "base2": "value2"},
+            arangosh_args=["--js-base"],
         )
         override = TestArguments(
-            extra_args=["--override"], arangosh_args=["--js-override"]
+            extra_args={"override": "value", "base2": "overridden"},
+            arangosh_args=["--js-override"],
         )
         merged = base.merge_with(override)
-        assert merged.extra_args == ["--base1", "--base2", "--override"]
+        assert merged.extra_args == {
+            "base1": "value1",
+            "base2": "overridden",
+            "override": "value",
+        }
         assert merged.arangosh_args == ["--js-base", "--js-override"]
 
 
@@ -245,11 +250,11 @@ class TestSuiteConfigClass:
         suite = SuiteConfig(
             name="boost",
             options=TestOptions(priority=10),
-            arguments=TestArguments(extra_args=["--verbose"]),
+            arguments=TestArguments(extra_args={"verbose": True}),
         )
         assert suite.name == "boost"
         assert suite.options.priority == 10
-        assert suite.arguments.extra_args == ["--verbose"]
+        assert suite.arguments.extra_args == {"verbose": True}
 
     def test_invalid_name(self):
         with pytest.raises(ValueError, match="Suite name must be a non-empty string"):
@@ -259,12 +264,12 @@ class TestSuiteConfigClass:
         data = {
             "name": "resilience",
             "options": {"priority": 15},
-            "arguments": {"extra_args": ["--arg"]},
+            "arguments": {"arg": "value"},
         }
         suite = SuiteConfig.from_dict(data)
         assert suite.name == "resilience"
         assert suite.options.priority == 15
-        assert suite.arguments.extra_args == ["--arg"]
+        assert suite.arguments.extra_args == {"arg": "value"}
 
     def test_from_dict_missing_name(self):
         with pytest.raises(ValueError, match="must have 'name' field"):
@@ -274,19 +279,22 @@ class TestSuiteConfigClass:
         suite = SuiteConfig(
             name="boost",
             options=TestOptions(priority=10),
-            arguments=TestArguments(extra_args=["--suite-arg"]),
+            arguments=TestArguments(extra_args={"suite-arg": "suite-value"}),
         )
         job_opts = TestOptions(
             deployment_type=DeploymentType.CLUSTER, priority=5, size=ResourceSize.MEDIUM
         )
-        job_args = TestArguments(extra_args=["--job-arg"])
+        job_args = TestArguments(extra_args={"job-arg": "job-value"})
 
         merged = suite.with_merged_options(job_opts, job_args)
         assert merged.name == "boost"
         assert merged.options.deployment_type == DeploymentType.CLUSTER
         assert merged.options.priority == 10  # suite override
         assert merged.options.size == ResourceSize.MEDIUM
-        assert merged.arguments.extra_args == ["--job-arg", "--suite-arg"]
+        assert merged.arguments.extra_args == {
+            "job-arg": "job-value",
+            "suite-arg": "suite-value",
+        }
 
 
 class TestRepositoryConfigClass:
@@ -471,7 +479,7 @@ class TestTestJob:
                 priority=10,
                 size=ResourceSize.MEDIUM,
             ),
-            arguments=TestArguments(extra_args=["--job-arg"]),
+            arguments=TestArguments(extra_args={"job-arg": "value"}),
         )
 
         resolved = job.get_resolved_suites()

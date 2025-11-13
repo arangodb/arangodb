@@ -18,7 +18,9 @@ from ..config_lib import (
     DeploymentType,
     ResourceSize,
     Architecture,
+    SuiteConfig,
 )
+from ..filters import filter_suites
 from .base import OutputGenerator, GeneratorConfig
 from .sizing import ResourceSizer
 
@@ -501,6 +503,117 @@ class CircleCIGenerator(OutputGenerator):
 
         return result
 
+    def _build_job_names(
+        self, job: TestJob, deployment_type: DeploymentType, build_config: BuildConfig, replication_version: int
+    ) -> tuple[str, str]:
+        """Build job and suite names (applying suffix if present)."""
+        deployment_str = self._get_deployment_string(deployment_type, replication_version)
+
+        suite_name = job.name
+        if job.options.suffix:
+            suite_name = f"{job.name}-{job.options.suffix}"
+
+        job_name = f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}"
+
+        return job_name, suite_name
+
+    @staticmethod
+    def _dict_to_args_string(args_dict: Dict[str, Any]) -> str:
+        """Convert args dict directly to space-separated command-line string."""
+        parts = []
+        for key, value in args_dict.items():
+            if key == "moreArgv":
+                # Special case: moreArgv value is appended directly
+                parts.append(str(value))
+            else:
+                parts.append(f"--{key}")
+                # Always append value (boolean values become "true"/"false" strings)
+                if isinstance(value, bool):
+                    parts.append("true" if value else "false")
+                else:
+                    parts.append(str(value))
+        return " ".join(parts)
+
+    @staticmethod
+    def _dict_to_options_json(args_dict: Dict[str, Any]) -> Dict[str, Any]:
+        """Convert args dict to optionsJson format (handles colon-separated keys)."""
+        result = {}
+        for key, value in args_dict.items():
+            if key == "moreArgv":
+                # moreArgv is not included in optionsJson
+                continue
+            # Handle colon-separated keys (nest them)
+            if ":" in key:
+                keyparts = key.split(":", 1)
+                parent_key, child_key = keyparts[0], keyparts[1]
+                if parent_key not in result:
+                    result[parent_key] = {}
+                result[parent_key][child_key] = value
+            else:
+                result[key] = value
+        return result
+
+    def _build_options_json(self, suites: List[SuiteConfig]) -> List[Dict[str, Any]]:
+        """Convert suite arguments to optionsJson format."""
+        return [
+            self._dict_to_options_json(suite.arguments.extra_args)
+            if suite.arguments and suite.arguments.extra_args
+            else {}
+            for suite in suites
+        ]
+
+    def _build_extra_args_string(
+        self,
+        job: TestJob,
+        filtered_suites: List[SuiteConfig],
+        build_config: BuildConfig,
+        is_cluster: bool,
+        replication_version: int,
+    ) -> str:
+        """
+        Build extra args string in correct order: job args, optionsJson, replicationVersion, skipNightly.
+
+        Order matters for compatibility with old generator.
+        """
+        parts = []
+
+        # Add job-level args
+        if job.arguments.extra_args:
+            parts.append(self._dict_to_args_string(job.arguments.extra_args))
+
+        # Add optionsJson for multi-suite jobs
+        if len(filtered_suites) > 1:
+            options_json = self._build_options_json(filtered_suites)
+            parts.append(f"--optionsJson {json.dumps(options_json, separators=(',', ':'))}")
+
+        # Add replicationVersion for cluster tests
+        if is_cluster:
+            parts.append(f"--replicationVersion {replication_version}")
+
+        # Add skipNightly for nightly builds
+        if build_config.nightly:
+            parts.append("--skipNightly false")
+
+        return " ".join(parts)
+
+    def _apply_job_overrides(
+        self, job: TestJob, job_dict: Dict[str, Any], filtered_suites: List[SuiteConfig]
+    ) -> None:
+        """Apply CircleCI bucket/time overrides (modifies job_dict in place)."""
+        bucket_count = self._get_bucket_count(job)
+
+        if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
+            bucket_count = len(filtered_suites)
+
+        if job.name in self.BUCKET_OVERRIDES:
+            bucket_count = self.BUCKET_OVERRIDES[job.name]
+
+        if bucket_count and bucket_count != 1:
+            job_dict["buckets"] = bucket_count
+
+        if job.options.time_limit:
+            job_dict["timeLimit"] = job.options.time_limit
+
     def _create_test_job(
         self,
         job: TestJob,
@@ -509,51 +622,20 @@ class CircleCIGenerator(OutputGenerator):
         build_jobs: List[str],
         replication_version: int = 1,
     ) -> Dict[str, Any]:
-        """
-        Create a single test job definition.
-
-        Args:
-            job: TestJob to create
-            deployment_type: Deployment type for this job
-            build_config: Build configuration
-            build_jobs: List of build job names this depends on
-            replication_version: Replication version (1 or 2)
-
-        Returns:
-            Job definition dict for CircleCI
-        """
+        """Create CircleCI test job definition."""
         is_cluster = deployment_type == DeploymentType.CLUSTER
 
-        # Build job name and suite name
-        deployment_str = self._get_deployment_string(
-            deployment_type, replication_version
+        job_name, suite_name = self._build_job_names(
+            job, deployment_type, build_config, replication_version
         )
 
-        # Add suffix to job/suite name if present
-        suite_name = job.name
-        if job.options.suffix:
-            suite_name = f"{job.name}-{job.options.suffix}"
-
-        job_name = (
-            f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}"
-        )
-
-        # Filter suites based on full flag (suite-level filtering)
-        filtered_suites = [
-            suite
-            for suite in job.suites
-            if not (suite.options.full and not build_config.nightly)
-        ]
-
-        # Build suite string
+        filtered_suites = filter_suites(job, self.config.filter_criteria)
         suite_str = ",".join(suite.name for suite in filtered_suites)
 
-        # Get size (with special case overrides)
         size_override = self._get_size_override(job.name, build_config, is_cluster)
         size = size_override or job.options.size or ResourceSize.SMALL
         resource_class = self.sizer.get_test_size(size, build_config, is_cluster)
 
-        # Build job dict
         job_dict = {
             "name": job_name,
             "suiteName": suite_name,
@@ -567,101 +649,22 @@ class CircleCIGenerator(OutputGenerator):
             ),
         }
 
-        # Add extra args - must match old generator's order:
-        # 1. job.arguments.extra_args (base args)
-        # 2. optionsJson (for multi-suite jobs)
-        # 3. replicationVersion (for cluster)
-        # 4. skipNightly (for nightly builds)
-        # 5. CLI extra_args
-        extra_args = list(job.arguments.extra_args)
+        extra_args_str = self._build_extra_args_string(
+            job, filtered_suites, build_config, is_cluster, replication_version
+        )
 
-        # For multi-suite jobs, add optionsJson BEFORE replicationVersion/skipNightly
-        # Use filtered_suites to match what will actually run
-        if len(filtered_suites) > 1:
-            options_json = []
-            for suite in filtered_suites:
-                # Convert suite arguments to dict format for optionsJson
-                # Uses same logic as old generator's get_args() function
-                suite_args = {}
-                if suite.arguments and suite.arguments.extra_args:
-                    # Parse extra_args back into dict format
-                    i = 0
-                    while i < len(suite.arguments.extra_args):
-                        arg = suite.arguments.extra_args[i]
-                        if arg.startswith("--"):
-                            key = arg[2:]  # Remove -- prefix
+        # Combine job args with command-line extra args
+        if extra_args_str or self.config.test_execution.extra_args:
+            all_args = []
+            if extra_args_str:
+                all_args.append(extra_args_str)
+            if self.config.test_execution.extra_args:
+                all_args.append(" ".join(self.config.test_execution.extra_args))
+            job_dict["extraArgs"] = " ".join(all_args)
 
-                            # Get the value
-                            value = None
-                            if i + 1 < len(suite.arguments.extra_args):
-                                next_arg = suite.arguments.extra_args[i + 1]
-                                if not next_arg.startswith("--"):
-                                    # Convert string booleans back to bool
-                                    if next_arg == "true":
-                                        value = True
-                                    elif next_arg == "false":
-                                        value = False
-                                    else:
-                                        value = next_arg
-                                    i += 2
-                                else:
-                                    # Boolean flag without explicit value
-                                    value = True
-                                    i += 1
-                            else:
-                                # Boolean flag at end
-                                value = True
-                                i += 1
-
-                            # Handle colon-separated keys (nest them)
-                            if ":" in key:
-                                keyparts = key.split(":", 1)
-                                parent_key, child_key = keyparts[0], keyparts[1]
-                                if parent_key not in suite_args:
-                                    suite_args[parent_key] = {}
-                                suite_args[parent_key][child_key] = value
-                            else:
-                                suite_args[key] = value
-                        else:
-                            i += 1
-
-                options_json.append(suite_args)
-
-            # Add optionsJson as a command-line argument
-            extra_args.extend(
-                ["--optionsJson", json.dumps(options_json, separators=(",", ":"))]
-            )
-
-        # Add replicationVersion and skipNightly AFTER optionsJson
-        if is_cluster:
-            extra_args.extend(["--replicationVersion", str(replication_version)])
-        if build_config.nightly:
-            extra_args.extend(["--skipNightly", "false"])
-
-        if extra_args or self.config.test_execution.extra_args:
-            job_dict["extraArgs"] = " ".join(
-                extra_args + self.config.test_execution.extra_args
-            )
-
-        # Add buckets (with special case overrides)
-        bucket_count = self._get_bucket_count(job)
-        # Override bucket count if using auto buckets and suites were filtered
-        if job.options.buckets == "auto" and len(filtered_suites) != len(job.suites):
-            bucket_count = len(filtered_suites)
-        # Apply CircleCI-specific bucket overrides
-        if job.name in self.BUCKET_OVERRIDES:
-            bucket_count = self.BUCKET_OVERRIDES[job.name]
-        if bucket_count and bucket_count != 1:
-            job_dict["buckets"] = bucket_count
-
-        # Apply time limit from options
-        if job.options.time_limit:
-            job_dict["timeLimit"] = job.options.time_limit
-
-        # Add repository info if present
+        self._apply_job_overrides(job, job_dict, filtered_suites)
         self._add_repository_config(job_dict, job)
 
-        # Use job_type from job definition (defaults to 'run-linux-tests')
         return {job.job_type: job_dict}
 
     def _get_deployment_string(

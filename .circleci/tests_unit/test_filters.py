@@ -18,7 +18,9 @@ from src.filters import (
     PlatformFlags,
     FilterCriteria,
     should_include_job,
+    should_include_suite,
     filter_jobs,
+    filter_suites,
 )
 
 
@@ -29,7 +31,6 @@ class TestPlatformFlags:
         """Test that all flags default to False."""
         flags = PlatformFlags()
         assert flags.is_windows is False
-        assert flags.is_mac is False
         assert flags.is_arm is False
         assert flags.is_coverage is False
 
@@ -37,7 +38,6 @@ class TestPlatformFlags:
         """Test setting custom flag values."""
         flags = PlatformFlags(is_windows=True, is_arm=True)
         assert flags.is_windows is True
-        assert flags.is_mac is False
         assert flags.is_arm is True
         assert flags.is_coverage is False
 
@@ -351,3 +351,220 @@ class TestFilterJobs:
 
         # Check that we got all jobs
         assert len(result) == 5
+
+
+class TestShouldIncludeSuite:
+    """Test should_include_suite function."""
+
+    def test_all_tests_includes_everything(self):
+        """Test that all_tests=True includes all suites."""
+        criteria = FilterCriteria(all_tests=True)
+
+        # Suite with full=True
+        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=False
+        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=None
+        suite = SuiteConfig(name="any_suite", options=TestOptions())
+        assert should_include_suite(suite, criteria) is True
+
+    def test_pr_build_filters(self):
+        """Test suite filtering in PR builds (full=False, nightly=False)."""
+        criteria = FilterCriteria(full=False, nightly=False)
+
+        # Suite with full=False should be included (PR suite)
+        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=None should be included (runs in both)
+        suite = SuiteConfig(name="any_suite", options=TestOptions())
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=True should be excluded (full-only suite)
+        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
+        assert should_include_suite(suite, criteria) is False
+
+    def test_full_build_filters(self):
+        """Test suite filtering in full builds (full=True)."""
+        criteria = FilterCriteria(full=True)
+
+        # Suite with full=True should be included
+        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=None should be included (runs in both)
+        suite = SuiteConfig(name="any_suite", options=TestOptions())
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=False should be excluded (PR-only suite)
+        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
+        assert should_include_suite(suite, criteria) is False
+
+    def test_nightly_build_filters(self):
+        """Test suite filtering in nightly builds (nightly=True)."""
+        criteria = FilterCriteria(nightly=True)
+
+        # Suite with full=True should be included
+        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=None should be included (runs in both)
+        suite = SuiteConfig(name="any_suite", options=TestOptions())
+        assert should_include_suite(suite, criteria) is True
+
+        # Suite with full=False should be excluded (PR-only suite)
+        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
+        assert should_include_suite(suite, criteria) is False
+
+    def test_suite_without_options(self):
+        """Test suite with no options field."""
+        # Suite without options should always be included (unless in full build)
+        suite = SuiteConfig(name="simple_suite")
+
+        # PR build
+        criteria = FilterCriteria(full=False, nightly=False)
+        assert should_include_suite(suite, criteria) is True
+
+        # Full build
+        criteria = FilterCriteria(full=True)
+        assert should_include_suite(suite, criteria) is True
+
+        # Nightly build
+        criteria = FilterCriteria(nightly=True)
+        assert should_include_suite(suite, criteria) is True
+
+
+class TestFilterSuites:
+    """Test filter_suites function."""
+
+    def test_filter_mixed_suites_in_pr_build(self):
+        """Test filtering a mix of PR and full suites in PR build."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
+                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
+                SuiteConfig(name="any_suite", options=TestOptions()),
+            ],
+            options=TestOptions(),
+        )
+
+        criteria = FilterCriteria(full=False, nightly=False)
+        result = filter_suites(job, criteria)
+
+        # Should include PR suite and any suite, exclude full suite
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "pr_suite" in result_names
+        assert "any_suite" in result_names
+        assert "full_suite" not in result_names
+
+    def test_filter_mixed_suites_in_full_build(self):
+        """Test filtering a mix of PR and full suites in full build."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
+                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
+                SuiteConfig(name="any_suite", options=TestOptions()),
+            ],
+            options=TestOptions(),
+        )
+
+        criteria = FilterCriteria(full=True)
+        result = filter_suites(job, criteria)
+
+        # Should include full suite and any suite, exclude PR suite
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "full_suite" in result_names
+        assert "any_suite" in result_names
+        assert "pr_suite" not in result_names
+
+    def test_filter_all_tests_returns_all_suites(self):
+        """Test that all_tests=True returns all suites."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
+                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
+                SuiteConfig(name="any_suite", options=TestOptions()),
+            ],
+            options=TestOptions(),
+        )
+
+        criteria = FilterCriteria(all_tests=True)
+        result = filter_suites(job, criteria)
+
+        # Should include all suites
+        assert len(result) == 3
+        result_names = {suite.name for suite in result}
+        assert result_names == {"pr_suite", "full_suite", "any_suite"}
+
+    def test_filter_job_with_single_suite(self):
+        """Test filtering job with only one suite."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="only_suite", options=TestOptions(full=True))],
+            options=TestOptions(),
+        )
+
+        # PR build - should exclude the suite
+        criteria = FilterCriteria(full=False)
+        result = filter_suites(job, criteria)
+        assert len(result) == 0
+
+        # Full build - should include the suite
+        criteria = FilterCriteria(full=True)
+        result = filter_suites(job, criteria)
+        assert len(result) == 1
+        assert result[0].name == "only_suite"
+
+    def test_filter_job_with_no_suite_options(self):
+        """Test filtering job where suites have no options."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="suite1"),
+                SuiteConfig(name="suite2"),
+                SuiteConfig(name="suite3"),
+            ],
+            options=TestOptions(),
+        )
+
+        # PR build - should include all suites
+        criteria = FilterCriteria(full=False)
+        result = filter_suites(job, criteria)
+        assert len(result) == 3
+
+        # Full build - should include all suites
+        criteria = FilterCriteria(full=True)
+        result = filter_suites(job, criteria)
+        assert len(result) == 3
+
+    def test_order_preserved(self):
+        """Test that suite order is preserved in results."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="suite1", options=TestOptions()),
+                SuiteConfig(name="suite2", options=TestOptions()),
+                SuiteConfig(name="suite3", options=TestOptions()),
+                SuiteConfig(name="suite4", options=TestOptions()),
+            ],
+            options=TestOptions(),
+        )
+
+        criteria = FilterCriteria(all_tests=True)
+        result = filter_suites(job, criteria)
+
+        # Check that order is preserved
+        assert len(result) == 4
+        assert result[0].name == "suite1"
+        assert result[1].name == "suite2"
+        assert result[2].name == "suite3"
+        assert result[3].name == "suite4"
