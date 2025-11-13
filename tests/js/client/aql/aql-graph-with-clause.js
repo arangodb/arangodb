@@ -201,7 +201,7 @@ function withClauseTestSuite() {
     testNamedGraphWithClauseNotNeeded: function() {
       const startNode = "VertexCollection1/A";
       const query = `FOR v,e,p IN 1..1 ANY "${startNode}" GRAPH ${graphName}
-                       RETURN p.vertices[*]._id`;
+                       LET x = p.vertices[*]._id SORT x RETURN x`;
 
       var actual = db._query(query).toArray();
       assertEqual(actual, [
@@ -216,7 +216,7 @@ function withClauseTestSuite() {
           [ 
               "VertexCollection1/A", 
               "VertexCollection2/ONE" 
-          ]]);
+          ]].sort());
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -244,7 +244,7 @@ function withClauseTestSuite() {
     testWithClauseNotNeeded: function() {
       const startNode = "VertexCollection1/A";
       const query = `FOR v,e,p IN 1..1 ANY "${startNode}" ${edgeCollectionName}
-                       RETURN SORTED(p.vertices[*]._id)`;
+                       LET x = p.vertices[*]._id SORT x RETURN x`;
 
       var actual = db._query(query).toArray();
       assertEqual(actual, [
@@ -259,7 +259,7 @@ function withClauseTestSuite() {
           [ 
               "VertexCollection1/A", 
               "VertexCollection2/ONE" 
-          ]]);
+          ]].sort());
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -269,7 +269,7 @@ function withClauseTestSuite() {
     testWithClauseNotNeededBindVar: function() {
       const query = `FOR start IN @@vertex1
                        FOR v, e1, p IN 1..1 ANY start._id @@edge
-                         RETURN SORTED(p.vertices[*]._id)`;
+                         LET x = p.vertices[*]._id SORT x RETURN x`;
 
       const bindVars = {
         "@vertex1": vertexCollectionName1,
@@ -297,7 +297,7 @@ function withClauseTestSuite() {
           [ 
               "VertexCollection1/C", 
               "VertexCollection2/TWO" 
-          ]]);
+          ]].sort());
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +307,7 @@ function withClauseTestSuite() {
     testWithClauseNotNeededTwoCollections: function() {
       const query = `FOR start IN @@vertex1
                        FOR v, e1, p IN 2..2 ANY start._id @@edge, @@edge2
-                         RETURN p.vertices[*]._id`;
+                         LET x = p.vertices[*]._id SORT x RETURN x`;
 
       const bindVars = {
         "@vertex1": vertexCollectionName1,
