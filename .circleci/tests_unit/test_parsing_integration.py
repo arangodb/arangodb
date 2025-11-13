@@ -112,20 +112,15 @@ class TestParseRealYAMLFiles:
 
     def test_all_files_parse_without_errors(self):
         """Verify all YAML files can be parsed without exceptions."""
-        yaml_files = [
-            "test-definitions.yml",
-            "arangojs.yml",
-            "go.yml",
-            "java.yml",
-            "kafka.yml",
-            "spark-datasource.yml",
-        ]
+        yaml_files = sorted(TESTS_DIR.glob("*.yml"))
+        assert (
+            len(yaml_files) > 0
+        ), "Should find at least one YAML file in tests directory"
 
-        for filename in yaml_files:
-            yaml_file = TESTS_DIR / filename
+        for yaml_file in yaml_files:
             # Should not raise any exceptions
             test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
-            assert test_def.jobs, f"{filename} should have at least one job"
+            assert test_def.jobs, f"{yaml_file.name} should have at least one job"
 
 
 class TestJobStructures:
