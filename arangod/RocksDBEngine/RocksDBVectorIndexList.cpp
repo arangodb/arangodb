@@ -334,9 +334,7 @@ void RocksDBInvertedListsFilteringStoredValuesIterator::
 void RocksDBInvertedListsFilteringStoredValuesIterator::next() {
   skipOverFilteredDocuments();
   ++_filteredIdsIt;
-  if (_filteredIdsIt == _filteredIds.end()) {
-    skipOverFilteredDocuments();
-  }
+  skipOverFilteredDocuments();
 }
 
 std::pair<faiss::idx_t, uint8_t const*>
