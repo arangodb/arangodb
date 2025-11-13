@@ -910,7 +910,3 @@ class BuildConfig:
     enterprise: bool
     sanitizer: Optional[Sanitizer] = None
     nightly: bool = False
-
-    def __post_init__(self):
-        """Validate build configuration."""
-        # Validation is handled by Architecture and Sanitizer enums
