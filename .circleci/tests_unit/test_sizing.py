@@ -15,67 +15,58 @@ class TestGetResourceClass:
 
     def test_x64_sizes(self):
         """Test x64 architecture resource class mappings."""
-        assert ResourceSizer.get_resource_class(ResourceSize.SMALL, "x64") == "small"
-        assert ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "x64") == "medium"
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM_PLUS, "x64")
+            ResourceSizer.get_resource_class(ResourceSize.SMALL, Architecture.X64)
+            == "small"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, Architecture.X64)
+            == "medium"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM_PLUS, Architecture.X64)
             == "medium+"
         )
-        assert ResourceSizer.get_resource_class(ResourceSize.LARGE, "x64") == "large"
-        assert ResourceSizer.get_resource_class(ResourceSize.XLARGE, "x64") == "xlarge"
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, "x64") == "2xlarge"
+            ResourceSizer.get_resource_class(ResourceSize.LARGE, Architecture.X64)
+            == "large"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.XLARGE, Architecture.X64)
+            == "xlarge"
+        )
+        assert (
+            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, Architecture.X64)
+            == "2xlarge"
         )
 
     def test_aarch64_sizes(self):
         """Test aarch64 architecture resource class mappings."""
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.SMALL, "aarch64")
+            ResourceSizer.get_resource_class(ResourceSize.SMALL, Architecture.AARCH64)
             == "arm.medium"
         )
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "aarch64")
+            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, Architecture.AARCH64)
             == "arm.medium"
         )
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM_PLUS, "aarch64")
+            ResourceSizer.get_resource_class(
+                ResourceSize.MEDIUM_PLUS, Architecture.AARCH64
+            )
             == "arm.large"
         )
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.LARGE, "aarch64")
+            ResourceSizer.get_resource_class(ResourceSize.LARGE, Architecture.AARCH64)
             == "arm.large"
         )
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.XLARGE, "aarch64")
+            ResourceSizer.get_resource_class(ResourceSize.XLARGE, Architecture.AARCH64)
             == "arm.xlarge"
         )
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, "aarch64")
+            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, Architecture.AARCH64)
             == "arm.2xlarge"
-        )
-
-    def test_invalid_architecture(self):
-        """Test error handling for invalid architecture."""
-        with pytest.raises(ValueError, match="Unknown architecture: foo"):
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "foo")
-
-        with pytest.raises(ValueError, match="Unknown architecture: ARM"):
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "ARM")
-
-    def test_architecture_aliases(self):
-        """Test that architecture aliases work correctly."""
-        # Test x64 aliases
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "amd64") == "medium"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "x86_64") == "medium"
-        )
-
-        # Test aarch64 aliases
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, "arm64")
-            == "arm.medium"
         )
 
 

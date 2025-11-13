@@ -31,47 +31,25 @@ class ResourceSizer:
         ResourceSize.XXLARGE: "2xlarge",
     }
 
-    # Architecture aliases for compatibility
-    ARCH_ALIASES = {
-        "x86_64": "x64",
-        "amd64": "x64",
-        "arm64": "aarch64",
-    }
-
     @classmethod
-    def _normalize_arch(cls, arch: str) -> str:
-        """Normalize architecture string to canonical form."""
-        return cls.ARCH_ALIASES.get(arch, arch)
-
-    @classmethod
-    def get_resource_class(cls, size: ResourceSize, arch: Architecture | str) -> str:
+    def get_resource_class(cls, size: ResourceSize, arch: Architecture) -> str:
         """
         Get CircleCI resource class for a size and architecture.
 
         Args:
             size: Logical size enum
-            arch: Architecture enum or string (x64, aarch64, or aliases)
+            arch: Architecture enum
 
         Returns:
             CircleCI resource class string
-
-        Raises:
-            ValueError: If architecture is invalid
         """
-        # Convert Architecture enum to string if needed
-        if isinstance(arch, Architecture):
-            arch = arch.value
-        else:
-            arch = cls._normalize_arch(arch)
-
-        if arch == "aarch64":
+        if arch == Architecture.AARCH64:
             return cls.AARCH64_SIZES[size]
-        if arch == "x64":
+        if arch == Architecture.X64:
             return cls.X86_SIZES[size]
-        raise ValueError(
-            f"Unknown architecture: {arch}. "
-            f"Valid options: x64, aarch64 (or aliases: amd64, x86_64, arm64)"
-        )
+
+        # This should never happen with a proper Architecture enum
+        raise ValueError(f"Unknown architecture: {arch}")
 
     @classmethod
     def _apply_sanitizer_overhead(
