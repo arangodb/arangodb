@@ -23,36 +23,26 @@ from src.output_generators.circleci import CircleCIGenerator
 
 @pytest.fixture
 def x64_enterprise_build():
-    """Standard x64 enterprise build config."""
-    return BuildConfig(architecture=Architecture.X64, enterprise=True)
+    """Standard x64 build config."""
+    return BuildConfig(architecture=Architecture.X64)
 
 
 @pytest.fixture
 def x64_tsan_build():
-    """x64 enterprise with TSAN sanitizer."""
-    return BuildConfig(
-        architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
-    )
+    """x64 with TSAN sanitizer."""
+    return BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.TSAN)
 
 
 @pytest.fixture
 def x64_alubsan_build():
-    """x64 enterprise with ALUBSAN sanitizer."""
-    return BuildConfig(
-        architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.ALUBSAN
-    )
+    """x64 with ALUBSAN sanitizer."""
+    return BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.ALUBSAN)
 
 
 @pytest.fixture
 def aarch64_enterprise_build():
-    """ARM64 enterprise build config."""
-    return BuildConfig(architecture=Architecture.AARCH64, enterprise=True)
-
-
-@pytest.fixture
-def x64_community_build():
-    """x64 community build config."""
-    return BuildConfig(architecture=Architecture.X64, enterprise=False)
+    """ARM64 build config."""
+    return BuildConfig(architecture=Architecture.AARCH64)
 
 
 @pytest.fixture

@@ -564,9 +564,8 @@ class TestBuildConfigClass:
     def test_basic_build(self):
         from src.config_lib import Architecture
 
-        build = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build = BuildConfig(architecture=Architecture.X64)
         assert build.architecture == Architecture.X64
-        assert build.enterprise is True
         assert build.sanitizer is None
         assert build.nightly is False
 
@@ -575,7 +574,6 @@ class TestBuildConfigClass:
 
         build = BuildConfig(
             architecture=Architecture.X64,
-            enterprise=True,
             sanitizer=Sanitizer.ALUBSAN,
             nightly=True,
         )

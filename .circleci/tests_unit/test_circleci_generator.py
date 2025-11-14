@@ -84,73 +84,63 @@ class TestGenerateWorkflowName:
         )
         return CircleCIGenerator(config, base_config={})
 
-    def test_workflow_name_x64_enterprise_pr(self):
-        """Test workflow name for x64 enterprise PR build."""
+    def test_workflow_name_x64_pr(self):
+        """Test workflow name for x64 PR build."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-enterprise-no_ui_tests-pr"
+        assert name == "x64-no_ui_tests-pr"
 
-    def test_workflow_name_x64_enterprise_nightly(self):
-        """Test workflow name for x64 enterprise nightly build."""
+    def test_workflow_name_x64_nightly(self):
+        """Test workflow name for x64 nightly build."""
         gen = self.create_generator()
-        build_config = BuildConfig(
-            architecture=Architecture.X64, enterprise=True, nightly=True
-        )
+        build_config = BuildConfig(architecture=Architecture.X64, nightly=True)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-enterprise-no_ui_tests-nightly"
+        assert name == "x64-no_ui_tests-nightly"
 
     def test_workflow_name_with_sanitizer(self):
         """Test workflow name includes sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64, sanitizer=Sanitizer.TSAN
         )
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-enterprise-no_ui_tests-pr-tsan"
+        assert name == "x64-no_ui_tests-pr-tsan"
 
     def test_workflow_name_with_ui_tests(self):
         """Test workflow name with UI tests enabled."""
         gen = self.create_generator(ui="on")
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-enterprise-with_ui_tests-pr"
+        assert name == "x64-with_ui_tests-pr"
 
     def test_workflow_name_with_ui_only(self):
         """Test workflow name with UI tests only."""
         gen = self.create_generator(ui="only")
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-enterprise-only_ui_tests-pr"
+        assert name == "x64-only_ui_tests-pr"
 
     def test_workflow_name_aarch64(self):
         """Test workflow name for ARM architecture."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.AARCH64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.AARCH64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "aarch64-enterprise-no_ui_tests-pr"
-
-    def test_workflow_name_community(self):
-        """Test workflow name for community edition."""
-        gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=False)
-
-        name = gen._generate_workflow_name(build_config)
-        assert name == "x64-community-no_ui_tests-pr"
+        assert name == "aarch64-no_ui_tests-pr"
 
     def test_workflow_name_with_replication_two(self):
         """Test workflow name with replication version 2."""
         gen = self.create_generator(replication_two=True)
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-enterprise-no_ui_tests-pr-repl2"
+        assert name == "x64-no_ui_tests-pr-repl2"
 
 
 class TestCreateBuildJob:
@@ -161,70 +151,55 @@ class TestCreateBuildJob:
         config = GeneratorConfig(filter_criteria=FilterCriteria())
         return CircleCIGenerator(config, base_config={})
 
-    def test_create_build_job_x64_enterprise(self):
-        """Test creating x64 enterprise build job."""
+    def test_create_build_job_x64(self):
+        """Test creating x64 build job."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         job = gen._create_build_job(build_config)
 
         assert "compile-linux" in job
         params = job["compile-linux"]
-        assert params["name"] == "build-ee-x64"
+        assert params["name"] == "build-x64"
         assert params["preset"] == "enterprise-pr"
         assert params["enterprise"] is True
         assert params["arch"] == "x64"
         assert params["resource-class"] == "2xlarge"
         assert "s3-prefix" not in params
 
-    def test_create_build_job_aarch64_community(self):
-        """Test creating ARM64 community build job."""
-        gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.AARCH64, enterprise=False)
-
-        job = gen._create_build_job(build_config)
-
-        params = job["compile-linux"]
-        assert params["name"] == "build-ce-aarch64"
-        assert params["preset"] == "community-pr"
-        assert params["enterprise"] is False
-        assert params["arch"] == "aarch64"
-        assert params["resource-class"] == "arm.2xlarge"
-        assert params["s3-prefix"] == "aarch64"
-
     def test_create_build_job_with_sanitizer(self):
         """Test creating build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64, sanitizer=Sanitizer.TSAN
         )
 
         job = gen._create_build_job(build_config)
 
         params = job["compile-linux"]
-        assert params["name"] == "build-ee-x64-tsan"
+        assert params["name"] == "build-x64-tsan"
         assert params["preset"] == "enterprise-pr-tsan"
 
     def test_create_frontend_build_job(self):
         """Test creating frontend build job."""
         gen = self.create_generator()
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         job = gen._create_frontend_build_job(build_config)
 
         assert "build-frontend" in job
-        assert job["build-frontend"]["name"] == "build-ee-x64-frontend"
+        assert job["build-frontend"]["name"] == "build-x64-frontend"
 
     def test_create_frontend_build_job_with_sanitizer(self):
         """Test creating frontend build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.ALUBSAN
+            architecture=Architecture.X64, sanitizer=Sanitizer.ALUBSAN
         )
 
         job = gen._create_frontend_build_job(build_config)
 
-        assert job["build-frontend"]["name"] == "build-ee-x64-alubsan-frontend"
+        assert job["build-frontend"]["name"] == "build-x64-alubsan-frontend"
 
 
 class TestDockerImageJob:
@@ -252,7 +227,7 @@ class TestDockerImageJob:
         }
         test_date = date(2025, 1, 15)
         gen = self.create_generator(env_vars, test_date)
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         workflow = {"jobs": []}
         gen._add_docker_image_job(workflow, build_config, ["build-job"])
@@ -269,7 +244,7 @@ class TestDockerImageJob:
         }
         test_date = date(2025, 1, 15)
         gen = self.create_generator(env_vars, test_date)
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=False)
+        build_config = BuildConfig(architecture=Architecture.X64)
 
         workflow = {"jobs": []}
         gen._add_docker_image_job(workflow, build_config, ["build-job"])
@@ -279,21 +254,6 @@ class TestDockerImageJob:
         assert "my-feature" in job["tag"]
         assert "pr/123/" not in job["tag"]
 
-    def test_docker_image_community_repo(self):
-        """Test community edition uses correct Docker registry."""
-        env_vars = {
-            "CIRCLE_BRANCH": "main",
-            "CIRCLE_SHA1": "abc1234",
-        }
-        gen = self.create_generator(env_vars, date(2025, 1, 15))
-        build_config = BuildConfig(architecture=Architecture.X64, enterprise=False)
-
-        workflow = {"jobs": []}
-        gen._add_docker_image_job(workflow, build_config, ["build-job"])
-
-        job = workflow["jobs"][0]["create-docker-image"]
-        assert "public.ecr.aws/b0b8h2r4/arangodb-preview" in job["tag"]
-
     def test_docker_image_aarch64_architecture(self):
         """Test ARM64 architecture in docker tag."""
         env_vars = {
@@ -301,7 +261,7 @@ class TestDockerImageJob:
             "CIRCLE_SHA1": "abc1234",
         }
         gen = self.create_generator(env_vars, date(2025, 1, 15))
-        build_config = BuildConfig(architecture=Architecture.AARCH64, enterprise=True)
+        build_config = BuildConfig(architecture=Architecture.AARCH64)
 
         workflow = {"jobs": []}
         gen._add_docker_image_job(workflow, build_config, ["build-job"])
@@ -372,8 +332,8 @@ class TestGenerateMethod:
         result = gen.generate([test_def])
 
         assert "workflows" in result
-        # Should have x64-enterprise workflow
-        assert any("x64-enterprise" in name for name in result["workflows"].keys())
+        # Should have x64 workflow
+        assert any("x64" in name for name in result["workflows"].keys())
 
 
 class TestHotbackupJob:
@@ -384,7 +344,7 @@ class TestHotbackupJob:
         config = GeneratorConfig(filter_criteria=FilterCriteria())
         gen = CircleCIGenerator(config, base_config={})
         build_config = BuildConfig(
-            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64, sanitizer=Sanitizer.TSAN
         )
 
         workflow = {"jobs": []}

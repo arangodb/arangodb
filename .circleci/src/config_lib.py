@@ -904,9 +904,8 @@ class TestDefinitionFile:
 
 @dataclass
 class BuildConfig:
-    """Build context information for test execution."""
+    """Build context information for test execution (enterprise-only)."""
 
     architecture: Architecture
-    enterprise: bool
     sanitizer: Optional[Sanitizer] = None
     nightly: bool = False

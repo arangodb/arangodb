@@ -110,19 +110,17 @@ class CircleCIGenerator(OutputGenerator):
         if "workflows" not in circleci_config:
             circleci_config["workflows"] = {}
 
-        # X64 Enterprise (always included)
+        # X64 (always included)
         build_config = BuildConfig(
             architecture=Architecture.X64,
-            enterprise=True,
             sanitizer=self.config.filter_criteria.sanitizer,
             nightly=self.config.filter_criteria.nightly,
         )
         self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
-        # ARM64 Enterprise (with or without sanitizer - changed in merge ec7f7ef91ade)
+        # ARM64 (with or without sanitizer - changed in merge ec7f7ef91ade)
         build_config = BuildConfig(
             architecture=Architecture.AARCH64,
-            enterprise=True,
             sanitizer=self.config.filter_criteria.sanitizer,
             nightly=self.config.filter_criteria.nightly,
         )
@@ -191,8 +189,7 @@ class CircleCIGenerator(OutputGenerator):
         if self.config.test_execution.replication_two:
             suffix += "-repl2"
 
-        edition = "enterprise" if build_config.enterprise else "community"
-        return f"{build_config.architecture.value}-{edition}-{suffix}"
+        return f"{build_config.architecture.value}-{suffix}"
 
     def _add_build_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig
@@ -209,10 +206,9 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
 
-        # Add non-maintainer build for x64 enterprise (no sanitizer, not ui-only)
+        # Add non-maintainer build for x64 (no sanitizer, not ui-only)
         if (
             build_config.architecture == Architecture.X64
-            and build_config.enterprise
             and not build_config.sanitizer
             and self.config.circleci.ui != "only"
         ):
@@ -227,14 +223,13 @@ class CircleCIGenerator(OutputGenerator):
 
     def _create_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create compilation job definition."""
-        edition = "ee" if build_config.enterprise else "ce"
-        preset = f"{'enterprise' if build_config.enterprise else 'community'}-pr"
+        preset = "enterprise-pr"
 
         if build_config.sanitizer:
             preset += f"-{build_config.sanitizer.value}"
 
         suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
-        name = f"build-{edition}-{build_config.architecture.value}{suffix}"
+        name = f"build-{build_config.architecture.value}{suffix}"
 
         params = {
             "context": ["sccache-aws-bucket"],
@@ -243,7 +238,7 @@ class CircleCIGenerator(OutputGenerator):
             ),
             "name": name,
             "preset": preset,
-            "enterprise": build_config.enterprise,
+            "enterprise": True,
             "arch": build_config.architecture.value,
         }
 
@@ -254,9 +249,8 @@ class CircleCIGenerator(OutputGenerator):
 
     def _create_frontend_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create frontend build job definition."""
-        edition = "ee" if build_config.enterprise else "ce"
         suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
-        name = f"build-{edition}-{build_config.architecture.value}{suffix}-frontend"
+        name = f"build-{build_config.architecture.value}{suffix}-frontend"
 
         return {"build-frontend": {"name": name}}
 
@@ -270,7 +264,7 @@ class CircleCIGenerator(OutputGenerator):
                 "resource-class": self.sizer.get_resource_class(
                     ResourceSize.XXLARGE, build_config.architecture
                 ),
-                "name": "build-ee-non-maintainer-x64",
+                "name": "build-non-maintainer-x64",
                 "preset": "enterprise-pr-non-maintainer",
                 "enterprise": True,
                 "arch": "x64",
@@ -312,23 +306,15 @@ class CircleCIGenerator(OutputGenerator):
             self._add_ui_test_jobs(workflow, build_config, build_jobs)
 
         # Hotbackup tests
-        if (
-            build_config.enterprise
-            and not self.config.test_execution.arangod_without_v8
-        ):
+        if not self.config.test_execution.arangod_without_v8:
             self._add_hotbackup_job(workflow, build_config, build_jobs)
 
     def _add_docker_image_job(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
         """Add docker image creation job."""
-        edition = "ee" if build_config.enterprise else "ce"
         arch = "amd64" if build_config.architecture == Architecture.X64 else "arm64"
-        image = (
-            "public.ecr.aws/b0b8h2r4/enterprise-preview"
-            if build_config.enterprise
-            else "public.ecr.aws/b0b8h2r4/arangodb-preview"
-        )
+        image = "public.ecr.aws/b0b8h2r4/enterprise-preview"
 
         branch = self.env_getter("CIRCLE_BRANCH", "unknown-branch")
         match = re.fullmatch(r"(.+\/)?(.+)", branch)
@@ -341,7 +327,7 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(
             {
                 "create-docker-image": {
-                    "name": f"create-{edition}-{build_config.architecture.value}-docker-image",
+                    "name": f"create-{build_config.architecture.value}-docker-image",
                     "resource-class": self.sizer.get_resource_class(
                         ResourceSize.LARGE, build_config.architecture
                     ),
@@ -411,7 +397,7 @@ class CircleCIGenerator(OutputGenerator):
                         "arangosh_args": "",
                         "deployment": deployment,
                         "browser": "Remote_CHROME",
-                        "enterprise": "EP" if build_config.enterprise else "C",
+                        "enterprise": "EP",
                         "filterStatement": ui_filter,
                         "requires": build_jobs,
                         "rta-branch": self.config.circleci.rta_branch,
