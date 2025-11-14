@@ -24,7 +24,6 @@
     "minimatch": "^3.1.2",
     "ms": "^2.1.3",
     "netmask": "^2.0.2",
-    "node-netstat": "^1.8.0",
     "qs": "^6.11.2",
     "range-parser": "^1.2.1",
     "semver": "^7.5.4",
@@ -37,7 +36,11 @@
   "devDependencies": {
     "@xmldom/xmldom": "^0.8.0",
     "ansi_up": "^5.1.0",
+<<<<<<< HEAD
     "eslint": "^5.16.0",
+=======
+    "node-netstat": "^1.8.0",
+>>>>>>> 6ec097d4c25 (Remove old no-eslint files (#22102))
     "parse-prometheus-text-format": "^1.1.1"
   },
   "overrides": {
