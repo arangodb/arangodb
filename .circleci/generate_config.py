@@ -23,12 +23,12 @@ from src.output_generators.base import (
 from src.output_generators.circleci import CircleCIGenerator
 
 
-def parse_test_branches(test_branches_arg: str) -> dict:
+def parse_driver_branches(driver_branch_overrides: str) -> dict:
     """
-    Parse test-branches argument into a dictionary.
+    Parse driver-branch-overrides argument into a dictionary.
 
     Args:
-        test_branches_arg: Colon-separated list like "main=branch1:driver=branch2"
+        driver_branch_overrides: Colon-separated list like "main=branch1:driver=branch2"
 
     Returns:
         Dictionary mapping prefix to branch name
@@ -36,19 +36,19 @@ def parse_test_branches(test_branches_arg: str) -> dict:
     Raises:
         ValueError: If the format is invalid
     """
-    if not test_branches_arg:
+    if not driver_branch_overrides:
         return {}
 
     result = {}
     try:
-        for pair in test_branches_arg.split(":"):
+        for pair in driver_branch_overrides.split(":"):
             if not pair:
                 continue
             name, branch = pair.split("=")
             result[name] = branch
     except ValueError as ex:
         raise ValueError(
-            f"Invalid --test-branches format: '{pair}'. "
+            f"Invalid --driver-branch-overrides format: '{pair}'. "
             "Expected format: 'name=branch:name2=branch2'"
         ) from ex
 
@@ -63,8 +63,8 @@ def apply_branch_overrides(
     """
     Apply git branch overrides to a test definition.
 
-    The --test-branches feature allows overriding git branches for driver tests.
-    For example: --test-branches=go=feature-branch:js=main
+    The --driver_branch_overrides feature allows overriding git branches for driver tests.
+    For example: --driver_branch_overrides go=feature-branch:js=main
 
     When a test definition filename contains a key from branch_overrides (e.g., "go.yml"
     contains "go"), the corresponding branch overrides the repository's default branch.
@@ -239,8 +239,8 @@ def create_generator_config(
 )
 @click.option(
     "-b",
-    "--test-branches",
-    help="Colon-separated list of test-definition-prefix=branch",
+    "--driver-branch-overrides",
+    help="Colon-separated list of driver=branch (e.g., 'go=feature:java=main')",
 )
 @click.option(
     "--ui",
@@ -323,7 +323,7 @@ def main(
     output: str,
     sanitizer: str,
     default_container: str,
-    test_branches: str,
+    driver_branch_overrides: str,
     ui: str,
     ui_testsuites: str,
     ui_deployments: str,
@@ -348,14 +348,13 @@ def main(
     DEFINITIONS are test definition YAML file(s).
     """
     try:
-        # Parse test branches
-        test_branches_dict = parse_test_branches(test_branches or "")
+        driver_branches_dict = parse_driver_branches(driver_branch_overrides or "")
 
         # Load test definitions
         definition_list = list(definitions)
         if definition_list:
             click.echo(f"Loading {len(definition_list)} test definition file(s)...")
-            test_defs = load_test_definitions(definition_list, test_branches_dict)
+            test_defs = load_test_definitions(definition_list, driver_branches_dict)
         else:
             test_defs = []
 
