@@ -127,7 +127,7 @@ jobs:
               ## Cancel any currently running/on_hold workflow with the same name
               if [ -s WF_to_cancel.txt ]; then
                 echo "Cancelling the following workflow(s):"
-                cat WF_to_cancel.txt 
+                cat WF_to_cancel.txt
                 while read WF_ID;
                   do
                     curl --header "Circle-Token: $CIRCLECI_TOKEN" --request POST https://circleci.com/api/v2/workflow/$WF_ID/cancel
@@ -207,7 +207,7 @@ jobs:
               cp .circleci/build_test_image.yml continuation_config.yml
             else
               set -x
-              pip install pyyaml
+              pip install pyyaml click
               python3 ".circleci/generate_config.py" \
                 --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
