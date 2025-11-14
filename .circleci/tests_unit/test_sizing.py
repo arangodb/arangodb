@@ -39,9 +39,9 @@ class TestGetResourceClass:
 class TestGetTestSize:
     """Test get_test_size method with sanitizer overhead."""
 
-    def test_no_sanitizer_no_adjustment(self):
+    def test_no_sanitizer_no_adjustment(self, x64_enterprise_build):
         """Test that sizes are not adjusted without sanitizers."""
-        config = BuildConfig(architecture=Architecture.X64, enterprise=True)
+        config = x64_enterprise_build
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.SMALL, config, is_cluster=False)
@@ -60,11 +60,9 @@ class TestGetTestSize:
             == "xlarge"
         )
 
-    def test_tsan_cluster_small_to_xlarge(self):
+    def test_tsan_cluster_small_to_xlarge(self, x64_tsan_build):
         """Test TSAN cluster small tests need xlarge."""
-        config = BuildConfig(
-            architecture=Architecture.X64, enterprise=True, sanitizer=Sanitizer.TSAN
-        )
+        config = x64_tsan_build
 
         result = ResourceSizer.get_test_size(
             ResourceSize.SMALL, config, is_cluster=True

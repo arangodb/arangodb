@@ -388,20 +388,10 @@ class TestShouldIncludeSuite:
 class TestFilterSuites:
     """Test filter_suites function."""
 
-    def test_filter_mixed_suites_in_pr_build(self):
+    def test_filter_mixed_suites_in_pr_build(self, mixed_suite_job):
         """Test filtering a mix of PR and full suites in PR build."""
-        job = TestJob(
-            name="test_job",
-            suites=[
-                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
-                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
-                SuiteConfig(name="any_suite", options=TestOptions()),
-            ],
-            options=TestOptions(),
-        )
-
         criteria = FilterCriteria(full=False, nightly=False)
-        result = filter_suites(job, criteria)
+        result = filter_suites(mixed_suite_job, criteria)
 
         # Should include PR suite and any suite, exclude full suite
         assert len(result) == 2
@@ -410,20 +400,10 @@ class TestFilterSuites:
         assert "any_suite" in result_names
         assert "full_suite" not in result_names
 
-    def test_filter_mixed_suites_in_full_build(self):
+    def test_filter_mixed_suites_in_full_build(self, mixed_suite_job):
         """Test filtering a mix of PR and full suites in full build."""
-        job = TestJob(
-            name="test_job",
-            suites=[
-                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
-                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
-                SuiteConfig(name="any_suite", options=TestOptions()),
-            ],
-            options=TestOptions(),
-        )
-
         criteria = FilterCriteria(full=True)
-        result = filter_suites(job, criteria)
+        result = filter_suites(mixed_suite_job, criteria)
 
         # Should include full suite and any suite, exclude PR suite
         assert len(result) == 2
@@ -432,20 +412,10 @@ class TestFilterSuites:
         assert "any_suite" in result_names
         assert "pr_suite" not in result_names
 
-    def test_filter_all_tests_returns_all_suites(self):
+    def test_filter_all_tests_returns_all_suites(self, mixed_suite_job):
         """Test that all_tests=True returns all suites."""
-        job = TestJob(
-            name="test_job",
-            suites=[
-                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
-                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
-                SuiteConfig(name="any_suite", options=TestOptions()),
-            ],
-            options=TestOptions(),
-        )
-
         criteria = FilterCriteria(all_tests=True)
-        result = filter_suites(job, criteria)
+        result = filter_suites(mixed_suite_job, criteria)
 
         # Should include all suites
         assert len(result) == 3
