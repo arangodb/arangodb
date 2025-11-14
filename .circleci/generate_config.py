@@ -9,12 +9,12 @@ and build configurations.
 
 import sys
 import traceback
-from pathlib import Path
+from dataclasses import replace
 from typing import List
 import click
 
-from src.config_lib import TestDefinitionFile, BuildConfig, Sanitizer, TestArguments
-from src.filters import FilterCriteria, filter_jobs
+from src.config_lib import TestDefinitionFile, Sanitizer, TestArguments
+from src.filters import FilterCriteria
 from src.output_generators.base import (
     GeneratorConfig,
     TestExecutionConfig,
@@ -74,8 +74,6 @@ def load_test_definitions(
     Returns:
         List of loaded TestDefinitionFile objects with branch overrides applied
     """
-    from dataclasses import replace
-
     test_defs = []
 
     for filepath in definition_files:
@@ -374,4 +372,4 @@ def main(
 
 
 if __name__ == "__main__":
-    main()
+    main()  # pylint: disable=no-value-for-parameter
