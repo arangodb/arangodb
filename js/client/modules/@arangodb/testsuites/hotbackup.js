@@ -44,7 +44,6 @@ const functionsDocumentation = {
 };
 
 const testPaths = {
-  'dump': [tu.pathForTesting('client/dump')],
   'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
@@ -68,7 +67,7 @@ function hotBackup (options) {
     // todo foxxTest: 'check-foxx.js'
   };
 
-  let which = "dump";
+  let which = "hot_backup";
   // /return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
   print(CYAN + which + ' tests...' + RESET);
 
@@ -148,7 +147,6 @@ function hotBackup (options) {
   }
   catch (ex) {
     print("Caught exception during testrun: " + ex);
-    helper.destructor(false);
   }
   helper.destructor(true);
   if (helper.doCleanup) {
@@ -157,9 +155,83 @@ function hotBackup (options) {
   return helper.extractResults();
 }
 
+function hotBackup_load_backend (options, which, args) {
+  const encryptionKey = '01234567890123456789012345678901';
+  console.warn(options);
+  options.extraArgs['experimental-vector-index'] = true;
+  if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
+    options.dbServers = 3;
+  }
+
+  // /return dump_backend(options, {}, {}, dumpMaskingsOpts, options, 'dump_maskings', tstFiles, function(){});
+  print(CYAN + which + ' tests...' + RESET);
+
+  let addArgs = {};
+  const useEncryption = true;
+  let keyDir;
+  if (useEncryption) {
+    keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
+    if (!fs.exists(keyDir)) {  // needed on win32
+      fs.makeDirectory(keyDir);
+    }
+
+    let keyfile = fs.join(keyDir, 'secret');
+    fs.write(keyfile, encryptionKey);
+
+    addArgs['rocksdb.encryption-keyfolder'] = keyDir;
+  }
+
+  const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
+  if (!helper.startFirstInstance()) {
+    print(1)
+    helper.destructor(false);
+    return helper.extractResults();
+  }
+
+  try {
+    if (!helper.runRtaMakedata() ||
+        !helper.createHotBackup() ||
+        !helper.isAlive() ||
+        !helper.spawnStressArangosh(args.noiseScript) ||
+        !helper.runTestFn(args.preRestoreFn) ||
+        !helper.restoreHotBackup() ||
+        !helper.runTestFn(args.postRestoreFn) ||
+        !helper.runRtaCheckData()) {
+      print(2)
+      helper.destructor(true);
+      return helper.extractResults();
+    }
+
+  }
+  catch (ex) {
+    print("Caught exception during testrun: " + ex);
+  }
+  print(4)
+  helper.destructor(true);
+  if (helper.doCleanup) {
+    fs.removeDirectoryRecursive(keyDir, true);
+  }
+  return helper.extractResults();
+}
+
+function hotBackup_load (options) {
+
+  let which = "hot_backup_load";
+  return hotBackup_load_backend(options, which, {
+    noiseScript: "",
+    preRestoreFn: function() {
+      return {status: true, testresult: {}};
+    },
+    postRestoreFn:function() {
+      return {status: true, testresult: {}};
+    }
+  });
+}
+
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['hot_backup'] = hotBackup;
+  testFns['hot_backup_load'] = hotBackup_load;
 
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -538,6 +538,43 @@ function joinFinishedBGShells(options, clients) {
   return done;
 }
 
+function joinForceBGShells(options, clients) {
+  let IM = global.instanceManager;
+  let tries = 0;
+  let done = clients.length;
+
+  clients.forEach(function (client) {
+    if (client.status.status === 'RUNNING') {
+      internal.killExternal(client.client.pid, 15 /*SIG_TERM*/);
+    }
+  });
+  sleep(1);
+  clients.forEach(function (client) {
+    if (client.done) {
+      done -= 1;
+    } else {
+      client.status = internal.statusExternal(client.client.pid);
+      if (client.status.status !== 'RUNNING') { 
+        let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
+        IM.serverCrashedLocal |= failed;
+        client.failed = failed;
+        client.done = true;
+      }
+      if (client.status === 'TERMINATED') {
+        done -= 1;
+        if (client.exit === 0) {
+          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
+          client.failed = false;
+        } else {
+          IM.options.cleanup = false;
+          client.failed = true;
+        }
+      }
+    }
+  });
+  return done === 0;
+}
+
 function cleanupBGShells (clients, cn) {
   let IM = global.instanceManager;
   clients.forEach(function (client) {
@@ -757,6 +794,7 @@ exports.run = {
   launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
   joinBGShells: joinBGShells,
+  joinForceBGShells: joinForceBGShells,
   joinFinishedBGShells: joinFinishedBGShells,
   cleanupBGShells: cleanupBGShells,
   arangoImport: runArangoImportCfg,

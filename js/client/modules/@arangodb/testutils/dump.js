@@ -99,6 +99,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   }
 
   destructor(cleanup) {
+    print('destructor')
     if (this.fn !== undefined && fs.exists(this.fn)) {
       fs.remove(this.fn);
     }
@@ -427,6 +428,13 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     } while(this.results.restore.exitCode === 38);
     this.restoreConfig.disableContinue();
     return this.validate(this.results.restore);
+  }
+
+  runTestFn(testFunction) {
+    this.print("running snippet");
+    let ret = testFunction();
+    this.validate(ret.testresult);
+    return ret.status;
   }
 
   runTests(file, database) {
