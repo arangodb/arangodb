@@ -55,17 +55,64 @@ def parse_test_branches(test_branches_arg: str) -> dict:
     return result
 
 
+def apply_branch_overrides(
+    test_def: TestDefinitionFile,
+    filename: str,
+    branch_overrides: dict
+) -> TestDefinitionFile:
+    """
+    Apply git branch overrides to a test definition.
+
+    The --test-branches feature allows overriding git branches for driver tests.
+    For example: --test-branches=go=feature-branch:js=main
+
+    When a test definition filename contains a key from branch_overrides (e.g., "go.yml"
+    contains "go"), the corresponding branch overrides the repository's default branch.
+
+    Args:
+        test_def: TestDefinitionFile to apply overrides to
+        filename: Filename to match against override keys
+        branch_overrides: Dictionary mapping filename prefix to branch override
+
+    Returns:
+        New TestDefinitionFile with branch overrides applied (immutable)
+    """
+    if not branch_overrides:
+        return test_def
+
+    # Extract base filename from path for matching
+    base_filename = filename.split("/")[-1] if "/" in filename else filename
+
+    # Find matching override (only apply first match)
+    override_branch = None
+    for prefix, branch in branch_overrides.items():
+        if prefix in base_filename:
+            override_branch = branch
+            break
+
+    if not override_branch:
+        return test_def  # No matching override
+
+    # Create new jobs dict with branch overrides applied
+    updated_jobs = {}
+    for job_name, job in test_def.jobs.items():
+        if job.repository:
+            # Create new job with overridden repository branch
+            updated_job = replace(
+                job,
+                repository=replace(job.repository, git_branch=override_branch)
+            )
+            updated_jobs[job_name] = updated_job
+        else:
+            updated_jobs[job_name] = job
+
+    return TestDefinitionFile(jobs=updated_jobs)
+
 def load_test_definitions(
     definition_files: List[str], test_branches: dict
 ) -> List[TestDefinitionFile]:
     """
     Load test definition files with optional branch overrides.
-
-    The --test-branches feature allows overriding git branches for driver tests.
-    For example: --test-branches=go=feature-branch:js=main
-
-    When a test definition filename contains a key from test_branches (e.g., "go.yml"
-    contains "go"), the corresponding branch overrides the repository's default branch.
 
     Args:
         definition_files: List of paths to test definition YAML files
@@ -84,20 +131,8 @@ def load_test_definitions(
         # Load the test definition file
         test_def = TestDefinitionFile.from_yaml_file(filepath)
 
-        # Apply branch overrides if any match the filename
-        if test_branches:
-            # Extract filename from path for matching
-            filename = filepath.split("/")[-1] if "/" in filepath else filepath
-
-            # Check if any test_branches key matches this filename
-            for prefix, branch in test_branches.items():
-                if prefix in filename:
-                    # Override branch for all jobs with repository config
-                    for job in test_def.jobs.values():
-                        if job.repository:
-                            # Create new RepositoryConfig with overridden branch
-                            job.repository = replace(job.repository, git_branch=branch)
-                    break  # Only apply first matching prefix
+        # Apply branch overrides as separate step
+        test_def = apply_branch_overrides(test_def, filepath, test_branches)
 
         test_defs.append(test_def)
 

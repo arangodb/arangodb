@@ -5,6 +5,7 @@ Tests the core data models, validation logic, and parsing functions.
 """
 
 import pytest
+from generate_config import apply_branch_overrides
 from src.config_lib import (
     DeploymentType,
     ResourceSize,
@@ -579,3 +580,61 @@ class TestBuildConfigClass:
         )
         assert build.sanitizer == Sanitizer.ALUBSAN
         assert build.nightly is True
+
+def test_git_branch_override_minimal():
+    job = TestJob(
+        name="driverJob",
+        suites=[SuiteConfig(name="boost")],
+        options=TestOptions(),
+        arguments=TestArguments(),
+        repository=RepositoryConfig(
+            git_repo="https://github.com/example/driver",
+            git_branch="main",
+        ),
+    )
+    test_def = TestDefinitionFile(jobs={"driverJob": job})
+
+    overrides = {"go": "feature-branch"}
+    result = apply_branch_overrides(test_def, "go.yml", overrides)
+
+    # Verify override was applied
+    assert "driverJob" in result.jobs
+    overridden = result.jobs["driverJob"]
+    assert overridden.repository is not None
+    assert overridden.repository.git_branch == "feature-branch"
+
+def test_git_branch_override_no_match():
+    job = TestJob(
+        name="driverJob",
+        suites=[SuiteConfig(name="boost")],
+        options=TestOptions(),
+        arguments=TestArguments(),
+        repository=RepositoryConfig(
+            git_repo="https://github.com/example/driver",
+            git_branch="main",
+        ),
+    )
+    test_def = TestDefinitionFile(jobs={"driverJob": job})
+
+    # Override key "go" doesn't match filename "python.yml"
+    overrides = {"go": "feature-branch"}
+    result = apply_branch_overrides(test_def, "python.yml", overrides)
+
+    # Branch should remain unchanged
+    assert result.jobs["driverJob"].repository.git_branch == "main"
+
+def test_git_branch_override_no_repository():
+    job = TestJob(
+        name="normalJob",
+        suites=[SuiteConfig(name="boost")],
+        options=TestOptions(),
+        arguments=TestArguments(),
+        repository=None,  # No repository config
+    )
+    test_def = TestDefinitionFile(jobs={"normalJob": job})
+
+    overrides = {"go": "feature-branch"}
+    result = apply_branch_overrides(test_def, "go.yml", overrides)
+
+    # Should not crash, job should be unchanged
+    assert result.jobs["normalJob"].repository is None
