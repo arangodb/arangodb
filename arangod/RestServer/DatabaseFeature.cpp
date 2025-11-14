@@ -48,6 +48,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/Gauge.h"
+#include "Metrics/GaugeBuilder.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/ReplicationClients.h"
@@ -86,6 +88,12 @@
 using namespace arangodb::options;
 
 namespace arangodb {
+
+DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
+              "Global number of collections");
+DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
+              "Global number of databases");
+
 namespace {
 
 template<typename T>
@@ -440,6 +448,9 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
+  // Update metadata metrics after databases are loaded
+  updateMetadataMetrics();
+
   if (!lookupDatabase(StaticStrings::SystemDatabase)) {
     LOG_TOPIC("97e7c", FATAL, Logger::FIXME)
         << "No _system database found in database directory. Cannot start!";
@@ -632,6 +643,12 @@ void DatabaseFeature::prepare() {
 
   // need this to make calculation analyzer available in database links
   initCalculationVocbase(server());
+
+  // Initialize metadata metrics on single server
+  if (ServerState::instance()->isSingleServer()) {
+    auto& metrics = server().getFeature<metrics::MetricsFeature>();
+    _metadataMetrics.emplace(metrics);
+  }
 }
 
 void DatabaseFeature::recoveryDone() {
@@ -791,6 +808,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     auto next = _databases.make(prev);
     next->insert(std::make_pair(name, vocbase.get()));
 
+    _metadataMetrics->numberOfDatabases.fetch_add(1, std::memory_order_relaxed);
+
     _databases.store(std::move(next));
     waitUnique(prev);
   }
@@ -805,6 +824,10 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   result = vocbase.release();
 
   versionTracker().track("create database");
+
+  if (res.ok()) {
+    _metadataMetrics->numberOfDatabases.fetch_add(1, std::memory_order_relaxed);
+  }
 
   return res;
 }
@@ -895,6 +918,11 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // deleted by the DatabaseManagerThread!
 
   versionTracker().track("drop database");
+  _metadataMetrics->numberOfDatabases.fetch_sub(1, std::memory_order_relaxed);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    _metadataMetrics->numberOfDatabases.fetch_add(1, std::memory_order_relaxed);
+  }
 
   return res;
 }
@@ -1316,6 +1344,47 @@ void DatabaseFeature::closeDroppedDatabases() {
   for (auto p : dropped) {
     p->shutdown();
   }
+}
+
+DatabaseFeature::MetadataMetrics::MetadataMetrics(
+    metrics::MetricsFeature& metrics)
+    : numberOfCollections(
+          metrics.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+  TRI_ASSERT(ServerState::instance()->isSingleServer())
+      << "DatabaseFeature::MetadataMetrics should be exposed only on a single "
+         "server";
+}
+
+void DatabaseFeature::updateMetadataMetrics() {
+  // Only update on single server
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+
+  uint64_t numDatabases = 0;
+  uint64_t numCollections = 0;
+
+  // Count databases and collections
+  auto databases = _databases.load();
+  for (auto& p : *databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    if (vocbase->isDropped()) {
+      continue;
+    }
+    numDatabases++;
+
+    // Count collections in this database
+    vocbase->processCollections(
+        [&numCollections](LogicalCollection* collection) { numCollections++; });
+  }
+
+  // Update the metrics
+  _metadataMetrics->numberOfDatabases.store(numDatabases,
+                                            std::memory_order_relaxed);
+  _metadataMetrics->numberOfCollections.store(numCollections,
+                                              std::memory_order_relaxed);
 }
 
 }  // namespace arangodb
