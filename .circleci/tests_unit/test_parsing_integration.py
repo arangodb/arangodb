@@ -11,6 +11,7 @@ from src.config_lib import TestDefinitionFile, DeploymentType
 
 
 TESTS_DIR = Path(__file__).parent.parent.parent / "tests"
+MAIN_TEST_DEFINITIONS = "test-definitions.yml"
 
 
 class TestParsingIntegration:
@@ -27,7 +28,7 @@ class TestParsingIntegration:
 
     def test_main_test_definitions_structure(self):
         """Verify main test definitions file has expected structure."""
-        yaml_file = TESTS_DIR / "test-definitions.yml"
+        yaml_file = TESTS_DIR / MAIN_TEST_DEFINITIONS
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Should have many jobs
@@ -50,7 +51,7 @@ class TestParsingIntegration:
 
     def test_multi_suite_jobs_with_auto_buckets(self):
         """Verify multi-suite jobs with auto buckets work correctly."""
-        yaml_file = TESTS_DIR / "test-definitions.yml"
+        yaml_file = TESTS_DIR / MAIN_TEST_DEFINITIONS
         test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
 
         # Find multi-suite jobs
@@ -64,11 +65,11 @@ class TestParsingIntegration:
 
     def test_driver_tests_have_repository_config(self):
         """Verify driver test files correctly set repository configuration."""
-        driver_files = ["arangojs.yml", "go.yml", "java.yml", "kafka.yml"]
+        yaml_files = sorted(TESTS_DIR.glob("*.yml"))
 
-        for filename in driver_files:
-            yaml_file = TESTS_DIR / filename
-            if not yaml_file.exists():
+        for yaml_file in yaml_files:
+            # Skip main test definitions - it contains regular tests, not driver tests
+            if yaml_file.name == MAIN_TEST_DEFINITIONS:
                 continue
 
             test_def = TestDefinitionFile.from_yaml_file(str(yaml_file))
@@ -77,10 +78,10 @@ class TestParsingIntegration:
             for job in test_def.jobs.values():
                 assert (
                     job.repository is not None
-                ), f"Job in {filename} should have repository config"
+                ), f"Job in {yaml_file.name} should have repository config"
                 assert (
                     job.repository.git_repo
-                ), f"Job in {filename} should have git_repo"
+                ), f"Job in {yaml_file.name} should have git_repo"
                 assert (
                     job.repository.git_branch
-                ), f"Job in {filename} should have git_branch"
+                ), f"Job in {yaml_file.name} should have git_branch"

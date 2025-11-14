@@ -120,59 +120,31 @@ class TestShouldIncludeJob:
             job = self.create_job(deployment_type=dep_type)
             assert should_include_job(job, criteria) is True
 
-    def test_cluster_filter_only(self):
-        """Test filtering for cluster tests only."""
-        criteria = FilterCriteria(cluster=True, single=False)
-
-        # Should include cluster
-        job = self.create_job(deployment_type=DeploymentType.CLUSTER)
-        assert should_include_job(job, criteria) is True
-
-        # Should include mixed
-        job = self.create_job(deployment_type=DeploymentType.MIXED)
-        assert should_include_job(job, criteria) is True
-
-        # Should include None (unspecified)
-        job = self.create_job(deployment_type=None)
-        assert should_include_job(job, criteria) is True
-
-        # Should exclude single
-        job = self.create_job(deployment_type=DeploymentType.SINGLE)
-        assert should_include_job(job, criteria) is False
-
-    def test_single_filter_only(self):
-        """Test filtering for single tests only."""
-        criteria = FilterCriteria(single=True, cluster=False)
-
-        # Should include single
-        job = self.create_job(deployment_type=DeploymentType.SINGLE)
-        assert should_include_job(job, criteria) is True
-
-        # Should include None (unspecified)
-        job = self.create_job(deployment_type=None)
-        assert should_include_job(job, criteria) is True
-
-        # Should exclude cluster
-        job = self.create_job(deployment_type=DeploymentType.CLUSTER)
-        assert should_include_job(job, criteria) is False
-
-        # Should exclude mixed
-        job = self.create_job(deployment_type=DeploymentType.MIXED)
-        assert should_include_job(job, criteria) is False
-
-    def test_both_cluster_and_single(self):
-        """Test when both cluster and single are True."""
-        criteria = FilterCriteria(cluster=True, single=True)
-
-        # Should include all deployment types
-        for dep_type in [
-            DeploymentType.SINGLE,
-            DeploymentType.CLUSTER,
-            DeploymentType.MIXED,
-            None,
-        ]:
-            job = self.create_job(deployment_type=dep_type)
-            assert should_include_job(job, criteria) is True
+    @pytest.mark.parametrize(
+        "cluster,single,dep_type,expected",
+        [
+            # cluster=True, single=False: include cluster, mixed, None; exclude single
+            (True, False, DeploymentType.CLUSTER, True),
+            (True, False, DeploymentType.MIXED, True),
+            (True, False, None, True),
+            (True, False, DeploymentType.SINGLE, False),
+            # single=True, cluster=False: include single, None; exclude cluster, mixed
+            (False, True, DeploymentType.SINGLE, True),
+            (False, True, None, True),
+            (False, True, DeploymentType.CLUSTER, False),
+            (False, True, DeploymentType.MIXED, False),
+            # both True: include everything
+            (True, True, DeploymentType.SINGLE, True),
+            (True, True, DeploymentType.CLUSTER, True),
+            (True, True, DeploymentType.MIXED, True),
+            (True, True, None, True),
+        ],
+    )
+    def test_deployment_type_filtering(self, cluster, single, dep_type, expected):
+        """Test deployment type filtering with various cluster/single combinations."""
+        criteria = FilterCriteria(cluster=cluster, single=single)
+        job = self.create_job(deployment_type=dep_type)
+        assert should_include_job(job, criteria) is expected
 
     def test_gtest_filter(self):
         """Test filtering for gtest suites."""
@@ -372,53 +344,28 @@ class TestShouldIncludeSuite:
         suite = SuiteConfig(name="any_suite", options=TestOptions())
         assert should_include_suite(suite, criteria) is True
 
-    def test_pr_build_filters(self):
-        """Test suite filtering in PR builds (full=False, nightly=False)."""
-        criteria = FilterCriteria(full=False, nightly=False)
-
-        # Suite with full=False should be included (PR suite)
-        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=None should be included (runs in both)
-        suite = SuiteConfig(name="any_suite", options=TestOptions())
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=True should be excluded (full-only suite)
-        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
-        assert should_include_suite(suite, criteria) is False
-
-    def test_full_build_filters(self):
-        """Test suite filtering in full builds (full=True)."""
-        criteria = FilterCriteria(full=True)
-
-        # Suite with full=True should be included
-        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=None should be included (runs in both)
-        suite = SuiteConfig(name="any_suite", options=TestOptions())
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=False should be excluded (PR-only suite)
-        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
-        assert should_include_suite(suite, criteria) is False
-
-    def test_nightly_build_filters(self):
-        """Test suite filtering in nightly builds (nightly=True)."""
-        criteria = FilterCriteria(nightly=True)
-
-        # Suite with full=True should be included
-        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=None should be included (runs in both)
-        suite = SuiteConfig(name="any_suite", options=TestOptions())
-        assert should_include_suite(suite, criteria) is True
-
-        # Suite with full=False should be excluded (PR-only suite)
-        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
-        assert should_include_suite(suite, criteria) is False
+    @pytest.mark.parametrize(
+        "full,nightly,suite_full,expected",
+        [
+            # PR builds (full=False, nightly=False)
+            (False, False, False, True),  # PR suite included
+            (False, False, None, True),  # Any suite included
+            (False, False, True, False),  # Full suite excluded
+            # Full builds (full=True)
+            (True, False, True, True),  # Full suite included
+            (True, False, None, True),  # Any suite included
+            (True, False, False, False),  # PR suite excluded
+            # Nightly builds (nightly=True, implies full run)
+            (False, True, True, True),  # Full suite included
+            (False, True, None, True),  # Any suite included
+            (False, True, False, False),  # PR suite excluded
+        ],
+    )
+    def test_suite_filtering_by_build_type(self, full, nightly, suite_full, expected):
+        """Test suite filtering across PR/full/nightly builds."""
+        criteria = FilterCriteria(full=full, nightly=nightly)
+        suite = SuiteConfig(name="test", options=TestOptions(full=suite_full))
+        assert should_include_suite(suite, criteria) is expected
 
     def test_suite_without_options(self):
         """Test suite with no options field."""

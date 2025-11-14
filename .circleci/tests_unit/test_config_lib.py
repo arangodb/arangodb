@@ -18,34 +18,46 @@ from src.config_lib import (
 )
 
 
-class TestDeploymentType:
-    """Test DeploymentType enum."""
+@pytest.mark.parametrize(
+    "enum_class,valid_cases,invalid_case",
+    [
+        (
+            DeploymentType,
+            [
+                ("single", DeploymentType.SINGLE),
+                ("SINGLE", DeploymentType.SINGLE),
+                ("cluster", DeploymentType.CLUSTER),
+                ("mixed", DeploymentType.MIXED),
+            ],
+            "invalid",
+        ),
+        (
+            ResourceSize,
+            [
+                ("small", ResourceSize.SMALL),
+                ("MEDIUM", ResourceSize.MEDIUM),
+                ("medium+", ResourceSize.MEDIUM_PLUS),
+                ("Large", ResourceSize.LARGE),
+                ("xlarge", ResourceSize.XLARGE),
+                ("2xlarge", ResourceSize.XXLARGE),
+            ],
+            "tiny",
+        ),
+    ],
+    ids=["DeploymentType", "ResourceSize"],
+)
+class TestEnumConversions:
+    """Test enum from_string conversions."""
 
-    def test_from_string_valid(self):
-        assert DeploymentType.from_string("single") == DeploymentType.SINGLE
-        assert DeploymentType.from_string("SINGLE") == DeploymentType.SINGLE
-        assert DeploymentType.from_string("cluster") == DeploymentType.CLUSTER
-        assert DeploymentType.from_string("mixed") == DeploymentType.MIXED
+    def test_from_string_valid(self, enum_class, valid_cases, invalid_case):
+        """Test valid string to enum conversions."""
+        for input_str, expected in valid_cases:
+            assert enum_class.from_string(input_str) == expected
 
-    def test_from_string_invalid(self):
-        with pytest.raises(ValueError, match="Invalid DeploymentType"):
-            DeploymentType.from_string("invalid")
-
-
-class TestResourceSize:
-    """Test ResourceSize enum."""
-
-    def test_from_string_valid(self):
-        assert ResourceSize.from_string("small") == ResourceSize.SMALL
-        assert ResourceSize.from_string("MEDIUM") == ResourceSize.MEDIUM
-        assert ResourceSize.from_string("medium+") == ResourceSize.MEDIUM_PLUS
-        assert ResourceSize.from_string("Large") == ResourceSize.LARGE
-        assert ResourceSize.from_string("xlarge") == ResourceSize.XLARGE
-        assert ResourceSize.from_string("2xlarge") == ResourceSize.XXLARGE
-
-    def test_from_string_invalid(self):
-        with pytest.raises(ValueError, match="Invalid ResourceSize"):
-            ResourceSize.from_string("tiny")
+    def test_from_string_invalid(self, enum_class, valid_cases, invalid_case):
+        """Test invalid string raises ValueError."""
+        with pytest.raises(ValueError, match=f"Invalid {enum_class.__name__}"):
+            enum_class.from_string(invalid_case)
 
 
 class TestTestOptions:
@@ -75,25 +87,20 @@ class TestTestOptions:
         opts = TestOptions(buckets="auto")
         assert opts.buckets == "auto"
 
-    def test_invalid_priority(self):
-        with pytest.raises(ValueError, match="priority must be non-negative"):
-            TestOptions(priority=-1)
-
-    def test_invalid_parallelity(self):
-        with pytest.raises(ValueError, match="parallelity must be at least 1"):
-            TestOptions(parallelity=0)
-
-    def test_invalid_buckets_string(self):
-        with pytest.raises(ValueError, match="buckets string must be 'auto'"):
-            TestOptions(buckets="invalid")
-
-    def test_invalid_buckets_zero(self):
-        with pytest.raises(ValueError, match="buckets must be at least 1"):
-            TestOptions(buckets=0)
-
-    def test_invalid_buckets_type(self):
-        with pytest.raises(ValueError, match="buckets must be int or 'auto'"):
-            TestOptions(buckets=3.5)
+    @pytest.mark.parametrize(
+        "kwargs,error_match",
+        [
+            ({"priority": -1}, "priority must be non-negative"),
+            ({"parallelity": 0}, "parallelity must be at least 1"),
+            ({"buckets": "invalid"}, "buckets string must be 'auto'"),
+            ({"buckets": 0}, "buckets must be at least 1"),
+            ({"buckets": 3.5}, "buckets must be int or 'auto'"),
+        ],
+    )
+    def test_validation_errors(self, kwargs, error_match):
+        """Test TestOptions validation raises appropriate errors."""
+        with pytest.raises(ValueError, match=error_match):
+            TestOptions(**kwargs)
 
     def test_from_dict_empty(self):
         opts = TestOptions.from_dict(None)
@@ -128,33 +135,24 @@ class TestTestOptions:
         assert merged.buckets == 3  # from base
         assert merged.size == ResourceSize.LARGE  # from override
 
-    def test_from_dict_default_size_cluster(self):
-        """Test that cluster deployment defaults to medium size."""
-        data = {"type": "cluster"}
+    @pytest.mark.parametrize(
+        "dep_type,expected_size",
+        [
+            ("cluster", ResourceSize.MEDIUM),
+            ("mixed", ResourceSize.MEDIUM),
+            ("single", ResourceSize.SMALL),
+            (None, ResourceSize.SMALL),
+        ],
+    )
+    def test_from_dict_default_sizes(self, dep_type, expected_size):
+        """Test deployment-based default size assignment."""
+        data = {"type": dep_type} if dep_type else {}
         opts = TestOptions.from_dict(data)
-        assert opts.deployment_type == DeploymentType.CLUSTER
-        assert opts.size == ResourceSize.MEDIUM
-
-    def test_from_dict_default_size_mixed(self):
-        """Test that mixed deployment defaults to medium size."""
-        data = {"type": "mixed"}
-        opts = TestOptions.from_dict(data)
-        assert opts.deployment_type == DeploymentType.MIXED
-        assert opts.size == ResourceSize.MEDIUM
-
-    def test_from_dict_default_size_single(self):
-        """Test that single deployment defaults to small size."""
-        data = {"type": "single"}
-        opts = TestOptions.from_dict(data)
-        assert opts.deployment_type == DeploymentType.SINGLE
-        assert opts.size == ResourceSize.SMALL
-
-    def test_from_dict_default_size_no_type(self):
-        """Test that no deployment type defaults to small size."""
-        data = {}
-        opts = TestOptions.from_dict(data)
-        assert opts.deployment_type is None
-        assert opts.size == ResourceSize.SMALL
+        if dep_type:
+            assert opts.deployment_type == DeploymentType.from_string(dep_type)
+        else:
+            assert opts.deployment_type is None
+        assert opts.size == expected_size
 
     def test_from_dict_explicit_size_overrides_default(self):
         """Test that explicit size overrides deployment-based default."""
@@ -337,21 +335,44 @@ class TestTestJob:
         assert len(job.suites) == 2
         assert job.is_multi_suite()
 
-    def test_empty_suites_invalid(self):
-        with pytest.raises(ValueError, match="must have at least one suite"):
-            TestJob(name="test", suites=[])
-
-    def test_mixed_only_for_multi_suite(self):
-        with pytest.raises(ValueError, match="only valid for multi-suite jobs"):
-            TestJob(
-                name="test",
-                suites=[SuiteConfig(name="boost")],
-                options=TestOptions(deployment_type=DeploymentType.MIXED),
-            )
+    @pytest.mark.parametrize(
+        "suites,options,error_match",
+        [
+            ([], None, "must have at least one suite"),
+            (
+                [SuiteConfig(name="boost")],
+                TestOptions(deployment_type=DeploymentType.MIXED),
+                "only valid for multi-suite jobs",
+            ),
+            (
+                [
+                    SuiteConfig(
+                        name="boost",
+                        options=TestOptions(deployment_type=DeploymentType.CLUSTER),
+                    )
+                ],
+                TestOptions(deployment_type=DeploymentType.SINGLE),
+                "Cannot override deployment_type",
+            ),
+            (
+                [SuiteConfig(name="boost"), SuiteConfig(name="resilience")],
+                TestOptions(buckets=5),
+                "must use buckets='auto'",
+            ),
+            (
+                [SuiteConfig(name="boost")],
+                TestOptions(buckets="auto"),
+                "cannot use buckets='auto'",
+            ),
+        ],
+    )
+    def test_job_validation_errors(self, suites, options, error_match):
+        """Test TestJob validation raises appropriate errors."""
+        with pytest.raises(ValueError, match=error_match):
+            TestJob(name="test", suites=suites, options=options or TestOptions())
 
     def test_mixed_allows_suite_without_explicit_deployment_type(self):
-        # Mixed jobs now allow suites without explicit deployment_type
-        # (deployment type can be inferred from args in practice)
+        """Test mixed jobs allow suites without explicit deployment type."""
         job = TestJob(
             name="test",
             suites=[SuiteConfig(name="boost"), SuiteConfig(name="resilience")],
@@ -359,35 +380,6 @@ class TestTestJob:
         )
         assert job.options.deployment_type == DeploymentType.MIXED
         assert len(job.suites) == 2
-
-    def test_single_cluster_no_suite_override(self):
-        with pytest.raises(ValueError, match="Cannot override deployment_type"):
-            TestJob(
-                name="test",
-                suites=[
-                    SuiteConfig(
-                        name="boost",
-                        options=TestOptions(deployment_type=DeploymentType.CLUSTER),
-                    )
-                ],
-                options=TestOptions(deployment_type=DeploymentType.SINGLE),
-            )
-
-    def test_multi_suite_buckets_must_be_auto(self):
-        with pytest.raises(ValueError, match="must use buckets='auto'"):
-            TestJob(
-                name="test",
-                suites=[SuiteConfig(name="boost"), SuiteConfig(name="resilience")],
-                options=TestOptions(buckets=5),
-            )
-
-    def test_single_suite_cannot_use_auto_buckets(self):
-        with pytest.raises(ValueError, match="cannot use buckets='auto'"):
-            TestJob(
-                name="test",
-                suites=[SuiteConfig(name="boost")],
-                options=TestOptions(buckets="auto"),
-            )
 
     def test_from_dict_single_suite(self):
         data = {

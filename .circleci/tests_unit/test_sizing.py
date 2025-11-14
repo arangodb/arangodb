@@ -10,63 +10,29 @@ from src.config_lib import BuildConfig, ResourceSize, Sanitizer, Architecture
 from src.output_generators.sizing import ResourceSizer
 
 
+@pytest.mark.parametrize(
+    "size,x64_class,aarch64_class",
+    [
+        (ResourceSize.SMALL, "small", "arm.medium"),
+        (ResourceSize.MEDIUM, "medium", "arm.medium"),
+        (ResourceSize.MEDIUM_PLUS, "medium+", "arm.large"),
+        (ResourceSize.LARGE, "large", "arm.large"),
+        (ResourceSize.XLARGE, "xlarge", "arm.xlarge"),
+        (ResourceSize.XXLARGE, "2xlarge", "arm.2xlarge"),
+    ],
+)
 class TestGetResourceClass:
-    """Test get_resource_class method."""
+    """Test get_resource_class method for all sizes and architectures."""
 
-    def test_x64_sizes(self):
-        """Test x64 architecture resource class mappings."""
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.SMALL, Architecture.X64)
-            == "small"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, Architecture.X64)
-            == "medium"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM_PLUS, Architecture.X64)
-            == "medium+"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.LARGE, Architecture.X64)
-            == "large"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.XLARGE, Architecture.X64)
-            == "xlarge"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, Architecture.X64)
-            == "2xlarge"
-        )
+    def test_x64_mapping(self, size, x64_class, aarch64_class):
+        """Test x64 architecture resource class mapping."""
+        assert ResourceSizer.get_resource_class(size, Architecture.X64) == x64_class
 
-    def test_aarch64_sizes(self):
-        """Test aarch64 architecture resource class mappings."""
+    def test_aarch64_mapping(self, size, x64_class, aarch64_class):
+        """Test aarch64 architecture resource class mapping."""
         assert (
-            ResourceSizer.get_resource_class(ResourceSize.SMALL, Architecture.AARCH64)
-            == "arm.medium"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.MEDIUM, Architecture.AARCH64)
-            == "arm.medium"
-        )
-        assert (
-            ResourceSizer.get_resource_class(
-                ResourceSize.MEDIUM_PLUS, Architecture.AARCH64
-            )
-            == "arm.large"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.LARGE, Architecture.AARCH64)
-            == "arm.large"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.XLARGE, Architecture.AARCH64)
-            == "arm.xlarge"
-        )
-        assert (
-            ResourceSizer.get_resource_class(ResourceSize.XXLARGE, Architecture.AARCH64)
-            == "arm.2xlarge"
+            ResourceSizer.get_resource_class(size, Architecture.AARCH64)
+            == aarch64_class
         )
 
 
