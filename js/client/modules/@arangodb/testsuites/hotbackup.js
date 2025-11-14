@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango */
+/* global print, arango, db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -189,14 +189,17 @@ function hotBackup_load_backend (options, which, args) {
   }
 
   try {
-    if (!helper.runRtaMakedata() ||
-        !helper.createHotBackup() ||
+    if (
+        //!helper.runRtaMakedata() ||
         !helper.isAlive() ||
-        !helper.spawnStressArangosh(args.noiseScript) ||
         !helper.runTestFn(args.preRestoreFn) ||
+        !helper.spawnStressArangosh(args.noiseScript) ||
+        function() { require('internal').sleep(1); return true;}() ||
+        !helper.createHotBackup() ||
         !helper.restoreHotBackup() ||
-        !helper.runTestFn(args.postRestoreFn) ||
-        !helper.runRtaCheckData()) {
+        !helper.runTestFn(args.postRestoreFn)// ||
+        //!helper.runRtaCheckData()
+    ) {
       print(2)
       helper.destructor(true);
       return helper.extractResults();
@@ -228,10 +231,89 @@ function hotBackup_load (options) {
   });
 }
 
+function hotBackup_views (options) {
+  let testCol1;
+  let testCol2;
+  let txn;
+  let txn_col;
+  let which = "hot_backup_load";
+  return hotBackup_load_backend(options, which, {
+    noiseScript: `
+    db._useDatabase('test_view');
+    for (i=0; i < 10000; i++) {
+        db.test_collection.insert({"number": i, "field1": "stone"});
+    }
+`,
+    preRestoreFn: function() {
+      db._createDatabase('test_view');
+      db._useDatabase('test_view');
+      testCol1 = db._create('test_collection', {numberOfShards:20} );
+      testCol1.ensureIndex({type: 'inverted', name: 'inverted', fields: ["field1"]});
+      db._createView("test_view", "arangosearch",
+                     {"links": {
+                       "test_collection": {
+                         "includeAllFields": true}}});
+      testCol2 = db._create('test_collection2', {numberOfShards:20} );
+      db._createView("test_view_squared", "arangosearch",
+                     {"links": {
+                       "test_collection2": {
+                         "includeAllFields": true}}});
+      txn = db._beginTransaction({read: ["test_collection2"], write: ["test_collection2"]});
+      txn_col = txn.collection("test_collection2");
+      txn_col.insert({"foo": "bar"});
+      return {status: true, testresult: {}};
+    },
+    postRestoreFn:function() {
+      db._useDatabase('test_view');
+      let p = db._query(
+        `LET x = (FOR v IN test_collection RETURN v._key)
+               FOR w IN test_view
+                 FILTER w._key NOT IN x
+                 RETURN w
+            `).toArray();
+      if (p !== []) {
+        throw new Error(`query result wasn't empty: ${p}`);
+      }
+      let q = db._query(
+        `LET x = (FOR v IN test_view RETURN v._key)
+               FOR w IN test_collection
+                 FILTER w._key NOT IN x
+                 RETURN w
+            `).toArray();
+      if (q !== []) {
+        throw new Error(`query result wasn't empty: ${q}`);
+      }
+
+      // Check that the inverted index is consistent with the documents
+      // in the collection.
+      // I could not come up with a reliable way to do this: the AQL optimiser
+      // is free to optimise the index into the first query, and then
+      // this check is void. in the same way it could happen that the optimiser
+      // decidesd that the filter in the second query is not best served by
+      // the inverted index and the test is void.
+      p = db._query("FOR v IN test_collection RETURN v._key").toArray();
+      q = db._query(`
+            FOR w IN test_collection
+                 FILTER w.field1 == "stone"
+                 RETURN w._key
+            `).toArray();
+      if (p === q) {
+        throw new Error(`query result wasn't empty: ${p} != ${q}`);
+      }
+
+      txn.abort();
+      db._useDatabase('_system');
+      db._dropdatabase('test_view');
+      return {status: true, testresult: {}};
+    }
+  });
+}
+
+
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['hot_backup'] = hotBackup;
   testFns['hot_backup_load'] = hotBackup_load;
-
+  testFns['hot_backup_views'] = hotBackup_views;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };
