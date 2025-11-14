@@ -183,7 +183,7 @@ jobs:
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
             echo "sanitizer: << pipeline.parameters.sanitizer >>"
             echo "ui: << pipeline.parameters.ui >>"
-            echo "ui-deployment: << pipeline.parameters.ui-deployment >>"
+            echo "ui-deployments: << pipeline.parameters.ui-deployments >>"
             echo "ui-testsuites: << pipeline.parameters.ui-testsuites >>"
       - run:
           name: Checkout
