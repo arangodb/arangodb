@@ -33,7 +33,7 @@ parameters:
     type: string
     default: ""
     description: "Comma separated list of UI test suites to run; empty means all."
-  ui-deployment:
+  ui-deployments:
     type: string
     default: ""
     description: "Corresponds to --starter-mode from RTA, ATM only SG is specified by default." # TODO - use enum and rename
@@ -233,7 +233,7 @@ jobs:
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --default-container "<< pipeline.parameters.test-docker-image >>" \
                 --ui "<< pipeline.parameters.ui >>" \
-                --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
+                --ui-deployments "<< pipeline.parameters.ui-deployments >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
                 --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
