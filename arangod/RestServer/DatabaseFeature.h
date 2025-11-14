@@ -34,6 +34,7 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/Methods/Databases.h"
 
+#include <cstddef>
 #include <mutex>
 #include <memory>
 #include <vector>
@@ -47,6 +48,12 @@ class ApplicationServer;
 class IOHeartbeatThread;
 class LogicalCollection;
 class StorageEngine;
+
+namespace metrics {
+class MetricsFeature;
+template<typename T>
+class Gauge;
+}  // namespace metrics
 
 namespace velocypack {
 class Builder;
@@ -184,6 +191,16 @@ class DatabaseFeature final : public ArangodFeature {
 
   static TRI_vocbase_t& getCalculationVocbase();
 
+  /// @brief update metadata metrics (number of databases, collections, shards)
+  /// This should only be called on single servers
+  void updateMetadataMetrics();
+
+  /// @brief increment collection count metric on single server
+  void incrementCollectionCount(size_t count = 1);
+
+  /// @brief decrement collection count metric on single server
+  void decrementCollectionCount(size_t count = 1);
+
  private:
   static void initCalculationVocbase(ArangodServer& server);
 
@@ -259,6 +276,16 @@ class DatabaseFeature final : public ArangodFeature {
 
   StorageEngine* _engine = nullptr;
   ReplicationFeature* _replicationFeature = nullptr;
+
+  /// @brief metadata metrics structure for single servers only
+  struct MetadataMetrics {
+    metrics::Gauge<std::uint64_t>& numberOfCollections;
+    metrics::Gauge<std::uint64_t>& numberOfDatabases;
+
+    explicit MetadataMetrics(metrics::MetricsFeature& metrics);
+  };
+  // Report these only on single servers
+  std::optional<MetadataMetrics> _metadataMetrics;
 };
 
 }  // namespace arangodb

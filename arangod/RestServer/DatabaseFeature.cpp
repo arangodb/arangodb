@@ -808,8 +808,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     auto next = _databases.make(prev);
     next->insert(std::make_pair(name, vocbase.get()));
 
-    _metadataMetrics->numberOfDatabases.fetch_add(1, std::memory_order_relaxed);
-
     _databases.store(std::move(next));
     waitUnique(prev);
   }
@@ -825,7 +823,8 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
   versionTracker().track("create database");
 
-  if (res.ok()) {
+  // Update metadata metrics on single server only after successful creation
+  if (res.ok() && ServerState::instance()->isSingleServer()) {
     _metadataMetrics->numberOfDatabases.fetch_add(1, std::memory_order_relaxed);
   }
 
@@ -839,6 +838,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   }
 
   auto res = TRI_ERROR_NO_ERROR;
+  size_t numCollections = 0;
   {
     std::lock_guard lock{_databasesMutex};
 
@@ -883,6 +883,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
     // mark all collections in this database as deleted, too.
     try {
       auto collections = vocbase->collections(/*includeDeleted*/ false);
+      numCollections = collections.size();
       for (auto& c : collections) {
         c->setDeleted();
         c->deferDropCollection(TRI_vocbase_t::dropCollectionCallback);
@@ -918,10 +919,14 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // deleted by the DatabaseManagerThread!
 
   versionTracker().track("drop database");
-  _metadataMetrics->numberOfDatabases.fetch_sub(1, std::memory_order_relaxed);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    _metadataMetrics->numberOfDatabases.fetch_add(1, std::memory_order_relaxed);
+  // Update metadata metrics on single server only after successful drop
+  if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isSingleServer()) {
+    _metadataMetrics->numberOfDatabases.fetch_sub(1, std::memory_order_relaxed);
+    // Also decrement collection count for all collections in the dropped database
+    if (numCollections > 0) {
+      decrementCollectionCount(numCollections);
+    }
   }
 
   return res;
@@ -1385,6 +1390,22 @@ void DatabaseFeature::updateMetadataMetrics() {
                                             std::memory_order_relaxed);
   _metadataMetrics->numberOfCollections.store(numCollections,
                                               std::memory_order_relaxed);
+}
+
+void DatabaseFeature::incrementCollectionCount(uint64_t count) {
+  // Only update on single server
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+  _metadataMetrics->numberOfCollections += count;
+}
+
+void DatabaseFeature::decrementCollectionCount(uint64_t count) {
+  // Only update on single server
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+  _metadataMetrics->numberOfCollections -= count;
 }
 
 }  // namespace arangodb
