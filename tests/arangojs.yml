@@ -1,0 +1,17 @@
+jobProperties:
+    container_suffix: '-js:'
+    second_repo: git@github.com:arangodb/arangojs.git
+    branch: main
+    init_command: yarn
+tests:
+- js_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+- js_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: cluster
+      size: large

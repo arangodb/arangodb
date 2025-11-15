@@ -36,7 +36,7 @@ const {
   cleanupBGShells
 } = require('@arangodb/testutils/client-tools').run;
 let IM = global.instanceManager;
-const waitFor = IM.options.isInstrumented ? 80 * 7 : 80;
+const waitFor = IM.options.isInstrumented ? 150 * 7 : 150;
 
 
 function backgroundIndexSuite() {

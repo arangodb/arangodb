@@ -24,6 +24,7 @@
 #include <gtest/gtest.h>
 
 #include <velocypack/Builder.h>
+#include <vector>
 
 #include "Inspection/VPackSaveInspector.h"
 #include "Inspection/InspectionTestHelper.h"
@@ -71,6 +72,17 @@ TEST_F(VPackSaveInspectorTest, store_string) {
   auto result = inspector.apply(x);
   EXPECT_TRUE(result.ok());
   EXPECT_EQ(x, builder.slice().copyString());
+}
+
+TEST_F(VPackSaveInspectorTest, store_blob) {
+  std::vector<std::uint8_t> x = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+  auto result = inspector.apply(inspection::blob(x));
+  EXPECT_TRUE(result.ok());
+  EXPECT_TRUE(builder.slice().isBinary());
+  arangodb::velocypack::ValueLength len;
+  auto* ptr = builder.slice().getBinary(len);
+  EXPECT_EQ(x.size(), static_cast<size_t>(len));
+  EXPECT_EQ(0, memcmp(x.data(), ptr, len));
 }
 
 TEST_F(VPackSaveInspectorTest, store_object) {

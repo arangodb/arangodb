@@ -1,0 +1,20 @@
+jobProperties:
+    container_suffix: '-spring:'
+    second_repo: git@github.com:arangodb/spring-data.git
+    branch: main
+    init_command: ''
+tests:
+- spring_data:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+    args:
+      extremeVerbosity: true
+- spring_data:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: cluster
+    args:
+      extremeVerbosity: true

@@ -291,8 +291,8 @@
       priority: 1000
       size: medium+
     arangosh_args:
-      javascript.v8-max-heap: 32768
-      javascript.gc-interval: 25
+      javascript.v8-max-heap: "32768"
+      javascript.gc-interval: "25"
     args:
       dumpAgencyOnError: true
 
@@ -699,6 +699,8 @@
       type: cluster
       priority: 9600
       size: large
+      # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
+      timeLimit: 9600
     args:
       dumpAgencyOnError: true
       skipNightly: false
@@ -710,7 +712,7 @@
       priority: 1000
       size: medium+
     arangosh_args:
-      javascript.v8-max-heap: 16384
+      javascript.v8-max-heap: "16384"
     args:
       dumpAgencyOnError: true
 - resilience_failover_failure:

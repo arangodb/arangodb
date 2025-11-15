@@ -118,6 +118,11 @@ struct InspectorBase : detail::ContextContainer<Context> {
   explicit InspectorBase(Context const& ctx)
       : detail::ContextContainer<Context>(ctx) {}
 
+  // detail::Blob is just a thin wrapper around a vector reference, but since
+  // inspection::blob is returning a temporary it does not bind to a non-const
+  // reference, so we need to take it by value here
+  [[nodiscard]] Status apply(detail::Blob x) { return process(self(), x); }
+
   template<class T>
   [[nodiscard]] Status apply(T& x) {
     return process(self(), x);
