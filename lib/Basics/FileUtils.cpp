@@ -803,7 +803,7 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
 }
 #endif
 
-std::optional<int64_t> readFileValue(const std::string& path) {
+std::optional<int64_t> readCgroupFileValue(const std::string& path) {
   try {
     std::string content = arangodb::basics::FileUtils::slurp(path);
 

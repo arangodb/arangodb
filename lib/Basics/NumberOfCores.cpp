@@ -70,9 +70,9 @@ std::size_t numberOfEffectiveCoresImpl() {
       break;
     }
     case cgroup::Version::V1: {
-      auto quota = arangodb::basics::FileUtils::readFileValue(
+      auto quota = arangodb::basics::FileUtils::readCgroupFileValue(
           "/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
-      auto period = arangodb::basics::FileUtils::readFileValue(
+      auto period = arangodb::basics::FileUtils::readCgroupFileValue(
           "/sys/fs/cgroup/cpu/cpu.cfs_period_us");
       if (quota && period) {
         if (*quota > 0 && *period > 0) {
