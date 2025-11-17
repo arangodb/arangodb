@@ -13,6 +13,7 @@ tests:
       suffix: v1
     args:
       goDriverVersion: '1'
+      extremeVerbosity: true
 - go_driver:
     job: run-driver-tests
     options:
@@ -21,16 +22,17 @@ tests:
       suffix: v1
     args:
       goDriverVersion: '1'
-# TODO: BTS-2245
-#- go_driver:
-#    job: run-driver-tests
-#    options:
-#      priority: 500
-#      type: single
-#      size: large
-#      suffix: v2
-#    args:
-#      goDriverVersion: '2'
+      extremeVerbosity: true
+- go_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+      size: large
+      suffix: v2
+    args:
+      goDriverVersion: '2'
+      extremeVerbosity: true
 - go_driver:
     job: run-driver-tests
     options:
@@ -40,3 +42,4 @@ tests:
       size: large
     args:
       goDriverVersion: '2'
+      extremeVerbosity: true
