@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global assertTrue, assertEqual, assertNotEqual, arango */
+/* global assertTrue, assertFalse, assertEqual, assertNotEqual, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,6 +26,7 @@
 
 let jsunity = require('jsunity');
 const crypto = require('@arangodb/crypto');
+const internal = require('internal');
 const makeLicense = require('@arangodb/license-helper').makeLicense;
 const pem2048 = require('@arangodb/license-helper').pem2048;
 const pem4096 = require('@arangodb/license-helper').pem4096;
