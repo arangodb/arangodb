@@ -24,6 +24,8 @@
 #pragma once
 
 #include <string_view>
+#include "Basics/AttributeNameParser.h"
+#include "Basics/ResultT.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"
@@ -195,6 +197,15 @@ class BuilderLeaser {
   Context* _transactionContext;
   velocypack::Builder* _builder;
 };
+
+ResultT<transaction::BuilderLeaser> extractAttributeValues(
+    transaction::Methods& trx,
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed);
+
+ResultT<velocypack::Builder> extractAttributeValues(
+    std::vector<std::vector<basics::AttributeName>> const& storedValues,
+    velocypack::Slice doc, bool nullAllowed);
 
 }  // namespace transaction
 }  // namespace arangodb

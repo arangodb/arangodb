@@ -914,31 +914,38 @@ Result IndexFactory::enhanceJsonIndexMdiPrefixed(VPackSlice definition,
 Result IndexFactory::enhanceJsonIndexVector(
     arangodb::velocypack::Slice definition,
     arangodb::velocypack::Builder& builder, bool create) {
-  auto const paramsSlice = definition.get("params");
-  UserVectorIndexDefinition vectorIndexDefinition;
-  if (auto const res =
-          velocypack::deserializeWithStatus(paramsSlice, vectorIndexDefinition);
-      !res.ok()) {
-    return Result(TRI_ERROR_BAD_PARAMETER,
-                  fmt::format("error: {}, path: {}", res.error(), res.path()));
-  }
-
-  if (definition.get("unique").isTrue()) {
-    return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
-  }
-
-  builder.add(VPackValue("params"));
-  velocypack::serialize(builder, vectorIndexDefinition);
   Result const res =
       processIndexFields(definition, builder, 1, 1, create,
                          /*allowExpansion*/ false, /*allowSubAttributes*/ true,
                          /*allowIdAttribute*/ false);
+
+  UserVectorIndexDefinition vectorIndexDefinition;
   if (res.ok()) {
+    auto const paramsSlice = definition.get("params");
+    if (auto const res = velocypack::deserializeWithStatus(
+            paramsSlice, vectorIndexDefinition);
+        !res.ok()) {
+      return Result(
+          TRI_ERROR_BAD_PARAMETER,
+          std::format("error: {}, path: {}", res.error(), res.path()));
+    }
+
+    if (definition.get("unique").isTrue()) {
+      return {TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique"};
+    }
+
+    if (auto const res =
+            processIndexStoredValues(definition, builder, 1, 32, create,
+                                     /*allowSubAttributes*/ true,
+                                     /* allowOverlappingFields */ true);
+        res.fail()) {
+      return res;
+    }
+    builder.add(VPackValue("params"));
+    velocypack::serialize(builder, vectorIndexDefinition);
     // Vector index can be sparse
     processIndexSparseFlag(definition, builder, create);
-
     processIndexInBackground(definition, builder);
-
     processIndexParallelism(definition, builder);
   }
 

@@ -31,6 +31,7 @@
 #include <omp.h>
 
 #include "Aql/AstNode.h"
+#include "Basics/StaticStrings.h"
 #include "Aql/Function.h"
 #include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
@@ -39,12 +40,14 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBVectorIndexList.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "Transaction/Helpers.h"
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/SharedSlice.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include "Indexes/Index.h"
@@ -84,7 +87,11 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   coll.vocbase().engine<RocksDBEngine>()) {
+                   coll.vocbase().engine<RocksDBEngine>()),
+      _storedValues(
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true,
+                             /*allowExpansion*/ false)) {
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
   velocypack::deserialize(info.get("params"), _definition);
   if (auto data = info.get("trainedData"); !data.isNone()) {
@@ -94,8 +101,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
   if (_trainedData) {
     faiss::VectorIOReader reader;
     // TODO prevent this copy, but instead implement own IOReader, reading
-    // directly from the
-    //  training data.
+    // directly from the training data.
     reader.data = _trainedData->codeData;
     _faissIndex = std::unique_ptr<faiss::IndexIVF>{
         dynamic_cast<faiss::IndexIVF*>(faiss::read_index(&reader))};
@@ -157,8 +163,15 @@ bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
 
   UserVectorIndexDefinition definition;
   velocypack::deserialize(info.get("params"), definition);
-
   if (definition != _definition) {
+    return false;
+  }
+
+  auto storedValues =
+      Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                         /*allowEmpty*/ true,
+                         /*allowExpansion*/ false);
+  if (storedValues != _storedValues) {
     return false;
   }
 
@@ -172,6 +185,19 @@ void RocksDBVectorIndex::toVelocyPack(
   RocksDBIndex::toVelocyPack(builder, flags);
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, _definition);
+
+  if (!_storedValues.empty()) {
+    builder.add(velocypack::Value(StaticStrings::IndexStoredValues));
+    builder.openArray();
+
+    for (auto const& field : _storedValues) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
+  }
 
   if (_trainedData && Index::hasFlag(flags, Index::Serialize::Internals) &&
       !Index::hasFlag(flags, Index::Serialize::Maintenance)) {
@@ -189,7 +215,7 @@ RocksDBVectorIndex::readBatch(
     aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
     std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
         filterVarsToRegs,
-    aql::Variable const* documentVariable) {
+    aql::Variable const* documentVariable, bool isCoveredByStoredValues) {
   TRI_ASSERT(topK * count == (inputs.size() / _definition.dimension) * topK)
       << "Number of components does not match vectors dimensions, topK: "
       << topK << ", count: " << count
@@ -203,6 +229,7 @@ RocksDBVectorIndex::readBatch(
     faiss::fvec_renorm_L2(_definition.dimension, count, inputs.data());
   }
 
+  // Used by the faiss iterator
   auto faissSearchContext =
       std::invoke([&]() -> vector::RocksDBFaissSearchContext {
         if (filterExpression == nullptr) {
@@ -218,6 +245,7 @@ RocksDBVectorIndex::readBatch(
         searchCtx.queryContext = &queryContext;
         searchCtx.filterVarsToRegs = &filterVarsToRegs;
         searchCtx.documentVariable = documentVariable;
+        searchCtx.isCoveredByStoredValues = isCoveredByStoredValues;
         return searchCtx;
       });
 
@@ -296,7 +324,7 @@ Result RocksDBVectorIndex::readDocumentVectorData(velocypack::Slice const doc,
 }
 
 /// @brief inserts a document into the index
-Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
+Result RocksDBVectorIndex::insert(transaction::Methods& trx,
                                   RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
@@ -326,8 +354,26 @@ Result RocksDBVectorIndex::insert(transaction::Methods& /*trx*/,
   std::unique_ptr<uint8_t[]> flat_codes(new uint8_t[_faissIndex->code_size]);
   _faissIndex->encode_vectors(1, input.data(), &listId, flat_codes.get());
 
-  auto const value = RocksDBValue::VectorIndexValue(
-      reinterpret_cast<const char*>(flat_codes.get()), _faissIndex->code_size);
+  auto value = std::invoke([&]() {
+    if (hasStoredValues()) {
+      RocksDBVectorIndexEntryValue rocksdbEntryValue;
+      rocksdbEntryValue.encodedValue = std::vector<uint8_t>(
+          flat_codes.get(), flat_codes.get() + _faissIndex->code_size);
+
+      auto const extractedAttributeValues =
+          transaction::extractAttributeValues(trx, _storedValues, doc, true)
+              ->get();
+      rocksdbEntryValue.storedValues = extractedAttributeValues->sharedSlice();
+
+      return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+    } else {
+      // Store raw encoded values directly for better performance and
+      // backwards compatibility
+      return RocksDBValue::VectorIndexValue(flat_codes.get(),
+                                            _faissIndex->code_size);
+    }
+  });
+
   auto const status = methods->Put(_cf, rocksdbKey, value.string(), false);
 
   return rocksutils::convertStatus(status);
@@ -438,6 +484,14 @@ RocksDBVectorIndex::getVectorIndexDefinition() {
   return getDefinition();
 }
 
+bool RocksDBVectorIndex::hasStoredValues() const noexcept {
+  return !_storedValues.empty();
+}
+
+StoredValues const& RocksDBVectorIndex::storedValues() const {
+  return _storedValues;
+}
+
 #define LOG_INGESTION LOG_DEVEL_IF(false)
 
 Result RocksDBVectorIndex::ingestVectors(
@@ -458,12 +512,16 @@ Result RocksDBVectorIndex::ingestVectors(
     std::vector<LocalDocumentId> docIds;
     // dim * docIds.size() vectors
     std::vector<float> vectors;
+    // Only used if the storedValues are defined on index
+    std::vector<velocypack::SharedSlice> storedValues;
   };
 
   struct EncodedVectors {
     std::vector<LocalDocumentId> docIds;
     std::unique_ptr<faiss::idx_t[]> lists;
     std::unique_ptr<uint8_t[]> codes;
+    // Only used if the storedValues are defined on index
+    std::vector<velocypack::SharedSlice> storedValues;
   };
 
   struct BlockCounters {
@@ -515,6 +573,74 @@ Result RocksDBVectorIndex::ingestVectors(
     }
   };
 
+  auto readDocuments = [&] {
+    // This is a simple implementation, using a single thread.
+    // If reading becomes the bottleneck, we can always adapt the parallel index
+    // reader code
+    static_assert(numReaders == 1,
+                  "this code is not prepared for multiple reads");
+
+    errorExceptionHandler([&] {
+      BoundedChannelProducerGuard guard(documentChannel);
+
+      auto const prepareBatch = [&] {
+        auto batch = std::make_unique<DocumentVectors>();
+        batch->docIds.reserve(documentPerBatch);
+        batch->vectors.reserve(documentPerBatch * _definition.dimension);
+        if (hasStoredValues()) {
+          batch->storedValues.reserve(documentPerBatch);
+        }
+        return batch;
+      };
+
+      std::unique_ptr<DocumentVectors> batch = prepareBatch();
+      while (documentIterator->Valid() && not hasError.load()) {
+        LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
+        VPackSlice doc = RocksDBValue::data(documentIterator->value());
+        if (auto const res = readDocumentVectorData(doc, batch->vectors);
+            res.fail()) {
+          // If the documents does not have an embedding attribute and the index
+          // is sparse skip
+          if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
+            documentIterator->Next();
+            continue;
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+        }
+        batch->docIds.push_back(docId);
+        if (hasStoredValues()) {
+          auto const extractedAttributeValues =
+              transaction::extractAttributeValues(_storedValues, doc, true);
+          batch->storedValues.push_back(
+              extractedAttributeValues->sharedSlice());
+        }
+
+        documentIterator->Next();
+        if (batch->docIds.size() == documentPerBatch) {
+          LOG_INGESTION << "READ done with batch " << documentPerBatch;
+          auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
+          counters.readProduceBlocked += blocked;
+
+          if (shouldStop) {
+            return;
+          }
+          batch = prepareBatch();
+        }
+      }
+
+      if (_definition.metric == SimilarityMetric::kCosine) {
+        faiss::fvec_renorm_L2(_definition.dimension, batch->docIds.size(),
+                              batch->vectors.data());
+      }
+
+      if (batch) {
+        LOG_INGESTION << "READ producing final batch size="
+                      << batch->docIds.size();
+        std::ignore = documentChannel.push(std::move(batch));
+      }
+    });
+  };
+
   auto encodeVectors = [&]() {
     BoundedChannelProducerGuard guard(encodedChannel);
     // This trivially parallelizes
@@ -545,6 +671,7 @@ Result RocksDBVectorIndex::ingestVectors(
         encoded->docIds = std::move(item->docIds);
         encoded->lists = std::move(coarse_idx);
         encoded->codes = std::move(flat_codes);
+        encoded->storedValues = std::move(item->storedValues);
 
         LOG_INGESTION << "ENCODE encoded " << encoded->docIds.size()
                       << " vectors";
@@ -557,65 +684,6 @@ Result RocksDBVectorIndex::ingestVectors(
         break;
       }
     }
-  };
-
-  auto readDocuments = [&] {
-    // This is a simple implementation, using a single thread.
-    // If reading becomes the bottleneck, we can always adapt the parallel index
-    // reader code
-    static_assert(numReaders == 1,
-                  "this code is not prepared for multiple reads");
-
-    errorExceptionHandler([&] {
-      BoundedChannelProducerGuard guard(documentChannel);
-
-      auto prepareBatch = [&] {
-        auto batch = std::make_unique<DocumentVectors>();
-        batch->docIds.reserve(documentPerBatch);
-        batch->vectors.reserve(documentPerBatch * _definition.dimension);
-        return batch;
-      };
-
-      std::unique_ptr<DocumentVectors> batch = prepareBatch();
-      while (documentIterator->Valid() && not hasError.load()) {
-        LocalDocumentId docId = RocksDBKey::documentId(documentIterator->key());
-        VPackSlice doc = RocksDBValue::data(documentIterator->value());
-        if (auto const res = readDocumentVectorData(doc, batch->vectors);
-            res.fail()) {
-          // If the documents does not have an embedding attribute and the index
-          // is sparse skip
-          if (res.is(TRI_ERROR_BAD_PARAMETER) && _sparse) {
-            documentIterator->Next();
-            continue;
-          }
-          THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-        }
-        batch->docIds.push_back(docId);
-        documentIterator->Next();
-
-        if (batch->docIds.size() == documentPerBatch) {
-          LOG_INGESTION << "READ done with batch " << documentPerBatch;
-          auto [shouldStop, blocked] = documentChannel.push(std::move(batch));
-          counters.readProduceBlocked += blocked;
-
-          if (shouldStop) {
-            return;
-          }
-          batch = prepareBatch();
-        }
-      }
-
-      if (_definition.metric == SimilarityMetric::kCosine) {
-        faiss::fvec_renorm_L2(_definition.dimension, batch->docIds.size(),
-                              batch->vectors.data());
-      }
-
-      if (batch) {
-        LOG_INGESTION << "READ producing final batch size="
-                      << batch->docIds.size();
-        std::ignore = documentChannel.push(std::move(batch));
-      }
-    });
   };
 
   auto writeDocuments = [&] {
@@ -637,10 +705,23 @@ Result RocksDBVectorIndex::ingestVectors(
         for (size_t k = 0; k < item->docIds.size(); k++) {
           key.constructVectorIndexValue(objectId(), item->lists[k],
                                         item->docIds[k]);
-          auto const value = RocksDBValue::VectorIndexValue(
-              reinterpret_cast<const char*>(item->codes.get() +
-                                            k * _faissIndex->code_size),
-              _faissIndex->code_size);
+
+          auto const value = std::invoke([&]() {
+            auto* ptr = item->codes.get() + k * _faissIndex->code_size;
+            if (hasStoredValues()) {
+              RocksDBVectorIndexEntryValue rocksdbEntryValue;
+              rocksdbEntryValue.encodedValue =
+                  std::vector<uint8_t>(ptr, ptr + _faissIndex->code_size);
+              rocksdbEntryValue.storedValues = std::move(item->storedValues[k]);
+
+              return RocksDBValue::VectorIndexValue(rocksdbEntryValue);
+            } else {
+              // Store raw encoded values directly for better performance
+              return RocksDBValue::VectorIndexValue(ptr,
+                                                    _faissIndex->code_size);
+            }
+          });
+
           status = batch.Put(_cf, key.string(), value.string());
           if (not status.ok()) {
             THROW_ARANGO_EXCEPTION(rocksutils::convertStatus(status));
