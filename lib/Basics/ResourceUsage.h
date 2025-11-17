@@ -151,7 +151,7 @@ class ResourceUsageAllocatorBase : public Allocator {
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 
   ResourceUsageAllocatorBase() { /* We shouldn't be here */
-    PROD_ASSERT(false);
+    ADB_PROD_ASSERT(false);
   }
 
   template<typename... Args>
