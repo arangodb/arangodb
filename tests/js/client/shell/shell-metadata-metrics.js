@@ -40,8 +40,6 @@ function metadataMetricsSuite() {
   const numberOfShardsMetric = "arangodb_metadata_number_of_shards";
 
   let assertMetrics = function(endpoints, expectedDatabases, expectedCollections, expectedShards) {
-    // Need to wait for the metrics to be updated
-    internal.sleep(1);
     endpoints.forEach((ep) => {
       const numDatabases = getMetric(ep, numberOfDatabasesMetric);
       assertTrue(numDatabases === expectedDatabases, 
@@ -77,10 +75,7 @@ function metadataMetricsSuite() {
       } else {
         endpoints = getEndpointsByType('single');
       }
-
-      if (endpoints.length === 0) {
-        return; // No endpoints to test
-      }
+      assertTrue(endpoints.length > 0);
 
       assertMetrics(endpoints, 1, 12, 12);
     },
@@ -92,14 +87,13 @@ function metadataMetricsSuite() {
       } else {
         endpoints = getEndpointsByType('single');
       }
-
-      if (endpoints.length === 0) {
-        return; // No endpoints to test
-      }
+      assertTrue(endpoints.length > 0);
+      assertMetrics(endpoints, 1, 12, 12);
 
       db._createDatabase(testDbName);
       assertMetrics(endpoints, 2, 20, 20);
 
+      db._useDatabase("_system");
       db._dropDatabase(testDbName);
       assertMetrics(endpoints, 1, 12, 12);
     },
@@ -111,10 +105,7 @@ function metadataMetricsSuite() {
       } else {
         endpoints = getEndpointsByType('single');
       }
-
-      if (endpoints.length === 0) {
-        return; // No endpoints to test
-      }
+      assertTrue(endpoints.length > 0);
 
       db._createDatabase(testDbName);
       db._useDatabase(testDbName);
