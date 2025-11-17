@@ -56,9 +56,9 @@ function adminLicenseSuite () {
         assertEqual(result.errorNum, 405);
       });
     },
+
   };
 }
-
 jsunity.run(adminLicenseSuite);
 
 return jsunity.done();
