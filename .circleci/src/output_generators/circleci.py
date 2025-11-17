@@ -530,18 +530,33 @@ class CircleCIGenerator(OutputGenerator):
 
     @staticmethod
     def _dict_to_options_json(args_dict: Dict[str, Any]) -> Dict[str, Any]:
-        """Convert args dict to optionsJson format (strips extraArgs: prefix)."""
+        """
+        Convert args dict to optionsJson format.
+
+        Handles colon-separated keys by creating nested structures:
+        - "extraArgs:key" -> {"extraArgs": {"key": value}}
+        - "regular" -> {"regular": value}
+        """
         result: Dict[str, Any] = {}
         for key, value in args_dict.items():
             if key == "moreArgv":
                 # moreArgv is not included in optionsJson
                 continue
 
-            # Strip "extraArgs:" prefix if present
-            if key.startswith("extraArgs:"):
-                key = key[len("extraArgs:") :]
+            # Handle colon-separated keys (create nested structure)
+            if ":" in key:
+                key_parts = key.split(":", 1)  # Split only on first colon
+                parent_key = key_parts[0]
+                child_key = key_parts[1]
 
-            result[key] = value
+                # Create nested dict if parent doesn't exist
+                if parent_key not in result:
+                    result[parent_key] = {}
+
+                result[parent_key][child_key] = value
+            else:
+                result[key] = value
+
         return result
 
     def _build_options_json(self, suites: List[SuiteConfig]) -> List[Dict[str, Any]]:
