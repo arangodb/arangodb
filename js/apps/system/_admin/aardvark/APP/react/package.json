@@ -113,7 +113,8 @@
   "resolutions": {
     "jest": "^30.0.5",
     "jest-worker": "^30.0.5",
-    "@babel/traverse": "^7.28.0"
+    "@babel/traverse": "^7.28.0",
+    "braces": "^3.0.3"
   },
   "babel": {
     "presets": [
