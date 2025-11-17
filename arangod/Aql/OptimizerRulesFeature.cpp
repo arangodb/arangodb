@@ -865,6 +865,13 @@ avoid unnecessary reads.)");
                R"(Utilize a vector index to accelerate the comparison of
 vector embeddings with vector similarity AQL functions.)");
 
+  registerRule("push-filter-into-enumerate-near", pushFilterIntoEnumerateNear,
+               OptimizerRule::pushFilterIntoEnumerateNear,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::DisabledByDefault,
+                                        OptimizerRule::Flags::Hidden),
+               R"(Push Filter into EnumerateNearVector node. Can also optimize
+    filtering by using storedValues. This rule is enabled only by use-vector-index rule)");
+
   registerRule(
       "immutable-search-condition", iresearch::immutableSearchCondition,
       OptimizerRule::immutableSearchConditionRule,

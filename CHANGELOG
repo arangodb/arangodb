@@ -1,6 +1,12 @@
 devel
 -----
 
+* Add `storedValues` support for vector indexes. This allows storing additional
+  document fields directly in the vector index, enabling optimized filtered
+  vector queries when all filter attributes are covered by stored values. The
+  query optimizer can now avoid fetching full documents when all required
+  fields are available in the index.
+
 * Ensure the js/node/package.json and js/node/package-lock.json have correct
   versions of the included node packages.
 

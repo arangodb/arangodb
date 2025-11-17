@@ -6,42 +6,78 @@ orbs:
   continuation: circleci/continuation@0.4.0
 
 parameters:
+  dont-cancel-pipelines:
+    type: boolean
+    default: false
+    description: "If true, don't cancel redundant pipelines"
   enterprise-branch:
     type: string
     # we use an empty string as default. In this case we check if the enterprise repo
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
-  arangosh_args:
+    description: "The branch to use for the enterprise repository."
+  sanitizer:
     type: string
-    default: ""
-  extra_args:
-    type: string
-    default: ""
-  use-minimal-debug-info:
-    type: boolean
-    default: true
-  arangod-without-v8:
-    type: boolean
-    default: false
-  create-docker-images:
-    type: boolean
-    default: false
-  rebuild-test-docker-images:
-    type: boolean
-    default: false
-  dont-cancel-pipelines:
-    type: boolean
-    default: false
-  build-docker-image:
-    type: string
-    default: "arangodb/ubuntubuildarangodb-devel:18"
-  test-docker-image:
-    type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5edcfbf3
+    default: "" # should be empty, "tsan" or "alubsan"
+    description: "Sanitizer to use: empty, tsan, or alubsan" # TODO - use enum
   nightly:
     type: boolean
     default: false
+    description: "Whether this is a nightly build"
+  ui:
+    type: string
+    default: "on"
+    description: "Whether to run UI selenium tests" # TODO - use enum and rename
+  ui-testsuites:
+    type: string
+    default: ""
+    description: "Comma separated list of UI test suites to run; empty means all."
+  ui-deployments:
+    type: string
+    default: ""
+    description: "Corresponds to --starter-mode from RTA, ATM only SG is specified by default." # TODO - use enum and rename
+  rta-branch:
+    type: string
+    default: "main"
+    description: "The branch to use for the RTA repository (used by UI tests)."
+  arangod-without-v8:
+    type: boolean
+    default: false
+    description: "Build arangod without serverside JS (also excludes frontend)"
+  config-definitions:
+    type: string
+    default: test-definitions.yml
+    description: "Space separated list of YAML files with test definitions (e.g., driver test files)."
+  config-definitions-branches:
+    type: string
+    default: ""
+    description: "Colon separated list of test-definition-prefix=branch. Intended to allow overriding branches for specific drivers."
+  create-docker-images:
+    type: boolean
+    default: false
+    description: "Whether to create docker images with the build artifacts"
+  extra_args:
+    type: string
+    default: ""
+    description: "Additional arguments to pass to testing.js see scripts/unittests output"
+  arangosh_args:
+    type: string
+    default: ""
+    description: "Additional arguments to pass to arangosh during tests (see arangosh --help)"
+  rebuild-test-docker-images:
+    type: boolean
+    default: false
+    description: "Used to create new test docker images after changes to the test docker image build process."
+  test-docker-image:
+    type: string
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:24.04-5edcfbf3
+    description: "Docker image to use for testing ArangoDB - only relevant when trying new test images"
+  build-docker-image:
+    type: string
+    default: "arangodb/ubuntubuildarangodb-devel:18"
+    description: "Docker image to use for building ArangoDB - only relevant when trying new build images"
+  # Rarely used options
   replication-two:
     type: boolean
     default: false # We use replication1 as default.
@@ -51,27 +87,10 @@ parameters:
   cxx-compiler:
     type: string
     default: "clang++"
-  sanitizer:
-    type: string
-    default: "" # should be empty, "tsan" or "alubsan"
-  ui:
-    type: string
-    default: "on"
-  ui-deployment:
-    type: string
-    default: ""
-  ui-testsuites:
-    type: string
-    default: ""
-  rta-branch:
-    type: string
-    default: "main"
-  config-definitions:
-    type: string
-    default: test-definitions.yml
-  config-definitions-branches:
-    type: string
-    default: ""
+  use-minimal-debug-info:
+    type: boolean
+    default: true # TODO - do we need this?
+
 # our defined job, and its steps
 jobs:
   # this is in a separate job from "setup" to make it as cheap as possible (because it uses the bare base image)
@@ -127,7 +146,7 @@ jobs:
               ## Cancel any currently running/on_hold workflow with the same name
               if [ -s WF_to_cancel.txt ]; then
                 echo "Cancelling the following workflow(s):"
-                cat WF_to_cancel.txt 
+                cat WF_to_cancel.txt
                 while read WF_ID;
                   do
                     curl --header "Circle-Token: $CIRCLECI_TOKEN" --request POST https://circleci.com/api/v2/workflow/$WF_ID/cancel
@@ -164,7 +183,7 @@ jobs:
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
             echo "sanitizer: << pipeline.parameters.sanitizer >>"
             echo "ui: << pipeline.parameters.ui >>"
-            echo "ui-deployment: << pipeline.parameters.ui-deployment >>"
+            echo "ui-deployments: << pipeline.parameters.ui-deployments >>"
             echo "ui-testsuites: << pipeline.parameters.ui-testsuites >>"
       - run:
           name: Checkout
@@ -207,20 +226,20 @@ jobs:
               cp .circleci/build_test_image.yml continuation_config.yml
             else
               set -x
-              pip install pyyaml
+              pip install pyyaml click
               python3 ".circleci/generate_config.py" \
                 --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --default-container "<< pipeline.parameters.test-docker-image >>" \
                 --ui "<< pipeline.parameters.ui >>" \
-                --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
+                --ui-deployments "<< pipeline.parameters.ui-deployments >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
                 --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
-                --test-branches "<<parameters.config-definitions-branches>>" \
+                --driver-branch-overrides "<<parameters.config-definitions-branches>>" \
                 -o continuation_config.yml \
                 ./.circleci/base_config.yml \
                 << parameters.definitions >>
