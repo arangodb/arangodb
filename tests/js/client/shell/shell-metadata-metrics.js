@@ -40,20 +40,46 @@ function metadataMetricsSuite() {
   const numberOfShardsMetric = "arangodb_metadata_number_of_shards";
 
   let assertMetrics = function(endpoints, expectedDatabases, expectedCollections, expectedShards) {
+    const retries = isCluster? 3 : 1;
+
     endpoints.forEach((ep) => {
-      const numDatabases = getMetric(ep, numberOfDatabasesMetric);
-      assertTrue(numDatabases === expectedDatabases, 
-                 `Number of databases found: ${numDatabases}, expected: ${expectedDatabases}`);
+        let numDatabases = getMetric(ep, numberOfDatabasesMetric);
+        let numCollections = getMetric(ep, numberOfCollectionsMetric);
+        let numShards = getMetric(ep, numberOfShardsMetric);
+        for (let i = 0; i < retries; ++i) {
+          if (isCluster) {
+            internal.sleep(1);
+          }
 
-      const numCollections = getMetric(ep, numberOfCollectionsMetric);
-      assertTrue(numCollections === expectedCollections, 
-                 `Number of collections found: ${numCollections}, expected: ${expectedCollections}`);
+          numDatabases = getMetric(ep, numberOfDatabasesMetric);
+          if (numDatabases !== expectedDatabases) {
+            continue;
+          }
 
-      if (isCluster) {
-        const numShards = getMetric(ep, numberOfShardsMetric);
-        assertTrue(numShards === expectedShards, 
+          numCollections = getMetric(ep, numberOfCollectionsMetric);
+          if (numCollections !== expectedCollections) {
+            continue;
+          }
+
+          if (isCluster) {
+            numShards = getMetric(ep, numberOfShardsMetric);
+            if (numShards !== expectedShards) {
+              continue;
+            }
+          }
+
+          // All metrics match, break early
+          break;
+        }
+
+        assertEqual(numDatabases, expectedDatabases, 
+                   `Number of databases found: ${numDatabases}, expected: ${expectedDatabases}`);
+        assertEqual(numCollections, expectedCollections, 
+                   `Number of collections found: ${numCollections}, expected: ${expectedCollections}`);
+        if (isCluster) {
+          assertEqual(numShards, expectedShards, 
                    `Number of shards found: ${numShards}, expected: ${expectedShards}`);
-      }
+        }
     });
   };
 
