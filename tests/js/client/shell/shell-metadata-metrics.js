@@ -31,6 +31,40 @@ const internal = require('internal');
 const isCluster = internal.isCluster();
 const { getMetric, getEndpointsByType } = require("@arangodb/test-helper");
 
+function queryAgencyJob(id) {
+  return arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
+}
+
+function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
+  let body = {database, collection, shard, fromServer, toServer};
+  let result;
+  try {
+    result = arango.POST_RAW("/_admin/cluster/moveShard", body);
+  } catch (err) {
+    console.error(
+      "Exception for PUT /_admin/cluster/moveShard:", err.stack);
+    return false;
+  }
+  if (dontwait) {
+    return result;
+  }
+  // Now wait until the job we triggered is finished:
+  let count = 600;   // seconds
+  while (true) {
+    let job = queryAgencyJob(result.parsedBody.id);
+    if (job.error === false && job.status === "Finished") {
+      return result;
+    }
+    if (count-- < 0) {
+      console.error(
+        "Timeout in waiting for moveShard to complete: "
+        + JSON.stringify(body));
+      return false;
+    }
+    require("internal").wait(1.0);
+  }
+}
+
 function metadataMetricsSuite() {
   'use strict';
   const testDbName = "testMetricsDb";
@@ -45,7 +79,10 @@ function metadataMetricsSuite() {
     endpoints.forEach((ep) => {
         let numDatabases = getMetric(ep, numberOfDatabasesMetric);
         let numCollections = getMetric(ep, numberOfCollectionsMetric);
-        let numShards = getMetric(ep, numberOfShardsMetric);
+        let numShards = 0;
+        if (isCluster) {
+          numShards = getMetric(ep, numberOfShardsMetric);
+        }
         for (let i = 0; i < retries; ++i) {
           if (isCluster) {
             internal.sleep(1);
@@ -160,6 +197,47 @@ function metadataMetricsSuite() {
       db._create(testCollectionName, {numberOfShards: 5, replicationFactor: 3});
       assertMetrics(endpoints, 2, 21, 25);
 
+      db._drop(testCollectionName);
+      assertMetrics(endpoints, 2, 20, 20);
+
+      db._useDatabase("_system");
+      db._dropDatabase(testDbName);
+      assertMetrics(endpoints, 1, 12, 12);
+    },
+
+    testMetricsStableAfterShardMove: function() {
+      if (!isCluster) {
+        // Shard movement only makes sense in cluster mode
+        return;
+      }
+
+      const endpoints = getEndpointsByType('coordinator');
+      assertTrue(endpoints.length > 0);
+
+      db._createDatabase(testDbName);
+      db._useDatabase(testDbName);
+      const col = db._create(testCollectionName, {numberOfShards: 3, replicationFactor: 2});
+      
+      assertMetrics(endpoints, 2, 21, 23);
+
+      // Get shard information using the distribution API
+      const shardDist = arango.GET("/_admin/cluster/shardDistribution");
+      const collectionShards = shardDist.results[testCollectionName];
+      
+      if (collectionShards && collectionShards.Plan) {
+        const shardId = Object.keys(collectionShards.Plan)[0];
+        const shardInfo = collectionShards.Plan[shardId];
+        const fromServer = shardInfo.leader;
+        const toServer = shardInfo.followers[0];
+        
+        // Move the shard (swap leader and follower) and wait for completion
+        const moveResult = moveShard(testDbName, testCollectionName, shardId, 
+                                     fromServer, toServer, false);
+        assertTrue(moveResult);
+        assertMetrics(endpoints, 2, 21, 23);
+      }
+
+      // Cleanup
       db._drop(testCollectionName);
       assertMetrics(endpoints, 2, 20, 20);
 
