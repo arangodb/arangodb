@@ -150,7 +150,9 @@ class ResourceUsageAllocatorBase : public Allocator {
   using size_type = typename std::allocator_traits<Allocator>::size_type;
   using value_type = typename std::allocator_traits<Allocator>::value_type;
 
-  ResourceUsageAllocatorBase() { /* We shouldn't be here */ TRI_ASSERT(false); }
+  ResourceUsageAllocatorBase() { /* We shouldn't be here */
+    TRI_ASSERT(false);
+  }
 
   template<typename... Args>
   ResourceUsageAllocatorBase(ResourceMonitor& resourceMonitor, Args&&... args)
