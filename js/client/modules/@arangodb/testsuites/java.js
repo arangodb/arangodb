@@ -416,6 +416,138 @@ function sparkDataSource (options) {
   return rc;
 }
 
+class runInSpringDataTest extends runWithAllureReport {
+  constructor(options, testname, ...optionalArgs) {
+    let opts = _.clone(tu.testClientJwtAuthInfo);
+    opts['password'] = 'test';
+    opts['username'] = 'root';
+    opts['jwtSecret'] = "halloJava";
+    opts['arangodConfig'] = 'arangod-auth.conf';
+    _.defaults(opts, options);
+    super(opts, testname, ...optionalArgs);
+    this.info = "runInSpringDataTest";
+  }
+  checkSutCleannessBefore() {}
+  checkSutCleannessAfter() { return true; }
+  runOneTest(file) {
+    print(this.instanceManager.setPassvoid());
+    let topology;
+    let testResultsDir = fs.join(this.instanceManager.rootDir, 'springdataresults');
+    let results = {
+      'message': ''
+    };
+
+    // strip i.e. http:// from the URL to conform with what the driver expects:
+    let rx = /.*:\/\//gi;
+    let args = [
+      'test',
+      `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
+      `-Dallure.results.directory=${testResultsDir}`,
+      '-Dmaven.wagon.http.retryHandler.count=10',
+    ];
+
+    if (this.options.testCase) {
+      args.push('-Dit.test=' + this.options.testCase);
+      args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
+    }
+    if (this.options.javaOptions !== '') {
+      for (var key in this.options.javaOptions) {
+        args.push('-D' + key + '=' + this.options.javaOptions[key]);
+      }
+    }
+    if (this.options.extremeVerbosity) {
+      print(args);
+    }
+    let start = Date();
+    let status = true;
+    const cwd = fs.normalize(fs.makeAbsolute(this.options.springsource));
+    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+    if (rc.exit !== 0) {
+      status = false;
+    }
+    this.getAllureResults(testResultsDir, results, status);
+    return results;
+  }
+}
+
+function springData (options) {
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
+  if (localOptions.cluster && localOptions.dbServers < 3) {
+    localOptions.dbServers = 3;
+  }
+
+  let rc = new runInSpringDataTest(localOptions, 'spring_data_test').run([ 'spring_data_test.js']);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
+}
+
+
+
+class runInTinkerpopProvider extends runWithAllureReport {
+  constructor(options, testname, ...optionalArgs) {
+    let opts = _.clone(tu.testClientJwtAuthInfo);
+    opts['password'] = 'test';
+    opts['username'] = 'root';
+    opts['jwtSecret'] = "halloJava";
+    opts['arangodConfig'] = 'arangod-auth.conf';
+    _.defaults(opts, options);
+    super(opts, testname, ...optionalArgs);
+    this.info = "runInTinkerpopTest";
+  }
+  checkSutCleannessBefore() {}
+  checkSutCleannessAfter() { return true; }
+  runOneTest(file) {
+    print(this.instanceManager.setPassvoid());
+    let topology;
+    let testResultsDir = fs.join(this.instanceManager.rootDir, 'tinkerpopresults');
+    let results = {
+      'message': ''
+    };
+
+    // strip i.e. http:// from the URL to conform with what the driver expects:
+    let rx = /.*:\/\//gi;
+    let args = [
+      'test',
+      `-Darango.endpoints=${this.instanceManager.url.replace(rx,'')}`,
+      `-Dallure.results.directory=${testResultsDir}`,
+      '-Dmaven.wagon.http.retryHandler.count=10',
+      `-Dtest.graph.type=${this.options.tinkerpopGraphType}`,
+    ];
+
+    if (this.options.testCase) {
+      args.push('-Dit.test=' + this.options.testCase);
+      args.push('-Dfailsafe.failIfNoSpecifiedTests=false'); // if we don't specify this, errors will occur.
+    }
+    if (this.options.javaOptions !== '') {
+      for (var key in this.options.javaOptions) {
+        args.push('-D' + key + '=' + this.options.javaOptions[key]);
+      }
+    }
+    if (this.options.extremeVerbosity) {
+      print(args);
+    }
+    let start = Date();
+    let status = true;
+    const cwd = fs.normalize(fs.makeAbsolute(this.options.tinkerpopsource));
+    const rc = executeExternalAndWait('mvn', args, false, 0, [], cwd);
+    if (rc.exit !== 0) {
+      status = false;
+    }
+    this.getAllureResults(testResultsDir, results, status);
+    return results;
+  }
+}
+
+function tinkerpopProvider (options) {
+  let localOptions = Object.assign({}, options, tu.testServerAuthInfo);
+  if (localOptions.cluster && localOptions.dbServers < 3) {
+    localOptions.dbServers = 3;
+  }
+
+  let rc = new runInTinkerpopProvider(localOptions, 'tinkerpop_driver').run([ 'tinkerpop_driver.js']);
+  options.cleanup = options.cleanup && localOptions.cleanup;
+  return rc;
+}
 
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
@@ -423,6 +555,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['java_driver'] = javaDriver;
   testFns['kafka_driver'] = kafkaDriver;
   testFns['spark_datasource'] = sparkDataSource;
+  testFns['spring_data'] = springData;
+  testFns['tinkerpop_provider'] = tinkerpopProvider;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
   tu.CopyIntoList(optionsDoc, optionsDocumentation);
   tu.CopyIntoObject(opts, {
@@ -432,5 +566,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
     'kafkaHost': '172.28.0.1:19092,172.28.0.1:29092,172.28.0.1:39092',
     'kafkaSchemaHost': 'http://172.28.0.1:8081',
     'sparksource': '../arangodb-spark-datasource',
+    'springsource': '../spring-data',
+    'tinkerpopsource': '../arangodb-tinkerpop-provider',
+    'tinkerpopGraphType': 'simple',
   });
 };

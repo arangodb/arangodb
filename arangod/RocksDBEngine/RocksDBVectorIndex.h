@@ -88,7 +88,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
       aql::InputAqlItemRow const* inputRow, aql::QueryContext& queryContext,
       std::vector<std::pair<aql::VariableId, aql::RegisterId>> const&
           filterVarsToRegs,
-      aql::Variable const* documentVariable);
+      aql::Variable const* documentVariable, bool isCovered);
 
   UserVectorIndexDefinition const& getVectorIndexDefinition() override;
 
@@ -96,6 +96,10 @@ class RocksDBVectorIndex final : public RocksDBIndex {
 
   Result readDocumentVectorData(velocypack::Slice doc,
                                 std::vector<float>& vector);
+
+  bool hasStoredValues() const noexcept;
+
+  StoredValues const& storedValues() const override;
 
  protected:
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -110,6 +114,7 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   UserVectorIndexDefinition _definition;
   std::shared_ptr<faiss::IndexIVF> _faissIndex;
   std::optional<TrainedData> _trainedData;
+  StoredValues const _storedValues;
 };
 
 }  // namespace arangodb

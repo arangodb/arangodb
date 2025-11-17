@@ -162,6 +162,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasStoredValues() const noexcept { return !_storedValues.empty(); }
 
+  StoredValues const& storedValues() const override { return _storedValues; }
+
   void buildEmptySearchValues(velocypack::Builder& result) const;
 
   // build new search values. this can also be called from the
