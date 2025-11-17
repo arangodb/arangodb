@@ -113,6 +113,7 @@ RocksDBInvertedListsFilteringIteratorBase::
           index, collection, searchParametersContext.trx, listNumber, codeSize),
       _searchParametersContext(searchParametersContext) {
   TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
+  skipOverFilteredDocuments();
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIteratorBase::is_available()
@@ -152,9 +153,7 @@ RocksDBInvertedListsFilteringIterator<Strategy>::
         SearchParametersContext& searchParametersContext,
         std::size_t listNumber, std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
-          index, collection, searchParametersContext, listNumber, codeSize) {
-  skipOverFilteredDocuments();
-}
+          index, collection, searchParametersContext, listNumber, codeSize) {}
 
 template<VectorIndexStoredValuesStrategy Strategy>
 bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
@@ -164,8 +163,8 @@ bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
   idsToValue.reserve(kBatchSize);
   ids.reserve(kBatchSize);
 
-  for (size_t i{0}; i < kBatchSize && _it->Valid() &&
-                    RocksDBInvertedListsIteratorBase::is_available();
+  for (size_t i{0};
+       i < kBatchSize && RocksDBInvertedListsIteratorBase::is_available();
        ++i, _it->Next()) {
     auto const id = LocalDocumentId(RocksDBKey::indexDocumentId(_it->key()));
     ids.emplace_back(id);
@@ -243,7 +242,6 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
           index, collection, searchParametersContext, listNumber, codeSize) {
   TRI_ASSERT(index->hasStoredValues() &&
              searchParametersContext.isCoveredByStoredValues);
-  skipOverFilteredDocuments();
 }
 
 bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
