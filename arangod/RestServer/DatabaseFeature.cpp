@@ -923,7 +923,8 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // Update metadata metrics on single server only after successful drop
   if (res == TRI_ERROR_NO_ERROR && ServerState::instance()->isSingleServer()) {
     _metadataMetrics->numberOfDatabases.fetch_sub(1, std::memory_order_relaxed);
-    // Also decrement collection count for all collections in the dropped database
+    // Also decrement collection count for all collections in the dropped
+    // database
     if (numCollections > 0) {
       decrementCollectionCount(numCollections);
     }
