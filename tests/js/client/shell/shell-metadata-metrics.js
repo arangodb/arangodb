@@ -145,6 +145,29 @@ function metadataMetricsSuite() {
       db._dropDatabase(testDbName);
       assertMetrics(endpoints, 1, 12, 12);
     },
+
+    testMetricsChangeWithCreatingAndDroppingCollectionWithReplication: function() {
+      let endpoints;
+      if (isCluster) {
+        endpoints = getEndpointsByType('coordinator');
+      } else {
+        endpoints = getEndpointsByType('single');
+      }
+      assertTrue(endpoints.length > 0);
+
+      db._createDatabase(testDbName);
+      db._useDatabase(testDbName);
+      db._create(testCollectionName, {numberOfShards: 5, replicationFactor: 3});
+      assertMetrics(endpoints, 2, 21, 25);
+
+      db._drop(testCollectionName);
+      assertMetrics(endpoints, 2, 20, 20);
+
+      db._useDatabase("_system");
+      db._dropDatabase(testDbName);
+      assertMetrics(endpoints, 1, 12, 12);
+    },
+
   };
 }
 
