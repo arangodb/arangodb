@@ -764,7 +764,12 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     return true;
   }
   stopStressArangosh() {
-    return ct.run.joinForceBGShells(this.options, this.clientInstances);
+    try {
+      ct.run.joinForceBGShells(this.options, this.clientInstances);
+    } catch (ex) {
+      print(ex);
+    }
+    return true;
   }
 
 };
