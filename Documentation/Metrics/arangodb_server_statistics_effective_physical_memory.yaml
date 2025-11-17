@@ -1,0 +1,32 @@
+name: arangodb_server_statistics_effective_physical_memory
+introducedIn: "3.12.7"
+help: |
+  Effective physical memory available to the arangod process in bytes.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Effective physical memory available to the arangod process in bytes, 
+  taking into account container memory limits when running in containerized
+  environments.
+  
+  This value is determined by:
+  - **cgroup v1**: Reading `/sys/fs/cgroup/memory/memory.limit_in_bytes`
+  - **cgroup v2**: Reading `/sys/fs/cgroup/memory.max`
+  - **No cgroups**: Falls back to total physical memory
+  
+  When running in Docker or Kubernetes with memory limits set, this metric
+  will report the container's memory limit rather than the host's total
+  physical memory, providing a more accurate view of available memory for
+  capacity planning and monitoring.
+  
+  If the environment variable `ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY`
+  is set, it takes precedence over both cgroup limits and detected physical
+  memory.
+

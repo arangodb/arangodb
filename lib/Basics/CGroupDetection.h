@@ -18,25 +18,22 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
-
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
 
-namespace arangodb {
-namespace NumberOfCores {
+namespace arangodb::cgroup {
 
-/// @brief return number of available CPU cores
-std::size_t getValue();
+/// @brief cgroup version detected on the system
+enum class Version : uint8_t {
+  NONE = 0,  // No cgroup support detected
+  V1 = 1,    // cgroup v1 (legacy)
+  V2 = 2     // cgroup v2 (unified hierarchy)
+};
 
-/// @brief return number of effective CPU cores
-/// value will be affected by limitations of docker,
-/// cGroupV1 and cGroupV2
-std::size_t getEffectiveValue();
+/// @brief get cached cgroup version detected at startup
+Version getVersion();
 
-bool overridden();
-
-}  // namespace NumberOfCores
-}  // namespace arangodb
+}  // namespace arangodb::cgroup

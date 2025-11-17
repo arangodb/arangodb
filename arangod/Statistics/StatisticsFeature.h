@@ -117,6 +117,13 @@ class StatisticsFeature final : public ArangodFeature {
                            std::string const& label, std::string_view globals,
                            bool ensureWhitespace);
 
+  static void appendMetricWithMachineId(std::string& result,
+                                        std::string const& val,
+                                        std::string const& label,
+                                        std::string_view machineId,
+                                        std::string_view globals,
+                                        bool ensureWhitespace);
+
   static void appendHistogram(std::string& result,
                               statistics::Distribution const& dist,
                               std::string const& label,
