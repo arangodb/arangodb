@@ -113,7 +113,6 @@ RocksDBInvertedListsFilteringIteratorBase::
           index, collection, searchParametersContext.trx, listNumber, codeSize),
       _searchParametersContext(searchParametersContext) {
   TRI_ASSERT(searchParametersContext.filterExpression != nullptr);
-  skipOverFilteredDocuments();
 }
 
 [[nodiscard]] bool RocksDBInvertedListsFilteringIteratorBase::is_available()
@@ -153,7 +152,9 @@ RocksDBInvertedListsFilteringIterator<Strategy>::
         SearchParametersContext& searchParametersContext,
         std::size_t listNumber, std::size_t codeSize)
     : RocksDBInvertedListsFilteringIteratorBase(
-          index, collection, searchParametersContext, listNumber, codeSize) {}
+          index, collection, searchParametersContext, listNumber, codeSize) {
+  skipOverFilteredDocuments();
+}
 
 template<VectorIndexStoredValuesStrategy Strategy>
 bool RocksDBInvertedListsFilteringIterator<Strategy>::searchFilteredIds() {
@@ -242,6 +243,7 @@ RocksDBInvertedListsFilteringStoredValuesIterator::
           index, collection, searchParametersContext, listNumber, codeSize) {
   TRI_ASSERT(index->hasStoredValues() &&
              searchParametersContext.isCoveredByStoredValues);
+  skipOverFilteredDocuments();
 }
 
 bool RocksDBInvertedListsFilteringStoredValuesIterator::searchFilteredIds() {
