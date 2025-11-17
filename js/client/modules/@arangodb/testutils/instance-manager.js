@@ -101,7 +101,6 @@ class instanceManager {
     this.dbName = "_System";
     this.userName = "root";
     this.memlayout = {};
-    this.clientInstances = [];
 
     // be more sluggish with memory when running instrumented binaries
     if (this.options.isInstrumented && this.options.memory !== undefined) {
@@ -1540,16 +1539,6 @@ class instanceManager {
         print(x);
       }
     }
-  }
-
-  spawnStressArangosh(snippet, key, cn) {
-    this.clientInstances.push(
-      launchPlainSnippetInBG(this.options, snippet, key, cn)
-    )
-    return true;
-  }
-  stopStressArangosh() {
-    return joinForceBGShells(this.options, this.clientInstances);
   }
 }
 

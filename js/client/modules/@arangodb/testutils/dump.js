@@ -96,6 +96,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     this.keyDir = null;
     this.otherKeyDir = null;
     this.doCleanup = true;
+    this.clientInstances = [];
   }
 
   destructor(cleanup) {
@@ -432,6 +433,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
 
   runTestFn(testFunction) {
     this.print("running snippet");
+
     let ret = testFunction();
     this.validate(ret.testresult);
     return ret.status;
@@ -744,6 +746,27 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       return true;
     }
   }
+
+  spawnStressArangosh(snippet, key) {
+    global.instanceManager = this.instanceManager;
+    let testFn = fs.getTempFile();
+    fs.write(testFn, "x");
+    snippet = `require('fs').remove('${testFn}');
+    let endpoint = '${this.instanceManager.endpoint}';
+    let passvoid = '${this.instanceManager.options.password}';
+    ${snippet}`;
+    this.clientInstances.push(
+      ct.run.launchPlainSnippetInBG(snippet, key)
+    )
+    while (fs.exists(testFn)) {
+      sleep(0.1);
+    }
+    return true;
+  }
+  stopStressArangosh() {
+    return ct.run.joinForceBGShells(this.options, this.clientInstances);
+  }
+
 };
 
 

@@ -374,6 +374,9 @@ function launchInShellBG  (file) {
   let env = sh.getSanOptions();
   env['INSTANCEINFO'] = JSON.stringify(IM.getStructure());
   const argv = toArgv(args);
+  if (IM.options.extremeVerbosity) {
+    print(argv);
+  }
   let result = executeExternal(pu.ARANGOSH_BIN, argv, false, env);
   result.sh = sh;
   result['logFile'] = logFile;
@@ -548,7 +551,7 @@ function joinForceBGShells(options, clients) {
       internal.killExternal(client.client.pid, 15 /*SIG_TERM*/);
     }
   });
-  sleep(1);
+  internal.sleep(1);
   clients.forEach(function (client) {
     if (client.done) {
       done -= 1;

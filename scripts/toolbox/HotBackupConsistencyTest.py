@@ -205,7 +205,7 @@ def run_test_aql(client):
 
     def check():
         for i in range(10):
-            result = list(test_db.aql.execute("""
+             result = list(test_db.aql.execute("""
                 FOR doc IN test_collection
                     FILTER doc.thrd == @idx
                     COLLECT WITH COUNT INTO length

@@ -38,6 +38,7 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 // const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
+const errors = require('internal').errors;
 
 const functionsDocumentation = {
   'hot_backup': 'hotbackup tests'
@@ -193,11 +194,11 @@ function hotBackup_load_backend (options, which, args) {
         //!helper.runRtaMakedata() ||
         !helper.isAlive() ||
         !helper.runTestFn(args.preRestoreFn) ||
-        !helper.spawnStressArangosh(args.noiseScript) ||
-        function() { require('internal').sleep(1); return true;}() ||
+        !helper.spawnStressArangosh(args.noiseScript, which) ||
         !helper.createHotBackup() ||
         !helper.restoreHotBackup() ||
-        !helper.runTestFn(args.postRestoreFn)// ||
+        !helper.runTestFn(args.postRestoreFn) ||
+        !helper.stopStressArangosh() //||
         //!helper.runRtaCheckData()
     ) {
       print(2)
@@ -239,10 +240,24 @@ function hotBackup_views (options) {
   let which = "hot_backup_load";
   return hotBackup_load_backend(options, which, {
     noiseScript: `
+while(true) {
+  console.log('Noise starts');
+  try {
     db._useDatabase('test_view');
     for (i=0; i < 10000; i++) {
         db.test_collection.insert({"number": i, "field1": "stone"});
     }
+    print('done');
+    break;
+  }
+  catch (ex) {
+    console.log(ex);
+    require('internal').sleep(0.5);
+    try {
+      arango.reconnect(endpoint, '_system', 'root', passvoid)
+    } catch(ex) { console.log(ex); }
+  }
+}
 `,
     preRestoreFn: function() {
       db._createDatabase('test_view');
@@ -258,12 +273,15 @@ function hotBackup_views (options) {
                      {"links": {
                        "test_collection2": {
                          "includeAllFields": true}}});
-      txn = db._beginTransaction({read: ["test_collection2"], write: ["test_collection2"]});
+      txn = db._createTransaction({collections: {
+        read: ["test_collection2"], write: ["test_collection2"]}});
       txn_col = txn.collection("test_collection2");
       txn_col.insert({"foo": "bar"});
+      print('--------------------------------------------------------------------------------111')
       return {status: true, testresult: {}};
     },
     postRestoreFn:function() {
+      print('--------------------------------------------------------------------------------211')
       db._useDatabase('test_view');
       let p = db._query(
         `LET x = (FOR v IN test_collection RETURN v._key)
@@ -271,7 +289,7 @@ function hotBackup_views (options) {
                  FILTER w._key NOT IN x
                  RETURN w
             `).toArray();
-      if (p !== []) {
+      if (p.length !== 0) {
         throw new Error(`query result wasn't empty: ${p}`);
       }
       let q = db._query(
@@ -280,7 +298,7 @@ function hotBackup_views (options) {
                  FILTER w._key NOT IN x
                  RETURN w
             `).toArray();
-      if (q !== []) {
+      if (q.length !== 0) {
         throw new Error(`query result wasn't empty: ${q}`);
       }
 
@@ -297,13 +315,24 @@ function hotBackup_views (options) {
                  FILTER w.field1 == "stone"
                  RETURN w._key
             `).toArray();
-      if (p === q) {
-        throw new Error(`query result wasn't empty: ${p} != ${q}`);
+      if (p !== q) {
+        throw new Error(`query result wasn't empty: ${JSON.stringify(p)} != ${JSON.stringify(q)}`);
       }
 
-      txn.abort();
+      print('Aborting Transaction if still there');
+      try {
+        txn.abort();
+      } catch (ex) {
+        print('probably gone.');
+        if (ex.errorNum !== errors.ERROR_TRANSACTION_NOT_FOUND.code) {
+          print(ex);
+          throw(ex);
+        }
+      }
       db._useDatabase('_system');
-      db._dropdatabase('test_view');
+      db._dropDatabase('test_view');
+      print('--------------------------------------------------------------------------------131')
+      require('internal').sleep(30)
       return {status: true, testresult: {}};
     }
   });
