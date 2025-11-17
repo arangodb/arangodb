@@ -121,7 +121,10 @@ function goDriver (options) {
         process.env['TEST_JWTSECRET'] = this.instanceManager.JWT;
       }
       let args = ['test', '-json', '-tags', 'auth', goVersionArgs['path']];
-
+      if (options.goDriverVersion === 2 && (options.cluster || options.isInstrumented)) {
+        args.push('-parallel');
+        args.push('1');
+      }
       if (this.options.testCase) {
         args.push('-run');
         args.push(this.options.testCase);
