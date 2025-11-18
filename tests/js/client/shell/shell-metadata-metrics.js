@@ -234,6 +234,21 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 12, 12);
     },
 
+    testMetricsWithSatelliteCollection: function() {
+      let endpoints;
+      if (isCluster) {
+        endpoints = getEndpointsByType('coordinator');
+      } else {
+        endpoints = getEndpointsByType('single');
+      }
+      assertTrue(endpoints.length > 0);
+
+      db._createDatabase(testDbName);
+      db._useDatabase(testDbName);
+      db._create(testCollectionName, {replicationFactor: "satellite"});
+      assertMetrics(endpoints, 2, 21, 21);
+    },
+
     testMetricsSwitchLeaderFollower: function() {
       if (!isCluster) {
         // Shard movement only makes sense in cluster mode
