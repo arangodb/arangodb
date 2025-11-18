@@ -34,6 +34,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/GlobalSerialization.h"
+#include "Basics/Result.h"
+#include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/TimeString.h"

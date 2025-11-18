@@ -35,6 +35,8 @@ function queryAgencyJob(id) {
   return arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
 }
 
+// TODO this is from shell-move-shard-sync-cluster-r2-fp.js
+// extract it
 function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
   let body = {database, collection, shard, fromServer, toServer};
   let result;
@@ -245,7 +247,6 @@ function metadataMetricsSuite() {
       db._dropDatabase(testDbName);
       assertMetrics(endpoints, 1, 12, 12);
     },
-
   };
 }
 
