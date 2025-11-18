@@ -100,6 +100,7 @@ uint64_t effectivePhysicalMemoryImpl() {
           return *limit;
         }
       }
+      break;
     }
     case cgroup::Version::V2: {
       if (auto const limit = arangodb::basics::FileUtils::readCgroupFileValue(
@@ -109,7 +110,8 @@ uint64_t effectivePhysicalMemoryImpl() {
           return *limit;
         }
       }
-    } break;
+      break;
+    }
   }
 
   return physicalMemoryImpl();
