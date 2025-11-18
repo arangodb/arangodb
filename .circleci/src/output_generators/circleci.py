@@ -423,57 +423,31 @@ class CircleCIGenerator(OutputGenerator):
         """
         result = []
         deployment_type = job.options.deployment_type
+        add_job_to_result = lambda job_def: result.append(job_def) if job_def else None
 
-        if deployment_type == DeploymentType.CLUSTER:
-            job_def = self._create_test_job(
+        if deployment_type is None or deployment_type == DeploymentType.CLUSTER:
+            add_job_to_result(self._create_test_job(
                 job, DeploymentType.CLUSTER, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
+            ))
+
             if self.config.test_execution.replication_two:
-                job_def = self._create_test_job(
+                add_job_to_result(self._create_test_job(
                     job,
                     DeploymentType.CLUSTER,
                     build_config,
                     build_jobs,
                     replication_version=2,
-                )
-                if job_def:
-                    result.append(job_def)
-        elif deployment_type == DeploymentType.SINGLE:
-            job_def = self._create_test_job(
+                ))
+
+        if deployment_type is None or deployment_type == DeploymentType.SINGLE:
+            add_job_to_result(self._create_test_job(
                 job, DeploymentType.SINGLE, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
-        elif deployment_type == DeploymentType.MIXED:
-            job_def = self._create_test_job(
+            ))
+
+        if deployment_type == DeploymentType.MIXED:
+            add_job_to_result(self._create_test_job(
                 job, DeploymentType.MIXED, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
-        else:
-            # No deployment type - run both
-            job_def = self._create_test_job(
-                job, DeploymentType.CLUSTER, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
-            if self.config.test_execution.replication_two:
-                job_def = self._create_test_job(
-                    job,
-                    DeploymentType.CLUSTER,
-                    build_config,
-                    build_jobs,
-                    replication_version=2,
-                )
-                if job_def:
-                    result.append(job_def)
-            job_def = self._create_test_job(
-                job, DeploymentType.SINGLE, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
+            ))
 
         return result
 
