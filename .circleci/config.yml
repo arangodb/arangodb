@@ -212,6 +212,12 @@ jobs:
             cat parameters.json
 
       - run:
+          name: Run config script tests and type checks
+          command: |
+            cd .circleci
+            mypy generate_config.py src
+            python -m pytest tests_unit/ -v
+      - run:
           name: Generate config
           command: |
             if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
