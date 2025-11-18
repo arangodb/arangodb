@@ -3328,7 +3328,6 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
 
   auto cleanup = arangodb::scopeGuard([&]() noexcept {
     dbfeature.unprepare();
-    server.getFeature<arangodb::DatabaseFeature>().prepare();
   });
 
   sharding.prepare();
