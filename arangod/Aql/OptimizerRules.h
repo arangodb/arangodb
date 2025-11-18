@@ -418,6 +418,9 @@ void pushLimitIntoIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void useVectorIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                         OptimizerRule const&);
 
+void pushFilterIntoEnumerateNear(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                 OptimizerRule const&);
+
 void useIndexForCollect(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
                         OptimizerRule const& rule);
 

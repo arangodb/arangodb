@@ -30,6 +30,12 @@ namespace NumberOfCores {
 
 /// @brief return number of available CPU cores
 std::size_t getValue();
+
+/// @brief return number of effective CPU cores
+/// value will be affected by limitations of docker,
+/// cGroupV1 and cGroupV2
+std::size_t getEffectiveValue();
+
 bool overridden();
 
 }  // namespace NumberOfCores
