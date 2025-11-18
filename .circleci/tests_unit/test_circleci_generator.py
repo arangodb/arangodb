@@ -76,7 +76,7 @@ class TestGenerateWorkflowName:
         test_exec = TestExecutionConfig(
             replication_two=config_kwargs.get("replication_two", False)
         )
-        circleci_config = CircleCIConfig(default_container="default")
+        circleci_config = CircleCIConfig(test_image="default")
         config = GeneratorConfig(
             filter_criteria=filter_criteria,
             test_execution=test_exec,
@@ -194,7 +194,7 @@ class TestDockerImageJob:
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
             circleci=CircleCIConfig(
-                create_docker_images=True, default_container="default"
+                create_docker_images=True, test_image="default"
             ),
         )
         env_getter = lambda k, default: (
@@ -787,7 +787,7 @@ class TestCreateTestJob:
 
         filter_criteria = FilterCriteria()
         test_exec = TestExecutionConfig()
-        circleci_config = CircleCIConfig(default_container="test-image:latest")
+        circleci_config = CircleCIConfig(test_image="test-image:latest")
         config = GeneratorConfig(
             filter_criteria=filter_criteria,
             test_execution=test_exec,

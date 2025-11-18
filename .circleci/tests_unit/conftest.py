@@ -66,7 +66,7 @@ def generator_factory():
     def _create(
         replication_two=False,
         create_docker_images=False,
-        default_container="default",
+        test_image="default",
         env_vars=None,
         test_date=None,
         **filter_kwargs,
@@ -75,7 +75,7 @@ def generator_factory():
         test_exec = TestExecutionConfig(replication_two=replication_two)
         circleci_config = CircleCIConfig(
             create_docker_images=create_docker_images,
-            default_container=default_container,
+            test_image=test_image,
         )
         config = GeneratorConfig(
             filter_criteria=filter_criteria,

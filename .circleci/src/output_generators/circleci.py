@@ -597,7 +597,7 @@ class CircleCIGenerator(OutputGenerator):
         """Add repository configuration to job dict if job has external repo."""
         if job.repository:
             # Build docker image name with container_suffix if present
-            container = self.config.circleci.default_container
+            container = self.config.circleci.test_image
             if ":" in container:
                 base, tag = container.rsplit(":", 1)
                 # Apply container_suffix if present (e.g., test-ubuntu -> test-ubuntu-js)
@@ -615,4 +615,4 @@ class CircleCIGenerator(OutputGenerator):
             if job.repository.init_command is not None:
                 job_dict["init_command"] = job.repository.init_command
         else:
-            job_dict["docker_image"] = self.config.circleci.default_container
+            job_dict["docker_image"] = self.config.circleci.test_image

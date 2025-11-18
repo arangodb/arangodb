@@ -139,7 +139,7 @@ def load_test_definitions(
 
 def create_generator_config(
     sanitizer: str,
-    default_container: str,
+    test_image: str,
     arangosh_args: str,
     extra_args: str,
     arangod_without_v8: str,
@@ -195,7 +195,7 @@ def create_generator_config(
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
         create_docker_images=create_docker_images,
-        default_container=default_container,
+        test_image=test_image,
     )
 
     return GeneratorConfig(
@@ -222,10 +222,10 @@ def create_generator_config(
     help="Sanitizer to use (tsan, asan, ubsan, alubsan)",
 )
 @click.option(
-    "-d",
-    "--default-container",
+    "-t",
+    "--test-image",
     required=True,
-    help="Default container to be used",
+    help="Test image to be used",
 )
 @click.option(
     "-b",
@@ -296,7 +296,7 @@ def main(
     definitions: tuple,
     output: str,
     sanitizer: str,
-    default_container: str,
+    test_image: str,
     driver_branch_overrides: str,
     arangosh_args: str,
     extra_args: str,
@@ -331,7 +331,7 @@ def main(
         # Create generator config
         config = create_generator_config(
             sanitizer=sanitizer,
-            default_container=default_container,
+            test_image=test_image,
             arangosh_args=arangosh_args,
             extra_args=extra_args,
             arangod_without_v8=arangod_without_v8,

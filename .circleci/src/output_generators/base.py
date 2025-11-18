@@ -29,7 +29,7 @@ class CircleCIConfig:
     """CircleCI-specific configuration."""
 
     create_docker_images: bool = False
-    default_container: str = ""
+    test_image: str = ""
 
 
 @dataclass

@@ -222,7 +222,7 @@ jobs:
                 --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
-                --default-container "<< pipeline.parameters.test-docker-image >>" \
+                --test-image "<< pipeline.parameters.test-docker-image >>" \
                 --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
