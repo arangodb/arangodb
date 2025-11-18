@@ -2705,10 +2705,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     networkFeature.prepare();
     dbFeature.prepare();
 
-    auto cleanup = arangodb::scopeGuard([&, this]() noexcept {
+    auto cleanup = arangodb::scopeGuard([&]() noexcept {
       dbFeature.unprepare();
       networkFeature.unprepare();
-      server.getFeature<arangodb::DatabaseFeature>().prepare();
     });
 
     // create system vocbase (before feature start)
@@ -4423,10 +4422,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         unused);
   }
 
-  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() noexcept {
     dbFeature.unprepare();
-    server.getFeature<arangodb::DatabaseFeature>()
-        .prepare();  // restore calculation vocbase
   });
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
@@ -4751,9 +4748,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
-  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() noexcept {
     dbFeature.unprepare();
-    server.getFeature<arangodb::DatabaseFeature>().prepare();
   });
 
   dbFeature.prepare();
@@ -4901,10 +4897,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
-  auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
+  auto cleanup = arangodb::scopeGuard([&dbFeature]() noexcept {
     dbFeature.unprepare();
-    server.getFeature<arangodb::DatabaseFeature>()
-        .prepare();  // restore calculation vocbase
   });
 
   dbFeature.prepare();
