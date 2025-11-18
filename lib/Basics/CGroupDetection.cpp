@@ -18,25 +18,37 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Jure Bajic
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "Basics/CGroupDetection.h"
+#include "Basics/files.h"
 
-#include <cstddef>
+namespace arangodb::cgroup {
 
-namespace arangodb {
-namespace NumberOfCores {
+namespace {
 
-/// @brief return number of available CPU cores
-std::size_t getValue();
+/// @brief detect which cgroup version is in use on the system
+Version detectCGroupVersionImpl() {
+  if (TRI_ExistsFile("/sys/fs/cgroup/cgroup.controllers")) {
+    return Version::V2;
+  }
 
-/// @brief return number of effective CPU cores
-/// value will be affected by limitations of docker,
-/// cGroupV1 and cGroupV2
-std::size_t getEffectiveValue();
+  if (TRI_ExistsFile("/sys/fs/cgroup/cpu") ||
+      TRI_ExistsFile("/sys/fs/cgroup/memory")) {
+    return Version::V1;
+  }
 
-bool overridden();
+  return Version::NONE;
+}
 
-}  // namespace NumberOfCores
-}  // namespace arangodb
+}  // namespace
+
+/// @brief return cached cgroup version using Meyer's Singleton pattern
+/// to avoid static initialization order fiasco
+Version getVersion() {
+  static Version cachedVersion = detectCGroupVersionImpl();
+  return cachedVersion;
+}
+
+}  // namespace arangodb::cgroup
