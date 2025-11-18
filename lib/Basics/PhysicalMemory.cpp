@@ -29,6 +29,9 @@
 #include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "ProgramOptions/Parameters.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>

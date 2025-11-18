@@ -820,12 +820,14 @@ std::optional<int64_t> readCgroupFileValue(const std::string& path) {
 
     return std::stoll(line);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("a3c21", TRACE, arangodb::Logger::FIXME)
-        << "failed to read cgroup file '" << path << "': " << ex.what();
+    LOG_TOPIC("a3c21", INFO, arangodb::Logger::FIXME)
+        << "failed to read cgroup file '" << path
+        << "' for metric collection: " << ex.what();
     return {};
   } catch (...) {
-    LOG_TOPIC("a3c22", TRACE, arangodb::Logger::FIXME)
-        << "failed to read cgroup file '" << path << "': unknown error";
+    LOG_TOPIC("a3c22", INFO, arangodb::Logger::FIXME)
+        << "failed to read cgroup file '" << path
+        << " for metric collection': unknown error";
     return {};
   }
 }

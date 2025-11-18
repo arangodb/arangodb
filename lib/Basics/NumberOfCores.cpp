@@ -94,11 +94,14 @@ std::size_t numberOfEffectiveCoresImpl() {
           return quota / period;
         }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("a3c23", TRACE, arangodb::Logger::FIXME)
-            << "failed to read cgroup v2 cpu.max file: " << ex.what();
+        LOG_TOPIC("a3c23", INFO, arangodb::Logger::FIXME)
+            << "failed to determine the number of CPU cores from cgroup v2 "
+               "cpu.max file: "
+            << ex.what();
       } catch (...) {
-        LOG_TOPIC("a3c24", TRACE, arangodb::Logger::FIXME)
-            << "failed to read cgroup v2 cpu.max file: unknown error";
+        LOG_TOPIC("a3c24", INFO, arangodb::Logger::FIXME)
+            << "failed to determine the number of CPU cores from cgroup v2 "
+               "cpu.max file: unknown error";
       }
       break;
     }
