@@ -212,6 +212,9 @@ jobs:
             cat parameters.json
 
       - run:
+          name: Install dependencies
+          command: pip install pyyaml click pytest mypy types-PyYAML
+      - run:
           name: Run config script tests and type checks
           command: |
             cd .circleci
@@ -224,7 +227,6 @@ jobs:
               cp .circleci/build_test_image.yml continuation_config.yml
             else
               set -x
-              pip install pyyaml click
               python3 ".circleci/generate_config.py" \
                 --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
