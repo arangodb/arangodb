@@ -29,48 +29,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const internal = require('internal');
 const isCluster = internal.isCluster();
-const { getMetric, getEndpointsByType } = require("@arangodb/test-helper");
-
-function queryAgencyJob(id) {
-  return arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
-}
-
-// TODO this is from shell-move-shard-sync-cluster-r2-fp.js
-// extract it
-function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
-  let body = {database, collection, shard, fromServer, toServer};
-  let result;
-  try {
-    result = arango.POST_RAW("/_admin/cluster/moveShard", body);
-    if (result.code !== 202) {
-      console.error("Move shard job rejected with code:", result.code, 
-                    "body:", JSON.stringify(result.parsedBody));
-      return false;
-    }
-  } catch (err) {
-    console.error(
-      "Exception for POST /_admin/cluster/moveShard:", err.stack);
-    return false;
-  }
-  if (dontwait) {
-    return result;
-  }
-  // Now wait until the job we triggered is finished:
-  let count = 600;   // seconds
-  while (true) {
-    let job = queryAgencyJob(result.parsedBody.id);
-    if (job.error === false && job.status === "Finished") {
-      return result;
-    }
-    if (count-- < 0) {
-      console.error(
-        "Timeout in waiting for moveShard to complete: "
-        + JSON.stringify(body));
-      return false;
-    }
-    require("internal").wait(1.0);
-  }
-}
+const { getMetric, getEndpointsByType, moveShard } = require("@arangodb/test-helper");
 
 function metadataMetricsSuite() {
   'use strict';
