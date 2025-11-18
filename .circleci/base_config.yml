@@ -48,7 +48,7 @@ parameters:
   sanitizer:
     type: string
     default: ""
-  ui:
+  ui-test-mode:
     type: string
     default: "on"
   ui-deployment:

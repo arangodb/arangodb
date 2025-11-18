@@ -17,6 +17,7 @@ from src.output_generators.base import (
     GeneratorConfig,
     TestExecutionConfig,
     CircleCIConfig,
+    UITestMode,
 )
 from src.output_generators.circleci import CircleCIGenerator
 
@@ -64,7 +65,7 @@ def generator_factory():
     """Factory for creating CircleCIGenerator with custom config."""
 
     def _create(
-        ui="",
+        ui_test_mode="",
         replication_two=False,
         create_docker_images=False,
         env_vars=None,
@@ -73,8 +74,10 @@ def generator_factory():
     ):
         filter_criteria = FilterCriteria(**filter_kwargs)
         test_exec = TestExecutionConfig(replication_two=replication_two)
+        # Convert string to UITestMode enum
+        ui_test_mode = UITestMode.from_string(ui_test_mode)
         circleci_config = CircleCIConfig(
-            ui=ui, create_docker_images=create_docker_images
+            ui_test_mode=ui_test_mode, create_docker_images=create_docker_images
         )
         config = GeneratorConfig(
             filter_criteria=filter_criteria,

@@ -23,6 +23,7 @@ from src.output_generators.base import (
     GeneratorConfig,
     TestExecutionConfig,
     CircleCIConfig,
+    UITestMode,
 )
 from src.output_generators.circleci import CircleCIGenerator
 
@@ -76,7 +77,9 @@ class TestGenerateWorkflowName:
         test_exec = TestExecutionConfig(
             replication_two=config_kwargs.get("replication_two", False)
         )
-        circleci_config = CircleCIConfig(ui=config_kwargs.get("ui", ""))
+        # Convert string to UITestMode enum
+        ui_test_mode = UITestMode.from_string(config_kwargs.get("ui_test_mode", ""))
+        circleci_config = CircleCIConfig(ui_test_mode=ui_test_mode)
         config = GeneratorConfig(
             filter_criteria=filter_criteria,
             test_execution=test_exec,
@@ -112,7 +115,7 @@ class TestGenerateWorkflowName:
 
     def test_workflow_name_with_ui_tests(self):
         """Test workflow name with UI tests enabled."""
-        gen = self.create_generator(ui="on")
+        gen = self.create_generator(ui_test_mode="on")
         build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)
@@ -120,7 +123,7 @@ class TestGenerateWorkflowName:
 
     def test_workflow_name_with_ui_only(self):
         """Test workflow name with UI tests only."""
-        gen = self.create_generator(ui="only")
+        gen = self.create_generator(ui_test_mode="only")
         build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)

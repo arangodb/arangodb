@@ -21,7 +21,7 @@ from ..config_lib import (
     SuiteConfig,
 )
 from ..filters import filter_suites
-from .base import OutputGenerator, GeneratorConfig
+from .base import OutputGenerator, GeneratorConfig, UITestMode
 from .sizing import ResourceSizer
 
 
@@ -161,7 +161,7 @@ class CircleCIGenerator(OutputGenerator):
         self._add_optional_jobs(workflow, build_config, build_jobs)
 
         # Add test jobs
-        if self.config.circleci.ui != "only":
+        if self.config.circleci.ui_test_mode != UITestMode.ONLY:
             self._add_test_jobs(workflow, jobs, build_config, build_jobs)
 
     def _generate_workflow_name(self, build_config: BuildConfig) -> str:
@@ -170,13 +170,9 @@ class CircleCIGenerator(OutputGenerator):
 
         if (
             build_config.architecture == Architecture.X64
-            and self.config.circleci.ui
-            not in (
-                "",
-                "off",
-            )
+            and self.config.circleci.ui_test_mode != UITestMode.OFF
         ):
-            if self.config.circleci.ui == "only":
+            if self.config.circleci.ui_test_mode == UITestMode.ONLY:
                 suffix = f"only_ui_tests-{suffix}"
             else:
                 suffix = f"with_ui_tests-{suffix}"
@@ -210,7 +206,7 @@ class CircleCIGenerator(OutputGenerator):
         if (
             build_config.architecture == Architecture.X64
             and not build_config.sanitizer
-            and self.config.circleci.ui != "only"
+            and self.config.circleci.ui_test_mode != UITestMode.ONLY
         ):
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
@@ -280,11 +276,7 @@ class CircleCIGenerator(OutputGenerator):
         # Cppcheck for x64 non-UI
         if (
             build_config.architecture == Architecture.X64
-            and self.config.circleci.ui
-            in (
-                "",
-                "off",
-            )
+            and self.config.circleci.ui_test_mode == UITestMode.OFF
         ):
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
@@ -297,11 +289,7 @@ class CircleCIGenerator(OutputGenerator):
         # UI tests
         if (
             build_config.architecture == Architecture.X64
-            and self.config.circleci.ui
-            not in (
-                "",
-                "off",
-            )
+            and self.config.circleci.ui_test_mode != UITestMode.OFF
         ):
             self._add_ui_test_jobs(workflow, build_config, build_jobs)
 

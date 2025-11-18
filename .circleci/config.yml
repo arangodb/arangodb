@@ -26,10 +26,11 @@ parameters:
     type: boolean
     default: false
     description: "Whether this is a nightly build"
-  ui:
-    type: string
+  ui-test-mode:
+    type: enum
+    enum: ["on", "off", "only"]
     default: "on"
-    description: "Whether to run UI selenium tests" # TODO - use enum and rename
+    description: "Whether to run UI selenium tests"
   ui-testsuites:
     type: string
     default: ""
@@ -175,17 +176,25 @@ jobs:
           name: Print pipeline parameters
           command: |
             echo "enterprise-branch: << pipeline.parameters.enterprise-branch >>"
-            echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
-            echo "rebuild-test-docker-images: << pipeline.parameters.rebuild-test-docker-images >>"
-            echo "build-docker-image: << pipeline.parameters.build-docker-image >>"
+            echo "sanitizer: << pipeline.parameters.sanitizer >>"
             echo "nightly: << pipeline.parameters.nightly >>"
+            echo "ui-test-mode: << pipeline.parameters.ui-test-mode >>"
+            echo "ui-testsuites: << pipeline.parameters.ui-testsuites >>"
+            echo "ui-deployments: << pipeline.parameters.ui-deployments >>"
+            echo "rta-branch: << pipeline.parameters.rta-branch >>"
+            echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
+            echo "config-definitions: << pipeline.parameters.config-definitions >>"
+            echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
+            echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
+            echo "extra_args: << pipeline.parameters.extra_args >>"
+            echo "arangosh_args: << pipeline.parameters.arangosh_args >>"
+            echo "rebuild-test-docker-images: << pipeline.parameters.rebuild-test-docker-images >>"
+            echo "test-docker-images: << pipeline.parameters.test-docker-image >>"
+            echo "build-docker-image: << pipeline.parameters.build-docker-image >>"
             echo "replication-two: << pipeline.parameters.replication-two >>"
             echo "c-compiler: << pipeline.parameters.c-compiler >>"
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
-            echo "sanitizer: << pipeline.parameters.sanitizer >>"
-            echo "ui: << pipeline.parameters.ui >>"
-            echo "ui-deployments: << pipeline.parameters.ui-deployments >>"
-            echo "ui-testsuites: << pipeline.parameters.ui-testsuites >>"
+            echo "use-minimal-debug-info: << pipeline.parameters.use-minimal-debug-info >>"
       - run:
           name: Checkout
           command: |
@@ -233,7 +242,7 @@ jobs:
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
                 --default-container "<< pipeline.parameters.test-docker-image >>" \
-                --ui "<< pipeline.parameters.ui >>" \
+                --ui-test-mode "<< pipeline.parameters.ui-test-mode >>" \
                 --ui-deployments "<< pipeline.parameters.ui-deployments >>" \
                 --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
                 --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \

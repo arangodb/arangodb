@@ -19,6 +19,7 @@ from src.output_generators.base import (
     GeneratorConfig,
     TestExecutionConfig,
     CircleCIConfig,
+    UITestMode,
 )
 from src.output_generators.circleci import CircleCIGenerator
 
@@ -142,7 +143,7 @@ def load_test_definitions(
 def create_generator_config(
     sanitizer: str,
     default_container: str,
-    ui: str,
+    ui_test_mode: str,
     ui_testsuites: str,
     ui_deployments: str,
     rta_branch: str,
@@ -198,9 +199,12 @@ def create_generator_config(
         replication_two=replication_two,
     )
 
+    # Parse and validate UI test mode
+    ui_test_mode_enum = UITestMode.from_string(ui_test_mode or "")
+
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
-        ui=ui or "",
+        ui_test_mode=ui_test_mode_enum,
         ui_testsuites=ui_testsuites or "",
         ui_deployments=ui_deployments or "",
         rta_branch=rta_branch,
@@ -243,8 +247,8 @@ def create_generator_config(
     help="Colon-separated list of driver=branch (e.g., 'go=feature:java=main')",
 )
 @click.option(
-    "--ui",
-    help="Whether to run UI tests (off, on, only, community)",
+    "--ui-test-mode",
+    help="Whether to run UI tests (off, on, only)",
 )
 @click.option(
     "--ui-testsuites",
@@ -324,7 +328,7 @@ def main(
     sanitizer: str,
     default_container: str,
     driver_branch_overrides: str,
-    ui: str,
+    ui_test_mode: str,
     ui_testsuites: str,
     ui_deployments: str,
     rta_branch: str,
@@ -362,7 +366,7 @@ def main(
         config = create_generator_config(
             sanitizer=sanitizer,
             default_container=default_container,
-            ui=ui,
+            ui_test_mode=ui_test_mode,
             ui_testsuites=ui_testsuites,
             ui_deployments=ui_deployments,
             rta_branch=rta_branch,
