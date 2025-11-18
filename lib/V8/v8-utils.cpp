@@ -4812,7 +4812,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::HandleScope scope(isolate);
 
   // extract the arguments
-  if (args.Length() < 1 || args.Length() > 2) {
+  if (args.Length() < 1 || args.Length() > 3) {
     TRI_V8_THROW_EXCEPTION_USAGE(
         "killExternal(<external-identifier>[[, <signal>], isTerminal])");
   }
