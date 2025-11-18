@@ -207,6 +207,28 @@ function metadataMetricsSuite() {
       assertMetrics(endpoints, 1, 12, 12);
     },
 
+    testMetricsWithSingleShardDatabase: function() {
+      let endpoints;
+      if (isCluster) {
+        endpoints = getEndpointsByType('coordinator');
+      } else {
+        endpoints = getEndpointsByType('single');
+      }
+      assertTrue(endpoints.length > 0);
+
+      db._createDatabase(testDbName, {sharding: "single"});
+      db._useDatabase(testDbName);
+      db._create(testCollectionName, {numberOfShards: 3});
+      assertMetrics(endpoints, 2, 21, 21);
+
+      db._drop(testCollectionName);
+      assertMetrics(endpoints, 2, 20, 20);
+
+      db._useDatabase("_system");
+      db._dropDatabase(testDbName);
+      assertMetrics(endpoints, 1, 12, 12);
+    },
+
     testMetricsStableAfterShardMove: function() {
       if (!isCluster) {
         // Shard movement only makes sense in cluster mode
