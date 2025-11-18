@@ -66,6 +66,13 @@ parameters:
   cxx-compiler:
     type: string
     default: "clang++"
+  config-definitions:
+    type: string
+    default: ""
+  config-definitions-branches:
+    type: string
+    default: ""
+
   # these are basically global constants
   build-targets:
     type: string
@@ -78,17 +85,10 @@ parameters:
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
-  config-definitions: #dummy. we don't need this here but are required to.
-    type: string
-    default: tests/test-definitions.txt
-  config-definitions-branches: #dummy. we don't need this here but are required to.
-    type: string
-    default: ""
   # only used by the kafka driver tests
   kafkaHostList:
     type: string
     default: "kafka-1:19092,kafka-2:29092,kafka-3:39092"
-
 
 
 .shared-test-job-parameters: &shared-test-job-parameters

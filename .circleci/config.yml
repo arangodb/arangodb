@@ -91,7 +91,9 @@ parameters:
     default: "clang++"
   use-minimal-debug-info:
     type: boolean
-    default: true # TODO - do we need this?
+    default: true
+    description: Whether to use minimal debug info.
+      This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
 
 # our defined job, and its steps
 jobs:
