@@ -326,7 +326,7 @@ exports.moveShard = function moveShard(database, collection, shard, fromServer, 
     }
     require("internal").wait(1.0);
   }
-}
+};
 
 const debug = function (text) {
   console.warn(text);
