@@ -29,6 +29,9 @@
 #include "Basics/files.h"
 #include "Basics/application-exit.h"
 #include "ProgramOptions/Parameters.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -92,24 +95,48 @@ uint64_t effectivePhysicalMemoryImpl() {
       break;
     }
     case cgroup::Version::V1: {
-      if (auto const limit = arangodb::basics::FileUtils::readCgroupFileValue(
-              "/sys/fs/cgroup/memory/memory.limit_in_bytes");
-          limit) {
-        // Check if it's not the "unlimited" value (very large number)
-        if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
-          return *limit;
+      try {
+        if (auto const limit = arangodb::basics::FileUtils::readCgroupFileValue(
+                "/sys/fs/cgroup/memory/memory.limit_in_bytes");
+            limit) {
+          // Check if it's not the "unlimited" value (very large number)
+          if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+            return *limit;
+          }
         }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("b4d32", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v1 "
+               "memory.limit_in_bytes file: "
+            << ex.what();
+      } catch (...) {
+        LOG_TOPIC("b4d33", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v1 "
+               "memory.limit_in_bytes file: unknown error";
       }
+      break;
     }
     case cgroup::Version::V2: {
-      if (auto const limit = arangodb::basics::FileUtils::readCgroupFileValue(
-              "/sys/fs/cgroup/memory.max");
-          limit) {
-        if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
-          return *limit;
+      try {
+        if (auto const limit = arangodb::basics::FileUtils::readCgroupFileValue(
+                "/sys/fs/cgroup/memory.max");
+            limit) {
+          if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+            return *limit;
+          }
         }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("b4d34", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v2 "
+               "memory.max file: "
+            << ex.what();
+      } catch (...) {
+        LOG_TOPIC("b4d35", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine physical memory from cgroup v2 "
+               "memory.max file: unknown error";
       }
-    } break;
+      break;
+    }
   }
 
   return physicalMemoryImpl();

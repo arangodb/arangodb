@@ -70,14 +70,25 @@ std::size_t numberOfEffectiveCoresImpl() {
       break;
     }
     case cgroup::Version::V1: {
-      auto quota = arangodb::basics::FileUtils::readCgroupFileValue(
-          "/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
-      auto period = arangodb::basics::FileUtils::readCgroupFileValue(
-          "/sys/fs/cgroup/cpu/cpu.cfs_period_us");
-      if (quota && period) {
-        if (*quota > 0 && *period > 0) {
-          return *quota / *period;
+      try {
+        auto quota = arangodb::basics::FileUtils::readCgroupFileValue(
+            "/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
+        auto period = arangodb::basics::FileUtils::readCgroupFileValue(
+            "/sys/fs/cgroup/cpu/cpu.cfs_period_us");
+        if (quota && period) {
+          if (*quota > 0 && *period > 0) {
+            return *quota / *period;
+          }
         }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("a3c21", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v1 "
+               "cpu.cfs_quota_us/cpu.cfs_period_us files: "
+            << ex.what();
+      } catch (...) {
+        LOG_TOPIC("a3c22", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v1 "
+               "cpu.cfs_quota_us/cpu.cfs_period_us files: unknown error";
       }
       break;
     }
@@ -94,11 +105,14 @@ std::size_t numberOfEffectiveCoresImpl() {
           return quota / period;
         }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("a3c23", ERR, arangodb::Logger::FIXME)
-            << "failed to read cgroup v2 cpu.max file: " << ex.what();
+        LOG_TOPIC("a3c23", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v2 "
+               "cpu.max file: "
+            << ex.what();
       } catch (...) {
-        LOG_TOPIC("a3c24", ERR, arangodb::Logger::FIXME)
-            << "failed to read cgroup v2 cpu.max file: unknown error";
+        LOG_TOPIC("a3c24", INFO, arangodb::Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v2 "
+               "cpu.max file: unknown error";
       }
       break;
     }
