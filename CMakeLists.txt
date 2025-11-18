@@ -33,7 +33,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 option(SKIP_PACKAGING "" OFF)
 
 # enable frontend build
-option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" ON)
+option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)" ${USE_V8})
 
 # be verbose about flags used
 option(VERBOSE "be verbose about flags used" OFF)
@@ -162,7 +162,7 @@ if(USE_ENTERPRISE)
   add_definitions("-DUSE_ENTERPRISE=1")
 endif()
 
-# enable V8/JavaScript in executables. 
+# enable V8/JavaScript in executables.
 # note that V8 will always be built, regardless of the value of this option.
 # this is required because the V8 build step also builds ICU, which is needed
 # in all programs.
@@ -276,7 +276,7 @@ configure_file(
 ################################################################################
 
 function(determine_repository_version source_dir build_repository have_build_repository)
-  # Get commit hash 
+  # Get commit hash
   execute_process(
     WORKING_DIRECTORY ${source_dir}
     COMMAND ${GIT_EXE} rev-parse --short HEAD
@@ -511,7 +511,7 @@ CheckCompilerVersion(
   16.0 # Clang
 )
 
-if(CMAKE_COMPILER_IS_CLANG) 
+if(CMAKE_COMPILER_IS_CLANG)
   list(APPEND BASE_LIBS atomic)
 endif()
 
@@ -815,7 +815,7 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   # might fails when we use additional compiler flags like fcoverage...
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations -Wno-error=unused-command-line-argument ${BASE_FLAGS}")
   set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
-  
+
   if(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
     # clang 11 and higher supports -Wsuggest-override. older versions don't
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
@@ -844,7 +844,7 @@ endif()
 
 # c
 # note: when building one of the build types, CMake will automatically combine
-# the base flags from CMAKE_C_FLAGS with build type-specific flags in 
+# the base flags from CMAKE_C_FLAGS with build type-specific flags in
 # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
 set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
@@ -855,7 +855,7 @@ set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-point
 
 # cxx
 # note: when building one of the build types, CMake will automatically combine
-# the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
+# the base flags from CMAKE_CXX_FLAGS with build type-specific flags in
 # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
 # there is no need to repeat the base flags in the build-type specific flags!
 set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
@@ -1054,7 +1054,7 @@ if(STATIC_EXECUTABLES)
 else()
   set(BLA_STATIC Off)
   set(BLA_VENDOR OpenBLAS)
- 
+
   # Setting this is necessary because we want to bind to gcc library
   # since the LLVM OpenMP implementation fails in our CI
   # This is related to this issue (https://github.com/llvm/llvm-project/issues/137136)
@@ -1065,7 +1065,7 @@ else()
     OUTPUT_VARIABLE LIBGOMP_PATH
     OUTPUT_STRIP_TRAILING_WHITESPACE
   )
-  
+
   if(EXISTS "${LIBGOMP_PATH}")
     message(STATUS "Found libgomp: ${LIBGOMP_PATH}")
     set(OpenMP_gomp_LIBRARY "${LIBGOMP_PATH}")
@@ -1075,15 +1075,15 @@ else()
     message(STATUS "Found libgomp via find_library: ${LIBGOMP_LIBRARY}")
     set(OpenMP_gomp_LIBRARY "${LIBGOMP_LIBRARY}")
   endif()
-  
+
   set(OpenMP_C_FLAGS "-fopenmp=libgomp")
   set(OpenMP_CXX_FLAGS "-fopenmp=libgomp")
   set(OpenMP_C_LIB_NAMES "gomp;pthread")
   set(OpenMP_CXX_LIB_NAMES "gomp;pthread")
   set(OpenMP_pthread_LIBRARY "pthread")
-  
+
   find_package(OpenMP REQUIRED)
-  
+
   message(STATUS "OpenMP_CXX_VERSION: ${OpenMP_CXX_VERSION}")
   message(STATUS "OpenMP_CXX_FLAGS: ${OpenMP_CXX_FLAGS}")
   message(STATUS "OpenMP_CXX_LIB_NAMES: ${OpenMP_CXX_LIB_NAMES}")
@@ -1091,7 +1091,7 @@ else()
   message(STATUS "OpenMP_omp_LIBRARY: ${OpenMP_omp_LIBRARY}")
   message(STATUS "OpenMP_pthread_LIBRARY: ${OpenMP_pthread_LIBRARY}")
   message(STATUS "OpenMP_CXX_LIBRARIES: ${OpenMP_CXX_LIBRARIES}")
-  
+
 
   find_package(LAPACK)
   find_package(BLAS)
@@ -1157,6 +1157,9 @@ endforeach()
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
 if(USE_FRONTEND)
+  if(NOT(USE_V8))
+    message(FATAL_ERROR "Can't build frontend without V8")
+  endif()
   include(frontend/aardvark)
 endif()
 if(NOT(SKIP_PACKAGING))
@@ -1203,7 +1206,7 @@ foreach(m IN LISTS ERROR_FILES)
 endforeach()
 
 add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
-  
+
 set(EXIT_CODE_FILES
   lib/Basics/exitcodes.h
   js/common/bootstrap/exitcodes.js
