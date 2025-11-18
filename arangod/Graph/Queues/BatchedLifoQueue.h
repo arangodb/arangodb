@@ -135,6 +135,8 @@ class BatchedLifoQueue {
   Step const& peek() const {
     // Currently only implemented and used in WeightedQueue
     TRI_ASSERT(false);
+    auto const& first = _queue.front();
+    return std::get<Step>(first);
   }
 
   QueueEntry<Step> pop() {
