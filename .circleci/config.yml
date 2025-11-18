@@ -18,9 +18,10 @@ parameters:
     default: ""
     description: "The branch to use for the enterprise repository."
   sanitizer:
-    type: string
-    default: "" # should be empty, "tsan" or "alubsan"
-    description: "Sanitizer to use: empty, tsan, or alubsan" # TODO - use enum
+    type: enum
+    enum: ["none", "tsan", "alubsan"]
+    default: "none"
+    description: "Sanitizer to use"
   nightly:
     type: boolean
     default: false

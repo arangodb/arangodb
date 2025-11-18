@@ -103,8 +103,10 @@ class Sanitizer(Enum):
     ALUBSAN = "alubsan"
 
     @classmethod
-    def from_string(cls, value: str) -> "Sanitizer":
+    def from_string(cls, value: str) -> Optional["Sanitizer"]:
         """Parse sanitizer from string, case-insensitive."""
+        if value == "none":
+            return None
         return _enum_from_string(cls, value)
 
 
