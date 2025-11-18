@@ -21,7 +21,7 @@ from ..config_lib import (
     SuiteConfig,
 )
 from ..filters import filter_suites
-from .base import OutputGenerator, GeneratorConfig, UITestMode
+from .base import OutputGenerator, GeneratorConfig
 from .sizing import ResourceSizer
 
 
@@ -161,23 +161,11 @@ class CircleCIGenerator(OutputGenerator):
         self._add_optional_jobs(workflow, build_config, build_jobs)
 
         # Add test jobs
-        if self.config.circleci.ui_test_mode != UITestMode.ONLY:
-            self._add_test_jobs(workflow, jobs, build_config, build_jobs)
+        self._add_test_jobs(workflow, jobs, build_config, build_jobs)
 
     def _generate_workflow_name(self, build_config: BuildConfig) -> str:
         """Generate workflow name from build configuration."""
         suffix = "nightly" if build_config.nightly else "pr"
-
-        if (
-            build_config.architecture == Architecture.X64
-            and self.config.circleci.ui_test_mode != UITestMode.OFF
-        ):
-            if self.config.circleci.ui_test_mode == UITestMode.ONLY:
-                suffix = f"only_ui_tests-{suffix}"
-            else:
-                suffix = f"with_ui_tests-{suffix}"
-        else:
-            suffix = f"no_ui_tests-{suffix}"
 
         if build_config.sanitizer:
             suffix += f"-{build_config.sanitizer.value}"
@@ -202,12 +190,8 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
 
-        # Add non-maintainer build for x64 (no sanitizer, not ui-only)
-        if (
-            build_config.architecture == Architecture.X64
-            and not build_config.sanitizer
-            and self.config.circleci.ui_test_mode != UITestMode.ONLY
-        ):
+        # Add non-maintainer build for x64 (no sanitizer)
+        if build_config.architecture == Architecture.X64 and not build_config.sanitizer:
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
 
@@ -272,12 +256,9 @@ class CircleCIGenerator(OutputGenerator):
     def _add_optional_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
-        """Add optional jobs (cppcheck, docker, hotbackup, UI tests)."""
-        # Cppcheck for x64 non-UI
-        if (
-            build_config.architecture == Architecture.X64
-            and self.config.circleci.ui_test_mode == UITestMode.OFF
-        ):
+        """Add optional jobs (cppcheck, docker, hotbackup)."""
+        # Cppcheck for x64
+        if build_config.architecture == Architecture.X64:
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
@@ -285,13 +266,6 @@ class CircleCIGenerator(OutputGenerator):
         # Docker image creation
         if self.config.circleci.create_docker_images:
             self._add_docker_image_job(workflow, build_config, build_jobs)
-
-        # UI tests
-        if (
-            build_config.architecture == Architecture.X64
-            and self.config.circleci.ui_test_mode != UITestMode.OFF
-        ):
-            self._add_ui_test_jobs(workflow, build_config, build_jobs)
 
         # Hotbackup tests
         if not self.config.test_execution.arangod_without_v8:
@@ -342,58 +316,6 @@ class CircleCIGenerator(OutputGenerator):
             }
         )
 
-    def _add_ui_test_jobs(
-        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
-    ) -> None:
-        """Add RTA UI test jobs."""
-        ui_testsuites = (
-            self.config.circleci.ui_testsuites.split(",")
-            if self.config.circleci.ui_testsuites
-            else [
-                "UserPageTestSuite",
-                "CollectionsTestSuite",
-                "ViewsTestSuite",
-                "GraphTestSuite",
-                "QueryTestSuite",
-                "AnalyzersTestSuite",
-                "AnalyzersTestSuite2",
-                "DatabaseTestSuite",
-                "LogInTestSuite",
-                "DashboardTestSuite",
-                "SupportTestSuite",
-                "ServiceTestSuite",
-            ]
-        )
-
-        deployments = (
-            self.config.circleci.ui_deployments.split(",")
-            if self.config.circleci.ui_deployments
-            else ["SG", "CL"]
-        )
-
-        # Build filter string with trailing space (matches old generator behavior)
-        ui_filter = "".join(
-            f"--ui-include-test-suite {suite} " for suite in ui_testsuites
-        )
-
-        for deployment in deployments:
-            workflow["jobs"].append(
-                {
-                    "run-rta-tests": {
-                        "name": f"test-{deployment}-UI",
-                        "suiteName": ui_filter,
-                        "arangosh_args": "",
-                        "deployment": deployment,
-                        "browser": "Remote_CHROME",
-                        "enterprise": "EP",
-                        "filterStatement": ui_filter,
-                        "requires": build_jobs,
-                        "rta-branch": self.config.circleci.rta_branch,
-                        "buckets": len(ui_testsuites),
-                    }
-                }
-            )
-
     def _add_test_jobs(
         self,
         workflow: Dict[str, Any],
@@ -426,28 +348,36 @@ class CircleCIGenerator(OutputGenerator):
         add_job_to_result = lambda job_def: result.append(job_def) if job_def else None
 
         if deployment_type is None or deployment_type == DeploymentType.CLUSTER:
-            add_job_to_result(self._create_test_job(
-                job, DeploymentType.CLUSTER, build_config, build_jobs
-            ))
+            add_job_to_result(
+                self._create_test_job(
+                    job, DeploymentType.CLUSTER, build_config, build_jobs
+                )
+            )
 
             if self.config.test_execution.replication_two:
-                add_job_to_result(self._create_test_job(
-                    job,
-                    DeploymentType.CLUSTER,
-                    build_config,
-                    build_jobs,
-                    replication_version=2,
-                ))
+                add_job_to_result(
+                    self._create_test_job(
+                        job,
+                        DeploymentType.CLUSTER,
+                        build_config,
+                        build_jobs,
+                        replication_version=2,
+                    )
+                )
 
         if deployment_type is None or deployment_type == DeploymentType.SINGLE:
-            add_job_to_result(self._create_test_job(
-                job, DeploymentType.SINGLE, build_config, build_jobs
-            ))
+            add_job_to_result(
+                self._create_test_job(
+                    job, DeploymentType.SINGLE, build_config, build_jobs
+                )
+            )
 
         if deployment_type == DeploymentType.MIXED:
-            add_job_to_result(self._create_test_job(
-                job, DeploymentType.MIXED, build_config, build_jobs
-            ))
+            add_job_to_result(
+                self._create_test_job(
+                    job, DeploymentType.MIXED, build_config, build_jobs
+                )
+            )
 
         return result
 

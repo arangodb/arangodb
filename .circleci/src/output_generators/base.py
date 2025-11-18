@@ -6,46 +6,11 @@ then produce output in a specific format (CircleCI YAML, Jenkins launcher format
 """
 
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Any, List, Optional
+from typing import Any, List
 from dataclasses import dataclass, field
 
 from ..config_lib import TestJob, TestDefinitionFile
 from ..filters import FilterCriteria, filter_jobs
-
-
-class UITestMode(Enum):
-    """Mode for running UI tests."""
-
-    OFF = "off"
-    ON = "on"
-    ONLY = "only"
-
-    @classmethod
-    def from_string(cls, value: str) -> "UITestMode":
-        """
-        Convert string to UITestMode enum.
-
-        Args:
-            value: String value (case-insensitive)
-
-        Returns:
-            UITestMode enum value
-
-        Raises:
-            ValueError: If value is not a valid UI test mode
-        """
-        if not value:
-            return cls.OFF
-
-        value_lower = value.lower()
-        for mode in cls:
-            if mode.value == value_lower:
-                return mode
-
-        raise ValueError(
-            f"Invalid UI test mode: '{value}'. Must be one of: off, on, only"
-        )
 
 
 @dataclass
@@ -63,10 +28,6 @@ class TestExecutionConfig:
 class CircleCIConfig:
     """CircleCI-specific configuration."""
 
-    ui_test_mode: UITestMode = UITestMode.OFF
-    ui_testsuites: str = ""
-    ui_deployments: str = ""
-    rta_branch: Optional[str] = None  # Use None to serialize as 'null' in YAML
     create_docker_images: bool = False
     default_container: str = ""
 

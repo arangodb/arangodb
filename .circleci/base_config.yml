@@ -48,18 +48,6 @@ parameters:
   sanitizer:
     type: string
     default: ""
-  ui-test-mode:
-    type: string
-    default: "on"
-  ui-deployment:
-    type: string
-    default: ""
-  ui-testsuites:
-    type: string
-    default: ""
-  rta-branch:
-    type: string
-    default: "main"
   c-compiler:
     type: string
     default: "clang"

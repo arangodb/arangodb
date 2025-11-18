@@ -23,7 +23,6 @@ from src.output_generators.base import (
     GeneratorConfig,
     TestExecutionConfig,
     CircleCIConfig,
-    UITestMode,
 )
 from src.output_generators.circleci import CircleCIGenerator
 
@@ -77,9 +76,7 @@ class TestGenerateWorkflowName:
         test_exec = TestExecutionConfig(
             replication_two=config_kwargs.get("replication_two", False)
         )
-        # Convert string to UITestMode enum
-        ui_test_mode = UITestMode.from_string(config_kwargs.get("ui_test_mode", ""))
-        circleci_config = CircleCIConfig(ui_test_mode=ui_test_mode)
+        circleci_config = CircleCIConfig(default_container="default")
         config = GeneratorConfig(
             filter_criteria=filter_criteria,
             test_execution=test_exec,
@@ -93,7 +90,7 @@ class TestGenerateWorkflowName:
         build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-no_ui_tests-pr"
+        assert name == "x64-pr"
 
     def test_workflow_name_x64_nightly(self):
         """Test workflow name for x64 nightly build."""
@@ -101,7 +98,7 @@ class TestGenerateWorkflowName:
         build_config = BuildConfig(architecture=Architecture.X64, nightly=True)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-no_ui_tests-nightly"
+        assert name == "x64-nightly"
 
     def test_workflow_name_with_sanitizer(self):
         """Test workflow name includes sanitizer."""
@@ -111,23 +108,7 @@ class TestGenerateWorkflowName:
         )
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-no_ui_tests-pr-tsan"
-
-    def test_workflow_name_with_ui_tests(self):
-        """Test workflow name with UI tests enabled."""
-        gen = self.create_generator(ui_test_mode="on")
-        build_config = BuildConfig(architecture=Architecture.X64)
-
-        name = gen._generate_workflow_name(build_config)
-        assert name == "x64-with_ui_tests-pr"
-
-    def test_workflow_name_with_ui_only(self):
-        """Test workflow name with UI tests only."""
-        gen = self.create_generator(ui_test_mode="only")
-        build_config = BuildConfig(architecture=Architecture.X64)
-
-        name = gen._generate_workflow_name(build_config)
-        assert name == "x64-only_ui_tests-pr"
+        assert name == "x64-pr-tsan"
 
     def test_workflow_name_aarch64(self):
         """Test workflow name for ARM architecture."""
@@ -135,7 +116,7 @@ class TestGenerateWorkflowName:
         build_config = BuildConfig(architecture=Architecture.AARCH64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "aarch64-no_ui_tests-pr"
+        assert name == "aarch64-pr"
 
     def test_workflow_name_with_replication_two(self):
         """Test workflow name with replication version 2."""
@@ -143,7 +124,7 @@ class TestGenerateWorkflowName:
         build_config = BuildConfig(architecture=Architecture.X64)
 
         name = gen._generate_workflow_name(build_config)
-        assert name == "x64-no_ui_tests-pr-repl2"
+        assert name == "x64-pr-repl2"
 
 
 class TestCreateBuildJob:
@@ -212,7 +193,9 @@ class TestDockerImageJob:
         """Helper to create generator with test environment."""
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
-            circleci=CircleCIConfig(create_docker_images=True),
+            circleci=CircleCIConfig(
+                create_docker_images=True, default_container="default"
+            ),
         )
         env_getter = lambda k, default: (
             env_vars.get(k, default) if env_vars else default
@@ -383,9 +366,7 @@ class TestCreateTestJobsForDeployment:
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         assert len(result) == 1
         assert "run-linux-tests" in result[0]
@@ -400,9 +381,7 @@ class TestCreateTestJobsForDeployment:
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         assert len(result) == 2
         # First job is standard cluster
@@ -420,9 +399,7 @@ class TestCreateTestJobsForDeployment:
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         assert len(result) == 1
         assert "test-single-test_job-x64" in result[0]["run-linux-tests"]["name"]
@@ -440,9 +417,7 @@ class TestCreateTestJobsForDeployment:
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         assert len(result) == 1
         assert "test-mixed-test_job-x64" in result[0]["run-linux-tests"]["name"]
@@ -457,9 +432,7 @@ class TestCreateTestJobsForDeployment:
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         assert len(result) == 2
         job_names = [list(j.values())[0]["name"] for j in result]
@@ -476,9 +449,7 @@ class TestCreateTestJobsForDeployment:
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         assert len(result) == 3
         job_names = [list(j.values())[0]["name"] for j in result]
@@ -491,14 +462,14 @@ class TestCreateTestJobsForDeployment:
         gen = self.create_generator(full=False)  # Only PR tests
         job = TestJob(
             name="test_job",
-            suites=[SuiteConfig(name="suite1", options=TestOptions(full=True))],  # Full only
+            suites=[
+                SuiteConfig(name="suite1", options=TestOptions(full=True))
+            ],  # Full only
             options=TestOptions(deployment_type=DeploymentType.SINGLE),
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         # Should return empty list since job returned None
         assert len(result) == 0
@@ -516,9 +487,7 @@ class TestCreateTestJobsForDeployment:
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
-        result = gen._create_test_jobs_for_deployment(
-            job, build_config, ["build-job"]
-        )
+        result = gen._create_test_jobs_for_deployment(job, build_config, ["build-job"])
 
         # Should create jobs (cluster and single) with only pr_suite
         assert len(result) == 2
@@ -613,7 +582,11 @@ class TestCreateTestJob:
         build_config = BuildConfig(architecture=Architecture.X64)
 
         result = gen._create_test_job(
-            job, DeploymentType.CLUSTER, build_config, ["build-job"], replication_version=2
+            job,
+            DeploymentType.CLUSTER,
+            build_config,
+            ["build-job"],
+            replication_version=2,
         )
 
         job_data = result["run-linux-tests"]
@@ -626,14 +599,15 @@ class TestCreateTestJob:
 
         # Use TestArguments properly instead of mocking
         from src.config_lib import TestArguments
+
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
             options=TestOptions(),
             arguments=TestArguments(
                 extra_args={"testOption": "value", "moreArgv": "--extra-flag"},
-                arangosh_args=[]
-            )
+                arangosh_args=[],
+            ),
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
@@ -688,16 +662,15 @@ class TestCreateTestJob:
 
         # Use TestArguments properly
         from src.config_lib import TestArguments
+
         job = TestJob(
             name="test_job",
             suites=[
                 SuiteConfig(
-                    name="suite1",
-                    arguments=TestArguments(extra_args={"opt1": "val1"})
+                    name="suite1", arguments=TestArguments(extra_args={"opt1": "val1"})
                 ),
                 SuiteConfig(
-                    name="suite2",
-                    arguments=TestArguments(extra_args={"opt2": "val2"})
+                    name="suite2", arguments=TestArguments(extra_args={"opt2": "val2"})
                 ),
             ],
             options=TestOptions(),
@@ -811,6 +784,7 @@ class TestCreateTestJob:
         """Test job with external repository configuration."""
         # Create generator with a default container that has a tag
         from src.output_generators.base import CircleCIConfig
+
         filter_criteria = FilterCriteria()
         test_exec = TestExecutionConfig()
         circleci_config = CircleCIConfig(default_container="test-image:latest")
@@ -831,8 +805,8 @@ class TestCreateTestJob:
                 git_repo="https://github.com/example/repo.git",
                 git_branch="feature-branch",
                 container_suffix="-js",
-                init_command="npm install"
-            )
+                init_command="npm install",
+            ),
         )
         build_config = BuildConfig(architecture=Architecture.X64)
 
@@ -844,7 +818,9 @@ class TestCreateTestJob:
         assert job_data["driver-git-repo"] == "https://github.com/example/repo.git"
         assert job_data["driver-git-branch"] == "feature-branch"
         assert job_data["init_command"] == "npm install"
-        assert job_data["docker_image"] == "test-image-js:latest"  # Suffix applied before tag
+        assert (
+            job_data["docker_image"] == "test-image-js:latest"
+        )  # Suffix applied before tag
 
     def test_create_test_job_returns_none_when_all_filtered(self):
         """Test that method returns None when all suites filtered out."""

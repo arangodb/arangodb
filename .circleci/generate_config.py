@@ -19,7 +19,6 @@ from src.output_generators.base import (
     GeneratorConfig,
     TestExecutionConfig,
     CircleCIConfig,
-    UITestMode,
 )
 from src.output_generators.circleci import CircleCIGenerator
 
@@ -57,9 +56,7 @@ def parse_driver_branches(driver_branch_overrides: str) -> dict:
 
 
 def apply_branch_overrides(
-    test_def: TestDefinitionFile,
-    filename: str,
-    branch_overrides: dict
+    test_def: TestDefinitionFile, filename: str, branch_overrides: dict
 ) -> TestDefinitionFile:
     """
     Apply git branch overrides to a test definition.
@@ -100,14 +97,14 @@ def apply_branch_overrides(
         if job.repository:
             # Create new job with overridden repository branch
             updated_job = replace(
-                job,
-                repository=replace(job.repository, git_branch=override_branch)
+                job, repository=replace(job.repository, git_branch=override_branch)
             )
             updated_jobs[job_name] = updated_job
         else:
             updated_jobs[job_name] = job
 
     return TestDefinitionFile(jobs=updated_jobs)
+
 
 def load_test_definitions(
     definition_files: List[str], test_branches: dict
@@ -143,10 +140,6 @@ def load_test_definitions(
 def create_generator_config(
     sanitizer: str,
     default_container: str,
-    ui_test_mode: str,
-    ui_testsuites: str,
-    ui_deployments: str,
-    rta_branch: str,
     arangosh_args: str,
     extra_args: str,
     arangod_without_v8: str,
@@ -199,15 +192,8 @@ def create_generator_config(
         replication_two=replication_two,
     )
 
-    # Parse and validate UI test mode
-    ui_test_mode_enum = UITestMode.from_string(ui_test_mode or "")
-
     # Create CircleCI-specific config
     circleci_config = CircleCIConfig(
-        ui_test_mode=ui_test_mode_enum,
-        ui_testsuites=ui_testsuites or "",
-        ui_deployments=ui_deployments or "",
-        rta_branch=rta_branch,
         create_docker_images=create_docker_images,
         default_container=default_container,
     )
@@ -245,22 +231,6 @@ def create_generator_config(
     "-b",
     "--driver-branch-overrides",
     help="Colon-separated list of driver=branch (e.g., 'go=feature:java=main')",
-)
-@click.option(
-    "--ui-test-mode",
-    help="Whether to run UI tests (off, on, only)",
-)
-@click.option(
-    "--ui-testsuites",
-    help="Which UI test suites to run",
-)
-@click.option(
-    "--ui-deployments",
-    help="Which deployments to run [CL, SG, ...]",
-)
-@click.option(
-    "--rta-branch",
-    help="Branch for UI tests to check out",
 )
 @click.option(
     "--arangosh-args",
@@ -328,10 +298,6 @@ def main(
     sanitizer: str,
     default_container: str,
     driver_branch_overrides: str,
-    ui_test_mode: str,
-    ui_testsuites: str,
-    ui_deployments: str,
-    rta_branch: str,
     arangosh_args: str,
     extra_args: str,
     arangod_without_v8: str,
@@ -366,10 +332,6 @@ def main(
         config = create_generator_config(
             sanitizer=sanitizer,
             default_container=default_container,
-            ui_test_mode=ui_test_mode,
-            ui_testsuites=ui_testsuites,
-            ui_deployments=ui_deployments,
-            rta_branch=rta_branch,
             arangosh_args=arangosh_args,
             extra_args=extra_args,
             arangod_without_v8=arangod_without_v8,
