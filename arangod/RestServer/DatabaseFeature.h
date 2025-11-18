@@ -27,6 +27,7 @@
 #include "Basics/Thread.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
+#include "Metrics/GaugeBuilder.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
 #include "Utils/DatabaseGuard.h"
@@ -59,6 +60,14 @@ namespace velocypack {
 class Builder;
 class Slice;
 }  // namespace velocypack
+
+// These metadata metrics are used by:
+// - DatabaseFeature (single servers) - tracks databases, collections
+// - ClusterInfo (coordinators) - tracks databases, collections, shards
+DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
+              "Global number of collections");
+DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
+              "Global number of databases");
 
 class DatabaseManagerThread final : public ServerThread<ArangodServer> {
  public:

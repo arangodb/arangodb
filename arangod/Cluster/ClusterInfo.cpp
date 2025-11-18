@@ -432,12 +432,10 @@ DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
 DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
               "Total memory used by internal cluster info data structures");
 
+// Shards metric is cluster-specific (databases and collections metrics are
+// declared in DatabaseFeature.h)
 DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
               "Global number of shards");
-DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
-              "Global number of collections");
-DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
-              "Global number of databases");
 
 ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,

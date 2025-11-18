@@ -89,11 +89,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-DECLARE_GAUGE(arangodb_metadata_number_of_collections, std::uint64_t,
-              "Global number of collections");
-DECLARE_GAUGE(arangodb_metadata_number_of_databases, std::uint64_t,
-              "Global number of databases");
-
 namespace {
 
 template<typename T>
