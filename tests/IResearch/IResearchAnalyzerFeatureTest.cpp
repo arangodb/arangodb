@@ -4422,9 +4422,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
         unused);
   }
 
-  auto cleanup = arangodb::scopeGuard([&dbFeature]() noexcept {
-    dbFeature.unprepare();
-  });
+  auto cleanup =
+      arangodb::scopeGuard([&dbFeature]() noexcept { dbFeature.unprepare(); });
 
   arangodb::iresearch::IResearchAnalyzerFeature::EmplaceResult result;
   EXPECT_TRUE((
@@ -4748,9 +4747,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
-  auto cleanup = arangodb::scopeGuard([&dbFeature]() noexcept {
-    dbFeature.unprepare();
-  });
+  auto cleanup =
+      arangodb::scopeGuard([&dbFeature]() noexcept { dbFeature.unprepare(); });
 
   dbFeature.prepare();
 
@@ -4897,9 +4895,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   newServer.addFeature<arangodb::AqlFeature>();
-  auto cleanup = arangodb::scopeGuard([&dbFeature]() noexcept {
-    dbFeature.unprepare();
-  });
+  auto cleanup =
+      arangodb::scopeGuard([&dbFeature]() noexcept { dbFeature.unprepare(); });
 
   dbFeature.prepare();
 
