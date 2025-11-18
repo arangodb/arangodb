@@ -32,12 +32,13 @@ parameters:
     description: "Build arangod without serverside JS (also excludes frontend)"
   config-definitions:
     type: string
-    default: test-definitions.yml
-    description: "Space separated list of YAML files with test definitions (e.g., driver test files)."
+    default: test-definitions.yml ui.yml
+    description: Space separated list of YAML files with test definitions. Available files
+      arangojs.yml java.yml spark-datasource.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop-provider.yml
   config-definitions-branches:
     type: string
     default: ""
-    description: "Colon separated list of test-definition-prefix=branch. Intended to allow overriding branches for specific drivers."
+    description: "Colon separated list of test-definition-prefix=branch. Intended to allow overriding branches for specific drivers or RTA (=ui)."
   create-docker-images:
     type: boolean
     default: false
