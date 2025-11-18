@@ -501,6 +501,70 @@ while(true) {
   });
 }
 
+function hotBackup_el_cheapo (options) {
+  let testCol1;
+  let testCol2;
+  let txn;
+  let txn_col;
+  let collections = [];
+
+  let which = "hot_backup_el_cheapo";
+  return hotBackup_load_backend(options, which, {
+    noiseScript: `
+const errors = require('internal').errors;
+let collections = ${JSON.stringify(collections)};
+let i = 0;
+while (true) {
+  try {
+    let txn = db._createTransaction({collections: { write: collections}});
+    collections.forEach(col => {
+      let trx_col = txn.collection(col);
+      trx_col.insert({"trd": idx, "i": i});
+    });
+    txn.commit();
+    i += 1;
+  } catch (ex) {
+    if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
+        ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+  // todo: write i
+      break;
+    }
+  }
+}
+
+`,
+    noiseVolume: 10,
+    preRestoreFn: function() {
+      db._createDatabase('test');
+      db._useDatabase('test');
+      for (let i = 0; i < 4; i ++) {
+        collections.push(db._create(`col-${i}` , {numberOfShards:20} ).name);
+      }
+      return {status: true, testresult: {}};
+    },
+    postRestoreFn:function() {
+      let result = {};
+      collections.forEach(col => {
+        db._collection[col].forEach(doc => {
+          let key = `${doc['trd']}_${doc['i']}`;
+          if (key in result) {
+            print('found ' + key)
+            result[key] += 1
+          } else {
+            result[key] = 1;
+          }
+        });
+      });
+      result.forEach(([trx, count]) => {
+        
+      });
+      //for trx, count in result.items():
+      //assert count == len(collections), f"expected {len(collections)} documents, but only found {count}"
+
+      return {status: true, testresult: {}};
+    }
+  });
+}
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
@@ -509,5 +573,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['hot_backup_views'] = hotBackup_views;
   testFns['hot_backup_aql'] = hotBackup_aql;
   testFns['hot_backup_smart_graphs'] = hotBackup_smart_graphs;
+  testFns['hot_backup_el_cheapo'] = hotBackup_el_cheapo;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };
