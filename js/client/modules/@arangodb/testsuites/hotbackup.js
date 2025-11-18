@@ -194,7 +194,7 @@ function hotBackup_load_backend (options, which, args) {
         //!helper.runRtaMakedata() ||
         !helper.isAlive() ||
         !helper.runTestFn(args.preRestoreFn) ||
-        !helper.spawnStressArangosh(args.noiseScript, which) ||
+        !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume) ||
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
         !helper.restoreHotBackup() ||
@@ -223,6 +223,7 @@ function hotBackup_load (options) {
   let which = "hot_backup_load";
   return hotBackup_load_backend(options, which, {
     noiseScript: "",
+    noiseVolume: 1,
     preRestoreFn: function() {
       return {status: true, testresult: {}};
     },
@@ -261,6 +262,7 @@ while(true) {
   }
 }
 `,
+    noiseVolume: 1,
     preRestoreFn: function() {
       db._createDatabase('test_view');
       db._useDatabase('test_view');
@@ -350,10 +352,162 @@ while(true) {
 }
 
 
+
+function hotBackup_aql (options) {
+  let testCol1;
+  let testCol2;
+  let txn;
+  let txn_col;
+
+  let which = "hot_backup_aql";
+  return hotBackup_load_backend(options, which, {
+    noiseScript: `
+const errors = require('internal').errors;
+while (true) {
+  try {
+    db._query("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",
+                                bind_vars={"idx": \`\${idx}\`}).toArray();
+  } catch (ex) {
+    if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
+        ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+      break;
+    }
+    else {
+      console.error(ex);
+      throw ex;
+    }
+  }
+}
+`,
+    noiseVolume: 20,
+    preRestoreFn: function() {
+      db._createDatabase('test');
+      db._useDatabase('test');
+      testCol1 = db._create('test_collection', {numberOfShards:20} );
+      return {status: true, testresult: {}};
+    },
+    postRestoreFn:function() {
+      for (let i=0; i < 10; i++) {
+        db._useDatabase('test');
+        let result = db._query(`
+                FOR doc IN test_collection
+                    FILTER doc.thrd == @idx
+                    COLLECT WITH COUNT INTO length
+                    RETURN length
+            `, {"idx": `${i}`}).toArray()[0];
+        // each thread writes batches of 1000 documents
+        // thus is each query is transactional, we should only see multiples
+        if (result % 1000 === 0) {
+          throw new Error(`found ${result} documents for thread ${i}`);
+        }
+      }
+      return {status: true, testresult: {}};
+    }
+  });
+}
+
+function hotBackup_smart_graphs (options) {
+  let gsm = require('@arangodb/smart-graph');
+  let testCol1;
+  let testCol2;
+  let txn;
+  let txn_col;
+
+
+  let which = "hot_backup_load";
+  return hotBackup_load_backend(options, which, {
+    noiseScript: `
+const errors = require('internal').errors;
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+let ids1 = [...Array(20).keys()];
+let ids2 = [...Array(20).keys()];
+while(true) {
+  shuffleArray(ids1);
+  shuffleArray(ids2);
+  let edge_docs = [];
+  for (let i = 0; i < 20; i++) {
+     edge_docs.push({
+        "_from": \`foo/\${ids1[i]}:v\${ids1[i]}\`,
+         "_to": \`foo/\${ids2[i]}:v\${ids2[i]}\`,
+         "idx": \`\${i}\`,
+         "f": ids1[i],
+         "t": ids2[i]
+     });
+  }
+  try {
+    db.is_foo.save(edge_docs);
+  } catch (ex) {
+    if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
+        ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+      break;
+    }
+    throw ex;
+  }
+}
+`,
+    noiseVolume: 10,
+    preRestoreFn: function() {
+      db._createDatabase('test');
+      db._useDatabase('test');
+      gsm._create('graph',
+                  [
+                    gsm._relation('is_foo',
+                                  ['foo'],
+                                  ['foo'])],
+                  [],
+                  {
+                    numberOfShards: 20,
+                    replicationFactor: 2,
+                    smartGraphAttribute: "foo"
+                  });
+                    
+      //# create 20 vertices with different attributes
+      let vertices = [];
+      for (let i=0; i < 20; i++) {
+        vertices.push([{"_key": `${i}:v${i}`, "foo": `${i}`}]);
+      }
+      db.foo.save(vertices)
+
+      return {status: true, testresult: {}};
+    },
+    postRestoreFn:function() {
+      let result = {}
+      for (let i = 0; i < 20; i++) {
+        let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
+                              {"start": `foo/${i}:v${i}`}).toArray();
+        edges.forEach(oneEdge => {
+          let key = `${oneEdge["f"]}_${oneEdge["t"]}_${oneEdge["_rev"]}`;
+          let value = (oneEdge["t"] === i) ? -1 : +1;
+          if (key in result) {
+            result[key] += value
+          } else {
+            result[key] = value
+          }
+        });
+      }
+      result.forEach(([edge, count]) => {
+        let side = ["_to", "_from"]
+        if (count === 0) {
+          throw new Error(`missing edge from ${edge[0]} to ${edge[1]} in ${side[count + 1]}`);
+        }
+      });
+      return {status: true, testresult: {}};
+    }
+  });
+}
+
+
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['hot_backup'] = hotBackup;
   testFns['hot_backup_load'] = hotBackup_load;
   testFns['hot_backup_views'] = hotBackup_views;
+  testFns['hot_backup_aql'] = hotBackup_aql;
+  testFns['hot_backup_smart_graphs'] = hotBackup_smart_graphs;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };
