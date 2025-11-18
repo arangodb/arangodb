@@ -522,6 +522,8 @@ jobs:
                   arch="<<parameters.arch>>"
                   if test "$arch" == "x64"; then
                     arch="amd64"
+                  elif test "$arch" == "aarch64"; then
+                    arch="arm64"
                   fi
                   curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
                   chmod a+x build/bin/arangodb
