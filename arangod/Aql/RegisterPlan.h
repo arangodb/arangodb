@@ -184,7 +184,7 @@ class MissingVariablesException : public basics::Exception {
   auto node() const noexcept -> ExecutionNode const*;
 
  private:
-  Variable const* _variable;
+  Variable const* _variable{};
   ExecutionNode const* _node{};
 };
 
