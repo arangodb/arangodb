@@ -23,6 +23,7 @@
 #pragma once
 
 #include <variant>
+#include "Inspection/Types.h"
 
 namespace arangodb::graph {
 
@@ -35,8 +36,17 @@ struct Expansion {
   CursorId id;
   std::size_t from;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, Expansion& x) {
+  return f.object(x).fields(f.field("from", x.from));
+}
 
 template<typename Step>
 struct QueueEntry : std::variant<Step, Expansion> {};
+template<typename Step, typename Inspector>
+auto inspect(Inspector& f, QueueEntry<Step>& x) {
+  return f.variant(x).unqualified().alternatives(
+      inspection::inlineType<Step>(), inspection::inlineType<Expansion>());
+}
 
 }  // namespace arangodb::graph

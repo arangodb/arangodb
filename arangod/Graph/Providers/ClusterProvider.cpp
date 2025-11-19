@@ -645,6 +645,7 @@ auto ClusterProvider<StepImpl>::addExpansionIterator(CursorId id,
                     RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
                         StringUtils::itoa(engineId),
                     leased->bufferRef(), reqOpts)});
+    _stats.incrHttpRequests(1);
   }
 
   _edgeRequestsStack.emplace_back(std::move(requests));
@@ -674,7 +675,8 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
   while (not requests.empty()) {
     // 1. wait on next response
 
-    auto& [server, f_ref] = requests.back();
+    auto& [server_ref, f_ref] = requests.back();
+    auto server = server_ref;
     auto f = std::move(f_ref);
     requests.pop_back();
 
@@ -775,6 +777,7 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
                             RestVocbaseBaseHandler::TRAVERSER_PATH_EDGE +
                                 StringUtils::itoa(engineId),
                             leasedContinue->bufferRef(), reqOpts)});
+            _stats.incrHttpRequests(1);
           }
         }
       }
@@ -782,11 +785,7 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
   }
 
   // 4. push continuations
-  bool done = true;
-  if (not continuation_requests.empty()) {
-    _edgeRequestsStack.emplace_back(std::move(continuation_requests));
-    done = false;
-  }
+  _edgeRequestsStack.emplace_back(std::move(continuation_requests));
 
   // TODO add batch to cache
   // std::uint64_t memoryPerItem =
@@ -801,7 +800,9 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
   // }
 
   // 5. callback
+  auto stepsAdded = false;
   for (auto const& [edge, to] : connectedEdges) {
+    stepsAdded = true;
     bool vertexCached = _opts.getCache()->isVertexCached(to);
     bool edgesCached = _vertexConnectedEdges.contains(to);
     typename Step::FetchedType fetchedType =
@@ -810,7 +811,7 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
                   _opts.weightEdge(step.getWeight(), readEdge(edge))});
   }
 
-  return done;
+  return stepsAdded;
 }
 
 template<class StepImpl>

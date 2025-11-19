@@ -95,7 +95,7 @@ class BatchedLifoQueue {
       if (std::holds_alternative<Step>(first)) {
         return std::get<Step>(first).vertexFetched();
       } else {
-        return false;  // next batch needs to be fetched
+        return true;
       }
     }
     return false;
