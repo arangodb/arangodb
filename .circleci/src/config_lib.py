@@ -156,6 +156,7 @@ class TestOptions:
     full: Optional[bool] = None  # Only run in full/nightly builds if True
     coverage: Optional[bool] = None  # Run coverage analysis
     time_limit: Optional[int] = None  # Time limit in seconds
+    architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     def __post_init__(self):
         """Validate option values."""
@@ -235,6 +236,10 @@ class TestOptions:
             if yaml_field in data:
                 kwargs[our_field] = data[yaml_field]
 
+        # Handle architecture field (parse single architecture string)
+        if "architecture" in data and data["architecture"] is not None:
+            kwargs["architecture"] = Architecture.from_string(data["architecture"])
+
         return cls(**kwargs)
 
     def merge_with(self, override: Optional["TestOptions"]) -> "TestOptions":
@@ -260,6 +265,7 @@ class TestOptions:
                 full=self.full,
                 coverage=self.coverage,
                 time_limit=self.time_limit,
+                architecture=self.architecture,
             )
 
         # Helper to merge a single field
@@ -279,6 +285,7 @@ class TestOptions:
             full=merge_field(override.full, self.full),
             coverage=merge_field(override.coverage, self.coverage),
             time_limit=merge_field(override.time_limit, self.time_limit),
+            architecture=merge_field(override.architecture, self.architecture),
         )
 
 

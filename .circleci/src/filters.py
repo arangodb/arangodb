@@ -13,6 +13,7 @@ from .config_lib import (
     DeploymentType,
     SuiteConfig,
     Sanitizer,
+    Architecture,
 )
 
 
@@ -45,6 +46,7 @@ class FilterCriteria:
 
     # Build configuration
     sanitizer: Optional[Sanitizer] = None  # Sanitizer type for this build
+    architecture: Optional[Architecture] = None  # Current build architecture
 
     # Feature flags
     enterprise: bool = True
@@ -113,6 +115,12 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     if criteria.all_tests:
         return True
 
+    # Check architecture compatibility
+    # If job specifies architecture, current architecture must match
+    if job.options.architecture is not None and criteria.architecture is not None:
+        if criteria.architecture != job.options.architecture:
+            return False
+
     # Check full flag compatibility with build type
     # - full=True: Only for nightly/full builds
     # - full=False: Only for PR builds
@@ -154,6 +162,12 @@ def should_include_suite(suite: SuiteConfig, criteria: FilterCriteria) -> bool:
     """
     if criteria.all_tests:
         return True
+
+    # Check architecture compatibility (suite-level override)
+    # If suite specifies architecture, current architecture must match
+    if suite.options.architecture is not None and criteria.architecture is not None:
+        if criteria.architecture != suite.options.architecture:
+            return False
 
     # Check full flag compatibility (suite-level override)
     # - full=True: Only for nightly/full builds

@@ -837,3 +837,55 @@ class TestCreateTestJob:
         )
 
         assert result is None
+
+    def test_create_test_job_filters_by_workflow_architecture(self):
+        """Test that suites are filtered based on workflow's architecture."""
+        gen = self.create_generator()
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="x64_only", options=TestOptions(architecture=Architecture.X64)),
+                SuiteConfig(name="aarch64_only", options=TestOptions(architecture=Architecture.AARCH64)),
+                SuiteConfig(name="all_archs"),  # No architecture specified
+            ],
+            options=TestOptions(),
+        )
+
+        # Test X64 workflow - should include x64_only and all_archs, exclude aarch64_only
+        build_config_x64 = BuildConfig(architecture=Architecture.X64)
+        result_x64 = gen._create_test_job(
+            job, DeploymentType.SINGLE, build_config_x64, ["build-job"]
+        )
+
+        job_data_x64 = result_x64["run-linux-tests"]
+        assert job_data_x64["suites"] == "x64_only,all_archs"
+        assert "aarch64_only" not in job_data_x64["suites"]
+
+        # Test AARCH64 workflow - should include aarch64_only and all_archs, exclude x64_only
+        build_config_aarch64 = BuildConfig(architecture=Architecture.AARCH64)
+        result_aarch64 = gen._create_test_job(
+            job, DeploymentType.SINGLE, build_config_aarch64, ["build-job"]
+        )
+
+        job_data_aarch64 = result_aarch64["run-linux-tests"]
+        assert job_data_aarch64["suites"] == "aarch64_only,all_archs"
+        assert "x64_only" not in job_data_aarch64["suites"]
+
+    def test_create_test_job_architecture_filter_returns_none(self):
+        """Test that job returns None when all suites filtered by architecture."""
+        gen = self.create_generator()
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="x64_only", options=TestOptions(architecture=Architecture.X64)),
+            ],
+            options=TestOptions(),
+        )
+
+        # Running on AARCH64 should filter out the x64_only suite
+        build_config = BuildConfig(architecture=Architecture.AARCH64)
+        result = gen._create_test_job(
+            job, DeploymentType.SINGLE, build_config, ["build-job"]
+        )
+
+        assert result is None

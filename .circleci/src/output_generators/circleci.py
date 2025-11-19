@@ -541,7 +541,11 @@ class CircleCIGenerator(OutputGenerator):
             job, deployment_type, build_config, replication_version
         )
 
-        filtered_suites = filter_suites(job, self.config.filter_criteria)
+        # Create filter criteria with current workflow's architecture
+        from dataclasses import replace
+        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+
+        filtered_suites = filter_suites(job, criteria)
 
         # Skip job creation if no suites remain after filtering
         if not filtered_suites:
