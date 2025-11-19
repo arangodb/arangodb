@@ -43,7 +43,6 @@ class Builder;
 class Slice;
 }  // namespace arangodb::velocypack
 
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 namespace arangodb::tests::aql {
 struct ExecutionNodeMock;

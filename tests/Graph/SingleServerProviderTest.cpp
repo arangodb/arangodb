@@ -39,7 +39,6 @@ using namespace arangodb::tests;
 using namespace arangodb::tests::graph;
 using namespace arangodb::graph;
 
-
 namespace {
 
 AstNode* InitializeReference(Ast& ast, Variable& var) {
@@ -128,8 +127,7 @@ class SingleServerProviderTest : public ::testing::Test {
   /*
    * generates a condition #TMP._key == '<toMatch>'
    */
-  std::unique_ptr<Expression> conditionKeyMatches(
-      std::string const& toMatch) {
+  std::unique_ptr<Expression> conditionKeyMatches(std::string const& toMatch) {
     auto expectedKey =
         query->ast()->createNodeValueString(toMatch.c_str(), toMatch.length());
     auto keyAccess = query->ast()->createNodeAttributeAccess(
