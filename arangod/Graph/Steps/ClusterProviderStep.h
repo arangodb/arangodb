@@ -166,5 +166,10 @@ class ClusterProviderStep : public arangodb::graph::BaseStep {
   FetchedType _fetchedStatus;
   ValidationResult _validationStatus;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, ClusterProviderStep& x) {
+  return f.object(x).fields(f.field("vertex", x.getVertex().getID()),
+                            f.field("edge", x.getEdge().getID()));
+}
 
 }  // namespace arangodb::graph

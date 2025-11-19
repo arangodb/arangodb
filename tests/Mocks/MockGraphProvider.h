@@ -370,6 +370,10 @@ class MockGraphProvider {
   std::optional<WeightCallback> _weightCallback;
   std::unordered_set<CursorId> _startedIterators;
 };
+template<typename Inspector>
+auto inspect(Inspector& f, MockGraphProvider::Step& x) {
+  return f.object(x).fields();
+}
 }  // namespace graph
 }  // namespace tests
 }  // namespace arangodb
