@@ -1,6 +1,21 @@
 devel
 -----
 
+* Enforce that a license with a baked in deployment ID can only be applied
+  to a deployment with that ID.
+
+* Export the license grant in `GET /_admin/license` in clear JSON but without
+  signature in the `grant` attribute.
+
+* COR-5: Added resource metrics effective CPU cores, effective physical
+  memory, and cgroup version detection.
+
+* Add `storedValues` support for vector indexes. This allows storing additional
+  document fields directly in the vector index, enabling optimized filtered
+  vector queries when all filter attributes are covered by stored values. The
+  query optimizer can now avoid fetching full documents when all required
+  fields are available in the index.
+
 * Ensure the js/node/package.json and js/node/package-lock.json have correct
   versions of the included node packages.
 

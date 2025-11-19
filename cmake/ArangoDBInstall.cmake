@@ -14,7 +14,7 @@ endif ()
 
 # debug info directory:
 if (${CMAKE_INSTALL_LIBDIR} STREQUAL "usr/lib64")
-  # some systems have weird places for usr/lib: 
+  # some systems have weird places for usr/lib:
   set(CMAKE_INSTALL_DEBINFO_DIR "usr/lib/debug/")
 else ()
   set(CMAKE_INSTALL_DEBINFO_DIR "${CMAKE_INSTALL_LIBDIR}/debug/")
@@ -69,64 +69,68 @@ add_custom_target (love
 
 include(InstallArangoDBJSClient)
 
-################################################################################
-### @brief install server-side JavaScript files
-################################################################################
+if(USE_V8)
+  ################################################################################
+  ### @brief install server-side JavaScript files
+  ################################################################################
 
-# js/apps/system/_admin/aardvark/APP/manifest.json list files must be included
-install(
-  DIRECTORY
-    ${PROJECT_SOURCE_DIR}/js/actions
-    ${PROJECT_SOURCE_DIR}/js/apps
-    ${PROJECT_SOURCE_DIR}/js/server
-  DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-  REGEX       "^.*/aardvark/APP/frontend.*$"               EXCLUDE
-  REGEX       "^.*/aardvark/APP/react.*$"                  EXCLUDE
-  REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
-  REGEX       "^.*/.bin"                                   EXCLUDE
-)
-
-set(APP_FILES
- "frontend/img"
- "react/build"
-)
-
-set(app_files_source_dir ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP)
-set(app_files_target_dir ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP)
-
-foreach (file ${APP_FILES})
-    get_filename_component(parent ${file} DIRECTORY)
-    if(IS_DIRECTORY ${app_files_source_dir}/${file})
-      install(
-        DIRECTORY
-          ${app_files_source_dir}/${file}
-        DESTINATION
-          ${app_files_target_dir}/${parent}
-        )
-    else()
-      install(
-        FILES
-          ${app_files_source_dir}/${file}
-        DESTINATION
-          ${app_files_target_dir}/${parent}
-      )
-    endif()
-endforeach()
-
-install(
-  FILES
-    ${ARANGODB_SOURCE_DIR}/js/JS_SHA1SUM.txt
-  DESTINATION
-    ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-)
-
-if (USE_ENTERPRISE)
+  # js/apps/system/_admin/aardvark/APP/manifest.json list files must be included
   install(
-    DIRECTORY   ${PROJECT_SOURCE_DIR}/enterprise/js/server
+    DIRECTORY
+      ${PROJECT_SOURCE_DIR}/js/actions
+      ${PROJECT_SOURCE_DIR}/js/apps
+      ${PROJECT_SOURCE_DIR}/js/server
     DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
-    REGEX       "^.*/aardvark/APP/node_modules$"           EXCLUDE
+    REGEX       "^.*/aardvark/APP/frontend.*$"               EXCLUDE
+    REGEX       "^.*/aardvark/APP/react.*$"                  EXCLUDE
+    REGEX       "^.*/js/server/assets/swagger/*.map$"        EXCLUDE
+    REGEX       "^.*/.bin"                                   EXCLUDE
   )
-endif ()
+
+  if(USE_FRONTEND)
+    set(APP_FILES
+      "frontend/img"
+      "react/build"
+    )
+
+    set(app_files_source_dir ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP)
+    set(app_files_target_dir ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}/apps/system/_admin/aardvark/APP)
+
+    foreach (file ${APP_FILES})
+        get_filename_component(parent ${file} DIRECTORY)
+        if(IS_DIRECTORY ${app_files_source_dir}/${file})
+          install(
+            DIRECTORY
+              ${app_files_source_dir}/${file}
+            DESTINATION
+              ${app_files_target_dir}/${parent}
+            )
+        else()
+          install(
+            FILES
+              ${app_files_source_dir}/${file}
+            DESTINATION
+              ${app_files_target_dir}/${parent}
+          )
+        endif()
+    endforeach()
+  endif()
+
+  install(
+    FILES
+      ${ARANGODB_SOURCE_DIR}/js/JS_SHA1SUM.txt
+    DESTINATION
+      ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
+  )
+
+  if (USE_ENTERPRISE)
+    install(
+      DIRECTORY   ${PROJECT_SOURCE_DIR}/enterprise/js/server
+      DESTINATION ${CMAKE_INSTALL_DATAROOTDIR_ARANGO}/${ARANGODB_JS_VERSION}
+      REGEX       "^.*/aardvark/APP/node_modules$"           EXCLUDE
+    )
+  endif ()
+endif()
 
 ################################################################################
 ### @brief install log directory
@@ -195,7 +199,7 @@ if (UNIX)
         OUTPUT_STRIP_TRAILING_WHITESPACE
       )
       set(IS_SYSTEMD_INSTALL 1)
-      
+
       # set prefix
       if (CMAKE_INSTALL_PREFIX AND NOT "${CMAKE_INSTALL_PREFIX}" STREQUAL "/")
         set(SYSTEMD_UNIT_DIR "${CMAKE_INSTALL_PREFIX}/${SYSTEMD_UNIT_DIR}/")
@@ -215,7 +219,7 @@ if (UNIX)
     else ()
       message(STATUS "-- systemd not found")
     endif(SYSTEMD_FOUND)
-  endif(NOT PKG_CONFIG_FOUND) 
+  endif(NOT PKG_CONFIG_FOUND)
 endif(UNIX)
 ################################################################################
 ### @brief propagate the locations into our programms:
@@ -261,7 +265,7 @@ install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
 install(FILES "${CMAKE_SOURCE_DIR}/Installation/arangodb-helper"
   DESTINATION "${INSTALL_ICU_DT_DEST}"
   RENAME arangodb-update-db)
-  
+
 install(FILES ${TZ_DATA_FILES}
   DESTINATION "${INSTALL_TZDATA_DEST}")
 

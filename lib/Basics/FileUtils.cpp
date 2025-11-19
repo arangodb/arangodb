@@ -802,4 +802,21 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
   }
 }
 #endif
+
+std::optional<int64_t> readCgroupFileValue(const std::string& path) {
+  std::string content = arangodb::basics::FileUtils::slurp(path);
+
+  // Get first line only
+  std::istringstream stream(content);
+  std::string line;
+  if (!std::getline(stream, line)) {
+    return false;
+  }
+
+  if (line == "max") {
+    return std::numeric_limits<int64_t>::max();
+  }
+
+  return std::stoll(line);
+}
 }  // namespace arangodb::basics::FileUtils

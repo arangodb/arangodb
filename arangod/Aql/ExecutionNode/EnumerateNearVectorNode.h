@@ -53,7 +53,8 @@ class EnumerateNearVectorNode : public ExecutionNode,
                           SearchParameters searchParameters,
                           aql::Collection const* collection,
                           transaction::Methods::IndexHandle indexHandle,
-                          std::unique_ptr<Expression> filterExpression);
+                          std::unique_ptr<Expression> filterExpression,
+                          bool isCoveredByStoredValues);
 
   EnumerateNearVectorNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
@@ -72,12 +73,17 @@ class EnumerateNearVectorNode : public ExecutionNode,
   std::vector<const Variable*> getVariablesSetHere() const override;
 
   Variable const* inVariable() const { return _inVariable; }
+  Variable const* oldDocumentVariable() const { return _oldDocumentVariable; }
   Variable const* documentOutVariable() const { return _documentOutVariable; }
   Variable const* distanceOutVariable() const { return _distanceOutVariable; }
 
   transaction::Methods::IndexHandle const& index() const { return _index; }
 
   bool isAscending() const noexcept;
+
+  void setFilterExpression(Expression* filterExpression);
+
+  void setIsCoveredByStoredValues(bool isCoveredByStoredValues) noexcept;
 
  protected:
   CostEstimate estimateCost() const override;
@@ -113,9 +119,17 @@ class EnumerateNearVectorNode : public ExecutionNode,
   SearchParameters _searchParameters;
 
   /// @brief selected index for vector search
+  /// guaranteed to always be a vector index
   transaction::Methods::IndexHandle _index;
 
   /// @brief filter expression if filter was pushed down into this node
   std::unique_ptr<Expression> _filterExpression;
+
+  /// @brief indicates if the filter expression is fully covered by stored
+  /// values
+  bool _isCoveredByStoredValues;
+
+  /// @brief filterVarToRegs is set in optimization rule
+  std::vector<std::pair<VariableId, RegisterId>> _filterVarToRegs;
 };
 }  // namespace arangodb::aql
