@@ -492,11 +492,7 @@ jobs:
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 16 --target $TARGETS
       - when:
-          condition:
-            or:
-              -  not:
-                  equal: [ << pipeline.parameters.ui >>, ""]
-              - << pipeline.parameters.create-docker-images >>
+          condition: << pipeline.parameters.create-docker-images >>
           steps:
             - run:
                 root: .
