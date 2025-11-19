@@ -127,11 +127,11 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
           this.im2.reconnect();
         } catch (ex) {
           print("forcefully shutting down because of: " + ex);
-          this.results['shutdown'] &= this.im1.shutdownInstance(true, "Execption caught: " + ex);
+          this.results['shutdown'] &&= this.im1.shutdownInstance(true, "Execption caught: " + ex);
         }
       }
       if (this.im2.detectShouldBeRunning()) {
-        this.results['shutdown'] &= this.im2.shutdownInstance();
+        this.results['shutdown'] &&= this.im2.shutdownInstance();
       }
     }
     print(CYAN + 'done.' + RESET);
@@ -431,12 +431,22 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     return this.validate(this.results.restore);
   }
 
-  runTestFn(testFunction) {
+  runTestFn(testFunction, args, which) {
     this.print("running snippet");
-
-    let ret = testFunction();
-    this.validate(ret.testresult);
-    return ret.status;
+    try {
+      let ret = testFunction(args);
+      this.validate(ret.testresult);
+      this.results[which] = ret.testresult;
+      return ret.status;
+    } catch (ex) {
+      print(`Failed to run testFunction: ${ex.message}\n${ex.stack}`);
+      this.results[which] = {
+        failed: true,
+        status: false,
+        message: `Failed to run testFunction: ${ex.message}\n${ex.stack}`,
+      };
+      return false;
+    }
   }
 
   runTests(file, database) {
@@ -777,16 +787,34 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     });
     // GO!
     fs.remove(globalFn);
-                    
     return true;
   }
   stopStressArangosh() {
     try {
-      ct.run.joinForceBGShells(this.options, this.clientInstances);
+      if (ct.run.joinForceBGShells(this.options, this.clientInstances)) {
+        this.results['stopStress'] = {
+          failed: false,
+          status: true,
+          message: `collected ${this.clientInstances.length} clients`,
+        };
+        return true;
+      } else {
+        this.results['stopStress'] = {
+          failed: true,
+          status: false,
+          message: `not all clients could be joined successfully: ${JSON.stringify(this.clientInstances)}`,
+        };
+        return false;
+      }
     } catch (ex) {
-      print(ex);
+      print(`Failed to run testFunction: ${ex.message}\n${ex.stack}`);
+      this.results['stopStress'] = {
+        failed: true,
+        status: false,
+        message: `Failed to stop stress arangoshs: ${ex.message}\n${ex.stack}`,
+      };
+      return false;
     }
-    return true;
   }
 
 };
