@@ -5,6 +5,7 @@ tests:
 - ui:
     job: run-rta-tests
     options:
+      arch: x64
       buckets: auto
     suites:
       - UserPageTestSuite
