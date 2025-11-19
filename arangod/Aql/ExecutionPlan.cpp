@@ -2648,7 +2648,7 @@ void logMissingVariablesExceptionDetails(
   auto const planString = fmt::format(
       "{}: {}", planHeader, fmt::join(nodeStrings | std::views::reverse, ", "));
 
-  LOG_TOPIC("b57cb", WARN, arangodb::Logger::AQL)
+  LOG_TOPIC("b57cb", ERR, arangodb::Logger::AQL)
       << "Plan causing MissingVariablesException of query " << query.id()
       << ": " << planString;
 }
