@@ -59,27 +59,6 @@ auto MissingVariablesException::node() const noexcept -> ExecutionNode const* {
   return _node;
 }
 
-template<typename T>
-std::ostream& aql::operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
-  // level -> variable, info
-  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
-
-  for (auto [id, info] : r.varInfo) {
-    frames[info.depth][id] = info;
-  }
-
-  for (auto [depth, vars] : frames) {
-    os << "depth " << depth << std::endl;
-    os << "------------------------------------" << std::endl;
-
-    for (auto [id, info] : vars) {
-      os << "id = " << id << " register = " << info.registerId.value()
-         << std::endl;
-    }
-  }
-  return os;
-}
-
 template struct aql::RegisterPlanT<ExecutionNode>;
 template struct aql::RegisterPlanWalkerT<ExecutionNode>;
 template std::ostream& aql::operator<<<ExecutionNode>(

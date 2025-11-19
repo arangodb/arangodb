@@ -583,6 +583,27 @@ auto RegisterPlanT<T>::variableToOptionalRegisterId(VariableId varId) const
   return RegisterId{RegisterId::maxRegisterId};
 }
 
+template<typename T>
+std::ostream& operator<<(std::ostream& os, const RegisterPlanT<T>& r) {
+  // level -> variable, info
+  std::map<unsigned int, std::map<VariableId, VarInfo>> frames;
+
+  for (auto [id, info] : r.varInfo) {
+    frames[info.depth][id] = info;
+  }
+
+  for (auto [depth, vars] : frames) {
+    os << "depth " << depth << std::endl;
+    os << "------------------------------------" << std::endl;
+
+    for (auto [id, info] : vars) {
+      os << "id = " << id << " register = " << info.registerId.value()
+         << std::endl;
+    }
+  }
+  return os;
+}
+
 }  // namespace arangodb::aql
 
 template<typename ExecNodeT>

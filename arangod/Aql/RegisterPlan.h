@@ -27,7 +27,6 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/RegisterId.h"
 #include "Aql/VarInfoMap.h"
-#include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
@@ -39,16 +38,17 @@
 #include <unordered_map>
 #include <vector>
 
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
+
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 namespace arangodb::tests::aql {
 struct ExecutionNodeMock;
 }
 #endif
-
-namespace arangodb::velocypack {
-class Builder;
-class Slice;
-}  // namespace arangodb::velocypack
 
 namespace arangodb::aql {
 
