@@ -39,6 +39,7 @@ const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 const errors = require('internal').errors;
+const sleep = require('internal').sleep;
 
 const functionsDocumentation = {
   'hot_backup': 'hotbackup tests'
@@ -158,7 +159,6 @@ function hotBackup (options) {
 
 function hotBackup_load_backend (options, which, args) {
   const encryptionKey = '01234567890123456789012345678901';
-  console.warn(options);
   options.extraArgs['experimental-vector-index'] = true;
   if (options.hasOwnProperty("dbServers") && options.dbServers > 1) {
     options.dbServers = 3;
@@ -184,7 +184,6 @@ function hotBackup_load_backend (options, which, args) {
 
   const helper = new DumpRestoreHelper(options, options, addArgs, {}, options, options, which, function(){}, [], false);
   if (!helper.startFirstInstance()) {
-    print(1)
     helper.destructor(false);
     return helper.extractResults();
   }
@@ -193,15 +192,15 @@ function hotBackup_load_backend (options, which, args) {
     if (
         //!helper.runRtaMakedata() ||
         !helper.isAlive() ||
-        !helper.runTestFn(args.preRestoreFn) ||
+        !helper.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
         !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume) ||
+        function() { sleep(1); return false; }() ||
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
         !helper.restoreHotBackup() ||
-        !helper.runTestFn(args.postRestoreFn) //||
+        !helper.runTestFn(args.postRestoreFn, args.args, 'postRestore') //||
         //!helper.runRtaCheckData()
     ) {
-      print(2)
       helper.destructor(true);
       return helper.extractResults();
     }
@@ -210,7 +209,6 @@ function hotBackup_load_backend (options, which, args) {
   catch (ex) {
     print("Caught exception during testrun: " + ex);
   }
-  print(4)
   helper.destructor(true);
   if (helper.doCleanup) {
     fs.removeDirectoryRecursive(keyDir, true);
@@ -507,6 +505,12 @@ function hotBackup_el_cheapo (options) {
   let txn;
   let txn_col;
   let collections = [];
+  let args = {
+    collections: collections
+  };
+  for (let i = 0; i < 4; i ++) {
+    args.collections.push(`col-${i}`);
+  }
 
   let which = "hot_backup_el_cheapo";
   return hotBackup_load_backend(options, which, {
@@ -534,34 +538,36 @@ while (true) {
 
 `,
     noiseVolume: 10,
-    preRestoreFn: function() {
+    args: args,
+    preRestoreFn: function(args) {
       db._createDatabase('test');
       db._useDatabase('test');
-      for (let i = 0; i < 4; i ++) {
-        collections.push(db._create(`col-${i}` , {numberOfShards:20} ).name);
-      }
-      return {status: true, testresult: {}};
+      args.collections.forEach(colName => {
+        db._create(colName , {numberOfShards:20} );
+      });
+      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
-    postRestoreFn:function() {
+    postRestoreFn:function(args) {
+      db._useDatabase('test');
       let result = {};
-      collections.forEach(col => {
-        db._collection[col].forEach(doc => {
+      let len = args.collections.length;
+      args.collections.forEach(col => {
+        db._collection(col).all().toArray().forEach(doc => {
           let key = `${doc['trd']}_${doc['i']}`;
           if (key in result) {
-            print('found ' + key)
             result[key] += 1
           } else {
             result[key] = 1;
           }
         });
       });
-      result.forEach(([trx, count]) => {
-        
+      Object.entries(result).forEach(([trx, count]) => {
+        if (count !== len) {
+          throw new Error(`was expecting ${trx} to have ${len} but its ${count}`);
+        }
       });
-      //for trx, count in result.items():
-      //assert count == len(collections), f"expected {len(collections)} documents, but only found {count}"
 
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
     }
   });
 }

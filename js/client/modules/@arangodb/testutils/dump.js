@@ -641,6 +641,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       this.results.restoreHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
       this.print("done restoring backup");
     }
+    this.instanceManager.reconnect();
     return true;
   }
 

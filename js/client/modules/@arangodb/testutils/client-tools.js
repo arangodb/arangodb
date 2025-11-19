@@ -545,36 +545,49 @@ function joinForceBGShells(options, clients) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = clients.length;
-
-  clients.forEach(function (client) {
+  clients.forEach(client => {
+    client.status = internal.statusExternal(client.pid, false, 0.1);
     if (client.status.status === 'RUNNING') {
-      internal.killExternal(client.client.pid, 15 /*SIG_TERM*/);
+      client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
+    } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+      client.done = true;
+      if (client.exit === 0) {
+        IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+        client.failed = false;
+      } else {
+        IM.options.cleanup = false;
+        client.failed = true;
+      }
     }
   });
   internal.sleep(1);
-  clients.forEach(function (client) {
-    if (client.done) {
-      done -= 1;
-    } else {
-      client.status = internal.statusExternal(client.client.pid);
-      if (client.status.status !== 'RUNNING') { 
-        let failed = client.client.sh.fetchSanFileAfterExit(client.client.pid);
-        IM.serverCrashedLocal |= failed;
-        client.failed = failed;
-        client.done = true;
-      }
-      if (client.status === 'TERMINATED') {
+  while (done > 0) {
+    clients.forEach(client => {
+      if (client.done) {
         done -= 1;
-        if (client.exit === 0) {
-          IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.client.pid);
-          client.failed = false;
-        } else {
-          IM.options.cleanup = false;
-          client.failed = true;
+      } else {
+        client.status = internal.statusExternal(client.pid);
+        if (client.status.status === "STOPPED") {
+          print('.');
+        } else if (client.status.status !== 'RUNNING') {
+          let failed = client.sh.fetchSanFileAfterExit(client.pid);
+          IM.serverCrashedLocal |= failed;
+          client.failed = failed;
+          client.done = true;
+        } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+          done -= 1;
+          if (client.exit === 0) {
+            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+            client.failed = false;
+          } else {
+            IM.options.cleanup = false;
+            client.failed = true;
+          }
         }
       }
-    }
-  });
+    });
+    internal.sleep(0.5);
+  }
   return done === 0;
 }
 
