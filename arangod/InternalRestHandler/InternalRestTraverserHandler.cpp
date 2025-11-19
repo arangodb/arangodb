@@ -43,6 +43,8 @@ using namespace arangodb;
 using namespace arangodb::traverser;
 using namespace arangodb::rest;
 
+#define LOG_TRAVERSAL LOG_DEVEL_IF(false)
+
 namespace {
 
 struct StartEdgeQuery {
@@ -337,6 +339,8 @@ void InternalRestTraverserHandler::queryEngine() {
         }
         eng->addAndClearStatistics(result);
         result.close();
+        LOG_TRAVERSAL << "--- " << inspection::json(body) << " | "
+                      << inspection::json(result);
 
         generateResult(ResponseCode::OK, result.slice(), engine->context());
         return;
@@ -404,6 +408,8 @@ void InternalRestTraverserHandler::queryEngine() {
       generateError(ResponseCode::BAD, ex.code(), ex.what());
       return;
     }
+    LOG_TRAVERSAL << "--- " << inspection::json(body) << " | "
+                  << inspection::json(result);
   } else {
     // PATH Info wrong other error
     generateError(ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND, "");
