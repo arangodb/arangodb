@@ -52,7 +52,7 @@
 #include <sys/sysctl.h>
 #endif
 
-using namespace arangodb;
+namespace arangodb {
 
 namespace {
 
@@ -96,7 +96,7 @@ uint64_t effectivePhysicalMemoryImpl() {
     }
     case cgroup::Version::V1: {
       try {
-        if (auto const limit = arangodb::basics::FileUtils::readCgroupFileValue(
+        if (auto const limit = basics::FileUtils::readCgroupFileValue(
                 "/sys/fs/cgroup/memory/memory.limit_in_bytes");
             limit) {
           // Check if it's not the "unlimited" value (very large number)
@@ -105,12 +105,12 @@ uint64_t effectivePhysicalMemoryImpl() {
           }
         }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("b4d32", INFO, arangodb::Logger::FIXME)
+        LOG_TOPIC("b4d32", INFO, Logger::FIXME)
             << "Failed to determine physical memory from cgroup v1 "
                "memory.limit_in_bytes file: "
             << ex.what();
       } catch (...) {
-        LOG_TOPIC("b4d33", INFO, arangodb::Logger::FIXME)
+        LOG_TOPIC("b4d33", INFO, Logger::FIXME)
             << "Failed to determine physical memory from cgroup v1 "
                "memory.limit_in_bytes file: unknown error";
       }
@@ -118,7 +118,7 @@ uint64_t effectivePhysicalMemoryImpl() {
     }
     case cgroup::Version::V2: {
       try {
-        if (auto const limit = arangodb::basics::FileUtils::readCgroupFileValue(
+        if (auto const limit = basics::FileUtils::readCgroupFileValue(
                 "/sys/fs/cgroup/memory.max");
             limit) {
           if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
@@ -126,12 +126,12 @@ uint64_t effectivePhysicalMemoryImpl() {
           }
         }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("b4d34", INFO, arangodb::Logger::FIXME)
+        LOG_TOPIC("b4d34", INFO, Logger::FIXME)
             << "Failed to determine physical memory from cgroup v2 "
                "memory.max file: "
             << ex.what();
       } catch (...) {
-        LOG_TOPIC("b4d35", INFO, arangodb::Logger::FIXME)
+        LOG_TOPIC("b4d35", INFO, Logger::FIXME)
             << "Failed to determine physical memory from cgroup v2 "
                "memory.max file: unknown error";
       }
@@ -151,7 +151,7 @@ struct PhysicalMemoryCache {
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY", value)) {
       if (!value.empty()) {
         try {
-          uint64_t v = arangodb::options::fromString<uint64_t>(value);
+          uint64_t v = options::fromString<uint64_t>(value);
           if (v != 0) {
             // value in environment variable must always be > 0
             memory = v;
@@ -171,16 +171,20 @@ struct PhysicalMemoryCache {
   bool overridden;
 };
 
-PhysicalMemoryCache const cache;
+PhysicalMemoryCache const& getCache() {
+  static PhysicalMemoryCache const cache;
+  return cache;
+}
 
 }  // namespace
 
 /// @brief return physical memory size from cache
-uint64_t arangodb::PhysicalMemory::getValue() { return ::cache.memory; }
+uint64_t PhysicalMemory::getValue() { return getCache().memory; }
 
-std::size_t arangodb::PhysicalMemory::getEffectiveValue() {
-  return ::cache.effectiveMemory;
+std::size_t PhysicalMemory::getEffectiveValue() {
+  return getCache().effectiveMemory;
 }
 
 /// @brief return if physical memory size was overridden
-bool arangodb::PhysicalMemory::overridden() { return ::cache.overridden; }
+bool PhysicalMemory::overridden() { return getCache().overridden; }
+}  // namespace arangodb
