@@ -241,9 +241,11 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
       message: ""
     };
   } else {
+    let message = "";
+    let shutdownStatus = params.instanceManager.shutdownInstance(false, message);
     success['shutdown'] = {
-      status:  params.instanceManager.shutdownInstance(false),
-      message: "during shutdown"
+      status:  shutdownStatus,
+      message: "during shutdown: " + message
     };
     return success;
   }
