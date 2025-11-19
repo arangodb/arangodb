@@ -185,7 +185,7 @@ function agencyRestart (options) {
         fs.removeDirectoryRecursive(params.crashLogDir, true);
       } else {
         print("Not cleaning up " + params.testDir);
-        results.status &= results[test].status;
+        results.status &&= results[test].status;
       }
     } else {
       if (options.extremeVerbosity) {
