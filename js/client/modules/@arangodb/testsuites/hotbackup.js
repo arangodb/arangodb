@@ -470,7 +470,11 @@ while(true) {
         vertices.push([{"_key": `${i}:v${i}`, "foo": `${i}`}]);
       }
       db.foo.save(vertices)
-
+      // todo: remove me again!
+      for (let i = 0; i < 20; i++) {
+        let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
+                              {"start": `foo/${i}:v${i}`}).toArray();
+      }
       return {status: true, testresult: {}};
     },
     postRestoreFn:function() {
