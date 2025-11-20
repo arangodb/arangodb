@@ -224,10 +224,10 @@ function hotBackup_load_demo (options) {
     noiseVolume: 1,
     noiseDuration: 60,
     preRestoreFn: function() {
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
     postRestoreFn:function() {
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
     }
   });
 }
@@ -281,7 +281,7 @@ while(true) {
         read: ["test_collection2"], write: ["test_collection2"]}});
       txn_col = txn.collection("test_collection2");
       txn_col.insert({"foo": "bar"});
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
     postRestoreFn:function() {
       try {
@@ -378,7 +378,7 @@ while (true) {
       db._createDatabase('test');
       db._useDatabase('test');
       testCol1 = db._create('test_collection', {numberOfShards:20} );
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
     postRestoreFn:function() {
       for (let i=0; i < 10; i++) {
@@ -391,11 +391,11 @@ while (true) {
             `, {"idx": `${i}`}).toArray()[0];
         // each thread writes batches of 1000 documents
         // thus is each query is transactional, we should only see multiples
-        if (result % 1000 === 0) {
+        if (result % 1000 !== 0) {
           throw new Error(`found ${result} documents for thread ${i}`);
         }
       }
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
     }
   });
 }
@@ -474,7 +474,7 @@ console.log("saved")
                               {"start": `foo/${i}:v${i}`}).toArray();
         print(edges);
       }
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
     postRestoreFn:function() {
       let result = {};
@@ -497,7 +497,7 @@ console.log("saved")
           throw new Error(`missing edge from ${edge[0]} to ${edge[1]} in ${side[count + 1]}`);
         }
       });
-      return {status: true, testresult: {}};
+      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
     }
   });
 }
