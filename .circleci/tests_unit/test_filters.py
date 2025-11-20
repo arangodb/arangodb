@@ -567,8 +567,8 @@ class TestArchitectureFiltering:
         assert not should_include_suite(suite_aarch64_only, criteria_x64)
         assert should_include_suite(suite_aarch64_only, criteria_aarch64)
 
-    def test_all_tests_mode_bypasses_architecture_filter(self):
-        """all_tests mode should include all jobs regardless of architecture."""
+    def test_all_tests_mode_does_not_bypass_architecture_filter(self):
+        """all_tests mode should still respect architecture constraints."""
         from src.config_lib import Architecture
 
         job = TestJob(
@@ -577,10 +577,17 @@ class TestArchitectureFiltering:
             options=TestOptions(architecture=Architecture.X64),
         )
 
-        # Should be included even on wrong architecture when all_tests=True
+        # Should NOT be included on wrong architecture, even with all_tests=True
         criteria = FilterCriteria(
             all_tests=True,
             architecture=Architecture.AARCH64
+        )
+        assert not should_include_job(job, criteria)
+
+        # Should be included on correct architecture with all_tests=True
+        criteria = FilterCriteria(
+            all_tests=True,
+            architecture=Architecture.X64
         )
         assert should_include_job(job, criteria)
 

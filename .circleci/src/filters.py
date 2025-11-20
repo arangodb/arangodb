@@ -112,14 +112,14 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     Returns:
         True if job should be included, False otherwise
     """
-    if criteria.all_tests:
-        return True
-
-    # Check architecture compatibility
+    # Check architecture compatibility FIRST (even in all_tests mode)
     # If job specifies architecture, current architecture must match
     if job.options.architecture is not None and criteria.architecture is not None:
         if criteria.architecture != job.options.architecture:
             return False
+
+    if criteria.all_tests:
+        return True
 
     # Check full flag compatibility with build type
     # - full=True: Only for nightly/full builds
@@ -160,14 +160,14 @@ def should_include_suite(suite: SuiteConfig, criteria: FilterCriteria) -> bool:
     Returns:
         True if suite should be included, False otherwise
     """
-    if criteria.all_tests:
-        return True
-
-    # Check architecture compatibility (suite-level override)
+    # Check architecture compatibility FIRST (even in all_tests mode)
     # If suite specifies architecture, current architecture must match
     if suite.options.architecture is not None and criteria.architecture is not None:
         if criteria.architecture != suite.options.architecture:
             return False
+
+    if criteria.all_tests:
+        return True
 
     # Check full flag compatibility (suite-level override)
     # - full=True: Only for nightly/full builds

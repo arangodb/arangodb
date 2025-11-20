@@ -162,6 +162,31 @@ class TestTestOptions:
         assert opts.deployment_type == DeploymentType.CLUSTER
         assert opts.size == ResourceSize.XLARGE
 
+    def test_from_dict_arch_field(self):
+        """Test parsing 'arch' field (short form)."""
+        from src.config_lib import Architecture
+
+        data = {"arch": "aarch64"}
+        opts = TestOptions.from_dict(data)
+        assert opts.architecture == Architecture.AARCH64
+
+    def test_from_dict_arch_aliases(self):
+        """Test architecture parsing supports common aliases."""
+        from src.config_lib import Architecture
+
+        test_cases = [
+            ("x64", Architecture.X64),
+            ("x86_64", Architecture.X64),
+            ("amd64", Architecture.X64),
+            ("aarch64", Architecture.AARCH64),
+            ("arm64", Architecture.AARCH64),
+        ]
+
+        for arch_str, expected in test_cases:
+            data = {"arch": arch_str}
+            opts = TestOptions.from_dict(data)
+            assert opts.architecture == expected, f"Failed for {arch_str}"
+
 
 class TestTestArguments:
     """Test TestArguments dataclass."""

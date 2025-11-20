@@ -236,9 +236,9 @@ class TestOptions:
             if yaml_field in data:
                 kwargs[our_field] = data[yaml_field]
 
-        # Handle architecture field (parse single architecture string)
-        if "architecture" in data and data["architecture"] is not None:
-            kwargs["architecture"] = Architecture.from_string(data["architecture"])
+        # Handle arch field (parse single architecture string)
+        if "arch" in data and data["arch"] is not None:
+            kwargs["architecture"] = Architecture.from_string(data["arch"])
 
         return cls(**kwargs)
 

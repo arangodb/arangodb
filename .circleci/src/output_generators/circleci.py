@@ -100,11 +100,10 @@ class CircleCIGenerator(OutputGenerator):
         else:
             raise ValueError("Either base_config or base_config_path must be provided")
 
-        # Collect all jobs from all test definition files
-        all_jobs = []
+        # Collect all jobs from all test definition files (no architecture filtering yet)
+        all_jobs: List[TestJob] = []
         for test_def in test_defs:
-            filtered = self.filter_jobs(test_def)
-            all_jobs.extend(filtered)
+            all_jobs.extend(test_def.jobs.values())
 
         # Generate workflows for different build configurations
         if "workflows" not in circleci_config:
@@ -324,7 +323,17 @@ class CircleCIGenerator(OutputGenerator):
         build_jobs: List[str],
     ) -> None:
         """Add all test jobs to workflow."""
+        # Filter jobs based on workflow's architecture
+        from dataclasses import replace
+        from ..filters import should_include_job
+
+        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+
         for job in jobs:
+            # Skip jobs that don't match this workflow's architecture
+            if not should_include_job(job, criteria):
+                continue
+
             test_jobs = self._create_test_jobs_for_deployment(
                 job, build_config, build_jobs
             )
