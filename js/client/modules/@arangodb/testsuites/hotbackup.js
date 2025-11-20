@@ -373,7 +373,7 @@ while (true) {
 }
 `,
     noiseVolume: 20,
-    noiseDuration: 60,
+    noiseDuration: 15,
     preRestoreFn: function() {
       db._createDatabase('test');
       db._useDatabase('test');
@@ -383,6 +383,7 @@ while (true) {
     postRestoreFn:function() {
       for (let i=0; i < 10; i++) {
         db._useDatabase('test');
+        db.test_collection.ensureIndex({type: "persistent", fields: ["thrd"]});
         let result = db._query(`
                 FOR doc IN test_collection
                     FILTER doc.thrd == @idx
