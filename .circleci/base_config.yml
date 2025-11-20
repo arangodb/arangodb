@@ -171,28 +171,28 @@ commands:
     parameters:
       arch:
         type: string
-      destination:
+      repo-path:
         type: string
     steps:
       - run:
           name: Fetch aux binaries
           command: |
             set -x
-            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" VERSIONS)
-            RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+" VERSIONS)
-            RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" VERSIONS)
-            ARANGO_MAJOR_MINOR_VERSION=$(grep -Po "\K\d+\.\d+" ARANGO-VERSION)
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" <<parameters.repo-path>>/VERSIONS)
+            RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+" <<parameters.repo-path>>/VERSIONS)
+            RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" <<parameters.repo-path>>/VERSIONS)
+            ARANGO_MAJOR_MINOR_VERSION=$(grep -Po "\K\d+\.\d+" <<parameters.repo-path>>/ARANGO-VERSION)
             arch="<<parameters.arch>>"
             if test "$arch" == "x64"; then
               arch="amd64"
             elif test "$arch" == "aarch64"; then
               arch="arm64"
             fi
-            curl -s -L -o <<parameters.destination>>/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
-            chmod a+x <<parameters.destination>>/arangodb
+            curl -s -L -o <<parameters.repo-path>>/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
+            chmod a+x <<parameters.repo-path>>/build/bin/arangodb
 
-            curl -s -L -o <<parameters.destination>>/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
-            chmod a+x <<parameters.destination>>/rclone-arangodb
+            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
+            chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
   run-test:
     parameters:
       suiteName:
@@ -522,7 +522,7 @@ jobs:
           steps:
             - fetch-aux-binaries:
                 arch: << parameters.arch >>
-                destination: build/bin
+                repo-path: .
       - when:
           condition: << pipeline.parameters.create-docker-images >>
           steps:
@@ -820,7 +820,7 @@ jobs:
           at: work/ArangoDB
       - fetch-aux-binaries:
           arch: x64 # rta tests should only run on x64
-          destination: work/ArangoDB/build/bin
+          repo-path: work/ArangoDB
       - run:
           name: Clone RTA
           command: |
