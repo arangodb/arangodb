@@ -296,12 +296,12 @@ while(true) {
       db._useDatabase('test_view');
       let p = db._query(
         `LET x = (FOR v IN test_collection RETURN v._key)
-               FOR w IN test_view
+               FOR w IN test_view OPTIONS {waitForSync:true}
                  FILTER w._key NOT IN x
-                 RETURN w
+                 RETURN w 
             `).toArray();
-      if (p.length === 0) {
-        throw new Error(`query result was empty: ${p}`);
+      if (p.length !== 0) {
+        throw new Error(`query result wasn't empty: ${p}`);
       }
       let q = db._query(
         `LET x = (FOR v IN test_view RETURN v._key)
@@ -310,7 +310,7 @@ while(true) {
                  RETURN w
             `).toArray();
       if (q.length !== 0) {
-        throw new Error(`query result wast empty: ${q}`);
+        throw new Error(`query result wasn't empty: ${q}`);
       }
 
       // Check that the inverted index is consistent with the documents
@@ -320,14 +320,26 @@ while(true) {
       // this check is void. in the same way it could happen that the optimiser
       // decidesd that the filter in the second query is not best served by
       // the inverted index and the test is void.
-      p = db._query("FOR v IN test_collection RETURN v._key").toArray();
+      p = db._query("FOR v IN test_collection RETURN v._key").toArray().sort();
       q = db._query(`
             FOR w IN test_collection
                  FILTER w.field1 == "stone"
                  RETURN w._key
-            `).toArray();
-      if (p !== q) {
-        throw new Error(`query result wasn't empty: ${JSON.stringify(p)} != ${JSON.stringify(q)}`);
+            `).toArray().sort();
+      let notFoundQ = [];
+      p.forEach(oneP => {
+        if (!oneP in q) {
+          notFoundQ.push(oneP);
+        }
+      });
+      let notFoundP = [];
+      q.forEach(oneQ => {
+        if (!oneQ in p) {
+          notFoundP.push(oneQ);
+        }
+      });
+      if (notFoundP.length + notFoundQ.length !== 0) {
+        throw new Error(`have different result sets: ${JSON.stringify(notFoundP)} != ${JSON.stringify(notFoundQ)}`);
       }
       print('Aborting Transaction if still there');
       try {
