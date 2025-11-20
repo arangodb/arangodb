@@ -806,6 +806,11 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
 
     _versionTracker.track("create collection");
 
+    // Update metadata metrics on single server
+    if (ServerState::instance()->isSingleServer()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount();
+    }
+
     return collection;
   } catch (basics::Exception const& ex) {
     events::CreateCollection(dbName, name, ex.code());
@@ -834,8 +839,16 @@ TRI_vocbase_t::createCollections(
     // / Agency. In that case, we're not batching collection creating.
     // Therefore, we need to iterate over the infoSlice and create each
     // collection one by one.
-    return {
-        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer)};
+    auto result =
+        createCollections(infoSlice, allowEnterpriseCollectionsOnSingleServer);
+
+    // Update metadata metrics on single server after collections are created
+    if (ServerState::instance()->isSingleServer()) {
+      _server.getFeature<DatabaseFeature>().incrementCollectionCount(
+          result.size());
+    }
+
+    return {result};
 
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
@@ -957,6 +970,11 @@ Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropSystem) {
   if (res.ok()) {
     collection->deferDropCollection(dropCollectionCallback);
     _versionTracker.track("drop collection");
+
+    // Update metadata metrics on single server
+    if (ServerState::instance()->isSingleServer()) {
+      _server.getFeature<DatabaseFeature>().decrementCollectionCount();
+    }
   }
 
   return res;

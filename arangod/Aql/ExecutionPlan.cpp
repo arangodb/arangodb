@@ -78,9 +78,12 @@
 #include "VocBase/AccessMode.h"
 
 #include <absl/strings/str_cat.h>
+#include <fmt/core.h>
+#include <fmt/ranges.h>
 #include <velocypack/Iterator.h>
 
 #include <initializer_list>
+#include <ranges>
 
 namespace arangodb::aql {
 using namespace arangodb::basics;
@@ -2614,8 +2617,59 @@ void ExecutionPlan::findVarUsage() {
 /// @brief determine if the above are already set
 bool ExecutionPlan::varUsageComputed() const { return _varUsageComputed; }
 
+namespace {
+void logMissingVariablesExceptionDetails(
+    ExecutionPlan const& plan, QueryContext const& query,
+    MissingVariablesException const& exception) {
+  auto constexpr planHeader =
+      std::string_view("(id, type, varsUsedHere, varsSetHere)");
+  auto const formatVar = [errVar = exception.variable()](Variable const* v) {
+    return fmt::format("{}{}{}({})", v == errVar ? "!" : "",
+                       !v->name.empty() && std::isdigit(v->name[0]) ? "#" : "",
+                       v->name, v->id);
+  };
+  auto const formatVars = [&](std::vector<Variable const*> const& vars) {
+    return fmt::format(
+        "[{}]", fmt::join(vars | std::views::transform(formatVar), ", "));
+  };
+  auto const formatNode = [&, errNode = exception.node()](
+                              ExecutionNode const& node) -> std::string {
+    return fmt::format("{}({}, {}, {}, {})", &node == errNode ? "!" : "",
+                       node.id().id(), node.getTypeString(),
+                       formatVars(node.getVariablesUsedHere()),
+                       formatVars(node.getVariablesSetHere()));
+  };
+
+  auto nodeStrings = std::vector<std::string>{};
+  for (auto const* node = plan.root(); node != nullptr;
+       node = node->getFirstDependency()) {
+    nodeStrings.emplace_back(formatNode(*node));
+  }
+  auto const planString = fmt::format(
+      "{}: {}", planHeader, fmt::join(nodeStrings | std::views::reverse, ", "));
+
+  LOG_TOPIC("b57cb", ERR, arangodb::Logger::AQL)
+      << "Plan causing MissingVariablesException of query " << query.id()
+      << ": " << planString;
+}
+}  // namespace
+
 void ExecutionPlan::planRegisters(ExplainRegisterPlan explainRegisterPlan) {
-  _root->planRegisters(explainRegisterPlan);
+  try {
+    _root->planRegisters(explainRegisterPlan);
+  } catch (MissingVariablesException const& e) {
+    if (_ast == nullptr) {
+      LOG_TOPIC("7664c", ERR, arangodb::Logger::AQL)
+          << "MissingVariablesException during register planning: " << e.what();
+    } else {
+      auto const& query = _ast->query();
+      LOG_TOPIC("ef5ba", ERR, arangodb::Logger::AQL)
+          << "MissingVariablesException during register planning of query "
+          << query.id() << ": " << e.what();
+      logMissingVariablesExceptionDetails(*this, query, e);
+    }
+    throw;
+  }
 }
 
 /// @brief unlinkNodes, note that this does not delete the removed
