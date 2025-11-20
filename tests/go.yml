@@ -19,11 +19,10 @@ tests:
       priority: 500
       type: cluster
       suffix: v1
-      timeLimit: 19200
+      timeLimit: 7200 
     args:
       goDriverVersion: '1'
-      oneTestTimeout: 19200
-      extremeVerbosity: true
+      oneTestTimeout: 7150
 - go_driver:
     job: run-driver-tests
     options:
