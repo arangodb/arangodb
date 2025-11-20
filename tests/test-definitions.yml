@@ -479,6 +479,7 @@
 
 - hot_backup:
     options:
+      buckets: auto
       type: single
       size: medium
     args:
@@ -492,6 +493,7 @@
      - hot_backup_el_cheapo
 - hot_backup:
     options:
+      buckets: auto
       type: cluster
       size: large
       parallelity: 5
