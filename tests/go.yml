@@ -22,6 +22,8 @@ tests:
       timeLimit: 19200
     args:
       goDriverVersion: '1'
+      oneTestTimeout: 19200
+      extremeVerbosity: true
 - go_driver:
     job: run-driver-tests
     options:
