@@ -239,6 +239,7 @@ function hotBackup_views (options) {
   let txn_col;
   let which = "hot_backup_views";
   return hotBackup_load_backend(options, which, {
+    // Insert documents into test_collection:
     noiseScript: `
 let i=0;
 while(true) {
@@ -262,10 +263,14 @@ while(true) {
 }
 `,
     noiseVolume: 1,
-    noiseDuration: 60,
+    // :/ making sure that something has happened from the
+    // inserter thread
+    noiseDuration: 5,
     preRestoreFn: function() {
+      // create a database to run the test on
       db._createDatabase('test_view');
       db._useDatabase('test_view');
+      // collection into which documents will be inserted and indexed
       testCol1 = db._create('test_collection', {numberOfShards:20} );
       testCol1.ensureIndex({type: 'inverted', name: 'inverted', fields: ["field1"]});
       db._createView("test_view", "arangosearch",
@@ -277,6 +282,7 @@ while(true) {
                      {"links": {
                        "test_collection2": {
                          "includeAllFields": true}}});
+      // Start a transaction
       txn = db._createTransaction({collections: {
         read: ["test_collection2"], write: ["test_collection2"]}});
       txn_col = txn.collection("test_collection2");
@@ -284,62 +290,59 @@ while(true) {
       return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
     postRestoreFn:function() {
-      try {
-        db._useDatabase('test_view');
-        let p = db._query(
-          `LET x = (FOR v IN test_collection RETURN v._key)
+      // TODO: what about test_view_squared ?
+      // Check that all documents that are in the test_view
+      // are also in the test_collection (and vice-versa)
+      db._useDatabase('test_view');
+      let p = db._query(
+        `LET x = (FOR v IN test_collection RETURN v._key)
                FOR w IN test_view
                  FILTER w._key NOT IN x
                  RETURN w
             `).toArray();
-        if (p.length !== 0) {
-          throw new Error(`query result wasn't empty: ${p}`);
-        }
-        let q = db._query(
-          `LET x = (FOR v IN test_view RETURN v._key)
+      if (p.length === 0) {
+        throw new Error(`query result was empty: ${p}`);
+      }
+      let q = db._query(
+        `LET x = (FOR v IN test_view RETURN v._key)
                FOR w IN test_collection
                  FILTER w._key NOT IN x
                  RETURN w
             `).toArray();
-        if (q.length !== 0) {
-          throw new Error(`query result wasn't empty: ${q}`);
-        }
+      if (q.length !== 0) {
+        throw new Error(`query result wast empty: ${q}`);
+      }
 
-        // Check that the inverted index is consistent with the documents
-        // in the collection.
-        // I could not come up with a reliable way to do this: the AQL optimiser
-        // is free to optimise the index into the first query, and then
-        // this check is void. in the same way it could happen that the optimiser
-        // decidesd that the filter in the second query is not best served by
-        // the inverted index and the test is void.
-        p = db._query("FOR v IN test_collection RETURN v._key").toArray();
-        q = db._query(`
+      // Check that the inverted index is consistent with the documents
+      // in the collection.
+      // I could not come up with a reliable way to do this: the AQL optimiser
+      // is free to optimise the index into the first query, and then
+      // this check is void. in the same way it could happen that the optimiser
+      // decidesd that the filter in the second query is not best served by
+      // the inverted index and the test is void.
+      p = db._query("FOR v IN test_collection RETURN v._key").toArray();
+      q = db._query(`
             FOR w IN test_collection
                  FILTER w.field1 == "stone"
                  RETURN w._key
             `).toArray();
-        if (p !== q) {
-          throw new Error(`query result wasn't empty: ${JSON.stringify(p)} != ${JSON.stringify(q)}`);
-        }
-        print('Aborting Transaction if still there');
-        try {
-          txn.abort();
-        } catch (ex) {
-          print('probably gone.');
-          if (ex.errorNum !== errors.ERROR_TRANSACTION_NOT_FOUND.code) {
-            print(ex);
-            throw(ex);
-          }
-        }
-        db._useDatabase('_system');
-        db._dropDatabase('test_view');
-        // require('internal').sleep(30)
-        return {status: true, testresult: {'all': {}}};
+      if (p !== q) {
+        throw new Error(`query result wasn't empty: ${JSON.stringify(p)} != ${JSON.stringify(q)}`);
       }
-      catch (ex) {
-        print(ex);
-        return {status: false, testresult: {'all': ex}};
+      print('Aborting Transaction if still there');
+      try {
+        txn.abort();
+      } catch (ex) {
+        print('probably gone.');
+        if (ex.errorNum !== errors.ERROR_TRANSACTION_NOT_FOUND.code) {
+          print(ex);
+          throw(ex);
+        }
       }
+      db._useDatabase('_system');
+      db._dropDatabase('test_view');
+      // require('internal').sleep(30)
+      return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
     }
   });
 }
