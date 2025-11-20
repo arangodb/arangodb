@@ -1,6 +1,9 @@
 devel
 -----
 
+* Bump iresearch. New consolidation policy that uses maxSkewThreshold and
+  minDeletionRatio is now in effect.
+
 * Enforce that a license with a baked in deployment ID can only be applied
   to a deployment with that ID.
 
