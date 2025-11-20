@@ -476,6 +476,7 @@
     suites:
       - importing
       - export
+
 - hot_backup:
     options:
       type: single
@@ -483,6 +484,12 @@
     args:
       dumpAgencyOnError: true
       extraArgs:experimental-vector-index: true
+    suites:
+     - hot_backup
+     - hot_backup_views
+     - hot_backup_aql
+     - hot_backup_smart_graphs
+     - hot_backup_el_cheapo
 - hot_backup:
     options:
       type: cluster
@@ -491,6 +498,12 @@
     args:
       dumpAgencyOnError: true
       extraArgs:experimental-vector-index: true
+    suites:
+     - hot_backup
+     - hot_backup_views
+     - hot_backup_aql
+     - hot_backup_smart_graphs
+     - hot_backup_el_cheapo
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 - server_parameters:

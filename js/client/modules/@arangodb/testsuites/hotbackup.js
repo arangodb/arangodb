@@ -194,7 +194,7 @@ function hotBackup_load_backend (options, which, args) {
         !helper.isAlive() ||
         !helper.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
         !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume) ||
-        function() { sleep(1); return false; }() ||
+        function() { sleep(args.noiseDuration); return false; }() ||
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
         !helper.restoreHotBackup() ||
@@ -216,12 +216,13 @@ function hotBackup_load_backend (options, which, args) {
   return helper.extractResults();
 }
 
-function hotBackup_load (options) {
+function hotBackup_load_demo (options) {
 
-  let which = "hot_backup_load";
+  let which = "hot_backup_load_demo";
   return hotBackup_load_backend(options, which, {
     noiseScript: "",
     noiseVolume: 1,
+    noiseDuration: 60,
     preRestoreFn: function() {
       return {status: true, testresult: {}};
     },
@@ -236,7 +237,7 @@ function hotBackup_views (options) {
   let testCol2;
   let txn;
   let txn_col;
-  let which = "hot_backup_load";
+  let which = "hot_backup_views";
   return hotBackup_load_backend(options, which, {
     noiseScript: `
 let i=0;
@@ -261,6 +262,7 @@ while(true) {
 }
 `,
     noiseVolume: 1,
+    noiseDuration: 60,
     preRestoreFn: function() {
       db._createDatabase('test_view');
       db._useDatabase('test_view');
@@ -378,6 +380,7 @@ while (true) {
 }
 `,
     noiseVolume: 20,
+    noiseDuration: 60,
     preRestoreFn: function() {
       db._createDatabase('test');
       db._useDatabase('test');
@@ -439,6 +442,7 @@ while(true) {
   }
   try {
     db.is_foo.save(edge_docs);
+console.log("saved")
   } catch (ex) {
     if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
         ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
@@ -449,6 +453,7 @@ while(true) {
 }
 `,
     noiseVolume: 10,
+    noiseDuration: 60,
     preRestoreFn: function() {
       db._createDatabase('test');
       db._useDatabase('test');
@@ -474,6 +479,7 @@ while(true) {
       for (let i = 0; i < 20; i++) {
         let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
                               {"start": `foo/${i}:v${i}`}).toArray();
+        print(edges)
       }
       return {status: true, testresult: {}};
     },
@@ -542,6 +548,7 @@ while (true) {
 
 `,
     noiseVolume: 10,
+    noiseDuration: 1,
     args: args,
     preRestoreFn: function(args) {
       db._createDatabase('test');
@@ -579,7 +586,7 @@ while (true) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['hot_backup'] = hotBackup;
-  testFns['hot_backup_load'] = hotBackup_load;
+  testFns['hot_backup_load_demo'] = hotBackup_load_demo;
   testFns['hot_backup_views'] = hotBackup_views;
   testFns['hot_backup_aql'] = hotBackup_aql;
   testFns['hot_backup_smart_graphs'] = hotBackup_smart_graphs;
