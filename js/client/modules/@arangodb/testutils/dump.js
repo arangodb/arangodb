@@ -100,7 +100,6 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
   }
 
   destructor(cleanup) {
-    print('destructor')
     if (this.fn !== undefined && fs.exists(this.fn)) {
       fs.remove(this.fn);
     }
@@ -778,7 +777,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
          ${snippet}`;
       this.clientInstances.push(
         ct.run.launchPlainSnippetInBG(mySnippet, key + `_${i}`)
-      )
+      );
     }
     // wait for the spawned clients to reach the entry gate:
     testFns.forEach(testFn => {

@@ -194,7 +194,7 @@ function hotBackup_load_backend (options, which, args) {
         !helper.isAlive() ||
         !helper.runTestFn(args.preRestoreFn, args.args, 'preRestore') ||
         !helper.spawnStressArangosh(args.noiseScript, which, args.noiseVolume) ||
-        function() { sleep(args.noiseDuration); return false; }() ||
+        (function() { sleep(args.noiseDuration); return false; }()) ||
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
         !helper.restoreHotBackup() ||
@@ -281,12 +281,10 @@ while(true) {
         read: ["test_collection2"], write: ["test_collection2"]}});
       txn_col = txn.collection("test_collection2");
       txn_col.insert({"foo": "bar"});
-      print('--------------------------------------------------------------------------------111')
       return {status: true, testresult: {}};
     },
     postRestoreFn:function() {
       try {
-        print('--------------------------------------------------------------------------------211')
         db._useDatabase('test_view');
         let p = db._query(
           `LET x = (FOR v IN test_collection RETURN v._key)
@@ -294,7 +292,6 @@ while(true) {
                  FILTER w._key NOT IN x
                  RETURN w
             `).toArray();
-        print('--------------------------------------------------------------------------------311')
         if (p.length !== 0) {
           throw new Error(`query result wasn't empty: ${p}`);
         }
@@ -307,7 +304,6 @@ while(true) {
         if (q.length !== 0) {
           throw new Error(`query result wasn't empty: ${q}`);
         }
-        print('--------------------------------------------------------------------------------411')
 
         // Check that the inverted index is consistent with the documents
         // in the collection.
@@ -325,8 +321,6 @@ while(true) {
         if (p !== q) {
           throw new Error(`query result wasn't empty: ${JSON.stringify(p)} != ${JSON.stringify(q)}`);
         }
-        print('--------------------------------------------------------------------------------511')
-
         print('Aborting Transaction if still there');
         try {
           txn.abort();
@@ -339,12 +333,11 @@ while(true) {
         }
         db._useDatabase('_system');
         db._dropDatabase('test_view');
-        print('--------------------------------------------------------------------------------61')
-        require('internal').sleep(30)
+        // require('internal').sleep(30)
         return {status: true, testresult: {'all': {}}};
       }
       catch (ex) {
-        print(ex)
+        print(ex);
         return {status: false, testresult: {'all': ex}};
       }
     }
@@ -474,17 +467,17 @@ console.log("saved")
       for (let i=0; i < 20; i++) {
         vertices.push([{"_key": `${i}:v${i}`, "foo": `${i}`}]);
       }
-      db.foo.save(vertices)
+      db.foo.save(vertices);
       // todo: remove me again!
       for (let i = 0; i < 20; i++) {
         let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
                               {"start": `foo/${i}:v${i}`}).toArray();
-        print(edges)
+        print(edges);
       }
       return {status: true, testresult: {}};
     },
     postRestoreFn:function() {
-      let result = {}
+      let result = {};
       for (let i = 0; i < 20; i++) {
         let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
                               {"start": `foo/${i}:v${i}`}).toArray();
@@ -492,14 +485,14 @@ console.log("saved")
           let key = `${oneEdge["f"]}_${oneEdge["t"]}_${oneEdge["_rev"]}`;
           let value = (oneEdge["t"] === i) ? -1 : +1;
           if (key in result) {
-            result[key] += value
+            result[key] += value;
           } else {
-            result[key] = value
+            result[key] = value;
           }
         });
       }
       result.forEach(([edge, count]) => {
-        let side = ["_to", "_from"]
+        let side = ["_to", "_from"];
         if (count === 0) {
           throw new Error(`missing edge from ${edge[0]} to ${edge[1]} in ${side[count + 1]}`);
         }
@@ -566,7 +559,7 @@ while (true) {
         db._collection(col).all().toArray().forEach(doc => {
           let key = `${doc['trd']}_${doc['i']}`;
           if (key in result) {
-            result[key] += 1
+            result[key] += 1;
           } else {
             result[key] = 1;
           }
