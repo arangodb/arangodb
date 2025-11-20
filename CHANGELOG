@@ -1,6 +1,10 @@
 devel
 -----
 
+* COR-13: New iresearch consolidation policy
+  - new algorithm that uses maxSkewThreshold and minDeletionRatio
+  - Bumped iresearch
+
 * FE-636: bump webpack-dev-middleware from 5.3.3 to 5.3.4.
 
 * FE-636: bump braces from 3.0.2 to 3.0.3.
