@@ -23,6 +23,7 @@ tests:
     args:
       goDriverVersion: '1'
       oneTestTimeout: 7150
+      cleanup: false
 - go_driver:
     job: run-driver-tests
     options:
