@@ -40,5 +40,7 @@ tests:
       type: cluster
       suffix: v2
       size: large
+      timeLimit: 7200 
     args:
       goDriverVersion: '2'
+      oneTestTimeout: 7150
