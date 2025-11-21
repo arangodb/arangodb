@@ -1,0 +1,27 @@
+name: arangodb_metadata_number_of_databases
+introducedIn: "3.12.7"
+help: |
+  Global number of databases.
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - single
+description: |
+  Total number of databases in the deployment (cluster or single server).
+troubleshoot: |
+  **Configuration:**
+  - Maximum controlled by `--database.max-databases` (default: unlimited)
+  - Exceeding limit returns `TRI_ERROR_RESOURCE_LIMIT`
+
+  **Impact:**
+  - High counts affect startup time, memory usage, and file descriptors
+  - Each database adds operational overhead
+
+  **Recommendations:**
+  - Remove unused databases
+
+  **See also:**
+  - Operational factors: https://docs.arango.ai/arangodb/stable/develop/operational-factors/

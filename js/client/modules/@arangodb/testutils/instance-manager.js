@@ -713,7 +713,7 @@ class instanceManager {
     }
 
     if (!forceTerminate) {
-      shutdownSuccess &= this._setMaintenance(true);
+      shutdownSuccess &&= this._setMaintenance(true);
     }
 
     this.stopClusterHealthMonitor();

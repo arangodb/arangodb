@@ -1,6 +1,13 @@
 devel
 -----
 
+* COR-8: Added new metrics to track deployment metadata:
+  - `arangodb_metadata_number_of_databases`: Total number of databases
+  - `arangodb_metadata_number_of_collections`: Total number of collections
+  - `arangodb_metadata_number_of_shards`: Total number of shards (cluster only)
+  These metrics are exposed on coordinators (in cluster mode) and single servers,
+  providing visibility into the overall size and scale of the deployment.
+
 * Enforce that a license with a baked in deployment ID can only be applied
   to a deployment with that ID.
 

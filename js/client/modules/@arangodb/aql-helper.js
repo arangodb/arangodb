@@ -106,7 +106,7 @@ function executeJson (plan, options = {}) {
     if (reply.extra.warnings.length !== 0) {
       ret.warnings.push(...reply.extra.warnings);
     }
-    ret.cached &= reply.cached;
+    ret.cached &&= reply.cached;
   }
   return ret;
 };

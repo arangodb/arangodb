@@ -67,7 +67,7 @@ class GraphProviderTest : public ::testing::Test {
   std::unique_ptr<MockGraphDatabase> singleServer{nullptr};
   std::unique_ptr<mocks::MockServer> server{nullptr};
   std::shared_ptr<arangodb::aql::Query> query{nullptr};
-  std::unique_ptr<std::unordered_map<ServerID, aql::EngineId>> clusterEngines{
+  std::unique_ptr<std::unordered_map<ServerID, EngineId>> clusterEngines{
       nullptr};
   std::unique_ptr<arangodb::transaction::Methods> _trx{};
 
@@ -78,8 +78,8 @@ class GraphProviderTest : public ::testing::Test {
   ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor> alloc =
       {resourceMonitor};
   MonitoredCollectionToShardMap _emptyShardMap{alloc};
-  aql::Projections _vertexProjections{};
-  aql::Projections _edgeProjections{};
+  Projections _vertexProjections{};
+  Projections _edgeProjections{};
 
   GraphProviderTest() {}
   ~GraphProviderTest() {}
@@ -233,7 +233,7 @@ class GraphProviderTest : public ::testing::Test {
       }
 
       clusterEngines =
-          std::make_unique<std::unordered_map<ServerID, aql::EngineId>>();
+          std::make_unique<std::unordered_map<ServerID, EngineId>>();
       clusterEngines->emplace("PRMR_0001", engineId);
 
       auto clusterCache =

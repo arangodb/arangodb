@@ -302,7 +302,7 @@ function _recovery (options, recoveryTests) {
       fs.makeDirectoryRecursive(params.rootDir);
       fs.makeDirectoryRecursive(params.temp_path);
       let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
-      localOptions.cleanup &= params.options.cleanup;
+      localOptions.cleanup &&= params.options.cleanup;
       if (!ret.status) {
         results[test] = ret;
         results.status = false;

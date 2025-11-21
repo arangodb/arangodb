@@ -52,7 +52,7 @@ class InternalRestTraverserHandlerEdgeTest : public ::testing::Test {
   std::shared_ptr<arangodb::transaction::StandaloneContext> ctx;
   arangodb::aql::QueryString queryString;
   std::shared_ptr<MockQuery> fakeQuery;
-  aql::QueryRegistry queryRegistry;
+  QueryRegistry queryRegistry;
 
   InternalRestTraverserHandlerEdgeTest()
       : server{"PRMR_0001", true, true},
