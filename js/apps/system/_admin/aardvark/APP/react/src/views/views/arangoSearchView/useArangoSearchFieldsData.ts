@@ -119,31 +119,22 @@ const arangoSearchFields = [
 
 const tierConsolidationPolicyFields = [
   {
-    name: "consolidationPolicy.segmentsMin",
-    label: "Segments Min",
-    type: "number",
-    tooltip:
-      "The minimum number of segments that will be evaluated as candidates for consolidation."
-  },
-  {
-    name: "consolidationPolicy.segmentsMax",
-    label: "Segments Max",
-    type: "number",
-    tooltip:
-      "The maximum number of segments that will be evaluated as candidates for consolidation."
-  },
-  {
     name: "consolidationPolicy.segmentsBytesMax",
     label: "Segments Bytes Max",
     type: "number",
     tooltip: "Maximum allowed size of all consolidated segments in bytes."
   },
   {
-    name: "consolidationPolicy.segmentsBytesFloor",
-    label: "Segments Bytes Floor",
+    name: "consolidationPolicy.maxSkewThreshold",
+    label: "Max Skew Threshold",
     type: "number",
-    tooltip:
-      "Defines the value (in bytes) to treat all smaller segments as equal for consolidation selection."
+    tooltip: "The maximum allowed skew threshold for consolidation."
+  },
+  {
+    name: "consolidationPolicy.minDeletionRatio",
+    label: "Min Deletion Ratio",
+    type: "number",
+    tooltip: "The minimum allowed deletion ratio for consolidation."
   }
 ];
 const bytesAccumConsolidationPolicyFields = [
