@@ -305,8 +305,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
 
   std::uint64_t fetchedDocumentId = 0;
   bool called = false;
-  auto cb = [&](LocalDocumentId ldid, aql::DocumentData&&,
-                VPackSlice edgeDocument) {
+  auto cb = [&](LocalDocumentId ldid, DocumentData&&, VPackSlice edgeDocument) {
     fetchedDocumentId = ldid.id();
     called = true;
     EXPECT_TRUE(edgeDocument.isObject());

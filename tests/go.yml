@@ -13,16 +13,17 @@ tests:
       suffix: v1
     args:
       goDriverVersion: '1'
-      extremeVerbosity: true
 - go_driver:
     job: run-driver-tests
     options:
       priority: 500
       type: cluster
       suffix: v1
+      timeLimit: 7200 
     args:
       goDriverVersion: '1'
-      extremeVerbosity: true
+      oneTestTimeout: 7150
+      cleanup: false
 - go_driver:
     job: run-driver-tests
     options:
@@ -32,7 +33,6 @@ tests:
       suffix: v2
     args:
       goDriverVersion: '2'
-      extremeVerbosity: true
 - go_driver:
     job: run-driver-tests
     options:
@@ -40,6 +40,7 @@ tests:
       type: cluster
       suffix: v2
       size: large
+      timeLimit: 7200 
     args:
       goDriverVersion: '2'
-      extremeVerbosity: true
+      oneTestTimeout: 7150

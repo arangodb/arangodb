@@ -40,7 +40,7 @@
 #include <thread>
 #include <sstream>
 
-using namespace arangodb;
+namespace arangodb {
 
 namespace {
 
@@ -70,21 +70,32 @@ std::size_t numberOfEffectiveCoresImpl() {
       break;
     }
     case cgroup::Version::V1: {
-      auto quota = arangodb::basics::FileUtils::readCgroupFileValue(
-          "/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
-      auto period = arangodb::basics::FileUtils::readCgroupFileValue(
-          "/sys/fs/cgroup/cpu/cpu.cfs_period_us");
-      if (quota && period) {
-        if (*quota > 0 && *period > 0) {
-          return *quota / *period;
+      try {
+        auto quota = basics::FileUtils::readCgroupFileValue(
+            "/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
+        auto period = basics::FileUtils::readCgroupFileValue(
+            "/sys/fs/cgroup/cpu/cpu.cfs_period_us");
+        if (quota && period) {
+          if (*quota > 0 && *period > 0) {
+            return *quota / *period;
+          }
         }
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("a3c21", INFO, Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v1 "
+               "cpu.cfs_quota_us/cpu.cfs_period_us files: "
+            << ex.what();
+      } catch (...) {
+        LOG_TOPIC("a3c22", INFO, Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v1 "
+               "cpu.cfs_quota_us/cpu.cfs_period_us files: unknown error";
       }
       break;
     }
     case cgroup::Version::V2: {
       try {
         std::string content =
-            arangodb::basics::FileUtils::slurp("/sys/fs/cgroup/cpu.max");
+            basics::FileUtils::slurp("/sys/fs/cgroup/cpu.max");
         std::istringstream stream(content);
         std::string quotaStr, periodStr;
         stream >> quotaStr >> periodStr;
@@ -94,11 +105,14 @@ std::size_t numberOfEffectiveCoresImpl() {
           return quota / period;
         }
       } catch (std::exception const& ex) {
-        LOG_TOPIC("a3c23", ERR, arangodb::Logger::FIXME)
-            << "failed to read cgroup v2 cpu.max file: " << ex.what();
+        LOG_TOPIC("a3c23", INFO, Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v2 "
+               "cpu.max file: "
+            << ex.what();
       } catch (...) {
-        LOG_TOPIC("a3c24", ERR, arangodb::Logger::FIXME)
-            << "failed to read cgroup v2 cpu.max file: unknown error";
+        LOG_TOPIC("a3c24", INFO, Logger::FIXME)
+            << "Failed to determine the number of CPU cores from cgroup v2 "
+               "cpu.max file: unknown error";
       }
       break;
     }
@@ -115,7 +129,7 @@ struct NumberOfCoresCache {
     std::string value;
     if (TRI_GETENV("ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES", value)) {
       if (!value.empty()) {
-        uint64_t v = arangodb::basics::StringUtils::uint64(value);
+        uint64_t v = basics::StringUtils::uint64(value);
         if (v != 0) {
           cpuCores = static_cast<std::size_t>(v);
           overridden = true;
@@ -129,16 +143,20 @@ struct NumberOfCoresCache {
   bool overridden;
 };
 
-NumberOfCoresCache const cache;
+NumberOfCoresCache const& getCache() {
+  static NumberOfCoresCache const cache;
+  return cache;
+}
 
 }  // namespace
 
 /// @brief return number of cores from cache
-std::size_t arangodb::NumberOfCores::getValue() { return ::cache.cpuCores; }
+std::size_t NumberOfCores::getValue() { return getCache().cpuCores; }
 
-std::size_t arangodb::NumberOfCores::getEffectiveValue() {
-  return ::cache.effectiveCpuCores;
+std::size_t NumberOfCores::getEffectiveValue() {
+  return getCache().effectiveCpuCores;
 }
 
 /// @brief return if number of cores was overridden
-bool arangodb::NumberOfCores::overridden() { return ::cache.overridden; }
+bool NumberOfCores::overridden() { return getCache().overridden; }
+}  // namespace arangodb
