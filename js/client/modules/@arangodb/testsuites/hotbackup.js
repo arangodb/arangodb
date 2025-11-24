@@ -298,7 +298,7 @@ while(true) {
         `LET x = (FOR v IN test_collection RETURN v._key)
                FOR w IN test_view OPTIONS {waitForSync:true}
                  FILTER w._key NOT IN x
-                 RETURN w 
+                 RETURN w
             `).toArray();
       if (p.length !== 0) {
         throw new Error(`query result wasn't empty: ${p}`);
@@ -358,8 +358,6 @@ while(true) {
     }
   });
 }
-
-
 
 function hotBackup_aql (options) {
   let testCol1;
@@ -427,6 +425,7 @@ function hotBackup_smart_graphs (options) {
   let which = "hot_backup_load";
   return hotBackup_load_backend(options, which, {
     noiseScript: `
+db._useDatabase('test');
 const errors = require('internal').errors;
 function shuffleArray(array) {
   for (let i = array.length - 1; i > 0; i--) {
@@ -446,9 +445,12 @@ while(true) {
          "_to": \`foo/\${ids2[i]}:v\${ids2[i]}\`,
          "idx": \`\${i}\`,
          "f": ids1[i],
-         "t": ids2[i]
+         "t": ids2[i],
+         "x": ids1,
+         "y": ids2
      });
   }
+console.log(edge_docs)
   try {
     db.is_foo.save(edge_docs);
 console.log("saved")
@@ -462,7 +464,7 @@ console.log("saved")
 }
 `,
     noiseVolume: 10,
-    noiseDuration: 60,
+    noiseDuration: 5,
     preRestoreFn: function() {
       db._createDatabase('test');
       db._useDatabase('test');
@@ -484,6 +486,7 @@ console.log("saved")
         vertices.push([{"_key": `${i}:v${i}`, "foo": `${i}`}]);
       }
       db.foo.save(vertices);
+      //print(db._collections())
       // todo: remove me again!
       for (let i = 0; i < 20; i++) {
         let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
@@ -493,13 +496,15 @@ console.log("saved")
       return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
     postRestoreFn:function() {
+      db._useDatabase('test');
       let result = {};
       for (let i = 0; i < 20; i++) {
         let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
                               {"start": `foo/${i}:v${i}`}).toArray();
         edges.forEach(oneEdge => {
-          let key = `${oneEdge["f"]}_${oneEdge["t"]}_${oneEdge["_rev"]}`;
+          let key = `${oneEdge["f"]} -> ${oneEdge["t"]}`;
           let value = (oneEdge["t"] === i) ? -1 : +1;
+          //print(`-------------------------${key} ${JSON.stringify(oneEdge)} `)
           if (key in result) {
             result[key] += value;
           } else {
@@ -507,12 +512,17 @@ console.log("saved")
           }
         });
       }
-      result.forEach(([edge, count]) => {
+      //print(result)
+      let msg = "";
+      for (const [edge, count] of Object.entries(result)) {
         let side = ["_to", "_from"];
         if (count === 0) {
-          throw new Error(`missing edge from ${edge[0]} to ${edge[1]} in ${side[count + 1]}`);
+          msg += (`missing edge ${edge} in ${count} - ${side[count + 1]}\n`);
         }
-      });
+      }
+      if (msg !== "") {
+        throw new Error(msg);
+      }
       return {status: true, failed: 0, testresult: {status: true, restored: {status: true, message: ""}}};
     }
   });
