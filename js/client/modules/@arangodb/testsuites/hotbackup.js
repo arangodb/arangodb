@@ -328,13 +328,13 @@ while(true) {
             `).toArray().sort();
       let notFoundQ = [];
       p.forEach(oneP => {
-        if (!(oneP in q)) {
+        if (q.find(n => n === oneP) !== oneP) {
           notFoundQ.push(oneP);
         }
       });
       let notFoundP = [];
       q.forEach(oneQ => {
-        if (!(oneQ in p)) {
+        if (p.find(n => n === oneQ) !== oneQ) {
           notFoundP.push(oneQ);
         }
       });
