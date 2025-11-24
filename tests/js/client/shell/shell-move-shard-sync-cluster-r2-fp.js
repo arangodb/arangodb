@@ -31,17 +31,10 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
 let db = arangodb.db;
-let { waitForShardsInSync } = require('@arangodb/test-helper');
+let { waitForShardsInSync, moveShard } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
-function queryAgencyJob (id) {
-  let query = arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
-  if (query.status === "Finished") {
-    return {error: false, id, status: query.status};
-  }
-  return {error: true, errorMsg: "Did not find job.", id};
-}
 
 function getEndpointAndIdMap() {
   const health = arango.GET("/_admin/cluster/health").Health;
@@ -64,36 +57,6 @@ function createCollectionWithKnownLeaderAndFollower(cn) {
   let leader = plan[shard].leader;
   let follower = plan[shard].followers[0];
   return { endpointMap, idMap, coordinator, leader, follower, shard };
-}
-
-function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
-  let body = {database, collection, shard, fromServer, toServer};
-  let result;
-  try {
-    result = arango.POST_RAW("/_admin/cluster/moveShard", body);
-  } catch (err) {
-    console.error(
-      "Exception for PUT /_admin/cluster/moveShard:", err.stack);
-    return false;
-  }
-  if (dontwait) {
-    return result;
-  }
-  // Now wait until the job we triggered is finished:
-  let count = 600;   // seconds
-  while (true) {
-    let job = queryAgencyJob(result.parsedBody.id);
-    if (job.error === false && job.status === "Finished") {
-      return result;
-    }
-    if (count-- < 0) {
-      console.error(
-        "Timeout in waiting for moveShard to complete: "
-        + JSON.stringify(body));
-      return false;
-    }
-    require("internal").wait(1.0);
-  }
 }
 
 function moveShardSynchronizeShardFailureSuite() {

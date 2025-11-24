@@ -35,6 +35,7 @@
 #include <velocypack/Value.h>
 
 #include "Basics/overload.h"
+#include "Inspection/Blob.h"
 #include "Inspection/SaveInspectorBase.h"
 
 namespace arangodb::inspection {
@@ -86,6 +87,12 @@ struct VPackSaveInspector
 
   [[nodiscard]] Status::Success value(velocypack::HashedStringRef const& s) {
     _builder.add(VPackValue(s.stringView()));
+    return {};
+  }
+
+  [[nodiscard]] Status::Success value(detail::Blob const& b) {
+    _builder.add(VPackValuePair(b.data.data(), b.data.size(),
+                                velocypack::ValueType::Binary));
     return {};
   }
 

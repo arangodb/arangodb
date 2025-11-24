@@ -434,7 +434,7 @@ _Enterprise Edition only_
 ### snappy
 
 * Name: snappy
-* Version: 1.1.9
+* Version: 1.2.2
 * Date: 2021-05-04 22:28:33Z
 * Project Home: https://github.com/google/snappy
 * License: https://raw.githubusercontent.com/google/snappy/master/COPYING

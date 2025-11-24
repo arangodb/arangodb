@@ -33,6 +33,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Executor/EnumerateNearVectorExecutor.h"
 #include "Aql/Query.h"
+#include "Assertions/Assert.h"
 #include "Basics/Exceptions.h"
 #include "Indexes/Index.h"
 #include "Aql/Ast.h"
@@ -49,6 +50,7 @@ constexpr std::string_view kDistanceOutVariable = "distanceOutVariable";
 constexpr std::string_view kOldDocumentVariable = "oldDocumentVariable";
 constexpr std::string_view kLimit = "limit";
 constexpr std::string_view kOffset = "offset";
+constexpr std::string_view kIsCoveredByStoredValues = "isCoveredByStoredValues";
 constexpr std::string_view kSearchParameters = "searchParameters";
 constexpr std::string_view kFilterExpression = "filterExpression";
 }  // namespace
@@ -60,7 +62,7 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
     std::size_t limit, bool ascending, std::size_t offset,
     SearchParameters searchParameters, aql::Collection const* collection,
     transaction::Methods::IndexHandle indexHandle,
-    std::unique_ptr<Expression> filterExpression)
+    std::unique_ptr<Expression> filterExpression, bool isCoveredByStoredValues)
     : ExecutionNode(plan, id),
       CollectionAccessingNode(collection),
       _inVariable(inVariable),
@@ -72,7 +74,11 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _offset(offset),
       _searchParameters(std::move(searchParameters)),
       _index(std::move(indexHandle)),
-      _filterExpression(std::move(filterExpression)) {}
+      _filterExpression(std::move(filterExpression)),
+      _isCoveredByStoredValues(isCoveredByStoredValues) {
+  TRI_ASSERT(_index->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX);
+  TRI_ASSERT(_filterExpression != nullptr || !_isCoveredByStoredValues);
+}
 
 ExecutionNode::NodeType EnumerateNearVectorNode::getType() const {
   return ENUMERATE_NEAR_VECTORS;
@@ -126,7 +132,7 @@ std::unique_ptr<ExecutionBlock> EnumerateNearVectorNode::createBlock(
       inNmDocIdRegId, outDocumentRegId, outDistanceRegId, _index,
       engine.getQuery(), _collectionAccess.collection(), _limit, _offset,
       _searchParameters, _filterExpression.get(), std::move(filterVarsToRegs),
-      _oldDocumentVariable);
+      _isCoveredByStoredValues, _oldDocumentVariable);
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
@@ -146,7 +152,8 @@ ExecutionNode* EnumerateNearVectorNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<EnumerateNearVectorNode>(
       plan, _id, _inVariable, _oldDocumentVariable, _documentOutVariable,
       _distanceOutVariable, _limit, _ascending, _offset, _searchParameters,
-      collection(), _index, std::move(filterExpression));
+      collection(), _index, std::move(filterExpression),
+      _isCoveredByStoredValues);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
@@ -193,6 +200,7 @@ void EnumerateNearVectorNode::doToVelocyPack(velocypack::Builder& builder,
 
   builder.add(kLimit, VPackValue(_limit));
   builder.add(kOffset, VPackValue(_offset));
+  builder.add(kIsCoveredByStoredValues, VPackValue(_isCoveredByStoredValues));
 
   builder.add(VPackValue(kSearchParameters));
   builder.add(velocypack::serialize(_searchParameters));
@@ -220,7 +228,8 @@ EnumerateNearVectorNode::EnumerateNearVectorNode(
       _distanceOutVariable(
           Variable::varFromVPack(plan->getAst(), base, kDistanceOutVariable)),
       _limit(base.get(kLimit).getNumericValue<std::size_t>()),
-      _offset(base.get(kOffset).getNumericValue<std::size_t>()) {
+      _offset(base.get(kOffset).getNumericValue<std::size_t>()),
+      _isCoveredByStoredValues(base.get(kIsCoveredByStoredValues).getBool()) {
   std::string iid = base.get("index").get("id").copyString();
 
   if (auto const res = velocypack::deserializeWithStatus(
@@ -252,6 +261,16 @@ void EnumerateNearVectorNode::replaceVariables(
 
 bool EnumerateNearVectorNode::isAscending() const noexcept {
   return _ascending;
+}
+
+void EnumerateNearVectorNode::setFilterExpression(
+    Expression* filterExpression) {
+  _filterExpression = filterExpression->clone(_plan->getAst());
+}
+
+void EnumerateNearVectorNode::setIsCoveredByStoredValues(
+    bool isCoveredByStoredValues) noexcept {
+  _isCoveredByStoredValues = isCoveredByStoredValues;
 }
 
 }  // namespace arangodb::aql

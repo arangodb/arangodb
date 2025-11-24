@@ -79,9 +79,9 @@ struct MockIndexHelpers {
   static std::shared_ptr<Index> getEdgeIndexHandle(
       TRI_vocbase_t& vocbase, std::string const& edgeCollectionName);
 
-  static arangodb::aql::AstNode* buildCondition(aql::Query& query,
-                                                aql::Variable const* tmpVar,
-                                                TRI_edge_direction_e direction);
+  static arangodb::aql::AstNode* buildCondition(
+      arangodb::aql::Query& query, arangodb::aql::Variable const* tmpVar,
+      TRI_edge_direction_e direction);
 };
 
 struct MockGraphDatabase {

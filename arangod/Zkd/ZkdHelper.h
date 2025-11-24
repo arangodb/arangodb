@@ -33,15 +33,15 @@
 
 namespace arangodb::zkd {
 
-inline static std::byte operator"" _b(unsigned long long b) {
+inline static std::byte operator""_b(unsigned long long b) {
   return std::byte{(unsigned char)b};
 }
 
 using byte_string = std::basic_string<std::byte>;
 using byte_string_view = std::basic_string_view<std::byte>;
 
-byte_string operator"" _bs(const char* str, std::size_t len);
-byte_string operator"" _bss(const char* str, std::size_t len);
+byte_string operator""_bs(const char* str, std::size_t len);
+byte_string operator""_bss(const char* str, std::size_t len);
 
 auto interleave(std::vector<byte_string> const& vec) -> byte_string;
 auto transpose(byte_string_view bs, std::size_t dimensions)

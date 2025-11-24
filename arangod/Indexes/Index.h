@@ -50,6 +50,8 @@ struct IndexDistinctScanOptions;
 
 struct UserVectorIndexDefinition;
 
+using StoredValues = std::vector<std::vector<basics::AttributeName>>;
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -446,6 +448,8 @@ class Index {
       transaction::Methods* trx, IndexDistinctScanOptions const&);
 
   virtual UserVectorIndexDefinition const& getVectorIndexDefinition();
+
+  virtual StoredValues const& storedValues() const;
 
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();

@@ -142,7 +142,7 @@ std::shared_ptr<Index> MockIndexHelpers::getEdgeIndexHandle(
 }
 
 arangodb::aql::AstNode* MockIndexHelpers::buildCondition(
-    aql::Query& query, aql::Variable const* tmpVar,
+    arangodb::aql::Query& query, arangodb::aql::Variable const* tmpVar,
     TRI_edge_direction_e direction) {
   TRI_ASSERT(direction == TRI_EDGE_OUT || direction == TRI_EDGE_IN);
   auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query.plan());

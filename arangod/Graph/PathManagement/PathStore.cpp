@@ -189,26 +189,6 @@ auto PathStore<Step>::visitReversePath(
   }
 }
 
-template<class Step>
-auto PathStore<Step>::modifyReversePath(
-    Step& step, std::function<bool(Step&)> const& visitor) -> bool {
-  Step* walker = &step;
-  // Guaranteed to make progress, as the schreier vector contains a loop-free
-  // tree.
-  while (true) {
-    bool cont = visitor(*walker);
-    if (!cont) {
-      // Aborted
-      return false;
-    }
-    if (walker->isFirst()) {
-      // Visited the full path
-      return true;
-    }
-    walker = &_schreier.at(walker->getPrevious());
-  }
-}
-
 /* SingleServerProvider Section */
 using SingleServerProviderStep = ::arangodb::graph::SingleServerProviderStep;
 

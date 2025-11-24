@@ -27,7 +27,7 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Query.h"
-#include "Aql/RegisterPlan.cpp"
+#include "Aql/RegisterPlan.tpp"
 #include "Aql/VarUsageFinder.cpp"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/types.h"
@@ -43,6 +43,13 @@ using namespace arangodb;
 using namespace arangodb::aql;
 
 namespace arangodb {
+namespace aql {
+MissingVariablesException::MissingVariablesException(
+    Variable const* v, tests::aql::ExecutionNodeMock const* en,
+    basics::SourceLocation location)
+    : Exception(TRI_ERROR_INTERNAL,
+                createMissingVariablesExceptionMessage(v, en), location) {}
+}  // namespace aql
 namespace tests {
 namespace aql {
 
@@ -73,7 +80,7 @@ struct ExecutionNodeMock {
 
   auto plan() -> PlanMiniMock* { return &_plan; }
 
-  auto id() -> ExecutionNodeId { return ExecutionNodeId{0}; }
+  auto id() const noexcept -> ExecutionNodeId { return ExecutionNodeId{0}; }
 
   auto isIncreaseDepth() -> bool {
     return ExecutionNode::isIncreaseDepth(getType());

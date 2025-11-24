@@ -95,7 +95,7 @@ function jsDriver (options) {
         "--require",
         "source-map-support/register",
         "--timeout",
-        "10000",
+        this.options.isInstrumented ? "80000" : "10000",
         "build/esm/test"
       ];
       if (this.options.testCase) {
@@ -135,6 +135,7 @@ function jsDriver (options) {
       }
       let testResults = JSON.parse(allBuff);
       let totalSuccess = true;
+      let buildMsg = 'did you remember running yarn in the source?';
       testResults.tests.forEach(test => {
         let isSucces = _.isEmpty(test.err);
         let message = test.fullTitle + '\n' + test.file + '\n';
@@ -153,10 +154,11 @@ function jsDriver (options) {
           "duration": test.duration,
           "message": message
         };
+        buildMsg = "";
       });
       results['timeout'] = false;
       results['status'] = totalSuccess;
-      results['message'] = totalSuccess?'':'did you remember running yarn in the source?';
+      results['message'] = totalSuccess?'':buildMsg;
       // this.instanceManager.dumpAgency();
       return results;
     }

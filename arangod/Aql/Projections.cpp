@@ -374,6 +374,17 @@ void Projections::toVelocyPackFromDocument(
   TRI_ASSERT(levelsOpen == 0);
 }
 
+void Projections::toVelocyPackFromDocumentFull(
+    velocypack::Builder& b, velocypack::Slice slice,
+    transaction::Methods const* trxPtr) const {
+  if (_projections.empty()) {
+    b.add(slice);
+  } else {
+    VPackObjectBuilder guard(&b);
+    toVelocyPackFromDocument(b, slice, trxPtr);
+  }
+}
+
 /// @brief projections from a covering index
 void Projections::toVelocyPackFromIndex(
     velocypack::Builder& b, IndexIteratorCoveringData& covering,

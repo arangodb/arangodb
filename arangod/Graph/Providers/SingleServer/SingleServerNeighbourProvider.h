@@ -61,14 +61,16 @@ struct SingleServerNeighbourProvider {
   /**
      Gives the next _batchSize neighbours for _currentStep
    */
-  auto next(SingleServerProvider<Step>& provider, aql::TraversalStats& stats)
+  auto next(SingleServerProvider<Step>& provider,
+            std::shared_ptr<aql::TraversalStats> stats)
       -> std::shared_ptr<std::vector<ExpansionInfo>>;
 
   /**
      (Re)defines the step for which vertex the provider should
      provide neighbours
    */
-  auto rearm(Step const& step, aql::TraversalStats& stats) -> void;
+  auto rearm(Step const& step, std::shared_ptr<aql::TraversalStats> stats)
+      -> void;
 
   /**
      Clears cache and statistics variables

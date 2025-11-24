@@ -383,6 +383,14 @@ class ExecutionNode {
   /// @brief getVariablesUsedHere, modifying the set in-place
   virtual void getVariablesUsedHere(VarSet& vars) const;
 
+  /// @brief getVariablesUsedHere, convenience function calling the virtual
+  ///        version above
+  std::vector<Variable const*> getVariablesUsedHere() const {
+    auto vars = VarSet{};
+    getVariablesUsedHere(vars);
+    return {vars.begin(), vars.end()};
+  }
+
   /// @brief getVariablesSetHere
   virtual std::vector<Variable const*> getVariablesSetHere() const;
 

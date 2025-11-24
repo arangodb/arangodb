@@ -6,6 +6,9 @@
   top: 0;
   width: 100%;
   z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 
   #databases {
     height: 140px;
@@ -70,7 +73,6 @@
 
   .login-logo-round {
     margin-bottom: 30px;
-    margin-top: 35px;
 
     img,
     #ArangoDBLogoVersion {

@@ -25,8 +25,12 @@
 #pragma once
 
 #include <rocksdb/slice.h>
+#include <velocypack/Builder.h>
+#include <velocypack/SharedSlice.h>
+#include "Inspection/Blob.h"
 
 #include <string_view>
+#include <vector>
 
 namespace arangodb {
 
@@ -121,4 +125,22 @@ char rocksDBFormatVersion();
 
 std::string_view rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
+
+struct RocksDBVectorIndexEntryValue {
+  std::vector<uint8_t> encodedValue;
+  velocypack::SharedSlice storedValues;
+
+  void clear() {
+    storedValues = {};
+    encodedValue.clear();
+  }
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, RocksDBVectorIndexEntryValue& x) {
+    auto pair = std::make_pair(inspection::blob((x.encodedValue)),
+                               std::ref(x.storedValues));
+    return f.apply(pair);
+  }
+};
+
 }  // namespace arangodb

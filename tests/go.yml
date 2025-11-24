@@ -1,0 +1,46 @@
+jobProperties:
+    container_suffix: '-go:'
+    second_repo: git@github.com:arangodb/go-driver.git
+    branch: master
+    init_command: ''
+tests:
+- go_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+      size: medium
+      suffix: v1
+    args:
+      goDriverVersion: '1'
+- go_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: cluster
+      suffix: v1
+      timeLimit: 7200 
+    args:
+      goDriverVersion: '1'
+      oneTestTimeout: 7150
+      cleanup: false
+- go_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: single
+      size: large
+      suffix: v2
+    args:
+      goDriverVersion: '2'
+- go_driver:
+    job: run-driver-tests
+    options:
+      priority: 500
+      type: cluster
+      suffix: v2
+      size: large
+      timeLimit: 7200 
+    args:
+      goDriverVersion: '2'
+      oneTestTimeout: 7150
