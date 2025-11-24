@@ -328,13 +328,13 @@ while(true) {
             `).toArray().sort();
       let notFoundQ = [];
       p.forEach(oneP => {
-        if (!oneP in q) {
+        if (!(oneP in q)) {
           notFoundQ.push(oneP);
         }
       });
       let notFoundP = [];
       q.forEach(oneQ => {
-        if (!oneQ in p) {
+        if (!(oneQ in p)) {
           notFoundP.push(oneQ);
         }
       });
@@ -463,7 +463,7 @@ console.log("saved")
   }
 }
 `,
-    noiseVolume: 10,
+    noiseVolume: 1,
     noiseDuration: 5,
     preRestoreFn: function() {
       db._createDatabase('test');
