@@ -3809,7 +3809,7 @@ RequestLane RestReplicationHandler::lane() const {
     if (command == HoldReadLockCollection) {
       // This process will determine the start of a replication.
       // This is a cluster-internal operation. Having any of the request
-      // in the lower lanes will delay this operation Since this there is a
+      // in the lower lanes will delay this operation since there is a
       // chain of operations that need to be done.
       return RequestLane::CLUSTER_INTERNAL;
     }
