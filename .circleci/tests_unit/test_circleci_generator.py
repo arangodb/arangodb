@@ -322,27 +322,6 @@ class TestGenerateMethod:
         assert any("x64" in name for name in result["workflows"].keys())
 
 
-class TestHotbackupJob:
-    """Test hotbackup job creation."""
-
-    def test_hotbackup_job_sizing(self):
-        """Test that hotbackup job uses correct resource size."""
-        config = GeneratorConfig(filter_criteria=FilterCriteria())
-        gen = CircleCIGenerator(config, base_config={})
-        build_config = BuildConfig(
-            architecture=Architecture.X64, sanitizer=Sanitizer.TSAN
-        )
-
-        workflow = {"jobs": []}
-        gen._add_hotbackup_job(workflow, build_config, ["build-job"])
-
-        job = workflow["jobs"][0]["run-hotbackup-tests"]
-        # Medium with TSAN cluster should become xlarge
-        assert job["size"] == "xlarge"
-        assert job["name"] == "run-hotbackup-tests-x64"
-        assert job["requires"] == ["build-job"]
-
-
 class TestCreateTestJobsForDeployment:
     """Test _create_test_jobs_for_deployment method."""
 
