@@ -18,41 +18,27 @@ parameters:
     default: ""
     description: "The branch to use for the enterprise repository."
   sanitizer:
-    type: string
-    default: "" # should be empty, "tsan" or "alubsan"
-    description: "Sanitizer to use: empty, tsan, or alubsan" # TODO - use enum
+    type: enum
+    enum: ["none", "tsan", "alubsan"]
+    default: "none"
+    description: "Sanitizer to use"
   nightly:
     type: boolean
     default: false
     description: "Whether this is a nightly build"
-  ui:
-    type: string
-    default: "on"
-    description: "Whether to run UI selenium tests" # TODO - use enum and rename
-  ui-testsuites:
-    type: string
-    default: ""
-    description: "Comma separated list of UI test suites to run; empty means all."
-  ui-deployments:
-    type: string
-    default: ""
-    description: "Corresponds to --starter-mode from RTA, ATM only SG is specified by default." # TODO - use enum and rename
-  rta-branch:
-    type: string
-    default: "main"
-    description: "The branch to use for the RTA repository (used by UI tests)."
   arangod-without-v8:
     type: boolean
     default: false
     description: "Build arangod without serverside JS (also excludes frontend)"
   config-definitions:
     type: string
-    default: test-definitions.yml
-    description: "Space separated list of YAML files with test definitions (e.g., driver test files)."
+    default: test-definitions.yml ui.yml
+    description: Space separated list of YAML files with test definitions. Available files
+      arangojs.yml java.yml spark-datasource.yml ui.yml go.yml kafka.yml spring-data.yml tinkerpop-provider.yml
   config-definitions-branches:
     type: string
     default: ""
-    description: "Colon separated list of test-definition-prefix=branch. Intended to allow overriding branches for specific drivers."
+    description: "Colon separated list of test-definition-prefix=branch. Intended to allow overriding branches for specific drivers or RTA (=ui)."
   create-docker-images:
     type: boolean
     default: false
@@ -89,7 +75,9 @@ parameters:
     default: "clang++"
   use-minimal-debug-info:
     type: boolean
-    default: true # TODO - do we need this?
+    default: true
+    description: Whether to use minimal debug info.
+      This is enabled by default to reduce the size of artifacts, but can optionally be disabled for debugging test failures
 
 # our defined job, and its steps
 jobs:
@@ -174,17 +162,21 @@ jobs:
           name: Print pipeline parameters
           command: |
             echo "enterprise-branch: << pipeline.parameters.enterprise-branch >>"
-            echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
-            echo "rebuild-test-docker-images: << pipeline.parameters.rebuild-test-docker-images >>"
-            echo "build-docker-image: << pipeline.parameters.build-docker-image >>"
+            echo "sanitizer: << pipeline.parameters.sanitizer >>"
             echo "nightly: << pipeline.parameters.nightly >>"
+            echo "arangod-without-v8: << pipeline.parameters.arangod-without-v8 >>"
+            echo "config-definitions: << pipeline.parameters.config-definitions >>"
+            echo "config-definitions-branches: << pipeline.parameters.config-definitions-branches >>"
+            echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
+            echo "extra_args: << pipeline.parameters.extra_args >>"
+            echo "arangosh_args: << pipeline.parameters.arangosh_args >>"
+            echo "rebuild-test-docker-images: << pipeline.parameters.rebuild-test-docker-images >>"
+            echo "test-docker-images: << pipeline.parameters.test-docker-image >>"
+            echo "build-docker-image: << pipeline.parameters.build-docker-image >>"
             echo "replication-two: << pipeline.parameters.replication-two >>"
             echo "c-compiler: << pipeline.parameters.c-compiler >>"
             echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
-            echo "sanitizer: << pipeline.parameters.sanitizer >>"
-            echo "ui: << pipeline.parameters.ui >>"
-            echo "ui-deployments: << pipeline.parameters.ui-deployments >>"
-            echo "ui-testsuites: << pipeline.parameters.ui-testsuites >>"
+            echo "use-minimal-debug-info: << pipeline.parameters.use-minimal-debug-info >>"
       - run:
           name: Checkout
           command: |
@@ -220,21 +212,26 @@ jobs:
             cat parameters.json
 
       - run:
+          name: Install dependencies
+          command: pip install pyyaml click pytest mypy types-PyYAML
+      - run:
+          name: Run config script tests and type checks
+          command: |
+            cd .circleci
+            mypy generate_config.py src
+            python -m pytest tests_unit/ -v
+      - run:
           name: Generate config
           command: |
             if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
               cp .circleci/build_test_image.yml continuation_config.yml
             else
               set -x
-              pip install pyyaml click
               python3 ".circleci/generate_config.py" \
                 --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 --arangosh-args "A<< pipeline.parameters.arangosh_args >>" \
                 --extra-args "A<< pipeline.parameters.extra_args >>" \
-                --default-container "<< pipeline.parameters.test-docker-image >>" \
-                --ui "<< pipeline.parameters.ui >>" \
-                --ui-deployments "<< pipeline.parameters.ui-deployments >>" \
-                --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
+                --test-image "<< pipeline.parameters.test-docker-image >>" \
                 --arangod-without-v8 "<< pipeline.parameters.arangod-without-v8 >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \

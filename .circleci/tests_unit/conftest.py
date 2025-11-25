@@ -64,9 +64,9 @@ def generator_factory():
     """Factory for creating CircleCIGenerator with custom config."""
 
     def _create(
-        ui="",
         replication_two=False,
         create_docker_images=False,
+        test_image="default",
         env_vars=None,
         test_date=None,
         **filter_kwargs,
@@ -74,7 +74,8 @@ def generator_factory():
         filter_criteria = FilterCriteria(**filter_kwargs)
         test_exec = TestExecutionConfig(replication_two=replication_two)
         circleci_config = CircleCIConfig(
-            ui=ui, create_docker_images=create_docker_images
+            create_docker_images=create_docker_images,
+            test_image=test_image,
         )
         config = GeneratorConfig(
             filter_criteria=filter_criteria,
