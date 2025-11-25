@@ -445,15 +445,11 @@ while(true) {
          "_to": \`foo/\${ids2[i]}:v\${ids2[i]}\`,
          "idx": \`\${i}\`,
          "f": ids1[i],
-         "t": ids2[i],
-         "x": ids1,
-         "y": ids2
+         "t": ids2[i]
      });
   }
-console.log(edge_docs)
   try {
     db.is_foo.save(edge_docs);
-console.log("saved")
   } catch (ex) {
     if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
         ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
@@ -463,7 +459,7 @@ console.log("saved")
   }
 }
 `,
-    noiseVolume: 1,
+    noiseVolume: 10,
     noiseDuration: 5,
     preRestoreFn: function() {
       db._createDatabase('test');
@@ -486,38 +482,42 @@ console.log("saved")
         vertices.push([{"_key": `${i}:v${i}`, "foo": `${i}`}]);
       }
       db.foo.save(vertices);
-      //print(db._collections())
-      // todo: remove me again!
-      for (let i = 0; i < 20; i++) {
-        let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
-                              {"start": `foo/${i}:v${i}`}).toArray();
-        print(edges);
-      }
       return {status: true, failed: 0, testresult: {status: true, create: { status: true, message: ""}}};
     },
     postRestoreFn:function() {
       db._useDatabase('test');
       let result = {};
+      let selfEdges = {};
       for (let i = 0; i < 20; i++) {
         let edges = db._query('FOR v, e, p IN 1..1 ANY @start GRAPH "graph" RETURN e',
                               {"start": `foo/${i}:v${i}`}).toArray();
         edges.forEach(oneEdge => {
-          let key = `${oneEdge["f"]} -> ${oneEdge["t"]}`;
+          let key = `${oneEdge["f"]} -> ${oneEdge["t"]} :  ${oneEdge["_rev"]}`;
           let value = (oneEdge["t"] === i) ? -1 : +1;
-          //print(`-------------------------${key} ${JSON.stringify(oneEdge)} `)
-          if (key in result) {
-            result[key] += value;
+          if (oneEdge["f"] === oneEdge["t"]) {
+            if (key in selfEdges) {
+              selfEdges[key] += value;
+            } else {
+              selfEdges[key] = value;
+            }
           } else {
-            result[key] = value;
+            if (key in result) {
+              result[key] += value;
+            } else {
+              result[key] = value;
+            }
           }
         });
       }
-      //print(result)
       let msg = "";
       for (const [edge, count] of Object.entries(result)) {
-        let side = ["_to", "_from"];
-        if (count === 0) {
-          msg += (`missing edge ${edge} in ${count} - ${side[count + 1]}\n`);
+        if (count !== 0) {
+          msg += (`missing edge ${edge} is ${count}\n`);
+        }
+      }
+      for (const [edge, count] of Object.entries(selfEdges)) {
+        if (count !== -2) {
+          msg += (`uneven self-edge: ${edge} is ${count}\n`);
         }
       }
       if (msg !== "") {
