@@ -70,15 +70,6 @@ function communicationSsl (options) {
     opts.oneTestTimeout *= 2;
   }
   let testCases = tu.scanTestPaths(testPaths.communication, options);
-  if (options.skipServerJS && testCases.length === 0) {
-    return {
-      communication: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   testCases = tu.splitBuckets(options, testCases);
 
   return new trs.runLocalInArangoshRunner(opts, 'communication-ssl', {}).run(testCases);
