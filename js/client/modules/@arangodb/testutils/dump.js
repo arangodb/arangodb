@@ -603,6 +603,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       "label": "testHotBackup"
     };
     this.results.createHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "create", cmds, this.instanceManager.rootDir, true);
+    this.results.createHotBackup.failed = this.results.createHotBackup.status? 0:1;
     this.print("done creating backup");
     return this.results.createHotBackup.status;
   }
@@ -638,6 +639,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
         "max-wait-for-restart": 100.0
       };
       this.results.restoreHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
+      this.results.restoreHotBackup.failed = this.results.restoreHotBackup.status ? 0:1;
       this.print("done restoring backup");
     }
     this.instanceManager.reconnect();
@@ -793,14 +795,14 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     try {
       if (ct.run.joinForceBGShells(this.options, this.clientInstances)) {
         this.results['stopStress'] = {
-          failed: false,
+          failed: 0,
           status: true,
           message: `collected ${this.clientInstances.length} clients`,
         };
         return true;
       } else {
         this.results['stopStress'] = {
-          failed: true,
+          failed: 1,
           status: false,
           message: `not all clients could be joined successfully: ${JSON.stringify(this.clientInstances)}`,
         };
@@ -809,7 +811,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     } catch (ex) {
       print(`Failed to run testFunction: ${ex.message}\n${ex.stack}`);
       this.results['stopStress'] = {
-        failed: true,
+        failed: 1,
         status: false,
         message: `Failed to stop stress arangoshs: ${ex.message}\n${ex.stack}`,
       };

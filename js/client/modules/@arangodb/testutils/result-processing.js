@@ -1182,7 +1182,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `crashAnalysisText`: output of debugger in case of crash',
     '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
     '   - `writeXmlReport`:  Write junit xml report files',
-    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
+    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `outXml`',
     ''
   ]);
 };
