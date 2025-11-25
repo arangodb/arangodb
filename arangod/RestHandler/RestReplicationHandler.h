@@ -564,7 +564,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error if the lock has expired or is not found.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<bool> cancelBlockingTransaction(TransactionId id) const;
+  futures::Future<ResultT<bool>> cancelBlockingTransaction(
+      TransactionId id) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Validate that the requesting user has access rights to this route

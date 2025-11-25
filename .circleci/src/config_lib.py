@@ -103,8 +103,10 @@ class Sanitizer(Enum):
     ALUBSAN = "alubsan"
 
     @classmethod
-    def from_string(cls, value: str) -> "Sanitizer":
+    def from_string(cls, value: str) -> Optional["Sanitizer"]:
         """Parse sanitizer from string, case-insensitive."""
+        if value == "none":
+            return None
         return _enum_from_string(cls, value)
 
 
@@ -154,6 +156,7 @@ class TestOptions:
     full: Optional[bool] = None  # Only run in full/nightly builds if True
     coverage: Optional[bool] = None  # Run coverage analysis
     time_limit: Optional[int] = None  # Time limit in seconds
+    architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     def __post_init__(self):
         """Validate option values."""
@@ -233,6 +236,10 @@ class TestOptions:
             if yaml_field in data:
                 kwargs[our_field] = data[yaml_field]
 
+        # Handle arch field (parse single architecture string)
+        if "arch" in data and data["arch"] is not None:
+            kwargs["architecture"] = Architecture.from_string(data["arch"])
+
         return cls(**kwargs)
 
     def merge_with(self, override: Optional["TestOptions"]) -> "TestOptions":
@@ -258,6 +265,7 @@ class TestOptions:
                 full=self.full,
                 coverage=self.coverage,
                 time_limit=self.time_limit,
+                architecture=self.architecture,
             )
 
         # Helper to merge a single field
@@ -277,6 +285,7 @@ class TestOptions:
             full=merge_field(override.full, self.full),
             coverage=merge_field(override.coverage, self.coverage),
             time_limit=merge_field(override.time_limit, self.time_limit),
+            architecture=merge_field(override.architecture, self.architecture),
         )
 
 

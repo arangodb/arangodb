@@ -485,3 +485,122 @@ class TestFilterSuites:
         assert result[1].name == "suite2"
         assert result[2].name == "suite3"
         assert result[3].name == "suite4"
+
+class TestArchitectureFiltering:
+    """Test architecture filtering at job and suite level."""
+
+    def test_job_without_architecture_constraint_included_on_all_archs(self):
+        """Job without architecture field should run on all architectures."""
+        from src.config_lib import Architecture
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(),
+        )
+
+        # Should be included on x64
+        criteria_x64 = FilterCriteria(architecture=Architecture.X64)
+        assert should_include_job(job, criteria_x64)
+
+        # Should be included on aarch64
+        criteria_aarch64 = FilterCriteria(architecture=Architecture.AARCH64)
+        assert should_include_job(job, criteria_aarch64)
+
+    def test_job_with_x64_only_filtered_on_aarch64(self):
+        """Job constrained to x64 should be filtered out on aarch64."""
+        from src.config_lib import Architecture
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(architecture=Architecture.X64),
+        )
+
+        # Should be included on x64
+        criteria_x64 = FilterCriteria(architecture=Architecture.X64)
+        assert should_include_job(job, criteria_x64)
+
+        # Should be excluded on aarch64
+        criteria_aarch64 = FilterCriteria(architecture=Architecture.AARCH64)
+        assert not should_include_job(job, criteria_aarch64)
+
+    def test_job_with_aarch64_only_filtered_on_x64(self):
+        """Job constrained to aarch64 should be filtered out on x64."""
+        from src.config_lib import Architecture
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(architecture=Architecture.AARCH64),
+        )
+
+        # Should be excluded on x64
+        criteria_x64 = FilterCriteria(architecture=Architecture.X64)
+        assert not should_include_job(job, criteria_x64)
+
+        # Should be included on aarch64
+        criteria_aarch64 = FilterCriteria(architecture=Architecture.AARCH64)
+        assert should_include_job(job, criteria_aarch64)
+
+    def test_suite_level_architecture_override(self):
+        """Suite can override job-level architecture constraints."""
+        from src.config_lib import Architecture
+
+        suite_x64_only = SuiteConfig(
+            name="suite_x64",
+            options=TestOptions(architecture=Architecture.X64),
+        )
+        suite_aarch64_only = SuiteConfig(
+            name="suite_aarch64",
+            options=TestOptions(architecture=Architecture.AARCH64),
+        )
+
+        # x64-only suite
+        criteria_x64 = FilterCriteria(architecture=Architecture.X64)
+        assert should_include_suite(suite_x64_only, criteria_x64)
+
+        criteria_aarch64 = FilterCriteria(architecture=Architecture.AARCH64)
+        assert not should_include_suite(suite_x64_only, criteria_aarch64)
+
+        # aarch64-only suite
+        assert not should_include_suite(suite_aarch64_only, criteria_x64)
+        assert should_include_suite(suite_aarch64_only, criteria_aarch64)
+
+    def test_all_tests_mode_does_not_bypass_architecture_filter(self):
+        """all_tests mode should still respect architecture constraints."""
+        from src.config_lib import Architecture
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(architecture=Architecture.X64),
+        )
+
+        # Should NOT be included on wrong architecture, even with all_tests=True
+        criteria = FilterCriteria(
+            all_tests=True,
+            architecture=Architecture.AARCH64
+        )
+        assert not should_include_job(job, criteria)
+
+        # Should be included on correct architecture with all_tests=True
+        criteria = FilterCriteria(
+            all_tests=True,
+            architecture=Architecture.X64
+        )
+        assert should_include_job(job, criteria)
+
+    def test_architecture_filter_without_criteria_architecture(self):
+        """If criteria doesn't specify architecture, don't filter."""
+        from src.config_lib import Architecture
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(architecture=Architecture.X64),
+        )
+
+        # No architecture in criteria - should include
+        criteria = FilterCriteria(architecture=None)
+        assert should_include_job(job, criteria)
