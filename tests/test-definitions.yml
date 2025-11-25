@@ -262,18 +262,15 @@
     suites:
       - rta_makedata:
           args:
-            extraArgs:experimental-vector-index: true
             suffix: single
       - rta_makedata:
           args:
             cluster: true
-            extraArgs:experimental-vector-index: true
             suffix: cluster
       - rta_makedata:
           args:
             cluster: true
             forceOneShard: true
-            extraArgs:experimental-vector-index: true
             suffix: cluster-oneshard
 
 - chaos:

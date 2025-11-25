@@ -303,7 +303,7 @@ function saveToJunitXML(options, results) {
         name: state.xmlName,
       };
       state.xml.elem('testsuite', addOptionalDuration(elm, testSuite));
-      if (testSuite.hasOwnProperty('message')) {
+      if (testSuite.hasOwnProperty('message') && testSuite.message !== "") {
         state.xml.elem('testcase', addOptionalDuration({ name: `whole testsuite ${testSuiteName} failed` }, testSuiteName), false);
         state.xml.elem('failure');
         state.xml.text('<![CDATA[' + stripAnsiColors(testSuite.message) + ']]>\n');
