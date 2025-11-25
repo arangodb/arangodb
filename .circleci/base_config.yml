@@ -752,38 +752,6 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           extraArgs: << parameters.extraArgs >>
 
-  run-hotbackup-tests:
-    docker:
-      - image: << pipeline.parameters.test-docker-image >>
-    parameters:
-      size:
-        type: string
-    resource_class: << parameters.size >>
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Enabled coredumps
-          command: ulimit -c unlimited
-      - run:
-          name: Install dependencies
-          command: |
-            pip install -r scripts/toolbox/requirements.txt --break-system-packages
-      - run:
-          name: Run HotBackup tests
-          command: |
-            python3 scripts/toolbox/HotBackupConsistencyTest.py \
-              --arangod $PWD/build/bin/arangod \
-              --topdir $PWD \
-              --workdir /tmp/test-workdir
-      - run:
-          name: Cleanup
-          command: |
-            rm -rf /tmp/test-workdir
-      - store_artifacts:
-          destination: hotbackup-test
-          path: /tmp/test-workdir
-
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
