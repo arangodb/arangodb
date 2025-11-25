@@ -1,7 +1,7 @@
 devel
 -----
 
-* FE-636: Bump braces from 3.0.2 to 3.0.3.
+* FE-636: bump braces from 3.0.2 to 3.0.3.
 
 * COR-8: Added new metrics to track deployment metadata:
   - `arangodb_metadata_number_of_databases`: Total number of databases
