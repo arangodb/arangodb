@@ -409,7 +409,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     do {
       this.results.restore = this.arangorestore();
       if (!this.instanceManager.checkInstanceAlive()) {
-        this.results.failed = true;
+        this.results.failed = 1;
         return false;
       }
       if (this.results.restore.exitCode === 38) {
@@ -440,7 +440,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
     } catch (ex) {
       print(`Failed to run testFunction: ${ex.message}\n${ex.stack}`);
       this.results[which] = {
-        failed: true,
+        failed: 1,
         status: false,
         message: `Failed to run testFunction: ${ex.message}\n${ex.stack}`,
       };
@@ -623,7 +623,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       });
       if (backupName === undefined) {
         this.print("didn't find a backup matching our pattern!");
-        this.results.restoreHotBackup = { status: false };
+        this.results.restoreHotBackup = { status: false, failed: 1 };
         return false;
       }
       if (!list[backupName].hasOwnProperty("keys") ||
@@ -676,7 +676,8 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       if (!this.dumpFrom('UnitTestsDumpSrc', true)) {
         this.results.dumpSrc = {
           message:  `dumpSrc: failed for UnitTestsDumpSrc`,
-          status: false
+          status: false,
+          failed: 1
         };
         return false;
       }
@@ -702,7 +703,8 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
         if (!this.dumpFrom(db, true)) {
           this.results.RtaDump = {
             message: `RtaDump: failed for ${db}`,
-            status: false
+            status: false,
+            failed: 1
           };
           success = false;
           return false;
@@ -727,7 +729,8 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
         if (!this.restoreTo(db, { separate: true, fromDir: db})) {
           this.results.RtaRestore = {
             message:  `RtaRestore: failed for ${db}`,
-            status: false
+            status: false,
+            failed: 1
           };
           success = false;
           return false;
@@ -746,14 +749,16 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
       let rx = new RegExp(/\\n/g);
       this.results.RtaCheckdata = {
         message: 'Checkdata:\n' + fs.read(logFile).replace(rx, '\n'),
-        status: false
+        status: false,
+        failed: 1
       };
       this.results.failed += 1;
       return false;
     } else {
       fs.remove(logFile);
       this.results.RtaCheckdata = {
-        status: true
+        status: true,
+        failed: 0
       };
       return true;
     }
