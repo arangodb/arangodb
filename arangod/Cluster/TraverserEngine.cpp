@@ -394,9 +394,6 @@ Result BaseTraverserEngine::nextEdgeBatch(size_t cursorId, size_t batchId,
   uint64_t count = 0;
   auto batchSize = cursor._batchSize;
 
-  // TODO not sure if this is necessary here or if it suffices if
-  // variables are injected on cursor creation (in
-  // BaseTraverserEngine::createNewCursor)
   injectVariables(cursor._variables.slice());
 
   builder.add(VPackValue(StaticStrings::GraphQueryEdges));
