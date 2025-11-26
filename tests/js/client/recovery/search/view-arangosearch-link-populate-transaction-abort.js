@@ -51,13 +51,13 @@ if (runSetup === true) {
     waitForSync: true
   });
 
-  var c = tx.collection('UnitTestsRecoveryDummy');
+  var txcol = tx.collection('UnitTestsRecoveryDummy');
   for (let j = 0; j < 100; j ++) {
     let docs = [];
     for (let i = 0; i < 100; i++) {
       docs.push({ a: "foo_" + i, b: "bar_" + i, c: i });
     }
-    c.save(docs);
+    txcol.save(docs);
   }
   IM.debugTerminate();
   return 0;
