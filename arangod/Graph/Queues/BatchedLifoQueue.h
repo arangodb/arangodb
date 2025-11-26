@@ -63,20 +63,20 @@ class BatchedLifoQueue {
     }
   }
 
-  void append(QueueEntry<Step> step) {
-    if (std::holds_alternative<Step>(step)) {
-      arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
-      // if push_front() throws, no harm is done, and the memory usage increase
-      // will be rolled back
-      _queue.push_front(std::move(step));
-      guard.steal();  // now we are responsible for tracking the memory
-    } else {
-      arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Expansion));
-      // if push_front() throws, no harm is done, and the memory usage increase
-      // will be rolled back
-      _queue.push_front(std::move(step));
-      guard.steal();  // now we are responsible for tracking the memory
-    }
+  void append(Step step) {
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
+    // if push_front() throws, no harm is done, and the memory usage increase
+    // will be rolled back
+    _queue.push_front({std::move(step)});
+    guard.steal();  // now we are responsible for tracking the memory
+  }
+
+  void append(Expansion expansion) {
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Expansion));
+    // if push_front() throws, no harm is done, and the memory usage increase
+    // will be rolled back
+    _queue.push_front({std::move(expansion)});
+    guard.steal();  // now we are responsible for tracking the memory
   }
 
   void setStartContent(std::vector<Step> startSteps) {

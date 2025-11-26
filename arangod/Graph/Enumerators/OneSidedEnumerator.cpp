@@ -125,11 +125,13 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     -> void {
   auto tmp = popFromQueue();
   if (std::holds_alternative<Expansion>(tmp)) {
-    _queue.append(tmp);  // push it back
-    auto posPrevious = std::get<Expansion>(tmp).from;
+    auto expansion = std::get<Expansion>(tmp);
+    _queue.append(std::move(std::get<Expansion>(
+        tmp)));  // push it back because iteration could not yet be over
+    auto posPrevious = expansion.from;
     auto& step = _interior.getStepReference(posPrevious);
     auto stepsAdded = _provider.expandToNextBatch(
-        step, posPrevious, [&](Step n) -> void { _queue.append({n}); });
+        step, posPrevious, [&](Step n) -> void { _queue.append(n); });
     if (not stepsAdded) {  // means that nothing was added to the queue in
                            // expandToNextBatch
       _queue.pop();        // now we can pop NextBatch item savely
@@ -186,7 +188,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
           TRI_ASSERT(step.edgeFetched());
         }
         _provider.expand(step, posPrevious,
-                         [&](Step n) -> void { _queue.append({n}); });
+                         [&](Step n) -> void { _queue.append(n); });
       }
     }
   } else if constexpr (std::is_same_v<

@@ -56,14 +56,15 @@ class FifoQueue {
     }
   }
 
-  void append(QueueEntry<Step> step) {
+  void append(Step step) {
     arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
     // if push_back() throws, no harm is done, and the memory usage increase
     // will be rolled back
-    TRI_ASSERT(std::holds_alternative<Step>(step));
-    _queue.push_back(std::move(std::get<Step>(step)));
+    _queue.push_back(std::move(step));
     guard.steal();  // now we are responsible for tracking the memory
   }
+
+  void append(Expansion expansion) { TRI_ASSERT(false); }
 
   void setStartContent(std::vector<Step> startSteps) {
     arangodb::ResourceUsageScope guard(_resourceMonitor,
