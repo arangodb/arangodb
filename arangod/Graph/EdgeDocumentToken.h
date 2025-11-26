@@ -38,80 +38,73 @@ namespace graph {
 /// @brief Pure virtual abstract class to uniquely identify an edge
 struct EdgeDocumentToken {
   EdgeDocumentToken() noexcept
-      : _data(DataSourceId::none(), LocalDocumentId::none()) {}
+      : _cid(DataSourceId::none()), _localDocumentId(LocalDocumentId::none()) {}
 
-  EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept : _data(edtkn._data) {}
+  EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept
+      : _cid(edtkn._cid), _localDocumentId(edtkn._localDocumentId) {}
 
   EdgeDocumentToken(EdgeDocumentToken const& edtkn) noexcept
-      : _data(edtkn._data) {}
+      : _cid(edtkn._cid), _localDocumentId(edtkn._localDocumentId) {}
 
   EdgeDocumentToken(DataSourceId const cid,
                     LocalDocumentId const localDocumentId) noexcept
-      : _data(cid, localDocumentId) {}
+      : _cid(cid), _localDocumentId(localDocumentId) {}
 
   EdgeDocumentToken& operator=(EdgeDocumentToken const& edtkn) {
-    _data = edtkn._data;
+    _cid = edtkn._cid;
+    _localDocumentId = edtkn._localDocumentId;
     return *this;
   }
 
   EdgeDocumentToken& operator=(EdgeDocumentToken&& edtkn) {
-    _data = edtkn._data;
+    _cid = edtkn._cid;
+    _localDocumentId = edtkn._localDocumentId;
     return *this;
   }
 
-  DataSourceId cid() const { return _data.cid; }
+  DataSourceId cid() const { return _cid; }
 
-  LocalDocumentId localDocumentId() const { return _data.localDocumentId; }
+  LocalDocumentId localDocumentId() const { return _localDocumentId; }
 
   bool equals(EdgeDocumentToken const& other) const {
-    return _data.cid == other.cid() &&
-           _data.localDocumentId == other.localDocumentId();
+    return _cid == other.cid() && _localDocumentId == other.localDocumentId();
   }
 
   int compare(EdgeDocumentToken const& other) const {
-    if (_data.cid < other.cid()) {
+    if (_cid < other.cid()) {
       return -1;
     }
-    if (_data.cid > other.cid()) {
+    if (_cid > other.cid()) {
       return 1;
     }
-    if (_data.localDocumentId < other.localDocumentId()) {
+    if (_localDocumentId < other.localDocumentId()) {
       return -1;
     }
-    if (_data.localDocumentId > other.localDocumentId()) {
+    if (_localDocumentId > other.localDocumentId()) {
       return 1;
     }
     return 0;
   }
 
   bool isValid() const {
-    return _data.cid != DataSourceId::none() &&
-           _data.localDocumentId != LocalDocumentId::none();
+    return _cid != DataSourceId::none() &&
+           _localDocumentId != LocalDocumentId::none();
   }
 
   size_t hash() const {
-    return std::hash<LocalDocumentId>{}(_data.localDocumentId) ^
-           (_data.cid.id() << 1);
+    return std::hash<LocalDocumentId>{}(_localDocumentId) ^ (_cid.id() << 1);
   }
 
   std::string toString() const {
-    return std::to_string(_data.cid.id()) + ":" +
-           std::to_string(_data.localDocumentId.id());
+    return std::to_string(_cid.id()) + ":" +
+           std::to_string(_localDocumentId.id());
   }
 
  private:
   /// Identifying information for an edge documents valid on one server
   /// only used on a dbserver or single server
-  struct LocalDocument {
-    DataSourceId cid;
-    LocalDocumentId localDocumentId;
-    ~LocalDocument() = default;
-  };
-
-  /// fixed size union, works for both single server and
-  /// cluster case
-  using TokenData = EdgeDocumentToken::LocalDocument;
-  TokenData _data;
+  DataSourceId _cid;
+  LocalDocumentId _localDocumentId;
 };
 }  // namespace graph
 }  // namespace arangodb
