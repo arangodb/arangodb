@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-636: bump express from 4.18.2 to 4.21.2 (latest version) (ensure non-vulnerable body-parser).
+
 * FE-636: bump braces from 3.0.2 to 3.0.3.
 
 * COR-8: Added new metrics to track deployment metadata:
