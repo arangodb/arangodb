@@ -212,7 +212,7 @@ function makeDataWrapper (options) {
   if (localOptions.cluster && localOptions.dbServers < 3) {
     localOptions.dbServers = 3;
   }
-  localOptions.extraArgs['experimental-vector-index'] = true;
+  localOptions.extraArgs['vector-index'] = true;
 
   SetGlobalExecutionDeadlineTo(localOptions.oneTestTimeout);
   let rc = new rtaMakedataRunner(localOptions, 'rta_makedata_test').run(['rta']);
