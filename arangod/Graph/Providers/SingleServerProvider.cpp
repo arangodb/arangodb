@@ -29,6 +29,7 @@
 #include "Aql/TraversalStats.h"
 #include "Futures/Future.h"
 #include "Futures/Utilities.h"
+#include "Graph/Providers/SingleServer/SingleServerNeighbourProvider.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Logger/LogMacros.h"
 #include "Transaction/Helpers.h"
@@ -170,24 +171,25 @@ auto SingleServerProvider<Step>::expand(
 
 template<class Step>
 auto SingleServerProvider<Step>::expandToNextBatch(
-    Step const& step, size_t previous,
+    CursorId id, Step const& step, size_t previous,
     std::function<void(Step)> const& callback) -> bool {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
-  TRI_ASSERT(not _neighboursStack.empty());
-  auto& last = _neighboursStack.back();
+  auto cursorIt = _neighboursStack.find(id);
+  TRI_ASSERT(cursorIt != _neighboursStack.end());
+  auto& cursor = cursorIt->second;
 
   LOG_TOPIC("c9179", TRACE, Logger::GRAPHS)
       << "<SingleServerProvider> Expanding (next batch) " << vertex.getID();
 
-  if (not last.hasMore(step.getDepth())) {
-    _neighboursStack.pop_back();
+  if (not cursor.hasMore(step.getDepth())) {
+    _neighboursStack.erase(cursorIt);
     return false;
   }
 
   auto count = 0;
-  auto batch = last.next(*this, _stats);
+  auto batch = cursor.next(*this, _stats);
   for (auto const& neighbour : *batch) {
     count++;
     VPackSlice edge = neighbour.edge();
@@ -214,8 +216,8 @@ auto SingleServerProvider<Step>::expandToNextBatch(
     // Note: There is one implementation that used, it, but there is a high
     // probability we do not need it anymore after refactoring is complete.
   }
-  if (count == 0 && not last.hasMore(step.getDepth())) {
-    _neighboursStack.pop_back();
+  if (count == 0 && not cursor.hasMore(step.getDepth())) {
+    _neighboursStack.erase(cursorIt);
     return false;
   }
   return true;
@@ -223,7 +225,8 @@ auto SingleServerProvider<Step>::expandToNextBatch(
 
 template<class Step>
 auto SingleServerProvider<Step>::addExpansionIterator(
-    Step const& step, std::function<void()> const& callback) -> void {
+    CursorId id, Step const& step, std::function<void()> const& callback)
+    -> void {
   TRI_ASSERT(!step.isLooseEnd());
   auto const& vertex = step.getVertex();
 
@@ -235,13 +238,14 @@ auto SingleServerProvider<Step>::addExpansionIterator(
   // new cache for each vertex (what we do here)
   // 2. cache results currently in a resource manager crash when used with this
   // stack
-  _neighboursStack.emplace_back(_opts, _trx.get(), _monitor,
-                                aql::ExecutionBlock::DefaultBatchSize, false);
-  auto& last = _neighboursStack.back();
-  last.rearm(step, _stats);
+  auto cursor = SingleServerNeighbourProvider<Step>{
+      _opts, _trx.get(), _monitor, aql::ExecutionBlock::DefaultBatchSize,
+      false};
+  cursor.rearm(step, _stats);
   if (_ast != nullptr) {
-    last.prepareIndexExpressions(_ast);
+    cursor.prepareIndexExpressions(_ast);
   }
+  _neighboursStack.emplace(id, std::move(cursor));
   callback();
 }
 

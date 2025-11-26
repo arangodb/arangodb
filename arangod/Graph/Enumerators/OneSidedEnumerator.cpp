@@ -128,10 +128,10 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     auto expansion = std::get<Expansion>(tmp);
     _queue.append(std::move(std::get<Expansion>(
         tmp)));  // push it back because iteration could not yet be over
-    auto posPrevious = expansion.from;
-    auto& step = _interior.getStepReference(posPrevious);
-    auto stepsAdded = _provider.expandToNextBatch(
-        step, posPrevious, [&](Step n) -> void { _queue.append(n); });
+    auto& step = _interior.getStepReference(expansion.from);
+    auto stepsAdded =
+        _provider.expandToNextBatch(expansion.id, step, expansion.from,
+                                    [&](Step n) -> void { _queue.append(n); });
     if (not stepsAdded) {  // means that nothing was added to the queue in
                            // expandToNextBatch
       _queue.pop();        // now we can pop NextBatch item savely
@@ -173,8 +173,10 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
       // currently batching only works with cluster case
       if (_queue.isBatched() && ServerState::instance()->isSingleServer()) {
-        _provider.addExpansionIterator(
-            step, [&]() -> void { _queue.append({Expansion{posPrevious}}); });
+        auto cursorId = _nextCursorId++;
+        _provider.addExpansionIterator(cursorId, step, [&]() -> void {
+          _queue.append({Expansion{cursorId, posPrevious}});
+        });
       } else {
         if (!step.edgeFetched()) {
           // NOTE: The step we have should be the first, s.t. we are guaranteed

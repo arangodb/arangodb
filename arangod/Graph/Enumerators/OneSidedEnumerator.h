@@ -189,6 +189,7 @@ class OneSidedEnumerator final : public TraversalEnumerator {
   aql::TraversalStats _stats{};
 
   typename Configuration::Queue _queue;  // The next elements to process
+  CursorId _nextCursorId = 0;
   typename Configuration::Provider _provider;
   typename Configuration::Store _interior;  // This stores all paths processed
   typename Configuration::Validator _validator;

@@ -26,10 +26,13 @@
 
 namespace arangodb::graph {
 
+using CursorId = std::size_t;
+
 /**
    Marker struct for queues to do an expansion when such a type is popped.
  **/
 struct Expansion {
+  CursorId id;
   std::size_t from;
 };
 

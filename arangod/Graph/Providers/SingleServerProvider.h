@@ -24,6 +24,7 @@
 
 #pragma once
 
+#include <unordered_map>
 #include "Graph/Cache/RefactoredTraverserCache.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/Providers/BaseProviderOptions.h"
@@ -85,9 +86,10 @@ class SingleServerProvider {
       -> futures::Future<std::vector<Step*>>;  // rocks
   auto expand(Step const& from, size_t previous,
               std::function<void(Step)> const& callback) -> void;  // index
-  auto addExpansionIterator(Step const& from,
+  using CursorId = size_t;
+  auto addExpansionIterator(CursorId id, Step const& from,
                             std::function<void()> const& callback) -> void;
-  auto expandToNextBatch(Step const& step, size_t previous,
+  auto expandToNextBatch(CursorId id, Step const& step, size_t previous,
                          std::function<void(Step)> const& callback) -> bool;
   auto clear() -> void;
 
@@ -155,7 +157,9 @@ class SingleServerProvider {
   EdgeLookup _edgeLookup;
 
   SingleServerNeighbourProvider<Step> _neighbours;
-  std::vector<SingleServerNeighbourProvider<Step>> _neighboursStack;
+  // TODO rename to something else than stack
+  std::unordered_map<CursorId, SingleServerNeighbourProvider<Step>>
+      _neighboursStack;
   aql::Ast* _ast = nullptr;  // ast from TraversalExecutor
 };
 }  // namespace graph
