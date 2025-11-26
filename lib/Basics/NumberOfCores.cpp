@@ -44,6 +44,15 @@ namespace arangodb {
 
 namespace {
 
+// cgroup v1 file paths
+static constexpr char const* kCgroupV1CpuQuotaPath =
+    "/sys/fs/cgroup/cpu/cpu.cfs_quota_us";
+static constexpr char const* kCgroupV1CpuPeriodPath =
+    "/sys/fs/cgroup/cpu/cpu.cfs_period_us";
+
+// cgroup v2 file paths
+static constexpr char const* kCgroupV2CpuMaxPath = "/sys/fs/cgroup/cpu.max";
+
 std::size_t numberOfCoresImpl() {
 #ifdef TRI_SC_NPROCESSORS_ONLN
   auto n = sysconf(_SC_NPROCESSORS_ONLN);
@@ -71,13 +80,16 @@ std::size_t numberOfEffectiveCoresImpl() {
     }
     case cgroup::Version::V1: {
       try {
-        auto quota = basics::FileUtils::readCgroupFileValue(
-            "/sys/fs/cgroup/cpu/cpu.cfs_quota_us");
-        auto period = basics::FileUtils::readCgroupFileValue(
-            "/sys/fs/cgroup/cpu/cpu.cfs_period_us");
-        if (quota && period) {
-          if (*quota > 0 && *period > 0) {
-            return *quota / *period;
+        if (basics::FileUtils::exists(kCgroupV1CpuQuotaPath) &&
+            basics::FileUtils::exists(kCgroupV1CpuPeriodPath)) {
+          auto quota =
+              basics::FileUtils::readCgroupFileValue(kCgroupV1CpuQuotaPath);
+          auto period =
+              basics::FileUtils::readCgroupFileValue(kCgroupV1CpuPeriodPath);
+          if (quota && period) {
+            if (*quota > 0 && *period > 0) {
+              return *quota / *period;
+            }
           }
         }
       } catch (std::exception const& ex) {
@@ -94,15 +106,16 @@ std::size_t numberOfEffectiveCoresImpl() {
     }
     case cgroup::Version::V2: {
       try {
-        std::string content =
-            basics::FileUtils::slurp("/sys/fs/cgroup/cpu.max");
-        std::istringstream stream(content);
-        std::string quotaStr, periodStr;
-        stream >> quotaStr >> periodStr;
-        if (quotaStr != "max" && !quotaStr.empty() && !periodStr.empty()) {
-          quota = std::stoll(quotaStr);
-          period = std::stoll(periodStr);
-          return quota / period;
+        if (basics::FileUtils::exists(kCgroupV2CpuMaxPath)) {
+          std::string content = basics::FileUtils::slurp(kCgroupV2CpuMaxPath);
+          std::istringstream stream(content);
+          std::string quotaStr, periodStr;
+          stream >> quotaStr >> periodStr;
+          if (quotaStr != "max" && !quotaStr.empty() && !periodStr.empty()) {
+            quota = std::stoll(quotaStr);
+            period = std::stoll(periodStr);
+            return quota / period;
+          }
         }
       } catch (std::exception const& ex) {
         LOG_TOPIC("a3c23", INFO, Logger::FIXME)

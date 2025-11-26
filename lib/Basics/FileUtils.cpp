@@ -29,6 +29,7 @@
 #include <cstdio>
 #include <functional>
 #include <memory>
+#include <string_view>
 #include <utility>
 
 #include "FileUtils.h"
@@ -87,9 +88,9 @@ StatResultType statResultType(TRI_stat_t const& stbuf) {
   return StatResultType::Other;
 }
 
-StatResultType statResultType(std::string const& path) {
+StatResultType statResultType(std::string_view const& path) {
   TRI_stat_t stbuf;
-  int res = TRI_STAT(path.c_str(), &stbuf);
+  int res = TRI_STAT(path.data(), &stbuf);
   if (res != 0) {
     return StatResultType::Error;
   }
@@ -572,7 +573,7 @@ bool isRegularFile(std::string const& path) {
   return ::statResultType(path) == ::StatResultType::File;
 }
 
-bool exists(std::string const& path) {
+bool exists(std::string_view const& path) {
   return ::statResultType(path) != ::StatResultType::Error;
 }
 
