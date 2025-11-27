@@ -171,15 +171,6 @@ class replicationRunner extends trs.runLocalInArangoshRunner {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationFuzz (options) {
-  if (options.skipServerJS) {
-    return {
-      replicationFuzz: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   let testCases = tu.scanTestPaths(testPaths.replication_fuzz, options);
   return new replicationRunner(options, 'replication_fuzz', {"rocksdb.wal-file-timeout-initial": "7200"}).run(testCases);
 }
@@ -189,15 +180,6 @@ function replicationFuzz (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationRandom (options) {
-  if (options.skipServerJS) {
-    return {
-      replicationRandom: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   let testCases = tu.scanTestPaths(testPaths.replication_random, options);
   return new replicationRunner(options, 'replication_random').run(testCases);
 }
@@ -217,15 +199,6 @@ function replicationAql (options) {
 
 var _replicationOngoing = function(path) {
   this.func = function replicationOngoing (options) {
-    if (options.skipServerJS) {
-      return {
-        shell_replication_ongoing: {
-          status: true,
-          message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-        },
-        status: true
-      };
-    }
     let testCases = tu.scanTestPaths(testPaths[path], options);
     return new replicationRunner(options, path).run(testCases);
   };
@@ -241,15 +214,6 @@ const replicationOngoingFrompresent = (new _replicationOngoing('replication_ongo
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationStatic (options) {
-  if (options.skipServerJS) {
-    return {
-      replicationStatic: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   let testCases = tu.scanTestPaths(testPaths.replication_static, options);
   testCases = tu.splitBuckets(options, testCases);
 
@@ -266,15 +230,6 @@ function replicationStatic (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function replicationSync (options) {
-  if (options.skipServerJS) {
-    return {
-      replicationSync: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   let testCases = tu.scanTestPaths(testPaths.replication_sync, options);
   testCases = tu.splitBuckets(options, testCases);
 
