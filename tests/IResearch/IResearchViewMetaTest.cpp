@@ -66,28 +66,24 @@ TEST_F(IResearchViewMetaTest, test_defaults) {
 
   EXPECT_TRUE(false == !meta._consolidationPolicy.policy());
   EXPECT_TRUE(0.4 == meta._consolidationPolicy.properties()
-                        .get("maxSkewThreshold")
-                        .getNumber<double>());
+                         .get("maxSkewThreshold")
+                         .getNumber<double>());
   EXPECT_TRUE(0.5 == meta._consolidationPolicy.properties()
-                        .get("minDeletionRatio")
-                        .getNumber<double>());
+                         .get("minDeletionRatio")
+                         .getNumber<double>());
   EXPECT_TRUE(size_t(8) * (1 << 30) == meta._consolidationPolicy.properties()
                                            .get("segmentsBytesMax")
                                            .getNumber<size_t>());
 
   //  Old consolidationPolicy properties
+  EXPECT_TRUE(
+      meta._consolidationPolicy.properties().get("segmentsMin").isNone());
+  EXPECT_TRUE(
+      meta._consolidationPolicy.properties().get("segmentsMax").isNone());
   EXPECT_TRUE(meta._consolidationPolicy.properties()
-                         .get("segmentsMin")
-                         .isNone());
-  EXPECT_TRUE(meta._consolidationPolicy.properties()
-                         .get("segmentsMax")
-                         .isNone());
-  EXPECT_TRUE(meta._consolidationPolicy.properties()
-                         .get("segmentsBytesFloor")
-                         .isNone());
-  EXPECT_TRUE(meta._consolidationPolicy.properties()
-                         .get("minScore")
-                         .isNone());
+                  .get("segmentsBytesFloor")
+                  .isNone());
+  EXPECT_TRUE(meta._consolidationPolicy.properties().get("minScore").isNone());
 
   EXPECT_TRUE(0 == meta._writebufferActive);
   EXPECT_TRUE(64 == meta._writebufferIdle);
@@ -174,8 +170,8 @@ TEST_F(IResearchViewMetaTest, test_readDefaults) {
          meta._consolidationPolicy.properties().get("type").copyString()));
     EXPECT_TRUE((false == !meta._consolidationPolicy.policy()));
     EXPECT_TRUE(0.4 == meta._consolidationPolicy.properties()
-                          .get("maxSkewThreshold")
-                          .getNumber<double>());
+                           .get("maxSkewThreshold")
+                           .getNumber<double>());
     EXPECT_TRUE(0.5 == meta._consolidationPolicy.properties()
                            .get("minDeletionRatio")
                            .getNumber<double>());
@@ -292,15 +288,10 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
   //  maxSkewThreshold to be between 0. and 1.
   {
     std::string errorField;
-    std::vector<
-      std::pair<
-        std::string,
-        bool>> testcases {
-          { "-1.0", false },
-          { "-0.00002", false },
-          { "1.00000001", false },
-          { "0.5", true }
-        };
+    std::vector<std::pair<std::string, bool>> testcases{{"-1.0", false},
+                                                        {"-0.00002", false},
+                                                        {"1.00000001", false},
+                                                        {"0.5", true}};
 
     for (const auto& testcase : testcases) {
       std::ostringstream oss;
@@ -308,15 +299,16 @@ TEST_F(IResearchViewMetaTest, test_readCustomizedValues) {
 
       oss.str("");
       oss << "{ \"consolidationPolicy\": { \"type\": \"tier\", "
-          "\"maxSkewThreshold\": " << threshold << "  } }";
+             "\"maxSkewThreshold\": "
+          << threshold << "  } }";
       auto json = arangodb::velocypack::Parser::fromJson(oss.str());
 
       EXPECT_TRUE(metaState.init(json->slice(), errorField));
       EXPECT_EQ(expectedResult, meta.init(json->slice(), errorField));
 
       if (!expectedResult)
-        EXPECT_TRUE(
-          (std::string("consolidationPolicy.maxSkewThreshold") == errorField));
+        EXPECT_TRUE((std::string("consolidationPolicy.maxSkewThreshold") ==
+                     errorField));
     }
   }
 
@@ -645,12 +637,8 @@ TEST_F(IResearchViewMetaTest, test_writeDefaults) {
 
   //  Old consolidationPolicy properties
   {
-    std::vector<std::string> properties {
-      "segmentsMin",
-      "segmentsMax",
-      "minScore",
-      "segmentsBytesFloor"
-    };
+    std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                        "minScore", "segmentsBytesFloor"};
     for (const auto& prop : properties) {
       tmpSlice2 = tmpSlice.get(prop);
       ASSERT_TRUE(tmpSlice2.isNone());

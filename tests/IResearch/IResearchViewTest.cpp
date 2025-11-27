@@ -513,12 +513,8 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -620,12 +616,8 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -701,12 +693,8 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -881,12 +869,8 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -986,12 +970,8 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -1066,12 +1046,8 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -1245,12 +1221,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -1350,12 +1322,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -1430,12 +1398,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -1610,12 +1574,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -1715,12 +1675,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());
@@ -1795,12 +1751,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
       //  Old consolidationPolicy properties
       {
-        std::vector<std::string> properties {
-          "segmentsMin",
-          "segmentsMax",
-          "minScore",
-          "segmentsBytesFloor"
-        };
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
         for (const auto& prop : properties) {
           tmpSlice2 = tmpSlice.get(prop);
           ASSERT_TRUE(tmpSlice2.isNone());

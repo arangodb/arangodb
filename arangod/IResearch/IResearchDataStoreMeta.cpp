@@ -114,7 +114,8 @@ createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
 
     auto field = slice.get(kFieldName);
     if (!field.isNone()) {
-      if (!field.isNumber<double>() || field.getNumber<double>() < 0. || field.getNumber<double>() > 1.) {
+      if (!field.isNumber<double>() || field.getNumber<double>() < 0. ||
+          field.getNumber<double>() > 1.) {
         errorField = kFieldName;
 
         return {};
@@ -130,7 +131,8 @@ createConsolidationPolicy<irs::index_utils::ConsolidateTier>(
 
     auto field = slice.get(kFieldName);
     if (!field.isNone()) {
-      if (!field.isNumber<double>() || field.getNumber<double>() < 0. || field.getNumber<double>() > 1.) {
+      if (!field.isNumber<double>() || field.getNumber<double>() < 0. ||
+          field.getNumber<double>() > 1.) {
         errorField = kFieldName;
 
         return {};
