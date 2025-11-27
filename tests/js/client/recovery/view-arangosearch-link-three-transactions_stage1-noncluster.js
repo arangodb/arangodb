@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail, print */
+/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail, print, idx */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -50,22 +50,24 @@ if (runSetup === true) {
   db.UnitTestsRecoveryDummy.save(data);
   db._query("FOR d IN UnitTestsRecoveryView OPTIONS {waitForSync:true} LIMIT 1 RETURN d");
   let clientInstances = [];
-  ct.run.spawnStressArangoshInBG(clientInstances, `
-  const minMax = [
-    [1250, 1500],
-    [1000, 1100],
-    [1500, 2000]
-  ];
-  const db = require('@arangodb').db;
-  let col = db._collection('UnitTestsRecoveryDummy');
-  let data = [];
-  for (let i = minMax[idx][0]; i < minMax[idx][1]; i++) {
-    data.push({a: "foo_" + i, b: "bar_" + i, c: i});
-  }
-  db.UnitTestsRecoveryDummy.save(data);
-  console.log('done')
-`
-, 'doc', 3);
+  ct.run.spawnStressArangoshInBG(
+    clientInstances,
+    function () {
+      const minMax = [
+        [1250, 1500],
+        [1000, 1100],
+        [1500, 2000]
+      ];
+      const db = require('@arangodb').db;
+      let col = db._collection('UnitTestsRecoveryDummy');
+      let data = [];
+      for (let i = minMax[idx][0]; i < minMax[idx][1]; i++) {
+        data.push({a: "foo_" + i, b: "bar_" + i, c: i});
+      }
+      db.UnitTestsRecoveryDummy.save(data);
+      console.log('done');
+      return 0;
+    }, 'doc', 3);
   let wait = 100;
   while (wait > 0) {
     wait--;

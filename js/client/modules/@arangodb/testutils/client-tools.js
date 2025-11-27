@@ -408,15 +408,17 @@ function spawnStressArangoshInBG (arangoshList, snippet, key, volume) {
     let testFn = fs.getTempFile() + `_${i}`;
     fs.write(testFn, "x");
     let mySnippet = `const fs = require('fs');
-         fs.remove('${testFn}');
-         let volume = ${volume};
-         let idx = ${i};
-         let endpoint = '${IM.endpoint}';
-         let passvoid = '${IM.options.password}';
-         while (fs.exists('${globalFn}')) {
-            require('internal').sleep(0.1);
-         }
-         ${snippet}`;
+fs.remove('${testFn}');
+let volume = ${volume};
+let idx = ${i};
+let endpoint = '${IM.endpoint}';
+let passvoid = '${IM.options.password}';
+while (fs.exists('${globalFn}')) {
+   require('internal').sleep(0.1);
+}
+let testfunc = ${String(snippet)};
+testfunc();
+`;
     arangoshList.push(
       launchPlainSnippetInBG(mySnippet, key + `_${i}`)
     );

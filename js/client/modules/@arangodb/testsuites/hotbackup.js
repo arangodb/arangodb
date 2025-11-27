@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print, arango, db */
+/* global print, arango, db, idx */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -240,24 +240,25 @@ function hotBackup_views (options) {
   let which = "hot_backup_views";
   return hotBackup_load_backend(options, which, {
     // Insert documents into test_collection:
-    noiseScript: `
-let i=0;
-while(true) {
-  console.log('Noise starts');
-  try {
-    db._useDatabase('test_view');
-    for (; i < 10000; i++) {
-        db.test_collection.insert({"number": i, "field1": "stone"});
-    }
-    print('done');
-    break;
-  }
-  catch (ex) {
-    console.log(ex);
-    break;
-  }
-}
-`,
+    noiseScript: function () {
+      let i=0;
+      while(true) {
+        console.log('Noise starts');
+        try {
+          db._useDatabase('test_view');
+          for (; i < 10000; i++) {
+            db.test_collection.insert({"number": i, "field1": "stone"});
+          }
+          print('done');
+          break;
+        }
+        catch (ex) {
+          console.log(ex);
+          break;
+        }
+        return 0;
+      }
+    },
     noiseVolume: 1,
     // :/ making sure that something has happened from the
     // inserter thread
@@ -363,24 +364,25 @@ function hotBackup_aql (options) {
 
   let which = "hot_backup_aql";
   return hotBackup_load_backend(options, which, {
-    noiseScript: `
-const errors = require('internal').errors;
-while (true) {
-  try {
-    db._query("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",
-                                bind_vars={"idx": \`\${idx}\`}).toArray();
-  } catch (ex) {
-    if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
-        ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
-      break;
-    }
-    else {
-      console.error(ex);
-      throw ex;
-    }
-  }
-}
-`,
+    noiseScript: function () {
+      const errors = require('internal').errors;
+      while (true) {
+        try {
+          db._query("FOR i IN 1..1000 INSERT {thrd: @idx, i} INTO test_collection",
+                    {"idx": `${idx}`}).toArray();
+        } catch (ex) {
+          if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
+              ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+            break;
+          }
+          else {
+            console.error(ex);
+            throw ex;
+          }
+        }
+      }
+      return 0;
+    },
     noiseVolume: 20,
     noiseDuration: 15,
     preRestoreFn: function() {
@@ -420,41 +422,42 @@ function hotBackup_smart_graphs (options) {
 
   let which = "hot_backup_load";
   return hotBackup_load_backend(options, which, {
-    noiseScript: `
-db._useDatabase('test');
-const errors = require('internal').errors;
-function shuffleArray(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-}
-let ids1 = [...Array(20).keys()];
-let ids2 = [...Array(20).keys()];
-while(true) {
-  shuffleArray(ids1);
-  shuffleArray(ids2);
-  let edge_docs = [];
-  for (let i = 0; i < 20; i++) {
-     edge_docs.push({
-        "_from": \`foo/\${ids1[i]}:v\${ids1[i]}\`,
-         "_to": \`foo/\${ids2[i]}:v\${ids2[i]}\`,
-         "idx": \`\${i}\`,
-         "f": ids1[i],
-         "t": ids2[i]
-     });
-  }
-  try {
-    db.is_foo.save(edge_docs);
-  } catch (ex) {
-    if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
-        ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
-      break;
-    }
-    throw ex;
-  }
-}
-`,
+    noiseScript: function() {
+      db._useDatabase('test');
+      const errors = require('internal').errors;
+      function shuffleArray(array) {
+        for (let i = array.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [array[i], array[j]] = [array[j], array[i]];
+        }
+      }
+      let ids1 = [...Array(20).keys()];
+      let ids2 = [...Array(20).keys()];
+      while(true) {
+        shuffleArray(ids1);
+        shuffleArray(ids2);
+        let edge_docs = [];
+        for (let i = 0; i < 20; i++) {
+          edge_docs.push({
+            "_from": `foo/${ids1[i]}:v${ids1[i]}`,
+            "_to": `foo/${ids2[i]}:v${ids2[i]}`,
+            "idx": `${i}`,
+            "f": ids1[i],
+            "t": ids2[i]
+          });
+        }
+        try {
+          db.is_foo.save(edge_docs);
+        } catch (ex) {
+          if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
+              ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+            break;
+          }
+          throw ex;
+        }
+      }
+      return 0;
+    },
     noiseVolume: 10,
     noiseDuration: 5,
     preRestoreFn: function() {
@@ -539,29 +542,29 @@ function hotBackup_el_cheapo (options) {
 
   let which = "hot_backup_el_cheapo";
   return hotBackup_load_backend(options, which, {
-    noiseScript: `
-const errors = require('internal').errors;
-let collections = ${JSON.stringify(collections)};
-let i = 0;
-while (true) {
-  try {
-    let txn = db._createTransaction({collections: { write: collections}});
-    collections.forEach(col => {
-      let trx_col = txn.collection(col);
-      trx_col.insert({"trd": idx, "i": i});
-    });
-    txn.commit();
-    i += 1;
-  } catch (ex) {
-    if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
-        ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
-  // todo: write i
-      break;
-    }
-  }
-}
-
-`,
+    noiseScript: function () {
+      const errors = require('internal').errors;
+      let collections = args.collections;
+      let i = 0;
+      while (true) {
+        try {
+          let txn = db._createTransaction({collections: { write: collections}});
+          collections.forEach(col => {
+            let trx_col = txn.collection(col);
+            trx_col.insert({"trd": idx, "i": i});
+          });
+          txn.commit();
+          i += 1;
+        } catch (ex) {
+          if (ex.errorNum === errors.ERROR_SHUTTING_DOWN.code ||
+              ex.errorNum === errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+            // todo: write i
+            break;
+          }
+        }
+      }
+      return 0;
+    },
     noiseVolume: 10,
     noiseDuration: 1,
     args: args,
