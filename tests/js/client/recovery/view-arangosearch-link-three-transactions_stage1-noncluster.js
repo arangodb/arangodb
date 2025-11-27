@@ -26,7 +26,6 @@
 const db = require('@arangodb').db;
 const internal = require('internal');
 const jsunity = require('jsunity');
-const tasks = require("@arangodb/tasks");
 const ct = require('@arangodb/testutils/client-tools');
 let IM = global.instanceManager;
 const RED = internal.COLORS.COLOR_RED;
@@ -74,7 +73,7 @@ if (runSetup === true) {
     // checking if server is alive.
     db._query("FOR d IN UnitTestsRecoveryDummy LIMIT 1 RETURN d");
   }
-  
+
   try {
     if (ct.run.joinForceBGShells(IM.options, clientInstances)) {
       print(`collected ${clientInstances.length} clients`);
