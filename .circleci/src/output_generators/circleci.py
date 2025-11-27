@@ -565,6 +565,7 @@ class CircleCIGenerator(OutputGenerator):
             "size": resource_class,
             "cluster": is_cluster,
             "requires": build_jobs,
+            "sanitizer": self._get_sanitizer_param(build_config),
             "arangosh_args": "A "
             + json.dumps(
                 job.arguments.arangosh_args + self.config.test_execution.arangosh_args
@@ -602,6 +603,14 @@ class CircleCIGenerator(OutputGenerator):
     def _get_bucket_count(self, job: TestJob) -> Optional[int]:
         """Get bucket count from job definition (before applying overrides)."""
         return job.get_bucket_count()
+
+    def _get_sanitizer_param(self, build_config: BuildConfig) -> str:
+        """Get sanitizer parameter string based on build variant."""
+        if build_config.build_variant.is_tsan:
+            return "tsan"
+        elif build_config.build_variant.is_alubsan:
+            return "alubsan"
+        return ""
 
     def _create_rta_test_jobs(
         self,
@@ -650,6 +659,7 @@ class CircleCIGenerator(OutputGenerator):
                 "requires": build_jobs,
                 "rta-branch": rta_branch,
                 "buckets": bucket_count,
+                "sanitizer": self._get_sanitizer_param(build_config),
             }
             result_jobs.append({"run-rta-tests": job_dict})
 
