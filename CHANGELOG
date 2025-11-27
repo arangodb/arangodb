@@ -1,6 +1,8 @@
 devel
 -----
 
+* COR-45: Added support for index hints in vector search queries.
+
 * FE-636: bump webpack-dev-middleware from 5.3.3 to 5.3.4.
 
 * FE-636: bump braces from 3.0.2 to 3.0.3.
