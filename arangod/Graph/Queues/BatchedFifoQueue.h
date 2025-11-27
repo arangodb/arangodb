@@ -52,15 +52,18 @@ class BatchedFifoQueue {
 
   void clear() {
     if (!_queue.empty()) {
-      _resourceMonitor.decreaseMemoryUsage(sizeof(QueueEntry<Step>) *
-                                           _queue.size());
+      _resourceMonitor.decreaseMemoryUsage(_queue.size() * sizeof(Step));
       _queue.clear();
+    }
+    if (!_continuationQueue.empty()) {
+      _resourceMonitor.decreaseMemoryUsage(_continuationQueue.size() *
+                                           sizeof(Expansion));
+      _continuationQueue.clear();
     }
   }
 
   void append(Step step) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor,
-                                       sizeof(QueueEntry<Step>));
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Step));
     // if push_back() throws, no harm is done, and the memory usage increase
     // will be rolled back
     _queue.push_back({std::move(step)});
@@ -68,110 +71,110 @@ class BatchedFifoQueue {
   }
 
   void append(Expansion expansion) {
-    arangodb::ResourceUsageScope guard(_resourceMonitor,
-                                       sizeof(QueueEntry<Step>));
-    // if push_front() throws, no harm is done, and the memory usage increase
-    // will be rolled back
-    _queue.push_back({std::move(expansion)});
+    arangodb::ResourceUsageScope guard(_resourceMonitor, sizeof(Expansion));
+    auto cursorId = expansion.id;
+    if (_biggestCursorId.has_value() && cursorId <= _biggestCursorId.value()) {
+      // iterator already existed, put it at front! of continuation queue
+      // if push_front() throws, no harm is done, and the memory usage increase
+      // will be rolled back
+      _continuationQueue.push_front(std::move(expansion));
+    } else {
+      // new iterator
+      _biggestCursorId = cursorId;
+      // if push_front() throws, no harm is done, and the memory usage increase
+      // will be rolled back
+      _continuationQueue.push_back(std::move(expansion));
+    }
     guard.steal();  // now we are responsible for tracking the memory
   }
 
   void setStartContent(std::vector<Step> startSteps) {
-    arangodb::ResourceUsageScope guard(
-        _resourceMonitor, sizeof(QueueEntry<Step>) * startSteps.size());
+    arangodb::ResourceUsageScope guard(_resourceMonitor,
+                                       sizeof(Step) * startSteps.size());
     TRI_ASSERT(_queue.empty());
     for (auto& s : startSteps) {
       // For FIFO just append to the back,
       // The handed in vector will then be processed from start to end.
       // And appending would queue BEFORE items in the queue.
-      _queue.push_back({std::move(s)});
+      _queue.push_back(std::move(s));
     }
     guard.steal();  // now we are responsible for tracking the memory
   }
 
   bool firstIsVertexFetched() const {
-    if (!isEmpty()) {
+    if (!_queue.empty()) {
       auto const& first = _queue.front();
-      if (std::holds_alternative<Step>(first)) {
-        return std::get<Step>(first).vertexFetched();
-      } else {
-        return true;
-      }
+      return first.vertexFetched();
+    }
+    if (!_continuationQueue.empty()) {
+      return true;
     }
     return false;
   }
 
   bool hasProcessableElement() const {
-    if (!isEmpty()) {
+    if (!_queue.empty()) {
       auto const& first = _queue.front();
-      if (std::holds_alternative<Step>(first)) {
-        return std::get<Step>(first).isProcessable();
-      }
+      return first.isProcessable();
     }
-
     return false;
   }
 
-  size_t size() const { return _queue.size(); }
+  size_t size() const { return _queue.size() + _continuationQueue.size(); }
 
-  bool isEmpty() const { return _queue.empty(); }
+  bool isEmpty() const { return _queue.empty() && _continuationQueue.empty(); }
 
   std::vector<Step*> getLooseEnds() {
     TRI_ASSERT(!hasProcessableElement());
 
     std::vector<Step*> steps;
-    for (auto& item : _queue) {
-      if (std::holds_alternative<Step>(item)) {
-        auto step = std::get<Step>(item);
-        if (!step.isProcessable()) {
-          steps.emplace_back(&step);
-        }
+    for (auto& step : _queue) {
+      if (!step.isProcessable()) {
+        steps.emplace_back(&step);
       }
     }
-
     return steps;
   }
 
   Step const& peek() const {
     // Currently only implemented and used in WeightedQueue
     TRI_ASSERT(false);
-    auto const& first = _queue.front();
-    return std::get<Step>(first);
+    return _queue.front();
   }
 
   QueueEntry<Step> pop() {
     TRI_ASSERT(!isEmpty());
+    // if queue is empty, pop next iterator
+    if (_queue.empty()) {
+      auto first = std::move(_continuationQueue.front());
+      LOG_TOPIC("0cda4", TRACE, Logger::GRAPHS)
+          << "<BatchedFifoQueue> Pop: next batch";
+      _resourceMonitor.decreaseMemoryUsage(sizeof(Expansion));
+      _continuationQueue.pop_front();
+      return {first};
+    }
     auto first = std::move(_queue.front());
-    LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
-        << "<BatchedFifoQueue> Pop: "
-        << (std::holds_alternative<Step>(first)
-                ? std::get<Step>(first).toString()
-                : "next batch");
-    _resourceMonitor.decreaseMemoryUsage(sizeof(QueueEntry<Step>));
+    LOG_TOPIC("9c2a4", TRACE, Logger::GRAPHS)
+        << "<BatchedFifoQueue> Pop: " << first.toString();
+    _resourceMonitor.decreaseMemoryUsage(sizeof(Step));
     _queue.pop_front();
-    return first;
+    return {first};
   }
 
   std::vector<Step*> getStepsWithoutFetchedVertex() {
     std::vector<Step*> steps{};
-    for (auto& item : _queue) {
-      if (std::holds_alternative<Step>(item)) {
-        auto& step = std::get<Step>(item);
-        if (!step.vertexFetched()) {
-          steps.emplace_back(&step);
-        }
+    for (auto& step : _queue) {
+      if (!step.vertexFetched()) {
+        steps.emplace_back(&step);
       }
     }
     return steps;
   }
 
   void getStepsWithoutFetchedEdges(std::vector<Step*>& steps) {
-    for (auto& item : _queue) {
-      if (std::holds_alternative<Step>(item)) {
-        auto step = std::get<Step>(item);
-        if (!step.edgeFetched() && !step.isUnknown()) {
-          steps.emplace_back(&step);
-        }
+    for (auto& step : _queue) {
+      if (!step.edgeFetched() && !step.isUnknown()) {
+        steps.emplace_back(&step);
       }
     }
   }
@@ -180,14 +183,17 @@ class BatchedFifoQueue {
 
  private:
   /// @brief queue datastore
-  std::deque<QueueEntry<Step>> _queue;
+  std::deque<Step> _queue;
+  std::deque<Expansion> _continuationQueue;
+  std::optional<size_t> _biggestCursorId;
 
   /// @brief query context
   arangodb::ResourceMonitor& _resourceMonitor;
 };
 template<class StepType, typename Inspector>
 auto inspect(Inspector& f, BatchedFifoQueue<StepType>& x) {
-  return f.object(x).fields(f.field("queue", x._queue));
+  return f.object(x).fields(f.field("queue", x._queue),
+                            f.field("continuations", x._continuationQueue));
 }
 
 }  // namespace graph
