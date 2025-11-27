@@ -92,7 +92,6 @@ function VectorIndexHintsSuite() {
       }
       collection.insert(docs);
 
-      // Create multiple vector indexes with different metrics
       collection.ensureIndex({
         name: "vector_l2",
         type: "vector",
@@ -113,24 +112,6 @@ function VectorIndexHintsSuite() {
           dimension: dimension,
           nLists: 3,
         },
-      });
-
-      collection.ensureIndex({
-        name: "vector_cosine",
-        type: "vector",
-        fields: ["vectorCosine"],
-        params: {
-          metric: "cosine",
-          dimension: dimension,
-          nLists: 5,
-        },
-      });
-
-      // Also create a regular persistent index for mixed tests
-      collection.ensureIndex({
-        type: "persistent",
-        name: "value_idx",
-        fields: ["value"],
       });
     },
 
@@ -226,4 +207,3 @@ function VectorIndexHintsSuite() {
 jsunity.run(VectorIndexHintsSuite);
 
 return jsunity.done();
-
