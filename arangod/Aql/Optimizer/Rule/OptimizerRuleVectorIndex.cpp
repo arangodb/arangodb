@@ -234,43 +234,40 @@ AstNode* getApproxNearAttributeExpression(
 
 std::vector<std::shared_ptr<Index>> getVectorIndexes(
     auto& enumerateCollectionNode, IndexHint const& indexHint) {
+  auto const& indexes = enumerateCollectionNode->collection()->indexes();
+  if (indexHint.isSimple() && indexHint.isForced()) {
+    auto& idxNames = indexHint.candidateIndexes();
+    for (auto const& idxName : idxNames) {
+      if (auto foundHintedIndexIt = std::ranges::find_if(
+              indexes,
+              [&idxName](const auto& elem) { return elem->name() == idxName; });
+          foundHintedIndexIt != indexes.end()) {
+        return {*foundHintedIndexIt};
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+            std::format("Could not use hinted vector index `{}`", idxName));
+      }
+    }
+  }
+
   std::vector<std::shared_ptr<Index>> vectorIndexes;
-  auto indexes = enumerateCollectionNode->collection()->indexes();
   std::ranges::copy_if(
       indexes, std::back_inserter(vectorIndexes), [](auto const& elem) {
         return elem->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX;
       });
 
+  // Reorder indexes
   if (indexHint.isSimple()) {
     auto& idxNames = indexHint.candidateIndexes();
-    if (indexHint.isForced()) {
-      for (auto const& idxName : idxNames) {
-        if (auto foundHintedIndexIt =
-                std::ranges::find_if(indexes,
-                                     [&idxName](const auto& elem) {
-                                       return elem->name() == idxName;
-                                     });
-            foundHintedIndexIt != indexes.end()) {
-          return {*foundHintedIndexIt};
-        } else {
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-              std::format("Could not use hinted vector index `{}`", idxName));
-        }
-      }
-    } else {
-      // If not forced just reorder
-      auto currentIt = vectorIndexes.begin();
-      for (auto const& idxName : idxNames) {
-        if (auto foundHintedIndexIt =
-                std::ranges::find_if(indexes,
-                                     [&idxName](const auto& elem) {
-                                       return elem->name() == idxName;
-                                     });
-            foundHintedIndexIt != indexes.end()) {
-          auto oldIt = currentIt;
-          std::iter_swap(oldIt, foundHintedIndexIt);
-        }
+    auto currentIt = vectorIndexes.begin();
+    for (auto const& idxName : idxNames) {
+      if (auto foundHintedIndexIt = std::ranges::find_if(
+              vectorIndexes,
+              [&idxName](const auto& elem) { return elem->name() == idxName; });
+          foundHintedIndexIt != vectorIndexes.end()) {
+        auto oldIt = currentIt;
+        std::iter_swap(oldIt, foundHintedIndexIt);
         currentIt++;
       }
     }
