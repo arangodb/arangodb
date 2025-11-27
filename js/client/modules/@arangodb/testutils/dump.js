@@ -766,35 +766,7 @@ class DumpRestoreHelper extends trs.runLocalInArangoshRunner {
 
   spawnStressArangosh(snippet, key, volume) {
     global.instanceManager = this.instanceManager;
-    let globalFn = fs.getTempFile();
-    fs.write(globalFn, "x");
-    let testFns = [];
-    for (let i=0; i < volume; i++) {
-      let testFn = fs.getTempFile() + `_${i}`;
-      fs.write(testFn, "x");
-      let mySnippet = `const fs = require('fs');
-         fs.remove('${testFn}');
-         let volume = ${volume};
-         let idx = ${i};
-         let endpoint = '${this.instanceManager.endpoint}';
-         let passvoid = '${this.instanceManager.options.password}';
-         while (fs.exists('${globalFn}')) {
-            require('internal').sleep(0.1);
-         }
-         ${snippet}`;
-      this.clientInstances.push(
-        ct.run.launchPlainSnippetInBG(mySnippet, key + `_${i}`)
-      );
-    }
-    // wait for the spawned clients to reach the entry gate:
-    testFns.forEach(testFn => {
-      while (fs.exists(testFn)) {
-        sleep(0.1);
-      }
-    });
-    // GO!
-    fs.remove(globalFn);
-    return true;
+    return spawnStressArangoshInBG(this.clientInstances, snippet, key, volume);
   }
   stopStressArangosh() {
     try {
