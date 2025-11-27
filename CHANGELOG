@@ -1,9 +1,9 @@
 devel
 -----
 
-* COR-13: New iresearch consolidation policy
+* COR-13: New ArangoSearch consolidation policy
   - new algorithm that uses maxSkewThreshold and minDeletionRatio
-  - Bumped iresearch
+  - Bumped ArangoSearch
 
 * FE-636: bump webpack-dev-middleware from 5.3.3 to 5.3.4.
 
