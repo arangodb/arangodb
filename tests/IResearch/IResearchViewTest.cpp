@@ -506,23 +506,31 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
+
+      //  New properties
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -601,23 +609,29 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -672,23 +686,29 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -842,23 +862,29 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -937,23 +963,29 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1007,23 +1039,29 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1176,23 +1214,29 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1271,23 +1315,29 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1341,23 +1391,29 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1511,23 +1567,29 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1606,23 +1668,29 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
 
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&
@@ -1676,23 +1744,29 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 1000 == slice.get("commitIntervalMsec").getNumber<size_t>());
     {  // consolidation policy
       tmpSlice = slice.get("consolidationPolicy");
-      EXPECT_TRUE(tmpSlice.isObject() && 6 == tmpSlice.length());
+      EXPECT_TRUE(tmpSlice.isObject() && 4 == tmpSlice.length());
       tmpSlice2 = tmpSlice.get("type");
       EXPECT_TRUE(tmpSlice2.isString() &&
                   std::string("tier") == tmpSlice2.copyString());
-      tmpSlice2 = tmpSlice.get("segmentsMin");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 50 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsMax");
-      EXPECT_TRUE(tmpSlice2.isNumber() && 200 == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("segmentsBytesFloor");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (size_t(24) * (1 << 20)) == tmpSlice2.getNumber<size_t>());
+
+      //  Old consolidationPolicy properties
+      {
+        std::vector<std::string> properties{"segmentsMin", "segmentsMax",
+                                            "minScore", "segmentsBytesFloor"};
+        for (const auto& prop : properties) {
+          tmpSlice2 = tmpSlice.get(prop);
+          ASSERT_TRUE(tmpSlice2.isNone());
+        }
+      }
+      tmpSlice2 = tmpSlice.get("maxSkewThreshold");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.4 == tmpSlice2.getNumber<double>()));
+      tmpSlice2 = tmpSlice.get("minDeletionRatio");
+      EXPECT_TRUE(tmpSlice2.isNumber<double>() &&
+                  (0.5 == tmpSlice2.getNumber<double>()));
       tmpSlice2 = tmpSlice.get("segmentsBytesMax");
       EXPECT_TRUE(tmpSlice2.isNumber() &&
                   (size_t(8) * (1 << 30)) == tmpSlice2.getNumber<size_t>());
-      tmpSlice2 = tmpSlice.get("minScore");
-      EXPECT_TRUE(tmpSlice2.isNumber() &&
-                  (0. == tmpSlice2.getNumber<double>()));
     }
     tmpSlice = slice.get("writebufferActive");
     EXPECT_TRUE(tmpSlice.isNumber<size_t>() &&

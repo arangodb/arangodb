@@ -445,13 +445,19 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(5000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(50, properties.consolidationPolicy.segmentsMin);
-      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
       assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
 
       meta = {
         commitIntervalMsec: 12345,
@@ -1244,13 +1250,20 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(5000, properties.consolidationIntervalMsec);
       assertTrue(Object === properties.consolidationPolicy.constructor);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(50, properties.consolidationPolicy.segmentsMin);
-      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
       assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
+
       assertTrue(Object === properties.links.constructor);
       assertEqual(0, Object.keys(properties.links).length);
     },
@@ -1317,13 +1330,19 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(42, properties.cleanupIntervalStep);
       assertEqual(12345, properties.commitIntervalMsec);
       assertEqual(5000, properties.consolidationIntervalMsec);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(50, properties.consolidationPolicy.segmentsMin);
-      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
       assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
 
       meta = {};
       if (isEnterprise) {
@@ -1377,13 +1396,19 @@ function IResearchFeatureDDLTestSuite1() {
       assertEqual(442, properties.cleanupIntervalStep);
       assertEqual(1000, properties.commitIntervalMsec);
       assertEqual(5000, properties.consolidationIntervalMsec);
-      assertEqual(6, Object.keys(properties.consolidationPolicy).length);
+      assertEqual(4, Object.keys(properties.consolidationPolicy).length);
       assertEqual("tier", properties.consolidationPolicy.type);
-      assertEqual(50, properties.consolidationPolicy.segmentsMin);
-      assertEqual(200, properties.consolidationPolicy.segmentsMax);
+
+      //  Old consolidationPolicy properties
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMin));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsMax));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.segmentsBytesFloor));
+      assertFalse(Object.hasOwnProperty(properties.consolidationPolicy.minScore));
+
+      //  New consolidationPolicy properties
       assertEqual(8 * (1 << 30), properties.consolidationPolicy.segmentsBytesMax);
-      assertEqual(24 * (1 << 20), properties.consolidationPolicy.segmentsBytesFloor);
-      assertEqual((0.0).toFixed(6), properties.consolidationPolicy.minScore.toFixed(6));
+      assertEqual(0.4, properties.consolidationPolicy.maxSkewThreshold);
+      assertEqual(0.5, properties.consolidationPolicy.minDeletionRatio);
     },
 
     testLinkModify: function () {
@@ -2325,6 +2350,7 @@ function IResearchFeatureDDLTestSuite2() {
         assertTrue(undefined === propertiesReturned.links[colName].inBackground);
       }
     },
+
     testCachedColumns: function () {
       const colName = 'TestCollectionCache';
       const viewName = 'TestViewCache';
