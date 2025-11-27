@@ -48,24 +48,19 @@ parameters:
   sanitizer:
     type: string
     default: ""
-  ui:
-    type: string
-    default: "on"
-  ui-deployment:
-    type: string
-    default: ""
-  ui-testsuites:
-    type: string
-    default: ""
-  rta-branch:
-    type: string
-    default: "main"
   c-compiler:
     type: string
     default: "clang"
   cxx-compiler:
     type: string
     default: "clang++"
+  config-definitions:
+    type: string
+    default: ""
+  config-definitions-branches:
+    type: string
+    default: ""
+
   # these are basically global constants
   build-targets:
     type: string
@@ -78,17 +73,10 @@ parameters:
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
-  config-definitions: #dummy. we don't need this here but are required to.
-    type: string
-    default: tests/test-definitions.txt
-  config-definitions-branches: #dummy. we don't need this here but are required to.
-    type: string
-    default: ""
   # only used by the kafka driver tests
   kafkaHostList:
     type: string
     default: "kafka-1:19092,kafka-2:29092,kafka-3:39092"
-
 
 
 .shared-test-job-parameters: &shared-test-job-parameters
@@ -179,6 +167,32 @@ commands:
             export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no"
             git clone --single-branch --branch << parameters.driver-git-branch >> << parameters.driver-git-repo >>
 
+  fetch-aux-binaries:
+    parameters:
+      arch:
+        type: string
+      repo-path:
+        type: string
+    steps:
+      - run:
+          name: Fetch aux binaries
+          command: |
+            set -x
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" <<parameters.repo-path>>/VERSIONS)
+            RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+" <<parameters.repo-path>>/VERSIONS)
+            RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" <<parameters.repo-path>>/VERSIONS)
+            ARANGO_MAJOR_MINOR_VERSION=$(grep -Po "\K\d+\.\d+" <<parameters.repo-path>>/ARANGO-VERSION)
+            arch="<<parameters.arch>>"
+            if test "$arch" == "x64"; then
+              arch="amd64"
+            elif test "$arch" == "aarch64"; then
+              arch="arm64"
+            fi
+            curl -s -L -o <<parameters.repo-path>>/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
+            chmod a+x <<parameters.repo-path>>/build/bin/arangodb
+
+            curl -s -L -o <<parameters.repo-path>>/build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
+            chmod a+x <<parameters.repo-path>>/build/bin/rclone-arangodb
   run-test:
     parameters:
       suiteName:
@@ -504,33 +518,11 @@ jobs:
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 16 --target $TARGETS
       - when:
-          condition:
-            or:
-              -  not:
-                  equal: [ << pipeline.parameters.ui >>, ""]
-              - << pipeline.parameters.create-docker-images >>
+          condition: << pipeline.parameters.create-docker-images >>
           steps:
-            - run:
-                root: .
-                name: get aux binaries
-                command: |
-                  set -x
-                  STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" VERSIONS)
-                  RCLONE_GO=$(grep -Po "RCLONE_GO \"\K\d+\.\d+\.\d+\-[0-9a-h]+" VERSIONS)
-                  RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" VERSIONS)
-                  ARANGO_MAJOR_MINOR_VERSION=$(grep -Po "\K\d+\.\d+" ARANGO-VERSION)
-                  arch="<<parameters.arch>>"
-                  if test "$arch" == "x64"; then
-                    arch="amd64"
-                  elif test "$arch" == "aarch64"; then
-                    arch="arm64"
-                  fi
-                  curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
-                  chmod a+x build/bin/arangodb
-                  if [ << parameters.enterprise >> = true ]; then
-                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/rclone-arangodb/releases/download/golang-${RCLONE_GO}/golang-${RCLONE_GO}_${ARANGO_MAJOR_MINOR_VERSION}_v${RCLONE_VERSION}_rclone-arangodb-linux-$arch"
-                    chmod a+x build/bin/rclone-arangodb
-                  fi
+            - fetch-aux-binaries:
+                arch: << parameters.arch >>
+                repo-path: .
       - when:
           condition: << pipeline.parameters.create-docker-images >>
           steps:
@@ -760,38 +752,6 @@ jobs:
           timeLimit: << parameters.timeLimit >>
           extraArgs: << parameters.extraArgs >>
 
-  run-hotbackup-tests:
-    docker:
-      - image: << pipeline.parameters.test-docker-image >>
-    parameters:
-      size:
-        type: string
-    resource_class: << parameters.size >>
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Enabled coredumps
-          command: ulimit -c unlimited
-      - run:
-          name: Install dependencies
-          command: |
-            pip install -r scripts/toolbox/requirements.txt --break-system-packages
-      - run:
-          name: Run HotBackup tests
-          command: |
-            python3 scripts/toolbox/HotBackupConsistencyTest.py \
-              --arangod $PWD/build/bin/arangod \
-              --topdir $PWD \
-              --workdir /tmp/test-workdir
-      - run:
-          name: Cleanup
-          command: |
-            rm -rf /tmp/test-workdir
-      - store_artifacts:
-          destination: hotbackup-test
-          path: /tmp/test-workdir
-
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
@@ -826,6 +786,9 @@ jobs:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - attach_workspace:
           at: work/ArangoDB
+      - fetch-aux-binaries:
+          arch: x64 # rta tests should only run on x64
+          repo-path: work/ArangoDB
       - run:
           name: Clone RTA
           command: |
@@ -833,7 +796,7 @@ jobs:
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
-            git checkout << pipeline.parameters.rta-branch >>
+            git checkout << parameters.rta-branch >>
       - run:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m

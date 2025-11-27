@@ -38,7 +38,7 @@ namespace arangodb {
 namespace tests {
 namespace graph_path_store_test {
 
-class Step : public arangodb::graph::BaseStep<Step> {
+class Step : public arangodb::graph::BaseStep {
   using Vertex = size_t;
   using Edge = size_t;
 
@@ -48,7 +48,7 @@ class Step : public arangodb::graph::BaseStep<Step> {
 
  public:
   Step(size_t id, double weight, size_t previous, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{previous} {
+      : arangodb::graph::BaseStep{previous} {
     _id = id;
     _weight = weight;
     _isLooseEnd = isLooseEnd;  // TODO: needed here?

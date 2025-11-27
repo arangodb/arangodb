@@ -100,11 +100,10 @@ class CircleCIGenerator(OutputGenerator):
         else:
             raise ValueError("Either base_config or base_config_path must be provided")
 
-        # Collect all jobs from all test definition files
-        all_jobs = []
+        # Collect all jobs from all test definition files (no architecture filtering yet)
+        all_jobs: List[TestJob] = []
         for test_def in test_defs:
-            filtered = self.filter_jobs(test_def)
-            all_jobs.extend(filtered)
+            all_jobs.extend(test_def.jobs.values())
 
         # Generate workflows for different build configurations
         if "workflows" not in circleci_config:
@@ -161,27 +160,11 @@ class CircleCIGenerator(OutputGenerator):
         self._add_optional_jobs(workflow, build_config, build_jobs)
 
         # Add test jobs
-        if self.config.circleci.ui != "only":
-            self._add_test_jobs(workflow, jobs, build_config, build_jobs)
+        self._add_test_jobs(workflow, jobs, build_config, build_jobs)
 
     def _generate_workflow_name(self, build_config: BuildConfig) -> str:
         """Generate workflow name from build configuration."""
         suffix = "nightly" if build_config.nightly else "pr"
-
-        if (
-            build_config.architecture == Architecture.X64
-            and self.config.circleci.ui
-            not in (
-                "",
-                "off",
-            )
-        ):
-            if self.config.circleci.ui == "only":
-                suffix = f"only_ui_tests-{suffix}"
-            else:
-                suffix = f"with_ui_tests-{suffix}"
-        else:
-            suffix = f"no_ui_tests-{suffix}"
 
         if build_config.sanitizer:
             suffix += f"-{build_config.sanitizer.value}"
@@ -206,12 +189,8 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
 
-        # Add non-maintainer build for x64 (no sanitizer, not ui-only)
-        if (
-            build_config.architecture == Architecture.X64
-            and not build_config.sanitizer
-            and self.config.circleci.ui != "only"
-        ):
+        # Add non-maintainer build for x64 (no sanitizer)
+        if build_config.architecture == Architecture.X64 and not build_config.sanitizer:
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
 
@@ -276,16 +255,9 @@ class CircleCIGenerator(OutputGenerator):
     def _add_optional_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
-        """Add optional jobs (cppcheck, docker, hotbackup, UI tests)."""
-        # Cppcheck for x64 non-UI
-        if (
-            build_config.architecture == Architecture.X64
-            and self.config.circleci.ui
-            in (
-                "",
-                "off",
-            )
-        ):
+        """Add optional jobs (cppcheck, docker)."""
+        # Cppcheck for x64
+        if build_config.architecture == Architecture.X64:
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
@@ -293,21 +265,6 @@ class CircleCIGenerator(OutputGenerator):
         # Docker image creation
         if self.config.circleci.create_docker_images:
             self._add_docker_image_job(workflow, build_config, build_jobs)
-
-        # UI tests
-        if (
-            build_config.architecture == Architecture.X64
-            and self.config.circleci.ui
-            not in (
-                "",
-                "off",
-            )
-        ):
-            self._add_ui_test_jobs(workflow, build_config, build_jobs)
-
-        # Hotbackup tests
-        if not self.config.test_execution.arangod_without_v8:
-            self._add_hotbackup_job(workflow, build_config, build_jobs)
 
     def _add_docker_image_job(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
@@ -338,74 +295,6 @@ class CircleCIGenerator(OutputGenerator):
             }
         )
 
-    def _add_hotbackup_job(
-        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
-    ) -> None:
-        """Add hotbackup test job."""
-        workflow["jobs"].append(
-            {
-                "run-hotbackup-tests": {
-                    "name": f"run-hotbackup-tests-{build_config.architecture.value}",
-                    "size": self.sizer.get_test_size(
-                        ResourceSize.MEDIUM, build_config, True
-                    ),
-                    "requires": build_jobs,
-                }
-            }
-        )
-
-    def _add_ui_test_jobs(
-        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
-    ) -> None:
-        """Add RTA UI test jobs."""
-        ui_testsuites = (
-            self.config.circleci.ui_testsuites.split(",")
-            if self.config.circleci.ui_testsuites
-            else [
-                "UserPageTestSuite",
-                "CollectionsTestSuite",
-                "ViewsTestSuite",
-                "GraphTestSuite",
-                "QueryTestSuite",
-                "AnalyzersTestSuite",
-                "AnalyzersTestSuite2",
-                "DatabaseTestSuite",
-                "LogInTestSuite",
-                "DashboardTestSuite",
-                "SupportTestSuite",
-                "ServiceTestSuite",
-            ]
-        )
-
-        deployments = (
-            self.config.circleci.ui_deployments.split(",")
-            if self.config.circleci.ui_deployments
-            else ["SG", "CL"]
-        )
-
-        # Build filter string with trailing space (matches old generator behavior)
-        ui_filter = "".join(
-            f"--ui-include-test-suite {suite} " for suite in ui_testsuites
-        )
-
-        for deployment in deployments:
-            workflow["jobs"].append(
-                {
-                    "run-rta-tests": {
-                        "name": f"test-{deployment}-UI",
-                        "suiteName": ui_filter,
-                        "arangosh_args": "",
-                        "deployment": deployment,
-                        "browser": "Remote_CHROME",
-                        "enterprise": "EP",
-                        "filterStatement": ui_filter,
-                        "requires": build_jobs,
-                        "rta-branch": self.config.circleci.rta_branch,
-                        "buckets": len(ui_testsuites),
-                    }
-                }
-            )
-
     def _add_test_jobs(
         self,
         workflow: Dict[str, Any],
@@ -414,7 +303,17 @@ class CircleCIGenerator(OutputGenerator):
         build_jobs: List[str],
     ) -> None:
         """Add all test jobs to workflow."""
+        # Filter jobs based on workflow's architecture
+        from dataclasses import replace
+        from ..filters import should_include_job
+
+        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+
         for job in jobs:
+            # Skip jobs that don't match this workflow's architecture
+            if not should_include_job(job, criteria):
+                continue
+
             test_jobs = self._create_test_jobs_for_deployment(
                 job, build_config, build_jobs
             )
@@ -429,63 +328,50 @@ class CircleCIGenerator(OutputGenerator):
         A single TestJob may result in multiple CircleCI jobs if:
         - Deployment type is None (both single and cluster)
         - Replication version 2 is enabled (additional cluster job)
+        - RTA UI tests (one job per deployment: SG, CL)
 
         Returns:
             List of job definitions (excludes jobs with no suites after filtering)
         """
+        # Handle RTA UI tests specially - they generate multiple jobs
+        if job.job_type == "run-rta-tests":
+            return self._create_rta_test_jobs(job, build_config, build_jobs)
+
         result = []
         deployment_type = job.options.deployment_type
+        add_job_to_result = lambda job_def: result.append(job_def) if job_def else None
 
-        if deployment_type == DeploymentType.CLUSTER:
-            job_def = self._create_test_job(
-                job, DeploymentType.CLUSTER, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
-            if self.config.test_execution.replication_two:
-                job_def = self._create_test_job(
-                    job,
-                    DeploymentType.CLUSTER,
-                    build_config,
-                    build_jobs,
-                    replication_version=2,
+        if deployment_type is None or deployment_type == DeploymentType.CLUSTER:
+            add_job_to_result(
+                self._create_test_job(
+                    job, DeploymentType.CLUSTER, build_config, build_jobs
                 )
-                if job_def:
-                    result.append(job_def)
-        elif deployment_type == DeploymentType.SINGLE:
-            job_def = self._create_test_job(
-                job, DeploymentType.SINGLE, build_config, build_jobs
             )
-            if job_def:
-                result.append(job_def)
-        elif deployment_type == DeploymentType.MIXED:
-            job_def = self._create_test_job(
-                job, DeploymentType.MIXED, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
-        else:
-            # No deployment type - run both
-            job_def = self._create_test_job(
-                job, DeploymentType.CLUSTER, build_config, build_jobs
-            )
-            if job_def:
-                result.append(job_def)
+
             if self.config.test_execution.replication_two:
-                job_def = self._create_test_job(
-                    job,
-                    DeploymentType.CLUSTER,
-                    build_config,
-                    build_jobs,
-                    replication_version=2,
+                add_job_to_result(
+                    self._create_test_job(
+                        job,
+                        DeploymentType.CLUSTER,
+                        build_config,
+                        build_jobs,
+                        replication_version=2,
+                    )
                 )
-                if job_def:
-                    result.append(job_def)
-            job_def = self._create_test_job(
-                job, DeploymentType.SINGLE, build_config, build_jobs
+
+        if deployment_type is None or deployment_type == DeploymentType.SINGLE:
+            add_job_to_result(
+                self._create_test_job(
+                    job, DeploymentType.SINGLE, build_config, build_jobs
+                )
             )
-            if job_def:
-                result.append(job_def)
+
+        if deployment_type == DeploymentType.MIXED:
+            add_job_to_result(
+                self._create_test_job(
+                    job, DeploymentType.MIXED, build_config, build_jobs
+                )
+            )
 
         return result
 
@@ -644,7 +530,11 @@ class CircleCIGenerator(OutputGenerator):
             job, deployment_type, build_config, replication_version
         )
 
-        filtered_suites = filter_suites(job, self.config.filter_criteria)
+        # Create filter criteria with current workflow's architecture
+        from dataclasses import replace
+        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+
+        filtered_suites = filter_suites(job, criteria)
 
         # Skip job creation if no suites remain after filtering
         if not filtered_suites:
@@ -701,11 +591,63 @@ class CircleCIGenerator(OutputGenerator):
         """Get bucket count from job definition (before applying overrides)."""
         return job.get_bucket_count()
 
+    def _create_rta_test_jobs(
+        self,
+        job: TestJob,
+        build_config: BuildConfig,
+        build_jobs: List[str],
+    ) -> List[Dict[str, Any]]:
+        """
+        Create RTA UI test job definitions.
+
+        RTA tests use run-rta-tests job with different parameters than regular tests.
+
+        Returns:
+            List of job definitions (one per deployment).
+        """
+        # Build filter string with trailing space (matches old generator behavior)
+        ui_filter = "".join(
+            f"--ui-include-test-suite {suite.name} " for suite in job.suites
+        )
+        # Ensure trailing space is preserved (old generator compatibility)
+        if ui_filter and not ui_filter.endswith(" "):
+            ui_filter += " "
+
+        # Calculate bucket count
+        bucket_count = job.get_bucket_count()
+        if bucket_count is None or bucket_count == "auto":
+            bucket_count = len(job.suites)
+
+        # Get RTA branch from repository config
+        rta_branch = "main"
+        if job.repository and job.repository.git_branch:
+            rta_branch = job.repository.git_branch
+
+        deployments = ["single", "cluster"]
+
+        result_jobs = []
+        for deployment in deployments:
+            job_dict = {
+                "name": f"test-{deployment}-UI",
+                "suiteName": f"{deployment}-UI",
+                "arangosh_args": "",
+                "deployment": "SG" if deployment == "single" else "CL",
+                "browser": "Remote_CHROME",
+                "enterprise": "EP",
+                "filterStatement": ui_filter,
+                "requires": build_jobs,
+                "rta-branch": rta_branch,
+                "buckets": bucket_count,
+            }
+            result_jobs.append({"run-rta-tests": job_dict})
+
+        return result_jobs
+
     def _add_repository_config(self, job_dict: Dict[str, Any], job: TestJob) -> None:
         """Add repository configuration to job dict if job has external repo."""
         if job.repository:
             # Build docker image name with container_suffix if present
-            container = self.config.circleci.default_container
+            container = self.config.circleci.test_image
             if ":" in container:
                 base, tag = container.rsplit(":", 1)
                 # Apply container_suffix if present (e.g., test-ubuntu -> test-ubuntu-js)
@@ -723,4 +665,4 @@ class CircleCIGenerator(OutputGenerator):
             if job.repository.init_command is not None:
                 job_dict["init_command"] = job.repository.init_command
         else:
-            job_dict["docker_image"] = self.config.circleci.default_container
+            job_dict["docker_image"] = self.config.circleci.test_image

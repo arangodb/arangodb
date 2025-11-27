@@ -6,7 +6,7 @@ then produce output in a specific format (CircleCI YAML, Jenkins launcher format
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List
 from dataclasses import dataclass, field
 
 from ..config_lib import TestJob, TestDefinitionFile
@@ -28,12 +28,8 @@ class TestExecutionConfig:
 class CircleCIConfig:
     """CircleCI-specific configuration."""
 
-    ui: str = ""  # off, on, only, community
-    ui_testsuites: str = ""
-    ui_deployments: str = ""
-    rta_branch: Optional[str] = None  # Use None to serialize as 'null' in YAML
     create_docker_images: bool = False
-    default_container: str = ""
+    test_image: str = ""
 
 
 @dataclass

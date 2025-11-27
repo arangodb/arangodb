@@ -32,7 +32,6 @@ namespace arangodb {
 
 namespace graph {
 
-template<class StepDetails>
 class BaseStep {
  public:
   enum class FetchedType {
@@ -51,10 +50,6 @@ class BaseStep {
 
   bool isFirst() const {
     return _previous == std::numeric_limits<size_t>::max();
-  }
-
-  bool isLooseEnd() const {
-    return static_cast<StepDetails*>(this)->isLooseEnd();
   }
 
   size_t getDepth() const { return _depth; }
