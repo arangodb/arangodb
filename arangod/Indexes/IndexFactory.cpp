@@ -926,7 +926,7 @@ Result IndexFactory::enhanceJsonIndexVector(
             paramsSlice, vectorIndexDefinition);
         !res.ok()) {
       return {TRI_ERROR_BAD_PARAMETER,
-              std::format("Error with parsing the `params` field in "
+              std::format("Error with parsing the `params` attribute in "
                           "vector index definition: {}",
                           res.error())};
     }
