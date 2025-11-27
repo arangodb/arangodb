@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const sleep = internal.sleep;
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
