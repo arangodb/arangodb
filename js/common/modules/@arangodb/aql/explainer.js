@@ -1446,6 +1446,11 @@ function processQuery(query, explain, planIndex) {
           }
         }
 
+        // Register the index used for near vector search
+        if (node.hasOwnProperty('index')) {
+          iterateIndexes(node.index, 0, node, types, variableName(node.inVariable));
+        }
+
         return keyword('FOR') + ' ' + variableName(node.oldDocumentVariable) + keyword(' OF ') + collection(node.collection) + keyword(' IN TOP ') + node.limit + keyword(' NEAR ') + variableName(node.inVariable) + keyword(' DISTANCE INTO ') + variableName(node.distanceOutVariable) + searchParameters + filter;
       }
       case 'EnumerateViewNode':

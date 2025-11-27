@@ -42,16 +42,6 @@ const testPaths = {
 
 function communication (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
-  if (options.skipServerJS && testCases.length === 0) {
-    // TODO: QA-702 - remove this if. 
-    return {
-      communication: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   testCases = tu.splitBuckets(options, testCases);
   if (isCov) {
     options.oneTestTimeout *= 2;

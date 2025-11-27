@@ -37,14 +37,14 @@ namespace arangodb {
 namespace tests {
 namespace lifo_queue_graph_cache_test {
 
-class Step : public arangodb::graph::BaseStep<Step> {
+class Step : public arangodb::graph::BaseStep {
   size_t _id;
   double _weight;
   bool _isLooseEnd;
 
  public:
   Step(size_t id, double weight, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{} {
+      : arangodb::graph::BaseStep{} {
     _id = id;
     _weight = weight;
     _isLooseEnd = isLooseEnd;
