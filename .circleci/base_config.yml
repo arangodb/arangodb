@@ -45,9 +45,15 @@ parameters:
   replication-two:
     type: boolean
     default: false
-  sanitizer:
-    type: string
-    default: ""
+  without-instrumentation:
+    type: boolean
+    default: true
+  with-tsan:
+    type: boolean
+    default: false
+  with-alubsan:
+    type: boolean
+    default: false
   c-compiler:
     type: string
     default: "clang"
