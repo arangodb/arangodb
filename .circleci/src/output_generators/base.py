@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from typing import Any, List
 from dataclasses import dataclass, field
 
-from ..config_lib import TestJob, TestDefinitionFile
+from ..config_lib import TestJob, TestDefinitionFile, BuildVariant
 from ..filters import FilterCriteria, filter_jobs
 
 
@@ -45,6 +45,7 @@ class GeneratorConfig:
     test_execution: TestExecutionConfig = field(default_factory=TestExecutionConfig)
     circleci: CircleCIConfig = field(default_factory=CircleCIConfig)
     validate_only: bool = False
+    build_variants: List[BuildVariant] = field(default_factory=list)
 
 
 class OutputGenerator(ABC):

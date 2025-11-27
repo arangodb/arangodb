@@ -15,7 +15,7 @@ from src.config_lib import (
     BuildConfig,
     DeploymentType,
     ResourceSize,
-    Sanitizer,
+    BuildVariant,
     Architecture,
 )
 from src.filters import FilterCriteria, PlatformFlags
@@ -104,7 +104,8 @@ class TestGenerateWorkflowName:
         """Test workflow name includes sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture=Architecture.X64, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.TSAN,
         )
 
         name = gen._generate_workflow_name(build_config)
@@ -155,7 +156,8 @@ class TestCreateBuildJob:
         """Test creating build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture=Architecture.X64, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.TSAN,
         )
 
         job = gen._create_build_job(build_config)
@@ -178,7 +180,8 @@ class TestCreateBuildJob:
         """Test creating frontend build job with sanitizer."""
         gen = self.create_generator()
         build_config = BuildConfig(
-            architecture=Architecture.X64, sanitizer=Sanitizer.ALUBSAN
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.ALUBSAN,
         )
 
         job = gen._create_frontend_build_job(build_config)
@@ -193,9 +196,7 @@ class TestDockerImageJob:
         """Helper to create generator with test environment."""
         config = GeneratorConfig(
             filter_criteria=FilterCriteria(),
-            circleci=CircleCIConfig(
-                create_docker_images=True, test_image="default"
-            ),
+            circleci=CircleCIConfig(create_docker_images=True, test_image="default"),
         )
         env_getter = lambda k, default: (
             env_vars.get(k, default) if env_vars else default
@@ -301,7 +302,10 @@ class TestGenerateMethod:
 
     def test_generate_creates_workflows(self):
         """Test that generate() creates workflows."""
-        config = GeneratorConfig(filter_criteria=FilterCriteria(all_tests=True))
+        config = GeneratorConfig(
+            filter_criteria=FilterCriteria(all_tests=True),
+            build_variants=[BuildVariant.NORMAL],  # Must provide build variants
+        )
         base_config = {"version": 2.1}
         gen = CircleCIGenerator(config, base_config=base_config)
 
@@ -823,8 +827,13 @@ class TestCreateTestJob:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="x64_only", options=TestOptions(architecture=Architecture.X64)),
-                SuiteConfig(name="aarch64_only", options=TestOptions(architecture=Architecture.AARCH64)),
+                SuiteConfig(
+                    name="x64_only", options=TestOptions(architecture=Architecture.X64)
+                ),
+                SuiteConfig(
+                    name="aarch64_only",
+                    options=TestOptions(architecture=Architecture.AARCH64),
+                ),
                 SuiteConfig(name="all_archs"),  # No architecture specified
             ],
             options=TestOptions(),
@@ -856,7 +865,9 @@ class TestCreateTestJob:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="x64_only", options=TestOptions(architecture=Architecture.X64)),
+                SuiteConfig(
+                    name="x64_only", options=TestOptions(architecture=Architecture.X64)
+                ),
             ],
             options=TestOptions(),
         )
@@ -868,6 +879,7 @@ class TestCreateTestJob:
         )
 
         assert result is None
+
 
 class TestJobLevelArchitectureFiltering:
     """Test job-level architecture filtering in _add_test_jobs."""
@@ -910,12 +922,14 @@ class TestJobLevelArchitectureFiltering:
                 job_names.append(params["name"])
 
         # x64-only job should NOT appear in aarch64 workflow
-        assert not any("ui_tests" in name for name in job_names), \
-            f"x64-only job should not appear in aarch64 workflow, but found: {job_names}"
+        assert not any(
+            "ui_tests" in name for name in job_names
+        ), f"x64-only job should not appear in aarch64 workflow, but found: {job_names}"
 
         # Regular job should appear in aarch64 workflow
-        assert any("regular_tests" in name for name in job_names), \
-            f"Regular job should appear in aarch64 workflow, but not found in: {job_names}"
+        assert any(
+            "regular_tests" in name for name in job_names
+        ), f"Regular job should appear in aarch64 workflow, but not found in: {job_names}"
 
     def test_job_with_x64_architecture_included_in_x64_workflow(self):
         """Test that job with arch: x64 is included in x64 workflow."""
@@ -942,8 +956,9 @@ class TestJobLevelArchitectureFiltering:
                 job_names.append(params["name"])
 
         # x64-only job SHOULD appear in x64 workflow
-        assert any("ui_tests" in name for name in job_names), \
-            f"x64 job should appear in x64 workflow, but not found in: {job_names}"
+        assert any(
+            "ui_tests" in name for name in job_names
+        ), f"x64 job should appear in x64 workflow, but not found in: {job_names}"
 
     def test_job_with_aarch64_architecture_excluded_from_x64_workflow(self):
         """Test that job with arch: aarch64 is excluded from x64 workflow."""
@@ -964,8 +979,9 @@ class TestJobLevelArchitectureFiltering:
         gen._add_test_jobs(workflow, jobs, build_config_x64, ["build-job"])
 
         # aarch64-only job should NOT appear in x64 workflow
-        assert len(workflow["jobs"]) == 0, \
-            f"aarch64-only job should not appear in x64 workflow, but found {len(workflow['jobs'])} jobs"
+        assert (
+            len(workflow["jobs"]) == 0
+        ), f"aarch64-only job should not appear in x64 workflow, but found {len(workflow['jobs'])} jobs"
 
     def test_job_without_architecture_included_in_both_workflows(self):
         """Test that job without architecture constraint appears in both workflows."""
@@ -990,4 +1006,6 @@ class TestJobLevelArchitectureFiltering:
         build_config_aarch64 = BuildConfig(architecture=Architecture.AARCH64)
         workflow_aarch64 = {"jobs": []}
         gen._add_test_jobs(workflow_aarch64, jobs, build_config_aarch64, ["build-job"])
-        assert len(workflow_aarch64["jobs"]) > 0, "Job should appear in aarch64 workflow"
+        assert (
+            len(workflow_aarch64["jobs"]) > 0
+        ), "Job should appear in aarch64 workflow"

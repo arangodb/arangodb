@@ -16,7 +16,6 @@ from enum import Enum
 from typing import Dict, List, Optional, Any, Union, TypeVar, Mapping
 import yaml
 
-
 # ============================================================================
 # Enumerations
 # ============================================================================
@@ -91,23 +90,43 @@ class ResourceSize(Enum):
         return _enum_from_string(cls, value)
 
 
-class Sanitizer(Enum):
+class BuildVariant(Enum):
     """
-    Sanitizer types used in production builds.
+    Build instrumentation variant.
 
-    TSAN = Thread Sanitizer
-    ALUBSAN = Address + Leak + UndefinedBehavior Sanitizer combined
+    Represents different types of build instrumentation that can be enabled.
+    Future variants may include coverage builds.
     """
 
-    TSAN = "tsan"
-    ALUBSAN = "alubsan"
+    NORMAL = "normal"  # Non-instrumented build
+    TSAN = "tsan"  # Thread Sanitizer
+    ALUBSAN = "alubsan"  # Address + Leak + UB Sanitizer
 
     @classmethod
-    def from_string(cls, value: str) -> Optional["Sanitizer"]:
-        """Parse sanitizer from string, case-insensitive."""
-        if value == "none":
-            return None
+    def from_string(cls, value: str) -> "BuildVariant":
+        """Parse build variant from string, case-insensitive."""
         return _enum_from_string(cls, value)
+
+    def get_suffix(self) -> str:
+        """Get workflow name suffix for this variant."""
+        if self == BuildVariant.NORMAL:
+            return ""
+        return f"-{self.value}"
+
+    @property
+    def is_instrumented(self) -> bool:
+        """Check if this is an instrumented build (any variant except NORMAL)."""
+        return self != BuildVariant.NORMAL
+
+    @property
+    def is_tsan(self) -> bool:
+        """Check if this is a Thread Sanitizer build."""
+        return self == BuildVariant.TSAN
+
+    @property
+    def is_alubsan(self) -> bool:
+        """Check if this is an Address+Leak+UB Sanitizer build."""
+        return self == BuildVariant.ALUBSAN
 
 
 class Architecture(Enum):
@@ -916,5 +935,5 @@ class BuildConfig:
     """Build context information for test execution (enterprise-only)."""
 
     architecture: Architecture
-    sanitizer: Optional[Sanitizer] = None
+    build_variant: BuildVariant = BuildVariant.NORMAL
     nightly: bool = False

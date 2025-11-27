@@ -54,27 +54,22 @@ class TestFilterCriteria:
         assert criteria.full is False
         assert criteria.nightly is False
         assert criteria.gtest is False
-        assert criteria.sanitizer is None
         assert criteria.enterprise is True
         assert criteria.platform is not None
         assert isinstance(criteria.platform, PlatformFlags)
 
     def test_custom_values(self):
         """Test setting custom criteria values."""
-        from src.config_lib import Sanitizer
-
         platform = PlatformFlags(is_windows=True)
         criteria = FilterCriteria(
             cluster=True,
             full=True,
-            sanitizer=Sanitizer.TSAN,
             enterprise=False,
             platform=platform,
         )
         assert criteria.cluster is True
         assert criteria.single is False
         assert criteria.full is True
-        assert criteria.sanitizer == Sanitizer.TSAN
         assert criteria.enterprise is False
         assert criteria.platform.is_windows is True
 
@@ -486,6 +481,7 @@ class TestFilterSuites:
         assert result[2].name == "suite3"
         assert result[3].name == "suite4"
 
+
 class TestArchitectureFiltering:
     """Test architecture filtering at job and suite level."""
 
@@ -578,17 +574,11 @@ class TestArchitectureFiltering:
         )
 
         # Should NOT be included on wrong architecture, even with all_tests=True
-        criteria = FilterCriteria(
-            all_tests=True,
-            architecture=Architecture.AARCH64
-        )
+        criteria = FilterCriteria(all_tests=True, architecture=Architecture.AARCH64)
         assert not should_include_job(job, criteria)
 
         # Should be included on correct architecture with all_tests=True
-        criteria = FilterCriteria(
-            all_tests=True,
-            architecture=Architecture.X64
-        )
+        criteria = FilterCriteria(all_tests=True, architecture=Architecture.X64)
         assert should_include_job(job, criteria)
 
     def test_architecture_filter_without_criteria_architecture(self):

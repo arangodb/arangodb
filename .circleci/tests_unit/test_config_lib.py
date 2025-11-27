@@ -588,23 +588,26 @@ class TestBuildConfigClass:
     """Test BuildConfig dataclass."""
 
     def test_basic_build(self):
-        from src.config_lib import Architecture
+        from src.config_lib import Architecture, BuildVariant
 
         build = BuildConfig(architecture=Architecture.X64)
         assert build.architecture == Architecture.X64
-        assert build.sanitizer is None
+        assert build.build_variant == BuildVariant.NORMAL
         assert build.nightly is False
 
     def test_with_sanitizer(self):
-        from src.config_lib import Architecture, Sanitizer
+        from src.config_lib import Architecture, BuildVariant
 
         build = BuildConfig(
             architecture=Architecture.X64,
-            sanitizer=Sanitizer.ALUBSAN,
+            build_variant=BuildVariant.ALUBSAN,
             nightly=True,
         )
-        assert build.sanitizer == Sanitizer.ALUBSAN
+        assert build.build_variant == BuildVariant.ALUBSAN
+        assert build.build_variant.is_alubsan
+        assert not build.build_variant.is_tsan
         assert build.nightly is True
+
 
 def test_git_branch_override_minimal():
     job = TestJob(
@@ -628,6 +631,7 @@ def test_git_branch_override_minimal():
     assert overridden.repository is not None
     assert overridden.repository.git_branch == "feature-branch"
 
+
 def test_git_branch_override_no_match():
     job = TestJob(
         name="driverJob",
@@ -647,6 +651,7 @@ def test_git_branch_override_no_match():
 
     # Branch should remain unchanged
     assert result.jobs["driverJob"].repository.git_branch == "main"
+
 
 def test_git_branch_override_no_repository():
     job = TestJob(

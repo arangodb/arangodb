@@ -7,7 +7,7 @@ from datetime import date
 from src.config_lib import (
     BuildConfig,
     Architecture,
-    Sanitizer,
+    BuildVariant,
     TestJob,
     SuiteConfig,
     TestOptions,
@@ -30,13 +30,19 @@ def x64_enterprise_build():
 @pytest.fixture
 def x64_tsan_build():
     """x64 with TSAN sanitizer."""
-    return BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.TSAN)
+    return BuildConfig(
+        architecture=Architecture.X64,
+        build_variant=BuildVariant.TSAN,
+    )
 
 
 @pytest.fixture
 def x64_alubsan_build():
     """x64 with ALUBSAN sanitizer."""
-    return BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.ALUBSAN)
+    return BuildConfig(
+        architecture=Architecture.X64,
+        build_variant=BuildVariant.ALUBSAN,
+    )
 
 
 @pytest.fixture

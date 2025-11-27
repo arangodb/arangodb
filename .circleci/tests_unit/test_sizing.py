@@ -6,7 +6,7 @@ accounting for architecture and sanitizer overhead.
 """
 
 import pytest
-from src.config_lib import BuildConfig, ResourceSize, Sanitizer, Architecture
+from src.config_lib import BuildConfig, ResourceSize, BuildVariant, Architecture
 from src.output_generators.sizing import ResourceSizer
 
 
@@ -71,7 +71,10 @@ class TestGetTestSize:
 
     def test_tsan_single_small_to_large(self):
         """Test TSAN single small tests need large (not xlarge)."""
-        config = BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.TSAN)
+        config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.TSAN,
+        )
 
         result = ResourceSizer.get_test_size(
             ResourceSize.SMALL, config, is_cluster=False
@@ -80,7 +83,10 @@ class TestGetTestSize:
 
     def test_alubsan_small_to_large(self):
         """Test non-TSAN sanitizers bump small to large."""
-        config = BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.ALUBSAN)
+        config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.ALUBSAN,
+        )
 
         # Both cluster and single get large for alubsan
         assert (
@@ -94,8 +100,15 @@ class TestGetTestSize:
 
     def test_sanitizer_medium_to_xlarge(self):
         """Test sanitizers bump medium/medium+/large to xlarge."""
-        for sanitizer in [Sanitizer.TSAN, Sanitizer.ALUBSAN]:
-            config = BuildConfig(architecture=Architecture.X64, sanitizer=sanitizer)
+        sanitizer_configs = [
+            ("TSAN", BuildVariant.TSAN),
+            ("ALUBSAN", BuildVariant.ALUBSAN),
+        ]
+
+        for name, build_variant in sanitizer_configs:
+            config = BuildConfig(
+                architecture=Architecture.X64, build_variant=build_variant
+            )
 
             for size in [
                 ResourceSize.MEDIUM,
@@ -110,17 +123,20 @@ class TestGetTestSize:
                 )
 
                 assert result_cluster == "xlarge", (
-                    f"Expected xlarge for {sanitizer} {size.value} cluster, "
+                    f"Expected xlarge for {name} {size.value} cluster, "
                     f"got {result_cluster}"
                 )
                 assert result_single == "xlarge", (
-                    f"Expected xlarge for {sanitizer} {size.value} single, "
+                    f"Expected xlarge for {name} {size.value} single, "
                     f"got {result_single}"
                 )
 
     def test_sanitizer_xlarge_unchanged(self):
         """Test that xlarge stays xlarge even with sanitizers."""
-        config = BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.TSAN)
+        config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.TSAN,
+        )
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.XLARGE, config, is_cluster=True)
@@ -133,7 +149,10 @@ class TestGetTestSize:
 
     def test_sanitizer_2xlarge_unchanged(self):
         """Test that 2xlarge stays 2xlarge even with sanitizers."""
-        config = BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.TSAN)
+        config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.TSAN,
+        )
 
         assert (
             ResourceSizer.get_test_size(ResourceSize.XXLARGE, config, is_cluster=True)
@@ -147,7 +166,8 @@ class TestGetTestSize:
     def test_aarch64_with_sanitizer(self):
         """Test ARM architecture with sanitizer adjustments."""
         config = BuildConfig(
-            architecture=Architecture.AARCH64, sanitizer=Sanitizer.TSAN
+            architecture=Architecture.AARCH64,
+            build_variant=BuildVariant.TSAN,
         )
 
         # Small on TSAN cluster -> xlarge -> arm.xlarge
@@ -170,13 +190,18 @@ class TestGetTestSize:
 
     def test_all_sanitizers_apply_same_logic(self):
         """Test that all sanitizer types follow the same sizing logic."""
-        sanitizers = [Sanitizer.TSAN, Sanitizer.ALUBSAN]
+        sanitizer_configs = [
+            ("TSAN", BuildVariant.TSAN),
+            ("ALUBSAN", BuildVariant.ALUBSAN),
+        ]
 
-        for sanitizer in sanitizers:
-            config = BuildConfig(architecture=Architecture.X64, sanitizer=sanitizer)
+        for name, build_variant in sanitizer_configs:
+            config = BuildConfig(
+                architecture=Architecture.X64, build_variant=build_variant
+            )
 
             # Small TSAN cluster is special case
-            if sanitizer == Sanitizer.TSAN:
+            if build_variant.is_tsan:
                 assert (
                     ResourceSizer.get_test_size(
                         ResourceSize.SMALL, config, is_cluster=True
@@ -189,7 +214,7 @@ class TestGetTestSize:
                     ResourceSize.SMALL, config, is_cluster=True
                 )
                 assert result == "large", (
-                    f"Expected large for {sanitizer} small cluster, " f"got {result}"
+                    f"Expected large for {name} small cluster, " f"got {result}"
                 )
 
             # All sanitizers: medium -> xlarge
@@ -206,7 +231,10 @@ class TestSanitizerOverhead:
 
     def test_tsan_overhead_matrix(self):
         """Test TSAN overhead across all size/cluster combinations."""
-        config = BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.TSAN)
+        config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.TSAN,
+        )
 
         expected = {
             (ResourceSize.SMALL, True): "xlarge",  # Special case: TSAN cluster small
@@ -232,7 +260,10 @@ class TestSanitizerOverhead:
 
     def test_alubsan_overhead_matrix(self):
         """Test ALUBSAN overhead across all size/cluster combinations."""
-        config = BuildConfig(architecture=Architecture.X64, sanitizer=Sanitizer.ALUBSAN)
+        config = BuildConfig(
+            architecture=Architecture.X64,
+            build_variant=BuildVariant.ALUBSAN,
+        )
 
         expected = {
             (ResourceSize.SMALL, True): "large",

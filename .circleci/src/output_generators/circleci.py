@@ -109,21 +109,24 @@ class CircleCIGenerator(OutputGenerator):
         if "workflows" not in circleci_config:
             circleci_config["workflows"] = {}
 
-        # X64 (always included)
-        build_config = BuildConfig(
-            architecture=Architecture.X64,
-            sanitizer=self.config.filter_criteria.sanitizer,
-            nightly=self.config.filter_criteria.nightly,
-        )
-        self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
+        # Generate workflows for each build variant and architecture
+        build_variants = self.config.build_variants
+        for build_variant in build_variants:
+            # X64 workflow
+            build_config = BuildConfig(
+                architecture=Architecture.X64,
+                build_variant=build_variant,
+                nightly=self.config.filter_criteria.nightly,
+            )
+            self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
-        # ARM64 (with or without sanitizer - changed in merge ec7f7ef91ade)
-        build_config = BuildConfig(
-            architecture=Architecture.AARCH64,
-            sanitizer=self.config.filter_criteria.sanitizer,
-            nightly=self.config.filter_criteria.nightly,
-        )
-        self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
+            # ARM64 workflow
+            build_config = BuildConfig(
+                architecture=Architecture.AARCH64,
+                build_variant=build_variant,
+                nightly=self.config.filter_criteria.nightly,
+            )
+            self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
         return circleci_config
 
@@ -166,8 +169,7 @@ class CircleCIGenerator(OutputGenerator):
         """Generate workflow name from build configuration."""
         suffix = "nightly" if build_config.nightly else "pr"
 
-        if build_config.sanitizer:
-            suffix += f"-{build_config.sanitizer.value}"
+        suffix += build_config.build_variant.get_suffix()
 
         if self.config.test_execution.replication_two:
             suffix += "-repl2"
@@ -189,8 +191,11 @@ class CircleCIGenerator(OutputGenerator):
         workflow["jobs"].append(build_job)
         workflow["jobs"].append(frontend_job)
 
-        # Add non-maintainer build for x64 (no sanitizer)
-        if build_config.architecture == Architecture.X64 and not build_config.sanitizer:
+        # Add non-maintainer build for x64 (non-instrumented builds only)
+        if (
+            build_config.architecture == Architecture.X64
+            and not build_config.build_variant.is_instrumented
+        ):
             non_maintainer_job = self._create_non_maintainer_build_job(build_config)
             workflow["jobs"].append(non_maintainer_job)
 
@@ -204,10 +209,9 @@ class CircleCIGenerator(OutputGenerator):
         """Create compilation job definition."""
         preset = "enterprise-pr"
 
-        if build_config.sanitizer:
-            preset += f"-{build_config.sanitizer.value}"
+        preset += build_config.build_variant.get_suffix()
 
-        suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
+        suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}"
 
         params = {
@@ -228,7 +232,7 @@ class CircleCIGenerator(OutputGenerator):
 
     def _create_frontend_build_job(self, build_config: BuildConfig) -> Dict[str, Any]:
         """Create frontend build job definition."""
-        suffix = f"-{build_config.sanitizer.value}" if build_config.sanitizer else ""
+        suffix = build_config.build_variant.get_suffix()
         name = f"build-{build_config.architecture.value}{suffix}-frontend"
 
         return {"build-frontend": {"name": name}}
@@ -256,8 +260,11 @@ class CircleCIGenerator(OutputGenerator):
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
         """Add optional jobs (cppcheck, docker)."""
-        # Cppcheck for x64
-        if build_config.architecture == Architecture.X64:
+        # Cppcheck for x64 (non-instrumented builds only)
+        if (
+            build_config.architecture == Architecture.X64
+            and not build_config.build_variant.is_instrumented
+        ):
             workflow["jobs"].append(
                 {"run-cppcheck": {"name": "cppcheck", "requires": [build_jobs[0]]}}
             )
@@ -307,7 +314,9 @@ class CircleCIGenerator(OutputGenerator):
         from dataclasses import replace
         from ..filters import should_include_job
 
-        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+        criteria = replace(
+            self.config.filter_criteria, architecture=build_config.architecture
+        )
 
         for job in jobs:
             # Skip jobs that don't match this workflow's architecture
@@ -532,7 +541,10 @@ class CircleCIGenerator(OutputGenerator):
 
         # Create filter criteria with current workflow's architecture
         from dataclasses import replace
-        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+
+        criteria = replace(
+            self.config.filter_criteria, architecture=build_config.architecture
+        )
 
         filtered_suites = filter_suites(job, criteria)
 

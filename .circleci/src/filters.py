@@ -12,7 +12,6 @@ from .config_lib import (
     TestDefinitionFile,
     DeploymentType,
     SuiteConfig,
-    Sanitizer,
     Architecture,
 )
 
@@ -45,7 +44,6 @@ class FilterCriteria:
     gtest: bool = False
 
     # Build configuration
-    sanitizer: Optional[Sanitizer] = None  # Sanitizer type for this build
     architecture: Optional[Architecture] = None  # Current build architecture
 
     # Feature flags
