@@ -35,6 +35,22 @@
 namespace arangodb {
 namespace graph {
 
+/**
+   Queue-like queue (first-in-first-out) that can contain either steps (which
+   correspond to vertex-edges) or expansions that promise more vertex-edges for
+   a specific vertex.
+
+   Internally, this queue includes two queues, the main queue (_queue) that
+   includes steps and the continuation queue (_continuationQueue) that includes
+   the expansions. Basically, we want a queue that can include either a step or
+   an expansion, but if an expansion is epxanded, we need to add steps in the
+   middle of the queue (where the responsible expansion sits). This is
+   complicated to do, therefore _queue includes all steps that are ready and
+   they are popped first. If _queue is empty when popping, an expansion from the
+   _continuationQueue is popped. From code that uses this BatchedFifoQueue this
+   expansion can then be expanded and these expansion steps can the be pushed
+   again to the queue (where they directly go into the main _queue).
+ */
 template<class StepType>
 class BatchedFifoQueue {
  public:
