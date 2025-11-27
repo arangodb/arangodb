@@ -56,6 +56,14 @@ namespace arangodb {
 
 namespace {
 
+// cgroup v1 file paths
+static constexpr char const* kCgroupV1MemoryLimitPath =
+    "/sys/fs/cgroup/memory/memory.limit_in_bytes";
+
+// cgroup v2 file paths
+static constexpr char const* kCgroupV2MemoryMaxPath =
+    "/sys/fs/cgroup/memory.max";
+
 /// @brief gets the physical memory size
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 uint64_t physicalMemoryImpl() {
@@ -96,12 +104,14 @@ uint64_t effectivePhysicalMemoryImpl() {
     }
     case cgroup::Version::V1: {
       try {
-        if (auto const limit = basics::FileUtils::readCgroupFileValue(
-                "/sys/fs/cgroup/memory/memory.limit_in_bytes");
-            limit) {
-          // Check if it's not the "unlimited" value (very large number)
-          if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
-            return *limit;
+        if (basics::FileUtils::exists(kCgroupV1MemoryLimitPath)) {
+          if (auto const limit = basics::FileUtils::readCgroupFileValue(
+                  kCgroupV1MemoryLimitPath);
+              limit) {
+            // Check if it's not the "unlimited" value (very large number)
+            if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+              return *limit;
+            }
           }
         }
       } catch (std::exception const& ex) {
@@ -118,11 +128,13 @@ uint64_t effectivePhysicalMemoryImpl() {
     }
     case cgroup::Version::V2: {
       try {
-        if (auto const limit = basics::FileUtils::readCgroupFileValue(
-                "/sys/fs/cgroup/memory.max");
-            limit) {
-          if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
-            return *limit;
+        if (basics::FileUtils::exists(kCgroupV2MemoryMaxPath)) {
+          if (auto const limit = basics::FileUtils::readCgroupFileValue(
+                  kCgroupV2MemoryMaxPath);
+              limit) {
+            if (limit > 0 && *limit != std::numeric_limits<int64_t>::max()) {
+              return *limit;
+            }
           }
         }
       } catch (std::exception const& ex) {

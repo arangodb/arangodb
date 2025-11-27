@@ -255,7 +255,7 @@ class CircleCIGenerator(OutputGenerator):
     def _add_optional_jobs(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
     ) -> None:
-        """Add optional jobs (cppcheck, docker, hotbackup)."""
+        """Add optional jobs (cppcheck, docker)."""
         # Cppcheck for x64
         if build_config.architecture == Architecture.X64:
             workflow["jobs"].append(
@@ -265,10 +265,6 @@ class CircleCIGenerator(OutputGenerator):
         # Docker image creation
         if self.config.circleci.create_docker_images:
             self._add_docker_image_job(workflow, build_config, build_jobs)
-
-        # Hotbackup tests
-        if not self.config.test_execution.arangod_without_v8:
-            self._add_hotbackup_job(workflow, build_config, build_jobs)
 
     def _add_docker_image_job(
         self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
@@ -294,22 +290,6 @@ class CircleCIGenerator(OutputGenerator):
                     ),
                     "arch": arch,
                     "tag": f"{image}:{tag}",
-                    "requires": build_jobs,
-                }
-            }
-        )
-
-    def _add_hotbackup_job(
-        self, workflow: Dict[str, Any], build_config: BuildConfig, build_jobs: List[str]
-    ) -> None:
-        """Add hotbackup test job."""
-        workflow["jobs"].append(
-            {
-                "run-hotbackup-tests": {
-                    "name": f"run-hotbackup-tests-{build_config.architecture.value}",
-                    "size": self.sizer.get_test_size(
-                        ResourceSize.MEDIUM, build_config, True
-                    ),
                     "requires": build_jobs,
                 }
             }

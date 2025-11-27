@@ -374,6 +374,9 @@ function launchInShellBG  (file) {
   let env = sh.getSanOptions();
   env['INSTANCEINFO'] = JSON.stringify(IM.getStructure());
   const argv = toArgv(args);
+  if (IM.options.extremeVerbosity) {
+    print(argv);
+  }
   let result = executeExternal(pu.ARANGOSH_BIN, argv, false, env);
   result.sh = sh;
   result['logFile'] = logFile;
@@ -536,6 +539,56 @@ function joinFinishedBGShells(options, clients) {
     }
   });
   return done;
+}
+
+function joinForceBGShells(options, clients) {
+  let IM = global.instanceManager;
+  let tries = 0;
+  let done = clients.length;
+  clients.forEach(client => {
+    client.status = internal.statusExternal(client.pid, false, 0.1);
+    if (client.status.status === 'RUNNING') {
+      client.status = internal.killExternal(client.pid, 9 /*SIG_KILL*/, false);
+    } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+      client.done = true;
+      if (client.exit === 0) {
+        IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+        client.failed = false;
+      } else {
+        IM.options.cleanup = false;
+        client.failed = true;
+      }
+    }
+  });
+  internal.sleep(1);
+  while (done > 0) {
+    clients.forEach(client => {
+      if (client.done) {
+        done -= 1;
+      } else {
+        client.status = internal.statusExternal(client.pid);
+        if (client.status.status === "STOPPED") {
+          print('.');
+        } else if (client.status.status !== 'RUNNING') {
+          let failed = client.sh.fetchSanFileAfterExit(client.pid);
+          IM.serverCrashedLocal |= failed;
+          client.failed = failed;
+          client.done = true;
+        } else if (client.status === 'TERMINATED' || client.status === 'NOT-FOUND') {
+          done -= 1;
+          if (client.exit === 0) {
+            IM.serverCrashedLocal |= client.client.sh.fetchSanFileAfterExit(client.pid);
+            client.failed = false;
+          } else {
+            IM.options.cleanup = false;
+            client.failed = true;
+          }
+        }
+      }
+    });
+    internal.sleep(0.5);
+  }
+  return done === 0;
 }
 
 function cleanupBGShells (clients, cn) {
@@ -757,6 +810,7 @@ exports.run = {
   launchPlainSnippetInBG: launchPlainSnippetInBG,
   launchSnippetInBG: launchSnippetInBG,
   joinBGShells: joinBGShells,
+  joinForceBGShells: joinForceBGShells,
   joinFinishedBGShells: joinFinishedBGShells,
   cleanupBGShells: cleanupBGShells,
   arangoImport: runArangoImportCfg,
