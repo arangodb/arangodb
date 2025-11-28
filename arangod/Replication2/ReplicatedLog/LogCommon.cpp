@@ -33,9 +33,8 @@
 #include <Basics/debugging.h>
 #include <Inspection/VPack.h>
 
-#include <chrono>
+#include <format>
 #include <utility>
-#include <fmt/core.h>
 
 namespace arangodb::replication2 {
 
@@ -311,7 +310,7 @@ auto replicated_log::to_string(CommitFailReason const& r) -> std::string {
     }
     auto operator()(
         CommitFailReason::FewerParticipantsThanWriteConcern const& reason) {
-      return fmt::format(
+      return std::format(
           "Fewer participants than effective write concern. Have {} ",
           "participants and effectiveWriteConcern={}.", reason.numParticipants,
           reason.effectiveWriteConcern);
@@ -378,20 +377,20 @@ auto replicated_log::to_string(CompactionStopReason const& csr) -> std::string {
     auto operator()(
         CompactionStopReason::NotReleasedByStateMachine const& reason)
         -> std::string {
-      return fmt::format("Statemachine release index is at {}",
+      return std::format("Statemachine release index is at {}",
                          reason.releasedIndex.value);
     }
     auto operator()(
         CompactionStopReason::CompactionThresholdNotReached const& reason)
         -> std::string {
-      return fmt::format(
+      return std::format(
           "Automatic compaction threshold not reached, next compaction at {}",
           reason.nextCompactionAt.value);
     }
     auto operator()(
         CompactionStopReason::ParticipantMissingEntries const& reason)
         -> std::string {
-      return fmt::format(
+      return std::format(
           "Compaction waiting for participant {} to receive all log entries",
           reason.who);
     }

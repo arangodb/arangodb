@@ -2372,8 +2372,8 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
     TRI_ASSERT(_outputItemRow == nullptr || _outputItemRow->numRowsLeft() == 0)
         << printBlockInfo() << " Passthrough block didn't process all rows. "
         << (_outputItemRow == nullptr
-                ? fmt::format("output == nullptr")
-                : fmt::format("rows left = {}, rows written = {}",
+                ? std::format("output == nullptr")
+                : std::format("rows left = {}, rows written = {}",
                               _outputItemRow->numRowsLeft(),
                               _outputItemRow->numRowsWritten()));
   }

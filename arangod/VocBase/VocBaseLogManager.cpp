@@ -66,7 +66,7 @@ auto VocBaseLogManager::getReplicatedStateById(replication2::LogId id)
     return {iter->second.state};
   } else {
     return Result(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND,
-                  fmt::format("replicated state {} not found", id.id()));
+                  std::format("replicated state {} not found", id.id()));
   }
 }
 
@@ -329,7 +329,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
     // due to dropping a database.
     return Result{
         TRI_ERROR_SHUTTING_DOWN,
-        fmt::format("Abort replicated state creation because all logs from the "
+        std::format("Abort replicated state creation because all logs from the "
                     "current database are being resigned, log id: {}",
                     id.id())};
   }

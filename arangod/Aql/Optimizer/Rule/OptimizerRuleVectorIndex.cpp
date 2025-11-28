@@ -191,7 +191,7 @@ SearchParameters getSearchParameters(auto const* calculationNodeExpressionNode,
         !res.ok()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_PARSE,
-          fmt::format("error parsing searchParameters: {}!", res.error()));
+          std::format("error parsing searchParameters: {}!", res.error()));
     }
 
     return searchParameters;

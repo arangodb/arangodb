@@ -26,9 +26,8 @@
 #include "Basics/ResultT.h"
 #include "Inspection/Status.h"
 
-#include <fmt/format.h>
-
 #include <cstdint>
+#include <format>
 #include <string_view>
 
 namespace arangodb {
@@ -105,17 +104,15 @@ struct std::hash<arangodb::ShardID> {
       -> std::size_t;
 };
 
-// Make ShardID fmt::formatable
+// Make ShardID std::formatable
 template<>
-struct fmt::formatter<arangodb::ShardID> {
-  template<typename ParseContext>
-  constexpr auto parse(ParseContext& ctx) {
+struct std::formatter<arangodb::ShardID> {
+  constexpr auto parse(std::format_parse_context& ctx) {
     return ctx.begin();
   }
 
-  template<typename FormatContext>
-  auto format(arangodb::ShardID const& shardId, FormatContext& ctx) {
-    return fmt::format_to(ctx.out(), "s{}", std::to_string(shardId.id()));
+  auto format(arangodb::ShardID const& shardId, std::format_context& ctx) const {
+    return std::format_to(ctx.out(), "s{}", shardId.id());
   }
 };
 

@@ -65,11 +65,10 @@
 #endif
 
 #include <absl/strings/str_cat.h>
-#include <fmt/core.h>
-#include <fmt/ostream.h>
-
 #include <velocypack/Collection.h>
 #include <velocypack/Utf8Helper.h>
+
+#include <format>
 
 using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
@@ -1393,11 +1392,11 @@ auto LogicalCollection::getDocumentStateLeader() -> std::shared_ptr<
   auto stateMachine = getDocumentState();
 
   static constexpr auto throwUnavailable = []<typename... Args>(
-      basics::SourceLocation location, fmt::format_string<Args...> formatString,
+      basics::SourceLocation location, std::format_string<Args...> formatString,
       Args && ... args) {
     throw basics::Exception(
         TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
-        fmt::vformat(formatString, fmt::make_format_args(args...)), location);
+        std::format(formatString, std::forward<Args>(args)...), location);
   };
 
   auto leader = stateMachine->getLeader();

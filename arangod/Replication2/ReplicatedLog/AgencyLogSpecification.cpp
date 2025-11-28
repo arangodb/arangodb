@@ -33,7 +33,6 @@
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Basics/VelocyPackHelper.h"
 
-#include <fmt/ranges.h>
 
 #include <velocypack/Iterator.h>
 
@@ -102,8 +101,7 @@ LogCurrentLocalState::LogCurrentLocalState(LogTerm term,
 auto agency::operator<<(std::ostream& ostream,
                         LogCurrentSupervisionElection const& el)
     -> std::ostream& {
-  using namespace fmt::literals;
-  ostream << fmt::format(
+  ostream << std::format(
       "Election {{ "
       "term: {term}, "
       "bestTermIndex: {bestTerm}:{bestIndex}, "

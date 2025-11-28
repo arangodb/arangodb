@@ -321,7 +321,7 @@ void InternalRestTraverserHandler::queryEngine() {
               q.cursorId != eng->_cursor->_cursorId) {
             generateError(
                 ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                fmt::format(
+                std::format(
                     "cursor id {} does not exist in traverser engine {}",
                     q.cursorId, engineId));
             return;

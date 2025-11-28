@@ -223,7 +223,7 @@ geo::Ellipsoid const* detEllipsoid(ExpressionContext* expressionContext,
     aql::functions::registerWarning(
         expressionContext, functionName,
         Result(TRI_ERROR_BAD_PARAMETER,
-               fmt::format(
+               std::format(
                    "invalid ellipsoid {} specified, falling back to \"sphere\"",
                    slice.stringView())));
   } else {

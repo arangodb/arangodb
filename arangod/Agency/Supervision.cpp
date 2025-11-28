@@ -3652,7 +3652,7 @@ void Supervision::checkUndoLeaderChangeActions() {
             Job::getReplicatedStateId(snapshot(), *database, *collection, id);
         if (!stateId.has_value()) {
           return Result{TRI_ERROR_BAD_PARAMETER,
-                        fmt::format("replicated log with ID {} missing", id)};
+                        std::format("replicated log with ID {} missing", id)};
         }
 
         return UndoAction{UndoAction::UndoMoveShardR2{
@@ -3684,7 +3684,7 @@ void Supervision::checkUndoLeaderChangeActions() {
       auto logId = replication2::LogId::fromString(id);
       if (!logId.has_value()) {
         auto result = Result{TRI_ERROR_BAD_PARAMETER,
-                             fmt::format("Malformed replicated log ID {}", id)};
+                             std::format("Malformed replicated log ID {}", id)};
         TRI_ASSERT(false) << result;
         return result;
       }

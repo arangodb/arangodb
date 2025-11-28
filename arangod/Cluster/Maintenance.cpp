@@ -1382,7 +1382,7 @@ static ResultT<std::vector<ServerID>> getLocalFollowers(
     if (collection == nullptr) {
       auto res = Result{
           TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-          fmt::format(
+          std::format(
               "Maintenance::getLocalFollowers: Failed to lookup collection {}",
               shard)};
       LOG_TOPIC("ce393", DEBUG, Logger::MAINTENANCE) << res;
@@ -1392,7 +1392,7 @@ static ResultT<std::vector<ServerID>> getLocalFollowers(
   } catch (std::exception const& e) {
     auto res = Result{
         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-        fmt::format(
+        std::format(
             "Maintenance::getLocalFollowers: Failed to lookup database {}, "
             "exception: {} (this is expected if the database was recently "
             "deleted).",
@@ -1531,7 +1531,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
         } else {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER,
-              fmt::format("Error while reporting to Current for database {}, "
+              std::format("Error while reporting to Current for database {}, "
                           "collection {}, because the replicated log could not "
                           "be used!",
                           database, shard));
