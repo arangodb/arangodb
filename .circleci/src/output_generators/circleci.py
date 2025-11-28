@@ -384,14 +384,14 @@ class CircleCIGenerator(OutputGenerator):
 
         return result
 
-    def _build_job_names(
+    def _generate_test_job_names(
         self,
         job: TestJob,
         deployment_type: DeploymentType,
         build_config: BuildConfig,
         replication_version: int,
     ) -> tuple[str, str]:
-        """Build job and suite names (applying suffix if present)."""
+        """Generate TEST job and suite names (applying suffix if present)."""
         deployment_str = self._get_deployment_string(
             deployment_type, replication_version
         )
@@ -400,8 +400,10 @@ class CircleCIGenerator(OutputGenerator):
         if job.options.suffix:
             suite_name = f"{job.name}-{job.options.suffix}"
 
+        # Build job name with architecture and sanitizer suffix for global uniqueness
+        sanitizer_suffix = build_config.build_variant.get_suffix()
         job_name = (
-            f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}"
+            f"test-{deployment_str}-{suite_name}-{build_config.architecture.value}{sanitizer_suffix}"
         )
 
         return job_name, suite_name
@@ -535,7 +537,7 @@ class CircleCIGenerator(OutputGenerator):
         """
         is_cluster = deployment_type == DeploymentType.CLUSTER
 
-        job_name, suite_name = self._build_job_names(
+        job_name, suite_name = self._generate_test_job_names(
             job, deployment_type, build_config, replication_version
         )
 
@@ -645,11 +647,12 @@ class CircleCIGenerator(OutputGenerator):
             rta_branch = job.repository.git_branch
 
         deployments = ["single", "cluster"]
+        sanitizer_suffix = build_config.build_variant.get_suffix()
 
         result_jobs = []
         for deployment in deployments:
             job_dict = {
-                "name": f"test-{deployment}-UI",
+                "name": f"test-{deployment}-UI-{build_config.architecture.value}{sanitizer_suffix}",
                 "suiteName": f"{deployment}-UI",
                 "arangosh_args": "",
                 "deployment": "SG" if deployment == "single" else "CL",
