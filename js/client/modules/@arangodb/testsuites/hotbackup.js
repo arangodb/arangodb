@@ -193,7 +193,7 @@ function hotBackup_load_backend (options, which, args) {
         return helper.runTestFn(testFn, args, 'postRestore');
       } catch (ex) {
         if (ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
-          internal.sleep(2);
+          sleep(2);
           continue;
         }
         throw ex;
