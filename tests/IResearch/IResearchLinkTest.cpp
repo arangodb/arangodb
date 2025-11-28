@@ -2470,6 +2470,7 @@ TEST_F(IResearchLinkMetricsTest, TimeConsolidate) {
     if (consolidationTime1 > 0 || consolidationTime2 > 0) {
       return;
     }
+    insert(200000, 300000, 2);
   }
   auto start = std::chrono::steady_clock::now();
   auto check = [&] {
