@@ -23,7 +23,7 @@
 
 #include "Exceptions.h"
 
-#include <fmt/core.h>
+#include <format>
 
 namespace arangodb::basics {
 
@@ -31,8 +31,8 @@ template<typename... Args>
 auto Exception::fmt(SourceLocation location, ErrorCode code, Args&&... args)
     -> Exception {
   return Exception(code,
-                   fmt::format(fmt::runtime(TRI_errno_string(code)),
-                               std::forward<Args>(args)...),
+                   std::vformat(TRI_errno_string(code),
+                                std::make_format_args(args...)),
                    location);
 }
 

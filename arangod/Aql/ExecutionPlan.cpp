@@ -82,6 +82,7 @@
 #include <fmt/ranges.h>
 #include <velocypack/Iterator.h>
 
+#include <format>
 #include <initializer_list>
 #include <ranges>
 
@@ -2624,7 +2625,7 @@ void logMissingVariablesExceptionDetails(
   auto constexpr planHeader =
       std::string_view("(id, type, varsUsedHere, varsSetHere)");
   auto const formatVar = [errVar = exception.variable()](Variable const* v) {
-    return fmt::format("{}{}{}({})", v == errVar ? "!" : "",
+    return std::format("{}{}{}({})", v == errVar ? "!" : "",
                        !v->name.empty() && std::isdigit(v->name[0]) ? "#" : "",
                        v->name, v->id);
   };
@@ -2634,7 +2635,7 @@ void logMissingVariablesExceptionDetails(
   };
   auto const formatNode = [&, errNode = exception.node()](
                               ExecutionNode const& node) -> std::string {
-    return fmt::format("{}({}, {}, {}, {})", &node == errNode ? "!" : "",
+    return std::format("{}({}, {}, {}, {})", &node == errNode ? "!" : "",
                        node.id().id(), node.getTypeString(),
                        formatVars(node.getVariablesUsedHere()),
                        formatVars(node.getVariablesSetHere()));

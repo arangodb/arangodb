@@ -28,7 +28,7 @@
 #include <functional>
 #include <iosfwd>
 
-#include <fmt/format.h>
+#include <format>
 
 namespace arangodb::basics {
 
@@ -91,11 +91,10 @@ std::ostream& operator<<(std::ostream& s,
 }  // namespace arangodb::basics
 
 template<>
-struct fmt::formatter<::arangodb::basics::Identifier>
-    : fmt::formatter<::arangodb::basics::Identifier::BaseType> {
-  template<class FormatContext>
-  auto format(::arangodb::basics::Identifier ident, FormatContext& fc) const {
-    return ::fmt::formatter<
+struct std::formatter<::arangodb::basics::Identifier>
+    : std::formatter<::arangodb::basics::Identifier::BaseType> {
+  auto format(::arangodb::basics::Identifier ident, std::format_context& fc) const {
+    return std::formatter<
         typename ::arangodb::basics::Identifier::BaseType>::format(ident.id(),
                                                                    fc);
   }

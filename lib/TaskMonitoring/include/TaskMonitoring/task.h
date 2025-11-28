@@ -26,10 +26,9 @@
 #include "Containers/Concurrent/source_location.h"
 #include "Containers/Concurrent/thread.h"
 #include "Inspection/Types.h"
-#include "fmt/format.h"
 
 #include <atomic>
-#include <cstdint>
+#include <format>
 #include <optional>
 #include <source_location>
 #include <string>
@@ -50,7 +49,7 @@ struct TaskId {
 };
 template<typename Inspector>
 auto inspect(Inspector& f, TaskId& x) {
-  return f.object(x).fields(f.field("id", fmt::format("{}", x.id)));
+  return f.object(x).fields(f.field("id", std::format("{}", x.id)));
 }
 
 struct ParentTaskSnapshot : std::variant<RootTask, TaskId> {};
