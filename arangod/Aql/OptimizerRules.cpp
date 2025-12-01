@@ -8849,12 +8849,14 @@ void arangodb::aql::spliceSubqueriesRule(Optimizer* opt,
 
       TRI_ASSERT(end->getDependencies().size() == 1);
       TRI_ASSERT(end->getParents().size() == 1);
-      end->invalidateCost();
     }
     TRI_ASSERT(sq->getDependencies().empty());
     TRI_ASSERT(sq->getParents().empty());
   }
 
+  if (modified) {
+    plan->root()->invalidateCost();
+  }
   opt->addPlan(std::move(plan), rule, modified);
 }
 

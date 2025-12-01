@@ -113,7 +113,7 @@ class Optimizer {
   /// If you need to extract the plans from the optimizer use stealBest or
   /// stealPlans.
   void createPlans(std::unique_ptr<ExecutionPlan> p,
-                   QueryOptions const& queryOptions, bool estimateAllPlans);
+                   QueryOptions const& queryOptions);
 
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const&,
@@ -173,7 +173,7 @@ class Optimizer {
 
   void checkForcedIndexHints();
 
-  void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
+  void estimateCosts(QueryOptions const& queryOptions);
 
   /// @brief optimizer statistics
   Stats _stats;
