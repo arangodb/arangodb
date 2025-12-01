@@ -1,6 +1,10 @@
 devel
 -----
 
+* Fix BTS-2268: Fixed an issue where query plan for queries with subquery
+  were causing a crash when being stored in query plan cache. The issue
+  is a missing invalidateCost from the splice-subqueries rule.
+
 * COR-45: Added support for index hints in vector search queries.
 
 * COR-13: New ArangoSearch consolidation policy
