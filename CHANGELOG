@@ -1,11 +1,13 @@
 devel
 -----
 
+* COR-45: Added support for index hints in vector search queries.
+
 * COR-13: New ArangoSearch consolidation policy
   - new algorithm that uses maxSkewThreshold and minDeletionRatio
   - Bumped ArangoSearch
 
-* The query explainer now displays the vector index used by EnumerateNearVectoNode.
+* The query explainer now displays the vector index used by EnumerateNearVectorNode.
 
 * FE-636: bump webpack-dev-middleware from 5.3.3 to 5.3.4.
 

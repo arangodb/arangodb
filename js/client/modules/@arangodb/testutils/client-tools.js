@@ -463,10 +463,21 @@ function launchSnippetInBG (options, snippet, key, cn, single=false) {
   return { key, file, client, done: false };
 }
 
+function readClientLogfile(client) {
+  const logfile = client.file + '.log';
+  if (fs.exists(logfile)) {
+    return (`${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()}`);
+  } else {
+    return (`${Date()} test client with pid ${client.client.pid} has failed and did not write a logfile`);
+  }
+}
+
+
 function joinBGShells (options, clients, waitFor, cn) {
   let IM = global.instanceManager;
   let tries = 0;
   let done = 0;
+  let clientErrors = '';
   while (++tries < waitFor) {
     clients.forEach(function (client) {
       if (!client.done) {
@@ -485,6 +496,9 @@ function joinBGShells (options, clients, waitFor, cn) {
             IM.options.cleanup = false;
             client.failed = true;
           }
+        }
+        if (client.failed) {
+          clientErrors = `${clientErrors}\n${readClientLogfile(client)}`;
         }
       }
     });
@@ -507,7 +521,7 @@ function joinBGShells (options, clients, waitFor, cn) {
 
   if (done !== clients.length) {
     options.cleanup = false;
-    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}`);
+    throw new Error(`not all shells could be joined:\n ${JSON.stringify(clients.filter(client => { return client.failed;}))}${clientErrors}`);
   }
 }
 
@@ -602,6 +616,7 @@ function cleanupBGShells (clients, cn) {
 
     const logfile = client.file + '.log';
     if (client.failed) {
+      print(`${RED}${readClientLogfile(client)}${RESET}`);
       if (fs.exists(logfile)) {
         print(`${RED}${Date()} test client with pid ${client.client.pid} has failed and wrote a logfile: \n${fs.readFileSync(logfile).toString()} ${RESET}`);
       } else {
