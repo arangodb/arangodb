@@ -166,6 +166,7 @@ function setupBinaries (options) {
     ARANGOD_BIN,
     ARANGOIMPORT_BIN,
     ARANGORESTORE_BIN,
+    ARANGOBACKUP_BIN,
     ARANGOEXPORT_BIN,
     ARANGOSH_BIN
   ];
