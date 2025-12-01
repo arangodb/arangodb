@@ -187,6 +187,19 @@ function hotBackup_load_backend (options, which, args) {
     helper.destructor(false);
     return helper.extractResults();
   }
+  function retryWaitRestore(testFn, args) {
+    while(true) {
+      try {
+        return helper.runTestFn(testFn, args, 'postRestore');
+      } catch (ex) {
+        if (ex.errorNum === errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE.code) {
+          sleep(2);
+          continue;
+        }
+        throw ex;
+      }
+    }
+  }
 
   try {
     if (
@@ -198,7 +211,7 @@ function hotBackup_load_backend (options, which, args) {
         !helper.createHotBackup() ||
         !helper.stopStressArangosh() ||
         !helper.restoreHotBackup() ||
-        !helper.runTestFn(args.postRestoreFn, args.args, 'postRestore') //||
+        !retryWaitRestore(args.postRestoreFn, args.args)
         //!helper.runRtaCheckData()
     ) {
       helper.destructor(true);
