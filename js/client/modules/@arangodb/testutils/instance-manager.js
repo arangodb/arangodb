@@ -1624,7 +1624,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
       process.env['MALLOC_CONF'] = 'prof:true';
     }
     options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
-    if (options.encryptionAtRest && !pu.isEnterpriseClient) {
+    if (options.encryptionAtRest) {
       options.encryptionAtRest = false;
     }
   });
