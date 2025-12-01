@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio. 
+
 * COR-45: Added support for index hints in vector search queries.
 
 * COR-13: New ArangoSearch consolidation policy
