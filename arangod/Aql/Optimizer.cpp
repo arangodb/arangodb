@@ -469,17 +469,17 @@ void Optimizer::checkForcedIndexHints() {
 
 void Optimizer::estimateCosts(QueryOptions const& queryOptions,
                               bool estimateAllPlans) {
+  // Invalidate all plans and get new estimates before doing anything
+  for (auto& plan : _plans.list) {
+    plan.first->invalidateCost();
+    plan.first->getCost();
+  }
+
   if (estimateAllPlans || _plans.size() > 1 ||
       queryOptions.profile >= ProfileLevel::Blocks) {
     // if profiling is turned on, we must do the cost estimation here
     // because the cost estimation must be done while the transaction
     // is still running
-    for (auto& plan : _plans.list) {
-      plan.first->invalidateCost();
-      plan.first->getCost();
-      // this value is cached in the plan, so formally this step is
-      // unnecessary, but for the sake of cleanliness...
-    }
 
     if (_plans.size() > 1) {
       // only sort plans when necessary
