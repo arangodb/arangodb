@@ -2,7 +2,7 @@ devel
 -----
 
 * Fix BTS-2268: Fixed an issue where query plan for queries with subquery
-  were causing a crash when being stored in query plan cache. The issue
+  is causing a crash when being stored in query plan cache. The issue
   is a missing invalidateCost from the splice-subqueries rule.
 
 * FE-905: Update tooltip text for maxSkewThreshold  & minDeletionRatio. 
