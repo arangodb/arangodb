@@ -2377,8 +2377,8 @@ function IResearchFeatureDDLTestSuite2() {
         for (var i = 0; i < ${inTransCount}; ++i) {
           c.insert({ myField: 'background' + i });
         }
-        trx.commit();
         require('internal').sleep(20);
+        trx.commit();
       `, 0);
       while (!fs.exists(markerFileName)) {
         require('internal').sleep(1); // give transaction some time to run 
