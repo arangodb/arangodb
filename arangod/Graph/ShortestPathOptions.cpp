@@ -170,7 +170,10 @@ double ShortestPathOptions::estimateCost(size_t& nrItems) const {
   // We use the "seven-degrees-of-seperation" rule.
   // This theory asumes that the shortest path is at most 7 steps of length
 
-  nrItems = static_cast<size_t>(std::pow(baseCreateItems, 7));
+  double tmp = std::pow(baseCreateItems, 7);
+  nrItems = tmp > static_cast<double>(std::numeric_limits<size_t>::max())
+                ? std::numeric_limits<size_t>::max()
+                : static_cast<size_t>(tmp);
   return std::pow(baseCost, 7);
 }
 
