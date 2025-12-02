@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix a potential integer overflow in shortest path estimation.
+
 * Fix BTS-2268: Fixed an issue where query plan for queries with subquery
   is causing a crash when being stored in query plan cache. The issue
   is a missing invalidateCost from the splice-subqueries rule.
