@@ -145,33 +145,26 @@ function BaseTestConfig () {
       });
       let state = {};
       let txn_col = tx.collection(cn);
-      for (let j = 0; j < 100; j++) {
-        let toCreate = [];
-        let toDelete = [];
-        let toReplaceKeys = [];
-        let toReplaceDocs = [];
-        for (let i = 0; i < n /100; ++i) {
-          let key = "testmann" + Math.floor(Math.random() * 10);
-          if (state.hasOwnProperty(key)) {
-            if (Math.random() >= 0.666) {
-              // remove
-              toDelete.push(key);
-              delete state[key];
-            } else {
-              toReplaceKeys.push(key);
-              toReplaceDocs.push({ value: ++state[key] });
-            }
+      for (let i = 0; i < n; ++i) {
+        let key = "testmann" + Math.floor(Math.random() * 10);
+        if (state.hasOwnProperty(key)) {
+          if (Math.random() >= 0.666) {
+            // remove
+            txn_col.remove(key, { silent: true });
+            delete state[key];
           } else {
-            state[key] = Math.floor(Math.random() * 10000);
-            toCreate.push({ _key: key, value: state[key] });
+            txn_col.replace(key, { value: ++state[key] }, { silent: true });
           }
+        } else {
+          state[key] = Math.floor(Math.random() * 10000);
+          txn_col.insert({ _key: key, value: state[key] }, { silent: true });
         }
-        txn_col.remove(toDelete, { silent: true });
-        txn_col.replace(toReplaceKeys, toReplaceDocs, { silent: true });
-        txn_col.insert(toCreate, { silent: true });
       }
-      tx.commit();
-      return true;
+      let x = tx.commit();
+      if (x.status !== "committed") {
+        throw new Error("failed to commit transaction");
+      }
+      return state;
     }
   };
 
