@@ -144,7 +144,7 @@ class BatchedLifoQueue {
     TRI_ASSERT(!isEmpty());
     auto first = std::move(_queue.front());
     LOG_TOPIC("9cda4", TRACE, Logger::GRAPHS)
-        // LOG_DEVEL << "<BatchedLifoQueue> Pop: "
+        << "<BatchedLifoQueue> Pop: "
         << (std::holds_alternative<Step>(first)
                 ? std::get<Step>(first).toString()
                 : "next batch");
