@@ -171,7 +171,7 @@ double ShortestPathOptions::estimateCost(size_t& nrItems) const {
   // This theory asumes that the shortest path is at most 7 steps of length
 
   double tmp = std::pow(baseCreateItems, 7);
-  nrItems = tmp > static_cast<double>(std::numeric_limits<size_t>::max())
+  nrItems = tmp >= static_cast<double>(std::numeric_limits<size_t>::max())
                 ? std::numeric_limits<size_t>::max()
                 : static_cast<size_t>(tmp);
   return std::pow(baseCost, 7);
