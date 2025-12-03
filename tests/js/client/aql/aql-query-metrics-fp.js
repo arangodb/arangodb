@@ -140,7 +140,7 @@ function QueryMetricsTestSuite() {
           if (aqlCurrentQueryMetric === 0) {
             break;
           }
-          sleep(1);
+          sleep(0.1);
           iterations++;
         }
 
