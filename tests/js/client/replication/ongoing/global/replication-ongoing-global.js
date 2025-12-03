@@ -44,6 +44,7 @@ let IM = global.instanceManager;
 const leaderEndpoint = IM.arangods[0].endpoint;
 const followerEndpoint = IM.arangods[1].endpoint;
 
+
 const connectToLeader = function() {
   reconnectRetry(leaderEndpoint, db._name(), 'root', '');
   db._flushCache();
@@ -587,12 +588,12 @@ function BaseTestConfig () {
             for (let i = 0; i < 10; ++i) {
               txn_col.insert({
                 test1: i,
-                type: 'longTransactionAsync',
+                type: 'longTransactionBlocking',
                 coll: 'UnitTestsReplication'
               });
               txn_col.insert({
                 test2: i,
-                type: 'longTransactionAsync',
+                type: 'longTransactionBlocking',
                 coll: 'UnitTestsReplication'
               });
               // intentionally delay the transaction

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global assertEqual, assertTrue, arango, ARGUMENTS */
+/*global assertEqual, assertTrue, arango, ARGUMENTS, SYS_IS_V8_BUILD */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -133,7 +133,7 @@ function ReplicationSuite() {
         console.topic("replication=debug", "follower has caught up. state.lastLogTick:", state.lastLogTick, "followerState.lastAppliedContinuousTick:", followerState.state.lastAppliedContinuousTick, "followerState.lastProcessedContinuousTick:", followerState.state.lastProcessedContinuousTick);
         break;
       }
-        
+
       if (!printed) {
         console.topic("replication=debug", "waiting for follower to catch up");
         printed = true;
@@ -290,118 +290,226 @@ function ReplicationSuite() {
           let insertOrReplace = function() {
             let collection = pickCollection();
             emit("insertOrReplace " + db._name() + " " + collection.name());
-            db._executeTransaction({
-              collections: { write: [collection.name()] },
-              action: function(params) {
-                let collection = params.cn, db = require("internal").db;
-                let key = "test" + Math.floor(Math.random() * 10000);
-                try {
-                  db[collection].insert({ _key: key, value: Date.now() });
-                } catch (err) {
-                  db[collection].replace(key, { value2: Date.now() });
-                }
-              },
-              params: { cn: collection.name() }
-            });
+            if (SYS_IS_V8_BUILD) {
+              db._executeTransaction({
+                collections: { write: [collection.name()] },
+                action: function(params) {
+                  let collection = params.cn, db = require("internal").db;
+                  let key = "test" + Math.floor(Math.random() * 10000);
+                  try {
+                    db[collection].insert({ _key: key, value: Date.now() });
+                  } catch (err) {
+                    db[collection].replace(key, { value2: Date.now() });
+                  }
+                },
+                params: { cn: collection.name() }
+              });
+            } else {
+              var tx = db._createTransaction({
+                collections: { write: [collection.name()] },
+              });
+              let txn_col = tx.collection(collection.name());
+              let key = "test" + Math.floor(Math.random() * 10000);
+              try {
+                txn_col.insert({ _key: key, value: Date.now() });
+              } catch (err) {
+                txn_col.replace(key, { value2: Date.now() });
+              }
+              let x = tx.commit();
+              if (x.status !== "committed") {
+                throw new Error("failed to commit transaction " + x);
+              }
+            }
           };
           
           let insertOrUpdate = function() {
             let collection = pickCollection();
             emit("insertOrUpdate " + db._name() + " " + collection.name());
-            db._executeTransaction({
-              collections: { write: [collection.name()] },
-              action: function(params) {
-                let collection = params.cn, db = require("internal").db;
-                let key = "test" + Math.floor(Math.random() * 10000);
-                try {
-                  db[collection].insert({ _key: key, value: Date.now() });
-                } catch (err) {
-                  db[collection].update(key, { value2: Date.now() });
-                }
-              },
-              params: { cn: collection.name() }
-            });
+            if (SYS_IS_V8_BUILD) {
+              db._executeTransaction({
+                collections: { write: [collection.name()] },
+                action: function(params) {
+                  let collection = params.cn, db = require("internal").db;
+                  let key = "test" + Math.floor(Math.random() * 10000);
+                  try {
+                    db[collection].insert({ _key: key, value: Date.now() });
+                  } catch (err) {
+                    db[collection].update(key, { value2: Date.now() });
+                  }
+                },
+                params: { cn: collection.name() }
+              });
+            } else {
+              var tx = db._createTransaction({
+                collections: { write: [collection.name()] },
+              });
+              let txn_col = tx.collection(collection.name());
+              let key = "test" + Math.floor(Math.random() * 10000);
+              try {
+                txn_col.insert({ _key: key, value: Date.now() });
+              } catch (err) {
+                txn_col.update(key, { value2: Date.now() });
+              }
+              let x = tx.commit();
+              if (x.status !== "committed") {
+                throw new Error("failed to commit transaction " + x);
+              }
+            }
           };
           
           let insertMulti = function() {
             let collection = pickCollection();
             emit("insertMulti " + db._name() + " " + collection.name());
-            db._executeTransaction({
-              collections: { write: [collection.name()] },
-              action: function(params) {
-                let collection = params.cn, db = require("internal").db;
-                db[collection].insert({ value1: Date.now() });
-                db[collection].insert({ value2: Date.now() });
-              },
-              params: { cn: collection.name() }
-            });
+            if (SYS_IS_V8_BUILD) {
+              db._executeTransaction({
+                collections: { write: [collection.name()] },
+                action: function(params) {
+                  let collection = params.cn, db = require("internal").db;
+                  db[collection].insert({ value1: Date.now() });
+                  db[collection].insert({ value2: Date.now() });
+                },
+                params: { cn: collection.name() }
+              });
+            } else {
+              var tx = db._createTransaction({
+                collections: { write: [collection.name()] },
+              });
+              let txn_col = tx.collection(collection.name());
+              txn_col.insert({ value1: Date.now() });
+              txn_col.insert({ value2: Date.now() });
+              let x = tx.commit();
+              if (x.status !== "committed") {
+                throw new Error("failed to commit transaction " + x);
+              }
+            }
           };
           
           let removeMulti = function() {
             let collection = pickCollection();
             emit("removeMulti " + db._name() + " " + collection.name());
-            db._executeTransaction({
-              collections: { write: [collection.name()] },
-              action: function(params) {
-                let collection = params.cn, db = require("internal").db;
-                if (db[collection].count() < 2) {
-                  let k1 = db[collection].insert({});
-                  let k2 = db[collection].insert({});
-                  db[collection].remove(k1);
-                  db[collection].remove(k2);
-                  return;
-                }
-                db[collection].remove(db[collection].any());
-                db[collection].remove(db[collection].any());
-              },
-              params: { cn: collection.name() }
-            });
+            if (SYS_IS_V8_BUILD) {
+              db._executeTransaction({
+                collections: { write: [collection.name()] },
+                action: function(params) {
+                  let collection = params.cn, db = require("internal").db;
+                  if (db[collection].count() < 2) {
+                    let k1 = db[collection].insert({});
+                    let k2 = db[collection].insert({});
+                    db[collection].remove(k1);
+                    db[collection].remove(k2);
+                    return;
+                  }
+                  db[collection].remove(db[collection].any());
+                  db[collection].remove(db[collection].any());
+                },
+                params: { cn: collection.name() }
+              });
+            } else {
+              var tx = db._createTransaction({
+                collections: { write: [collection.name()] },
+              });
+              let txn_col = tx.collection(collection.name());
+              if (txn_col.count() < 2) {
+                let k1 = txn_col.insert({});
+                let k2 = txn_col.insert({});
+                txn_col.remove(k1);
+                txn_col.remove(k2);
+                tx.query("FOR doc IN @@col REMOVE doc IN @@col", {"@col": txn_col.name()});
+              }
+              let x = tx.commit();
+              if (x.status !== "committed") {
+                throw new Error("failed to commit transaction " + x);
+              }
+            }
           };
           
           let removeInsert = function() {
             let collection = pickCollection();
             emit("removeInsert " + db._name() + " " + collection.name());
-            db._executeTransaction({
-              collections: { write: [collection.name()] },
-              action: function(params) {
-                let collection = params.cn, db = require("internal").db;
-                if (db[collection].count() === 0) {
+            if (SYS_IS_V8_BUILD) {
+              db._executeTransaction({
+                collections: { write: [collection.name()] },
+                action: function(params) {
+                  let collection = params.cn, db = require("internal").db;
+                  if (db[collection].count() === 0) {
+                    db[collection].insert({ value: Date.now() });
+                  }
+                  db[collection].remove(db[collection].any());
                   db[collection].insert({ value: Date.now() });
-                }
-                db[collection].remove(db[collection].any());
-                db[collection].insert({ value: Date.now() });
-              },
-              params: { cn: collection.name() }
-            });
+                },
+                params: { cn: collection.name() }
+              });
+            } else {
+              var tx = db._createTransaction({
+                collections: { write: [collection.name()] },
+              });
+              let txn_col = tx.collection(collection.name());
+              if (txn_col.count() === 0) {
+                txn_col.insert({ value: Date.now() });
+              }
+              tx.query("FOR doc IN @@col REMOVE doc IN @@col", {"@col": txn_col.name()});
+              txn_col.insert({ value: Date.now() });
+              let x = tx.commit();
+              if (x.status !== "committed") {
+                throw new Error("failed to commit transaction " + x);
+              }
+            }
           };
           
           let insertRemove = function() {
             let collection = pickCollection();
             emit("insertRemove " + db._name() + " " + collection.name());
-            db._executeTransaction({
-              collections: { write: [collection.name()] },
-              action: function(params) {
-                let collection = params.cn, db = require("internal").db;
-                let k = db[collection].insert({ value: Date.now() });
-                db[collection].remove(k);
-              },
-              params: { cn: collection.name() }
-            });
+            if (SYS_IS_V8_BUILD) {
+              db._executeTransaction({
+                collections: { write: [collection.name()] },
+                action: function(params) {
+                  let collection = params.cn, db = require("internal").db;
+                  let k = db[collection].insert({ value: Date.now() });
+                  db[collection].remove(k);
+                },
+                params: { cn: collection.name() }
+              });
+            } else {
+              var tx = db._createTransaction({
+                collections: { write: [collection.name()] },
+              });
+              let txn_col = tx.collection(collection.name());
+              let k = txn_col.insert({ value: Date.now() });
+              txn_col.remove(k);
+              let x = tx.commit();
+              if (x.status !== "committed") {
+                throw new Error("failed to commit transaction " + x);
+              }
+            }
           };
           
           let insertBatch = function() {
             let collection = pickCollection();
             emit("insertBatch " + db._name() + " " + collection.name());
-            db._executeTransaction({
-              collections: { write: [collection.name()] },
-              action: function(params) {
-                let collection = params.cn, db = require("internal").db;
-                for (let i = 0; i < 1000; ++i) {
-                  db[collection].insert({ value1: Date.now() });
-                }
-              },
-              params: { cn: collection.name() }
-            });
+            if (SYS_IS_V8_BUILD) {
+              db._executeTransaction({
+                collections: { write: [collection.name()] },
+                action: function(params) {
+                  let collection = params.cn, db = require("internal").db;
+                  for (let i = 0; i < 1000; ++i) {
+                    db[collection].insert({ value1: Date.now() });
+                  }
+                },
+                params: { cn: collection.name() }
+              });
+            } else {
+              var tx = db._createTransaction({
+                collections: { write: [collection.name()] },
+              });
+              let txn_col = tx.collection(collection.name());
+              for (let i = 0; i < 1000; ++i) {
+                txn_col.insert({ value1: Date.now() });
+              }
+              let x = tx.commit();
+              if (x.status !== "committed") {
+                throw new Error("failed to commit transaction " + x);
+              }
+            }
           };
           
           
@@ -510,7 +618,7 @@ function ReplicationSuite() {
             { name: "createDatabase", func: createDatabase },
             { name: "dropDatabase", func: dropDatabase },
           ];
-     
+
           for (let i = 0; i < 3000; ++i) { 
             pickDatabase();
             let op = ops[Math.floor(Math.random() * ops.length)];
