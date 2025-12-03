@@ -798,6 +798,7 @@ function BaseTestConfig () {
 
           } else {
             let func = function(cn) {
+              let db = require('internal').db;
               var tx = db._createTransaction({
                 collections: { write: [cn] },
               });
