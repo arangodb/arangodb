@@ -414,7 +414,8 @@ function ReplicationSuite() {
                 let k2 = txn_col.insert({});
                 txn_col.remove(k1);
                 txn_col.remove(k2);
-                tx.query("FOR doc IN @@col REMOVE doc IN @@col", {"@col": txn_col.name()});
+              } else {
+                tx.query("FOR doc IN @@col LIMIT 2 REMOVE doc IN @@col", {"@col": txn_col.name()});
               }
               let x = tx.commit();
               if (x.status !== "committed") {
@@ -447,7 +448,7 @@ function ReplicationSuite() {
               if (txn_col.count() === 0) {
                 txn_col.insert({ value: Date.now() });
               }
-              tx.query("FOR doc IN @@col REMOVE doc IN @@col", {"@col": txn_col.name()});
+              tx.query("FOR doc IN @@col LIMIT 1 REMOVE doc IN @@col", {"@col": txn_col.name()});
               txn_col.insert({ value: Date.now() });
               let x = tx.commit();
               if (x.status !== "committed") {
