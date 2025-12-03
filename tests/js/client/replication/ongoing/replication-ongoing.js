@@ -1036,9 +1036,9 @@ function BaseTestConfig () {
                   type: 'longTransactionAsync',
                   coll: 'UnitTestsReplication'
                 });
+                // intentionally delay the transaction
+                require('internal').wait(3.0, false);
               }
-              // intentionally delay the transaction
-              require('internal').wait(3.0, false);
               let x = tx.commit();
               if (x.status !== "committed") {
                 throw new Error("failed to commit transaction");
@@ -1154,9 +1154,9 @@ function BaseTestConfig () {
                   type: 'longTransactionAsyncWithFollowerRestarts',
                   coll: 'UnitTestsReplication'
                 });
+                // intentionally delay the transaction
+                require('internal').wait(0.75, false);
               }
-              // intentionally delay the transaction
-              require('internal').wait(0.75, false);
               let x = tx.commit();
               if (x.status !== "committed") {
                 throw new Error("failed to commit transaction");
