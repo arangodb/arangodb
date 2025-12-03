@@ -90,15 +90,6 @@ function shellReplication (options) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function shellClientReplicationApi (options) {
-  if (options.skipServerJS) {
-    return {
-      shellClientReplicationApi: {
-        status: true,
-        message: 'server javascript not enabled. please recompile with -DUSE_V8=on'
-      },
-      status: true
-    };
-  }
   let testCases = tu.scanTestPaths(testPaths.http_replication, options);
 
   var opts = {
