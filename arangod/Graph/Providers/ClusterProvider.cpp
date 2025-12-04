@@ -603,8 +603,9 @@ auto ClusterProvider<StepImpl>::expand(
 }
 
 template<class StepImpl>
-auto ClusterProvider<StepImpl>::addExpansionIterator(CursorId id,
-    Step const& from, std::function<void()> const& callback) -> void {
+auto ClusterProvider<StepImpl>::addExpansionIterator(
+    CursorId id, Step const& from, std::function<void()> const& callback)
+    -> void {
   LOG_TOPIC("fa7ec", TRACE, Logger::GRAPHS)
       << "<ClusterProvider> Add expansion iterator "
       << from.getVertex().getID();
@@ -648,18 +649,19 @@ auto ClusterProvider<StepImpl>::addExpansionIterator(CursorId id,
     _stats.incrHttpRequests(1);
   }
 
-  _edgeRequestsStack.emplace_back(std::move(requests));
+  _edgeRequests.emplace(id, std::move(requests));
 
   callback();
 }
 
 template<class StepImpl>
-auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
-    Step const& step, size_t previous,
+auto ClusterProvider<StepImpl>::expandToNextBatch(
+    CursorId cursorId, Step const& step, size_t previous,
     std::function<void(Step)> const& callback) -> bool {
-  auto& requests_ref = _edgeRequestsStack.back();
-  auto requests = std::move(requests_ref);
-  _edgeRequestsStack.pop_back();
+  auto cursorIt = _edgeRequests.find(cursorId);
+  TRI_ASSERT(cursorIt != _edgeRequests.end());
+  auto requests = std::move(cursorIt->second);
+  _edgeRequests.erase(cursorIt);
 
   auto* pool =
       trx()->vocbase().server().template getFeature<NetworkFeature>().pool();
@@ -803,7 +805,7 @@ auto ClusterProvider<StepImpl>::expandToNextBatch(CursorId id,
   }
 
   // 5. push continuations
-  _edgeRequestsStack.emplace_back(std::move(continuation_requests));
+  _edgeRequests.emplace(cursorId, std::move(continuation_requests));
 
   // TODO check if we need to add connectedEdges to cache
   // (_vertexConnectedEdges) as well (is done in non-batched version, see

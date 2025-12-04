@@ -155,7 +155,7 @@ class ClusterProvider {
       _vertexConnectedEdges;
 
   using EngineRequest = std::pair<ServerID, futures::Future<network::Response>>;
-  std::vector<std::vector<EngineRequest>> _edgeRequestsStack;
+  std::unordered_map<CursorId, std::vector<EngineRequest>> _edgeRequests;
 };
 }  // namespace graph
 }  // namespace arangodb
