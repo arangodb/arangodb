@@ -31,7 +31,7 @@ if (getOptions === true) {
       'tcp://127\\.0\\.0\\.1:8888', // Will match http:// 
       '127\\.0\\.0\\.1:8899',       // will match at http and https.
       'ssl://127\\.0\\.0\\.1:7777', // will match https://
-      'arango\\.ai',                // will match https + http
+      'arangodb\\.com',             // will match https + http
       'http://127\\.0\\.0\\.1:9999' // won't match at all.
     ],
     'javascript.endpoints-allowlist': [
