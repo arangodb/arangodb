@@ -274,7 +274,7 @@ function saveToJunitXML(options, results) {
     testRunName: '',
     seenTestCases: false,
   };
-  let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
+  let prefix = (options.cluster ? 'CL_' : 'SG_');
 
   const addOptionalDuration = (elem, test) => {
     if (test.hasOwnProperty('duration') && test.duration !== undefined) {
@@ -303,7 +303,7 @@ function saveToJunitXML(options, results) {
         name: state.xmlName,
       };
       state.xml.elem('testsuite', addOptionalDuration(elm, testSuite));
-      if (testSuite.hasOwnProperty('message')) {
+      if (testSuite.hasOwnProperty('message') && testSuite.message !== "") {
         state.xml.elem('testcase', addOptionalDuration({ name: `whole testsuite ${testSuiteName} failed` }, testSuiteName), false);
         state.xml.elem('failure');
         state.xml.text('<![CDATA[' + stripAnsiColors(testSuite.message) + ']]>\n');
@@ -1182,7 +1182,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `crashAnalysisText`: output of debugger in case of crash',
     '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
     '   - `writeXmlReport`:  Write junit xml report files',
-    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
+    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `outXml`',
     ''
   ]);
 };

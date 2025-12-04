@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Assertions/ProdAssert.h"
 #include "Containers/HashSetFwd.h"
 
 #include "Basics/ResourceUsage.h"
@@ -94,12 +95,9 @@ class GraphArena {
     // why we only act on coordinators here:
     if (!ServerState::instance()->isCoordinator()) {
       return item;  // A copy, but this is cheap!
+    } else {
+      ADB_PROD_CRASH();
     }
-    uint8_t const* p = item.vpack();
-    VPackSlice v{p};
-    velocypack::ValueLength s = v.byteSize();
-    auto q = (uint8_t const*)(makeLocalCopy((char const*)p, (size_t)s));
-    return EdgeDocumentToken(VPackSlice{q});
   }
 
  private:

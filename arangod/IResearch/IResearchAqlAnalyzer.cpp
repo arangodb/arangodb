@@ -499,7 +499,7 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
       optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
         return rule.canBeDisabled() || rule.isClusterOnly();
       });
-      optimizer.createPlans(std::move(plan), _query->queryOptions(), false);
+      optimizer.createPlans(std::move(plan), _query->queryOptions());
 
       _plan = optimizer.stealBest();
       TRI_ASSERT(

@@ -8,7 +8,7 @@
       - BackupAuthNoSysTests
       - BackupAuthSysTests
       - BackupNoAuthSysTests
-      - arangosh 
+      - arangosh
 - single_server_only_part2:
     options:
       type: single
@@ -85,7 +85,7 @@
     options:
       parallelity: 3
       size: small
-      type: single 
+      type: single
 - http_replication:
     options:
       priority: 500
@@ -132,7 +132,7 @@
       type: cluster
       buckets: 8
     args:
-      extremeVerbosity: true 
+      extremeVerbosity: true
 
 - recovery_server:
     options:
@@ -262,18 +262,15 @@
     suites:
       - rta_makedata:
           args:
-            extraArgs:experimental-vector-index: true
             suffix: single
       - rta_makedata:
           args:
             cluster: true
-            extraArgs:experimental-vector-index: true
             suffix: cluster
       - rta_makedata:
           args:
             cluster: true
             forceOneShard: true
-            extraArgs:experimental-vector-index: true
             suffix: cluster-oneshard
 
 - chaos:
@@ -476,21 +473,36 @@
     suites:
       - importing
       - export
+
 - hot_backup:
     options:
+      buckets: auto
       type: single
       size: medium
     args:
       dumpAgencyOnError: true
       extraArgs:experimental-vector-index: true
+    suites:
+     - hot_backup
+     - hot_backup_views
+     - hot_backup_aql
+     - hot_backup_smart_graphs
+     - hot_backup_el_cheapo
 - hot_backup:
     options:
+      buckets: auto
       type: cluster
       size: large
       parallelity: 5
     args:
       dumpAgencyOnError: true
       extraArgs:experimental-vector-index: true
+    suites:
+     - hot_backup
+     - hot_backup_views
+     - hot_backup_aql
+     - hot_backup_smart_graphs
+     - hot_backup_el_cheapo
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 - server_parameters:
@@ -531,9 +543,6 @@
       buckets: auto
       type: single
       size: medium
-    args:
-      dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
     suites:
       - dump_jwt
       - dump_multiple_same
@@ -564,7 +573,6 @@
       parallelity: 5
     args:
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
     suites:
       - dump
       - dump:
@@ -610,7 +618,6 @@
     args:
       extremeVerbosity: true
       dumpAgencyOnError: true
-      extraArgs:experimental-vector-index: true
     suites:
       - dump_multiple_two
       - dump_mixed_single_cluster
@@ -704,17 +711,6 @@
     args:
       dumpAgencyOnError: true
       skipNightly: false
-- chaos_subq:
-    options:
-      coverage: false
-      full: true
-      type: cluster
-      priority: 1000
-      size: medium+
-    arangosh_args:
-      javascript.v8-max-heap: "16384"
-    args:
-      dumpAgencyOnError: true
 - resilience_failover_failure:
     options:
       full: true
