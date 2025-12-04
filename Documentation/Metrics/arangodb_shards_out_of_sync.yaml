@@ -9,9 +9,9 @@ complexity: simple
 exposedBy:
   - dbserver
 description: |
-  Number of leader shards not fully replicated. This is counted for all
+  Number of shards that are not fully replicated. This is counted for all
   shards for which this server is currently the leader. The number is
-  increased by one for every shards for which not all followers are in sync.
+  increased by one for every shard for which not all followers are in sync.
 troubleshoot: |
   Needless to say, such a situation is not good resilience, since we
   do not have as many copies of the data as the `replicationFactor`

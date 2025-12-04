@@ -219,41 +219,25 @@ export const arangoSearchViewJSONSchema: JSONSchemaType<ArangoSearchViewProperti
               type: {
                 const: "tier"
               },
-              segmentsMin: {
-                type: "integer",
-                nullable: false,
-                minimum: 0,
-                maximum: {
-                  $data: "1/segmentsMax"
-                },
-                default:50 
-              },
-              segmentsMax: {
-                type: "integer",
-                nullable: false,
-                minimum: {
-                  $data: "1/segmentsMin"
-                },
-                default: 200
-              },
               segmentsBytesMax: {
                 type: "integer",
                 nullable: false,
                 minimum: 0,
                 default: 8589934592
               },
-              segmentsBytesFloor: {
-                type: "integer",
-                nullable: false,
-                minimum: 0,
-                default: 25165824
-              },
-              minScore: {
+              maxSkewThreshold: {
                 type: "number",
                 nullable: false,
-                minimum: 0,
-                maximum: 1,
-                default: 0
+                minimum: 0.0,
+                maximum: 1.0,
+                default: 0.4
+              },
+              minDeletionRatio: {
+                type: "number",
+                nullable: false,
+                minimum: 0.0,
+                maximum: 1.0,
+                default: 0.5
               }
             },
             additionalProperties: false

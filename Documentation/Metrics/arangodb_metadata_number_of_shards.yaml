@@ -1,0 +1,36 @@
+name: arangodb_metadata_number_of_shards
+introducedIn: "3.12.7"
+help: |
+  Global number of shards.
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+description: |
+  Total number of shards in the deployment. In a cluster,
+  this is the number of shards across all collections.
+troubleshoot: |
+  **Configuration:**
+  - Max per collection: `--cluster.max-number-of-shards` (default: 1000)
+  - Exceeding limit returns `TRI_ERROR_CLUSTER_TOO_MANY_SHARDS`
+  - Query limit: `--query.max-collections-per-query` affects total shards in queries
+  - Queries exceeding this fail with "too many collections/shards" error
+  - Practical cluster limit: ~50,000 total shards across all collections
+
+  **Impact:**
+  - High shard counts increase cluster coordination overhead
+  - Affects query performance, memory usage, leader election, and rebalancing
+
+  **Recommendations:**
+  - Choose shard count based on data volume, query patterns, and DB-Server count
+  - Use rebalancing to ensure even distribution
+
+  **Note:**
+  - Approaching 50k shards may cause performance degradation
+
+  **See also:**
+  - Cluster limitations: https://docs.arango.ai/arangodb/stable/deploy/cluster/limitations/
+  - Query limits: https://github.com/arangodb/arangodb/issues/10787
+  - Operational factors: https://docs.arango.ai/arangodb/stable/develop/operational-factors/

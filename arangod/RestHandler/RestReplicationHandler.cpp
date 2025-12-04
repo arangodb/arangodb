@@ -2882,7 +2882,7 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // synchronize shard job
   bool isLeader = col->followers()->getLeader().empty();
   if (!isLeader) {
-    auto res = cancelBlockingTransaction(id);
+    auto res = co_await cancelBlockingTransaction(id);
     if (!res.ok()) {
       // this is potentially bad!
       LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
@@ -2965,7 +2965,7 @@ void RestReplicationHandler::handleCommandCancelHoldReadLockCollection() {
   LOG_TOPIC("9a5e3", DEBUG, Logger::REPLICATION)
       << "Attempt to cancel Lock: " << id;
 
-  auto res = cancelBlockingTransaction(id);
+  auto res = cancelBlockingTransaction(id).waitAndGet();
   if (!res.ok()) {
     LOG_TOPIC("9caf7", DEBUG, Logger::REPLICATION)
         << "Lock " << id << " not canceled because of: " << res.errorMessage();
@@ -3675,24 +3675,24 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   return {};
 }
 
-ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
-    TransactionId id) const {
+futures::Future<ResultT<bool>>
+RestReplicationHandler::cancelBlockingTransaction(TransactionId id) const {
   // This lookup is only required for API compatibility,
   // otherwise an unconditional destroy() would do.
   auto res = isLockHeld(id);
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).waitAndGet();
+      auto isAborted = co_await mgr->abortManagedTrx(id, _vocbase.name());
       if (isAborted.ok()) {  // lock was held
-        return ResultT<bool>::success(true);
+        co_return ResultT<bool>::success(true);
       }
-      return ResultT<bool>::error(isAborted);
+      co_return ResultT<bool>::error(isAborted);
     }
   } else {
     registerTombstone(id);
   }
-  return res;
+  co_return res;
 }
 
 futures::Future<ResultT<std::string>>
@@ -3807,19 +3807,11 @@ RequestLane RestReplicationHandler::lane() const {
       return RequestLane::CLUSTER_INTERNAL;
     }
     if (command == HoldReadLockCollection) {
-      if (_request->requestType() == RequestType::DELETE_REQ) {
-        // A deleting request here, will allow as to unlock
-        // the collection / shard in question.
-        // In case of a hard-lock this shard is actually blocking
-        // other operations. So let's hurry up with this.
-        return RequestLane::CLUSTER_INTERNAL;
-      }
-
       // This process will determine the start of a replication.
-      // It can be delayed a bit and can be queued after other write
-      // operations The follower is not in sync and requires to catch up
-      // anyways.
-      return RequestLane::SERVER_REPLICATION;
+      // This is a cluster-internal operation. Having any of the request
+      // in the lower lanes will delay this operation since there is a
+      // chain of operations that need to be done.
+      return RequestLane::CLUSTER_INTERNAL;
     }
 
     if (command == RemoveFollower || command == LoggerFollow ||

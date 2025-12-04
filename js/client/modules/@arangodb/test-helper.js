@@ -298,6 +298,36 @@ exports.getCompleteMetricsValues = function (name, roles = "") {
   }
 };
 
+function queryAgencyJob(id) {
+  return arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
+}
+
+exports.moveShard = function moveShard(database, collection, shard, fromServer, toServer, dontwait) {
+  let body = {database, collection, shard, fromServer, toServer};
+  let result;
+  result = arango.POST_RAW("/_admin/cluster/moveShard", body);
+  assertEqual(result.code, 202, `Move shard job rejected with code: ${result.code}`);
+
+  if (dontwait) {
+    return result;
+  }
+  // Now wait until the job we triggered is finished:
+  let count = 600;   // seconds
+  while (true) {
+    let job = queryAgencyJob(result.parsedBody.id);
+    if (job.error === false && job.status === "Finished") {
+      return result;
+    }
+    if (count-- < 0) {
+      console.error(
+        "Timeout in waiting for moveShard to complete: "
+        + JSON.stringify(body));
+      return false;
+    }
+    require("internal").wait(1.0);
+  }
+};
+
 const debug = function (text) {
   console.warn(text);
 };

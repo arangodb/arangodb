@@ -199,7 +199,7 @@
             }
             window.modalView.show(
               'modalTable.ejs',
-              'Result of script "' + script + '"',
+              'Result of script "' + _.escape(script) + '"',
               undefined,
               undefined,
               undefined,
@@ -210,7 +210,7 @@
       ];
       window.modalView.show(
         'modalTable.ejs',
-        'Run script "' + script + '" on "' + this.model.get('mount') + '"',
+        'Run script "' + _.escape(script) + '" on "' + _.escape(this.model.get('mount')) + '"',
         buttons,
         tableContent
       );
@@ -255,7 +255,7 @@
       ];
       window.modalView.show(
         'modalTable.ejs',
-        'Run tests for app "' + this.model.get('mount') + '"',
+        'Run tests for app "' + _.escape(this.model.get('mount')) + '"',
         buttons,
         undefined,
         undefined,
@@ -345,18 +345,18 @@
       // information box info tab
       if (this.model.get('author')) {
         $('.information').append(
-          '<p class="mount"><span>Author:</span>' + this.model.get('author') + '</p>'
+          '<p class="mount"><span>Author:</span>' + _.escape(this.model.get('author')) + '</p>'
         );
       }
       if (this.model.get('mount')) {
         $('.information').append(
-          '<p class="mount"><span>Mount:</span>' + this.model.get('mount') + '</p>'
+          '<p class="mount"><span>Mount:</span>' + _.escape(this.model.get('mount')) + '</p>'
         );
       }
       if (this.model.get('development')) {
         if (this.model.get('path')) {
           $('.information').append(
-            '<p class="path"><span>Path:</span>' + this.model.get('path') + '</p>'
+            '<p class="path"><span>Path:</span>' + _.escape(this.model.get('path')) + '</p>'
           );
         }
       }
@@ -401,7 +401,7 @@
       ];
       window.modalView.show(
         'modalTable.ejs',
-        'Delete Foxx App mounted at "' + this.model.get('mount') + '"',
+        'Delete Foxx App mounted at "' + _.escape(this.model.get('mount')) + '"',
         buttons,
         tableContent,
         undefined,

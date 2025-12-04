@@ -297,7 +297,7 @@
 
           window.modalView.show(
             'modalTable.ejs',
-            'Move shard: ' + shardName,
+            'Move shard: ' + _.escape(shardName),
             buttons,
             tableContent
           );

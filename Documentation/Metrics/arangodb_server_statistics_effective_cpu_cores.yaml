@@ -1,0 +1,34 @@
+name: arangodb_server_statistics_effective_cpu_cores
+introducedIn: "3.12.7"
+help: |
+  Number of effective CPU cores available to the arangod process.
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Number of effective CPU cores available to the arangod process, taking into
+  account container CPU limits when running in containerized environments.
+
+  This value is determined by:
+  - **cgroup v1**: Reading `/sys/fs/cgroup/cpu/cpu.cfs_quota_us` and
+    `/sys/fs/cgroup/cpu/cpu.cfs_period_us` to calculate CPU quota
+  - **cgroup v2**: Reading `/sys/fs/cgroup/cpu.max` to get CPU quota
+  - **No cgroups**: Falls back to total CPU cores from the system
+
+  When running in Docker or Kubernetes with CPU limits set (e.g., `--cpus=2`),
+  this metric will report the container's CPU limit rather than the host's
+  total CPU cores, providing a more accurate view of available CPU resources
+  for capacity planning and auto-scaling decisions.
+
+  If the environment variable `ARANGODB_OVERRIDE_DETECTED_NUMBER_OF_CORES`
+  is set, it takes precedence over both cgroup limits and detected CPU cores.
+
+  This metric includes a `machine_id` label to help identify the physical host
+  in containerized environments.
+

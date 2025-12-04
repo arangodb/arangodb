@@ -156,13 +156,6 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       // Include it in results.
       _results.emplace_back(step);
     }
-  }
-
-  if constexpr (std::is_same_v<ResultList,
-                               enterprise::SmartGraphResponse<Provider>>) {
-    TRI_ASSERT(ServerState::instance()->isDBServer());
-    smartExpand(step, posPrevious, res);
-  } else {
     if (step.getDepth() < _options.getMaxDepth() && !res.isPruned()) {
       if (!step.edgeFetched()) {
         // NOTE: The step we have should be the first, s.t. we are guaranteed
@@ -178,6 +171,13 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
       _provider.expand(step, posPrevious,
                        [&](Step n) -> void { _queue.append(n); });
     }
+  } else if constexpr (std::is_same_v<
+                           ResultList,
+                           enterprise::SmartGraphResponse<Provider>>) {
+    TRI_ASSERT(ServerState::instance()->isDBServer());
+    smartExpand(step, posPrevious, res);
+  } else {
+    static_assert(false);
   }
 }
 
@@ -335,9 +335,9 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
         // Notes for the future:
         // Vertices are now fetched. Think about other less-blocking and
         // batch-wise fetching (e.g. re-fetch at some later point).
-        // TODO: Discuss how to optimize here. Currently we'll mark looseEnds in
-        // fetch as fetched. This works, but we might create a batch limit here
-        // in the future. Also discuss: Do we want (re-)fetch logic here?
+        // TODO: Discuss how to optimize here. Currently we'll mark looseEnds
+        // in fetch as fetched. This works, but we might create a batch limit
+        // here in the future. Also discuss: Do we want (re-)fetch logic here?
         // TODO: maybe we can combine this with prefetching of paths
         // Ticket ID: [GORDO-1394]
       }

@@ -49,15 +49,13 @@
 #include "Basics/ResourceUsage.h"
 #include "Basics/SupervisedBuffer.h"
 
-using namespace arangodb;
-using namespace arangodb::aql;
-using EN = arangodb::aql::ExecutionNode;
-
 #define LOG_RULE_ENABLED false
 #define LOG_RULE_IF(cond) LOG_DEVEL_IF((LOG_RULE_ENABLED) && (cond))
 #define LOG_RULE LOG_RULE_IF(true)
 
-namespace {
+namespace arangodb::aql {
+
+using EN = arangodb::aql::ExecutionNode;
 
 bool checkFunctionNameMatchesIndexMetric(
     std::string_view const functionName,
@@ -75,6 +73,7 @@ bool checkFunctionNameMatchesIndexMetric(
   }
 }
 
+// Vector index can only have a single covered attribute
 bool checkIfIndexedFieldIsSameAsSearched(
     auto const& vectorIndex,
     std::vector<basics::AttributeName>& attributeName) {
@@ -95,7 +94,7 @@ bool checkApproxNearVariableInput(auto const& vectorIndex,
                                                          false)) {
     return false;
   }
-  // check if APPROX function parameter is on indexed field
+  // check if APPROX_NEAR function parameter is on indexed field
   if (!checkIfIndexedFieldIsSameAsSearched(vectorIndex,
                                            attributeAccessResult.second)) {
     return false;
@@ -207,8 +206,9 @@ AstNode* getApproxNearAttributeExpression(
   // one of the params must be a documentField and the other a query point
   auto const* approxFunctionParameters =
       calculationNodeExpressionNode->getMember(0);
-  TRI_ASSERT(approxFunctionParameters->numMembers() > 1)
-      << "There can be only two arguments to APPROX_NEAR"
+  TRI_ASSERT(approxFunctionParameters->numMembers() > 1 &&
+             approxFunctionParameters->numMembers() < 4)
+      << "There can be only two or three arguments to APPROX_NEAR"
       << ", currently there are "
       << calculationNodeExpressionNode->numMembers();
 
@@ -232,55 +232,48 @@ AstNode* getApproxNearAttributeExpression(
   return nullptr;
 }
 
-}  // namespace
-
 std::vector<std::shared_ptr<Index>> getVectorIndexes(
-    auto& enumerateCollectionNode) {
+    auto& enumerateCollectionNode, IndexHint const& indexHint) {
+  auto const& indexes = enumerateCollectionNode->collection()->indexes();
+  if (indexHint.isSimple() && indexHint.isForced()) {
+    auto& idxNames = indexHint.candidateIndexes();
+    for (auto const& idxName : idxNames) {
+      if (auto foundHintedIndexIt = std::ranges::find_if(
+              indexes,
+              [&idxName](const auto& elem) { return elem->name() == idxName; });
+          foundHintedIndexIt != indexes.end()) {
+        return {*foundHintedIndexIt};
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+            std::format("Could not use hinted vector index `{}`", idxName));
+      }
+    }
+  }
+
   std::vector<std::shared_ptr<Index>> vectorIndexes;
-  auto indexes = enumerateCollectionNode->collection()->indexes();
   std::ranges::copy_if(
       indexes, std::back_inserter(vectorIndexes), [](auto const& elem) {
         return elem->type() == Index::IndexType::TRI_IDX_TYPE_VECTOR_INDEX;
       });
 
-  return vectorIndexes;
-}
-
-std::unique_ptr<Expression> removeFilterNode(
-    ExecutionNode* maybeFilterNode, std::unique_ptr<ExecutionPlan>& plan,
-    Variable const* enumerateNearVectorOutputDocument) {
-  auto const* filterNode =
-      ExecutionNode::castTo<FilterNode const*>(maybeFilterNode);
-  auto* filterInVar = filterNode->inVariable();
-
-  // Find the calculation node that populates the filter variable
-  auto* maybeCalculationNode = plan->getVarSetBy(filterInVar->id);
-  if (maybeCalculationNode == nullptr ||
-      maybeCalculationNode->getType() != EN::CALCULATION) {
-    return nullptr;
-  }
-
-  auto const* calculationNode =
-      ExecutionNode::castTo<CalculationNode const*>(maybeCalculationNode);
-
-  // Check that all variables used in filterExpression can be handled in
-  // EnumerateNearVector node
-  VarSet calculationVars;
-  auto filterExpression = calculationNode->expression()->clone(plan->getAst());
-  filterExpression->variables(calculationVars);
-
-  for (auto const* calcVar : calculationVars) {
-    if (calcVar->type() == Variable::Type::Regular &&
-        calcVar != enumerateNearVectorOutputDocument) {
-      return nullptr;
+  // Reorder indexes
+  if (indexHint.isSimple()) {
+    auto& idxNames = indexHint.candidateIndexes();
+    auto currentIt = vectorIndexes.begin();
+    for (auto const& idxName : idxNames) {
+      if (auto foundHintedIndexIt = std::ranges::find_if(
+              vectorIndexes,
+              [&idxName](const auto& elem) { return elem->name() == idxName; });
+          foundHintedIndexIt != vectorIndexes.end()) {
+        auto oldIt = currentIt;
+        std::iter_swap(oldIt, foundHintedIndexIt);
+        currentIt++;
+      }
     }
   }
 
-  // CalculationNode will be removed by the subsequent rule if it is not
-  // referenced by any other node
-  plan->unlinkNode(maybeFilterNode);
-
-  return filterExpression;
+  return vectorIndexes;
 }
 
 // Vector Index Optimization Rule
@@ -299,14 +292,13 @@ std::unique_ptr<Expression> removeFilterNode(
 // result size.
 //
 // Filter Pushdown:
-// When a filter expression is detected, the rule pushes it down to the
-// EnumerateNearVectorNode for early evaluation during index traversal. This
-// optimization removes the FILTER node.  This transformation is safe because
-// previous optimization rules have already eliminated trivial filters.
-void arangodb::aql::useVectorIndexRule(Optimizer* opt,
-                                       std::unique_ptr<ExecutionPlan> plan,
-                                       OptimizerRule const& rule) {
+// When a filter expression is detected, the rule triggers
+// pushFilterIntoEnumerateNear which will handle the filter expression usage
+// along with vector index.
+void useVectorIndexRule(Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+                        OptimizerRule const& rule) {
   bool modified{false};
+  bool triggerFilterOptimization{false};
 
   containers::SmallVector<ExecutionNode*, 8> nodes;
   plan->findNodesOfType(nodes, EN::ENUMERATE_COLLECTION, true);
@@ -315,12 +307,14 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
         ExecutionNode::castTo<EnumerateCollectionNode*>(node);
 
     // check if there are vector indexes on collection
-    auto const vectorIndexes = getVectorIndexes(enumerateCollectionNode);
+    auto const& colNodeHints = enumerateCollectionNode->hint();
+    // We will prioritize the hinted indexes
+    auto const vectorIndexes =
+        getVectorIndexes(enumerateCollectionNode, colNodeHints);
     if (vectorIndexes.empty()) {
       continue;
     }
 
-    // check that enumerateColNode has both sort and limit
     auto* currentNode = enumerateCollectionNode->getFirstParent();
     const auto skipOverCalculationNodes = [&currentNode] {
       while (currentNode != nullptr &&
@@ -332,10 +326,9 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
     // We tolerate post filtering
     // For now we can handle only a single FILTER statement
-    ExecutionNode* maybeFilterNode{nullptr};
     if (currentNode != nullptr && currentNode->getType() == EN::FILTER) {
-      maybeFilterNode = currentNode;
       currentNode = currentNode->getFirstParent();
+      triggerFilterOptimization = true;
     }
     skipOverCalculationNodes();
 
@@ -354,7 +347,6 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
       continue;
     }
 
-    // check LIMIT NODE
     auto const* limitNode =
         ExecutionNode::castTo<LimitNode const*>(maybeLimitNode);
     // Offset cannot be handled, and there must be a limit which means topK
@@ -364,6 +356,8 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
 
     for (auto const& index : vectorIndexes) {
+      TRI_ASSERT(index != nullptr);
+
       auto const [approxNearExpression, ascending] =
           getApproxNearExpression(sortNode, plan, index);
       if (approxNearExpression == nullptr) {
@@ -382,7 +376,7 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
 
       // replace the collection enumeration with the enumerate near node
       // furthermore, we have to remove the calculation node
-      const auto* documentVariable = enumerateCollectionNode->outVariable();
+      auto const* documentVariable = enumerateCollectionNode->outVariable();
 
       auto const* distanceVariable = sortNode->elements()[0].var;
       auto const* oldDocumentVariable = enumerateCollectionNode->outVariable();
@@ -397,22 +391,11 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
                                        approximatedAttributeExpression),
           inVariable);
 
-      // If there is a FilterNode it comes with CalculationNode, we remove it
-      // and handle it in EnumerateNearVectorNode
-      std::unique_ptr<Expression> filterExpression{nullptr};
-      if (maybeFilterNode) {
-        if (filterExpression =
-                removeFilterNode(maybeFilterNode, plan, documentVariable);
-            filterExpression == nullptr) {
-          continue;
-        }
-      }
       auto* enumerateNear = plan->createNode<EnumerateNearVectorNode>(
           plan.get(), plan->nextId(), inVariable, oldDocumentVariable,
           documentIdVariable, distanceVariable, limit, ascending,
           limitNode->offset(), std::move(searchParameters),
-          enumerateCollectionNode->collection(), index,
-          std::move(filterExpression));
+          enumerateCollectionNode->collection(), index, nullptr, false);
 
       auto* materializer =
           plan->createNode<materialize::MaterializeRocksDBNode>(
@@ -435,5 +418,12 @@ void arangodb::aql::useVectorIndexRule(Optimizer* opt,
     }
   }
 
+  // If the plan was modified and if the filterExpression was encountered
+  if (modified && triggerFilterOptimization) {
+    LOG_RULE << "Enabling push-filter-into-enumerater-near rule";
+    plan->enableRule(OptimizerRule::pushFilterIntoEnumerateNear);
+  }
+
   opt->addPlan(std::move(plan), rule, modified);
 }
+}  // namespace arangodb::aql

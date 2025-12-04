@@ -33,24 +33,19 @@
 #include "Aql/QueryPlanCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FeatureFlags.h"
-#include "Basics/GlobalResourceMonitor.h"
 #include "Basics/GlobalSerialization.h"
-#include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
 #include "Basics/Result.tpp"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/TimeString.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
-#include "Basics/hashes.h"
 #include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
-#include "Cluster/ClusterCollectionCreationInfo.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterTypes.h"
@@ -71,7 +66,6 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
-#include "Random/RandomGenerator.h"
 #include "Replication2/Methods.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -102,6 +96,9 @@
 #include <velocypack/Slice.h>
 
 #include <chrono>
+#include <iterator>
+#include <ranges>
+#include <algorithm>
 
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
@@ -435,6 +432,11 @@ DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
 DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
               "Total memory used by internal cluster info data structures");
 
+// Shards metric is cluster-specific (databases and collections metrics are
+// declared in DatabaseFeature.h)
+DECLARE_GAUGE(arangodb_metadata_number_of_shards, std::uint64_t,
+              "Global number of shards");
+
 ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
@@ -449,6 +451,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _memoryUsage(metrics.add(arangodb_internal_cluster_info_memory_usage{})),
       _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
       _lcTimer(metrics.add(arangodb_load_current_runtime{})),
+      _metadataMetrics(std::nullopt),
       _resourceMonitor(_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
@@ -505,6 +508,10 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
 #else
   TRI_ASSERT(_syncerShutdownCode == TRI_ERROR_SHUTTING_DOWN);
 #endif
+
+  if (ServerState::instance()->isCoordinator()) {
+    _metadataMetrics.emplace(metrics);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1948,6 +1955,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _planProt.isValid = true;
   }
 
+  updateMetadataMetrics();
+
   _clusterFeature.addDirty(changeSet.dbs);
 
   {
@@ -2765,6 +2774,48 @@ Result ClusterInfo::getShardStatisticsGlobalByServer(
   builder.close();
 
   return {};
+}
+
+/// @brief update metadata metrics (number of databases, collections, shards)
+/// This should only be called on coordinators, and should be called while
+/// holding the _planProt write lock (or after data has been swapped in
+/// loadPlan)
+void ClusterInfo::updateMetadataMetrics() {
+  // Only update on coordinators
+  if (!_metadataMetrics.has_value()) {
+    return;
+  }
+
+  uint64_t numDatabases = _plannedDatabases.size();
+
+  uint64_t numCollections = 0;
+  uint64_t numShards = 0;
+  for (auto const& [dbName, collections] : _plannedCollections) {
+    if (collections) {
+      // This is necessary because the collections map contains
+      // both the collection name their the their eqivalent as shard name
+      std::unordered_set<uint64_t> collectionsHashes;
+      std::ranges::transform(
+          *collections | std::views::values,
+          std::inserter(collectionsHashes, collectionsHashes.begin()),
+          &CollectionWithHash::hash);
+
+      numCollections += collectionsHashes.size();
+    }
+
+    // _shards does not contain the correct information
+    for (const auto& c : *collections) {
+      if (_shards.contains(c.first)) {
+        numShards += _shards[c.first]->size();
+      }
+    }
+  }
+
+  _metadataMetrics->numberOfDatabases.store(numDatabases,
+                                            std::memory_order_relaxed);
+  _metadataMetrics->numberOfCollections.store(numCollections,
+                                              std::memory_order_relaxed);
+  _metadataMetrics->numberOfShards.store(numShards, std::memory_order_relaxed);
 }
 
 // Build the VPackSlice that contains the `isBuilding` entry
@@ -6257,6 +6308,17 @@ auto ClusterInfo::getReplicatedLogPlanSpecification(replication2::LogId id)
 
   TRI_ASSERT(it->second != nullptr);
   return it->second;
+}
+
+ClusterInfo::MetadataMetrics::MetadataMetrics(metrics::MetricsFeature& metrics)
+    : numberOfShards(metrics.add(arangodb_metadata_number_of_shards{})),
+      numberOfCollections(
+          metrics.add(arangodb_metadata_number_of_collections{})),
+      numberOfDatabases(metrics.add(arangodb_metadata_number_of_databases{})) {
+  // TODO We should expose these on a single server as well, but that can't
+  //      happen in the ClusterInfo.
+  TRI_ASSERT(ServerState::instance()->isCoordinator())
+      << "ClusterInfo::MetadataMetrics should be exposed only on a coordinator";
 }
 
 AnalyzerModificationTransaction::AnalyzerModificationTransaction(

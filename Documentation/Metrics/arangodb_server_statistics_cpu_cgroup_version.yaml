@@ -1,0 +1,23 @@
+name: arangodb_server_statistics_cpu_cgroup_version
+introducedIn: "3.13.0"
+help: |
+  CGroup version detected on the system (0=none, 1=v1, 2=v2).
+unit: number
+type: gauge
+category: Statistics
+complexity: simple
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Indicates which cgroup version was detected on the system at startup:
+  - 0: No cgroup support detected
+  - 1: cgroup v1 (legacy) detected
+  - 2: cgroup v2 (unified hierarchy) detected
+  
+  This metric is useful for understanding whether container resource limits
+  (CPU quotas) can be detected by ArangoDB. Systems with cgroup support
+  typically report more accurate CPU core counts when running in containers.
+

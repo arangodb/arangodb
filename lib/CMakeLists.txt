@@ -126,6 +126,7 @@ add_library(arango_basic_utils STATIC
         Basics/terminal-utils-posix.cpp
         Basics/threads-posix.cpp
         Basics/tri-strings.cpp
+        Basics/CGroupDetection.cpp
 
         Utilities/LinenoiseShell.cpp
         Utilities/LineEditor.cpp
