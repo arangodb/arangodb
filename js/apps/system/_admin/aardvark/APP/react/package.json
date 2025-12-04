@@ -115,6 +115,7 @@
     "jest-worker": "^30.0.5",
     "@babel/traverse": "^7.28.0",
     "braces": "^3.0.3",
+    "rollup": "^2.79.2",
     "webpack-dev-middleware": "^5.3.4"
   },
   "babel": {
