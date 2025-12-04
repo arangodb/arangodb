@@ -345,7 +345,7 @@
       // information box info tab
       if (this.model.get('author')) {
         $('.information').append(
-          '<p class="mount"><span>Author:</span>' + this.model.get('author') + '</p>'
+          '<p class="mount"><span>Author:</span>' + _.escape(this.model.get('author')) + '</p>'
         );
       }
       if (this.model.get('mount')) {
