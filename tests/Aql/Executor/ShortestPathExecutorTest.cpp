@@ -84,7 +84,8 @@ class TokenTranslator {
     return ref;
   }
 
-  EdgeDocumentToken makeEdge(std::string const& s, std::string const& t) {
+  void makeEdge(VPackBuilder& builder, std::string const& s,
+                std::string const& t) {
     VPackBuilder edge;
     std::string fromVal = s;
     std::string toVal = t;
@@ -95,9 +96,9 @@ class TokenTranslator {
     edge.add(StaticStrings::ToString, VPackValue(toVal));
     edge.close();
     auto eslice = edge.slice();
+    builder.add(eslice);
     _dataLake.emplace_back(edge.steal());
     _edges.emplace(eslice);
-    return EdgeDocumentToken{eslice};
   }
 
   VPackSlice translateVertex(std::string_view idString) {
@@ -192,8 +193,7 @@ class FakePathFinder {
         _tmpPathBuilder.add(VPackValue(StaticStrings::GraphQueryEdges));
         _tmpPathBuilder.openArray();
         for (size_t i = 0; i < p.size() - 1; ++i) {
-          _tmpPathBuilder.add(
-              VPackValue(_translator.makeEdge(p[i], p[i + 1]).vpack()));
+          _translator.makeEdge(_tmpPathBuilder, p[i], p[i + 1]);
         }
         _tmpPathBuilder.close();  // edges
 

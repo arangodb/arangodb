@@ -101,6 +101,7 @@ class instanceManager {
     this.dbName = "_System";
     this.userName = "root";
     this.memlayout = {};
+
     // be more sluggish with memory when running instrumented binaries
     if (this.options.isInstrumented && this.options.memory !== undefined) {
       this.options.memory *= 1.1;
@@ -1539,7 +1540,6 @@ class instanceManager {
       }
     }
   }
-
 }
 
 exports.instanceManager = instanceManager;
@@ -1624,8 +1624,5 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
       process.env['MALLOC_CONF'] = 'prof:true';
     }
     options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
-    if (options.encryptionAtRest && !pu.isEnterpriseClient) {
-      options.encryptionAtRest = false;
-    }
   });
 };

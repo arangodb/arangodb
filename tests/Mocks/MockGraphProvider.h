@@ -99,7 +99,7 @@ class MockGraphProvider {
   using LooseEndBehaviour =
       typename MockGraphProviderOptions::LooseEndBehaviour;
 
-  class Step : public arangodb::graph::BaseStep<Step> {
+  class Step : public arangodb::graph::BaseStep {
    public:
     using EdgeType = arangodb::velocypack::HashedStringRef;
     using VertexType = arangodb::velocypack::HashedStringRef;

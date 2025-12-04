@@ -22,6 +22,7 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 /// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
 // //////////////////////////////////////////////////////////////////////////////
 
 var arangodb = require('@arangodb');
@@ -29,6 +30,7 @@ var db = arangodb.db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 var transactionFailure = require('@arangodb/test-helper-common').transactionFailure;
+var IM = global.instanceManager;
 
 if (runSetup === true) {
   'use strict';
@@ -36,37 +38,38 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
-  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true });
 
   db._dropView('UnitTestsRecoveryView');
-  db._createView('UnitTestsRecoveryView', 'search-alias', {});
+  db._createView('UnitTestsRecoveryView', 'arangosearch', {});
 
-  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
+  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
 
-  return transactionFailure(
-    {
-      collections: {
-        write: ['UnitTestsRecoveryDummy']
-      },
-      action: function() {
-        var db = require('@arangodb').db;
-        var internal = require('internal');
-        var c = db.UnitTestsRecoveryDummy;
-        for (let i = 0; i < 10000; i++) {
-          c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-        }
-
-        c.save({ name: 'crashme' }, true);
-        internal.debugTerminate('crashing server');
-      },
-      waitForSync: true
+  var tx = db._createTransaction({
+    collections: {
+      write: ['UnitTestsRecoveryDummy']
     },
-    internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code,
-    false,
-    false,
-    false);
+    waitForSync: true
+  });
+
+  var txcol = tx.collection('UnitTestsRecoveryDummy');
+  for (let j = 0; j < 100; j ++) {
+    let docs = [];
+    for (let i = 0; i < 100; i++) {
+      docs.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    txcol.save(docs);
+  }
+  txcol.save({ name: 'crashme' }, true);
+  internal.sleep(1);
+  IM.debugTerminate();
+
+  return 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
   'use strict';
@@ -75,23 +78,28 @@ function recoverySuite () {
   return {
 
 
-    testIResearchLinkPopulateFail: function () {
-      let checkView = function(viewName, indexName) {
-        let v = db._view(viewName);
-        assertEqual(v.name(), viewName);
-        assertEqual(v.type(), 'search-alias');
-        let indexes = v.properties().indexes;
-        assertEqual(1, indexes.length);
-        assertEqual(indexName, indexes[0].index);
-        assertEqual("UnitTestsRecoveryDummy", indexes[0].collection);
-      };
-      checkView("UnitTestsRecoveryView", "i1");
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test whether we can restore the trx data
+    ////////////////////////////////////////////////////////////////////////////////
 
-      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+    testIResearchLinkPopulateFail: function () {
+      var v = db._view('UnitTestsRecoveryView');
+      assertEqual(v.name(), 'UnitTestsRecoveryView');
+      assertEqual(v.type(), 'arangosearch');
+      var p = v.properties().links;
+      assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
+      assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
+
+      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
       assertEqual(result[0], 0);
     }
+
   };
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suite
+////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(recoverySuite);
 return jsunity.done();

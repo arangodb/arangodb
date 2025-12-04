@@ -37,13 +37,13 @@ namespace arangodb {
 namespace tests {
 namespace weighted_queue_graph_cache_test {
 
-class Step : public arangodb::graph::BaseStep<Step> {
+class Step : public arangodb::graph::BaseStep {
   size_t _id;
   bool _isLooseEnd;
 
  public:
   Step(size_t id, double weight, bool isLooseEnd)
-      : arangodb::graph::BaseStep<Step>{0, 1, weight} {
+      : arangodb::graph::BaseStep{0, 1, weight} {
     _id = id;
     _isLooseEnd = isLooseEnd;
   };

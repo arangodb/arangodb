@@ -133,7 +133,17 @@ function QueryMetricsTestSuite() {
           arango.PUT_RAW('/_api/job/' + cursorsIds[i], "");
         }
 
-        aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+        iterations = 0;
+        // The metrics should eventually reach 0
+        while (iterations < maxIterations) {
+          aqlCurrentQueryMetric = getMetricSingle("arangodb_aql_current_query");
+          if (aqlCurrentQueryMetric === 0) {
+            break;
+          }
+          sleep(0.1);
+          iterations++;
+        }
+
         assertEqual(aqlCurrentQueryMetric, 0);
       } finally {
         IM.debugRemoveFailAt("Query::delayingExecutionPhase");

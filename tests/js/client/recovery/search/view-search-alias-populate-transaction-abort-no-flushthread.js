@@ -29,6 +29,7 @@ var db = arangodb.db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 var transactionFailure = require('@arangodb/test-helper-common').transactionFailure;
+var IM = global.instanceManager;
 
 if (runSetup === true) {
   'use strict';
@@ -36,31 +37,36 @@ if (runSetup === true) {
 
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
-  var i1 = c.ensureIndex({ type: "inverted", name: "pupa", includeAllFields: true });
 
-  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
   db._dropView('UnitTestsRecoveryView');
-  db._createView('UnitTestsRecoveryView', 'search-alias', meta);
+  db._createView('UnitTestsRecoveryView', 'search-alias', {});
 
-  return transactionFailure(
-    {
-      collections: {
-        write: ['UnitTestsRecoveryDummy']
-      },
-      action: function() {
-        var db = require('@arangodb').db;
-        var c = db.UnitTestsRecoveryDummy;
-        for (let i = 0; i < 10000; i++) {
-          c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-        }
-        throw new Error('intentional abort');
-      },
-      waitForSync: true
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", fields: [ "a", "b", "c" ] });
+  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
+  db._view('UnitTestsRecoveryView').properties(meta);
+
+  internal.wal.flush(true, true);
+  global.instanceManager.debugSetFailAt("RocksDBBackgroundThread::run");
+  internal.wait(2); // make sure failure point takes effect
+
+  var tx = db._createTransaction({
+    collections: {
+      write: ['UnitTestsRecoveryDummy']
     },
-    internal.errors.ERROR_TRANSACTION_INTERNAL.code,
-    'Error: intentional abort',
-    true,
-    false);
+    waitForSync: true
+  });
+
+  var txcol = tx.collection('UnitTestsRecoveryDummy');
+  for (let j = 0; j < 100; j ++) {
+    let docs = [];
+    for (let i = 0; i < 100; i++) {
+      docs.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    txcol.save(docs);
+  }
+  internal.sleep(1);
+  IM.debugTerminate();
+  return 0;
 }
 
 function recoverySuite () {
@@ -70,7 +76,7 @@ function recoverySuite () {
   return {
 
 
-    testIResearchLinkPopulateTransactionAbort: function () {
+    testIResearchLinkPopulateTransactionAbortNoFlushThread: function () {
       let checkView = function(viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
@@ -80,20 +86,7 @@ function recoverySuite () {
         assertEqual(indexName, indexes[0].index);
         assertEqual("UnitTestsRecoveryDummy", indexes[0].collection);
       };
-
-      checkView("UnitTestsRecoveryView", "pupa");
-
-      let checkIndex = function(indexName, analyzer, includeAllFields, hasFields) {
-        let c = db._collection("UnitTestsRecoveryDummy");
-        let indexes = c.indexes().filter(i => i.type === "inverted" && i.name === indexName);
-        assertEqual(1, indexes.length);
-
-        let i = indexes[0];
-        assertEqual(includeAllFields, i.includeAllFields);
-        assertEqual(analyzer, i.analyzer);
-      };
-
-      checkIndex("pupa", "identity", true);
+      checkView("UnitTestsRecoveryView", "i1");
 
       var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
       assertEqual(0, result[0]);

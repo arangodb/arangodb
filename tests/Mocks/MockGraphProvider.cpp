@@ -54,43 +54,42 @@ auto operator<<(std::ostream& out, MockGraphProvider::Step const& step)
 }  // namespace arangodb
 
 MockGraphProvider::Step::Step(VertexType v, bool isProcessable)
-    : arangodb::graph::BaseStep<Step>{std::numeric_limits<size_t>::max(), 0,
-                                      0.0},
+    : arangodb::graph::BaseStep{std::numeric_limits<size_t>::max(), 0, 0.0},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
                               bool isProcessable)
-    : arangodb::graph::BaseStep<Step>{prev},
+    : arangodb::graph::BaseStep{prev},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
                               size_t depth)
-    : arangodb::graph::BaseStep<Step>{prev, depth},
+    : arangodb::graph::BaseStep{prev, depth},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, bool isProcessable,
                               size_t depth, double weight)
-    : arangodb::graph::BaseStep<Step>{prev, depth, weight},
+    : arangodb::graph::BaseStep{prev, depth, weight},
       _vertex(v),
       _edge({}),
       _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
                               bool isProcessable, size_t depth)
-    : arangodb::graph::BaseStep<Step>{prev, depth},
+    : arangodb::graph::BaseStep{prev, depth},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
 
 MockGraphProvider::Step::Step(size_t prev, VertexType v, MockEdgeType e,
                               bool isProcessable, size_t depth, double weight)
-    : arangodb::graph::BaseStep<Step>{prev, depth, weight},
+    : arangodb::graph::BaseStep{prev, depth, weight},
       _vertex(v),
       _edge(e),
       _isProcessable(isProcessable) {}
@@ -195,16 +194,6 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
   builder.add(StaticStrings::ToString, VPackValue(toId));
   builder.add("weight", VPackValue(edge.getEdge()._weight));
   builder.close();
-}
-
-auto MockGraphProvider::getEdgeDocumentToken(const Step::Edge& edge)
-    -> arangodb::graph::EdgeDocumentToken {
-  VPackBuilder builder;
-  addEdgeToBuilder(edge, builder);
-
-  // Might require datalake as well, as soon as we really use this method in our
-  // cpp tests.
-  return arangodb::graph::EdgeDocumentToken{builder.slice()};
 }
 
 auto MockGraphProvider::addEdgeIDToBuilder(

@@ -20,8 +20,8 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Jan Steemann
-// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+/// @author Andrey Abramov
+/// @author Copyright 2022, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
@@ -36,41 +36,35 @@ if (runSetup === true) {
   var c = db._create('UnitTestsRecoveryDummy');
 
   db._dropView('UnitTestsRecoveryView');
-  db._createView('UnitTestsRecoveryView', 'arangosearch', {});
+  db._createView('UnitTestsRecoveryView', 'search-alias', {});
 
-  var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true });
+  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
   db._view('UnitTestsRecoveryView').properties(meta);
 
   internal.wal.flush(true, true);
   global.instanceManager.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
 
-  var tx = {
+  var tx = db._createTransaction({
     collections: {
       write: ['UnitTestsRecoveryDummy']
     },
-    action: function() {
-      const db = require('internal').db;
-      var c = db.UnitTestsRecoveryDummy;
-      for (let j = 0; j < 100; j++) {
-        var values = [];
-        for (let i = 0; i < 100; i++) {
-          values.push({ a: "foo_" + i, b: "bar_" + i, c: i });
-        }
-        c.save(values);
-      }
-    },
     waitForSync: true
-  };
+  });
 
-  db._executeTransaction(tx);
+  var txcol = tx.collection('UnitTestsRecoveryDummy');
+  for (let j = 0; j < 100; j ++) {
+    let docs = [];
+    for (let i = 0; i < 100; i++) {
+      docs.push({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    txcol.save(docs);
+  }
+  tx.commit();
 
   return 0;
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
   'use strict';
@@ -79,29 +73,24 @@ function recoverySuite () {
   return {
 
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the trx data
-    // //////////////////////////////////////////////////////////////////////////////
-
     testIResearchLinkPopulateTransactionNoFlushThread: function () {
-      var v = db._view('UnitTestsRecoveryView');
-      assertEqual(v.name(), 'UnitTestsRecoveryView');
-      assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
-      assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
-      assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
+      let checkView = function(viewName, indexName) {
+        let v = db._view(viewName);
+        assertEqual(v.name(), viewName);
+        assertEqual(v.type(), 'search-alias');
+        let indexes = v.properties().indexes;
+        assertEqual(1, indexes.length);
+        assertEqual(indexName, indexes[0].index);
+        assertEqual("UnitTestsRecoveryDummy", indexes[0].collection);
+      };
+      checkView("UnitTestsRecoveryView", "i1");
 
-      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
       var epxectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], epxectedResult[0]);
+      assertEqual(epxectedResult[0], result[0]);
     }
-
   };
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(recoverySuite);
 return jsunity.done();

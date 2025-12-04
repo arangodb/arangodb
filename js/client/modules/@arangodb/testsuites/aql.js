@@ -243,7 +243,7 @@ function shellClientAqlVector (options) {
 
   let opts = ensureServers(options, 3);
   let moreOptions = {
-    "experimental-vector-index": "true",
+    "vector-index": "true",
   };
 
   let rc = new trs.runLocalInArangoshRunner(opts, name, moreOptions).run(testCases);

@@ -277,8 +277,7 @@ void Optimizer::initializeRules(ExecutionPlan* plan,
 
 // @brief the actual optimization
 void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
-                            QueryOptions const& queryOptions,
-                            bool estimateAllPlans) {
+                            QueryOptions const& queryOptions) {
   _runOnlyRequiredRules = false;
   ExecutionPlan* initialPlan = plan.get();
 
@@ -416,7 +415,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
 
   finalizePlans();
 
-  estimateCosts(queryOptions, estimateAllPlans);
+  estimateCosts(queryOptions);
 
   // Best plan should not have forced hints left.
   // note: this method will throw in case the plan still contains
@@ -467,29 +466,18 @@ void Optimizer::checkForcedIndexHints() {
   TRI_ASSERT(!_plans.list.empty());
 }
 
-void Optimizer::estimateCosts(QueryOptions const& queryOptions,
-                              bool estimateAllPlans) {
-  if (estimateAllPlans || _plans.size() > 1 ||
-      queryOptions.profile >= ProfileLevel::Blocks) {
-    // if profiling is turned on, we must do the cost estimation here
-    // because the cost estimation must be done while the transaction
-    // is still running
-    for (auto& plan : _plans.list) {
-      plan.first->invalidateCost();
-      plan.first->getCost();
-      // this value is cached in the plan, so formally this step is
-      // unnecessary, but for the sake of cleanliness...
-    }
-
-    if (_plans.size() > 1) {
-      // only sort plans when necessary
-      std::sort(_plans.list.begin(), _plans.list.end(),
-                [](PlanList::Entry const& a, PlanList::Entry const& b) -> bool {
-                  return a.first->getCost().estimatedCost <
-                         b.first->getCost().estimatedCost;
-                });
-    }
+void Optimizer::estimateCosts(QueryOptions const& queryOptions) {
+  // Invalidate all plans and get new estimates before doing anything
+  for (auto& plan : _plans.list) {
+    plan.first->invalidateCost();
+    plan.first->getCost();
   }
+
+  std::sort(_plans.list.begin(), _plans.list.end(),
+            [](PlanList::Entry const& a, PlanList::Entry const& b) -> bool {
+              return a.first->getCost().estimatedCost <
+                     b.first->getCost().estimatedCost;
+            });
 }
 
 void Optimizer::disableRule(ExecutionPlan* plan, int level) {

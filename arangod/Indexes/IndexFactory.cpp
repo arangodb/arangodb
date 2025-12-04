@@ -925,9 +925,10 @@ Result IndexFactory::enhanceJsonIndexVector(
     if (auto const res = velocypack::deserializeWithStatus(
             paramsSlice, vectorIndexDefinition);
         !res.ok()) {
-      return Result(
-          TRI_ERROR_BAD_PARAMETER,
-          std::format("error: {}, path: {}", res.error(), res.path()));
+      return {TRI_ERROR_BAD_PARAMETER,
+              std::format("Error with parsing the `params` attribute in "
+                          "vector index definition: {}",
+                          res.error())};
     }
 
     if (definition.get("unique").isTrue()) {
