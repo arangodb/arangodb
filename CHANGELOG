@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-636: bump express from 4.18.2 to 4.21.2 (latest 4.X version) (ensure non-vulnerable body-parser).
+
 * Fix a potential integer overflow in shortest path estimation.
 
 * Fix BTS-2268: Fixed an issue where query plan for queries with subquery
