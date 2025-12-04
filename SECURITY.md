@@ -3,7 +3,7 @@
 ## Supported Versions
 
 We release patches for security vulnerabilities for
-[supported versions](https://www.arangodb.com/subscriptions/end-of-life-notice/).
+[supported versions](https://arango.ai/arangodb-product-support-end-of-life-announcements/).
 
 ## Reporting a Vulnerability
 
