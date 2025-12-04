@@ -321,22 +321,25 @@ class TestSuiteConfigClass:
         # Parse suite options without size (simulating YAML: {options: {suffix: "_vpack"}})
         suite_data = {
             "name": "dump",
-            "options": {"suffix": "_vpack"}  # No size specified
+            "options": {"suffix": "_vpack"},  # No size specified
         }
         suite = SuiteConfig.from_dict(suite_data)
 
         # Bug: suite.options.size should be None, but was being set to SMALL
-        assert suite.options.size is None, \
-            "Suite without explicit size should have size=None, not auto-generated default"
+        assert (
+            suite.options.size is None
+        ), "Suite without explicit size should have size=None, not auto-generated default"
 
         # Verify that when merged with job options, job's size is inherited
         job_opts = TestOptions(
-            deployment_type=DeploymentType.CLUSTER,
-            size=ResourceSize.MEDIUM
+            deployment_type=DeploymentType.CLUSTER, size=ResourceSize.MEDIUM
         )
-        merged = suite.with_merged_options(job_opts, TestArguments(), TestRequirements())
-        assert merged.options.size == ResourceSize.MEDIUM, \
-            "Merged suite should inherit job's size when suite doesn't specify one"
+        merged = suite.with_merged_options(
+            job_opts, TestArguments(), TestRequirements()
+        )
+        assert (
+            merged.options.size == ResourceSize.MEDIUM
+        ), "Merged suite should inherit job's size when suite doesn't specify one"
 
 
 class TestRepositoryConfigClass:
@@ -640,6 +643,7 @@ class TestBuildConfigClass:
         assert build.sanitizer == Sanitizer.ALUBSAN
         assert build.nightly is True
 
+
 def test_git_branch_override_minimal():
     job = TestJob(
         name="driverJob",
@@ -662,6 +666,7 @@ def test_git_branch_override_minimal():
     assert overridden.repository is not None
     assert overridden.repository.git_branch == "feature-branch"
 
+
 def test_git_branch_override_no_match():
     job = TestJob(
         name="driverJob",
@@ -682,6 +687,7 @@ def test_git_branch_override_no_match():
     # Branch should remain unchanged
     assert result.jobs["driverJob"].repository.git_branch == "main"
 
+
 def test_git_branch_override_no_repository():
     job = TestJob(
         name="normalJob",
@@ -697,3 +703,90 @@ def test_git_branch_override_no_repository():
 
     # Should not crash, job should be unchanged
     assert result.jobs["normalJob"].repository is None
+
+
+class TestTestRequirements:
+    """Test TestRequirements dataclass."""
+
+    def test_from_dict_empty_returns_all_none(self):
+        """Empty requirements dict creates requirements with all fields None."""
+        reqs = TestRequirements.from_dict(None)
+        assert reqs.full is None
+        assert reqs.coverage is None
+        assert reqs.instrumentation is None
+        assert reqs.architecture is None
+
+    @pytest.mark.parametrize(
+        "arch_str,expected_arch",
+        [
+            ("x64", "X64"),
+            ("x86_64", "X64"),
+            ("amd64", "X64"),
+            ("aarch64", "AARCH64"),
+            ("arm64", "AARCH64"),
+        ],
+    )
+    def test_from_dict_architecture_aliases(self, arch_str, expected_arch):
+        """Architecture field supports common aliases."""
+        from src.config_lib import Architecture
+
+        reqs = TestRequirements.from_dict({"arch": arch_str})
+        assert reqs.architecture == Architecture[expected_arch]
+
+    def test_from_dict_parses_all_fields_correctly(self):
+        """All requirement fields parse correctly when specified together."""
+        from src.config_lib import Architecture
+
+        data = {
+            "full": True,
+            "coverage": False,
+            "instrumentation": True,
+            "arch": "x64",
+        }
+        reqs = TestRequirements.from_dict(data)
+
+        assert reqs.full is True
+        assert reqs.coverage is False
+        assert reqs.instrumentation is True
+        assert reqs.architecture == Architecture.X64
+
+    def test_merge_preserves_base_when_override_is_none(self):
+        """Merging with None preserves all base requirement values."""
+        base = TestRequirements(full=True, coverage=False, instrumentation=True)
+        merged = base.merge_with(None)
+
+        assert merged.full is True
+        assert merged.coverage is False
+        assert merged.instrumentation is True
+
+    def test_merge_suite_overrides_job_requirements(self):
+        """Suite requirements override job requirements during merge."""
+        from src.config_lib import Architecture
+
+        job_reqs = TestRequirements(
+            full=True,
+            coverage=True,
+            instrumentation=False,
+            architecture=Architecture.X64,
+        )
+        suite_reqs = TestRequirements(
+            full=False,  # Override
+            instrumentation=True,  # Override
+        )
+
+        merged = job_reqs.merge_with(suite_reqs)
+
+        assert merged.full is False  # Suite overrides
+        assert merged.coverage is True  # Job value preserved
+        assert merged.instrumentation is True  # Suite overrides
+        assert merged.architecture == Architecture.X64  # Job value preserved
+
+    def test_merge_none_values_in_override_preserve_base(self):
+        """None values in override don't erase base requirement values."""
+        base = TestRequirements(full=True, instrumentation=True)
+        override = TestRequirements(full=None, instrumentation=None)
+
+        merged = base.merge_with(override)
+
+        assert merged.full is True
+        assert merged.instrumentation is True

@@ -148,6 +148,7 @@ class TestRequirements:
 
     full: Optional[bool] = None  # Only run in full/nightly builds if True
     coverage: Optional[bool] = None  # Run coverage analysis
+    instrumentation: Optional[bool] = None  # Include/exclude for instrumented builds (TSAN/ASAN/coverage)
     architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     @classmethod
@@ -171,6 +172,8 @@ class TestRequirements:
             kwargs["full"] = data["full"]
         if "coverage" in data:
             kwargs["coverage"] = data["coverage"]
+        if "instrumentation" in data:
+            kwargs["instrumentation"] = data["instrumentation"]
 
         # Handle arch field
         if "arch" in data and data["arch"] is not None:
@@ -192,6 +195,7 @@ class TestRequirements:
             return TestRequirements(
                 full=self.full,
                 coverage=self.coverage,
+                instrumentation=self.instrumentation,
                 architecture=self.architecture,
             )
 
@@ -201,6 +205,7 @@ class TestRequirements:
         return TestRequirements(
             full=merge_field(override.full, self.full),
             coverage=merge_field(override.coverage, self.coverage),
+            instrumentation=merge_field(override.instrumentation, self.instrumentation),
             architecture=merge_field(override.architecture, self.architecture),
         )
 

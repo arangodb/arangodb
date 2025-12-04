@@ -601,3 +601,203 @@ class TestArchitectureFiltering:
         # No architecture in criteria - should include
         criteria = FilterCriteria(architecture=None)
         assert should_include_job(job, criteria)
+
+class TestInstrumentationFiltering:
+    """Test instrumentation filtering at job and suite level."""
+
+    def test_job_without_instrumentation_constraint_included_in_all_builds(self):
+        """Job without instrumentation field should run in all build types."""
+        from src.config_lib import Sanitizer
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(),
+        )
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria()
+        assert should_include_job(job, criteria_regular)
+
+        # Should be included in TSAN build
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        assert should_include_job(job, criteria_tsan)
+
+    def test_job_with_instrumentation_true_only_in_instrumented_builds(self):
+        """Job with instrumentation=True should only run in instrumented builds."""
+        from src.config_lib import Sanitizer
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(instrumentation=True),
+        )
+
+        # Should be excluded from regular build
+        criteria_regular = FilterCriteria()
+        assert not should_include_job(job, criteria_regular)
+
+        # Should be included in TSAN build
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        assert should_include_job(job, criteria_tsan)
+
+        # Should be included in ALUBSAN build
+        criteria_alubsan = FilterCriteria(sanitizer=Sanitizer.ALUBSAN)
+        assert should_include_job(job, criteria_alubsan)
+
+    def test_job_with_instrumentation_false_only_in_regular_builds(self):
+        """Job with instrumentation=False should only run in regular builds."""
+        from src.config_lib import Sanitizer
+
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(instrumentation=False),
+        )
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria()
+        assert should_include_job(job, criteria_regular)
+
+        # Should be excluded from TSAN build
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        assert not should_include_job(job, criteria_tsan)
+
+        # Should be excluded from ALUBSAN build
+        criteria_alubsan = FilterCriteria(sanitizer=Sanitizer.ALUBSAN)
+        assert not should_include_job(job, criteria_alubsan)
+
+    def test_all_tests_mode_respects_architecture_but_not_instrumentation(self):
+        """all_tests mode should still respect architecture but ignore instrumentation."""
+        from src.config_lib import Architecture, Sanitizer
+
+        # Job with instrumentation=False
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(instrumentation=False),
+        )
+
+        # Should be included in instrumented build with all_tests=True
+        criteria = FilterCriteria(all_tests=True, sanitizer=Sanitizer.TSAN)
+        assert should_include_job(job, criteria)
+
+        # Job with wrong architecture should still be excluded
+        job_x64 = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(architecture=Architecture.X64),
+        )
+
+        criteria_aarch64 = FilterCriteria(
+            all_tests=True, architecture=Architecture.AARCH64
+        )
+        assert not should_include_job(job_x64, criteria_aarch64)
+
+    def test_suite_without_instrumentation_constraint_included_in_all_builds(self):
+        """Suite without instrumentation field should run in all build types."""
+        from src.config_lib import Sanitizer
+
+        suite = SuiteConfig(name="suite1")
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria()
+        assert should_include_suite(suite, criteria_regular)
+
+        # Should be included in TSAN build
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        assert should_include_suite(suite, criteria_tsan)
+
+    def test_suite_with_instrumentation_true_only_in_instrumented_builds(self):
+        """Suite with instrumentation=True should only run in instrumented builds."""
+        from src.config_lib import Sanitizer
+
+        suite = SuiteConfig(
+            name="suite1", requires=TestRequirements(instrumentation=True)
+        )
+
+        # Should be excluded from regular build
+        criteria_regular = FilterCriteria()
+        assert not should_include_suite(suite, criteria_regular)
+
+        # Should be included in TSAN build
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        assert should_include_suite(suite, criteria_tsan)
+
+    def test_suite_with_instrumentation_false_only_in_regular_builds(self):
+        """Suite with instrumentation=False should only run in regular builds."""
+        from src.config_lib import Sanitizer
+
+        suite = SuiteConfig(
+            name="suite1", requires=TestRequirements(instrumentation=False)
+        )
+
+        # Should be included in regular build
+        criteria_regular = FilterCriteria()
+        assert should_include_suite(suite, criteria_regular)
+
+        # Should be excluded from TSAN build
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        assert not should_include_suite(suite, criteria_tsan)
+
+    def test_filter_suites_by_instrumentation(self):
+        """Test filtering mixed instrumentation suites in different build types."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(
+                    name="instrumented_suite",
+                    requires=TestRequirements(instrumentation=True),
+                ),
+                SuiteConfig(
+                    name="regular_suite",
+                    requires=TestRequirements(instrumentation=False),
+                ),
+                SuiteConfig(name="any_suite"),
+            ],
+            options=TestOptions(),
+        )
+
+        # Regular build - should include regular_suite and any_suite, exclude instrumented_suite
+        criteria_regular = FilterCriteria()
+        result = filter_suites(job, criteria_regular)
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "regular_suite" in result_names
+        assert "any_suite" in result_names
+        assert "instrumented_suite" not in result_names
+
+        # TSAN build - should include instrumented_suite and any_suite, exclude regular_suite
+        from src.config_lib import Sanitizer
+
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        result = filter_suites(job, criteria_tsan)
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "instrumented_suite" in result_names
+        assert "any_suite" in result_names
+        assert "regular_suite" not in result_names
+
+    def test_suite_instrumentation_overrides_job_instrumentation(self):
+        """Suite-level instrumentation should override job-level instrumentation."""
+        from src.config_lib import Sanitizer
+
+        # Job with instrumentation=False, but suite overrides to True
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(
+                    name="override_suite",
+                    requires=TestRequirements(instrumentation=True),
+                )
+            ],
+            requires=TestRequirements(instrumentation=False),
+        )
+
+        # Job should be excluded from TSAN build (job-level filter)
+        criteria_tsan = FilterCriteria(sanitizer=Sanitizer.TSAN)
+        assert not should_include_job(job, criteria_tsan)
+
+        # But if we check the suite directly, it should be included
+        suite = job.suites[0]
+        assert should_include_suite(suite, criteria_tsan)

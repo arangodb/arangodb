@@ -14,6 +14,7 @@ from .config_lib import (
     SuiteConfig,
     Sanitizer,
     Architecture,
+    TestRequirements,
 )
 
 
@@ -59,6 +60,11 @@ class FilterCriteria:
         """Check if this is a full or nightly run."""
         return self.full or self.nightly
 
+    @property
+    def is_instrumented_build(self) -> bool:
+        """Check if this is an instrumented build (TSan/ALUBSan)."""
+        return self.sanitizer is not None
+
 
 def is_gtest_suite(suite: SuiteConfig) -> bool:
     """
@@ -101,6 +107,54 @@ def matches_deployment_filter(
     return True
 
 
+def _check_requirements_match(
+    requires: TestRequirements, criteria: FilterCriteria
+) -> bool:
+    """
+    Check if test requirements match filter criteria.
+
+    This implements the common filtering logic for both jobs and suites:
+    - Architecture compatibility (even in all_tests mode)
+    - Full flag compatibility
+    - Instrumentation flag compatibility
+
+    Args:
+        requires: TestRequirements to check
+        criteria: FilterCriteria to apply
+
+    Returns:
+        True if requirements match criteria, False otherwise
+    """
+    # Check architecture compatibility FIRST (even in all_tests mode)
+    # If test specifies architecture, current architecture must match
+    if requires.architecture is not None and criteria.architecture is not None:
+        if criteria.architecture != requires.architecture:
+            return False
+
+    if criteria.all_tests:
+        return True
+
+    # Check full flag compatibility with build type
+    # - full=True: Only for nightly/full builds
+    # - full=False: Only for PR builds
+    # - full=None (unspecified): Include in both
+    if requires.full is True and not criteria.is_full_run:
+        return False  # Requires full run, but we're in PR mode
+    if requires.full is False and criteria.is_full_run:
+        return False  # PR-only, but we're in full/nightly mode
+
+    # Check instrumentation flag compatibility
+    # - instrumentation=True: Only for instrumented builds (TSAN/ASAN/coverage)
+    # - instrumentation=False: Only for non-instrumented builds
+    # - instrumentation=None (unspecified): Include in both
+    if requires.instrumentation is True and not criteria.is_instrumented_build:
+        return False  # Requires instrumented build, but we're in regular mode
+    if requires.instrumentation is False and criteria.is_instrumented_build:
+        return False  # Regular-build-only, but we're in instrumented mode
+
+    return True
+
+
 def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     """
     Determine if a job should be included based on filter criteria.
@@ -112,24 +166,8 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     Returns:
         True if job should be included, False otherwise
     """
-    # Check architecture compatibility FIRST (even in all_tests mode)
-    # If job specifies architecture, current architecture must match
-    if job.requires.architecture is not None and criteria.architecture is not None:
-        if criteria.architecture != job.requires.architecture:
-            return False
-
-    if criteria.all_tests:
-        return True
-
-    # Check full flag compatibility with build type
-    # - full=True: Only for nightly/full builds
-    # - full=False: Only for PR builds
-    # - full=None (unspecified): Include in both
-    if job.requires.full is True and not criteria.is_full_run:
-        # Job requires full run, but we're in PR mode - exclude
-        return False
-    if job.requires.full is False and criteria.is_full_run:
-        # Job is PR-only, but we're in full/nightly mode - exclude
+    # Check common requirements (architecture, full, instrumentation)
+    if not _check_requirements_match(job.requires, criteria):
         return False
 
     # Check deployment type filter
@@ -160,25 +198,8 @@ def should_include_suite(suite: SuiteConfig, criteria: FilterCriteria) -> bool:
     Returns:
         True if suite should be included, False otherwise
     """
-    # Check architecture compatibility FIRST (even in all_tests mode)
-    # If suite specifies architecture, current architecture must match
-    if suite.requires.architecture is not None and criteria.architecture is not None:
-        if criteria.architecture != suite.requires.architecture:
-            return False
-
-    if criteria.all_tests:
-        return True
-
-    # Check full flag compatibility (suite-level override)
-    # - full=True: Only for nightly/full builds
-    # - full=False: Only for PR builds
-    # - full=None (unspecified): Include in both
-    if suite.requires.full is True and not criteria.is_full_run:
-        return False  # Suite requires full run, but we're in PR mode
-    if suite.requires.full is False and criteria.is_full_run:
-        return False  # Suite is PR-only, but we're in full/nightly mode
-
-    return True
+    # Check common requirements (architecture, full, instrumentation)
+    return _check_requirements_match(suite.requires, criteria)
 
 
 def filter_suites(job: TestJob, criteria: FilterCriteria) -> List[SuiteConfig]:
