@@ -10,6 +10,7 @@ from src.config_lib import (
     DeploymentType,
     ResourceSize,
     TestOptions,
+    TestRequirements,
     TestArguments,
     SuiteConfig,
     RepositoryConfig,
@@ -163,15 +164,15 @@ class TestTestOptions:
         assert opts.size == ResourceSize.XLARGE
 
     def test_from_dict_arch_field(self):
-        """Test parsing 'arch' field (short form)."""
+        """Test parsing 'arch' field (short form) - architecture moved to TestRequirements."""
         from src.config_lib import Architecture
 
         data = {"arch": "aarch64"}
-        opts = TestOptions.from_dict(data)
-        assert opts.architecture == Architecture.AARCH64
+        reqs = TestRequirements.from_dict(data)
+        assert reqs.architecture == Architecture.AARCH64
 
     def test_from_dict_arch_aliases(self):
-        """Test architecture parsing supports common aliases."""
+        """Test architecture parsing supports common aliases - architecture in TestRequirements."""
         from src.config_lib import Architecture
 
         test_cases = [
@@ -184,8 +185,8 @@ class TestTestOptions:
 
         for arch_str, expected in test_cases:
             data = {"arch": arch_str}
-            opts = TestOptions.from_dict(data)
-            assert opts.architecture == expected, f"Failed for {arch_str}"
+            reqs = TestRequirements.from_dict(data)
+            assert reqs.architecture == expected, f"Failed for {arch_str}"
 
 
 class TestTestArguments:
@@ -293,8 +294,9 @@ class TestSuiteConfigClass:
             deployment_type=DeploymentType.CLUSTER, priority=5, size=ResourceSize.MEDIUM
         )
         job_args = TestArguments(extra_args={"job-arg": "job-value"})
+        job_reqs = TestRequirements()
 
-        merged = suite.with_merged_options(job_opts, job_args)
+        merged = suite.with_merged_options(job_opts, job_args, job_reqs)
         assert merged.name == "boost"
         assert merged.options.deployment_type == DeploymentType.CLUSTER
         assert merged.options.priority == 10  # suite override
@@ -303,6 +305,38 @@ class TestSuiteConfigClass:
             "job-arg": "job-value",
             "suite-arg": "suite-value",
         }
+
+    def test_suite_from_dict_should_not_get_default_size(self):
+        """
+        Test that suites parsed from YAML without explicit size don't get auto-assigned
+        a default size based on deployment_type.
+
+        Bug: When a suite doesn't specify size, TestOptions.from_dict() was setting a
+        default size=SMALL because the suite has no deployment_type. This prevented
+        proper inheritance from job-level size.
+
+        Expected: Suite options should be None for unspecified fields, allowing
+        job-level values to be used via merge_with() or get_effective_option_value().
+        """
+        # Parse suite options without size (simulating YAML: {options: {suffix: "_vpack"}})
+        suite_data = {
+            "name": "dump",
+            "options": {"suffix": "_vpack"}  # No size specified
+        }
+        suite = SuiteConfig.from_dict(suite_data)
+
+        # Bug: suite.options.size should be None, but was being set to SMALL
+        assert suite.options.size is None, \
+            "Suite without explicit size should have size=None, not auto-generated default"
+
+        # Verify that when merged with job options, job's size is inherited
+        job_opts = TestOptions(
+            deployment_type=DeploymentType.CLUSTER,
+            size=ResourceSize.MEDIUM
+        )
+        merged = suite.with_merged_options(job_opts, TestArguments(), TestRequirements())
+        assert merged.options.size == ResourceSize.MEDIUM, \
+            "Merged suite should inherit job's size when suite doesn't specify one"
 
 
 class TestRepositoryConfigClass:

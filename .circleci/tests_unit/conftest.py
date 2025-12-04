@@ -11,6 +11,7 @@ from src.config_lib import (
     TestJob,
     SuiteConfig,
     TestOptions,
+    TestRequirements,
 )
 from src.filters import FilterCriteria
 from src.output_generators.base import (
@@ -51,9 +52,9 @@ def mixed_suite_job():
     return TestJob(
         name="test_job",
         suites=[
-            SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
-            SuiteConfig(name="full_suite", options=TestOptions(full=True)),
-            SuiteConfig(name="any_suite", options=TestOptions()),
+            SuiteConfig(name="pr_suite", requires=TestRequirements(full=False)),
+            SuiteConfig(name="full_suite", requires=TestRequirements(full=True)),
+            SuiteConfig(name="any_suite"),
         ],
         options=TestOptions(),
     )

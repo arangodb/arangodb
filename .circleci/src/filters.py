@@ -114,8 +114,8 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     """
     # Check architecture compatibility FIRST (even in all_tests mode)
     # If job specifies architecture, current architecture must match
-    if job.options.architecture is not None and criteria.architecture is not None:
-        if criteria.architecture != job.options.architecture:
+    if job.requires.architecture is not None and criteria.architecture is not None:
+        if criteria.architecture != job.requires.architecture:
             return False
 
     if criteria.all_tests:
@@ -125,10 +125,10 @@ def should_include_job(job: TestJob, criteria: FilterCriteria) -> bool:
     # - full=True: Only for nightly/full builds
     # - full=False: Only for PR builds
     # - full=None (unspecified): Include in both
-    if job.options.full is True and not criteria.is_full_run:
+    if job.requires.full is True and not criteria.is_full_run:
         # Job requires full run, but we're in PR mode - exclude
         return False
-    if job.options.full is False and criteria.is_full_run:
+    if job.requires.full is False and criteria.is_full_run:
         # Job is PR-only, but we're in full/nightly mode - exclude
         return False
 
@@ -162,8 +162,8 @@ def should_include_suite(suite: SuiteConfig, criteria: FilterCriteria) -> bool:
     """
     # Check architecture compatibility FIRST (even in all_tests mode)
     # If suite specifies architecture, current architecture must match
-    if suite.options.architecture is not None and criteria.architecture is not None:
-        if criteria.architecture != suite.options.architecture:
+    if suite.requires.architecture is not None and criteria.architecture is not None:
+        if criteria.architecture != suite.requires.architecture:
             return False
 
     if criteria.all_tests:
@@ -173,9 +173,9 @@ def should_include_suite(suite: SuiteConfig, criteria: FilterCriteria) -> bool:
     # - full=True: Only for nightly/full builds
     # - full=False: Only for PR builds
     # - full=None (unspecified): Include in both
-    if suite.options.full is True and not criteria.is_full_run:
+    if suite.requires.full is True and not criteria.is_full_run:
         return False  # Suite requires full run, but we're in PR mode
-    if suite.options.full is False and criteria.is_full_run:
+    if suite.requires.full is False and criteria.is_full_run:
         return False  # Suite is PR-only, but we're in full/nightly mode
 
     return True

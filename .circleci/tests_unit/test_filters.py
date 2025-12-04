@@ -10,9 +10,9 @@ from src.config_lib import (
     TestJob,
     SuiteConfig,
     TestOptions,
+    TestRequirements,
     DeploymentType,
     TestDefinitionFile,
-    BuildConfig,
 )
 from src.filters import (
     PlatformFlags,
@@ -333,15 +333,15 @@ class TestShouldIncludeSuite:
         criteria = FilterCriteria(all_tests=True)
 
         # Suite with full=True
-        suite = SuiteConfig(name="full_suite", options=TestOptions(full=True))
+        suite = SuiteConfig(name="full_suite", requires=TestRequirements(full=True))
         assert should_include_suite(suite, criteria) is True
 
         # Suite with full=False
-        suite = SuiteConfig(name="pr_suite", options=TestOptions(full=False))
+        suite = SuiteConfig(name="pr_suite", requires=TestRequirements(full=False))
         assert should_include_suite(suite, criteria) is True
 
         # Suite with full=None
-        suite = SuiteConfig(name="any_suite", options=TestOptions())
+        suite = SuiteConfig(name="any_suite")
         assert should_include_suite(suite, criteria) is True
 
     @pytest.mark.parametrize(
@@ -364,7 +364,7 @@ class TestShouldIncludeSuite:
     def test_suite_filtering_by_build_type(self, full, nightly, suite_full, expected):
         """Test suite filtering across PR/full/nightly builds."""
         criteria = FilterCriteria(full=full, nightly=nightly)
-        suite = SuiteConfig(name="test", options=TestOptions(full=suite_full))
+        suite = SuiteConfig(name="test", requires=TestRequirements(full=suite_full))
         assert should_include_suite(suite, criteria) is expected
 
     def test_suite_without_options(self):
@@ -426,7 +426,9 @@ class TestFilterSuites:
         """Test filtering job with only one suite."""
         job = TestJob(
             name="test_job",
-            suites=[SuiteConfig(name="only_suite", options=TestOptions(full=True))],
+            suites=[
+                SuiteConfig(name="only_suite", requires=TestRequirements(full=True))
+            ],
             options=TestOptions(),
         )
 
@@ -486,6 +488,7 @@ class TestFilterSuites:
         assert result[2].name == "suite3"
         assert result[3].name == "suite4"
 
+
 class TestArchitectureFiltering:
     """Test architecture filtering at job and suite level."""
 
@@ -514,7 +517,7 @@ class TestArchitectureFiltering:
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
 
         # Should be included on x64
@@ -532,7 +535,7 @@ class TestArchitectureFiltering:
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
-            options=TestOptions(architecture=Architecture.AARCH64),
+            requires=TestRequirements(architecture=Architecture.AARCH64),
         )
 
         # Should be excluded on x64
@@ -549,11 +552,11 @@ class TestArchitectureFiltering:
 
         suite_x64_only = SuiteConfig(
             name="suite_x64",
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
         suite_aarch64_only = SuiteConfig(
             name="suite_aarch64",
-            options=TestOptions(architecture=Architecture.AARCH64),
+            requires=TestRequirements(architecture=Architecture.AARCH64),
         )
 
         # x64-only suite
@@ -574,21 +577,15 @@ class TestArchitectureFiltering:
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
 
         # Should NOT be included on wrong architecture, even with all_tests=True
-        criteria = FilterCriteria(
-            all_tests=True,
-            architecture=Architecture.AARCH64
-        )
+        criteria = FilterCriteria(all_tests=True, architecture=Architecture.AARCH64)
         assert not should_include_job(job, criteria)
 
         # Should be included on correct architecture with all_tests=True
-        criteria = FilterCriteria(
-            all_tests=True,
-            architecture=Architecture.X64
-        )
+        criteria = FilterCriteria(all_tests=True, architecture=Architecture.X64)
         assert should_include_job(job, criteria)
 
     def test_architecture_filter_without_criteria_architecture(self):
@@ -598,7 +595,7 @@ class TestArchitectureFiltering:
         job = TestJob(
             name="test_job",
             suites=[SuiteConfig(name="suite1")],
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
 
         # No architecture in criteria - should include

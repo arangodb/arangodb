@@ -11,6 +11,7 @@ from src.config_lib import (
     TestJob,
     SuiteConfig,
     TestOptions,
+    TestRequirements,
     TestDefinitionFile,
     BuildConfig,
     DeploymentType,
@@ -442,7 +443,7 @@ class TestCreateTestJobsForDeployment:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="suite1", options=TestOptions(full=True))
+                SuiteConfig(name="suite1", requires=TestRequirements(full=True))
             ],  # Full only
             options=TestOptions(deployment_type=DeploymentType.SINGLE),
         )
@@ -459,8 +460,8 @@ class TestCreateTestJobsForDeployment:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="pr_suite", options=TestOptions(full=False)),
-                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
+                SuiteConfig(name="pr_suite", requires=TestRequirements(full=False)),
+                SuiteConfig(name="full_suite", requires=TestRequirements(full=True)),
             ],
             options=TestOptions(deployment_type=None),
         )
@@ -690,9 +691,9 @@ class TestCreateTestJob:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="pr_suite1", options=TestOptions(full=False)),
-                SuiteConfig(name="pr_suite2", options=TestOptions(full=False)),
-                SuiteConfig(name="full_suite", options=TestOptions(full=True)),
+                SuiteConfig(name="pr_suite1", requires=TestRequirements(full=False)),
+                SuiteConfig(name="pr_suite2", requires=TestRequirements(full=False)),
+                SuiteConfig(name="full_suite", requires=TestRequirements(full=True)),
             ],
             options=TestOptions(buckets="auto"),
         )
@@ -806,7 +807,7 @@ class TestCreateTestJob:
         gen = self.create_generator(full=False)  # Only PR tests
         job = TestJob(
             name="test_job",
-            suites=[SuiteConfig(name="full_only", options=TestOptions(full=True))],
+            suites=[SuiteConfig(name="full_only", requires=TestRequirements(full=True))],
             options=TestOptions(),
         )
         build_config = BuildConfig(architecture=Architecture.X64)
@@ -823,8 +824,8 @@ class TestCreateTestJob:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="x64_only", options=TestOptions(architecture=Architecture.X64)),
-                SuiteConfig(name="aarch64_only", options=TestOptions(architecture=Architecture.AARCH64)),
+                SuiteConfig(name="x64_only", requires=TestRequirements(architecture=Architecture.X64)),
+                SuiteConfig(name="aarch64_only", requires=TestRequirements(architecture=Architecture.AARCH64)),
                 SuiteConfig(name="all_archs"),  # No architecture specified
             ],
             options=TestOptions(),
@@ -856,7 +857,7 @@ class TestCreateTestJob:
         job = TestJob(
             name="test_job",
             suites=[
-                SuiteConfig(name="x64_only", options=TestOptions(architecture=Architecture.X64)),
+                SuiteConfig(name="x64_only", requires=TestRequirements(architecture=Architecture.X64)),
             ],
             options=TestOptions(),
         )
@@ -886,7 +887,7 @@ class TestJobLevelArchitectureFiltering:
         job_x64_only = TestJob(
             name="ui_tests",
             suites=[SuiteConfig(name="UserPageTestSuite")],
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
 
         # Create a job without architecture constraint
@@ -925,7 +926,7 @@ class TestJobLevelArchitectureFiltering:
         job_x64_only = TestJob(
             name="ui_tests",
             suites=[SuiteConfig(name="UserPageTestSuite")],
-            options=TestOptions(architecture=Architecture.X64),
+            requires=TestRequirements(architecture=Architecture.X64),
         )
 
         jobs = [job_x64_only]
@@ -953,7 +954,7 @@ class TestJobLevelArchitectureFiltering:
         job_aarch64_only = TestJob(
             name="arm_specific_tests",
             suites=[SuiteConfig(name="ArmTestSuite")],
-            options=TestOptions(architecture=Architecture.AARCH64),
+            requires=TestRequirements(architecture=Architecture.AARCH64),
         )
 
         jobs = [job_aarch64_only]
