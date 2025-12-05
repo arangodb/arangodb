@@ -2,11 +2,11 @@
 Filtering logic for test jobs based on environment and CLI arguments.
 
 This module provides functions to filter test jobs based on various criteria
-such as deployment type, full/nightly runs, platform exclusions, etc.
+such as deployment type, full runs, platform exclusions, etc.
 """
 
 from typing import List, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from .config_lib import (
     TestJob,
     TestDefinitionFile,
@@ -23,15 +23,6 @@ GTEST_PREFIX = "gtest"
 
 
 @dataclass
-class PlatformFlags:
-    """Platform-specific flags for filtering tests."""
-
-    is_windows: bool = False
-    is_arm: bool = False
-    is_coverage: bool = False
-
-
-@dataclass
 class FilterCriteria:
     """Criteria for filtering test jobs."""
 
@@ -42,7 +33,6 @@ class FilterCriteria:
 
     # Test type filters
     full: bool = False  # Include full test set (not just PR subset)
-    nightly: bool = False
     gtest: bool = False
 
     # Build configuration
@@ -52,13 +42,10 @@ class FilterCriteria:
     # Feature flags
     enterprise: bool = True
 
-    # Platform exclusions
-    platform: PlatformFlags = field(default_factory=PlatformFlags)
-
     @property
     def is_full_run(self) -> bool:
-        """Check if this is a full or nightly run."""
-        return self.full or self.nightly
+        """Check if this is a full run."""
+        return self.full
 
     @property
     def is_instrumented_build(self) -> bool:
@@ -135,13 +122,13 @@ def _check_requirements_match(
         return True
 
     # Check full flag compatibility with build type
-    # - full=True: Only for nightly/full builds
+    # - full=True: Only for full runs
     # - full=False: Only for PR builds
     # - full=None (unspecified): Include in both
     if requires.full is True and not criteria.is_full_run:
         return False  # Requires full run, but we're in PR mode
     if requires.full is False and criteria.is_full_run:
-        return False  # PR-only, but we're in full/nightly mode
+        return False  # PR-only, but we're in full mode
 
     # Check instrumentation flag compatibility
     # - instrumentation=True: Only for instrumented builds (TSAN/ASAN/coverage)

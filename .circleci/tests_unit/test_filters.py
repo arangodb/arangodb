@@ -15,31 +15,12 @@ from src.config_lib import (
     TestDefinitionFile,
 )
 from src.filters import (
-    PlatformFlags,
     FilterCriteria,
     should_include_job,
     should_include_suite,
     filter_jobs,
     filter_suites,
 )
-
-
-class TestPlatformFlags:
-    """Test PlatformFlags dataclass."""
-
-    def test_default_values(self):
-        """Test that all flags default to False."""
-        flags = PlatformFlags()
-        assert flags.is_windows is False
-        assert flags.is_arm is False
-        assert flags.is_coverage is False
-
-    def test_custom_values(self):
-        """Test setting custom flag values."""
-        flags = PlatformFlags(is_windows=True, is_arm=True)
-        assert flags.is_windows is True
-        assert flags.is_arm is True
-        assert flags.is_coverage is False
 
 
 class TestFilterCriteria:
@@ -52,38 +33,31 @@ class TestFilterCriteria:
         assert criteria.single is False
         assert criteria.all_tests is False
         assert criteria.full is False
-        assert criteria.nightly is False
         assert criteria.gtest is False
         assert criteria.sanitizer is None
         assert criteria.enterprise is True
-        assert criteria.platform is not None
-        assert isinstance(criteria.platform, PlatformFlags)
 
     def test_custom_values(self):
         """Test setting custom criteria values."""
         from src.config_lib import Sanitizer
 
-        platform = PlatformFlags(is_windows=True)
         criteria = FilterCriteria(
             cluster=True,
             full=True,
             sanitizer=Sanitizer.TSAN,
             enterprise=False,
-            platform=platform,
         )
         assert criteria.cluster is True
         assert criteria.single is False
         assert criteria.full is True
         assert criteria.sanitizer == Sanitizer.TSAN
         assert criteria.enterprise is False
-        assert criteria.platform.is_windows is True
 
     def test_is_full_run(self):
         """Test is_full_run property."""
         assert FilterCriteria().is_full_run is False
         assert FilterCriteria(full=True).is_full_run is True
-        assert FilterCriteria(nightly=True).is_full_run is True
-        assert FilterCriteria(full=True, nightly=True).is_full_run is True
+        assert FilterCriteria(full=False).is_full_run is False
 
 
 class TestShouldIncludeJob:
@@ -345,43 +319,35 @@ class TestShouldIncludeSuite:
         assert should_include_suite(suite, criteria) is True
 
     @pytest.mark.parametrize(
-        "full,nightly,suite_full,expected",
+        "full,suite_full,expected",
         [
-            # PR builds (full=False, nightly=False)
-            (False, False, False, True),  # PR suite included
-            (False, False, None, True),  # Any suite included
-            (False, False, True, False),  # Full suite excluded
-            # Full builds (full=True)
-            (True, False, True, True),  # Full suite included
-            (True, False, None, True),  # Any suite included
-            (True, False, False, False),  # PR suite excluded
-            # Nightly builds (nightly=True, implies full run)
-            (False, True, True, True),  # Full suite included
-            (False, True, None, True),  # Any suite included
-            (False, True, False, False),  # PR suite excluded
+            # PR builds (full=False)
+            (False, False, True),  # PR suite included
+            (False, None, True),  # Any suite included
+            (False, True, False),  # Full suite excluded
+            # Full builds (full=True, covers both --full and --nightly CLI flags)
+            (True, True, True),  # Full suite included
+            (True, None, True),  # Any suite included
+            (True, False, False),  # PR suite excluded
         ],
     )
-    def test_suite_filtering_by_build_type(self, full, nightly, suite_full, expected):
-        """Test suite filtering across PR/full/nightly builds."""
-        criteria = FilterCriteria(full=full, nightly=nightly)
+    def test_suite_filtering_by_build_type(self, full, suite_full, expected):
+        """Test suite filtering across PR/full builds."""
+        criteria = FilterCriteria(full=full)
         suite = SuiteConfig(name="test", requires=TestRequirements(full=suite_full))
         assert should_include_suite(suite, criteria) is expected
 
     def test_suite_without_options(self):
         """Test suite with no options field."""
-        # Suite without options should always be included (unless in full build)
+        # Suite without options should always be included
         suite = SuiteConfig(name="simple_suite")
 
         # PR build
-        criteria = FilterCriteria(full=False, nightly=False)
+        criteria = FilterCriteria(full=False)
         assert should_include_suite(suite, criteria) is True
 
         # Full build
         criteria = FilterCriteria(full=True)
-        assert should_include_suite(suite, criteria) is True
-
-        # Nightly build
-        criteria = FilterCriteria(nightly=True)
         assert should_include_suite(suite, criteria) is True
 
 
@@ -390,7 +356,7 @@ class TestFilterSuites:
 
     def test_filter_mixed_suites_in_pr_build(self, mixed_suite_job):
         """Test filtering a mix of PR and full suites in PR build."""
-        criteria = FilterCriteria(full=False, nightly=False)
+        criteria = FilterCriteria(full=False)
         result = filter_suites(mixed_suite_job, criteria)
 
         # Should include PR suite and any suite, exclude full suite
@@ -601,6 +567,7 @@ class TestArchitectureFiltering:
         # No architecture in criteria - should include
         criteria = FilterCriteria(architecture=None)
         assert should_include_job(job, criteria)
+
 
 class TestInstrumentationFiltering:
     """Test instrumentation filtering at job and suite level."""

@@ -146,9 +146,11 @@ class TestRequirements:
     All fields are optional to support partial specifications.
     """
 
-    full: Optional[bool] = None  # Only run in full/nightly builds if True
-    coverage: Optional[bool] = None  # Run coverage analysis
-    instrumentation: Optional[bool] = None  # Include/exclude for instrumented builds (TSAN/ASAN/coverage)
+    full: Optional[bool] = None  # Only run if full test set is enabled
+    coverage: Optional[bool] = None  # Include/exclude for coverage builds
+    instrumentation: Optional[bool] = (
+        None  # Include/exclude for instrumented builds (TSAN/ASAN/coverage)
+    )
     architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     @classmethod
@@ -254,7 +256,9 @@ class TestOptions:
                 )
 
     @classmethod
-    def from_dict(cls, data: Optional[Dict[str, Any]], *, apply_defaults: bool = True) -> "TestOptions":
+    def from_dict(
+        cls, data: Optional[Dict[str, Any]], *, apply_defaults: bool = True
+    ) -> "TestOptions":
         """
         Create TestOptions from a dictionary, handling type conversions.
 
@@ -497,7 +501,10 @@ class SuiteConfig:
         )
 
     def with_merged_options(
-        self, job_options: TestOptions, job_arguments: TestArguments, job_requires: TestRequirements
+        self,
+        job_options: TestOptions,
+        job_arguments: TestArguments,
+        job_requires: TestRequirements,
     ) -> "SuiteConfig":
         """
         Create a new SuiteConfig with job-level options as defaults.

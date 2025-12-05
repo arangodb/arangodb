@@ -149,7 +149,6 @@ def create_generator_config(
     full: bool,
     all_tests: bool,
     replication_two: bool,
-    nightly: bool,
     create_docker_images: bool,
     validate_only: bool,
 ) -> GeneratorConfig:
@@ -174,7 +173,6 @@ def create_generator_config(
         gtest=gtest,
         full=full,
         all_tests=all_tests,
-        nightly=nightly,
         sanitizer=sanitizer_enum,
     )
 
@@ -277,11 +275,6 @@ def create_generator_config(
     help="Enable replication version 2 tests",
 )
 @click.option(
-    "--nightly",
-    is_flag=True,
-    help="This is a nightly build",
-)
-@click.option(
     "--create-docker-images",
     is_flag=True,
     help="Create docker images from build results",
@@ -307,7 +300,6 @@ def main(
     full: bool,
     all_tests: bool,
     replication_two: bool,
-    nightly: bool,
     create_docker_images: bool,
     validate_only: bool,
 ):
@@ -341,7 +333,6 @@ def main(
             full=full,
             all_tests=all_tests,
             replication_two=replication_two,
-            nightly=nightly,
             create_docker_images=create_docker_images,
             validate_only=validate_only,
         )

@@ -113,7 +113,7 @@ class CircleCIGenerator(OutputGenerator):
         build_config = BuildConfig(
             architecture=Architecture.X64,
             sanitizer=self.config.filter_criteria.sanitizer,
-            nightly=self.config.filter_criteria.nightly,
+            nightly=self.config.filter_criteria.is_full_run,
         )
         self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
@@ -121,7 +121,7 @@ class CircleCIGenerator(OutputGenerator):
         build_config = BuildConfig(
             architecture=Architecture.AARCH64,
             sanitizer=self.config.filter_criteria.sanitizer,
-            nightly=self.config.filter_criteria.nightly,
+            nightly=self.config.filter_criteria.is_full_run,
         )
         self._add_workflow(circleci_config["workflows"], all_jobs, build_config)
 
@@ -307,7 +307,9 @@ class CircleCIGenerator(OutputGenerator):
         from dataclasses import replace
         from ..filters import should_include_job
 
-        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+        criteria = replace(
+            self.config.filter_criteria, architecture=build_config.architecture
+        )
 
         for job in jobs:
             # Skip jobs that don't match this workflow's architecture
@@ -532,7 +534,10 @@ class CircleCIGenerator(OutputGenerator):
 
         # Create filter criteria with current workflow's architecture
         from dataclasses import replace
-        criteria = replace(self.config.filter_criteria, architecture=build_config.architecture)
+
+        criteria = replace(
+            self.config.filter_criteria, architecture=build_config.architecture
+        )
 
         filtered_suites = filter_suites(job, criteria)
 
