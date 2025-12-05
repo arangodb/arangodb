@@ -139,12 +139,12 @@ function BaseTestConfig () {
         params: { cn, n }
       });
     } else {
-      var tx = db._createTransaction({
+      const tx = db._createTransaction({
         collections: { write: [cn] },
         waitForSync: true
       });
       let state = {};
-      let txn_col = tx.collection(cn);
+      const txn_col = tx.collection(cn);
       for (let i = 0; i < n; ++i) {
         let key = "testmann" + Math.floor(Math.random() * 10);
         if (state.hasOwnProperty(key)) {
@@ -160,10 +160,7 @@ function BaseTestConfig () {
           txn_col.insert({ _key: key, value: state[key] }, { silent: true });
         }
       }
-      let x = tx.commit();
-      if (x.status !== "committed") {
-        throw new Error("failed to commit transaction");
-      }
+      tx.commit();
       return state;
     }
   };

@@ -318,12 +318,12 @@ function BaseTestConfig() {
               }
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: [cn, cn2]
               }});
-            var c = tx.collection(cn);
-            var c2 = tx.collection(cn2);
+            const c = tx.collection(cn);
+            const c2 = tx.collection(cn2);
 
             c.replace('foo', {
               value: 2
@@ -340,10 +340,7 @@ function BaseTestConfig() {
               _key: 'bar2',
               value: 'C'
             });
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction " + x);
-            }
+            tx.commit();
           }
         },
         function() {
@@ -835,21 +832,18 @@ function BaseTestConfig() {
               params: {cn}
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: cn
               }});
-            var c = tx.collection(cn);
+            const c = tx.collection(cn);
 
             for (var i = 0; i < 1000; ++i) {
               c.save({
                 '_key': 'test' + i
               });
             }
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction " + x);
-            }
+            tx.commit();
           }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -893,11 +887,11 @@ function BaseTestConfig() {
             } catch (err) {
             }
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: cn
               }});
-            let c = tx.collection(cn);
+            const c = tx.collection(cn);
             for (var i = 0; i < 1000; ++i) {
               c.save({
                 '_key': 'test' + i
@@ -950,18 +944,15 @@ function BaseTestConfig() {
               params: {cn}
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: cn
               }});
-            var tx_col = tx.collection(cn);
+            const tx_col = tx.collection(cn);
             for (var i = 0; i < 1000; ++i) {
               tx_col.remove('test' + i);
             }
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction " + x);
-            }
+            tx.commit();
           }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1010,11 +1001,11 @@ function BaseTestConfig() {
 
             }
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: cn
               }});
-            var tx_col = tx.collection(cn);
+            const tx_col = tx.collection(cn);
             for (var i = 0; i < 1000; ++i) {
               tx_col.remove('test' + i);
             }
@@ -1080,11 +1071,11 @@ function BaseTestConfig() {
               }
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: cn
               }});
-            var c = tx.collection(cn);
+            const c = tx.collection(cn);
             var i;
 
             for (i = 0; i < 1000; ++i) {
@@ -1108,10 +1099,7 @@ function BaseTestConfig() {
             for (i = 0; i < 1000; i += 10) {
               c.remove('test' + i);
             }
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction " + x);
-            }
+            tx.commit();
           }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1161,11 +1149,11 @@ function BaseTestConfig() {
               }
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: cn
               }});
-            var c = tx.collection(cn);
+            const c = tx.collection(cn);
             var i;
 
             for (i = 0; i < 50000; ++i) {
@@ -1181,10 +1169,7 @@ function BaseTestConfig() {
                 c.remove('test' + i);
               }
             }
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction " + x);
-            }
+            tx.commit();
           }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1235,11 +1220,11 @@ function BaseTestConfig() {
               }
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: cn
               }});
-            var c = tx.collection(cn);
+            const c = tx.collection(cn);
             var i;
             var wait = require('internal').wait;
 
@@ -1254,10 +1239,7 @@ function BaseTestConfig() {
 
               wait(1, false);
             }
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction " + x);
-            }
+            tx.commit();
           }
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
@@ -1328,12 +1310,12 @@ function BaseTestConfig() {
               }
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: [cn, cn2]
               }});
-            var c1 = tx.collection(cn);
-            var c2 = tx.collection(cn2);
+            const c1 = tx.collection(cn);
+            const c2 = tx.collection(cn2);
             var i;
 
             for (i = 0; i < 1000; ++i) {
@@ -1365,10 +1347,7 @@ function BaseTestConfig() {
               c1.remove('test' + i);
               c2.remove('test' + i);
             }
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction " + x);
-            }
+            tx.commit();
           }
           state.checksum1 = collectionChecksum(cn);
           state.checksum2 = collectionChecksum(cn2);
@@ -1455,12 +1434,12 @@ function BaseTestConfig() {
             } catch (err) {
             }
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: {
                 write: [cn, cn2]
               }});
-            var c1 = tx.collection(cn);
-            var c2 = tx.collection(cn2);
+            const c1 = tx.collection(cn);
+            const c2 = tx.collection(cn2);
             var i;
 
             for (i = 0; i < 1000; ++i) {

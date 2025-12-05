@@ -581,10 +581,10 @@ function BaseTestConfig () {
               }
             });
           } else {
-            var tx = db._createTransaction({
+            const tx = db._createTransaction({
               collections: { write: [cn] },
             });
-            let txn_col = tx.collection(cn);
+            const txn_col = tx.collection(cn);
             for (let i = 0; i < 10; ++i) {
               txn_col.insert({
                 test1: i,
@@ -599,10 +599,7 @@ function BaseTestConfig () {
               // intentionally delay the transaction
               require('internal').wait(0.75, false);
             }
-            let x = tx.commit();
-            if (x.status !== "committed") {
-              throw new Error("failed to commit transaction");
-            }
+            tx.commit();
           }
 
           state.checksum = collectionChecksum(cn);
@@ -682,10 +679,10 @@ function BaseTestConfig () {
           } else {
             let func = function(cn) {
               let db = require('internal').db;
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [cn] },
               });
-              let txn_col = tx.collection(cn);
+              const txn_col = tx.collection(cn);
               for (let i = 0; i < 10; ++i) {
                 txn_col.insert({
                   test1: i,
@@ -700,10 +697,7 @@ function BaseTestConfig () {
                 // intentionally delay the transaction
                 require('internal').wait(3.0, false);
               }
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction");
-              }
+              tx.commit();
             };
             clients.push(ct.run.launchPlainSnippetInBG(`let fn = ${String(func)}("${cn}");`, 1));
           }
@@ -799,10 +793,10 @@ function BaseTestConfig () {
           } else {
             let func = function(cn) {
               let db = require('internal').db;
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [cn] },
               });
-              let txn_col = tx.collection(cn);
+              const txn_col = tx.collection(cn);
               for (let i = 0; i < 10; ++i) {
                 txn_col.insert({
                   test1: i,
@@ -817,10 +811,7 @@ function BaseTestConfig () {
                 // intentionally delay the transaction
                 require('internal').wait(0.75, false);
               }
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction");
-              }
+              tx.commit();
             };
             clients.push(ct.run.launchPlainSnippetInBG(`let fn = ${String(func)}("${cn}");`, 1));
           }

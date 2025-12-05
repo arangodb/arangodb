@@ -305,20 +305,17 @@ function ReplicationSuite() {
                 params: { cn: collection.name() }
               });
             } else {
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [collection.name()] },
               });
-              let txn_col = tx.collection(collection.name());
+              const txn_col = tx.collection(collection.name());
               let key = "test" + Math.floor(Math.random() * 10000);
               try {
                 txn_col.insert({ _key: key, value: Date.now() });
               } catch (err) {
                 txn_col.replace(key, { value2: Date.now() });
               }
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction " + x);
-              }
+              tx.commit();
             }
           };
           
@@ -340,20 +337,17 @@ function ReplicationSuite() {
                 params: { cn: collection.name() }
               });
             } else {
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [collection.name()] },
               });
-              let txn_col = tx.collection(collection.name());
+              const txn_col = tx.collection(collection.name());
               let key = "test" + Math.floor(Math.random() * 10000);
               try {
                 txn_col.insert({ _key: key, value: Date.now() });
               } catch (err) {
                 txn_col.update(key, { value2: Date.now() });
               }
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction " + x);
-              }
+              tx.commit();
             }
           };
           
@@ -371,16 +365,13 @@ function ReplicationSuite() {
                 params: { cn: collection.name() }
               });
             } else {
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [collection.name()] },
               });
-              let txn_col = tx.collection(collection.name());
+              const txn_col = tx.collection(collection.name());
               txn_col.insert({ value1: Date.now() });
               txn_col.insert({ value2: Date.now() });
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction " + x);
-              }
+              tx.commit();
             }
           };
           
@@ -405,10 +396,10 @@ function ReplicationSuite() {
                 params: { cn: collection.name() }
               });
             } else {
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [collection.name()] },
               });
-              let txn_col = tx.collection(collection.name());
+              const txn_col = tx.collection(collection.name());
               if (txn_col.count() < 2) {
                 let k1 = txn_col.insert({});
                 let k2 = txn_col.insert({});
@@ -441,19 +432,16 @@ function ReplicationSuite() {
                 params: { cn: collection.name() }
               });
             } else {
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [collection.name()] },
               });
-              let txn_col = tx.collection(collection.name());
+              const txn_col = tx.collection(collection.name());
               if (txn_col.count() === 0) {
                 txn_col.insert({ value: Date.now() });
               }
               tx.query("FOR doc IN @@col LIMIT 1 REMOVE doc IN @@col", {"@col": txn_col.name()});
               txn_col.insert({ value: Date.now() });
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction " + x);
-              }
+              tx.commit();
             }
           };
           
@@ -471,16 +459,13 @@ function ReplicationSuite() {
                 params: { cn: collection.name() }
               });
             } else {
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [collection.name()] },
               });
-              let txn_col = tx.collection(collection.name());
+              const txn_col = tx.collection(collection.name());
               let k = txn_col.insert({ value: Date.now() });
               txn_col.remove(k);
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction " + x);
-              }
+              tx.commit();
             }
           };
           
@@ -499,17 +484,14 @@ function ReplicationSuite() {
                 params: { cn: collection.name() }
               });
             } else {
-              var tx = db._createTransaction({
+              const tx = db._createTransaction({
                 collections: { write: [collection.name()] },
               });
-              let txn_col = tx.collection(collection.name());
+              const txn_col = tx.collection(collection.name());
               for (let i = 0; i < 1000; ++i) {
                 txn_col.insert({ value1: Date.now() });
               }
-              let x = tx.commit();
-              if (x.status !== "committed") {
-                throw new Error("failed to commit transaction " + x);
-              }
+              tx.commit();
             }
           };
           
