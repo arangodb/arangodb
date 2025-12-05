@@ -151,6 +151,7 @@ class TestRequirements:
     instrumentation: Optional[bool] = (
         None  # Include/exclude for instrumented builds (TSAN/ASAN/coverage)
     )
+    v8: Optional[bool] = None  # Include/exclude for v8 builds
     architecture: Optional[Architecture] = None  # Allowed architecture (None = all)
 
     @classmethod
@@ -176,6 +177,8 @@ class TestRequirements:
             kwargs["coverage"] = data["coverage"]
         if "instrumentation" in data:
             kwargs["instrumentation"] = data["instrumentation"]
+        if "v8" in data:
+            kwargs["v8"] = data["v8"]
 
         # Handle arch field
         if "arch" in data and data["arch"] is not None:
@@ -198,6 +201,7 @@ class TestRequirements:
                 full=self.full,
                 coverage=self.coverage,
                 instrumentation=self.instrumentation,
+                v8=self.v8,
                 architecture=self.architecture,
             )
 
@@ -208,6 +212,7 @@ class TestRequirements:
             full=merge_field(override.full, self.full),
             coverage=merge_field(override.coverage, self.coverage),
             instrumentation=merge_field(override.instrumentation, self.instrumentation),
+            v8=merge_field(override.v8, self.v8),
             architecture=merge_field(override.architecture, self.architecture),
         )
 

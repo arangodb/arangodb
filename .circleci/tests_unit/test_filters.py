@@ -768,3 +768,167 @@ class TestInstrumentationFiltering:
         # But if we check the suite directly, it should be included
         suite = job.suites[0]
         assert should_include_suite(suite, criteria_tsan)
+
+
+class TestV8Filtering:
+    """Test v8 filtering at job and suite level."""
+
+    def test_job_without_v8_constraint_included_in_all_builds(self):
+        """Job without v8 field should run in all build types."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            options=TestOptions(),
+        )
+
+        # Should be included in V8 build
+        criteria_v8 = FilterCriteria(v8=True)
+        assert should_include_job(job, criteria_v8)
+
+        # Should be included in non-V8 build
+        criteria_no_v8 = FilterCriteria(v8=False)
+        assert should_include_job(job, criteria_no_v8)
+
+    def test_job_with_v8_true_only_in_v8_builds(self):
+        """Job with v8=True should only run in V8-enabled builds."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(v8=True),
+        )
+
+        # Should be included in V8 build
+        criteria_v8 = FilterCriteria(v8=True)
+        assert should_include_job(job, criteria_v8)
+
+        # Should be excluded from non-V8 build
+        criteria_no_v8 = FilterCriteria(v8=False)
+        assert not should_include_job(job, criteria_no_v8)
+
+    def test_job_with_v8_false_only_in_non_v8_builds(self):
+        """Job with v8=False should only run in non-V8 builds."""
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(v8=False),
+        )
+
+        # Should be excluded from V8 build
+        criteria_v8 = FilterCriteria(v8=True)
+        assert not should_include_job(job, criteria_v8)
+
+        # Should be included in non-V8 build
+        criteria_no_v8 = FilterCriteria(v8=False)
+        assert should_include_job(job, criteria_no_v8)
+
+    def test_all_tests_mode_respects_architecture_but_not_v8(self):
+        """all_tests mode should still respect architecture but ignore v8."""
+        from src.config_lib import Architecture
+
+        # Job with v8=False
+        job = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(v8=False),
+        )
+
+        # Should be included in V8 build with all_tests=True
+        criteria = FilterCriteria(all_tests=True, v8=True)
+        assert should_include_job(job, criteria)
+
+        # Job with wrong architecture should still be excluded
+        job_x64 = TestJob(
+            name="test_job",
+            suites=[SuiteConfig(name="suite1")],
+            requires=TestRequirements(architecture=Architecture.X64),
+        )
+
+        criteria_aarch64 = FilterCriteria(
+            all_tests=True, architecture=Architecture.AARCH64
+        )
+        assert not should_include_job(job_x64, criteria_aarch64)
+
+    def test_suite_without_v8_constraint_included_in_all_builds(self):
+        """Suite without v8 field should run in all build types."""
+        suite = SuiteConfig(name="suite1")
+
+        # Should be included in V8 build
+        criteria_v8 = FilterCriteria(v8=True)
+        assert should_include_suite(suite, criteria_v8)
+
+        # Should be included in non-V8 build
+        criteria_no_v8 = FilterCriteria(v8=False)
+        assert should_include_suite(suite, criteria_no_v8)
+
+    def test_suite_with_v8_true_only_in_v8_builds(self):
+        """Suite with v8=True should only run in V8-enabled builds."""
+        suite = SuiteConfig(name="suite1", requires=TestRequirements(v8=True))
+
+        # Should be included in V8 build
+        criteria_v8 = FilterCriteria(v8=True)
+        assert should_include_suite(suite, criteria_v8)
+
+        # Should be excluded from non-V8 build
+        criteria_no_v8 = FilterCriteria(v8=False)
+        assert not should_include_suite(suite, criteria_no_v8)
+
+    def test_suite_with_v8_false_only_in_non_v8_builds(self):
+        """Suite with v8=False should only run in non-V8 builds."""
+        suite = SuiteConfig(name="suite1", requires=TestRequirements(v8=False))
+
+        # Should be excluded from V8 build
+        criteria_v8 = FilterCriteria(v8=True)
+        assert not should_include_suite(suite, criteria_v8)
+
+        # Should be included in non-V8 build
+        criteria_no_v8 = FilterCriteria(v8=False)
+        assert should_include_suite(suite, criteria_no_v8)
+
+    def test_filter_suites_by_v8(self):
+        """Test filtering mixed v8 suites in different build types."""
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="v8_suite", requires=TestRequirements(v8=True)),
+                SuiteConfig(name="no_v8_suite", requires=TestRequirements(v8=False)),
+                SuiteConfig(name="any_suite"),
+            ],
+            options=TestOptions(),
+        )
+
+        # V8 build - should include v8_suite and any_suite, exclude no_v8_suite
+        criteria_v8 = FilterCriteria(v8=True)
+        result = filter_suites(job, criteria_v8)
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "v8_suite" in result_names
+        assert "any_suite" in result_names
+        assert "no_v8_suite" not in result_names
+
+        # Non-V8 build - should include no_v8_suite and any_suite, exclude v8_suite
+        criteria_no_v8 = FilterCriteria(v8=False)
+        result = filter_suites(job, criteria_no_v8)
+        assert len(result) == 2
+        result_names = {suite.name for suite in result}
+        assert "no_v8_suite" in result_names
+        assert "any_suite" in result_names
+        assert "v8_suite" not in result_names
+
+    def test_suite_v8_overrides_job_v8(self):
+        """Suite-level v8 should override job-level v8."""
+        # Job with v8=False, but suite overrides to True
+        job = TestJob(
+            name="test_job",
+            suites=[
+                SuiteConfig(name="override_suite", requires=TestRequirements(v8=True))
+            ],
+            requires=TestRequirements(v8=False),
+        )
+
+        # Job should be excluded from V8 build (job-level filter)
+        criteria_v8 = FilterCriteria(v8=True)
+        assert not should_include_job(job, criteria_v8)
+
+        # But if we check the suite directly, it should be included
+        suite = job.suites[0]
+        assert should_include_suite(suite, criteria_v8)

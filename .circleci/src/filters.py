@@ -38,6 +38,7 @@ class FilterCriteria:
     # Build configuration
     sanitizer: Optional[Sanitizer] = None  # Sanitizer type for this build
     architecture: Optional[Architecture] = None  # Current build architecture
+    v8: bool = True  # Whether V8 (JavaScript) is enabled in this build
 
     # Feature flags
     enterprise: bool = True
@@ -51,6 +52,11 @@ class FilterCriteria:
     def is_instrumented_build(self) -> bool:
         """Check if this is an instrumented build (TSan/ALUBSan)."""
         return self.sanitizer is not None
+
+    @property
+    def is_v8_build(self) -> bool:
+        """Check if this is a V8-enabled build."""
+        return self.v8
 
 
 def is_gtest_suite(suite: SuiteConfig) -> bool:
@@ -138,6 +144,15 @@ def _check_requirements_match(
         return False  # Requires instrumented build, but we're in regular mode
     if requires.instrumentation is False and criteria.is_instrumented_build:
         return False  # Regular-build-only, but we're in instrumented mode
+
+    # Check v8 flag compatibility
+    # - v8=True: Only for V8-enabled builds
+    # - v8=False: Only for non-V8 builds (JavaScript disabled)
+    # - v8=None (unspecified): Include in both
+    if requires.v8 is True and not criteria.is_v8_build:
+        return False  # Requires V8 build, but we're in non-V8 mode
+    if requires.v8 is False and criteria.is_v8_build:
+        return False  # Non-V8-only, but we're in V8 mode
 
     return True
 
